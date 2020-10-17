@@ -2559,7 +2559,6 @@ fn specialize_one_pattern<'p, 'tcx>(
                 let suffix = suffix.iter().enumerate().map(|(i, p)| (arity - suffix.len() + i, p));
                 Some(ctor_wild_subpatterns.replace_fields_indexed(prefix.chain(suffix)))
             }
-            ConstantValue(_) => None,
             _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
         },
 
