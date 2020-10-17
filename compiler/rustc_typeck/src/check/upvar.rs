@@ -284,30 +284,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let var_hir_id = upvar_id.var_path.hir_id;
             closure_captures.insert(var_hir_id, upvar_id);
 
-            let mut new_capture_kind = capture_info.capture_kind;
-            if let Some(existing_capture_kind) =
+            let new_capture_kind = if let Some(capture_kind) =
                 self.typeck_results.borrow_mut().upvar_capture_map.get(&upvar_id)
             {
-                // FIXME(@azhng): refactor this later
-                new_capture_kind = match (existing_capture_kind, new_capture_kind) {
-                    (ty::UpvarCapture::ByValue(Some(_)), _) => *existing_capture_kind,
-                    (_, ty::UpvarCapture::ByValue(Some(_))) => new_capture_kind,
-                    (ty::UpvarCapture::ByValue(_), _) | (_, ty::UpvarCapture::ByValue(_)) => {
-                        ty::UpvarCapture::ByValue(None)
-                    }
-                    (ty::UpvarCapture::ByRef(existing_ref), ty::UpvarCapture::ByRef(new_ref)) => {
-                        match (existing_ref.kind, new_ref.kind) {
-                            // Take RHS:
-                            (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
-                            | (ty::UniqueImmBorrow, ty::MutBorrow) => new_capture_kind,
-                            // Take LHS:
-                            (ty::ImmBorrow, ty::ImmBorrow)
-                            | (ty::UniqueImmBorrow, ty::ImmBorrow | ty::UniqueImmBorrow)
-                            | (ty::MutBorrow, _) => *existing_capture_kind,
-                        }
-                    }
-                };
-            }
+                // upvar_capture_map only stores the UpvarCapture (CaptureKind),
+                // so we create a fake capture info with no expression.
+                let fake_capture_info =
+                    ty::CaptureInfo { expr_id: None, capture_kind: capture_kind.clone() };
+                self.determine_capture_info(fake_capture_info, capture_info.clone()).capture_kind
+            } else {
+                capture_info.capture_kind
+            };
             self.typeck_results.borrow_mut().upvar_capture_map.insert(upvar_id, new_capture_kind);
         }
 
@@ -352,6 +339,75 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn should_log_capture_analysis(&self, closure_def_id: DefId) -> bool {
         self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
+    }
+
+    /// Helper function to determine if we need to escalate CaptureKind from
+    /// CaptureInfo A to B and returns the escalated CaptureInfo.
+    /// (Note: CaptureInfo contains CaptureKind and an expression that led to capture it in that way)
+    ///
+    /// If both `CaptureKind`s are considered equivalent, then the CaptureInformation is selected based
+    /// on the expression they point to,
+    /// - Some(expr) is preferred over None.
+    /// - Non-Pattern expressions are preferred over pattern expressions, since pattern expressions
+    /// can be confusing
+    ///
+    /// If the CaptureKind and Expression are considered to be equivalent, then `CaptureInfo` A is
+    /// preferred.
+    fn determine_capture_info(
+        &self,
+        capture_info_a: ty::CaptureInfo<'tcx>,
+        capture_info_b: ty::CaptureInfo<'tcx>,
+    ) -> ty::CaptureInfo<'tcx> {
+        // If the capture kind is equivalent then, we don't need to escalate and can compare the
+        // expressions.
+        let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
+            (ty::UpvarCapture::ByValue(_), ty::UpvarCapture::ByValue(_)) => {
+                // Both are either Some or both are either None
+                // !(span_a.is_some() ^ span_b.is_some())
+                true
+            }
+            (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
+                ref_a.kind == ref_b.kind
+            }
+            _ => false,
+        };
+
+        if eq_capture_kind {
+            match (capture_info_a.expr_id, capture_info_b.expr_id) {
+                (Some(_), None) | (None, None) => return capture_info_a,
+                (None, Some(_)) => return capture_info_b,
+                (Some(_), Some(_)) => {}
+            };
+
+            // Safe to unwrap here, since both are Some(_)
+            let expr_kind_a = self.tcx.hir().get(capture_info_a.expr_id.unwrap());
+            let expr_kind_b = self.tcx.hir().get(capture_info_b.expr_id.unwrap());
+
+            // If A is a pattern and B is not a pattern, then choose B else choose A.
+            if matches!(expr_kind_a, hir::Node::Pat(_)) && !matches!(expr_kind_b, hir::Node::Pat(_))
+            {
+                return capture_info_b;
+            } else {
+                return capture_info_a;
+            }
+        }
+
+        match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
+            (ty::UpvarCapture::ByValue(_), _) => capture_info_a,
+            (_, ty::UpvarCapture::ByValue(_)) => capture_info_b,
+            (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
+                match (ref_a.kind, ref_b.kind) {
+                    // Take RHS:
+                    (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
+                    | (ty::UniqueImmBorrow, ty::MutBorrow) => capture_info_b,
+                    // Take LHS:
+                    (ty::UniqueImmBorrow, ty::ImmBorrow) | (ty::MutBorrow, _) => capture_info_a,
+                    (ty::ImmBorrow, ty::ImmBorrow) | (ty::UniqueImmBorrow, ty::UniqueImmBorrow) => {
+                        bug!("Expected unequal capture kinds");
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -420,28 +476,15 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             var_name(tcx, upvar_id.var_path.hir_id),
         );
 
-        // In a case like `let pat = upvar`, don't use the span
-        // of the pattern, as this just looks confusing.
-        let (by_value_span, by_value_expr) = match tcx.hir().get(place_with_id.hir_id) {
-            hir::Node::Pat(_) => (None, None),
-            _ => (Some(usage_span), Some(place_with_id.hir_id)),
-        };
-
         let capture_info = ty::CaptureInfo {
-            expr_id: by_value_expr,
-            capture_kind: ty::UpvarCapture::ByValue(by_value_span),
+            expr_id: Some(place_with_id.hir_id),
+            capture_kind: ty::UpvarCapture::ByValue(Some(usage_span)),
         };
 
-        let curr_info = self.capture_information.get(&place_with_id.place);
-        let updated_info = match curr_info {
-            Some(info) => match info.capture_kind {
-                ty::UpvarCapture::ByRef(_) | ty::UpvarCapture::ByValue(None) => capture_info,
-                _ => *info,
-            },
-            None => capture_info,
-        };
+        let curr_info = self.capture_information[&place_with_id.place];
+        let updated_info = self.fcx.determine_capture_info(curr_info, capture_info);
 
-        self.capture_information.insert(place_with_id.place.clone(), updated_info);
+        self.capture_information[&place_with_id.place] = updated_info;
     }
 
     /// Indicates that `place_with_id` is being directly mutated (e.g., assigned
@@ -522,42 +565,28 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         place_with_id: &PlaceWithHirId<'tcx>,
         kind: ty::BorrowKind,
     ) {
-        let capture_info = self
-            .capture_information
-            .get(&place_with_id.place)
-            .unwrap_or_else(|| bug!("Upar capture info missing"));
-        // We init capture_information for each element
+        let curr_capture_info = self.capture_information[&place_with_id.place];
 
         debug!(
             "adjust_upvar_borrow_kind(place={:?}, capture_info={:?}, kind={:?})",
-            place_with_id, capture_info, kind
+            place_with_id, curr_capture_info, kind
         );
 
-        match capture_info.capture_kind {
-            ty::UpvarCapture::ByValue(_) => {
-                // Upvar is already by-value, the strongest criteria.
-            }
-            ty::UpvarCapture::ByRef(upvar_borrow) => {
-                match (upvar_borrow.kind, kind) {
-                    // Take RHS:
-                    (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
-                    | (ty::UniqueImmBorrow, ty::MutBorrow) => {
-                        if let Some(ty::CaptureInfo { expr_id, capture_kind }) =
-                            self.capture_information.get_mut(&place_with_id.place)
-                        {
-                            *expr_id = Some(place_with_id.hir_id);
-                            if let ty::UpvarCapture::ByRef(borrow_kind) = capture_kind {
-                                borrow_kind.kind = kind;
-                            }
-                        }
-                    }
-                    // Take LHS:
-                    (ty::ImmBorrow, ty::ImmBorrow)
-                    | (ty::UniqueImmBorrow, ty::ImmBorrow | ty::UniqueImmBorrow)
-                    | (ty::MutBorrow, _) => {}
-                }
-            }
-        }
+        if let ty::UpvarCapture::ByValue(_) = curr_capture_info.capture_kind {
+            // It's already capture by value, we don't need to do anything here
+            return;
+        } else if let ty::UpvarCapture::ByRef(curr_upvar_borrow) = curr_capture_info.capture_kind {
+            // Use the same region as the current capture information
+            // Doesn't matter since only one of the UpvarBorrow will be used.
+            let new_upvar_borrow = ty::UpvarBorrow { kind, region: curr_upvar_borrow.region };
+
+            let capture_info = ty::CaptureInfo {
+                expr_id: Some(place_with_id.hir_id),
+                capture_kind: ty::UpvarCapture::ByRef(new_upvar_borrow),
+            };
+            let updated_info = self.fcx.determine_capture_info(curr_capture_info, capture_info);
+            self.capture_information[&place_with_id.place] = updated_info;
+        };
     }
 
     fn adjust_closure_kind(
@@ -608,16 +637,9 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
             debug!("Capturing new place {:?}", place_with_id);
 
-            let tcx = self.fcx.tcx;
             let capture_kind =
                 self.fcx.init_capture_kind(self.capture_clause, upvar_id, self.closure_span);
-
-            let expr_id = if !matches!(tcx.hir().get(place_with_id.hir_id), hir::Node::Pat(_)) {
-                Some(place_with_id.hir_id)
-            } else {
-                None
-            };
-
+            let expr_id = Some(place_with_id.hir_id);
             let capture_info = ty::CaptureInfo { expr_id, capture_kind };
 
             self.capture_information.insert(place_with_id.place.clone(), capture_info);

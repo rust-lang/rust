@@ -761,6 +761,22 @@ pub struct UpvarBorrow<'tcx> {
 #[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
 pub struct CaptureInfo<'tcx> {
     /// Expr Id pointing to use that resulting in selecting the current capture kind
+    ///
+    /// If the user doesn't enable feature `capture_disjoint_fields` (RFC 2229) then, it is
+    /// possible that we don't see the use of a particular place resulting in expr_id being
+    /// None. In such case we fallback on uvpars_mentioned for span.
+    ///
+    /// Eg:
+    /// ```rust
+    /// let x = ...;
+    ///
+    /// let c = || {
+    ///     let _ = x
+    /// }
+    /// ```
+    ///
+    /// In this example, if `capture_disjoint_fields` is **not** set, then x will be captured,
+    /// but we won't see it being used during capture analysis, since it's essentially a discard.
     pub expr_id: Option<hir::HirId>,
 
     /// Capture mode that was selected

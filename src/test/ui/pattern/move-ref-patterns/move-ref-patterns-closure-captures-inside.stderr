@@ -8,7 +8,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 LL |         // Tuples...
 LL |         let (ref mut borrow, mov) = tup0;
-   |                                     ---- variable moved due to use in closure
+   |             --------------------- variable moved due to use in closure
 ...
 LL |     drop(&tup0);
    |          ^^^^^ value borrowed here after move
@@ -23,7 +23,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let (mov, _, ref mut borrow) = tup1;
-   |                                        ---- variable moved due to use in closure
+   |             ------------------------ variable moved due to use in closure
 ...
 LL |     drop(&tup1);
    |          ^^^^^ value borrowed here after move
@@ -38,7 +38,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let (ref borrow, mov) = tup2;
-   |                                 ---- variable moved due to use in closure
+   |             ----------------- variable moved due to use in closure
 ...
 LL |     drop(&tup2);
    |          ^^^^^ value borrowed here after move
@@ -53,7 +53,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let (mov, _, ref borrow) = tup3;
-   |                                    ---- variable moved due to use in closure
+   |             -------------------- variable moved due to use in closure
 ...
 LL |     drop(&tup3);
    |          ^^^^^ value borrowed here after move
@@ -68,7 +68,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let (ref borrow, mov) = tup4;
-   |                                 ---- variable moved due to use in closure
+   |             ----------------- variable moved due to use in closure
 ...
 LL |     drop(&tup4.0);
    |          ^^^^^^^ value borrowed here after move
@@ -83,7 +83,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let [mov @ .., ref borrow] = arr0;
-   |                                      ---- variable moved due to use in closure
+   |             ---------------------- variable moved due to use in closure
 ...
 LL |     drop(&arr0);
    |          ^^^^^ value borrowed here after move
@@ -98,7 +98,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let [_, ref mut borrow @ .., _, mov] = arr1;
-   |                                                ---- variable moved due to use in closure
+   |             -------------------------------- variable moved due to use in closure
 ...
 LL |     let [_, mov1, mov2, mov3, _] = &arr1;
    |                                    ^^^^^ value borrowed here after move
@@ -113,7 +113,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let [mov @ .., ref borrow] = arr2;
-   |                                      ---- variable moved due to use in closure
+   |             ---------------------- variable moved due to use in closure
 ...
 LL |     drop(&arr2);
    |          ^^^^^ value borrowed here after move
@@ -128,7 +128,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         let [_, ref borrow @ .., _, mov] = arr3;
-   |                                            ---- variable moved due to use in closure
+   |             ---------------------------- variable moved due to use in closure
 ...
 LL |     let [_, mov1, mov2, mov3, _] = &arr3;
    |                                    ^^^^^ value borrowed here after move
@@ -142,7 +142,7 @@ LL |     let mut tup0: Option<(S, S)> = None;
 LL |     let mut closure = || {
    |                       -- value moved into closure here
 LL |         m!((ref mut borrow, mov) = tup0);
-   |                                    ---- variable moved due to use in closure
+   |            --------------------- variable moved due to use in closure
 ...
 LL |     drop(&tup0);
    |          ^^^^^ value borrowed here after move
@@ -157,7 +157,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 LL |         m!((ref mut borrow, mov) = tup0);
 LL |         m!((mov, _, ref mut borrow) = tup1);
-   |                                       ---- variable moved due to use in closure
+   |            ------------------------ variable moved due to use in closure
 ...
 LL |     drop(&tup1);
    |          ^^^^^ value borrowed here after move
@@ -172,7 +172,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!((ref borrow, mov) = tup2);
-   |                                ---- variable moved due to use in closure
+   |            ----------------- variable moved due to use in closure
 ...
 LL |     drop(&tup2);
    |          ^^^^^ value borrowed here after move
@@ -187,7 +187,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!((mov, _, ref borrow) = tup3);
-   |                                   ---- variable moved due to use in closure
+   |            -------------------- variable moved due to use in closure
 ...
 LL |     drop(&tup3);
    |          ^^^^^ value borrowed here after move
@@ -202,7 +202,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!((ref borrow, mov) = tup4);
-   |                                ---- variable moved due to use in closure
+   |            ----------------- variable moved due to use in closure
 ...
 LL |     m!((ref x, _) = &tup4);
    |                     ^^^^^ value borrowed here after move
@@ -217,7 +217,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([mov @ .., ref borrow] = arr0);
-   |                                     ---- variable moved due to use in closure
+   |            ---------------------- variable moved due to use in closure
 ...
 LL |     drop(&arr0);
    |          ^^^^^ value borrowed here after move
@@ -232,7 +232,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([_, ref mut borrow @ .., _, mov] = arr1);
-   |                                               ---- variable moved due to use in closure
+   |            -------------------------------- variable moved due to use in closure
 ...
 LL |     m!([_, mov1, mov2, mov3, _] = &arr1);
    |                                   ^^^^^ value borrowed here after move
@@ -247,7 +247,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([mov @ .., ref borrow] = arr2);
-   |                                     ---- variable moved due to use in closure
+   |            ---------------------- variable moved due to use in closure
 ...
 LL |     drop(&arr2);
    |          ^^^^^ value borrowed here after move
@@ -261,7 +261,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([_, ref borrow @ .., _, mov] = arr3);
-   |                                           ---- variable moved due to use in closure
+   |            ---------------------------- variable moved due to use in closure
 ...
 LL |     m!([_, mov1, mov2, mov3, _] = &arr3);
    |                                   ^^^^^ value borrowed here after move
@@ -275,7 +275,7 @@ LL |     let mut tup0: Option<(S, S)> = None;
 LL |     let mut closure = || {
    |                       -- value moved into closure here
 LL |         m!((ref mut borrow, mov) = tup0);
-   |                                    ---- variable moved due to use in closure
+   |            --------------------- variable moved due to use in closure
 ...
 LL |     drop(&tup0);
    |          ^^^^^ value borrowed here after move
@@ -290,7 +290,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 LL |         m!((ref mut borrow, mov) = tup0);
 LL |         m!((mov, _, ref mut borrow) = tup1);
-   |                                       ---- variable moved due to use in closure
+   |            ------------------------ variable moved due to use in closure
 ...
 LL |     drop(&tup1);
    |          ^^^^^ value borrowed here after move
@@ -305,7 +305,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!((ref borrow, mov) = tup2);
-   |                                ---- variable moved due to use in closure
+   |            ----------------- variable moved due to use in closure
 ...
 LL |     drop(&tup2);
    |          ^^^^^ value borrowed here after move
@@ -320,7 +320,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!((mov, _, ref borrow) = tup3);
-   |                                   ---- variable moved due to use in closure
+   |            -------------------- variable moved due to use in closure
 ...
 LL |     drop(&tup3);
    |          ^^^^^ value borrowed here after move
@@ -335,7 +335,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!((ref borrow, mov) = tup4);
-   |                                ---- variable moved due to use in closure
+   |            ----------------- variable moved due to use in closure
 ...
 LL |     m!((ref x, _) = &tup4);
    |                     ^^^^^ value borrowed here after move
@@ -350,7 +350,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([mov @ .., ref borrow] = arr0);
-   |                                     ---- variable moved due to use in closure
+   |            ---------------------- variable moved due to use in closure
 ...
 LL |     drop(&arr0);
    |          ^^^^^ value borrowed here after move
@@ -365,7 +365,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([_, ref mut borrow @ .., _, mov] = arr1);
-   |                                               ---- variable moved due to use in closure
+   |            -------------------------------- variable moved due to use in closure
 ...
 LL |     m!([_, mov1, mov2, mov3, _] = &arr1);
    |                                   ^^^^^ value borrowed here after move
@@ -380,7 +380,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([mov @ .., ref borrow] = arr2);
-   |                                     ---- variable moved due to use in closure
+   |            ---------------------- variable moved due to use in closure
 ...
 LL |     drop(&arr2);
    |          ^^^^^ value borrowed here after move
@@ -394,7 +394,7 @@ LL |     let mut closure = || {
    |                       -- value moved into closure here
 ...
 LL |         m!([_, ref borrow @ .., _, mov] = arr3);
-   |                                           ---- variable moved due to use in closure
+   |            ---------------------------- variable moved due to use in closure
 ...
 LL |     m!([_, mov1, mov2, mov3, _] = &arr3);
    |                                   ^^^^^ value borrowed here after move

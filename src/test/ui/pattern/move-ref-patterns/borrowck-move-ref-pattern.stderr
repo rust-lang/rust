@@ -194,13 +194,13 @@ LL |     let mut tup = (U, U, U);
 LL |     let c1 = || {
    |              -- value moved into closure here
 LL |         let (ref _x0, _x1, _) = tup;
-   |                                 --- variable moved due to use in closure
+   |             ----------------- variable moved due to use in closure
 LL |     };
 LL |     let c2 = || {
    |              ^^ value used here after move
 LL |
 LL |         let (ref mut _x0, _, _x2) = tup;
-   |                                     --- use occurs due to use in closure
+   |             --------------------- use occurs due to use in closure
 
 error: aborting due to 18 previous errors
 
