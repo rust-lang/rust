@@ -10,9 +10,9 @@ use rustc_errors::Applicability;
 use rustc_feature::UnstableFeatures;
 use rustc_session::lint;
 
-pub const CHECK_AUTOMATIC_LINKS: Pass = Pass {
-    name: "check-automatic-links",
-    run: check_automatic_links,
+pub const CHECK_URL_IMPROVEMENTS: Pass = Pass {
+    name: "check-url-improvements",
+    run: check_url_improvements,
     description: "detects URLS that could be written using angle brackets",
 };
 
@@ -23,14 +23,14 @@ const URL_REGEX: &str = concat!(
     r"\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)"     // optional query or url fragments
 );
 
-struct AutomaticLinksLinter<'a, 'tcx> {
+struct UrlImprovementsLinter<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
     regex: Regex,
 }
 
-impl<'a, 'tcx> AutomaticLinksLinter<'a, 'tcx> {
+impl<'a, 'tcx> UrlImprovementsLinter<'a, 'tcx> {
     fn new(cx: &'a DocContext<'tcx>) -> Self {
-        AutomaticLinksLinter { cx, regex: Regex::new(URL_REGEX).expect("failed to build regex") }
+        UrlImprovementsLinter { cx, regex: Regex::new(URL_REGEX).expect("failed to build regex") }
     }
 
     fn find_raw_urls(
@@ -53,17 +53,17 @@ impl<'a, 'tcx> AutomaticLinksLinter<'a, 'tcx> {
     }
 }
 
-pub fn check_automatic_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
+pub fn check_url_improvements(krate: Crate, cx: &DocContext<'_>) -> Crate {
     if !UnstableFeatures::from_environment().is_nightly_build() {
         krate
     } else {
-        let mut coll = AutomaticLinksLinter::new(cx);
+        let mut coll = UrlImprovementsLinter::new(cx);
 
         coll.fold_crate(krate)
     }
 }
 
-impl<'a, 'tcx> DocFolder for AutomaticLinksLinter<'a, 'tcx> {
+impl<'a, 'tcx> DocFolder for UrlImprovementsLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         let hir_id = match self.cx.as_local_hir_id(item.def_id) {
             Some(hir_id) => hir_id,
@@ -78,7 +78,7 @@ impl<'a, 'tcx> DocFolder for AutomaticLinksLinter<'a, 'tcx> {
                 let sp = super::source_span_for_markdown_range(cx, &dox, &range, &item.attrs)
                     .or_else(|| span_of_attrs(&item.attrs))
                     .unwrap_or(item.source.span());
-                cx.tcx.struct_span_lint_hir(lint::builtin::AUTOMATIC_LINKS, hir_id, sp, |lint| {
+                cx.tcx.struct_span_lint_hir(lint::builtin::URL_IMPROVEMENTS, hir_id, sp, |lint| {
                     lint.build(msg)
                         .span_suggestion(
                             sp,

@@ -1,4 +1,4 @@
-#![deny(automatic_links)]
+#![deny(url_improvements)]
 
 /// [http://a.com](http://a.com)
 //~^ ERROR unneeded long form for URL
@@ -53,7 +53,7 @@ pub fn c() {}
 /// [b]: http://b.com
 pub fn everything_is_fine_here() {}
 
-#[allow(automatic_links)]
+#[allow(url_improvements)]
 pub mod foo {
     /// https://somewhere.com/a?hello=12&bye=11#xyz
     pub fn bar() {}

@@ -286,7 +286,7 @@ warning: unclosed HTML tag `h1`
 warning: 2 warnings emitted
 ```
 
-## automatic_links
+## url_improvements
 
 This lint is **nightly-only** and **warns by default**. It detects links which
 could use the "automatic" link syntax. For example:
