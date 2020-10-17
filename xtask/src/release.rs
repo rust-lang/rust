@@ -1,8 +1,6 @@
-use crate::{
-    codegen, is_release_tag,
-    not_bash::{date_iso, fs2, pushd, run},
-    project_root, Mode, Result,
-};
+use xshell::{cmd, cp, pushd, read_dir, write_file};
+
+use crate::{codegen, date_iso, is_release_tag, project_root, Mode, Result};
 
 pub struct ReleaseCmd {
     pub dry_run: bool,
@@ -11,10 +9,10 @@ pub struct ReleaseCmd {
 impl ReleaseCmd {
     pub fn run(self) -> Result<()> {
         if !self.dry_run {
-            run!("git switch release")?;
-            run!("git fetch upstream --tags --force")?;
-            run!("git reset --hard tags/nightly")?;
-            run!("git push")?;
+            cmd!("git switch release").run()?;
+            cmd!("git fetch upstream --tags --force").run()?;
+            cmd!("git reset --hard tags/nightly").run()?;
+            cmd!("git push").run()?;
         }
         codegen::generate_assists_docs(Mode::Overwrite)?;
         codegen::generate_feature_docs(Mode::Overwrite)?;
@@ -23,8 +21,8 @@ impl ReleaseCmd {
         let changelog_dir = website_root.join("./thisweek/_posts");
 
         let today = date_iso()?;
-        let commit = run!("git rev-parse HEAD")?;
-        let changelog_n = fs2::read_dir(changelog_dir.as_path())?.count();
+        let commit = cmd!("git rev-parse HEAD").read()?;
+        let changelog_n = read_dir(changelog_dir.as_path())?.len();
 
         let contents = format!(
             "\
@@ -52,20 +50,20 @@ https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
         );
 
         let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
-        fs2::write(&path, &contents)?;
+        write_file(&path, &contents)?;
 
         for &adoc in ["manual.adoc", "generated_features.adoc", "generated_assists.adoc"].iter() {
             let src = project_root().join("./docs/user/").join(adoc);
             let dst = website_root.join(adoc);
-            fs2::copy(src, dst)?;
+            cp(src, dst)?;
         }
 
-        let tags = run!("git tag --list"; echo = false)?;
+        let tags = cmd!("git tag --list").read()?;
         let prev_tag = tags.lines().filter(|line| is_release_tag(line)).last().unwrap();
 
-        let git_log = run!("git log {}..HEAD --merges --reverse", prev_tag; echo = false)?;
+        let git_log = cmd!("git log {prev_tag}..HEAD --merges --reverse").read()?;
         let git_log_dst = website_root.join("git.log");
-        fs2::write(git_log_dst, &git_log)?;
+        write_file(git_log_dst, &git_log)?;
 
         Ok(())
     }
@@ -77,27 +75,25 @@ pub struct PromoteCmd {
 
 impl PromoteCmd {
     pub fn run(self) -> Result<()> {
-        let _dir = pushd("../rust-rust-analyzer");
-        run!("git switch master")?;
-        run!("git fetch upstream")?;
-        run!("git reset --hard upstream/master")?;
-        run!("git submodule update --recursive")?;
+        let _dir = pushd("../rust-rust-analyzer")?;
+        cmd!("git switch master").run()?;
+        cmd!("git fetch upstream").run()?;
+        cmd!("git reset --hard upstream/master").run()?;
+        cmd!("git submodule update --recursive").run()?;
 
         let branch = format!("rust-analyzer-{}", date_iso()?);
-        run!("git switch -c {}", branch)?;
+        cmd!("git switch -c {branch}").run()?;
         {
-            let _dir = pushd("src/tools/rust-analyzer");
-            run!("git fetch origin")?;
-            run!("git reset --hard origin/release")?;
+            let _dir = pushd("src/tools/rust-analyzer")?;
+            cmd!("git fetch origin").run()?;
+            cmd!("git reset --hard origin/release").run()?;
         }
-        run!("git add src/tools/rust-analyzer")?;
-        run!("git commit -m':arrow_up: rust-analyzer'")?;
+        cmd!("git add src/tools/rust-analyzer").run()?;
+        cmd!("git commit -m':arrow_up: rust-analyzer'").run()?;
         if !self.dry_run {
-            run!("git push")?;
-            run!(
-                "xdg-open https://github.com/matklad/rust/pull/new/{}?body=r%3F%20%40ghost",
-                branch
-            )?;
+            cmd!("git push").run()?;
+            cmd!("xdg-open https://github.com/matklad/rust/pull/new/{branch}?body=r%3F%20%40ghost")
+                .run()?;
         }
         Ok(())
     }

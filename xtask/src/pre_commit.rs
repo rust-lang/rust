@@ -3,19 +3,21 @@
 use std::{fs, path::PathBuf};
 
 use anyhow::{bail, Result};
+use xshell::cmd;
 
-use crate::{not_bash::run, project_root, run_rustfmt, Mode};
+use crate::{project_root, run_rustfmt, Mode};
 
 // FIXME: if there are changed `.ts` files, also reformat TypeScript (by
 // shelling out to `npm fmt`).
 pub fn run_hook() -> Result<()> {
     run_rustfmt(Mode::Overwrite)?;
 
-    let diff = run!("git diff --diff-filter=MAR --name-only --cached")?;
+    let diff = cmd!("git diff --diff-filter=MAR --name-only --cached").read()?;
 
     let root = project_root();
     for line in diff.lines() {
-        run!("git update-index --add {}", root.join(line).display())?;
+        let file = root.join(line);
+        cmd!("git update-index --add {file}").run()?;
     }
 
     Ok(())

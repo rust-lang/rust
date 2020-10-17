@@ -4,8 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
-
-use crate::not_bash::{fs2, rm_rf};
+use xshell::rm_rf;
 
 pub struct PreCacheCmd;
 
@@ -26,7 +25,7 @@ impl PreCacheCmd {
             }
         }
 
-        fs2::remove_file("./target/.rustc_info.json")?;
+        rm_rf("./target/.rustc_info.json")?;
 
         let to_delete = read_dir("./crates", FileType::is_dir)?
             .into_iter()

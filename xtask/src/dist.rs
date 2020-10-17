@@ -1,4 +1,3 @@
-use flate2::{write::GzEncoder, Compression};
 use std::{
     env,
     fs::File,
@@ -7,11 +6,10 @@ use std::{
 };
 
 use anyhow::Result;
+use flate2::{write::GzEncoder, Compression};
+use xshell::{cmd, cp, mkdir_p, pushd, read_file, rm_rf, write_file};
 
-use crate::{
-    not_bash::{date_iso, fs2, pushd, rm_rf, run},
-    project_root,
-};
+use crate::{date_iso, project_root};
 
 pub struct DistCmd {
     pub nightly: bool,
@@ -22,7 +20,7 @@ impl DistCmd {
     pub fn run(self) -> Result<()> {
         let dist = project_root().join("dist");
         rm_rf(&dist)?;
-        fs2::create_dir_all(&dist)?;
+        mkdir_p(&dist)?;
 
         if let Some(version) = self.client_version {
             let release_tag = if self.nightly { "nightly".to_string() } else { date_iso()? };
@@ -34,7 +32,7 @@ impl DistCmd {
 }
 
 fn dist_client(version: &str, release_tag: &str) -> Result<()> {
-    let _d = pushd("./editors/code");
+    let _d = pushd("./editors/code")?;
     let nightly = release_tag == "nightly";
 
     let mut patch = Patch::new("./package.json")?;
@@ -54,20 +52,16 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
     }
     patch.commit()?;
 
-    run!("npm ci")?;
-    run!("npx vsce package -o ../../dist/rust-analyzer.vsix")?;
+    cmd!("npm ci").run()?;
+    cmd!("npx vsce package -o ../../dist/rust-analyzer.vsix").run()?;
     Ok(())
 }
 
 fn dist_server() -> Result<()> {
     if cfg!(target_os = "linux") {
         env::set_var("CC", "clang");
-        run!(
-            "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release"
-        )?;
-    } else {
-        run!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release")?;
     }
+    cmd!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release").run()?;
 
     let (src, dst) = if cfg!(target_os = "linux") {
         ("./target/release/rust-analyzer", "./dist/rust-analyzer-linux")
@@ -82,7 +76,7 @@ fn dist_server() -> Result<()> {
     let src = Path::new(src);
     let dst = Path::new(dst);
 
-    fs2::copy(&src, &dst)?;
+    cp(&src, &dst)?;
     gzip(&src, &dst.with_extension("gz"))?;
 
     Ok(())
@@ -105,7 +99,7 @@ struct Patch {
 impl Patch {
     fn new(path: impl Into<PathBuf>) -> Result<Patch> {
         let path = path.into();
-        let contents = fs2::read_to_string(&path)?;
+        let contents = read_file(&path)?;
         Ok(Patch { path, original_contents: contents.clone(), contents })
     }
 
@@ -115,13 +109,14 @@ impl Patch {
         self
     }
 
-    fn commit(&self) -> io::Result<()> {
-        fs2::write(&self.path, &self.contents)
+    fn commit(&self) -> Result<()> {
+        write_file(&self.path, &self.contents)?;
+        Ok(())
     }
 }
 
 impl Drop for Patch {
     fn drop(&mut self) {
-        fs2::write(&self.path, &self.original_contents).unwrap();
+        write_file(&self.path, &self.original_contents).unwrap();
     }
 }

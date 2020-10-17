@@ -422,12 +422,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fs-err"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcd1163ae48bda72a20ae26d66a04d3094135cadab911cff418ae5e33f253431"
-
-[[package]]
 name = "fsevent"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1921,16 +1915,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "xshell"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f7f756f2faab73adb00db44db716598ab2c9e4bce4a875c053022291bd3cab4"
+dependencies = [
+ "xshell-macros",
+]
+
+[[package]]
+name = "xshell-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51b020c2f3132b34067e2f6ebc58f0f210624898713a8186b8cdb75d3b8c3001"
+
+[[package]]
 name = "xtask"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
- "fs-err",
  "pico-args",
  "proc-macro2",
  "quote",
  "ungrammar",
  "walkdir",
  "write-json",
+ "xshell",
 ]

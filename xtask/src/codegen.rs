@@ -15,12 +15,9 @@ use std::{
     fmt, mem,
     path::{Path, PathBuf},
 };
+use xshell::{cmd, pushenv, read_file, write_file};
 
-use crate::{
-    ensure_rustfmt,
-    not_bash::{fs2, pushenv, run},
-    project_root, Result,
-};
+use crate::{ensure_rustfmt, project_root, Result};
 
 pub use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
@@ -57,7 +54,7 @@ impl CodegenCmd {
 /// A helper to update file on disk if it has changed.
 /// With verify = false,
 fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
-    match fs2::read_to_string(path) {
+    match read_file(path) {
         Ok(old_contents) if normalize(&old_contents) == normalize(contents) => {
             return Ok(());
         }
@@ -67,7 +64,7 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
         anyhow::bail!("`{}` is not up-to-date", path.display());
     }
     eprintln!("updating {}", path.display());
-    fs2::write(path, contents)?;
+    write_file(path, contents)?;
     return Ok(());
 
     fn normalize(s: &str) -> String {
@@ -80,10 +77,10 @@ const PREAMBLE: &str = "Generated file, do not edit by hand, see `xtask/src/code
 fn reformat(text: &str) -> Result<String> {
     let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
     ensure_rustfmt()?;
-    let stdout = run!(
-        "rustfmt --config-path {} --config fn_single_line=true", project_root().join("rustfmt.toml").display();
-        <text.as_bytes()
-    )?;
+    let rustfmt_toml = project_root().join("rustfmt.toml");
+    let stdout = cmd!("rustfmt --config-path {rustfmt_toml} --config fn_single_line=true")
+        .stdin(text)
+        .read()?;
     Ok(format!("//! {}\n\n{}\n", PREAMBLE, stdout))
 }
 
