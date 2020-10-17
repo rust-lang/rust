@@ -5,16 +5,16 @@
 fn main() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
     let y = &&42;
-    
+
     // Check `find().is_some()`, single-line case.
     let _ = v.iter().find(|&x| *x < 0).is_some();
     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
     let _ = (0..1).find(|x| *x == 0).is_some();
     let _ = v.iter().find(|x| **x == 0).is_some();
-    
+
     // Check `position().is_some()`, single-line case.
     let _ = v.iter().position(|&x| x < 0).is_some();
-    
+
     // Check `rposition().is_some()`, single-line case.
     let _ = v.iter().rposition(|&x| x < 0).is_some();
 

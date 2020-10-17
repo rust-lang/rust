@@ -1,4 +1,4 @@
-#[macro_use]
+// aux-build:option_helpers.rs
 extern crate option_helpers;
 use option_helpers::IteratorFalsePositives;
 
@@ -36,4 +36,3 @@ fn main() {
     // `Pattern` that is not a string
     let _ = "hello world".find(|c: char| c == 'o' || c == 'l').is_some();
 }
-    
