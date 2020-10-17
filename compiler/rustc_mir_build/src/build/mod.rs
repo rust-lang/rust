@@ -351,9 +351,6 @@ struct Builder<'a, 'tcx> {
     unit_temp: Option<Place<'tcx>>,
 
     var_debug_info: Vec<VarDebugInfo<'tcx>>,
-
-    /// Cached block with the `UNREACHABLE` terminator.
-    cached_unreachable_block: Option<BasicBlock>,
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -634,10 +631,6 @@ where
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
         builder.build_drop_trees(should_abort);
-        // Attribute any unreachable codepaths to the function's closing brace
-        if let Some(unreachable_block) = builder.cached_unreachable_block {
-            builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
-        }
         return_block.unit()
     }));
 
@@ -675,12 +668,6 @@ fn construct_const<'a, 'tcx>(
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
 
     builder.build_drop_trees(false);
-
-    // Constants may be match expressions in which case an unreachable block may
-    // be created, so terminate it properly.
-    if let Some(unreachable_block) = builder.cached_unreachable_block {
-        builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
-    }
 
     builder.finish()
 }
@@ -757,7 +744,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             var_indices: Default::default(),
             unit_temp: None,
             var_debug_info: vec![],
-            cached_unreachable_block: None,
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
