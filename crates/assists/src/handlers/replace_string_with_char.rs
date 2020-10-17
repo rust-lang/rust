@@ -1,18 +1,14 @@
-use std::borrow::Cow;
-
 use syntax::{
-    ast::{self, HasQuotes, HasStringValue},
+    ast::{self, HasStringValue},
     AstToken,
-    SyntaxKind::{RAW_STRING, STRING},
-    TextRange, TextSize,
+    SyntaxKind::STRING,
 };
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_string_with_char
 //
-// Replace string with char
+// Replace string with char.
 //
 // ```
 // fn main() {
@@ -29,7 +25,8 @@ pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext) -
     let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
     let target = token.syntax().text_range();
-    if value.len() > 1 || value.is_empty() {
+
+    if value.is_empty() || value.chars().count() > 1 {
         return None;
     }
 
@@ -74,6 +71,23 @@ mod tests {
             r##"
     fn f() {
         let s = 'c';
+    }
+    "##,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_char_assist_with_emoji() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+    fn f() {
+        let s = "<|>😀";
+    }
+    "#,
+            r##"
+    fn f() {
+        let s = '😀';
     }
     "##,
         )
