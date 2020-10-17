@@ -9,19 +9,56 @@ use std::path::Path;
 
 // All files are executable on Windows, so just check on Unix.
 #[cfg(windows)]
-pub fn check(_path: &Path, _bad: &mut bool) {}
+pub fn check(_path: &Path, _output: &Path, _bad: &mut bool) {}
 
 #[cfg(unix)]
-pub fn check(path: &Path, bad: &mut bool) {
+pub fn check(path: &Path, output: &Path, bad: &mut bool) {
     use std::fs;
     use std::os::unix::prelude::*;
     use std::process::{Command, Stdio};
 
-    if let Ok(contents) = fs::read_to_string("/proc/version") {
-        // Probably on Windows Linux Subsystem or Docker via VirtualBox,
-        // all files will be marked as executable, so skip checking.
-        if contents.contains("Microsoft") || contents.contains("boot2docker") {
-            return;
+    fn is_executable(path: &Path) -> std::io::Result<bool> {
+        Ok(path.metadata()?.mode() & 0o111 != 0)
+    }
+
+    // We want to avoid false positives on filesystems that do not support the
+    // executable bit. This occurs on some versions of Window's linux subsystem,
+    // for example.
+    //
+    // We try to create the temporary file first in the src directory, which is
+    // the preferred location as it's most likely to be on the same filesystem,
+    // and then in the output (`build`) directory if that fails. Sometimes we
+    // see the source directory mounted as read-only which means we can't
+    // readily create a file there to test.
+    //
+    // See #36706 and #74753 for context.
+    let mut temp_path = path.join("tidy-test-file");
+    match fs::File::create(&temp_path).or_else(|_| {
+        temp_path = output.join("tidy-test-file");
+        fs::File::create(&temp_path)
+    }) {
+        Ok(file) => {
+            let exec = is_executable(&temp_path).unwrap_or(false);
+            std::mem::drop(file);
+            std::fs::remove_file(&temp_path).expect("Deleted temp file");
+            if exec {
+                // If the file is executable, then we assume that this
+                // filesystem does not track executability, so skip this check.
+                return;
+            }
+        }
+        Err(e) => {
+            // If the directory is read-only or we otherwise don't have rights,
+            // just don't run this check.
+            //
+            // 30 is the "Read-only filesystem" code at least in one CI
+            //    environment.
+            if e.raw_os_error() == Some(30) {
+                eprintln!("tidy: Skipping binary file check, read-only filesystem");
+                return;
+            }
+
+            panic!("unable to create temporary file `{:?}`: {:?}", temp_path, e);
         }
     }
 
@@ -36,8 +73,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 return;
             }
 
-            let metadata = t!(entry.metadata(), file);
-            if metadata.mode() & 0o111 != 0 {
+            if t!(is_executable(&file), file) {
                 let rel_path = file.strip_prefix(path).unwrap();
                 let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
                 let output = Command::new("git")
