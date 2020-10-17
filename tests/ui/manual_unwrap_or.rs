@@ -1,7 +1,7 @@
 // run-rustfix
 #![allow(dead_code)]
 
-fn unwrap_or() {
+fn option_unwrap_or() {
     // int case
     match Some(1) {
         Some(i) => i,
@@ -78,6 +78,63 @@ fn unwrap_or() {
         Some(s) => s,
         None => &format!("{} {}!", "hello", "world"),
     };
+}
+
+fn result_unwrap_or() {
+    // int case
+    match Ok(1) as Result<i32, &str> {
+        Ok(i) => i,
+        Err(_) => 42,
+    };
+
+    // int case reversed
+    match Ok(1) as Result<i32, &str> {
+        Err(_) => 42,
+        Ok(i) => i,
+    };
+
+    // richer none expr
+    match Ok(1) as Result<i32, &str> {
+        Ok(i) => i,
+        Err(_) => 1 + 42,
+    };
+
+    // multiline case
+    #[rustfmt::skip]
+    match Ok(1) as Result<i32, &str> {
+        Ok(i) => i,
+        Err(_) => {
+            42 + 42
+                + 42 + 42 + 42
+                + 42 + 42 + 42
+        }
+    };
+
+    // string case
+    match Ok("Bob") as Result<&str, &str> {
+        Ok(i) => i,
+        Err(_) => "Alice",
+    };
+
+    // don't lint
+    match Ok(1) as Result<i32, &str> {
+        Ok(i) => i + 2,
+        Err(_) => 42,
+    };
+    match Ok(1) as Result<i32, &str> {
+        Ok(i) => i,
+        Err(_) => return,
+    };
+    for j in 0..4 {
+        match Ok(j) as Result<i32, &str> {
+            Ok(i) => i,
+            Err(_) => continue,
+        };
+        match Ok(j) as Result<i32, &str> {
+            Ok(i) => i,
+            Err(_) => break,
+        };
+    }
 }
 
 fn main() {}

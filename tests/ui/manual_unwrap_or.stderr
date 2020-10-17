@@ -57,5 +57,62 @@ LL | |         None => "Alice",
 LL | |     };
    | |_____^ help: replace with: `Some("Bob").unwrap_or("Alice")`
 
-error: aborting due to 5 previous errors
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:85:5
+   |
+LL | /     match Ok(1) as Result<i32, &str> {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 42,
+LL | |     };
+   | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:91:5
+   |
+LL | /     match Ok(1) as Result<i32, &str> {
+LL | |         Err(_) => 42,
+LL | |         Ok(i) => i,
+LL | |     };
+   | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:97:5
+   |
+LL | /     match Ok(1) as Result<i32, &str> {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 1 + 42,
+LL | |     };
+   | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(1 + 42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:104:5
+   |
+LL | /     match Ok(1) as Result<i32, &str> {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => {
+LL | |             42 + 42
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+help: replace with
+   |
+LL |     (Ok(1) as Result<i32, &str>).unwrap_or({
+LL |         42 + 42
+LL |             + 42 + 42 + 42
+LL |             + 42 + 42 + 42
+LL |     });
+   |
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:114:5
+   |
+LL | /     match Ok("Bob") as Result<&str, &str> {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => "Alice",
+LL | |     };
+   | |_____^ help: replace with: `(Ok("Bob") as Result<&str, &str>).unwrap_or("Alice")`
+
+error: aborting due to 10 previous errors
 
