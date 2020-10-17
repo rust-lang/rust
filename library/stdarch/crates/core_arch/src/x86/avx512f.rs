@@ -135,6 +135,98 @@ pub unsafe fn _mm512_mask_abs_pd(src: __m512d, k: __mmask8, v2: __m512d) -> __m5
     transmute(simd_select_bitmask(k, abs, src.as_f64x8()))
 }
 
+/// Move packed 32-bit integers from a to dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_mov_epi32&expand=3801)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovdqa32))]
+pub unsafe fn _mm512_mask_mov_epi32(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
+    let mov = a.as_i32x16();
+    transmute(simd_select_bitmask(k, mov, src.as_i32x16()))
+}
+
+/// Move packed 32-bit integers from a into dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_mov_epi32&expand=3802)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovdqa32))]
+pub unsafe fn _mm512_maskz_mov_epi32(k: __mmask16, a: __m512i) -> __m512i {
+    let mov = a.as_i32x16();
+    let zero = _mm512_setzero_si512().as_i32x16();
+    transmute(simd_select_bitmask(k, mov, zero))
+}
+
+/// Move packed 64-bit integers from a to dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_mov_epi64&expand=3807)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovdqa64))]
+pub unsafe fn _mm512_mask_mov_epi64(src: __m512i, k: __mmask8, a: __m512i) -> __m512i {
+    let mov = a.as_i64x8();
+    transmute(simd_select_bitmask(k, mov, src.as_i64x8()))
+}
+
+/// Move packed 64-bit integers from a into dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_mov_epi64&expand=3808)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovdqa64))]
+pub unsafe fn _mm512_maskz_mov_epi64(k: __mmask8, a: __m512i) -> __m512i {
+    let mov = a.as_i64x8();
+    let zero = _mm512_setzero_si512().as_i64x8();
+    transmute(simd_select_bitmask(k, mov, zero))
+}
+
+/// Move packed single-precision (32-bit) floating-point elements from a to dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_mov_ps&expand=3825)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovaps))]
+pub unsafe fn _mm512_mask_mov_ps(src: __m512, k: __mmask16, a: __m512) -> __m512 {
+    let mov = a.as_f32x16();
+    transmute(simd_select_bitmask(k, mov, src.as_f32x16()))
+}
+
+/// Move packed single-precision (32-bit) floating-point elements from a into dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_mov_ps&expand=3826)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovaps))]
+pub unsafe fn _mm512_maskz_mov_ps(k: __mmask16, a: __m512) -> __m512 {
+    let mov = a.as_f32x16();
+    let zero = _mm512_setzero_ps().as_f32x16();
+    transmute(simd_select_bitmask(k, mov, zero))
+}
+
+/// Move packed double-precision (64-bit) floating-point elements from a to dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_mov_pd&expand=3819)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovapd))]
+pub unsafe fn _mm512_mask_mov_pd(src: __m512d, k: __mmask8, a: __m512d) -> __m512d {
+    let mov = a.as_f64x8();
+    transmute(simd_select_bitmask(k, mov, src.as_f64x8()))
+}
+
+/// Move packed double-precision (64-bit) floating-point elements from a into dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_mov_pd&expand=3820)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovapd))]
+pub unsafe fn _mm512_maskz_mov_pd(k: __mmask8, a: __m512d) -> __m512d {
+    let mov = a.as_f64x8();
+    let zero = _mm512_setzero_pd().as_f64x8();
+    transmute(simd_select_bitmask(k, mov, zero))
+}
+
 /// Add packed 32-bit integers in a and b, and store the results in dst.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_add_epi32&expand=100)
@@ -1967,6 +2059,577 @@ pub unsafe fn _mm512_maskz_getexp_pd(k: __mmask8, a: __m512d) -> __m512d {
         k,
         _MM_FROUND_CUR_DIRECTION,
     ))
+}
+
+/// Round packed single-precision (32-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_roundscale_ps&expand=4784)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
+#[rustc_args_required_const(1)]
+pub unsafe fn _mm512_roundscale_ps(a: __m512, imm8: i32) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscaleps(
+                a.as_f32x16(),
+                $imm8,
+                _mm512_setzero_ps().as_f32x16(),
+                0b11111111_11111111,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round packed single-precision (32-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_roundscale_ps&expand=4782)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_mask_roundscale_ps(src: __m512, k: __mmask16, a: __m512, imm8: i32) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscaleps(
+                a.as_f32x16(),
+                $imm8,
+                src.as_f32x16(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round packed single-precision (32-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_roundscale_ps&expand=4783)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm512_maskz_roundscale_ps(k: __mmask16, a: __m512, imm8: i32) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscaleps(
+                a.as_f32x16(),
+                $imm8,
+                _mm512_setzero_ps().as_f32x16(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round packed double-precision (64-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_roundscale_pd&expand=4775)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
+#[rustc_args_required_const(1)]
+pub unsafe fn _mm512_roundscale_pd(a: __m512d, imm8: i32) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscalepd(
+                a.as_f64x8(),
+                $imm8,
+                _mm512_setzero_pd().as_f64x8(),
+                0b11111111,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round packed double-precision (64-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_roundscale_pd&expand=4773)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_mask_roundscale_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    imm8: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscalepd(
+                a.as_f64x8(),
+                $imm8,
+                src.as_f64x8(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round packed double-precision (64-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_roundscale_pd&expand=4774)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm512_maskz_roundscale_pd(k: __mmask8, a: __m512d, imm8: i32) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscalepd(
+                a.as_f64x8(),
+                $imm8,
+                _mm512_setzero_pd().as_f64x8(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_scalef_ps&expand=4883)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefps))]
+pub unsafe fn _mm512_scalef_ps(a: __m512, b: __m512) -> __m512 {
+    transmute(vscalefps(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        _mm512_setzero_ps().as_f32x16(),
+        0b11111111_11111111,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_scalef_ps&expand=4881)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefps))]
+pub unsafe fn _mm512_mask_scalef_ps(src: __m512, k: __mmask16, a: __m512, b: __m512) -> __m512 {
+    transmute(vscalefps(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        src.as_f32x16(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_scalef_ps&expand=4882)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefps))]
+pub unsafe fn _mm512_maskz_scalef_ps(k: __mmask16, a: __m512, b: __m512) -> __m512 {
+    transmute(vscalefps(
+        a.as_f32x16(),
+        b.as_f32x16(),
+        _mm512_setzero_ps().as_f32x16(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, and store the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_scalef_pd&expand=4874)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefpd))]
+pub unsafe fn _mm512_scalef_pd(a: __m512d, b: __m512d) -> __m512d {
+    transmute(vscalefpd(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        _mm512_setzero_pd().as_f64x8(),
+        0b11111111,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_scalef_pd&expand=4872)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefpd))]
+pub unsafe fn _mm512_mask_scalef_pd(src: __m512d, k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
+    transmute(vscalefpd(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        src.as_f64x8(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_scalef_pd&expand=4873)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefpd))]
+pub unsafe fn _mm512_maskz_scalef_pd(k: __mmask8, a: __m512d, b: __m512d) -> __m512d {
+    transmute(vscalefpd(
+        a.as_f64x8(),
+        b.as_f64x8(),
+        _mm512_setzero_pd().as_f64x8(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Fix up packed single-precision (32-bit) floating-point elements in a and b using packed 32-bit integers in c, and store the results in dst. imm8 is used to set the required flags reporting.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_fixupimm_ps&expand=2499)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_fixupimm_ps(a: __m512, b: __m512, c: __m512i, imm8: i32) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vfixupimmps(
+                a.as_f32x16(),
+                b.as_f32x16(),
+                c.as_i32x16(),
+                $imm8,
+                0b11111111_11111111,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Fix up packed single-precision (32-bit) floating-point elements in a and b using packed 32-bit integers in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_fixupimm_ps&expand=2500)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_mask_fixupimm_ps(
+    a: __m512,
+    k: __mmask16,
+    b: __m512,
+    c: __m512i,
+    imm8: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vfixupimmps(
+                a.as_f32x16(),
+                b.as_f32x16(),
+                c.as_i32x16(),
+                $imm8,
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Fix up packed single-precision (32-bit) floating-point elements in a and b using packed 32-bit integers in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_fixupimm_ps&expand=2501)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_maskz_fixupimm_ps(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    c: __m512i,
+    imm8: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vfixupimmpsz(
+                a.as_f32x16(),
+                b.as_f32x16(),
+                c.as_i32x16(),
+                $imm8,
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Fix up packed double-precision (64-bit) floating-point elements in a and b using packed 64-bit integers in c, and store the results in dst. imm8 is used to set the required flags reporting.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_fixupimm_pd&expand=2490)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_fixupimm_pd(a: __m512d, b: __m512d, c: __m512i, imm8: i32) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vfixupimmpd(
+                a.as_f64x8(),
+                b.as_f64x8(),
+                c.as_i64x8(),
+                $imm8,
+                0b11111111,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Fix up packed double-precision (64-bit) floating-point elements in a and b using packed 64-bit integers in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_fixupimm_pd&expand=2491)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_mask_fixupimm_pd(
+    a: __m512d,
+    k: __mmask8,
+    b: __m512d,
+    c: __m512i,
+    imm8: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vfixupimmpd(
+                a.as_f64x8(),
+                b.as_f64x8(),
+                c.as_i64x8(),
+                $imm8,
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Fix up packed double-precision (64-bit) floating-point elements in a and b using packed 64-bit integers in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_fixupimm_pd&expand=2492)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_maskz_fixupimm_pd(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    c: __m512i,
+    imm8: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vfixupimmpdz(
+                a.as_f64x8(),
+                b.as_f64x8(),
+                c.as_i64x8(),
+                $imm8,
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_ternarylogic_epi32&expand=5867)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_ternarylogic_epi32(a: __m512i, b: __m512i, c: __m512i, imm8: i32) -> __m512i {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpternlogd(a.as_i32x16(), b.as_i32x16(), c.as_i32x16(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from src, a, and b are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using writemask k at 32-bit granularity (32-bit elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_ternarylogic_epi32&expand=5865)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_mask_ternarylogic_epi32(
+    src: __m512i,
+    k: __mmask16,
+    a: __m512i,
+    b: __m512i,
+    imm8: i32,
+) -> __m512i {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpternlogd(src.as_i32x16(), a.as_i32x16(), b.as_i32x16(), $imm8)
+        };
+    }
+    let ternarylogic = constify_imm8_sae!(imm8, call);
+    transmute(simd_select_bitmask(k, ternarylogic, src.as_i32x16()))
+}
+
+/// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 32-bit granularity (32-bit elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_ternarylogic_epi32&expand=5866)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_maskz_ternarylogic_epi32(
+    k: __mmask16,
+    a: __m512i,
+    b: __m512i,
+    c: __m512i,
+    imm8: i32,
+) -> __m512i {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpternlogd(a.as_i32x16(), b.as_i32x16(), c.as_i32x16(), $imm8)
+        };
+    }
+    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let zero = _mm512_setzero_si512().as_i32x16();
+    transmute(simd_select_bitmask(k, ternarylogic, zero))
+}
+
+/// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_ternarylogic_epi64&expand=5876)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_ternarylogic_epi64(a: __m512i, b: __m512i, c: __m512i, imm8: i32) -> __m512i {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpternlogq(a.as_i64x8(), b.as_i64x8(), c.as_i64x8(), $imm8)
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from src, a, and b are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using writemask k at 64-bit granularity (64-bit elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_ternarylogic_epi64&expand=5874)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_mask_ternarylogic_epi64(
+    src: __m512i,
+    k: __mmask8,
+    a: __m512i,
+    b: __m512i,
+    imm8: i32,
+) -> __m512i {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpternlogq(src.as_i64x8(), a.as_i64x8(), b.as_i64x8(), $imm8)
+        };
+    }
+    let ternarylogic = constify_imm8_sae!(imm8, call);
+    transmute(simd_select_bitmask(k, ternarylogic, src.as_i64x8()))
+}
+
+/// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 64-bit granularity (64-bit elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_ternarylogic_epi64&expand=5875)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_maskz_ternarylogic_epi64(
+    k: __mmask8,
+    a: __m512i,
+    b: __m512i,
+    c: __m512i,
+    imm8: i32,
+) -> __m512i {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vpternlogq(a.as_i64x8(), b.as_i64x8(), c.as_i64x8(), $imm8)
+        };
+    }
+    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let zero = _mm512_setzero_si512().as_i64x8();
+    transmute(simd_select_bitmask(k, ternarylogic, zero))
 }
 
 /// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
@@ -4842,6 +5505,548 @@ pub unsafe fn _mm512_maskz_getexp_round_pd(k: __mmask8, a: __m512d, sae: i32) ->
         };
     }
     let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Round packed single-precision (32-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_roundscale_round_ps&expand=4790)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(1, 2)]
+pub unsafe fn _mm512_roundscale_round_ps(a: __m512, imm8: i32, sae: i32) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscaleps(
+                a.as_f32x16(),
+                $imm8,
+                _mm512_setzero_ps().as_f32x16(),
+                0b11111111_11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round packed single-precision (32-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_roundscale_round_ps&expand=4788)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm512_mask_roundscale_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    imm8: i32,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscaleps(a.as_f32x16(), $imm8, src.as_f32x16(), k, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round packed single-precision (32-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_roundscale_round_ps&expand=4789)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm512_maskz_roundscale_round_ps(
+    k: __mmask16,
+    a: __m512,
+    imm8: i32,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscaleps(
+                a.as_f32x16(),
+                $imm8,
+                _mm512_setzero_ps().as_f32x16(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round packed double-precision (64-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_roundscale_round_pd&expand=4787)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(1, 2)]
+pub unsafe fn _mm512_roundscale_round_pd(a: __m512d, imm8: i32, sae: i32) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscalepd(
+                a.as_f64x8(),
+                $imm8,
+                _mm512_setzero_pd().as_f64x8(),
+                0b11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round packed double-precision (64-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_roundscale_round_pd&expand=4785)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm512_mask_roundscale_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    imm8: i32,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscalepd(a.as_f64x8(), $imm8, src.as_f64x8(), k, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round packed double-precision (64-bit) floating-point elements in a to the number of fraction bits specified by imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_roundscale_round_pd&expand=4786)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm512_maskz_roundscale_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    imm8: i32,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscalepd(
+                a.as_f64x8(),
+                $imm8,
+                _mm512_setzero_pd().as_f64x8(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, and store the results in dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_scalef_round_ps&expand=4889)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefps, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm512_scalef_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefps(
+                a.as_f32x16(),
+                b.as_f32x16(),
+                _mm512_setzero_ps().as_f32x16(),
+                0b11111111_11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_scalef_round_ps&expand=4887)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefps, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_mask_scalef_round_ps(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefps(a.as_f32x16(), b.as_f32x16(), src.as_f32x16(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_scalef_round_ps&expand=4888)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefps, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_maskz_scalef_round_ps(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    rounding: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefps(
+                a.as_f32x16(),
+                b.as_f32x16(),
+                _mm512_setzero_ps().as_f32x16(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, and store the results in dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_scalef_round_pd&expand=4886)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefpd, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm512_scalef_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefpd(
+                a.as_f64x8(),
+                b.as_f64x8(),
+                _mm512_setzero_pd().as_f64x8(),
+                0b11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_scalef_round_pd&expand=4884)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefpd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm512_mask_scalef_round_pd(
+    src: __m512d,
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefpd(a.as_f64x8(), b.as_f64x8(), src.as_f64x8(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_scalef_round_pd&expand=4885)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefpd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm512_maskz_scalef_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    rounding: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefpd(
+                a.as_f64x8(),
+                b.as_f64x8(),
+                _mm512_setzero_pd().as_f64x8(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Fix up packed single-precision (32-bit) floating-point elements in a and b using packed 32-bit integers in c, and store the results in dst. imm8 is used to set the required flags reporting.
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_fixupimm_round_ps&expand=2505)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm512_fixupimm_round_ps(
+    a: __m512,
+    b: __m512,
+    c: __m512i,
+    imm8: i32,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vfixupimmps(
+                a.as_f32x16(),
+                b.as_f32x16(),
+                c.as_i32x16(),
+                $imm8,
+                0b11111111_11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Fix up packed single-precision (32-bit) floating-point elements in a and b using packed 32-bit integers in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_fixupimm_round_ps&expand=2506)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm512_mask_fixupimm_round_ps(
+    a: __m512,
+    k: __mmask16,
+    b: __m512,
+    c: __m512i,
+    imm8: i32,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vfixupimmps(a.as_f32x16(), b.as_f32x16(), c.as_i32x16(), $imm8, k, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Fix up packed single-precision (32-bit) floating-point elements in a and b using packed 32-bit integers in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_fixupimm_round_ps&expand=2507)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm512_maskz_fixupimm_round_ps(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+    c: __m512i,
+    imm8: i32,
+    sae: i32,
+) -> __m512 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vfixupimmpsz(a.as_f32x16(), b.as_f32x16(), c.as_i32x16(), $imm8, k, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Fix up packed double-precision (64-bit) floating-point elements in a and b using packed 64-bit integers in c, and store the results in dst. imm8 is used to set the required flags reporting.
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_fixupimm_round_pd&expand=2502)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm512_fixupimm_round_pd(
+    a: __m512d,
+    b: __m512d,
+    c: __m512i,
+    imm8: i32,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vfixupimmpd(
+                a.as_f64x8(),
+                b.as_f64x8(),
+                c.as_i64x8(),
+                $imm8,
+                0b11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Fix up packed double-precision (64-bit) floating-point elements in a and b using packed 64-bit integers in c, and store the results in dst using writemask k (elements are copied from a when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_fixupimm_round_pd&expand=2503)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm512_mask_fixupimm_round_pd(
+    a: __m512d,
+    k: __mmask8,
+    b: __m512d,
+    c: __m512i,
+    imm8: i32,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vfixupimmpd(a.as_f64x8(), b.as_f64x8(), c.as_i64x8(), $imm8, k, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Fix up packed double-precision (64-bit) floating-point elements in a and b using packed 64-bit integers in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set). imm8 is used to set the required flags reporting.
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_fixupimm_round_pd&expand=2504)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm512_maskz_fixupimm_round_pd(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+    c: __m512i,
+    imm8: i32,
+    sae: i32,
+) -> __m512d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vfixupimmpdz(a.as_f64x8(), b.as_f64x8(), c.as_i64x8(), $imm8, k, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
     transmute(r)
 }
 
@@ -14697,6 +15902,156 @@ pub unsafe fn _mm512_kmov(a: __mmask16) -> __mmask16 {
     transmute(r)
 }
 
+/// Converts integer mask into bitmask, storing the result in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_int2mask&expand=3189)
+#[inline]
+#[target_feature(enable = "avx512f")] // generate normal and code instead of kmovw
+pub unsafe fn _mm512_int2mask(mask: i32) -> __mmask16 {
+    let r: u16 = mask as u16;
+    transmute(r)
+}
+
+/// Converts bit mask k1 into an integer value, storing the results in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask2int&expand=3544)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(mov))] // generate normal and code instead of kmovw
+pub unsafe fn _mm512_mask2int(k1: __mmask16) -> i32 {
+    let r: i32 = k1 as i32;
+    transmute(r)
+}
+
+/// Compute the bitwise AND of packed 32-bit integers in a and b, producing intermediate 32-bit values, and set the corresponding bit in result mask k if the intermediate value is non-zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_test_epi32_mask&expand=5890)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestmd))]
+pub unsafe fn _mm512_test_epi32_mask(a: __m512i, b: __m512i) -> __mmask16 {
+    let and = _mm512_and_epi32(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_cmpneq_epi32_mask(and, zero)
+}
+
+/// Compute the bitwise AND of packed 32-bit integers in a and b, producing intermediate 32-bit values, and set the corresponding bit in result mask k (subject to writemask k) if the intermediate value is non-zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_test_epi32_mask&expand=5889)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestmd))]
+pub unsafe fn _mm512_mask_test_epi32_mask(k: __mmask16, a: __m512i, b: __m512i) -> __mmask16 {
+    let and = _mm512_and_epi32(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_mask_cmpneq_epi32_mask(k, and, zero)
+}
+
+/// Compute the bitwise AND of packed 64-bit integers in a and b, producing intermediate 64-bit values, and set the corresponding bit in result mask k if the intermediate value is non-zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_test_epi64_mask&expand=5896)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestmq))]
+pub unsafe fn _mm512_test_epi64_mask(a: __m512i, b: __m512i) -> __mmask8 {
+    let and = _mm512_and_epi64(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_cmpneq_epi64_mask(and, zero)
+}
+
+/// Compute the bitwise AND of packed 64-bit integers in a and b, producing intermediate 64-bit values, and set the corresponding bit in result mask k (subject to writemask k) if the intermediate value is non-zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_test_epi64_mask&expand=5895)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestmq))]
+pub unsafe fn _mm512_mask_test_epi64_mask(k: __mmask8, a: __m512i, b: __m512i) -> __mmask8 {
+    let and = _mm512_and_epi64(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_mask_cmpneq_epi64_mask(k, and, zero)
+}
+
+/// Compute the bitwise NAND of packed 32-bit integers in a and b, producing intermediate 32-bit values, and set the corresponding bit in result mask k if the intermediate value is zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_testn_epi32_mask&expand=5921)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestnmd))]
+pub unsafe fn _mm512_testn_epi32_mask(a: __m512i, b: __m512i) -> __mmask16 {
+    let and = _mm512_and_epi32(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_cmpeq_epi32_mask(and, zero)
+}
+
+/// Compute the bitwise NAND of packed 32-bit integers in a and b, producing intermediate 32-bit values, and set the corresponding bit in result mask k (subject to writemask k) if the intermediate value is zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_testn_epi32_mask&expand=5920)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestnmd))]
+pub unsafe fn _mm512_mask_testn_epi32_mask(k: __mmask16, a: __m512i, b: __m512i) -> __mmask16 {
+    let and = _mm512_and_epi32(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_mask_cmpeq_epi32_mask(k, and, zero)
+}
+
+/// Compute the bitwise NAND of packed 64-bit integers in a and b, producing intermediate 64-bit values, and set the corresponding bit in result mask k if the intermediate value is zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_testn_epi64_mask&expand=5927)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestnmq))]
+pub unsafe fn _mm512_testn_epi64_mask(a: __m512i, b: __m512i) -> __mmask8 {
+    let and = _mm512_and_epi64(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_cmpeq_epi64_mask(and, zero)
+}
+
+/// Compute the bitwise NAND of packed 64-bit integers in a and b, producing intermediate 64-bit values, and set the corresponding bit in result mask k (subject to writemask k) if the intermediate value is zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_testn_epi64_mask&expand=5926)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vptestnmq))]
+pub unsafe fn _mm512_mask_testn_epi64_mask(k: __mmask8, a: __m512i, b: __m512i) -> __mmask8 {
+    let and = _mm512_and_epi64(a, b);
+    let zero = _mm512_setzero_si512();
+    _mm512_mask_cmpeq_epi64_mask(k, and, zero)
+}
+
+/// Store 512-bits (composed of 16 packed single-precision (32-bit) floating-point elements) from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_stream_ps&expand=5671)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovntps))]
+#[allow(clippy::cast_ptr_alignment)]
+pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
+    intrinsics::nontemporal_store(mem_addr as *mut __m512, a);
+}
+
+/// Store 512-bits (composed of 8 packed double-precision (64-bit) floating-point elements) from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_stream_pd&expand=5667)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovntps))] //should be vmovntpd
+#[allow(clippy::cast_ptr_alignment)]
+pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
+    intrinsics::nontemporal_store(mem_addr as *mut __m512d, a);
+}
+
+/// Store 512-bits of integer data from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_stream_si512&expand=5675)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovntps))] //should be vmovntdq
+#[allow(clippy::cast_ptr_alignment)]
+pub unsafe fn _mm512_stream_si512(mem_addr: *mut i64, a: __m512i) {
+    intrinsics::nontemporal_store(mem_addr as *mut __m512i, a);
+}
+
 /// Sets packed 32-bit integers in `dst` with the supplied values.
 ///
 /// [Intel's documentation]( https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,4909&text=_mm512_set_ps)
@@ -14820,11 +16175,57 @@ pub unsafe fn _mm512_set1_epi32(a: i32) -> __m512i {
     transmute(i32x16::splat(a))
 }
 
+/// Broadcast 32-bit integer a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_set1_epi32&expand=4951)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpbroadcastd))]
+pub unsafe fn _mm512_mask_set1_epi32(src: __m512i, k: __mmask16, a: i32) -> __m512i {
+    let r = _mm512_set1_epi32(a).as_i32x16();
+    transmute(simd_select_bitmask(k, r, src.as_i32x16()))
+}
+
+/// Broadcast 32-bit integer a to all elements of dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_set1_epi32&expand=4952)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpbroadcastd))]
+pub unsafe fn _mm512_maskz_set1_epi32(k: __mmask16, a: i32) -> __m512i {
+    let r = _mm512_set1_epi32(a).as_i32x16();
+    let zero = _mm512_setzero_si512().as_i32x16();
+    transmute(simd_select_bitmask(k, r, zero))
+}
+
 /// Broadcast 64-bit integer `a` to all elements of `dst`.
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_set1_epi64(a: i64) -> __m512i {
     transmute(i64x8::splat(a))
+}
+
+/// Broadcast 64-bit integer a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_set1_epi64&expand=4959)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpbroadcastq))]
+pub unsafe fn _mm512_mask_set1_epi64(src: __m512i, k: __mmask8, a: i64) -> __m512i {
+    let r = _mm512_set1_epi64(a).as_i64x8();
+    transmute(simd_select_bitmask(k, r, src.as_i64x8()))
+}
+
+/// Broadcast 64-bit integer a to all elements of dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_maskz_set1_epi64&expand=4960)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vpbroadcastq))]
+pub unsafe fn _mm512_maskz_set1_epi64(k: __mmask8, a: i64) -> __m512i {
+    let r = _mm512_set1_epi64(a).as_i64x8();
+    let zero = _mm512_setzero_si512().as_i64x8();
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Set packed 64-bit integers in dst with the repeated 4 element sequence.
@@ -16188,15 +17589,6 @@ pub unsafe fn _mm512_reduce_add_epi32(a: __m512i) -> i32 {
     simd_reduce_add_unordered(a.as_i32x16())
 }
 
-/// Reduce the packed 64-bit integers in a by addition. Returns the sum of all elements in a.
-///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_add_epi64&expand=4558)
-#[inline]
-#[target_feature(enable = "avx512f")]
-pub unsafe fn _mm512_reduce_add_epi64(a: __m512i) -> i64 {
-    simd_reduce_add_unordered(a.as_i64x8())
-}
-
 /// Reduce the packed 32-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_add_epi32&expand=4555)
@@ -16207,6 +17599,28 @@ pub unsafe fn _mm512_mask_reduce_add_epi32(k: __mmask16, a: __m512i) -> i32 {
         k,
         a.as_i32x16(),
         _mm512_setzero_si512().as_i32x16(),
+    ))
+}
+
+/// Reduce the packed 64-bit integers in a by addition. Returns the sum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_add_epi64&expand=4558)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_add_epi64(a: __m512i) -> i64 {
+    simd_reduce_add_unordered(a.as_i64x8())
+}
+
+/// Reduce the packed 64-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_add_epi64&expand=4557)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_add_epi64(k: __mmask8, a: __m512i) -> i64 {
+    simd_reduce_add_unordered(simd_select_bitmask(
+        k,
+        a.as_i64x8(),
+        _mm512_setzero_si512().as_i64x8(),
     ))
 }
 
@@ -16276,6 +17690,28 @@ pub unsafe fn _mm512_mask_reduce_mul_epi32(k: __mmask16, a: __m512i) -> i32 {
     ))
 }
 
+/// Reduce the packed 64-bit integers in a by multiplication. Returns the product of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_mul_epi64&expand=4602)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_mul_epi64(a: __m512i) -> i64 {
+    simd_reduce_mul_unordered(a.as_i64x8())
+}
+
+/// Reduce the packed 64-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_mul_epi64&expand=4601)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_mul_epi64(k: __mmask8, a: __m512i) -> i64 {
+    simd_reduce_mul_unordered(simd_select_bitmask(
+        k,
+        a.as_i64x8(),
+        _mm512_set1_epi64(1).as_i64x8(),
+    ))
+}
+
 /// Reduce the packed single-precision (32-bit) floating-point elements in a by multiplication. Returns the product of all elements in a.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_mul_ps&expand=4606)
@@ -16342,6 +17778,28 @@ pub unsafe fn _mm512_mask_reduce_max_epi32(k: __mmask16, a: __m512i) -> i32 {
     ))
 }
 
+/// Reduce the packed signed 64-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_max_epi64&expand=4578)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_max_epi64(a: __m512i) -> i64 {
+    simd_reduce_max(a.as_i64x8())
+}
+
+/// Reduce the packed signed 64-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_max_epi64&expand=4577)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_max_epi64(k: __mmask8, a: __m512i) -> i64 {
+    simd_reduce_max(simd_select_bitmask(
+        k,
+        a.as_i64x8(),
+        _mm512_set1_epi64(0).as_i64x8(),
+    ))
+}
+
 /// Reduce the packed unsigned 32-bit integers in a by maximum. Returns the maximum of all elements in a.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_max_epu32&expand=4580)
@@ -16361,6 +17819,28 @@ pub unsafe fn _mm512_mask_reduce_max_epu32(k: __mmask16, a: __m512i) -> u32 {
         k,
         a.as_u32x16(),
         _mm512_undefined_epi32().as_u32x16(),
+    ))
+}
+
+/// Reduce the packed unsigned 64-bit integers in a by maximum. Returns the maximum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_max_epu64&expand=4582)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_max_epu64(a: __m512i) -> u64 {
+    simd_reduce_max(a.as_u64x8())
+}
+
+/// Reduce the packed unsigned 64-bit integers in a by maximum using mask k. Returns the maximum of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_max_epu64&expand=4581)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_max_epu64(k: __mmask8, a: __m512i) -> u64 {
+    simd_reduce_max(simd_select_bitmask(
+        k,
+        a.as_u64x8(),
+        _mm512_set1_epi64(0).as_u64x8(),
     ))
 }
 
@@ -16430,6 +17910,28 @@ pub unsafe fn _mm512_mask_reduce_min_epi32(k: __mmask16, a: __m512i) -> i32 {
     ))
 }
 
+/// Reduce the packed signed 64-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_min_epi64&expand=4590)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_min_epi64(a: __m512i) -> i64 {
+    simd_reduce_min(a.as_i64x8())
+}
+
+/// Reduce the packed signed 64-bit integers in a by maximum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_min_epi64&expand=4589)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_min_epi64(k: __mmask8, a: __m512i) -> i64 {
+    simd_reduce_min(simd_select_bitmask(
+        k,
+        a.as_i64x8(),
+        _mm512_set1_epi64(0).as_i64x8(),
+    ))
+}
+
 /// Reduce the packed unsigned 32-bit integers in a by minimum. Returns the minimum of all elements in a.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_min_epu32&expand=4592)
@@ -16449,6 +17951,28 @@ pub unsafe fn _mm512_mask_reduce_min_epu32(k: __mmask16, a: __m512i) -> u32 {
         k,
         a.as_u32x16(),
         _mm512_undefined_epi32().as_u32x16(),
+    ))
+}
+
+/// Reduce the packed unsigned 64-bit integers in a by minimum. Returns the minimum of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_min_epu64&expand=4594)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_min_epu64(a: __m512i) -> u64 {
+    simd_reduce_min(a.as_u64x8())
+}
+
+/// Reduce the packed signed 64-bit integers in a by maximum using mask k. Returns the minimum of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_min_epi64&expand=4589)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_min_epu64(k: __mmask8, a: __m512i) -> u64 {
+    simd_reduce_min(simd_select_bitmask(
+        k,
+        a.as_u64x8(),
+        _mm512_set1_epi64(0).as_u64x8(),
     ))
 }
 
@@ -16536,6 +18060,29 @@ pub unsafe fn _mm512_mask_reduce_and_epi32(k: __mmask16, a: __m512i) -> i32 {
     ))
 }
 
+/// Reduce the packed 64-bit integers in a by bitwise AND. Returns the bitwise AND of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_and_epi64&expand=4566)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_and_epi64(a: __m512i) -> i64 {
+    simd_reduce_and(a.as_i64x8())
+}
+
+/// Reduce the packed 64-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_add_epi64&expand=4557)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_and_epi64(k: __mmask8, a: __m512i) -> i64 {
+    simd_reduce_and(simd_select_bitmask(
+        k,
+        a.as_i64x8(),
+        _mm512_set1_epi64(1 << 0 | 1 << 1 | 1 << 2 | 1 << 3 | 1 << 4 | 1 << 5 | 1 << 6 | 1 << 7)
+            .as_i64x8(),
+    ))
+}
+
 /// Reduce the packed 32-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_or_epi32&expand=4608)
@@ -16555,6 +18102,28 @@ pub unsafe fn _mm512_mask_reduce_or_epi32(k: __mmask16, a: __m512i) -> i32 {
         k,
         a.as_i32x16(),
         _mm512_setzero_si512().as_i32x16(),
+    ))
+}
+
+/// Reduce the packed 64-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_reduce_or_epi64&expand=4610)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_reduce_or_epi64(a: __m512i) -> i64 {
+    simd_reduce_or(a.as_i64x8())
+}
+
+/// Reduce the packed 64-bit integers in a by bitwise OR using mask k. Returns the bitwise OR of all active elements in a.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=512_mask_reduce_or_epi64&expand=4609)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_mask_reduce_or_epi64(k: __mmask8, a: __m512i) -> i64 {
+    simd_reduce_or(simd_select_bitmask(
+        k,
+        a.as_i64x8(),
+        _mm512_setzero_si512().as_i64x8(),
     ))
 }
 
@@ -16843,6 +18412,3653 @@ pub unsafe fn _mm512_set_pd(
     e7: f64,
 ) -> __m512d {
     _mm512_setr_pd(e7, e6, e5, e4, e3, e2, e1, e0)
+}
+
+/// Move the lower single-precision (32-bit) floating-point element from b to the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_move_ss&expand=3832)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovss))]
+pub unsafe fn _mm_mask_move_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let extractsrc: f32 = simd_extract(src, 0);
+    let mut mov: f32 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        mov = simd_extract(b, 0);
+    }
+    let r = simd_insert(a, 0, mov);
+    transmute(r)
+}
+
+/// Move the lower single-precision (32-bit) floating-point element from b to the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_move_ss&expand=3833)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovss))]
+pub unsafe fn _mm_maskz_move_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let mut mov: f32 = 0.;
+    if (k & 0b00000001) != 0 {
+        mov = simd_extract(b, 0);
+    }
+    let r = simd_insert(a, 0, mov);
+    transmute(r)
+}
+
+/// Move the lower double-precision (64-bit) floating-point element from b to the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_move_sd&expand=3829)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovsd))]
+pub unsafe fn _mm_mask_move_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let extractsrc: f64 = simd_extract(src, 0);
+    let mut mov: f64 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        mov = simd_extract(b, 0);
+    }
+    let r = simd_insert(a, 0, mov);
+    transmute(r)
+}
+
+/// Move the lower double-precision (64-bit) floating-point element from b to the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_move_sd&expand=3830)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovsd))]
+pub unsafe fn _mm_maskz_move_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let mut mov: f64 = 0.;
+    if (k & 0b00000001) != 0 {
+        mov = simd_extract(b, 0);
+    }
+    let r = simd_insert(a, 0, mov);
+    transmute(r)
+}
+
+/// Add the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_add_ss&expand=159)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddss))]
+pub unsafe fn _mm_mask_add_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let extractsrc: f32 = simd_extract(src, 0);
+    let mut add: f32 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta + extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Add the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_add_ss&expand=160)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddss))]
+pub unsafe fn _mm_maskz_add_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let mut add: f32 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta + extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Add the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_add_sd&expand=155)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddsd))]
+pub unsafe fn _mm_mask_add_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let extractsrc: f64 = simd_extract(src, 0);
+    let mut add: f64 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta + extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Add the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_add_sd&expand=156)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddsd))]
+pub unsafe fn _mm_maskz_add_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let mut add: f64 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta + extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Subtract the lower single-precision (32-bit) floating-point element in b from the lower single-precision (32-bit) floating-point element in a, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sub_ss&expand=5750)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubss))]
+pub unsafe fn _mm_mask_sub_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let extractsrc: f32 = simd_extract(src, 0);
+    let mut add: f32 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta - extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Subtract the lower single-precision (32-bit) floating-point element in b from the lower single-precision (32-bit) floating-point element in a, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sub_ss&expand=5751)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubss))]
+pub unsafe fn _mm_maskz_sub_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let mut add: f32 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta - extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Subtract the lower double-precision (64-bit) floating-point element in b from the lower double-precision (64-bit) floating-point element in a, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sub_sd&expand=5746)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubsd))]
+pub unsafe fn _mm_mask_sub_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let extractsrc: f64 = simd_extract(src, 0);
+    let mut add: f64 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta - extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Subtract the lower double-precision (64-bit) floating-point element in b from the lower double-precision (64-bit) floating-point element in a, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sub_sd&expand=5747)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubsd))]
+pub unsafe fn _mm_maskz_sub_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let mut add: f64 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta - extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_mul_ss&expand=3950)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulss))]
+pub unsafe fn _mm_mask_mul_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let extractsrc: f32 = simd_extract(src, 0);
+    let mut add: f32 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta * extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_mul_ss&expand=3951)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulss))]
+pub unsafe fn _mm_maskz_mul_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let mut add: f32 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta * extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_mul_sd&expand=3947)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulsd))]
+pub unsafe fn _mm_mask_mul_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let extractsrc: f64 = simd_extract(src, 0);
+    let mut add: f64 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta * extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_mul_sd&expand=3948)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulsd))]
+pub unsafe fn _mm_maskz_mul_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let mut add: f64 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta * extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Divide the lower single-precision (32-bit) floating-point element in a by the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_div_ss&expand=2181)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivss))]
+pub unsafe fn _mm_mask_div_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let extractsrc: f32 = simd_extract(src, 0);
+    let mut add: f32 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta / extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Divide the lower single-precision (32-bit) floating-point element in a by the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_div_ss&expand=2182)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivss))]
+pub unsafe fn _mm_maskz_div_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let mut add: f32 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        add = extracta / extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Divide the lower double-precision (64-bit) floating-point element in a by the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_div_sd&expand=2178)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivsd))]
+pub unsafe fn _mm_mask_div_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let extractsrc: f64 = simd_extract(src, 0);
+    let mut add: f64 = extractsrc;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta / extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Divide the lower double-precision (64-bit) floating-point element in a by the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_div_sd&expand=2179)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivsd))]
+pub unsafe fn _mm_maskz_div_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    let mut add: f64 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        add = extracta / extractb;
+    }
+    let r = simd_insert(a, 0, add);
+    transmute(r)
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_max_ss&expand=3672)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxss))]
+pub unsafe fn _mm_mask_max_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vmaxss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        src.as_f32x4(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_max_ss&expand=3673)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxss))]
+pub unsafe fn _mm_maskz_max_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vmaxss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_max_sd&expand=3669)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxsd))]
+pub unsafe fn _mm_mask_max_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vmaxsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        src.as_f64x2(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_max_sd&expand=3670)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxsd))]
+pub unsafe fn _mm_maskz_max_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vmaxsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_min_ss&expand=3786)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminss))]
+pub unsafe fn _mm_mask_min_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vminss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        src.as_f32x4(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_min_ss&expand=3787)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminss))]
+pub unsafe fn _mm_maskz_min_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vminss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_min_sd&expand=3783)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminsd))]
+pub unsafe fn _mm_mask_min_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vminsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        src.as_f64x2(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_min_sd&expand=3784)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminsd))]
+pub unsafe fn _mm_maskz_min_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vminsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Compute the square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sqrt_ss&expand=5387)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtss))]
+pub unsafe fn _mm_mask_sqrt_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vsqrtss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        src.as_f32x4(),
+        k,
+        _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Compute the square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sqrt_ss&expand=5388)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtss))]
+pub unsafe fn _mm_maskz_sqrt_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vsqrtss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        k,
+        _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Compute the square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sqrt_sd&expand=5384)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtsd))]
+pub unsafe fn _mm_mask_sqrt_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vsqrtsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        src.as_f64x2(),
+        k,
+        _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Compute the square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sqrt_sd&expand=5385)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtsd))]
+pub unsafe fn _mm_maskz_sqrt_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vsqrtsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        k,
+        _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Compute the approximate reciprocal square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_rsqrt14_ss&expand=4825)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrsqrt14ss))]
+pub unsafe fn _mm_rsqrt14_ss(a: __m128, b: __m128) -> __m128 {
+    transmute(vrsqrt14ss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        0b1,
+    ))
+}
+
+/// Compute the approximate reciprocal square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_rsqrt14_ss&expand=4823)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrsqrt14ss))]
+pub unsafe fn _mm_mask_rsqrt14_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vrsqrt14ss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k))
+}
+
+/// Compute the approximate reciprocal square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_rsqrt14_ss&expand=4824)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrsqrt14ss))]
+pub unsafe fn _mm_maskz_rsqrt14_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vrsqrt14ss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        k,
+    ))
+}
+
+/// Compute the approximate reciprocal square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_rsqrt14_sd&expand=4822)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrsqrt14sd))]
+pub unsafe fn _mm_rsqrt14_sd(a: __m128d, b: __m128d) -> __m128d {
+    transmute(vrsqrt14sd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        0b1,
+    ))
+}
+
+/// Compute the approximate reciprocal square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_rsqrt14_sd&expand=4820)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrsqrt14sd))]
+pub unsafe fn _mm_mask_rsqrt14_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vrsqrt14sd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k))
+}
+
+/// Compute the approximate reciprocal square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_rsqrt14_sd&expand=4821)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrsqrt14sd))]
+pub unsafe fn _mm_maskz_rsqrt14_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vrsqrt14sd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        k,
+    ))
+}
+
+/// Compute the approximate reciprocal of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_rcp14_ss&expand=4508)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrcp14ss))]
+pub unsafe fn _mm_rcp14_ss(a: __m128, b: __m128) -> __m128 {
+    transmute(vrcp14ss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        0b1,
+    ))
+}
+
+/// Compute the approximate reciprocal of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_rcp14_ss&expand=4506)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrcp14ss))]
+pub unsafe fn _mm_mask_rcp14_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vrcp14ss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k))
+}
+
+/// Compute the approximate reciprocal of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_rcp14_ss&expand=4507)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrcp14ss))]
+pub unsafe fn _mm_maskz_rcp14_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vrcp14ss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        k,
+    ))
+}
+
+/// Compute the approximate reciprocal of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_rcp14_sd&expand=4505)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrcp14sd))]
+pub unsafe fn _mm_rcp14_sd(a: __m128d, b: __m128d) -> __m128d {
+    transmute(vrcp14sd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        0b1,
+    ))
+}
+
+/// Compute the approximate reciprocal of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_rcp14_sd&expand=4503)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrcp14sd))]
+pub unsafe fn _mm_mask_rcp14_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vrcp14sd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k))
+}
+
+/// Compute the approximate reciprocal of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. The maximum relative error for this approximation is less than 2^-14.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_rcp14_sd&expand=4504)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrcp14sd))]
+pub unsafe fn _mm_maskz_rcp14_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vrcp14sd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        k,
+    ))
+}
+
+/// Convert the exponent of the lower single-precision (32-bit) floating-point element in b to a single-precision (32-bit) floating-point number representing the integer exponent, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getexp_ss&expand=2862)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpss))]
+pub unsafe fn _mm_getexp_ss(a: __m128, b: __m128) -> __m128 {
+    transmute(vgetexpss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        0b1,
+        _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Convert the exponent of the lower single-precision (32-bit) floating-point element in b to a single-precision (32-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getexp_ss&expand=2863)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpss))]
+pub unsafe fn _mm_mask_getexp_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vgetexpss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        src.as_f32x4(),
+        k,
+        _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Convert the exponent of the lower single-precision (32-bit) floating-point element in b to a single-precision (32-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getexp_ss&expand=2864)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpss))]
+pub unsafe fn _mm_maskz_getexp_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vgetexpss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        k,
+        _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Convert the exponent of the lower double-precision (64-bit) floating-point element in b to a double-precision (64-bit) floating-point number representing the integer exponent, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getexp_sd&expand=2859)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpsd))]
+pub unsafe fn _mm_getexp_sd(a: __m128d, b: __m128d) -> __m128d {
+    transmute(vgetexpsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        0b1,
+        _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Convert the exponent of the lower double-precision (64-bit) floating-point element in b to a double-precision (64-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getexp_sd&expand=2860)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpsd))]
+pub unsafe fn _mm_mask_getexp_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vgetexpsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        src.as_f64x2(),
+        k,
+        _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Convert the exponent of the lower double-precision (64-bit) floating-point element in b to a double-precision (64-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getexp_sd&expand=2861)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpsd))]
+pub unsafe fn _mm_maskz_getexp_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vgetexpsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        k,
+        _MM_FROUND_NO_EXC,
+    ))
+}
+
+/// Normalize the mantissas of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getmant_ss&expand=2898)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantss, norm = 0, sign = 0))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm_getmant_ss(
+    a: __m128,
+    b: __m128,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr) => {
+            vgetmantss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getmant_ss&expand=2899)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantss, norm = 0, sign = 0))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm_mask_getmant_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr) => {
+            vgetmantss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                $imm2 << 2 | $imm4_1,
+                src.as_f32x4(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getmant_ss&expand=2900)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantss, norm = 0, sign = 0))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm_maskz_getmant_ss(
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr) => {
+            vgetmantss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getmant_sd&expand=2895)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantsd, norm = 0, sign = 0))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm_getmant_sd(
+    a: __m128d,
+    b: __m128d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr) => {
+            vgetmantsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getmant_sd&expand=2896)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantsd, norm = 0, sign = 0))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm_mask_getmant_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr) => {
+            vgetmantsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                $imm2 << 2 | $imm4_1,
+                src.as_f64x2(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getmant_sd&expand=2897)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantsd, norm = 0, sign = 0))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm_maskz_getmant_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr) => {
+            vgetmantsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas!(norm, sign, call);
+    transmute(r)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_roundscale_ss&expand=4802)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaless, imm8 = 255))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_roundscale_ss(a: __m128, b: __m128, imm8: i32) -> __m128 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscaless(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b11111111,
+                $imm8,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_roundscale_ss&expand=4800)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaless, imm8 = 0))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_roundscale_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    imm8: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscaless(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                src.as_f32x4(),
+                k,
+                $imm8,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_roundscale_ss&expand=4801)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaless, imm8 = 0))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_roundscale_ss(k: __mmask8, a: __m128, b: __m128, imm8: i32) -> __m128 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscaless(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm8,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_roundscale_sd&expand=4799)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalesd, imm8 = 255))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_roundscale_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscalesd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b11111111,
+                $imm8,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_roundscale_sd&expand=4797)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalesd, imm8 = 0))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_roundscale_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    imm8: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscalesd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                src.as_f64x2(),
+                k,
+                $imm8,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_roundscale_sd&expand=4798)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalesd, imm8 = 0))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_roundscale_sd(k: __mmask8, a: __m128d, b: __m128d, imm8: i32) -> __m128d {
+    macro_rules! call {
+        ($imm8:expr) => {
+            vrndscalesd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm8,
+                _MM_FROUND_CUR_DIRECTION,
+            )
+        };
+    }
+    let r = constify_imm8_sae!(imm8, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_scalef_ss&expand=4901)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefss))]
+pub unsafe fn _mm_scalef_ss(a: __m128, b: __m128) -> __m128 {
+    transmute(vscalefss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        0b11111111,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_scalef_ss&expand=4899)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefss))]
+pub unsafe fn _mm_mask_scalef_ss(src: __m128, k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vscalefss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        src.as_f32x4(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_scalef_ss&expand=4900)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefss))]
+pub unsafe fn _mm_maskz_scalef_ss(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    transmute(vscalefss(
+        a.as_f32x4(),
+        b.as_f32x4(),
+        _mm_setzero_ps().as_f32x4(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_scalef_sd&expand=4898)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefsd))]
+pub unsafe fn _mm_scalef_sd(a: __m128d, b: __m128d) -> __m128d {
+    transmute(vscalefsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        0b11111111,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_scalef_sd&expand=4896)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefsd))]
+pub unsafe fn _mm_mask_scalef_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vscalefsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        src.as_f64x2(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_scalef_sd&expand=4897)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefsd))]
+pub unsafe fn _mm_maskz_scalef_sd(k: __mmask8, a: __m128d, b: __m128d) -> __m128d {
+    transmute(vscalefsd(
+        a.as_f64x2(),
+        b.as_f64x2(),
+        _mm_setzero_pd().as_f64x2(),
+        k,
+        _MM_FROUND_CUR_DIRECTION,
+    ))
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from a when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_fmadd_ss&expand=2582)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213ss))]
+pub unsafe fn _mm_mask_fmadd_ss(a: __m128, k: __mmask8, b: __m128, c: __m128) -> __m128 {
+    let mut fmadd: f32 = simd_extract(a, 0);
+    if (k & 0b00000001) != 0 {
+        let extractb: f32 = simd_extract(b, 0);
+        let extractc: f32 = simd_extract(c, 0);
+        fmadd = vfmadd132ss(fmadd, extractb, extractc, _MM_FROUND_CUR_DIRECTION);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_fmadd_ss&expand=2584)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213ss))]
+pub unsafe fn _mm_maskz_fmadd_ss(k: __mmask8, a: __m128, b: __m128, c: __m128) -> __m128 {
+    let mut fmadd: f32 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        let extractc: f32 = simd_extract(c, 0);
+        fmadd = vfmadd132ss(extracta, extractb, extractc, _MM_FROUND_CUR_DIRECTION);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from c when mask bit 0 is not set), and copy the upper 3 packed elements from c to the upper elements of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask3_fmadd_ss&expand=2583)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213ss))]
+pub unsafe fn _mm_mask3_fmadd_ss(a: __m128, b: __m128, c: __m128, k: __mmask8) -> __m128 {
+    let mut fmadd: f32 = simd_extract(c, 0);
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        fmadd = vfmadd132ss(extracta, extractb, fmadd, _MM_FROUND_CUR_DIRECTION);
+    }
+    let r = simd_insert(c, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from a when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_fmadd_sd&expand=2578)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213sd))]
+pub unsafe fn _mm_mask_fmadd_sd(a: __m128d, k: __mmask8, b: __m128d, c: __m128d) -> __m128d {
+    let mut fmadd: f64 = simd_extract(a, 0);
+    if (k & 0b00000001) != 0 {
+        let extractb: f64 = simd_extract(b, 0);
+        let extractc: f64 = simd_extract(c, 0);
+        fmadd = vfmadd132sd(fmadd, extractb, extractc, _MM_FROUND_CUR_DIRECTION);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_fmadd_sd&expand=2580)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213sd))]
+pub unsafe fn _mm_maskz_fmadd_sd(k: __mmask8, a: __m128d, b: __m128d, c: __m128d) -> __m128d {
+    let mut fmadd: f64 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        let extractc: f64 = simd_extract(c, 0);
+        fmadd = vfmadd132sd(extracta, extractb, extractc, _MM_FROUND_CUR_DIRECTION);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from c when mask bit 0 is not set), and copy the upper element from c to the upper element of dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask3_fmadd_sd&expand=2579)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213sd))]
+pub unsafe fn _mm_mask3_fmadd_sd(a: __m128d, b: __m128d, c: __m128d, k: __mmask8) -> __m128d {
+    let mut fmadd: f64 = simd_extract(c, 0);
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        fmadd = vfmadd132sd(extracta, extractb, fmadd, _MM_FROUND_CUR_DIRECTION);
+    }
+    let r = simd_insert(c, 0, fmadd);
+    transmute(r)
+}
+
+/// Add the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_add_round_ss&expand=151)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddss, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_add_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vaddss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Add the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_add_round_ss&expand=152)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_add_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    rounding: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vaddss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Add the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_add_round_ss&expand=153)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddss, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_add_round_ss(k: __mmask8, a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vaddss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Add the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_add_round_sd&expand=148)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddsd, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_add_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vaddsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Add the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_add_round_Sd&expand=149)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddsd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_add_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vaddsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Add the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_add_round_sd&expand=150)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vaddsd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_add_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vaddsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Subtract the lower single-precision (32-bit) floating-point element in b from the lower single-precision (32-bit) floating-point element in a, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_sub_round_ss&expand=5745)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubss, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_sub_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsubss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Subtract the lower single-precision (32-bit) floating-point element in b from the lower single-precision (32-bit) floating-point element in a, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sub_round_ss&expand=5743)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_sub_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    rounding: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsubss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Subtract the lower single-precision (32-bit) floating-point element in b from the lower single-precision (32-bit) floating-point element in a, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sub_round_ss&expand=5744)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubss, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_sub_round_ss(k: __mmask8, a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsubss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Subtract the lower double-precision (64-bit) floating-point element in b from the lower double-precision (64-bit) floating-point element in a, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_sub_round_sd&expand=5742)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubsd, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_sub_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsubsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Subtract the lower double-precision (64-bit) floating-point element in b from the lower double-precision (64-bit) floating-point element in a, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sub_round_sd&expand=5740)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubsd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_sub_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsubsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Subtract the lower double-precision (64-bit) floating-point element in b from the lower double-precision (64-bit) floating-point element in a, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sub_round_sd&expand=5741)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsubsd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_sub_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsubsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mul_round_ss&expand=3946)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulss, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_mul_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmulss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_mul_round_ss&expand=3944)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_mul_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    rounding: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmulss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_mul_round_ss&expand=3945)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulss, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_mul_round_ss(k: __mmask8, a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmulss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mul_round_sd&expand=3943)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulsd, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_mul_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmulsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_mul_round_sd&expand=3941)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulsd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_mul_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmulsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point element in a and b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_mul_round_sd&expand=3942)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmulsd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_mul_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmulsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Divide the lower single-precision (32-bit) floating-point element in a by the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_div_round_ss&expand=2174)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivss, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_div_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vdivss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Divide the lower single-precision (32-bit) floating-point element in a by the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_div_round_ss&expand=2175)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_div_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    rounding: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vdivss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Divide the lower single-precision (32-bit) floating-point element in a by the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_div_round_ss&expand=2176)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivss, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_div_round_ss(k: __mmask8, a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vdivss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Divide the lower double-precision (64-bit) floating-point element in a by the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_div_round_sd&expand=2171)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivsd, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_div_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vdivsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Divide the lower double-precision (64-bit) floating-point element in a by the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_div_round_sd&expand=2172)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivsd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_div_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vdivsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Divide the lower double-precision (64-bit) floating-point element in a by the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_div_round_sd&expand=2173)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vdivsd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_div_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vdivsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the maximum value in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_max_round_ss&expand=3668)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxss, sae = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_max_round_ss(a: __m128, b: __m128, sae: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmaxss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_max_ss&expand=3672)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxss, sae = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_max_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmaxss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_max_round_ss&expand=3667)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxss, sae = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_max_round_ss(k: __mmask8, a: __m128, b: __m128, sae: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmaxss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the maximum value in the lower element of dst, and copy the upper element from a to the upper element of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_max_round_sd&expand=3665)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxsd, sae = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_max_round_sd(a: __m128d, b: __m128d, sae: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmaxsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_max_round_sd&expand=3663)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxsd, sae = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_max_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmaxsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the maximum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_max_sd&expand=3670)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmaxsd, sae = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_max_round_sd(k: __mmask8, a: __m128d, b: __m128d, sae: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vmaxsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the minimum value in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_min_round_ss&expand=3782)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminss, sae = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_min_round_ss(a: __m128, b: __m128, sae: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vminss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_min_round_Ss&expand=3780)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminss, sae = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_min_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vminss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower single-precision (32-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_min_round_ss&expand=3781)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminss, sae = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_min_round_ss(k: __mmask8, a: __m128, b: __m128, sae: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vminss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the minimum value in the lower element of dst , and copy the upper element from a to the upper element of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_min_round_sd&expand=3779)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminsd, sae = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_min_round_sd(a: __m128d, b: __m128d, sae: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vminsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_min_round_sd&expand=3777)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminsd, sae = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_min_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vminsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compare the lower double-precision (64-bit) floating-point elements in a and b, store the minimum value in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_min_round_Sd&expand=3778)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vminsd, sae = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_min_round_sd(k: __mmask8, a: __m128d, b: __m128d, sae: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vminsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_sae!(sae, call))
+}
+
+/// Compute the square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_sqrt_round_ss&expand=5383)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtss, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_sqrt_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsqrtss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Compute the square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sqrt_round_ss&expand=5381)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_sqrt_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    rounding: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsqrtss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Compute the square root of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sqrt_round_ss&expand=5382)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtss, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_sqrt_round_ss(k: __mmask8, a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsqrtss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Compute the square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_sqrt_round_sd&expand=5380)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtsd, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_sqrt_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsqrtsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Compute the square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_sqrt_round_sd&expand=5378)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtsd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_sqrt_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsqrtsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Compute the square root of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_sqrt_round_sd&expand=5379)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vsqrtsd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_sqrt_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vsqrtsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    transmute(constify_imm4_round!(rounding, call))
+}
+
+/// Convert the exponent of the lower single-precision (32-bit) floating-point element in b to a single-precision (32-bit) floating-point number representing the integer exponent, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getexp_round_ss&expand=2856)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpss, sae = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_getexp_round_ss(a: __m128, b: __m128, sae: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vgetexpss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Convert the exponent of the lower single-precision (32-bit) floating-point element in b to a single-precision (32-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getexp_round_ss&expand=2857)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpss, sae = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_getexp_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vgetexpss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Convert the exponent of the lower single-precision (32-bit) floating-point element in b to a single-precision (32-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getexp_round_ss&expand=2858)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpss, sae = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_getexp_round_ss(k: __mmask8, a: __m128, b: __m128, sae: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vgetexpss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Convert the exponent of the lower double-precision (64-bit) floating-point element in b to a double-precision (64-bit) floating-point number representing the integer exponent, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getexp_round_sd&expand=2853)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpsd, sae = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_getexp_round_sd(a: __m128d, b: __m128d, sae: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vgetexpsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Convert the exponent of the lower double-precision (64-bit) floating-point element in b to a double-precision (64-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getexp_round_sd&expand=2854)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpsd, sae = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_getexp_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vgetexpsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Convert the exponent of the lower double-precision (64-bit) floating-point element in b to a double-precision (64-bit) floating-point number representing the integer exponent, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates floor(log2(x)) for the lower element.
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getexp_round_sd&expand=2855)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetexpsd, sae = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_getexp_round_sd(k: __mmask8, a: __m128d, b: __m128d, sae: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vgetexpsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_sae!(sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getmant_round_ss&expand=2892)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantss, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(2, 3, 4)]
+pub unsafe fn _mm_getmant_round_ss(
+    a: __m128,
+    b: __m128,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_ps().as_f32x4(),
+                0b1,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getmant_round_ss&expand=2893)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantss, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(4, 5, 6)]
+pub unsafe fn _mm_mask_getmant_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                $imm2 << 2 | $imm4_1,
+                src.as_f32x4(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower single-precision (32-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getmant_round_ss&expand=2894)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantss, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(3, 4, 5)]
+pub unsafe fn _mm_maskz_getmant_round_ss(
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_getmant_round_sd&expand=2889)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantsd, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(2, 3, 4)]
+pub unsafe fn _mm_getmant_round_sd(
+    a: __m128d,
+    b: __m128d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_pd().as_f64x2(),
+                0b1,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_getmant_round_sd&expand=2890)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantsd, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(4, 5, 6)]
+pub unsafe fn _mm_mask_getmant_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                $imm2 << 2 | $imm4_1,
+                src.as_f64x2(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Normalize the mantissas of the lower double-precision (64-bit) floating-point element in b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
+/// The mantissa is normalized to the interval specified by interv, which can take the following values:
+///    _MM_MANT_NORM_1_2     // interval [1, 2)
+///    _MM_MANT_NORM_p5_2    // interval [0.5, 2)
+///    _MM_MANT_NORM_p5_1    // interval [0.5, 1)
+///    _MM_MANT_NORM_p75_1p5 // interval [0.75, 1.5)
+/// The sign is determined by sc which can take the following values:
+///    _MM_MANT_SIGN_src     // sign = sign(src)
+///    _MM_MANT_SIGN_zero    // sign = 0
+///    _MM_MANT_SIGN_nan     // dst = NaN if sign(src) = 1
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_getmant_round_sd&expand=2891)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vgetmantsd, norm = 0, sign = 0, sae = 4))]
+#[rustc_args_required_const(3, 4, 5)]
+pub unsafe fn _mm_maskz_getmant_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    norm: _MM_MANTISSA_NORM_ENUM,
+    sign: _MM_MANTISSA_SIGN_ENUM,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4_1:expr, $imm2:expr, $imm4_2:expr) => {
+            vgetmantsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                $imm2 << 2 | $imm4_1,
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4_2,
+            )
+        };
+    }
+    let r = constify_imm4_mantissas_sae!(norm, sign, sae, call);
+    transmute(r)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+
+/// Round the lower single-precision (32-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_roundscale_round_ss&expand=4796)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaless, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm_roundscale_round_ss(a: __m128, b: __m128, imm8: i32, sae: i32) -> __m128 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscaless(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b11111111,
+                $imm8,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_roundscale_round_ss&expand=4794)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaless, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm_mask_roundscale_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    imm8: i32,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscaless(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm8, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round the lower single-precision (32-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_roundscale_round_ss&expand=4795)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscaless, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm_maskz_roundscale_round_ss(
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    imm8: i32,
+    sae: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscaless(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm8,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_roundscale_round_sd&expand=4793)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalesd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(2, 3)]
+pub unsafe fn _mm_roundscale_round_sd(a: __m128d, b: __m128d, imm8: i32, sae: i32) -> __m128d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscalesd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b11111111,
+                $imm8,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_roundscale_round_sd&expand=4791)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalesd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(4, 5)]
+pub unsafe fn _mm_mask_roundscale_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    imm8: i32,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscalesd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm8, $imm4)
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Round the lower double-precision (64-bit) floating-point element in b to the number of fraction bits specified by imm8, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+/// Rounding is done according to the imm8[2:0] parameter, which can be one of:
+///    _MM_FROUND_TO_NEAREST_INT // round to nearest
+///    _MM_FROUND_TO_NEG_INF     // round down
+///    _MM_FROUND_TO_POS_INF     // round up
+///    _MM_FROUND_TO_ZERO        // truncate
+///    _MM_FROUND_CUR_DIRECTION  // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// Exceptions can be suppressed by passing _MM_FROUND_NO_EXC in the sae parameter.
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_roundscale_round_sd&expand=4792)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vrndscalesd, imm8 = 0, sae = 8))]
+#[rustc_args_required_const(3, 4)]
+pub unsafe fn _mm_maskz_roundscale_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    imm8: i32,
+    sae: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm8:expr, $imm4:expr) => {
+            vrndscalesd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm8,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm8_roundscale!(imm8, sae, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_scalef_round_ss&expand=4895)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefss, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_scalef_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                0b11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_scalef_round_ss&expand=4893)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_scalef_round_ss(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    rounding: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefss(a.as_f32x4(), b.as_f32x4(), src.as_f32x4(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_scalef_round_ss&expand=4894)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefss, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_scalef_round_ss(
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    rounding: i32,
+) -> __m128 {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefss(
+                a.as_f32x4(),
+                b.as_f32x4(),
+                _mm_setzero_ps().as_f32x4(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_scalef_round_sd&expand=4892)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefsd, rounding = 8))]
+#[rustc_args_required_const(2)]
+pub unsafe fn _mm_scalef_round_sd(a: __m128d, b: __m128d, rounding: i32) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                0b11111111,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, store the result in the lower element of dst using writemask k (the element is copied from src when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_scalef_round_sd&expand=4890)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefsd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_scalef_round_sd(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefsd(a.as_f64x2(), b.as_f64x2(), src.as_f64x2(), k, $imm4)
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Scale the packed double-precision (64-bit) floating-point elements in a using values from b, store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_scalef_round_sd&expand=4891)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vscalefsd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_maskz_scalef_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    rounding: i32,
+) -> __m128d {
+    macro_rules! call {
+        ($imm4:expr) => {
+            vscalefsd(
+                a.as_f64x2(),
+                b.as_f64x2(),
+                _mm_setzero_pd().as_f64x2(),
+                k,
+                $imm4,
+            )
+        };
+    }
+    let r = constify_imm4_round!(rounding, call);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_fmadd_round_ss&expand=2573)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213ss, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_fmadd_round_ss(a: __m128, b: __m128, c: __m128, rounding: i32) -> __m128 {
+    let extracta: f32 = simd_extract(a, 0);
+    let extractb: f32 = simd_extract(b, 0);
+    let extractc: f32 = simd_extract(c, 0);
+    macro_rules! call {
+        ($imm4:expr) => {
+            vfmadd132ss(extracta, extractb, extractc, $imm4)
+        };
+    }
+    let fmadd = constify_imm4_round!(rounding, call);
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from a when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_fmadd_round_ss&expand=2574)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213ss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_fmadd_round_ss(
+    a: __m128,
+    k: __mmask8,
+    b: __m128,
+    c: __m128,
+    rounding: i32,
+) -> __m128 {
+    let mut fmadd: f32 = simd_extract(a, 0);
+    if (k & 0b00000001) != 0 {
+        let extractb: f32 = simd_extract(b, 0);
+        let extractc: f32 = simd_extract(c, 0);
+        macro_rules! call {
+            ($imm4:expr) => {
+                vfmadd132ss(fmadd, extractb, extractc, $imm4)
+            };
+        }
+        fmadd = constify_imm4_round!(rounding, call);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper 3 packed elements from a to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_fmadd_round_ss&expand=2576)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213ss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_maskz_fmadd_round_ss(
+    k: __mmask8,
+    a: __m128,
+    b: __m128,
+    c: __m128,
+    rounding: i32,
+) -> __m128 {
+    let mut fmadd: f32 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        let extractc: f32 = simd_extract(c, 0);
+        macro_rules! call {
+            ($imm4:expr) => {
+                vfmadd132ss(extracta, extractb, extractc, $imm4)
+            };
+        }
+        fmadd = constify_imm4_round!(rounding, call);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower single-precision (32-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from c when mask bit 0 is not set), and copy the upper 3 packed elements from c to the upper elements of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask3_fmadd_round_ss&expand=2575)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213ss, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask3_fmadd_round_ss(
+    a: __m128,
+    b: __m128,
+    c: __m128,
+    k: __mmask8,
+    rounding: i32,
+) -> __m128 {
+    let mut fmadd: f32 = simd_extract(c, 0);
+    if (k & 0b00000001) != 0 {
+        let extracta: f32 = simd_extract(a, 0);
+        let extractb: f32 = simd_extract(b, 0);
+        macro_rules! call {
+            ($imm4:expr) => {
+                vfmadd132ss(extracta, extractb, fmadd, $imm4)
+            };
+        }
+        fmadd = constify_imm4_round!(rounding, call);
+    }
+    let r = simd_insert(c, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_fmadd_round_sd&expand=2569)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213sd, rounding = 8))]
+#[rustc_args_required_const(3)]
+pub unsafe fn _mm_fmadd_round_sd(a: __m128d, b: __m128d, c: __m128d, rounding: i32) -> __m128d {
+    let extracta: f64 = simd_extract(a, 0);
+    let extractb: f64 = simd_extract(b, 0);
+    let extractc: f64 = simd_extract(c, 0);
+    macro_rules! call {
+        ($imm4:expr) => {
+            vfmadd132sd(extracta, extractb, extractc, $imm4)
+        };
+    }
+    let fmadd = constify_imm4_round!(rounding, call);
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from a when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask_fmadd_round_sd&expand=2570)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213sd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask_fmadd_round_sd(
+    a: __m128d,
+    k: __mmask8,
+    b: __m128d,
+    c: __m128d,
+    rounding: i32,
+) -> __m128d {
+    let mut fmadd: f64 = simd_extract(a, 0);
+    if (k & 0b00000001) != 0 {
+        let extractb: f64 = simd_extract(b, 0);
+        let extractc: f64 = simd_extract(c, 0);
+        macro_rules! call {
+            ($imm4:expr) => {
+                vfmadd132sd(fmadd, extractb, extractc, $imm4)
+            };
+        }
+        fmadd = constify_imm4_round!(rounding, call);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using zeromask k (the element is zeroed out when mask bit 0 is not set), and copy the upper element from a to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_maskz_fmadd_round_sd&expand=2572)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213sd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_maskz_fmadd_round_sd(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+    c: __m128d,
+    rounding: i32,
+) -> __m128d {
+    let mut fmadd: f64 = 0.;
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        let extractc: f64 = simd_extract(c, 0);
+        macro_rules! call {
+            ($imm4:expr) => {
+                vfmadd132sd(extracta, extractb, extractc, $imm4)
+            };
+        }
+        fmadd = constify_imm4_round!(rounding, call);
+    }
+    let r = simd_insert(a, 0, fmadd);
+    transmute(r)
+}
+
+/// Multiply the lower double-precision (64-bit) floating-point elements in a and b, and add the intermediate result to the lower element in c. Store the result in the lower element of dst using writemask k (the element is copied from c when mask bit 0 is not set), and copy the upper element from c to the upper element of dst.
+///
+/// Rounding is done according to the rounding\[3:0\] parameter, which can be one of:
+///    (_MM_FROUND_TO_NEAREST_INT |_MM_FROUND_NO_EXC) // round to nearest, and suppress exceptions
+///    (_MM_FROUND_TO_NEG_INF |_MM_FROUND_NO_EXC)     // round down, and suppress exceptions
+///    (_MM_FROUND_TO_POS_INF |_MM_FROUND_NO_EXC)     // round up, and suppress exceptions
+///    (_MM_FROUND_TO_ZERO |_MM_FROUND_NO_EXC)        // truncate, and suppress exceptions
+///    _MM_FROUND_CUR_DIRECTION // use MXCSR.RC; see _MM_SET_ROUNDING_MODE
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=mm_mask3_fmadd_round_Sd&expand=2571)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vfmadd213sd, rounding = 8))]
+#[rustc_args_required_const(4)]
+pub unsafe fn _mm_mask3_fmadd_round_sd(
+    a: __m128d,
+    b: __m128d,
+    c: __m128d,
+    k: __mmask8,
+    rounding: i32,
+) -> __m128d {
+    let mut fmadd: f64 = simd_extract(c, 0);
+    if (k & 0b00000001) != 0 {
+        let extracta: f64 = simd_extract(a, 0);
+        let extractb: f64 = simd_extract(b, 0);
+        macro_rules! call {
+            ($imm4:expr) => {
+                vfmadd132sd(extracta, extractb, fmadd, $imm4)
+            };
+        }
+        fmadd = constify_imm4_round!(rounding, call);
+    }
+    let r = simd_insert(c, 0, fmadd);
+    transmute(r)
 }
 
 /// Equal
@@ -17206,6 +22422,29 @@ extern "C" {
     #[link_name = "llvm.x86.avx512.mask.getexp.pd.512"]
     fn vgetexppd(a: f64x8, src: f64x8, m: u8, sae: i32) -> f64x8;
 
+    #[link_name = "llvm.x86.avx512.mask.rndscale.ps.512"]
+    fn vrndscaleps(a: f32x16, imm8: i32, src: f32x16, mask: u16, sae: i32) -> f32x16;
+    #[link_name = "llvm.x86.avx512.mask.rndscale.pd.512"]
+    fn vrndscalepd(a: f64x8, imm8: i32, src: f64x8, mask: u8, sae: i32) -> f64x8;
+    #[link_name = "llvm.x86.avx512.mask.scalef.ps.512"]
+    fn vscalefps(a: f32x16, b: f32x16, src: f32x16, mask: u16, rounding: i32) -> f32x16;
+    #[link_name = "llvm.x86.avx512.mask.scalef.pd.512"]
+    fn vscalefpd(a: f64x8, b: f64x8, src: f64x8, mask: u8, rounding: i32) -> f64x8;
+
+    #[link_name = "llvm.x86.avx512.mask.fixupimm.ps.512"]
+    fn vfixupimmps(a: f32x16, b: f32x16, c: i32x16, imm8: i32, mask: u16, sae: i32) -> f32x16;
+    #[link_name = "llvm.x86.avx512.mask.fixupimm.pd.512"]
+    fn vfixupimmpd(a: f64x8, b: f64x8, c: i64x8, imm8: i32, mask: u8, sae: i32) -> f64x8;
+    #[link_name = "llvm.x86.avx512.maskz.fixupimm.ps.512"]
+    fn vfixupimmpsz(a: f32x16, b: f32x16, c: i32x16, imm8: i32, mask: u16, sae: i32) -> f32x16;
+    #[link_name = "llvm.x86.avx512.maskz.fixupimm.pd.512"]
+    fn vfixupimmpdz(a: f64x8, b: f64x8, c: i64x8, imm8: i32, mask: u8, sae: i32) -> f64x8;
+
+    #[link_name = "llvm.x86.avx512.pternlog.d.512"]
+    fn vpternlogd(a: i32x16, b: i32x16, c: i32x16, sae: i32) -> i32x16;
+    #[link_name = "llvm.x86.avx512.pternlog.q.512"]
+    fn vpternlogq(a: i64x8, b: i64x8, c: i64x8, sae: i32) -> i64x8;
+
     #[link_name = "llvm.x86.avx512.mask.getmant.ps.512"]
     fn vgetmantps(a: f32x16, mantissas: i32, src: f32x16, m: u16, sae: i32) -> f32x16;
     #[link_name = "llvm.x86.avx512.mask.getmant.pd.512"]
@@ -17424,6 +22663,66 @@ extern "C" {
     fn vexpandps(a: f32x16, src: f32x16, mask: u16) -> f32x16;
     #[link_name = "llvm.x86.avx512.mask.expand.pd.512"]
     fn vexpandpd(a: f64x8, src: f64x8, mask: u8) -> f64x8;
+
+    #[link_name = "llvm.x86.avx512.mask.add.ss.round"]
+    fn vaddss(a: f32x4, b: f32x4, src: f32x4, mask: u8, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.add.sd.round"]
+    fn vaddsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, rounding: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.sub.ss.round"]
+    fn vsubss(a: f32x4, b: f32x4, src: f32x4, mask: u8, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.sub.sd.round"]
+    fn vsubsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, rounding: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.mul.ss.round"]
+    fn vmulss(a: f32x4, b: f32x4, src: f32x4, mask: u8, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.mul.sd.round"]
+    fn vmulsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, rounding: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.div.ss.round"]
+    fn vdivss(a: f32x4, b: f32x4, src: f32x4, mask: u8, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.div.sd.round"]
+    fn vdivsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, rounding: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.max.ss.round"]
+    fn vmaxss(a: f32x4, b: f32x4, src: f32x4, mask: u8, sae: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.max.sd.round"]
+    fn vmaxsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, sae: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.min.ss.round"]
+    fn vminss(a: f32x4, b: f32x4, src: f32x4, mask: u8, sae: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.min.sd.round"]
+    fn vminsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, sae: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.sqrt.ss"]
+    fn vsqrtss(a: f32x4, b: f32x4, src: f32x4, mask: u8, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.sqrt.sd"]
+    fn vsqrtsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, rounding: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.getexp.ss"]
+    fn vgetexpss(a: f32x4, b: f32x4, src: f32x4, mask: u8, sae: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.getexp.sd"]
+    fn vgetexpsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, sae: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.getmant.ss"]
+    fn vgetmantss(a: f32x4, b: f32x4, mantissas: i32, src: f32x4, m: u8, sae: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.getmant.sd"]
+    fn vgetmantsd(a: f64x2, b: f64x2, mantissas: i32, src: f64x2, m: u8, sae: i32) -> f64x2;
+
+    #[link_name = "llvm.x86.avx512.rsqrt14.ss"]
+    fn vrsqrt14ss(a: f32x4, b: f32x4, src: f32x4, mask: u8) -> f32x4;
+    #[link_name = "llvm.x86.avx512.rsqrt14.sd"]
+    fn vrsqrt14sd(a: f64x2, b: f64x2, src: f64x2, mask: u8) -> f64x2;
+    #[link_name = "llvm.x86.avx512.rcp14.ss"]
+    fn vrcp14ss(a: f32x4, b: f32x4, src: f32x4, mask: u8) -> f32x4;
+    #[link_name = "llvm.x86.avx512.rcp14.sd"]
+    fn vrcp14sd(a: f64x2, b: f64x2, src: f64x2, mask: u8) -> f64x2;
+
+    #[link_name = "llvm.x86.avx512.mask.rndscale.ss"]
+    fn vrndscaless(a: f32x4, b: f32x4, src: f32x4, mask: u8, imm8: i32, sae: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.rndscale.sd"]
+    fn vrndscalesd(a: f64x2, b: f64x2, src: f64x2, mask: u8, imm8: i32, sae: i32) -> f64x2;
+    #[link_name = "llvm.x86.avx512.mask.scalef.ss"]
+    fn vscalefss(a: f32x4, b: f32x4, src: f32x4, mask: u8, rounding: i32) -> f32x4;
+    #[link_name = "llvm.x86.avx512.mask.scalef.sd"]
+    fn vscalefsd(a: f64x2, b: f64x2, src: f64x2, mask: u8, rounding: i32) -> f64x2;
+
+    #[link_name = "llvm.x86.avx512.vfmadd.f32"]
+    fn vfmadd132ss(a: f32, b: f32, c: f32, rounding: i32) -> f32;
+    #[link_name = "llvm.x86.avx512.vfmadd.f64"]
+    fn vfmadd132sd(a: f64, b: f64, c: f64, rounding: i32) -> f64;
 }
 
 #[cfg(test)]
@@ -17605,6 +22904,44 @@ mod tests {
             -32.,
         );
         assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_mov_epi32() {
+        let src = _mm512_set1_epi32(1);
+        let a = _mm512_set1_epi32(2);
+        let r = _mm512_mask_mov_epi32(src, 0, a);
+        assert_eq_m512i(r, src);
+        let r = _mm512_mask_mov_epi32(src, 0b11111111_11111111, a);
+        assert_eq_m512i(r, a);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_mov_epi32() {
+        let a = _mm512_set1_epi32(2);
+        let r = _mm512_maskz_mov_epi32(0, a);
+        assert_eq_m512i(r, _mm512_setzero_si512());
+        let r = _mm512_maskz_mov_epi32(0b11111111_11111111, a);
+        assert_eq_m512i(r, a);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_mov_ps() {
+        let src = _mm512_set1_ps(1.);
+        let a = _mm512_set1_ps(2.);
+        let r = _mm512_mask_mov_ps(src, 0, a);
+        assert_eq_m512(r, src);
+        let r = _mm512_mask_mov_ps(src, 0b11111111_11111111, a);
+        assert_eq_m512(r, a);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_mov_ps() {
+        let a = _mm512_set1_ps(2.);
+        let r = _mm512_maskz_mov_ps(0, a);
+        assert_eq_m512(r, _mm512_setzero_ps());
+        let r = _mm512_maskz_mov_ps(0b11111111_11111111, a);
+        assert_eq_m512(r, a);
     }
 
     #[simd_test(enable = "avx512f")]
@@ -19276,6 +24613,172 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_roundscale_ps() {
+        let a = _mm512_set1_ps(1.1);
+        let r = _mm512_roundscale_ps(a, 0);
+        let e = _mm512_set1_ps(1.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_roundscale_ps() {
+        let a = _mm512_set1_ps(1.1);
+        let r = _mm512_mask_roundscale_ps(a, 0, a, 0);
+        let e = _mm512_set1_ps(1.1);
+        assert_eq_m512(r, e);
+        let r = _mm512_mask_roundscale_ps(a, 0b11111111_11111111, a, 0);
+        let e = _mm512_set1_ps(1.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_roundscale_ps() {
+        let a = _mm512_set1_ps(1.1);
+        let r = _mm512_maskz_roundscale_ps(0, a, 0);
+        assert_eq_m512(r, _mm512_setzero_ps());
+        let r = _mm512_maskz_roundscale_ps(0b11111111_11111111, a, 0);
+        let e = _mm512_set1_ps(1.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_scalef_ps() {
+        let a = _mm512_set1_ps(1.);
+        let b = _mm512_set1_ps(3.);
+        let r = _mm512_scalef_ps(a, b);
+        let e = _mm512_set1_ps(8.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_scalef_ps() {
+        let a = _mm512_set1_ps(1.);
+        let b = _mm512_set1_ps(3.);
+        let r = _mm512_mask_scalef_ps(a, 0, a, b);
+        assert_eq_m512(r, a);
+        let r = _mm512_mask_scalef_ps(a, 0b11111111_00000000, a, b);
+        let e = _mm512_set_ps(
+            8., 8., 8., 8., 8., 8., 8., 8., 1., 1., 1., 1., 1., 1., 1., 1.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_scalef_ps() {
+        let a = _mm512_set1_ps(1.);
+        let b = _mm512_set1_ps(3.);
+        let r = _mm512_maskz_scalef_ps(0, a, b);
+        assert_eq_m512(r, _mm512_setzero_ps());
+        let r = _mm512_maskz_scalef_ps(0b11111111_00000000, a, b);
+        let e = _mm512_set_ps(
+            8., 8., 8., 8., 8., 8., 8., 8., 0., 0., 0., 0., 0., 0., 0., 0.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_fixupimm_ps() {
+        let a = _mm512_set1_ps(f32::NAN);
+        let b = _mm512_set1_ps(f32::MAX);
+        let c = _mm512_set1_epi32(i32::MAX);
+        let r = _mm512_fixupimm_ps(a, b, c, 5);
+        let e = _mm512_set1_ps(0.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_fixupimm_ps() {
+        let a = _mm512_set_ps(
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+        );
+        let b = _mm512_set1_ps(f32::MAX);
+        let c = _mm512_set1_epi32(i32::MAX);
+        let r = _mm512_mask_fixupimm_ps(a, 0b11111111_00000000, b, c, 5);
+        let e = _mm512_set_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_fixupimm_ps() {
+        let a = _mm512_set_ps(
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+        );
+        let b = _mm512_set1_ps(f32::MAX);
+        let c = _mm512_set1_epi32(i32::MAX);
+        let r = _mm512_maskz_fixupimm_ps(0b11111111_00000000, a, b, c, 5);
+        let e = _mm512_set_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_ternarylogic_epi32() {
+        let a = _mm512_set1_epi32(1 << 2);
+        let b = _mm512_set1_epi32(1 << 1);
+        let c = _mm512_set1_epi32(1 << 0);
+        let r = _mm512_ternarylogic_epi32(a, b, c, 8);
+        let e = _mm512_set1_epi32(0);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_ternarylogic_epi32() {
+        let src = _mm512_set1_epi32(1 << 2);
+        let a = _mm512_set1_epi32(1 << 1);
+        let b = _mm512_set1_epi32(1 << 0);
+        let r = _mm512_mask_ternarylogic_epi32(src, 0, a, b, 8);
+        assert_eq_m512i(r, src);
+        let r = _mm512_mask_ternarylogic_epi32(src, 0b11111111_11111111, a, b, 8);
+        let e = _mm512_set1_epi32(0);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_ternarylogic_epi32() {
+        let a = _mm512_set1_epi32(1 << 2);
+        let b = _mm512_set1_epi32(1 << 1);
+        let c = _mm512_set1_epi32(1 << 0);
+        let r = _mm512_maskz_ternarylogic_epi32(0, a, b, c, 9);
+        assert_eq_m512i(r, _mm512_setzero_si512());
+        let r = _mm512_maskz_ternarylogic_epi32(0b11111111_11111111, a, b, c, 8);
+        let e = _mm512_set1_epi32(0);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_getmant_ps() {
         let a = _mm512_set1_ps(10.);
         let r = _mm512_getmant_ps(a, _MM_MANT_NORM_P75_1P5, _MM_MANT_SIGN_NAN);
@@ -20626,6 +26129,167 @@ mod tests {
         let r = _mm512_maskz_getexp_round_ps(0b11111111_00000000, a, _MM_FROUND_CUR_DIRECTION);
         let e = _mm512_setr_ps(
             0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_roundscale_round_ps() {
+        let a = _mm512_set1_ps(1.1);
+        let r = _mm512_roundscale_round_ps(a, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm512_set1_ps(1.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_roundscale_round_ps() {
+        let a = _mm512_set1_ps(1.1);
+        let r = _mm512_mask_roundscale_round_ps(a, 0, a, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm512_set1_ps(1.1);
+        assert_eq_m512(r, e);
+        let r =
+            _mm512_mask_roundscale_round_ps(a, 0b11111111_11111111, a, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm512_set1_ps(1.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_roundscale_round_ps() {
+        let a = _mm512_set1_ps(1.1);
+        let r = _mm512_maskz_roundscale_round_ps(0, a, 0, _MM_FROUND_CUR_DIRECTION);
+        assert_eq_m512(r, _mm512_setzero_ps());
+        let r =
+            _mm512_maskz_roundscale_round_ps(0b11111111_11111111, a, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm512_set1_ps(1.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_scalef_round_ps() {
+        let a = _mm512_set1_ps(1.);
+        let b = _mm512_set1_ps(3.);
+        let r = _mm512_scalef_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm512_set1_ps(8.);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_scalef_round_ps() {
+        let a = _mm512_set1_ps(1.);
+        let b = _mm512_set1_ps(3.);
+        let r =
+            _mm512_mask_scalef_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        assert_eq_m512(r, a);
+        let r = _mm512_mask_scalef_round_ps(
+            a,
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_set_ps(
+            8., 8., 8., 8., 8., 8., 8., 8., 1., 1., 1., 1., 1., 1., 1., 1.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_scalef_round_ps() {
+        let a = _mm512_set1_ps(1.);
+        let b = _mm512_set1_ps(3.);
+        let r =
+            _mm512_maskz_scalef_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        assert_eq_m512(r, _mm512_setzero_ps());
+        let r = _mm512_maskz_scalef_round_ps(
+            0b11111111_00000000,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm512_set_ps(
+            8., 8., 8., 8., 8., 8., 8., 8., 0., 0., 0., 0., 0., 0., 0., 0.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_fixupimm_round_ps() {
+        let a = _mm512_set1_ps(f32::NAN);
+        let b = _mm512_set1_ps(f32::MAX);
+        let c = _mm512_set1_epi32(i32::MAX);
+        let r = _mm512_fixupimm_round_ps(a, b, c, 5, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm512_set1_ps(0.0);
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_fixupimm_round_ps() {
+        let a = _mm512_set_ps(
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+        );
+        let b = _mm512_set1_ps(f32::MAX);
+        let c = _mm512_set1_epi32(i32::MAX);
+        let r = _mm512_mask_fixupimm_round_ps(
+            a,
+            0b11111111_00000000,
+            b,
+            c,
+            5,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm512_set_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_fixupimm_round_ps() {
+        let a = _mm512_set_ps(
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            f32::NAN,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+        );
+        let b = _mm512_set1_ps(f32::MAX);
+        let c = _mm512_set1_epi32(i32::MAX);
+        let r = _mm512_maskz_fixupimm_round_ps(
+            0b11111111_00000000,
+            a,
+            b,
+            c,
+            5,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm512_set_ps(
+            0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
         assert_eq_m512(r, e);
     }
@@ -25581,6 +31245,77 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_int2mask() {
+        let a: i32 = 0b11001100_00110011;
+        let r = _mm512_int2mask(a);
+        let e: u16 = 0b11001100_00110011;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask2int() {
+        let k1: __mmask16 = 0b11001100_00110011;
+        let r = _mm512_mask2int(k1);
+        let e: i32 = 0b11001100_00110011;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_test_epi32_mask() {
+        let a = _mm512_set1_epi32(1 << 0);
+        let b = _mm512_set1_epi32(1 << 0 | 1 << 1);
+        let r = _mm512_test_epi32_mask(a, b);
+        let e: __mmask16 = 0b11111111_11111111;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_test_epi32_mask() {
+        let a = _mm512_set1_epi32(1 << 0);
+        let b = _mm512_set1_epi32(1 << 0 | 1 << 1);
+        let r = _mm512_mask_test_epi32_mask(0, a, b);
+        assert_eq!(r, 0);
+        let r = _mm512_mask_test_epi32_mask(0b11111111_11111111, a, b);
+        let e: __mmask16 = 0b11111111_11111111;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_testn_epi32_mask() {
+        let a = _mm512_set1_epi32(1 << 0);
+        let b = _mm512_set1_epi32(1 << 0 | 1 << 1);
+        let r = _mm512_testn_epi32_mask(a, b);
+        let e: __mmask16 = 0b00000000_00000000;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_testn_epi32_mask() {
+        let a = _mm512_set1_epi32(1 << 0);
+        let b = _mm512_set1_epi32(1 << 1);
+        let r = _mm512_mask_test_epi32_mask(0, a, b);
+        assert_eq!(r, 0);
+        let r = _mm512_mask_testn_epi32_mask(0b11111111_11111111, a, b);
+        let e: __mmask16 = 0b11111111_11111111;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_stream_ps() {
+        #[repr(align(32))]
+        struct Memory {
+            pub data: [f32; 16],
+        }
+        let a = _mm512_set1_ps(7.0);
+        let mut mem = Memory { data: [-1.0; 16] };
+
+        _mm512_stream_ps(&mut mem.data[0] as *mut f32, a);
+        for i in 0..16 {
+            assert_eq!(mem.data[i], get_m512(a, i));
+        }
+    }
+
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_reduce_add_epi32() {
         let a = _mm512_set1_epi32(1);
         let e: i32 = _mm512_reduce_add_epi32(a);
@@ -25949,5 +31684,1916 @@ mod tests {
         let mut r = _mm512_undefined_ps();
         _mm512_store_ps(&mut r as *mut _ as *mut f32, a);
         assert_eq_m512(r, a);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_set1_epi32() {
+        let src = _mm512_set1_epi32(2);
+        let a: i32 = 11;
+        let r = _mm512_mask_set1_epi32(src, 0, a);
+        assert_eq_m512i(r, src);
+        let r = _mm512_mask_set1_epi32(src, 0b11111111_11111111, a);
+        let e = _mm512_set1_epi32(11);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_set1_epi32() {
+        let a: i32 = 11;
+        let r = _mm512_maskz_set1_epi32(0, a);
+        assert_eq_m512i(r, _mm512_setzero_si512());
+        let r = _mm512_maskz_set1_epi32(0b11111111_11111111, a);
+        let e = _mm512_set1_epi32(11);
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_move_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_move_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_move_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 40.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_move_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_move_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_move_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 40.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_move_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_move_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_move_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 4.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_move_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_move_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_move_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 4.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_add_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_add_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_add_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 60.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_add_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_add_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_add_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 60.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_add_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_add_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_add_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 6.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_add_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_add_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_add_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 6.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sub_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_sub_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_sub_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., -20.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sub_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_sub_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_sub_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., -20.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sub_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_sub_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_sub_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., -2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sub_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_sub_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_sub_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., -2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_mul_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_mul_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_mul_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 800.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_mul_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_mul_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_mul_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 800.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_mul_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_mul_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_mul_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_mul_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_mul_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_mul_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_div_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_div_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_div_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_div_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_div_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_div_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_div_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_div_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_div_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_div_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_div_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_div_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_max_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_mask_max_ss(a, 0, a, b);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_max_ss(a, 0b11111111, a, b);
+        let e = _mm_set_ps(0., 1., 2., 7.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_max_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_maskz_max_ss(0, a, b);
+        let e = _mm_set_ps(0., 1., 2., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_max_ss(0b11111111, a, b);
+        let e = _mm_set_ps(0., 1., 2., 7.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_max_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_mask_max_sd(a, 0, a, b);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_max_sd(a, 0b11111111, a, b);
+        let e = _mm_set_pd(0., 3.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_max_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_maskz_max_sd(0, a, b);
+        let e = _mm_set_pd(0., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_max_sd(0b11111111, a, b);
+        let e = _mm_set_pd(0., 3.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_min_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_mask_min_ss(a, 0, a, b);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_min_ss(a, 0b11111111, a, b);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_min_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_maskz_min_ss(0, a, b);
+        let e = _mm_set_ps(0., 1., 2., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_min_ss(0b11111111, a, b);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_min_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_mask_min_sd(a, 0, a, b);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_min_sd(a, 0b11111111, a, b);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_min_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_maskz_min_sd(0, a, b);
+        let e = _mm_set_pd(0., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_min_sd(0b11111111, a, b);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sqrt_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_mask_sqrt_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_sqrt_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 2.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sqrt_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_maskz_sqrt_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_sqrt_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 2.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sqrt_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_sqrt_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_sqrt_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sqrt_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_sqrt_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_sqrt_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_rsqrt14_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_rsqrt14_ss(a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_rsqrt14_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_mask_rsqrt14_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_rsqrt14_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_rsqrt14_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_maskz_rsqrt14_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_rsqrt14_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_rsqrt14_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_rsqrt14_sd(a, b);
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_rsqrt14_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_rsqrt14_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_rsqrt14_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_rsqrt14_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_rsqrt14_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_rsqrt14_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_rcp14_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_rcp14_ss(a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_rcp14_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_mask_rcp14_ss(src, 0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_rcp14_ss(src, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_rcp14_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_maskz_rcp14_ss(0, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_rcp14_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 2., 10., 0.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_rcp14_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_rcp14_sd(a, b);
+        let e = _mm_set_pd(1., 0.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_rcp14_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_rcp14_sd(src, 0, a, b);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_rcp14_sd(src, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 0.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_rcp14_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_rcp14_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_rcp14_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 0.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getexp_ss() {
+        let a = _mm_set1_ps(2.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_getexp_ss(a, b);
+        let e = _mm_set_ps(2., 2., 2., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getexp_ss() {
+        let a = _mm_set1_ps(2.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_mask_getexp_ss(a, 0, a, b);
+        let e = _mm_set_ps(2., 2., 2., 2.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_getexp_ss(a, 0b11111111, a, b);
+        let e = _mm_set_ps(2., 2., 2., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getexp_ss() {
+        let a = _mm_set1_ps(2.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_maskz_getexp_ss(0, a, b);
+        let e = _mm_set_ps(2., 2., 2., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_getexp_ss(0b11111111, a, b);
+        let e = _mm_set_ps(2., 2., 2., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getexp_sd() {
+        let a = _mm_set1_pd(2.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_getexp_sd(a, b);
+        let e = _mm_set_pd(2., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getexp_sd() {
+        let a = _mm_set1_pd(2.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_mask_getexp_sd(a, 0, a, b);
+        let e = _mm_set_pd(2., 2.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_getexp_sd(a, 0b11111111, a, b);
+        let e = _mm_set_pd(2., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getexp_sd() {
+        let a = _mm_set1_pd(2.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_maskz_getexp_sd(0, a, b);
+        let e = _mm_set_pd(2., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_getexp_sd(0b11111111, a, b);
+        let e = _mm_set_pd(2., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getmant_ss() {
+        let a = _mm_set1_ps(20.);
+        let b = _mm_set1_ps(10.);
+        let r = _mm_getmant_ss(a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_ps(20., 20., 20., 1.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getmant_ss() {
+        let a = _mm_set1_ps(20.);
+        let b = _mm_set1_ps(10.);
+        let r = _mm_mask_getmant_ss(a, 0, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_ps(20., 20., 20., 20.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_getmant_ss(a, 0b11111111, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_ps(20., 20., 20., 1.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getmant_ss() {
+        let a = _mm_set1_ps(20.);
+        let b = _mm_set1_ps(10.);
+        let r = _mm_maskz_getmant_ss(0, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_ps(20., 20., 20., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_getmant_ss(0b11111111, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_ps(20., 20., 20., 1.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getmant_sd() {
+        let a = _mm_set1_pd(20.);
+        let b = _mm_set1_pd(10.);
+        let r = _mm_getmant_sd(a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_pd(20., 1.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getmant_sd() {
+        let a = _mm_set1_pd(20.);
+        let b = _mm_set1_pd(10.);
+        let r = _mm_mask_getmant_sd(a, 0, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_pd(20., 20.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_getmant_sd(a, 0b11111111, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_pd(20., 1.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getmant_sd() {
+        let a = _mm_set1_pd(20.);
+        let b = _mm_set1_pd(10.);
+        let r = _mm_maskz_getmant_sd(0, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_pd(20., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_getmant_sd(0b11111111, a, b, _MM_MANT_NORM_1_2, _MM_MANT_SIGN_SRC);
+        let e = _mm_set_pd(20., 1.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_roundscale_ss() {
+        let a = _mm_set1_ps(2.2);
+        let b = _mm_set1_ps(1.1);
+        let r = _mm_roundscale_ss(a, b, 0);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 1.0);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_roundscale_ss() {
+        let a = _mm_set1_ps(2.2);
+        let b = _mm_set1_ps(1.1);
+        let r = _mm_mask_roundscale_ss(a, 0, a, b, 0);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 2.2);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_roundscale_ss(a, 0b11111111, a, b, 0);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 1.0);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_roundscale_ss() {
+        let a = _mm_set1_ps(2.2);
+        let b = _mm_set1_ps(1.1);
+        let r = _mm_maskz_roundscale_ss(0, a, b, 0);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 0.0);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_roundscale_ss(0b11111111, a, b, 0);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 1.0);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_roundscale_sd() {
+        let a = _mm_set1_pd(2.2);
+        let b = _mm_set1_pd(1.1);
+        let r = _mm_roundscale_sd(a, b, 0);
+        let e = _mm_set_pd(2.2, 1.0);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_roundscale_sd() {
+        let a = _mm_set1_pd(2.2);
+        let b = _mm_set1_pd(1.1);
+        let r = _mm_mask_roundscale_sd(a, 0, a, b, 0);
+        let e = _mm_set_pd(2.2, 2.2);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_roundscale_sd(a, 0b11111111, a, b, 0);
+        let e = _mm_set_pd(2.2, 1.0);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_roundscale_sd() {
+        let a = _mm_set1_pd(2.2);
+        let b = _mm_set1_pd(1.1);
+        let r = _mm_maskz_roundscale_sd(0, a, b, 0);
+        let e = _mm_set_pd(2.2, 0.0);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_roundscale_sd(0b11111111, a, b, 0);
+        let e = _mm_set_pd(2.2, 1.0);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_scalef_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_scalef_ss(a, b);
+        let e = _mm_set_ps(1., 1., 1., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_scalef_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_mask_scalef_ss(a, 0, a, b);
+        let e = _mm_set_ps(1., 1., 1., 1.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_scalef_ss(a, 0b11111111, a, b);
+        let e = _mm_set_ps(1., 1., 1., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_scalef_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_maskz_scalef_ss(0, a, b);
+        let e = _mm_set_ps(1., 1., 1., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_scalef_ss(0b11111111, a, b);
+        let e = _mm_set_ps(1., 1., 1., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_scalef_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_scalef_sd(a, b);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_scalef_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_mask_scalef_sd(a, 0, a, b);
+        let e = _mm_set_pd(1., 1.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_scalef_sd(a, 0b11111111, a, b);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_scalef_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_maskz_scalef_sd(0, a, b);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_scalef_sd(0b11111111, a, b);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_fmadd_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(2.);
+        let c = _mm_set1_ps(3.);
+        let r = _mm_mask_fmadd_ss(a, 0, b, c);
+        assert_eq_m128(r, a);
+        let r = _mm_mask_fmadd_ss(a, 0b11111111, b, c);
+        let e = _mm_set_ps(1., 1., 1., 5.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_fmadd_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(2.);
+        let c = _mm_set1_ps(3.);
+        let r = _mm_maskz_fmadd_ss(0, a, b, c);
+        let e = _mm_set_ps(1., 1., 1., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_fmadd_ss(0b11111111, a, b, c);
+        let e = _mm_set_ps(1., 1., 1., 5.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask3_fmadd_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(2.);
+        let c = _mm_set1_ps(3.);
+        let r = _mm_mask3_fmadd_ss(a, b, c, 0);
+        assert_eq_m128(r, c);
+        let r = _mm_mask3_fmadd_ss(a, b, c, 0b11111111);
+        let e = _mm_set_ps(3., 3., 3., 5.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_fmadd_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(2.);
+        let c = _mm_set1_pd(3.);
+        let r = _mm_mask_fmadd_sd(a, 0, b, c);
+        assert_eq_m128d(r, a);
+        let r = _mm_mask_fmadd_sd(a, 0b11111111, b, c);
+        let e = _mm_set_pd(1., 5.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_fmadd_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(2.);
+        let c = _mm_set1_pd(3.);
+        let r = _mm_maskz_fmadd_sd(0, a, b, c);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_fmadd_sd(0b11111111, a, b, c);
+        let e = _mm_set_pd(1., 5.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask3_fmadd_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(2.);
+        let c = _mm_set1_pd(3.);
+        let r = _mm_mask3_fmadd_sd(a, b, c, 0);
+        assert_eq_m128d(r, c);
+        let r = _mm_mask3_fmadd_sd(a, b, c, 0b11111111);
+        let e = _mm_set_pd(3., 5.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_add_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_add_round_ss(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 60.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_add_round_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_add_round_ss(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_add_round_ss(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 2., 10., 60.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_add_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_add_round_ss(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_add_round_ss(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 60.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_add_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_add_round_sd(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 6.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_add_round_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_add_round_sd(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_add_round_sd(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 6.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_add_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_add_round_sd(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_add_round_sd(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 6.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_sub_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_sub_round_ss(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., -20.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sub_round_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_sub_round_ss(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_sub_round_ss(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 2., 10., -20.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sub_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_sub_round_ss(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_sub_round_ss(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., -20.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_sub_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_sub_round_sd(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., -2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sub_round_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_sub_round_sd(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_sub_round_sd(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., -2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sub_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_sub_round_sd(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_sub_round_sd(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., -2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mul_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mul_round_ss(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 800.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_mul_round_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_mul_round_ss(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_mul_round_ss(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 2., 10., 800.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_mul_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_mul_round_ss(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_mul_round_ss(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 800.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mul_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mul_round_sd(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_mul_round_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_mul_round_sd(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_mul_round_sd(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_mul_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_mul_round_sd(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_mul_round_sd(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_div_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_div_round_ss(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_div_round_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_mask_div_round_ss(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_div_round_ss(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_div_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 40.);
+        let r = _mm_maskz_div_round_ss(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_div_round_ss(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 0.5);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_div_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_div_round_sd(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_div_round_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_div_round_sd(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_div_round_sd(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_div_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_div_round_sd(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_div_round_sd(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.5);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_max_round_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_max_round_ss(a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 7.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_max_round_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_mask_max_round_ss(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_max_round_ss(a, 0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 7.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_max_round_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_maskz_max_round_ss(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_max_round_ss(0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 7.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_max_round_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_max_round_sd(a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 3.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_max_round_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_mask_max_round_sd(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_max_round_sd(a, 0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 3.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_max_round_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_maskz_max_round_sd(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_max_round_sd(0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 3.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_min_round_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_min_round_ss(a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_min_round_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_mask_min_round_ss(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_min_round_ss(a, 0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_min_round_ss() {
+        let a = _mm_set_ps(0., 1., 2., 3.);
+        let b = _mm_set_ps(4., 5., 6., 7.);
+        let r = _mm_maskz_min_round_ss(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_min_round_ss(0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(0., 1., 2., 3.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_min_round_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_min_round_sd(a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_min_round_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_mask_min_round_sd(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_min_round_sd(a, 0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_min_round_sd() {
+        let a = _mm_set_pd(0., 1.);
+        let b = _mm_set_pd(2., 3.);
+        let r = _mm_maskz_min_round_sd(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_min_round_sd(0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(0., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_sqrt_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_sqrt_round_ss(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 2.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sqrt_round_ss() {
+        let src = _mm_set_ps(10., 11., 100., 110.);
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_mask_sqrt_round_ss(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 110.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_sqrt_round_ss(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 2., 10., 2.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sqrt_round_ss() {
+        let a = _mm_set_ps(1., 2., 10., 20.);
+        let b = _mm_set_ps(3., 4., 30., 4.);
+        let r = _mm_maskz_sqrt_round_ss(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_sqrt_round_ss(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 2., 10., 2.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_sqrt_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_sqrt_round_sd(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_sqrt_round_sd() {
+        let src = _mm_set_pd(10., 11.);
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_mask_sqrt_round_sd(src, 0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 11.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_sqrt_round_sd(
+            src,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_sqrt_round_sd() {
+        let a = _mm_set_pd(1., 2.);
+        let b = _mm_set_pd(3., 4.);
+        let r = _mm_maskz_sqrt_round_sd(0, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_sqrt_round_sd(0b11111111, a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 2.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getexp_round_ss() {
+        let a = _mm_set1_ps(2.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_getexp_round_ss(a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2., 2., 2., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getexp_round_ss() {
+        let a = _mm_set1_ps(2.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_mask_getexp_round_ss(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2., 2., 2., 2.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_getexp_round_ss(a, 0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2., 2., 2., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getexp_round_ss() {
+        let a = _mm_set1_ps(2.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_maskz_getexp_round_ss(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2., 2., 2., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_getexp_round_ss(0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2., 2., 2., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getexp_round_sd() {
+        let a = _mm_set1_pd(2.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_getexp_round_sd(a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getexp_round_sd() {
+        let a = _mm_set1_pd(2.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_mask_getexp_round_sd(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2., 2.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_getexp_round_sd(a, 0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getexp_round_sd() {
+        let a = _mm_set1_pd(2.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_maskz_getexp_round_sd(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_getexp_round_sd(0b11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2., 1.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getmant_round_ss() {
+        let a = _mm_set1_ps(20.);
+        let b = _mm_set1_ps(10.);
+        let r = _mm_getmant_round_ss(
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_ps(20., 20., 20., 1.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getmant_round_ss() {
+        let a = _mm_set1_ps(20.);
+        let b = _mm_set1_ps(10.);
+        let r = _mm_mask_getmant_round_ss(
+            a,
+            0,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_ps(20., 20., 20., 20.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_getmant_round_ss(
+            a,
+            0b11111111,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_ps(20., 20., 20., 1.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getmant_round_ss() {
+        let a = _mm_set1_ps(20.);
+        let b = _mm_set1_ps(10.);
+        let r = _mm_maskz_getmant_round_ss(
+            0,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_ps(20., 20., 20., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_getmant_round_ss(
+            0b11111111,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_ps(20., 20., 20., 1.25);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_getmant_round_sd() {
+        let a = _mm_set1_pd(20.);
+        let b = _mm_set1_pd(10.);
+        let r = _mm_getmant_round_sd(
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_pd(20., 1.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_getmant_round_sd() {
+        let a = _mm_set1_pd(20.);
+        let b = _mm_set1_pd(10.);
+        let r = _mm_mask_getmant_round_sd(
+            a,
+            0,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_pd(20., 20.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_getmant_round_sd(
+            a,
+            0b11111111,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_pd(20., 1.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_getmant_round_sd() {
+        let a = _mm_set1_pd(20.);
+        let b = _mm_set1_pd(10.);
+        let r = _mm_maskz_getmant_round_sd(
+            0,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_pd(20., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_getmant_round_sd(
+            0b11111111,
+            a,
+            b,
+            _MM_MANT_NORM_1_2,
+            _MM_MANT_SIGN_SRC,
+            _MM_FROUND_CUR_DIRECTION,
+        );
+        let e = _mm_set_pd(20., 1.25);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_roundscale_round_ss() {
+        let a = _mm_set1_ps(2.2);
+        let b = _mm_set1_ps(1.1);
+        let r = _mm_roundscale_round_ss(a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 1.0);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_roundscale_round_ss() {
+        let a = _mm_set1_ps(2.2);
+        let b = _mm_set1_ps(1.1);
+        let r = _mm_mask_roundscale_round_ss(a, 0, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 2.2);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_roundscale_round_ss(a, 0b11111111, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 1.0);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_roundscale_round_ss() {
+        let a = _mm_set1_ps(2.2);
+        let b = _mm_set1_ps(1.1);
+        let r = _mm_maskz_roundscale_round_ss(0, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 0.0);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_roundscale_round_ss(0b11111111, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_ps(2.2, 2.2, 2.2, 1.0);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_roundscale_round_sd() {
+        let a = _mm_set1_pd(2.2);
+        let b = _mm_set1_pd(1.1);
+        let r = _mm_roundscale_round_sd(a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2.2, 1.0);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_roundscale_round_sd() {
+        let a = _mm_set1_pd(2.2);
+        let b = _mm_set1_pd(1.1);
+        let r = _mm_mask_roundscale_round_sd(a, 0, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2.2, 2.2);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_roundscale_round_sd(a, 0b11111111, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2.2, 1.0);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_roundscale_round_sd() {
+        let a = _mm_set1_pd(2.2);
+        let b = _mm_set1_pd(1.1);
+        let r = _mm_maskz_roundscale_round_sd(0, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2.2, 0.0);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_roundscale_round_sd(0b11111111, a, b, 0, _MM_FROUND_CUR_DIRECTION);
+        let e = _mm_set_pd(2.2, 1.0);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_scalef_round_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_scalef_round_ss(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 1., 1., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_scalef_round_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_mask_scalef_round_ss(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 1., 1., 1.);
+        assert_eq_m128(r, e);
+        let r = _mm_mask_scalef_round_ss(
+            a,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 1., 1., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_scalef_round_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(3.);
+        let r = _mm_maskz_scalef_round_ss(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 1., 1., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_scalef_round_ss(
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 1., 1., 8.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_scalef_round_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_scalef_round_sd(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_scalef_round_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_mask_scalef_round_sd(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 1.);
+        assert_eq_m128d(r, e);
+        let r = _mm_mask_scalef_round_sd(
+            a,
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_scalef_round_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(3.);
+        let r = _mm_maskz_scalef_round_sd(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_scalef_round_sd(
+            0b11111111,
+            a,
+            b,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 8.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_fmadd_round_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(2.);
+        let c = _mm_set1_ps(3.);
+        let r = _mm_fmadd_round_ss(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 1., 1., 5.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_fmadd_round_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(2.);
+        let c = _mm_set1_ps(3.);
+        let r = _mm_mask_fmadd_round_ss(a, 0, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        assert_eq_m128(r, a);
+        let r = _mm_mask_fmadd_round_ss(
+            a,
+            0b11111111,
+            b,
+            c,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 1., 1., 5.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_fmadd_round_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(2.);
+        let c = _mm_set1_ps(3.);
+        let r = _mm_maskz_fmadd_round_ss(0, a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_ps(1., 1., 1., 0.);
+        assert_eq_m128(r, e);
+        let r = _mm_maskz_fmadd_round_ss(
+            0b11111111,
+            a,
+            b,
+            c,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(1., 1., 1., 5.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask3_fmadd_round_ss() {
+        let a = _mm_set1_ps(1.);
+        let b = _mm_set1_ps(2.);
+        let c = _mm_set1_ps(3.);
+        let r = _mm_mask3_fmadd_round_ss(a, b, c, 0, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        assert_eq_m128(r, c);
+        let r = _mm_mask3_fmadd_round_ss(
+            a,
+            b,
+            c,
+            0b11111111,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_ps(3., 3., 3., 5.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_fmadd_round_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(2.);
+        let c = _mm_set1_pd(3.);
+        let r = _mm_fmadd_round_sd(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 5.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask_fmadd_round_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(2.);
+        let c = _mm_set1_pd(3.);
+        let r = _mm_mask_fmadd_round_sd(a, 0, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        assert_eq_m128d(r, a);
+        let r = _mm_mask_fmadd_round_sd(
+            a,
+            0b11111111,
+            b,
+            c,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 5.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_maskz_fmadd_round_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(2.);
+        let c = _mm_set1_pd(3.);
+        let r = _mm_maskz_fmadd_round_sd(0, a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let e = _mm_set_pd(1., 0.);
+        assert_eq_m128d(r, e);
+        let r = _mm_maskz_fmadd_round_sd(
+            0b11111111,
+            a,
+            b,
+            c,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(1., 5.);
+        assert_eq_m128d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_mask3_fmadd_round_sd() {
+        let a = _mm_set1_pd(1.);
+        let b = _mm_set1_pd(2.);
+        let c = _mm_set1_pd(3.);
+        let r = _mm_mask3_fmadd_round_sd(a, b, c, 0, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        assert_eq_m128d(r, c);
+        let r = _mm_mask3_fmadd_round_sd(
+            a,
+            b,
+            c,
+            0b11111111,
+            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        );
+        let e = _mm_set_pd(3., 5.);
+        assert_eq_m128d(r, e);
     }
 }

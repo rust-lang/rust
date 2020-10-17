@@ -71,6 +71,21 @@ pub unsafe fn get_m256(a: __m256, idx: usize) -> f32 {
     transmute::<_, [f32; 8]>(a)[idx]
 }
 
+#[target_feature(enable = "avx512f")]
+pub unsafe fn get_m512(a: __m512, idx: usize) -> f32 {
+    transmute::<_, [f32; 16]>(a)[idx]
+}
+
+#[target_feature(enable = "avx512f")]
+pub unsafe fn get_m512d(a: __m512d, idx: usize) -> f64 {
+    transmute::<_, [f64; 8]>(a)[idx]
+}
+
+#[target_feature(enable = "avx512f")]
+pub unsafe fn get_m512i(a: __m512i, idx: usize) -> i64 {
+    transmute::<_, [i64; 8]>(a)[idx]
+}
+
 // These intrinsics doesn't exist on x86 b/c it requires a 64-bit register,
 // which doesn't exist on x86!
 #[cfg(target_arch = "x86")]

@@ -453,6 +453,24 @@ impl m128Ext for __m128 {
 
 #[allow(non_camel_case_types)]
 #[unstable(feature = "stdsimd_internal", issue = "none")]
+pub(crate) trait m128dExt: Sized {
+    fn as_m128d(self) -> __m128d;
+
+    #[inline]
+    fn as_f64x2(self) -> crate::core_arch::simd::f64x2 {
+        unsafe { transmute(self.as_m128d()) }
+    }
+}
+
+impl m128dExt for __m128d {
+    #[inline]
+    fn as_m128d(self) -> Self {
+        self
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[unstable(feature = "stdsimd_internal", issue = "none")]
 pub(crate) trait m256Ext: Sized {
     fn as_m256(self) -> __m256;
 
