@@ -540,11 +540,11 @@ impl FormatRenderer for Context {
         };
         let sidebar = if let Some(ref version) = cache.crate_version {
             format!(
-                "<p class='location'>Crate {}</p>\
-                     <div class='block version'>\
+                "<p class=\"location\">Crate {}</p>\
+                     <div class=\"block version\">\
                          <p>Version {}</p>\
                      </div>\
-                     <a id='all-types' href='index.html'><p>Back to index</p></a>",
+                     <a id=\"all-types\" href=\"index.html\"><p>Back to index</p></a>",
                 crate_name,
                 Escape(version),
             )
@@ -567,7 +567,7 @@ impl FormatRenderer for Context {
         page.root_path = "./";
 
         let mut style_files = self.shared.style_files.clone();
-        let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
+        let sidebar = "<p class=\"location\">Settings</p><div class=\"sidebar-elems\"></div>";
         style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
         let v = layout::render(
             &self.shared.layout,
@@ -808,7 +808,7 @@ function handleThemeButtonsBlur(e) {{
 themePicker.onclick = switchThemeButtonState;
 themePicker.onblur = handleThemeButtonsBlur;
 {}.forEach(function(item) {{
-    var but = document.createElement('button');
+    var but = document.createElement("button");
     but.textContent = item;
     but.onclick = function(el) {{
         switchTheme(currentTheme, mainTheme, item, true);
@@ -1064,10 +1064,9 @@ themePicker.onblur = handleThemeButtonsBlur;
             krates.dedup();
 
             let content = format!(
-                "<h1 class='fqn'>\
-                     <span class='in-band'>List of all crates</span>\
-                </h1>\
-                <ul class='crate mod'>{}</ul>",
+                "<h1 class=\"fqn\">\
+                     <span class=\"in-band\">List of all crates</span>\
+                </h1><ul class=\"crate mod\">{}</ul>",
                 krates
                     .iter()
                     .map(|s| {
@@ -1211,7 +1210,7 @@ impl ItemEntry {
 impl ItemEntry {
     crate fn print(&self) -> impl fmt::Display + '_ {
         crate::html::format::display_fn(move |f| {
-            write!(f, "<a href='{}'>{}</a>", self.url, Escape(&self.name))
+            write!(f, "<a href=\"{}\">{}</a>", self.url, Escape(&self.name))
         })
     }
 }
@@ -1302,7 +1301,7 @@ fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str, class: &
         e.sort();
         write!(
             f,
-            "<h3 id='{}'>{}</h3><ul class='{} docblock'>{}</ul>",
+            "<h3 id=\"{}\">{}</h3><ul class=\"{} docblock\">{}</ul>",
             title,
             Escape(title),
             class,
@@ -1315,16 +1314,16 @@ impl AllTypes {
     fn print(self, f: &mut Buffer) {
         write!(
             f,
-            "<h1 class='fqn'>\
-                 <span class='out-of-band'>\
-                     <span id='render-detail'>\
+            "<h1 class=\"fqn\">\
+                 <span class=\"out-of-band\">\
+                     <span id=\"render-detail\">\
                          <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
                             title=\"collapse all docs\">\
-                             [<span class='inner'>&#x2212;</span>]\
+                             [<span class=\"inner\">&#x2212;</span>]\
                          </a>\
                      </span>
                  </span>
-                 <span class='in-band'>List of all items</span>\
+                 <span class=\"in-band\">List of all items</span>\
              </h1>"
         );
         print_entries(f, &self.structs, "Structs", "structs");
@@ -1367,18 +1366,18 @@ impl Setting {
     fn display(&self, root_path: &str, suffix: &str) -> String {
         match *self {
             Setting::Section { description, ref sub_settings } => format!(
-                "<div class='setting-line'>\
-                     <div class='title'>{}</div>\
-                     <div class='sub-settings'>{}</div>
+                "<div class=\"setting-line\">\
+                     <div class=\"title\">{}</div>\
+                     <div class=\"sub-settings\">{}</div>
                  </div>",
                 description,
                 sub_settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>()
             ),
             Setting::Toggle { js_data_name, description, default_value } => format!(
-                "<div class='setting-line'>\
-                     <label class='toggle'>\
-                     <input type='checkbox' id='{}' {}>\
-                     <span class='slider'></span>\
+                "<div class=\"setting-line\">\
+                     <label class=\"toggle\">\
+                     <input type=\"checkbox\" id=\"{}\" {}>\
+                     <span class=\"slider\"></span>\
                      </label>\
                      <div>{}</div>\
                  </div>",
@@ -1483,11 +1482,11 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
     ];
 
     Ok(format!(
-        "<h1 class='fqn'>\
-            <span class='in-band'>Rustdoc settings</span>\
+        "<h1 class=\"fqn\">\
+            <span class=\"in-band\">Rustdoc settings</span>\
         </h1>\
-        <div class='settings'>{}</div>\
-        <script src='{}settings{}.js'></script>",
+        <div class=\"settings\">{}</div>\
+        <script src=\"{}settings{}.js\"></script>",
         settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>(),
         root_path,
         suffix
@@ -1680,20 +1679,20 @@ where
 fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache) {
     debug_assert!(!item.is_stripped());
     // Write the breadcrumb trail header for the top
-    write!(buf, "<h1 class='fqn'><span class='out-of-band'>");
+    write!(buf, "<h1 class=\"fqn\"><span class=\"out-of-band\">");
     if let Some(version) = item.stable_since() {
         write!(
             buf,
-            "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
+            "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
             version
         );
     }
     write!(
         buf,
-        "<span id='render-detail'>\
+        "<span id=\"render-detail\">\
                 <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
                     title=\"collapse all docs\">\
-                    [<span class='inner'>&#x2212;</span>]\
+                    [<span class=\"inner\">&#x2212;</span>]\
                 </a>\
             </span>"
     );
@@ -1706,12 +1705,16 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
     // used to find the link to auto-click.
     if cx.shared.include_sources && !item.is_primitive() {
         if let Some(l) = cx.src_href(item, cache) {
-            write!(buf, "<a class='srclink' href='{}' title='{}'>[src]</a>", l, "goto source code");
+            write!(
+                buf,
+                "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
+                l, "goto source code"
+            );
         }
     }
 
     write!(buf, "</span>"); // out-of-band
-    write!(buf, "<span class='in-band'>");
+    write!(buf, "<span class=\"in-band\">");
     let name = match item.inner {
         clean::ModuleItem(ref m) => {
             if m.is_crate {
@@ -1751,13 +1754,13 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
         for (i, component) in cur.iter().enumerate().take(amt) {
             write!(
                 buf,
-                "<a href='{}index.html'>{}</a>::<wbr>",
+                "<a href=\"{}index.html\">{}</a>::<wbr>",
                 "../".repeat(cur.len() - i - 1),
                 component
             );
         }
     }
-    write!(buf, "<a class=\"{}\" href=''>{}</a>", item.type_(), item.name.as_ref().unwrap());
+    write!(buf, "<a class=\"{}\" href=\"\">{}</a>", item.type_(), item.name.as_ref().unwrap());
 
     write!(buf, "</span></h1>"); // in-band
 
@@ -1851,7 +1854,7 @@ fn render_markdown(
     let mut ids = cx.id_map.borrow_mut();
     write!(
         w,
-        "<div class='docblock{}'>{}{}</div>",
+        "<div class=\"docblock{}\">{}{}</div>",
         if is_hidden { " hidden" } else { "" },
         prefix,
         Markdown(
@@ -1898,7 +1901,7 @@ fn document_short(
     } else if !prefix.is_empty() {
         write!(
             w,
-            "<div class='docblock{}'>{}</div>",
+            "<div class=\"docblock{}\">{}</div>",
             if is_hidden { " hidden" } else { "" },
             prefix
         );
@@ -1912,7 +1915,7 @@ fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context, prefix: &str,
     } else if !prefix.is_empty() {
         write!(
             w,
-            "<div class='docblock{}'>{}</div>",
+            "<div class=\"docblock{}\">{}</div>",
             if is_hidden { " hidden" } else { "" },
             prefix
         );
@@ -1928,7 +1931,7 @@ fn document_stability(
 ) {
     let stabilities = short_stability(item, cx, parent);
     if !stabilities.is_empty() {
-        write!(w, "<div class='stability{}'>", if is_hidden { " hidden" } else { "" });
+        write!(w, "<div class=\"stability{}\">", if is_hidden { " hidden" } else { "" });
         for stability in stabilities {
             write!(w, "{}", stability);
         }
@@ -1942,7 +1945,7 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
 
 fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
     if item.is_non_exhaustive() {
-        write!(w, "<div class='docblock non-exhaustive non-exhaustive-{}'>", {
+        write!(w, "<div class=\"docblock non-exhaustive non-exhaustive-{}\">", {
             if item.is_struct() {
                 "struct"
             } else if item.is_enum() {
@@ -2121,7 +2124,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
             let (short, name) = item_ty_to_strs(&myty.unwrap());
             write!(
                 w,
-                "<h2 id='{id}' class='section-header'>\
+                "<h2 id=\"{id}\" class=\"section-header\">\
                        <a href=\"#{id}\">{name}</a></h2>\n<table>",
                 id = cx.derive_id(short.to_owned()),
                 name = name
@@ -2168,7 +2171,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                     clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
                         if func.header.unsafety == hir::Unsafety::Unsafe =>
                     {
-                        "<a title='unsafe function' href='#'><sup>⚠</sup></a>"
+                        "<a title=\"unsafe function\" href=\"#\"><sup>⚠</sup></a>"
                     }
                     _ => "",
                 };
@@ -2179,10 +2182,10 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                 let doc_value = myitem.doc_value().unwrap_or("");
                 write!(
                     w,
-                    "<tr class='{stab}{add}module-item'>\
+                    "<tr class=\"{stab}{add}module-item\">\
                          <td><a class=\"{class}\" href=\"{href}\" \
-                             title='{title}'>{name}</a>{unsafety_flag}</td>\
-                         <td class='docblock-short'>{stab_tags}{docs}</td>\
+                             title=\"{title}\">{name}</a>{unsafety_flag}</td>\
+                         <td class=\"docblock-short\">{stab_tags}{docs}</td>\
                      </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = stability_tags(myitem, item),
@@ -2277,7 +2280,7 @@ fn short_stability(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
             message.push_str(&format!(": {}", html.into_string()));
         }
         stability.push(format!(
-            "<div class='stab deprecated'><span class='emoji'>👎</span> {}</div>",
+            "<div class=\"stab deprecated\"><span class=\"emoji\">👎</span> {}</div>",
             message,
         ));
     }
@@ -2291,7 +2294,7 @@ fn short_stability(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
         .map(|stab| (stab.level, stab.feature))
     {
         let mut message =
-            "<span class='emoji'>🔬</span> This is a nightly-only experimental API.".to_owned();
+            "<span class=\"emoji\">🔬</span> This is a nightly-only experimental API.".to_owned();
 
         let mut feature = format!("<code>{}</code>", Escape(&feature.as_str()));
         if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
@@ -2320,7 +2323,7 @@ fn short_stability(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
             );
         }
 
-        stability.push(format!("<div class='stab unstable'>{}</div>", message));
+        stability.push(format!("<div class=\"stab unstable\">{}</div>", message));
     }
 
     let cfg = match (&item.attrs.cfg, parent.and_then(|p| p.attrs.cfg.as_ref())) {
@@ -2335,14 +2338,14 @@ fn short_stability(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
         cfg
     );
     if let Some(cfg) = cfg {
-        stability.push(format!("<div class='stab portability'>{}</div>", cfg.render_long_html()));
+        stability.push(format!("<div class=\"stab portability\">{}</div>", cfg.render_long_html()));
     }
 
     stability
 }
 
 fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Constant) {
-    write!(w, "<pre class='rust const'>");
+    write!(w, "<pre class=\"rust const\">");
     render_attributes(w, it, false);
 
     write!(
@@ -2377,7 +2380,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
 }
 
 fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static) {
-    write!(w, "<pre class='rust static'>");
+    write!(w, "<pre class=\"rust static\">");
     render_attributes(w, it, false);
     write!(
         w,
@@ -2402,7 +2405,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         f.generics.print()
     )
     .len();
-    write!(w, "<pre class='rust fn'>");
+    write!(w, "<pre class=\"rust fn\">");
     render_attributes(w, it, false);
     write!(
         w,
@@ -2526,7 +2529,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
 
     // Output the trait definition
     wrap_into_docblock(w, |w| {
-        write!(w, "<pre class='rust trait'>");
+        write!(w, "<pre class=\"rust trait\">");
         render_attributes(w, it, true);
         write!(
             w,
@@ -2569,7 +2572,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                 write!(w, ";\n");
 
                 if pos < required.len() - 1 {
-                    write!(w, "<div class='item-spacer'></div>");
+                    write!(w, "<div class=\"item-spacer\"></div>");
                 }
             }
             if !required.is_empty() && !provided.is_empty() {
@@ -2586,7 +2589,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                     }
                 }
                 if pos < provided.len() - 1 {
-                    write!(w, "<div class='item-spacer'></div>");
+                    write!(w, "<div class=\"item-spacer\"></div>");
                 }
             }
             write!(w, "}}");
@@ -2600,15 +2603,15 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
             w,
-            "<h2 id='{0}' class='small-section-header'>\
-                {1}<a href='#{0}' class='anchor'></a>\
+            "<h2 id=\"{0}\" class=\"small-section-header\">\
+                {1}<a href=\"#{0}\" class=\"anchor\"></a>\
              </h2>{2}",
             id, title, extra_content
         )
     }
 
     fn write_loading_content(w: &mut Buffer, extra_content: &str) {
-        write!(w, "{}<span class='loading-content'>Loading content...</span>", extra_content)
+        write!(w, "{}<span class=\"loading-content\">Loading content...</span>", extra_content)
     }
 
     fn trait_item(w: &mut Buffer, cx: &Context, m: &clean::Item, t: &clean::Item) {
@@ -2616,7 +2619,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         info!("Documenting {} on {}", name, t.name.as_deref().unwrap_or_default());
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
-        write!(w, "<h3 id='{id}' class='method'><code>", id = id,);
+        write!(w, "<h3 id=\"{id}\" class=\"method\"><code>", id = id,);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
@@ -2629,7 +2632,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             w,
             "associated-types",
             "Associated Types",
-            "<div class='methods'>",
+            "<div class=\"methods\">",
         );
         for t in &types {
             trait_item(w, cx, *t, it);
@@ -2642,7 +2645,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             w,
             "associated-const",
             "Associated Constants",
-            "<div class='methods'>",
+            "<div class=\"methods\">",
         );
         for t in &consts {
             trait_item(w, cx, *t, it);
@@ -2656,7 +2659,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             w,
             "required-methods",
             "Required methods",
-            "<div class='methods'>",
+            "<div class=\"methods\">",
         );
         for m in &required {
             trait_item(w, cx, *m, it);
@@ -2668,7 +2671,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             w,
             "provided-methods",
             "Provided methods",
-            "<div class='methods'>",
+            "<div class=\"methods\">",
         );
         for m in &provided {
             trait_item(w, cx, *m, it);
@@ -2741,7 +2744,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             w,
             "implementors",
             "Implementors",
-            "<div class='item-list' id='implementors-list'>",
+            "<div class=\"item-list\" id=\"implementors-list\">",
         );
         for implementor in concrete {
             render_implementor(cx, implementor, w, &implementor_dups, &[], cache);
@@ -2753,7 +2756,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                 w,
                 "synthetic-implementors",
                 "Auto implementors",
-                "<div class='item-list' id='synthetic-implementors-list'>",
+                "<div class=\"item-list\" id=\"synthetic-implementors-list\">",
             );
             for implementor in synthetic {
                 render_implementor(
@@ -2774,7 +2777,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             w,
             "implementors",
             "Implementors",
-            "<div class='item-list' id='implementors-list'>",
+            "<div class=\"item-list\" id=\"implementors-list\">",
         );
         write_loading_content(w, "</div>");
 
@@ -2783,7 +2786,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                 w,
                 "synthetic-implementors",
                 "Auto implementors",
-                "<div class='item-list' id='synthetic-implementors-list'>",
+                "<div class=\"item-list\" id=\"synthetic-implementors-list\">",
             );
             write_loading_content(w, "</div>");
         }
@@ -2835,7 +2838,7 @@ fn assoc_const(
 ) {
     write!(
         w,
-        "{}{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
+        "{}{}const <a href=\"{}\" class=\"constant\"><b>{}</b></a>: {}",
         extra,
         it.visibility.print_with_space(),
         naive_assoc_href(it, link),
@@ -2854,7 +2857,7 @@ fn assoc_type(
 ) {
     write!(
         w,
-        "{}type <a href='{}' class=\"type\">{}</a>",
+        "{}type <a href=\"{}\" class=\"type\">{}</a>",
         extra,
         naive_assoc_href(it, link),
         it.name.as_ref().unwrap()
@@ -2870,7 +2873,7 @@ fn assoc_type(
 fn render_stability_since_raw(w: &mut Buffer, ver: Option<&str>, containing_ver: Option<&str>) {
     if let Some(v) = ver {
         if containing_ver != ver && !v.is_empty() {
-            write!(w, "<span class='since' title='Stable since Rust version {0}'>{0}</span>", v)
+            write!(w, "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>", v)
         }
     }
 }
@@ -2936,7 +2939,7 @@ fn render_assoc_item(
         render_attributes(w, meth, false);
         write!(
             w,
-            "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+            "{}{}{}{}{}{}{}fn <a href=\"{href}\" class=\"fnname\">{name}</a>\
              {generics}{decl}{spotlight}{where_clause}",
             if parent == ItemType::Trait { "    " } else { "" },
             meth.visibility.print_with_space(),
@@ -2979,7 +2982,7 @@ fn render_assoc_item(
 
 fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct, cache: &Cache) {
     wrap_into_docblock(w, |w| {
-        write!(w, "<pre class='rust struct'>");
+        write!(w, "<pre class=\"rust struct\">");
         render_attributes(w, it, true);
         render_struct(w, it, Some(&s.generics), s.struct_type, &s.fields, "", true);
         write!(w, "</pre>")
@@ -2998,8 +3001,8 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
         if fields.peek().is_some() {
             write!(
                 w,
-                "<h2 id='fields' class='fields small-section-header'>
-                       Fields{}<a href='#fields' class='anchor'></a></h2>",
+                "<h2 id=\"fields\" class=\"fields small-section-header\">
+                       Fields{}<a href=\"#fields\" class=\"anchor\"></a></h2>",
                 document_non_exhaustive_header(it)
             );
             document_non_exhaustive(w, it);
@@ -3029,7 +3032,7 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
 
 fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, cache: &Cache) {
     wrap_into_docblock(w, |w| {
-        write!(w, "<pre class='rust union'>");
+        write!(w, "<pre class=\"rust union\">");
         render_attributes(w, it, true);
         render_union(w, it, Some(&s.generics), &s.fields, "", true);
         write!(w, "</pre>")
@@ -3047,8 +3050,8 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, 
     if fields.peek().is_some() {
         write!(
             w,
-            "<h2 id='fields' class='fields small-section-header'>
-                   Fields<a href='#fields' class='anchor'></a></h2>"
+            "<h2 id=\"fields\" class=\"fields small-section-header\">
+                   Fields<a href=\"#fields\" class=\"anchor\"></a></h2>"
         );
         for (field, ty) in fields {
             let name = field.name.as_ref().expect("union field name");
@@ -3065,7 +3068,7 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, 
                 ty = ty.print()
             );
             if let Some(stability_class) = field.stability_class() {
-                write!(w, "<span class='stab {stab}'></span>", stab = stability_class);
+                write!(w, "<span class=\"stab {stab}\"></span>", stab = stability_class);
             }
             document(w, cx, field, Some(it));
         }
@@ -3075,7 +3078,7 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, 
 
 fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, cache: &Cache) {
     wrap_into_docblock(w, |w| {
-        write!(w, "<pre class='rust enum'>");
+        write!(w, "<pre class=\"rust enum\">");
         render_attributes(w, it, true);
         write!(
             w,
@@ -3126,8 +3129,8 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
     if !e.variants.is_empty() {
         write!(
             w,
-            "<h2 id='variants' class='variants small-section-header'>
-                   Variants{}<a href='#variants' class='anchor'></a></h2>\n",
+            "<h2 id=\"variants\" class=\"variants small-section-header\">
+                   Variants{}<a href=\"#variants\" class=\"anchor\"></a></h2>\n",
             document_non_exhaustive_header(it)
         );
         document_non_exhaustive(w, it);
@@ -3166,7 +3169,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                     ItemType::Variant,
                     variant.name.as_ref().unwrap()
                 ));
-                write!(w, "<div class='autohide sub-variant' id='{id}'>", id = variant_id);
+                write!(w, "<div class=\"autohide sub-variant\" id=\"{id}\">", id = variant_id);
                 write!(
                     w,
                     "<h3>Fields of <b>{name}</b></h3><div>",
@@ -3402,8 +3405,8 @@ fn render_assoc_items(
             AssocItemRender::All => {
                 write!(
                     w,
-                    "<h2 id='implementations' class='small-section-header'>\
-                         Implementations<a href='#implementations' class='anchor'></a>\
+                    "<h2 id=\"implementations\" class=\"small-section-header\">\
+                         Implementations<a href=\"#implementations\" class=\"anchor\"></a>\
                     </h2>"
                 );
                 RenderMode::Normal
@@ -3411,9 +3414,9 @@ fn render_assoc_items(
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 write!(
                     w,
-                    "<h2 id='deref-methods' class='small-section-header'>\
+                    "<h2 id=\"deref-methods\" class=\"small-section-header\">\
                          Methods from {}&lt;Target = {}&gt;\
-                         <a href='#deref-methods' class='anchor'></a>\
+                         <a href=\"#deref-methods\" class=\"anchor\"></a>\
                      </h2>",
                     trait_.print(),
                     type_.print()
@@ -3462,10 +3465,10 @@ fn render_assoc_items(
         if !impls.is_empty() {
             write!(
                 w,
-                "<h2 id='trait-implementations' class='small-section-header'>\
-                     Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
+                "<h2 id=\"trait-implementations\" class=\"small-section-header\">\
+                     Trait Implementations<a href=\"#trait-implementations\" class=\"anchor\"></a>\
                  </h2>\
-                 <div id='trait-implementations-list'>{}</div>",
+                 <div id=\"trait-implementations-list\">{}</div>",
                 impls
             );
         }
@@ -3473,11 +3476,11 @@ fn render_assoc_items(
         if !synthetic.is_empty() {
             write!(
                 w,
-                "<h2 id='synthetic-implementations' class='small-section-header'>\
+                "<h2 id=\"synthetic-implementations\" class=\"small-section-header\">\
                      Auto Trait Implementations\
-                     <a href='#synthetic-implementations' class='anchor'></a>\
+                     <a href=\"#synthetic-implementations\" class=\"anchor\"></a>\
                  </h2>\
-                 <div id='synthetic-implementations-list'>"
+                 <div id=\"synthetic-implementations-list\">"
             );
             render_impls(cx, w, &synthetic, containing_item, cache);
             write!(w, "</div>");
@@ -3486,11 +3489,11 @@ fn render_assoc_items(
         if !blanket_impl.is_empty() {
             write!(
                 w,
-                "<h2 id='blanket-implementations' class='small-section-header'>\
+                "<h2 id=\"blanket-implementations\" class=\"small-section-header\">\
                      Blanket Implementations\
-                     <a href='#blanket-implementations' class='anchor'></a>\
+                     <a href=\"#blanket-implementations\" class=\"anchor\"></a>\
                  </h2>\
-                 <div id='blanket-implementations-list'>"
+                 <div id=\"blanket-implementations-list\">"
             );
             render_impls(cx, w, &blanket_impl, containing_item, cache);
             write!(w, "</div>");
@@ -3605,8 +3608,8 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
     if !out.is_empty() {
         out.insert_str(
             0,
-            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ<div class='notable-traits-tooltiptext'><span class=\"docblock\">"
-
+            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ\
+            <div class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
         );
         out.push_str("</code></span></div></span></span>");
     }
@@ -3648,7 +3651,7 @@ fn render_impl(
             format!(" aliases=\"{}\"", aliases.join(","))
         };
         if let Some(use_absolute) = use_absolute {
-            write!(w, "<h3 id='{}' class='impl'{}><code class='in-band'>", id, aliases);
+            write!(w, "<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">", id, aliases);
             fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute);
             if show_def_docs {
                 for it in &i.inner_impl().items {
@@ -3663,27 +3666,31 @@ fn render_impl(
         } else {
             write!(
                 w,
-                "<h3 id='{}' class='impl'{}><code class='in-band'>{}</code>",
+                "<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
                 id,
                 aliases,
                 i.inner_impl().print()
             );
         }
-        write!(w, "<a href='#{}' class='anchor'></a>", id);
+        write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
         let since = i.impl_item.stability.as_ref().and_then(|s| match s.level {
             StabilityLevel::Stable { since } => Some(since.as_str()),
             StabilityLevel::Unstable { .. } => None,
         });
         render_stability_since_raw(w, since.as_deref(), outer_version);
         if let Some(l) = cx.src_href(&i.impl_item, cache) {
-            write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>", l, "goto source code");
+            write!(
+                w,
+                "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
+                l, "goto source code"
+            );
         }
         write!(w, "</h3>");
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(
                 w,
-                "<div class='docblock'>{}</div>",
+                "<div class=\"docblock\">{}</div>",
                 Markdown(
                     &*dox,
                     &i.impl_item.links(),
@@ -3732,7 +3739,7 @@ fn render_impl(
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
-                    write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
+                    write!(w, "<h4 id=\"{}\" class=\"{}{}\">", id, item_type, extra_class);
                     write!(w, "<code>");
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
@@ -3740,7 +3747,7 @@ fn render_impl(
                     if let Some(l) = cx.src_href(item, cache) {
                         write!(
                             w,
-                            "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                            "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
                             l, "goto source code"
                         );
                     }
@@ -3749,20 +3756,20 @@ fn render_impl(
             }
             clean::TypedefItem(ref tydef, _) => {
                 let id = cx.derive_id(format!("{}.{}", ItemType::AssocType, name));
-                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
+                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id), "");
                 write!(w, "</code></h4>");
             }
             clean::AssocConstItem(ref ty, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
+                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code>");
                 render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
                 if let Some(l) = cx.src_href(item, cache) {
                     write!(
                         w,
-                        "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                        "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
                         l, "goto source code"
                     );
                 }
@@ -3770,7 +3777,7 @@ fn render_impl(
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
+                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code></h4>");
             }
@@ -3813,7 +3820,7 @@ fn render_impl(
     let traits = &cache.traits;
     let trait_ = i.trait_did().map(|did| &traits[&did]);
 
-    write!(w, "<div class='impl-items'>");
+    write!(w, "<div class=\"impl-items\">");
     for trait_item in &i.inner_impl().items {
         doc_impl_item(
             w,
@@ -3894,7 +3901,7 @@ fn item_opaque_ty(
     t: &clean::OpaqueTy,
     cache: &Cache,
 ) {
-    write!(w, "<pre class='rust opaque'>");
+    write!(w, "<pre class=\"rust opaque\">");
     render_attributes(w, it, false);
     write!(
         w,
@@ -3921,7 +3928,7 @@ fn item_trait_alias(
     t: &clean::TraitAlias,
     cache: &Cache,
 ) {
-    write!(w, "<pre class='rust trait-alias'>");
+    write!(w, "<pre class=\"rust trait-alias\">");
     render_attributes(w, it, false);
     write!(
         w,
@@ -3942,7 +3949,7 @@ fn item_trait_alias(
 }
 
 fn item_typedef(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Typedef, cache: &Cache) {
-    write!(w, "<pre class='rust typedef'>");
+    write!(w, "<pre class=\"rust typedef\">");
     render_attributes(w, it, false);
     write!(
         w,
@@ -3963,7 +3970,7 @@ fn item_typedef(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Typed
 }
 
 fn item_foreign_type(w: &mut Buffer, cx: &Context, it: &clean::Item, cache: &Cache) {
-    writeln!(w, "<pre class='rust foreigntype'>extern {{");
+    writeln!(w, "<pre class=\"rust foreigntype\">extern {{");
     render_attributes(w, it, false);
     write!(
         w,
@@ -3990,7 +3997,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
     {
         write!(
             buffer,
-            "<p class='location'>{}{}</p>",
+            "<p class=\"location\">{}{}</p>",
             match it.inner {
                 clean::StructItem(..) => "Struct ",
                 clean::TraitItem(..) => "Trait ",
@@ -4015,7 +4022,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
         if let Some(ref version) = cache.crate_version {
             write!(
                 buffer,
-                "<div class='block version'>\
+                "<div class=\"block version\">\
                      <p>Version {}</p>\
                  </div>",
                 Escape(version)
@@ -4027,7 +4034,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
     if it.is_crate() {
         write!(
             buffer,
-            "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
+            "<a id=\"all-types\" href=\"all.html\"><p>See all {}'s items</p></a>",
             it.name.as_ref().expect("crates always have a name")
         );
     }
@@ -4051,14 +4058,14 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
     // as much HTML as possible in order to allow non-JS-enabled browsers
     // to navigate the documentation (though slightly inefficiently).
 
-    write!(buffer, "<p class='location'>");
+    write!(buffer, "<p class=\"location\">");
     for (i, name) in cx.current.iter().take(parentlen).enumerate() {
         if i > 0 {
             write!(buffer, "::<wbr>");
         }
         write!(
             buffer,
-            "<a href='{}index.html'>{}</a>",
+            "<a href=\"{}index.html\">{}</a>",
             &cx.root_path()[..(cx.current.len() - i - 1) * 3],
             *name
         );
@@ -4070,9 +4077,9 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
     write!(
         buffer,
         "<script>window.sidebarCurrent = {{\
-                name: '{name}', \
-                ty: '{ty}', \
-                relpath: '{path}'\
+                name: \"{name}\", \
+                ty: \"{ty}\", \
+                relpath: \"{path}\"\
             }};</script>",
         name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
         ty = it.type_(),
@@ -4624,17 +4631,17 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, m: &clean::Pr
     let name = it.name.as_ref().expect("proc-macros always have names");
     match m.kind {
         MacroKind::Bang => {
-            write!(w, "<pre class='rust macro'>");
+            write!(w, "<pre class=\"rust macro\">");
             write!(w, "{}!() {{ /* proc-macro */ }}", name);
             write!(w, "</pre>");
         }
         MacroKind::Attr => {
-            write!(w, "<pre class='rust attr'>");
+            write!(w, "<pre class=\"rust attr\">");
             write!(w, "#[{}]", name);
             write!(w, "</pre>");
         }
         MacroKind::Derive => {
-            write!(w, "<pre class='rust derive'>");
+            write!(w, "<pre class=\"rust derive\">");
             write!(w, "#[derive({})]", name);
             if !m.helpers.is_empty() {
                 writeln!(w, "\n{{");
