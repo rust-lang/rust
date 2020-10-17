@@ -1,5 +1,3 @@
-// compile-flags: -Zmir-opt-level=0
-// FIXME: Using opt-level 2 here makes the test take forever (https://github.com/rust-lang/rust/issues/73717).
 #![feature(stmt_expr_attributes, test)]
 use std::fmt::Debug;
 use std::hint::black_box;
