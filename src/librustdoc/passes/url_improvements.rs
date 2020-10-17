@@ -90,33 +90,43 @@ impl<'a, 'tcx> DocFolder for UrlImprovementsLinter<'a, 'tcx> {
                 });
             };
 
-            let p = Parser::new_ext(&dox, opts()).into_offset_iter();
+            let mut p = Parser::new_ext(&dox, opts()).into_offset_iter();
 
-            let mut title = String::new();
-            let mut in_link = false;
-            let mut ignore = false;
-
-            for (event, range) in p {
+            while let Some((event, range)) = p.next() {
                 match event {
                     Event::Start(Tag::Link(kind, _, _)) => {
-                        in_link = true;
-                        ignore = matches!(kind, LinkType::Autolink | LinkType::Email);
-                    }
-                    Event::End(Tag::Link(_, url, _)) => {
-                        in_link = false;
-                        // NOTE: links cannot be nested, so we don't need to check `kind`
-                        if url.as_ref() == title && !ignore {
-                            report_diag(self.cx, "unneeded long form for URL", &url, range);
-                        }
-                        title.clear();
-                        ignore = false;
-                    }
-                    Event::Text(s) if in_link => {
-                        if !ignore {
-                            title.push_str(&s);
+                        let ignore = matches!(kind, LinkType::Autolink | LinkType::Email);
+                        let mut title = String::new();
+
+                        while let Some((event, range)) = p.next() {
+                            match event {
+                                Event::End(Tag::Link(_, url, _)) => {
+                                    // NOTE: links cannot be nested, so we don't need to check `kind`
+                                    if url.as_ref() == title && !ignore {
+                                        report_diag(
+                                            self.cx,
+                                            "unneeded long form for URL",
+                                            &url,
+                                            range,
+                                        );
+                                    }
+                                    break;
+                                }
+                                Event::Text(s) if !ignore => title.push_str(&s),
+                                _ => {}
+                            }
                         }
                     }
                     Event::Text(s) => self.find_raw_urls(&s, range, &report_diag),
+                    Event::Start(Tag::CodeBlock(_)) => {
+                        // We don't want to check the text inside the code blocks.
+                        while let Some((event, _)) = p.next() {
+                            match event {
+                                Event::End(Tag::CodeBlock(_)) => break,
+                                _ => {}
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }

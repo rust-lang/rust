@@ -51,6 +51,10 @@ pub fn c() {}
 /// [b]
 ///
 /// [b]: http://b.com
+///
+/// ```
+/// This link should not be linted: http://example.com
+/// ```
 pub fn everything_is_fine_here() {}
 
 #[allow(url_improvements)]
