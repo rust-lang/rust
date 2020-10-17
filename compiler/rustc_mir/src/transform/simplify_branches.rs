@@ -1,6 +1,6 @@
 //! A pass that simplifies branches when their condition is known.
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
@@ -21,25 +21,24 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let param_env = tcx.param_env(src.def_id());
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let param_env = tcx.param_env(body.source.def_id());
         for block in body.basic_blocks_mut() {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
                 TerminatorKind::SwitchInt {
                     discr: Operand::Constant(ref c),
                     switch_ty,
-                    ref values,
                     ref targets,
                     ..
                 } => {
                     let constant = c.literal.try_eval_bits(tcx, param_env, switch_ty);
                     if let Some(constant) = constant {
-                        let (otherwise, targets) = targets.split_last().unwrap();
-                        let mut ret = TerminatorKind::Goto { target: *otherwise };
-                        for (&v, t) in values.iter().zip(targets.iter()) {
+                        let otherwise = targets.otherwise();
+                        let mut ret = TerminatorKind::Goto { target: otherwise };
+                        for (v, t) in targets.iter() {
                             if v == constant {
-                                ret = TerminatorKind::Goto { target: *t };
+                                ret = TerminatorKind::Goto { target: t };
                                 break;
                             }
                         }

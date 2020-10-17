@@ -12,14 +12,6 @@ fn bar(_1: [(Never, u32); 1]) -> u32 {
         _2 = (_1[0 of 1].1: u32);        // scope 0 at $DIR/issue-72181.rs:19:13: 19:14
         _0 = _2;                         // scope 1 at $DIR/issue-72181.rs:19:46: 19:47
         StorageDead(_2);                 // scope 0 at $DIR/issue-72181.rs:19:48: 19:49
-        goto -> bb2;                     // scope 0 at $DIR/issue-72181.rs:19:49: 19:49
-    }
-
-    bb1 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-72181.rs:19:1: 19:49
-    }
-
-    bb2: {
         return;                          // scope 0 at $DIR/issue-72181.rs:19:49: 19:49
     }
 }

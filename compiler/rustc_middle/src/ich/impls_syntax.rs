@@ -5,7 +5,7 @@ use crate::ich::StableHashingContext;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_span::SourceFile;
+use rustc_span::{BytePos, NormalizedPos, SourceFile};
 
 use smallvec::SmallVec;
 
@@ -102,22 +102,19 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     }
 }
 
-fn stable_byte_pos(pos: ::rustc_span::BytePos, source_file_start: ::rustc_span::BytePos) -> u32 {
+fn stable_byte_pos(pos: BytePos, source_file_start: BytePos) -> u32 {
     pos.0 - source_file_start.0
 }
 
-fn stable_multibyte_char(
-    mbc: ::rustc_span::MultiByteChar,
-    source_file_start: ::rustc_span::BytePos,
-) -> (u32, u32) {
-    let ::rustc_span::MultiByteChar { pos, bytes } = mbc;
+fn stable_multibyte_char(mbc: rustc_span::MultiByteChar, source_file_start: BytePos) -> (u32, u32) {
+    let rustc_span::MultiByteChar { pos, bytes } = mbc;
 
     (pos.0 - source_file_start.0, bytes as u32)
 }
 
 fn stable_non_narrow_char(
-    swc: ::rustc_span::NonNarrowChar,
-    source_file_start: ::rustc_span::BytePos,
+    swc: rustc_span::NonNarrowChar,
+    source_file_start: BytePos,
 ) -> (u32, u32) {
     let pos = swc.pos();
     let width = swc.width();
@@ -125,11 +122,8 @@ fn stable_non_narrow_char(
     (pos.0 - source_file_start.0, width as u32)
 }
 
-fn stable_normalized_pos(
-    np: ::rustc_span::NormalizedPos,
-    source_file_start: ::rustc_span::BytePos,
-) -> (u32, u32) {
-    let ::rustc_span::NormalizedPos { pos, diff } = np;
+fn stable_normalized_pos(np: NormalizedPos, source_file_start: BytePos) -> (u32, u32) {
+    let NormalizedPos { pos, diff } = np;
 
     (pos.0 - source_file_start.0, diff)
 }

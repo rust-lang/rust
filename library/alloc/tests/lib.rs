@@ -20,6 +20,7 @@
 #![feature(inplace_iteration)]
 #![feature(iter_map_while)]
 #![feature(int_bits_const)]
+#![feature(vecdeque_binary_search)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

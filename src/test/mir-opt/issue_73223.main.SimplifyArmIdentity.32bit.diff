@@ -106,7 +106,7 @@
           _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:4:17: 4:23
           StorageDead(_2);                 // scope 0 at $DIR/issue-73223.rs:5:6: 5:7
           StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
-          return;                          // scope 0 at $DIR/issue-73223.rs:4:17: 4:23
+          return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
       }
   
       bb2: {

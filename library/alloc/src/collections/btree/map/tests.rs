@@ -1,12 +1,10 @@
+use super::super::{navigate::Position, node, DeterministicRng};
+use super::Entry::{Occupied, Vacant};
+use super::*;
 use crate::boxed::Box;
-use crate::collections::btree::navigate::Position;
-use crate::collections::btree::node;
-use crate::collections::btree_map::Entry::{Occupied, Vacant};
-use crate::collections::BTreeMap;
 use crate::fmt::Debug;
 use crate::rc::Rc;
-use crate::string::String;
-use crate::string::ToString;
+use crate::string::{String, ToString};
 use crate::vec::Vec;
 use std::convert::TryFrom;
 use std::iter::FromIterator;
@@ -16,19 +14,17 @@ use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use super::super::DeterministicRng;
-
 // Capacity of a tree with a single level,
-// i.e. a tree who's root is a leaf node at height 0.
+// i.e., a tree who's root is a leaf node at height 0.
 const NODE_CAPACITY: usize = node::CAPACITY;
 
 // Minimum number of elements to insert, to guarantee a tree with 2 levels,
-// i.e. a tree who's root is an internal node at height 1, with edges to leaf nodes.
+// i.e., a tree who's root is an internal node at height 1, with edges to leaf nodes.
 // It's not the minimum size: removing an element from such a tree does not always reduce height.
 const MIN_INSERTS_HEIGHT_1: usize = NODE_CAPACITY + 1;
 
 // Minimum number of elements to insert in ascending order, to guarantee a tree with 3 levels,
-// i.e. a tree who's root is an internal node at height 2, with edges to more internal nodes.
+// i.e., a tree who's root is an internal node at height 2, with edges to more internal nodes.
 // It's not the minimum size: removing an element from such a tree does not always reduce height.
 const MIN_INSERTS_HEIGHT_2: usize = 89;
 
@@ -1386,44 +1382,65 @@ fn test_clone_from() {
     }
 }
 
-#[test]
 #[allow(dead_code)]
 fn test_variance() {
-    use std::collections::btree_map::{IntoIter, Iter, Keys, Range, Values};
-
     fn map_key<'new>(v: BTreeMap<&'static str, ()>) -> BTreeMap<&'new str, ()> {
         v
     }
     fn map_val<'new>(v: BTreeMap<(), &'static str>) -> BTreeMap<(), &'new str> {
         v
     }
+
     fn iter_key<'a, 'new>(v: Iter<'a, &'static str, ()>) -> Iter<'a, &'new str, ()> {
         v
     }
     fn iter_val<'a, 'new>(v: Iter<'a, (), &'static str>) -> Iter<'a, (), &'new str> {
         v
     }
+
     fn into_iter_key<'new>(v: IntoIter<&'static str, ()>) -> IntoIter<&'new str, ()> {
         v
     }
     fn into_iter_val<'new>(v: IntoIter<(), &'static str>) -> IntoIter<(), &'new str> {
         v
     }
+
+    fn into_keys_key<'new>(v: IntoKeys<&'static str, ()>) -> IntoKeys<&'new str, ()> {
+        v
+    }
+    fn into_keys_val<'new>(v: IntoKeys<(), &'static str>) -> IntoKeys<(), &'new str> {
+        v
+    }
+
+    fn into_values_key<'new>(v: IntoValues<&'static str, ()>) -> IntoValues<&'new str, ()> {
+        v
+    }
+    fn into_values_val<'new>(v: IntoValues<(), &'static str>) -> IntoValues<(), &'new str> {
+        v
+    }
+
     fn range_key<'a, 'new>(v: Range<'a, &'static str, ()>) -> Range<'a, &'new str, ()> {
         v
     }
     fn range_val<'a, 'new>(v: Range<'a, (), &'static str>) -> Range<'a, (), &'new str> {
         v
     }
-    fn keys<'a, 'new>(v: Keys<'a, &'static str, ()>) -> Keys<'a, &'new str, ()> {
+
+    fn keys_key<'a, 'new>(v: Keys<'a, &'static str, ()>) -> Keys<'a, &'new str, ()> {
         v
     }
-    fn vals<'a, 'new>(v: Values<'a, (), &'static str>) -> Values<'a, (), &'new str> {
+    fn keys_val<'a, 'new>(v: Keys<'a, (), &'static str>) -> Keys<'a, (), &'new str> {
+        v
+    }
+
+    fn values_key<'a, 'new>(v: Values<'a, &'static str, ()>) -> Values<'a, &'new str, ()> {
+        v
+    }
+    fn values_val<'a, 'new>(v: Values<'a, (), &'static str>) -> Values<'a, (), &'new str> {
         v
     }
 }
 
-#[test]
 #[allow(dead_code)]
 fn test_sync() {
     fn map<T: Sync>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
@@ -1493,7 +1510,6 @@ fn test_sync() {
     }
 }
 
-#[test]
 #[allow(dead_code)]
 fn test_send() {
     fn map<T: Send>(v: BTreeMap<T, T>) -> impl Send {
@@ -1520,7 +1536,7 @@ fn test_send() {
         v.iter()
     }
 
-    fn iter_mut<T: Send + Sync>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
+    fn iter_mut<T: Send>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
         v.iter_mut()
     }
 
@@ -1532,7 +1548,7 @@ fn test_send() {
         v.values()
     }
 
-    fn values_mut<T: Send + Sync>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
+    fn values_mut<T: Send>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
         v.values_mut()
     }
 
@@ -1540,7 +1556,7 @@ fn test_send() {
         v.range(..)
     }
 
-    fn range_mut<T: Send + Sync + Ord>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
+    fn range_mut<T: Send + Ord>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
         v.range_mut(..)
     }
 

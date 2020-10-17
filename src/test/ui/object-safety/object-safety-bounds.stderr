@@ -1,0 +1,14 @@
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/object-safety-bounds.rs:7:11
+   |
+LL | trait X {
+   |       - this trait cannot be made into an object...
+LL |     type U: PartialEq<Self>;
+   |             --------------- ...because it uses `Self` as a type parameter in this
+...
+LL | fn f() -> Box<dyn X<U = u32>> {
+   |           ^^^^^^^^^^^^^^^^^^^ the trait `X` cannot be made into an object
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

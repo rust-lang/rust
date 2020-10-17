@@ -1,10 +1,8 @@
 //! Checks that associated type defaults are properly validated.
 //!
 //! This means:
-//! * Default types are wfchecked
 //! * Default types are checked against where clauses on the assoc. type
-//!   (eg. `type Assoc: Clone = NotClone`), and also against where clauses on
-//!   the trait itself when possible
+//!   (eg. `type Assoc: Clone = NotClone`)
 
 #![feature(associated_type_defaults)]
 
@@ -17,15 +15,12 @@ trait Tr {
 }
 
 // Where-clauses defined on the trait must also be considered
-trait Tr2 where Self::Ty: Clone {
-    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
+trait Tr2
+where
+    Self::Ty: Clone,
+{
     type Ty = NotClone;
-}
-
-// Independent of where-clauses (there are none here), default types must always be wf
-trait Tr3 {
-    type Ty = Vec<[u8]>;
-    //~^ ERROR the size for values of type `[u8]` cannot be known at compilation time
+    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
 }
 
 // Involved type parameters must fulfill all bounds required by defaults that mention them
@@ -43,7 +38,7 @@ trait Bar: Sized {
 trait IsU8<T> {}
 impl<T> IsU8<u8> for T {}
 
-// Test that mentioning the assoc. type inside where clauses works
+// Test that mentioning the assoc. type inside where clauses is not allowed
 trait C where
     Vec<Self::Assoc>: Clone,
     Self::Assoc: IsU8<Self::Assoc>,
@@ -55,13 +50,11 @@ trait C where
 // Test that we get all expected errors if that default is unsuitable
 trait D where
     Vec<Self::Assoc>: Clone,
-    //~^ ERROR the trait bound `NotClone: Clone` is not satisfied
     Self::Assoc: IsU8<Self::Assoc>,
-    //~^ ERROR the trait bound `NotClone: IsU8<NotClone>` is not satisfied
     bool: IsU8<Self::Assoc>,
-    //~^ ERROR the trait bound `bool: IsU8<NotClone>` is not satisfied
 {
     type Assoc = NotClone;
+    //~^ ERROR the trait bound `NotClone: IsU8<NotClone>` is not satisfied
 }
 
 // Test behavior of the check when defaults refer to other defaults:
@@ -85,18 +78,20 @@ trait Foo25<T: Clone> {
 
 // Adding the `Baz: Clone` bound isn't enough since the default is type
 // parameter `T`, which also might not be `Clone`.
-trait Foo3<T> where
+trait Foo3<T>
+where
     Self::Bar: Clone,
     Self::Baz: Clone,
-    //~^ ERROR the trait bound `T: Clone` is not satisfied
 {
     type Bar = Vec<Self::Baz>;
     type Baz = T;
+    //~^ ERROR the trait bound `T: Clone` is not satisfied
 }
 
 // This one finally works, with `Clone` bounds on all assoc. types and the type
 // parameter.
-trait Foo4<T> where
+trait Foo4<T>
+where
     T: Clone,
 {
     type Bar: Clone = Vec<Self::Baz>;

@@ -82,5 +82,20 @@ help: to link to the function, add parentheses
 LL | /// Ambiguous non-implied shortcut link [`foo::bar()`].
    |                                          ^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: `true` is both a module and a builtin type
+  --> $DIR/intra-links-ambiguity.rs:38:6
+   |
+LL | /// [true]
+   |      ^^^^ ambiguous link
+   |
+help: to link to the module, prefix with `mod@`
+   |
+LL | /// [mod@true]
+   |      ^^^^^^^^
+help: to link to the builtin type, prefix with `prim@`
+   |
+LL | /// [prim@true]
+   |      ^^^^^^^^^
+
+error: aborting due to 6 previous errors
 

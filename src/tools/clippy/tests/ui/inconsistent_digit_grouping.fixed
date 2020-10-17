@@ -40,4 +40,8 @@ fn main() {
     // Ignore literals in macros
     let _ = mac1!();
     let _ = mac2!();
+
+    // Issue #6096
+    // Allow separating exponent with '_'
+    let _ = 1.025_011_10_E0;
 }

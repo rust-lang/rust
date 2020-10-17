@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-71443-1.rs:6:5
+   |
+LL | fn hello<F: for<'a> Iterator<Item: 'a>>() {
+   |                                           - help: try adding a return type: `-> Incorrect`
+LL |     Incorrect
+   |     ^^^^^^^^^ expected `()`, found struct `Incorrect`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

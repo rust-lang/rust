@@ -10,6 +10,7 @@ use crate::intrinsics::{assume, exact_div, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
 use super::{from_raw_parts, from_raw_parts_mut};
@@ -1187,12 +1188,12 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Windows<'a, T: 'a> {
     v: &'a [T],
-    size: usize,
+    size: NonZeroUsize,
 }
 
 impl<'a, T: 'a> Windows<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], size: usize) -> Self {
+    pub(super) fn new(slice: &'a [T], size: NonZeroUsize) -> Self {
         Self { v: slice, size }
     }
 }
@@ -1211,10 +1212,10 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        if self.size > self.v.len() {
+        if self.size.get() > self.v.len() {
             None
         } else {
-            let ret = Some(&self.v[..self.size]);
+            let ret = Some(&self.v[..self.size.get()]);
             self.v = &self.v[1..];
             ret
         }
@@ -1222,10 +1223,10 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size > self.v.len() {
+        if self.size.get() > self.v.len() {
             (0, Some(0))
         } else {
-            let size = self.v.len() - self.size + 1;
+            let size = self.v.len() - self.size.get() + 1;
             (size, Some(size))
         }
     }
@@ -1237,7 +1238,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (end, overflow) = self.size.overflowing_add(n);
+        let (end, overflow) = self.size.get().overflowing_add(n);
         if end > self.v.len() || overflow {
             self.v = &[];
             None
@@ -1250,10 +1251,10 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn last(self) -> Option<Self::Item> {
-        if self.size > self.v.len() {
+        if self.size.get() > self.v.len() {
             None
         } else {
-            let start = self.v.len() - self.size;
+            let start = self.v.len() - self.size.get();
             Some(&self.v[start..])
         }
     }
@@ -1264,7 +1265,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
         // which means that `i` cannot overflow an `isize`, and the
         // slice created by `from_raw_parts` is a subslice of `self.v`
         // thus is guaranteed to be valid for the lifetime `'a` of `self.v`.
-        unsafe { from_raw_parts(self.v.as_ptr().add(idx), self.size) }
+        unsafe { from_raw_parts(self.v.as_ptr().add(idx), self.size.get()) }
     }
 }
 
@@ -1272,10 +1273,10 @@ impl<'a, T> Iterator for Windows<'a, T> {
 impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.size > self.v.len() {
+        if self.size.get() > self.v.len() {
             None
         } else {
-            let ret = Some(&self.v[self.v.len() - self.size..]);
+            let ret = Some(&self.v[self.v.len() - self.size.get()..]);
             self.v = &self.v[..self.v.len() - 1];
             ret
         }
@@ -1284,11 +1285,11 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let (end, overflow) = self.v.len().overflowing_sub(n);
-        if end < self.size || overflow {
+        if end < self.size.get() || overflow {
             self.v = &[];
             None
         } else {
-            let ret = &self.v[end - self.size..end];
+            let ret = &self.v[end - self.size.get()..end];
             self.v = &self.v[..end - 1];
             Some(ret)
         }

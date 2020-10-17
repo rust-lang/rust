@@ -127,7 +127,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         if ty == CrateType::Staticlib
             || (ty == CrateType::Executable
                 && sess.crt_static(Some(ty))
-                && !sess.target.target.options.crt_static_allows_dylibs)
+                && !sess.target.options.crt_static_allows_dylibs)
         {
             for &cnum in tcx.crates().iter() {
                 if tcx.dep_kind(cnum).macros_only() {

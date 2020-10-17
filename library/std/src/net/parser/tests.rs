@@ -3,6 +3,7 @@ use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAdd
 use crate::str::FromStr;
 
 const PORT: u16 = 8080;
+const SCOPE_ID: u32 = 1337;
 
 const IPV4: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 1);
 const IPV4_STR: &str = "192.168.0.1";
@@ -13,6 +14,7 @@ const IPV6_STR_FULL: &str = "2001:db8:0:0:0:0:c0a8:1";
 const IPV6_STR_COMPRESS: &str = "2001:db8::c0a8:1";
 const IPV6_STR_V4: &str = "2001:db8::192.168.0.1";
 const IPV6_STR_PORT: &str = "[2001:db8::c0a8:1]:8080";
+const IPV6_STR_PORT_SCOPE_ID: &str = "[2001:db8::c0a8:1%1337]:8080";
 
 #[test]
 fn parse_ipv4() {
@@ -74,8 +76,8 @@ fn parse_socket_v4() {
 
 #[test]
 fn parse_socket_v6() {
-    let result: SocketAddrV6 = IPV6_STR_PORT.parse().unwrap();
-    assert_eq!(result, SocketAddrV6::new(IPV6, PORT, 0, 0));
+    assert_eq!(IPV6_STR_PORT.parse(), Ok(SocketAddrV6::new(IPV6, PORT, 0, 0)));
+    assert_eq!(IPV6_STR_PORT_SCOPE_ID.parse(), Ok(SocketAddrV6::new(IPV6, PORT, 0, SCOPE_ID)));
 
     assert!(SocketAddrV6::from_str(IPV4_STR).is_err());
     assert!(SocketAddrV6::from_str(IPV4_STR_PORT).is_err());

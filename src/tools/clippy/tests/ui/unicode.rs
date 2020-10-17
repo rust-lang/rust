@@ -1,7 +1,11 @@
-#[warn(clippy::zero_width_space)]
+#[warn(clippy::invisible_characters)]
 fn zero() {
     print!("Here >​< is a ZWS, and ​another");
     print!("This\u{200B}is\u{200B}fine");
+    print!("Here >­< is a SHY, and ­another");
+    print!("This\u{ad}is\u{ad}fine");
+    print!("Here >⁠< is a WJ, and ⁠another");
+    print!("This\u{2060}is\u{2060}fine");
 }
 
 #[warn(clippy::unicode_not_nfc)]

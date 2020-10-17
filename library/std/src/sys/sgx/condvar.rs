@@ -7,6 +7,8 @@ pub struct Condvar {
     inner: SpinMutex<WaitVariable<()>>,
 }
 
+pub type MovableCondvar = Box<Condvar>;
+
 impl Condvar {
     pub const fn new() -> Condvar {
         Condvar { inner: SpinMutex::new(WaitVariable::new(())) }
@@ -27,13 +29,13 @@ impl Condvar {
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
         let guard = self.inner.lock();
-        WaitQueue::wait(guard, || mutex.unlock());
-        mutex.lock()
+        WaitQueue::wait(guard, || unsafe { mutex.unlock() });
+        unsafe { mutex.lock() }
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        let success = WaitQueue::wait_timeout(&self.inner, dur, || mutex.unlock());
-        mutex.lock();
+        let success = WaitQueue::wait_timeout(&self.inner, dur, || unsafe { mutex.unlock() });
+        unsafe { mutex.lock() };
         success
     }
 

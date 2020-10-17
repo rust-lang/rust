@@ -42,6 +42,13 @@ cfg_if::cfg_if! {
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
 
+// When building with crt-static, we get `gcc_eh` from the `libc` crate, since
+// glibc needs it, and needs it listed later on the linker command line. We
+// don't want to duplicate it here.
+#[cfg(all(target_os = "linux", target_env = "gnu", not(feature = "llvm-libunwind")))]
+#[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
+extern "C" {}
+
 #[cfg(target_os = "redox")]
 #[link(name = "gcc_eh", kind = "static-nobundle", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]

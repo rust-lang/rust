@@ -38,7 +38,7 @@ impl CodegenCx<'ll, '_> {
         // For MSVC, omit the column number.
         // Otherwise, emit it. This mimics clang behaviour.
         // See discussion in https://github.com/rust-lang/rust/issues/42921
-        if self.sess().target.target.options.is_like_msvc {
+        if self.sess().target.options.is_like_msvc {
             DebugLoc { file, line, col: None }
         } else {
             DebugLoc { file, line, col }

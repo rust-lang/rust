@@ -11,21 +11,16 @@ use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
 impl<'tcx> TyS<'tcx> {
     /// Similar to `TyS::is_primitive`, but also considers inferred numeric values to be primitive.
     pub fn is_primitive_ty(&self) -> bool {
-        match self.kind() {
-            Bool
-            | Char
-            | Str
-            | Int(_)
-            | Uint(_)
-            | Float(_)
+        matches!(
+            self.kind(),
+            Bool | Char | Str | Int(_) | Uint(_) | Float(_)
             | Infer(
                 InferTy::IntVar(_)
                 | InferTy::FloatVar(_)
                 | InferTy::FreshIntTy(_)
-                | InferTy::FreshFloatTy(_),
-            ) => true,
-            _ => false,
-        }
+                | InferTy::FreshFloatTy(_)
+            )
+        )
     }
 
     /// Whether the type is succinctly representable as a type instead of just referred to with a
@@ -64,11 +59,16 @@ impl<'tcx> TyS<'tcx> {
 
     /// Whether the type can be safely suggested during error recovery.
     pub fn is_suggestable(&self) -> bool {
-        match self.kind() {
-            Opaque(..) | FnDef(..) | FnPtr(..) | Dynamic(..) | Closure(..) | Infer(..)
-            | Projection(..) => false,
-            _ => true,
-        }
+        !matches!(
+            self.kind(),
+            Opaque(..)
+                | FnDef(..)
+                | FnPtr(..)
+                | Dynamic(..)
+                | Closure(..)
+                | Infer(..)
+                | Projection(..)
+        )
     }
 }
 

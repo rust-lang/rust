@@ -1,6 +1,6 @@
 //! Performs various peephole optimizations.
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
 use rustc_index::vec::Idx;
@@ -19,7 +19,7 @@ use std::mem;
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).

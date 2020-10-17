@@ -187,7 +187,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
         config = config.stack_size(size);
     }
 
-    let with_pool = move |pool: &rayon::ThreadPool| pool.install(move || f());
+    let with_pool = move |pool: &rayon::ThreadPool| pool.install(f);
 
     rustc_span::with_session_globals(edition, || {
         rustc_span::SESSION_GLOBALS.with(|session_globals| {

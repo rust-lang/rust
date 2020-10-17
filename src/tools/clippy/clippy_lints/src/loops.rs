@@ -3,7 +3,7 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
+    contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
     match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability,
     snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
@@ -1276,6 +1276,8 @@ fn check_for_loop_range<'tcx>(
 
                 let skip = if starts_at_zero {
                     String::new()
+                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start) {
+                    return;
                 } else {
                     format!(".skip({})", snippet(cx, start.span, ".."))
                 };
@@ -1302,6 +1304,8 @@ fn check_for_loop_range<'tcx>(
 
                     if is_len_call(end, indexed) || is_end_eq_array_len(cx, end, limits, indexed_ty) {
                         String::new()
+                    } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr) {
+                        return;
                     } else {
                         match limits {
                             ast::RangeLimits::Closed => {
@@ -2134,7 +2138,7 @@ enum VarState {
     DontWarn,
 }
 
-/// Scan a for loop for variables that are incremented exactly once.
+/// Scan a for loop for variables that are incremented exactly once and not used after that.
 struct IncrementVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,          // context reference
     states: FxHashMap<HirId, VarState>, // incremented variables
@@ -2154,6 +2158,10 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         if let Some(def_id) = var_def_id(self.cx, expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 let state = self.states.entry(def_id).or_insert(VarState::Initial);
+                if *state == VarState::IncrOnce {
+                    *state = VarState::DontWarn;
+                    return;
+                }
 
                 match parent.kind {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {

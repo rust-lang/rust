@@ -1,0 +1,13 @@
+# These defaults are meant for contributors to the compiler who do not modify codegen or LLVM
+[rust]
+# This enables `RUSTC_LOG=debug`, avoiding confusing situations
+# where adding `debug!()` appears to do nothing.
+# However, it makes running the compiler slightly slower.
+debug-logging = true
+# This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
+incremental = true
+
+[llvm]
+# Will download LLVM from CI if available on your platform (Linux only for now)
+# https://github.com/rust-lang/rust/issues/77084 tracks support for more platforms
+download-ci-llvm = "if-available"

@@ -182,14 +182,6 @@ pub trait TyDecoder<'tcx>: Decoder {
     where
         F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>;
 
-    fn cached_predicate_for_shorthand<F>(
-        &mut self,
-        shorthand: usize,
-        or_insert_with: F,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<ty::Predicate<'tcx>, Self::Error>;
-
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R;

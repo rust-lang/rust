@@ -149,7 +149,7 @@ impl Collector<'tcx> {
             }
             return;
         }
-        let is_osx = self.tcx.sess.target.target.options.is_like_osx;
+        let is_osx = self.tcx.sess.target.options.is_like_osx;
         if lib.kind == NativeLibKind::Framework && !is_osx {
             let msg = "native frameworks are only available on macOS targets";
             match span {

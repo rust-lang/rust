@@ -94,7 +94,7 @@ pub trait FromIterator<A>: Sized {
     ///
     /// See the [module-level documentation] for more.
     ///
-    /// [module-level documentation]: index.html
+    /// [module-level documentation]: crate::iter
     ///
     /// # Examples
     ///
@@ -120,7 +120,7 @@ pub trait FromIterator<A>: Sized {
 /// collection of some kind.
 ///
 /// One benefit of implementing `IntoIterator` is that your type will [work
-/// with Rust's `for` loop syntax](index.html#for-loops-and-intoiterator).
+/// with Rust's `for` loop syntax](crate::iter#for-loops-and-intoiterator).
 ///
 /// See also: [`FromIterator`].
 ///
@@ -212,7 +212,7 @@ pub trait IntoIterator {
     ///
     /// See the [module-level documentation] for more.
     ///
-    /// [module-level documentation]: index.html
+    /// [module-level documentation]: crate::iter
     ///
     /// # Examples
     ///

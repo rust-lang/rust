@@ -48,6 +48,7 @@ impl Token {
 }
 
 /// Enum representing common lexeme types.
+// perf note: Changing all `usize` to `u32` doesn't change performance. See #77629
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
     // Multi-char tokens:
@@ -160,6 +161,7 @@ pub enum LiteralKind {
 /// - `r##~"abcde"##`: `InvalidStarter`
 /// - `r###"abcde"##`: `NoTerminator { expected: 3, found: 2, possible_terminator_offset: Some(11)`
 /// - Too many `#`s (>65535): `TooManyDelimiters`
+// perf note: It doesn't matter that this makes `Token` 36 bytes bigger. See #77629
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RawStrError {
     /// Non `#` characters exist between `r` and `"` eg. `r#~"..`
@@ -689,7 +691,12 @@ impl Cursor<'_> {
         let mut max_hashes = 0;
 
         // Count opening '#' symbols.
-        let n_start_hashes = self.eat_while(|c| c == '#');
+        let mut eaten = 0;
+        while self.first() == '#' {
+            eaten += 1;
+            self.bump();
+        }
+        let n_start_hashes = eaten;
 
         // Check that string is started.
         match self.bump() {
@@ -724,16 +731,11 @@ impl Cursor<'_> {
             // Note that this will not consume extra trailing `#` characters:
             // `r###"abcde"####` is lexed as a `RawStr { n_hashes: 3 }`
             // followed by a `#` token.
-            let mut hashes_left = n_start_hashes;
-            let is_closing_hash = |c| {
-                if c == '#' && hashes_left != 0 {
-                    hashes_left -= 1;
-                    true
-                } else {
-                    false
-                }
-            };
-            let n_end_hashes = self.eat_while(is_closing_hash);
+            let mut n_end_hashes = 0;
+            while self.first() == '#' && n_end_hashes < n_start_hashes {
+                n_end_hashes += 1;
+                self.bump();
+            }
 
             if n_end_hashes == n_start_hashes {
                 return (n_start_hashes, None);
@@ -807,17 +809,9 @@ impl Cursor<'_> {
     }
 
     /// Eats symbols while predicate returns true or until the end of file is reached.
-    /// Returns amount of eaten symbols.
-    fn eat_while<F>(&mut self, mut predicate: F) -> usize
-    where
-        F: FnMut(char) -> bool,
-    {
-        let mut eaten: usize = 0;
+    fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
         while predicate(self.first()) && !self.is_eof() {
-            eaten += 1;
             self.bump();
         }
-
-        eaten
     }
 }

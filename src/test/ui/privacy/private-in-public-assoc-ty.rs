@@ -21,15 +21,15 @@ mod m {
     // "Private-in-public in associated types is hard error" in RFC 2145
     // applies only to the aliased types, not bounds.
     pub trait PubTr {
+        type Alias1: PrivTr;
         //~^ WARN private trait `PrivTr` in public interface
         //~| WARN this was previously accepted
-        //~| WARN private type `Priv` in public interface
-        //~| WARN private type `Priv` in public interface
-        //~| WARN this was previously accepted
-        //~| WARN this was previously accepted
-        type Alias1: PrivTr;
         type Alias2: PubTrAux1<Priv> = u8;
+        //~^ WARN private type `Priv` in public interface
+        //~| WARN this was previously accepted
         type Alias3: PubTrAux2<A = Priv> = u8;
+        //~^ WARN private type `Priv` in public interface
+        //~| WARN this was previously accepted
 
         type Alias4 = Priv;
         //~^ ERROR private type `Priv` in public interface

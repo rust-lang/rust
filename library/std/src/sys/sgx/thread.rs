@@ -51,7 +51,7 @@ impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let mut queue_lock = task_queue::lock();
-        usercalls::launch_thread()?;
+        unsafe { usercalls::launch_thread()? };
         let (task, handle) = task_queue::Task::new(p);
         queue_lock.push(task);
         Ok(Thread(handle))

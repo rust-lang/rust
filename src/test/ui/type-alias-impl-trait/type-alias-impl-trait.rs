@@ -70,14 +70,14 @@ fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
 }
 
 trait Trait {}
-type GenericBound<'a, T: Trait> = impl Sized + 'a;
+type GenericBound<'a, T: Trait + 'a> = impl Sized + 'a;
 
 fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
     t
 }
 
 mod pass_through {
-    pub type Passthrough<T> = impl Sized + 'static;
+    pub type Passthrough<T: 'static> = impl Sized + 'static;
 
     fn define_passthrough<T: 'static>(t: T) -> Passthrough<T> {
         t

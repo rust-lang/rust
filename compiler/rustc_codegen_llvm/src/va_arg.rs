@@ -52,7 +52,7 @@ fn emit_direct_ptr_va_arg(
     let next = bx.inbounds_gep(addr, &[full_direct_size]);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
-    if size.bytes() < slot_size.bytes() && &*bx.tcx().sess.target.target.target_endian == "big" {
+    if size.bytes() < slot_size.bytes() && &*bx.tcx().sess.target.target_endian == "big" {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
         let adjusted = bx.inbounds_gep(addr, &[adjusted_size]);
         (bx.bitcast(adjusted, bx.cx().type_ptr_to(llty)), addr_align)
@@ -105,7 +105,7 @@ fn emit_aapcs_va_arg(
     let mut end = bx.build_sibling_block("va_arg.end");
     let zero = bx.const_i32(0);
     let offset_align = Align::from_bytes(4).unwrap();
-    assert!(&*bx.tcx().sess.target.target.target_endian == "little");
+    assert!(&*bx.tcx().sess.target.target_endian == "little");
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
     let (reg_off, reg_top_index, slot_size) = if gr_type {
@@ -171,8 +171,8 @@ pub(super) fn emit_va_arg(
 ) -> &'ll Value {
     // Determine the va_arg implementation to use. The LLVM va_arg instruction
     // is lacking in some instances, so we should only use it as a fallback.
-    let target = &bx.cx.tcx.sess.target.target;
-    let arch = &bx.cx.tcx.sess.target.target.arch;
+    let target = &bx.cx.tcx.sess.target;
+    let arch = &bx.cx.tcx.sess.target.arch;
     match (&**arch, target.options.is_like_windows) {
         // Windows x86
         ("x86", true) => {

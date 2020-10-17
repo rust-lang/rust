@@ -184,7 +184,7 @@ impl<'a> GccLinker<'a> {
         // * On OSX they have their own linker, not binutils'
         // * For WebAssembly the only functional linker is LLD, which doesn't
         //   support hint flags
-        !self.sess.target.target.options.is_like_osx && self.sess.target.target.arch != "wasm32"
+        !self.sess.target.options.is_like_osx && self.sess.target.arch != "wasm32"
     }
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -221,10 +221,8 @@ impl<'a> GccLinker<'a> {
         let opt_level = match self.sess.opts.optimize {
             config::OptLevel::No => "O0",
             config::OptLevel::Less => "O1",
-            config::OptLevel::Default => "O2",
+            config::OptLevel::Default | config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
             config::OptLevel::Aggressive => "O3",
-            config::OptLevel::Size => "Os",
-            config::OptLevel::SizeMin => "Oz",
         };
 
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
@@ -234,7 +232,7 @@ impl<'a> GccLinker<'a> {
 
     fn build_dylib(&mut self, out_filename: &Path) {
         // On mac we need to tell the linker to let this library be rpathed
-        if self.sess.target.target.options.is_like_osx {
+        if self.sess.target.options.is_like_osx {
             self.cmd.arg("-dynamiclib");
             self.linker_arg("-dylib");
 
@@ -250,7 +248,7 @@ impl<'a> GccLinker<'a> {
             }
         } else {
             self.cmd.arg("-shared");
-            if self.sess.target.target.options.is_like_windows {
+            if self.sess.target.options.is_like_windows {
                 // The output filename already contains `dll_suffix` so
                 // the resulting import library will have a name in the
                 // form of libfoo.dll.a
@@ -258,9 +256,9 @@ impl<'a> GccLinker<'a> {
                     out_filename.file_name().and_then(|file| file.to_str()).map(|file| {
                         format!(
                             "{}{}{}",
-                            self.sess.target.target.options.staticlib_prefix,
+                            self.sess.target.options.staticlib_prefix,
                             file,
-                            self.sess.target.target.options.staticlib_suffix
+                            self.sess.target.options.staticlib_suffix
                         )
                     });
                 if let Some(implib_name) = implib_name {
@@ -282,7 +280,7 @@ impl<'a> Linker for GccLinker<'a> {
     fn set_output_kind(&mut self, output_kind: LinkOutputKind, out_filename: &Path) {
         match output_kind {
             LinkOutputKind::DynamicNoPicExe => {
-                if !self.is_ld && self.sess.target.target.options.linker_is_gnu {
+                if !self.is_ld && self.sess.target.options.linker_is_gnu {
                     self.cmd.arg("-no-pie");
                 }
             }
@@ -293,7 +291,7 @@ impl<'a> Linker for GccLinker<'a> {
             LinkOutputKind::StaticNoPicExe => {
                 // `-static` works for both gcc wrapper and ld.
                 self.cmd.arg("-static");
-                if !self.is_ld && self.sess.target.target.options.linker_is_gnu {
+                if !self.is_ld && self.sess.target.options.linker_is_gnu {
                     self.cmd.arg("-no-pie");
                 }
             }
@@ -322,7 +320,7 @@ impl<'a> Linker for GccLinker<'a> {
         // any `#[link]` attributes in the `libc` crate, see #72782 for details.
         // FIXME: Switch to using `#[link]` attributes in the `libc` crate
         // similarly to other targets.
-        if self.sess.target.target.target_os == "vxworks"
+        if self.sess.target.target_os == "vxworks"
             && matches!(
                 output_kind,
                 LinkOutputKind::StaticNoPicExe
@@ -387,7 +385,7 @@ impl<'a> Linker for GccLinker<'a> {
     // functions, etc.
     fn link_whole_staticlib(&mut self, lib: Symbol, search_path: &[PathBuf]) {
         self.hint_static();
-        let target = &self.sess.target.target;
+        let target = &self.sess.target;
         if !target.options.is_like_osx {
             self.linker_arg("--whole-archive").cmd.arg(format!("-l{}", lib));
             self.linker_arg("--no-whole-archive");
@@ -402,7 +400,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn link_whole_rlib(&mut self, lib: &Path) {
         self.hint_static();
-        if self.sess.target.target.options.is_like_osx {
+        if self.sess.target.options.is_like_osx {
             self.linker_arg("-force_load");
             self.linker_arg(&lib);
         } else {
@@ -426,9 +424,9 @@ impl<'a> Linker for GccLinker<'a> {
         // -dead_strip can't be part of the pre_link_args because it's also used
         // for partial linking when using multiple codegen units (-r).  So we
         // insert it here.
-        if self.sess.target.target.options.is_like_osx {
+        if self.sess.target.options.is_like_osx {
             self.linker_arg("-dead_strip");
-        } else if self.sess.target.target.options.is_like_solaris {
+        } else if self.sess.target.options.is_like_solaris {
             self.linker_arg("-zignore");
 
         // If we're building a dylib, we don't use --gc-sections because LLVM
@@ -442,7 +440,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn optimize(&mut self) {
-        if !self.sess.target.target.options.linker_is_gnu {
+        if !self.sess.target.options.linker_is_gnu {
             return;
         }
 
@@ -456,7 +454,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn pgo_gen(&mut self) {
-        if !self.sess.target.target.options.linker_is_gnu {
+        if !self.sess.target.options.linker_is_gnu {
             return;
         }
 
@@ -506,7 +504,7 @@ impl<'a> Linker for GccLinker<'a> {
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
         // Symbol visibility in object files typically takes care of this.
         if crate_type == CrateType::Executable
-            && self.sess.target.target.options.override_export_symbols.is_none()
+            && self.sess.target.options.override_export_symbols.is_none()
         {
             return;
         }
@@ -515,7 +513,7 @@ impl<'a> Linker for GccLinker<'a> {
         // The object files have far more public symbols than we actually want to export,
         // so we hide them all here.
 
-        if !self.sess.target.target.options.limit_rdylib_exports {
+        if !self.sess.target.options.limit_rdylib_exports {
             return;
         }
 
@@ -523,13 +521,13 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
-        let is_windows = self.sess.target.target.options.is_like_windows;
+        let is_windows = self.sess.target.options.is_like_windows;
         let mut arg = OsString::new();
         let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
 
         debug!("EXPORTED SYMBOLS:");
 
-        if self.sess.target.target.options.is_like_osx {
+        if self.sess.target.options.is_like_osx {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
@@ -575,12 +573,12 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
 
-        if self.sess.target.target.options.is_like_osx {
+        if self.sess.target.options.is_like_osx {
             if !self.is_ld {
                 arg.push("-Wl,")
             }
             arg.push("-exported_symbols_list,");
-        } else if self.sess.target.target.options.is_like_solaris {
+        } else if self.sess.target.options.is_like_solaris {
             if !self.is_ld {
                 arg.push("-Wl,")
             }
@@ -1205,7 +1203,7 @@ impl<'a> Linker for WasmLd<'a> {
 }
 
 fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
-    if let Some(ref exports) = tcx.sess.target.target.options.override_export_symbols {
+    if let Some(ref exports) = tcx.sess.target.options.override_export_symbols {
         return exports.clone();
     }
 
@@ -1295,7 +1293,7 @@ impl<'a> Linker for PtxLinker<'a> {
         // Provide the linker with fallback to internal `target-cpu`.
         self.cmd.arg("--fallback-arch").arg(match self.sess.opts.cg.target_cpu {
             Some(ref s) => s,
-            None => &self.sess.target.target.options.cpu,
+            None => &self.sess.target.options.cpu,
         });
     }
 

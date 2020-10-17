@@ -1365,6 +1365,8 @@ pub(crate) mod builtin {
     }
 
     /// Attribute macro applied to a static to register it as a global allocator.
+    ///
+    /// See also [`std::alloc::GlobalAlloc`](../std/alloc/trait.GlobalAlloc.html).
     #[stable(feature = "global_allocator", since = "1.28.0")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]

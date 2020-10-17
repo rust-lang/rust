@@ -1060,13 +1060,13 @@ crate fn compare_const_vals<'tcx>(
         use rustc_apfloat::Float;
         return match *ty.kind() {
             ty::Float(ast::FloatTy::F32) => {
-                let l = ::rustc_apfloat::ieee::Single::from_bits(a);
-                let r = ::rustc_apfloat::ieee::Single::from_bits(b);
+                let l = rustc_apfloat::ieee::Single::from_bits(a);
+                let r = rustc_apfloat::ieee::Single::from_bits(b);
                 l.partial_cmp(&r)
             }
             ty::Float(ast::FloatTy::F64) => {
-                let l = ::rustc_apfloat::ieee::Double::from_bits(a);
-                let r = ::rustc_apfloat::ieee::Double::from_bits(b);
+                let l = rustc_apfloat::ieee::Double::from_bits(a);
+                let r = rustc_apfloat::ieee::Double::from_bits(b);
                 l.partial_cmp(&r)
             }
             ty::Int(ity) => {

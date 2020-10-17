@@ -1,10 +1,10 @@
+use crate::utils::qualify_min_const_fn::is_min_const_fn;
 use crate::utils::{fn_has_unsatisfiable_preds, has_drop, is_entrypoint_fn, span_lint, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
-use crate::utils::qualify_min_const_fn::is_min_const_fn;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
@@ -118,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 
         let mir = cx.tcx.optimized_mir(def_id);
 
-        if let Err((span, err)) = is_min_const_fn(cx.tcx, def_id.to_def_id(), &mir) {
+        if let Err((span, err)) = is_min_const_fn(cx.tcx, &mir) {
             if rustc_mir::const_eval::is_min_const_fn(cx.tcx, def_id.to_def_id()) {
                 cx.tcx.sess.span_err(span, &err);
             }

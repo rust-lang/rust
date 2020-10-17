@@ -5,6 +5,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::util;
 use rustc_middle::ty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -327,7 +328,7 @@ fn compare_predicate_entailment<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let fcx = FnCtxt::new(&inh, param_env, impl_m_hir_id);
-        fcx.regionck_item(impl_m_hir_id, impl_m_span, &[]);
+        fcx.regionck_item(impl_m_hir_id, impl_m_span, trait_sig.inputs_and_output);
 
         Ok(())
     })
@@ -1052,7 +1053,7 @@ crate fn compare_ty_impl<'tcx>(
 
         compare_type_predicate_entailment(tcx, impl_ty, impl_ty_span, trait_ty, impl_trait_ref)?;
 
-        compare_projection_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)
+        check_type_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)
     })();
 }
 
@@ -1170,20 +1171,13 @@ fn compare_type_predicate_entailment<'tcx>(
 /// For default associated types the normalization is not possible (the value
 /// from the impl could be overridden). We also can't normalize generic
 /// associated types (yet) because they contain bound parameters.
-fn compare_projection_bounds<'tcx>(
+pub fn check_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ty: &ty::AssocItem,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorReported> {
-    let have_gats = tcx.features().generic_associated_types;
-    if impl_ty.defaultness.is_final() && !have_gats {
-        // For "final", non-generic associate type implementations, we
-        // don't need this as described above.
-        return Ok(());
-    }
-
     // Given
     //
     // impl<A, B> Foo<u32> for (A, B) {
@@ -1211,16 +1205,27 @@ fn compare_projection_bounds<'tcx>(
     // ParamEnv for normalization specifically.
     let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
-        predicates.push(
-            ty::Binder::dummy(ty::ProjectionPredicate {
-                projection_ty: ty::ProjectionTy {
-                    item_def_id: trait_ty.def_id,
-                    substs: rebased_substs,
-                },
-                ty: impl_ty_value,
-            })
-            .to_predicate(tcx),
-        );
+        match impl_ty_value.kind() {
+            ty::Projection(proj)
+                if proj.item_def_id == trait_ty.def_id && proj.substs == rebased_substs =>
+            {
+                // Don't include this predicate if the projected type is
+                // exactly the same as the projection. This can occur in
+                // (somewhat dubious) code like this:
+                //
+                // impl<T> X for T where T: X { type Y = <T as X>::Y; }
+            }
+            _ => predicates.push(
+                ty::Binder::dummy(ty::ProjectionPredicate {
+                    projection_ty: ty::ProjectionTy {
+                        item_def_id: trait_ty.def_id,
+                        substs: rebased_substs,
+                    },
+                    ty: impl_ty_value,
+                })
+                .to_predicate(tcx),
+            ),
+        };
         ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing)
     };
 
@@ -1231,33 +1236,38 @@ fn compare_projection_bounds<'tcx>(
 
         let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-        let cause = ObligationCause::new(
-            impl_ty_span,
-            impl_ty_hir_id,
-            ObligationCauseCode::ItemObligation(trait_ty.def_id),
-        );
+        let mk_cause = |span| {
+            ObligationCause::new(
+                impl_ty_span,
+                impl_ty_hir_id,
+                ObligationCauseCode::BindingObligation(trait_ty.def_id, span),
+            )
+        };
 
-        let predicates = tcx.projection_predicates(trait_ty.def_id);
-        debug!("compare_projection_bounds: projection_predicates={:?}", predicates);
+        let obligations = tcx
+            .explicit_item_bounds(trait_ty.def_id)
+            .iter()
+            .map(|&(bound, span)| {
+                let concrete_ty_bound = bound.subst(tcx, rebased_substs);
+                debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
-        for predicate in predicates {
-            let concrete_ty_predicate = predicate.subst(tcx, rebased_substs);
-            debug!("compare_projection_bounds: concrete predicate = {:?}", concrete_ty_predicate);
+                traits::Obligation::new(mk_cause(span), param_env, concrete_ty_bound)
+            })
+            .collect();
+        debug!("check_type_bounds: item_bounds={:?}", obligations);
 
+        for mut obligation in util::elaborate_obligations(tcx, obligations) {
             let traits::Normalized { value: normalized_predicate, obligations } = traits::normalize(
                 &mut selcx,
                 normalize_param_env,
                 normalize_cause.clone(),
-                &concrete_ty_predicate,
+                &obligation.predicate,
             );
             debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
+            obligation.predicate = normalized_predicate;
 
             inh.register_predicates(obligations);
-            inh.register_predicate(traits::Obligation::new(
-                cause.clone(),
-                param_env,
-                normalized_predicate,
-            ));
+            inh.register_predicate(obligation);
         }
 
         // Check that all obligations are satisfied by the implementation's
@@ -1270,7 +1280,11 @@ fn compare_projection_bounds<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
-        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, &[]);
+        let implied_bounds = match impl_ty.container {
+            ty::TraitContainer(_) => vec![],
+            ty::ImplContainer(def_id) => fcx.impl_implied_bounds(def_id, impl_ty_span),
+        };
+        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, &implied_bounds);
 
         Ok(())
     })

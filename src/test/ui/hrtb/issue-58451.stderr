@@ -1,16 +1,16 @@
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/issue-58451.rs:12:9
    |
-LL | / fn f<I>(i: I)
-LL | | where
-LL | |     I: IntoIterator,
-LL | |     I::Item: for<'a> Into<&'a ()>,
-   | |__________________________________- defined here
-...
-LL |       f(&[f()]);
-   |           ^-- supplied 0 arguments
-   |           |
-   |           expected 1 argument
+LL |     f(&[f()]);
+   |         ^-- supplied 0 arguments
+   |         |
+   |         expected 1 argument
+   |
+note: function defined here
+  --> $DIR/issue-58451.rs:5:4
+   |
+LL | fn f<I>(i: I)
+   |    ^    ----
 
 error: aborting due to previous error
 

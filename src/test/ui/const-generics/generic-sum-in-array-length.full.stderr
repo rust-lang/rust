@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/generic-sum-in-array-length.rs:7:45
+   |
+LL | fn foo<const A: usize, const B: usize>(bar: [usize; A + B]) {}
+   |                                             ^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+

@@ -6,7 +6,7 @@
 //~^^ WARNING the feature `generic_associated_types` is incomplete
 
 trait X {
-    type U<'a>: PartialEq<&'a Self>;
+    type U<'a>: PartialEq<&'a Self> where Self: 'a;
     fn unsafe_compare<'b>(x: Option<Self::U<'b>>, y: Option<&'b Self>) {
         match (x, y) {
             (Some(a), Some(b)) => a == b,

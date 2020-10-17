@@ -24,16 +24,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Goto { target } => self.go_to_block(target),
 
-            SwitchInt { ref discr, ref values, ref targets, switch_ty } => {
+            SwitchInt { ref discr, ref targets, switch_ty } => {
                 let discr = self.read_immediate(self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
                 assert_eq!(discr.layout.ty, switch_ty);
 
                 // Branch to the `otherwise` case by default, if no match is found.
-                assert!(!targets.is_empty());
-                let mut target_block = targets[targets.len() - 1];
+                assert!(!targets.iter().is_empty());
+                let mut target_block = targets.otherwise();
 
-                for (index, &const_int) in values.iter().enumerate() {
+                for (const_int, target) in targets.iter() {
                     // Compare using binary_op, to also support pointer values
                     let res = self
                         .overflowing_binary_op(
@@ -43,7 +43,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         )?
                         .0;
                     if res.to_bool()? {
-                        target_block = targets[index];
+                        target_block = target;
                         break;
                     }
                 }

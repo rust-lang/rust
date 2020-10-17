@@ -81,19 +81,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx.closure_base_def_id(expr_def_id.to_def_id()),
         );
 
-        let tupled_upvars_ty =
-            self.tcx.mk_tup(self.tcx.upvars_mentioned(expr_def_id).iter().flat_map(|upvars| {
-                upvars.iter().map(|(&var_hir_id, _)| {
-                    // Create type variables (for now) to represent the transformed
-                    // types of upvars. These will be unified during the upvar
-                    // inference phase (`upvar.rs`).
-                    self.infcx.next_ty_var(TypeVariableOrigin {
-                        // FIXME(eddyb) distinguish upvar inference variables from the rest.
-                        kind: TypeVariableOriginKind::ClosureSynthetic,
-                        span: self.tcx.hir().span(var_hir_id),
-                    })
-                })
-            }));
+        let tupled_upvars_ty = self.infcx.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::ClosureSynthetic,
+            span: self.tcx.hir().span(expr.hir_id),
+        });
 
         if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
         {

@@ -13,12 +13,14 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem};
+use rustc_hir::{
+    self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID,
+};
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 
 pub(crate) fn target_from_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -260,23 +262,53 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn doc_alias_str_error(&self, meta: &NestedMetaItem) {
+        self.tcx
+            .sess
+            .struct_span_err(
+                meta.span(),
+                "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+            )
+            .emit();
+    }
+
     fn check_doc_alias(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
         if let Some(mi) = attr.meta() {
             if let Some(list) = mi.meta_item_list() {
                 for meta in list {
                     if meta.has_name(sym::alias) {
-                        if !meta.is_value_str()
-                            || meta
-                                .value_str()
-                                .map(|s| s.to_string())
-                                .unwrap_or_else(String::new)
-                                .is_empty()
+                        if !meta.is_value_str() {
+                            self.doc_alias_str_error(meta);
+                            return false;
+                        }
+                        let doc_alias =
+                            meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
+                        if doc_alias.is_empty() {
+                            self.doc_alias_str_error(meta);
+                            return false;
+                        }
+                        if let Some(c) = doc_alias
+                            .chars()
+                            .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
                         {
                             self.tcx
                                 .sess
                                 .struct_span_err(
                                     meta.span(),
-                                    "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+                                    &format!(
+                                        "{:?} character isn't allowed in `#[doc(alias = \"...\")]`",
+                                        c,
+                                    ),
+                                )
+                                .emit();
+                            return false;
+                        }
+                        if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    "`#[doc(alias = \"...\")]` cannot start or end with ' '",
                                 )
                                 .emit();
                             return false;
@@ -312,6 +344,18 @@ impl CheckAttrVisitor<'tcx> {
                                     &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
                                 )
                                 .emit();
+                            return false;
+                        }
+                        if CRATE_HIR_ID == hir_id {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    "`#![doc(alias = \"...\")]` isn't allowed as a crate \
+                                     level attribute",
+                                )
+                                .emit();
+                            return false;
                         }
                     }
                 }
@@ -788,9 +832,46 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
     }
 }
 
+fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
+    const ATTRS_TO_CHECK: &[Symbol] = &[
+        sym::macro_export,
+        sym::repr,
+        sym::path,
+        sym::automatically_derived,
+        sym::start,
+        sym::main,
+    ];
+
+    for attr in attrs {
+        for attr_to_check in ATTRS_TO_CHECK {
+            if tcx.sess.check_name(attr, *attr_to_check) {
+                tcx.sess
+                    .struct_span_err(
+                        attr.span,
+                        &format!(
+                            "`{}` attribute cannot be used at crate level",
+                            attr_to_check.to_ident_string()
+                        ),
+                    )
+                    .emit();
+            }
+        }
+    }
+}
+
 fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir()
         .visit_item_likes_in_module(module_def_id, &mut CheckAttrVisitor { tcx }.as_deep_visitor());
+    if module_def_id.is_top_level_module() {
+        CheckAttrVisitor { tcx }.check_attributes(
+            CRATE_HIR_ID,
+            tcx.hir().krate_attrs(),
+            &DUMMY_SP,
+            Target::Mod,
+            None,
+        );
+        check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

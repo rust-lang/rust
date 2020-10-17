@@ -11,6 +11,8 @@ LL |     for i in false..true {}
    |              ^^^^^^^^^^^ the trait `Step` is not implemented for `bool`
    |
    = note: required because of the requirements on the impl of `Iterator` for `std::ops::Range<bool>`
+   = note: required because of the requirements on the impl of `IntoIterator` for `std::ops::Range<bool>`
+   = note: required by `into_iter`
 
 error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
   --> $DIR/range-1.rs:14:17

@@ -6,7 +6,6 @@ use std::{io, ops, str};
 
 use regex::Regex;
 use rustc_graphviz as dot;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
@@ -33,7 +32,6 @@ where
     A: Analysis<'tcx>,
 {
     body: &'a Body<'tcx>,
-    def_id: DefId,
     results: &'a Results<'tcx, A>,
     style: OutputStyle,
 }
@@ -42,13 +40,8 @@ impl<A> Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub fn new(
-        body: &'a Body<'tcx>,
-        def_id: DefId,
-        results: &'a Results<'tcx, A>,
-        style: OutputStyle,
-    ) -> Self {
-        Formatter { body, def_id, results, style }
+    pub fn new(body: &'a Body<'tcx>, results: &'a Results<'tcx, A>, style: OutputStyle) -> Self {
+        Formatter { body, results, style }
     }
 }
 
@@ -77,7 +70,7 @@ where
     type Edge = CfgEdge;
 
     fn graph_id(&self) -> dot::Id<'_> {
-        let name = graphviz_safe_def_name(self.def_id);
+        let name = graphviz_safe_def_name(self.body.source.def_id());
         dot::Id::new(format!("graph_for_def_id_{}", name)).unwrap()
     }
 

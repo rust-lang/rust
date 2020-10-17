@@ -543,7 +543,7 @@ impl<'a, 'tcx> DecoderWithPosition for CacheDecoder<'a, 'tcx> {
 // tag matches and the correct amount of bytes was read.
 fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> Result<V, D::Error>
 where
-    T: Decodable<D> + Eq + ::std::fmt::Debug,
+    T: Decodable<D> + Eq + std::fmt::Debug,
     V: Decodable<D>,
     D: DecoderWithPosition,
 {
@@ -599,29 +599,6 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
         // This may overwrite the entry, but it should overwrite with the same value.
         tcx.ty_rcache.borrow_mut().insert_same(cache_key, ty);
         Ok(ty)
-    }
-
-    fn cached_predicate_for_shorthand<F>(
-        &mut self,
-        shorthand: usize,
-        or_insert_with: F,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<ty::Predicate<'tcx>, Self::Error>,
-    {
-        let tcx = self.tcx();
-
-        let cache_key =
-            ty::CReaderCacheKey { cnum: CrateNum::ReservedForIncrCompCache, pos: shorthand };
-
-        if let Some(&pred) = tcx.pred_rcache.borrow().get(&cache_key) {
-            return Ok(pred);
-        }
-
-        let pred = or_insert_with(self)?;
-        // This may overwrite the entry, but it should overwrite with the same value.
-        tcx.pred_rcache.borrow_mut().insert_same(cache_key, pred);
-        Ok(pred)
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
@@ -1023,7 +1000,7 @@ where
     let _timer = tcx
         .sess
         .prof
-        .extra_verbose_generic_activity("encode_query_results_for", ::std::any::type_name::<Q>());
+        .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
 
     let state = Q::query_state(tcx);
     assert!(state.all_inactive());

@@ -2200,7 +2200,6 @@ impl<T: fmt::Display + ?Sized> ToString for T {
         let mut buf = String::new();
         buf.write_fmt(format_args!("{}", self))
             .expect("a Display implementation returned an error unexpectedly");
-        buf.shrink_to_fit();
         buf
     }
 }

@@ -8,5 +8,5 @@
 - [Linking to items by name](linking-to-items-by-name.md)
 - [Lints](lints.md)
 - [Passes](passes.md)
-- [Advanced Features](advanced-features.md)
+- [Advanced features](advanced-features.md)
 - [Unstable features](unstable-features.md)

@@ -5,7 +5,7 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 350 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 400 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 

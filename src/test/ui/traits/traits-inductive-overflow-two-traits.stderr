@@ -1,5 +1,19 @@
+error[E0277]: `T` cannot be shared between threads safely
+  --> $DIR/traits-inductive-overflow-two-traits.rs:11:5
+   |
+LL |     type X: Trait;
+   |             ----- required by this bound in `Magic::X`
+...
+LL |     type X = Self;
+   |     ^^^^^^^^^^^^^^ `T` cannot be shared between threads safely
+   |
+help: consider further restricting this bound
+   |
+LL | impl<T: Magic + Sync> Magic for T {
+   |               ^^^^^^
+
 error[E0275]: overflow evaluating the requirement `*mut (): Magic`
-  --> $DIR/traits-inductive-overflow-two-traits.rs:19:5
+  --> $DIR/traits-inductive-overflow-two-traits.rs:20:5
    |
 LL | fn wizard<T: Magic>() { check::<<T as Magic>::X>(); }
    |              ----- required by this bound in `wizard`
@@ -7,6 +21,7 @@ LL | fn wizard<T: Magic>() { check::<<T as Magic>::X>(); }
 LL |     wizard::<*mut ()>();
    |     ^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0275`.
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.

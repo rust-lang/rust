@@ -3,11 +3,13 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
+#![feature(array_methods)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(or_patterns)]
+#![feature(peekable_next_if)]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]

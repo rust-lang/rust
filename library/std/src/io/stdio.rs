@@ -9,6 +9,7 @@ use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
 use crate::lazy::SyncOnceCell;
+use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common;
@@ -16,18 +17,32 @@ use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
 thread_local! {
-    /// Stdout used by print! and println! macros
+    /// Used by the test crate to capture the output of the print! and println! macros.
     static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
 
 thread_local! {
-    /// Stderr used by eprint! and eprintln! macros, and panics
+    /// Used by the test crate to capture the output of the eprint! and eprintln! macros, and panics.
     static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
         RefCell::new(None)
     }
 }
+
+/// Flag to indicate LOCAL_STDOUT and/or LOCAL_STDERR is used.
+///
+/// If both are None and were never set on any thread, this flag is set to
+/// false, and both LOCAL_STDOUT and LOCAL_STDOUT can be safely ignored on all
+/// threads, saving some time and memory registering an unused thread local.
+///
+/// Note about memory ordering: This contains information about whether two
+/// thread local variables might be in use. Although this is a global flag, the
+/// memory ordering between threads does not matter: we only want this flag to
+/// have a consistent order between set_print/set_panic and print_to *within
+/// the same thread*. Within the same thread, things always have a perfectly
+/// consistent order. So Ordering::Relaxed is fine.
+static LOCAL_STREAMS: AtomicBool = AtomicBool::new(false);
 
 /// A handle to a raw instance of the standard input stream of this process.
 ///
@@ -890,10 +905,18 @@ impl fmt::Debug for StderrLock<'_> {
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
-    })
+    if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        // LOCAL_STDERR is definitely None since LOCAL_STREAMS is false.
+        return None;
+    }
+    let s = LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
+        |mut s| {
+            let _ = s.flush();
+            Some(s)
+        },
+    );
+    LOCAL_STREAMS.store(true, Ordering::Relaxed);
+    s
 }
 
 /// Resets the thread-local stdout handle to the specified writer
@@ -913,10 +936,18 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 #[doc(hidden)]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
-    })
+    if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        // LOCAL_STDOUT is definitely None since LOCAL_STREAMS is false.
+        return None;
+    }
+    let s = LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
+        |mut s| {
+            let _ = s.flush();
+            Some(s)
+        },
+    );
+    LOCAL_STREAMS.store(true, Ordering::Relaxed);
+    s
 }
 
 /// Write `args` to output stream `local_s` if possible, `global_s`
@@ -937,20 +968,26 @@ fn print_to<T>(
 ) where
     T: Write,
 {
-    let result = local_s
-        .try_with(|s| {
-            // Note that we completely remove a local sink to write to in case
-            // our printing recursively panics/prints, so the recursive
-            // panic/print goes to the global sink instead of our local sink.
-            let prev = s.borrow_mut().take();
-            if let Some(mut w) = prev {
-                let result = w.write_fmt(args);
-                *s.borrow_mut() = Some(w);
-                return result;
-            }
-            global_s().write_fmt(args)
+    let result = LOCAL_STREAMS
+        .load(Ordering::Relaxed)
+        .then(|| {
+            local_s
+                .try_with(|s| {
+                    // Note that we completely remove a local sink to write to in case
+                    // our printing recursively panics/prints, so the recursive
+                    // panic/print goes to the global sink instead of our local sink.
+                    let prev = s.borrow_mut().take();
+                    if let Some(mut w) = prev {
+                        let result = w.write_fmt(args);
+                        *s.borrow_mut() = Some(w);
+                        return result;
+                    }
+                    global_s().write_fmt(args)
+                })
+                .ok()
         })
-        .unwrap_or_else(|_| global_s().write_fmt(args));
+        .flatten()
+        .unwrap_or_else(|| global_s().write_fmt(args));
 
     if let Err(e) = result {
         panic!("failed printing to {}: {}", label, e);

@@ -277,9 +277,9 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // If backtraces are enabled, also print the query stack
     let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
 
-    if backtrace {
-        TyCtxt::try_print_query_stack(&handler);
-    }
+    let num_frames = if backtrace { None } else { Some(2) };
+
+    TyCtxt::try_print_query_stack(&handler, num_frames);
 }
 
 fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<PathBuf> {
@@ -357,7 +357,7 @@ pub fn main() {
                 args.extend(vec!["--sysroot".into(), sys_root]);
             };
 
-            return rustc_driver::run_compiler(&args, &mut DefaultCallbacks, None, None, None);
+            return rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -420,6 +420,6 @@ pub fn main() {
         let mut default = DefaultCallbacks;
         let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
             if clippy_enabled { &mut clippy } else { &mut default };
-        rustc_driver::run_compiler(&args, callbacks, None, None, None)
+        rustc_driver::RunCompiler::new(&args, callbacks).run()
     }))
 }

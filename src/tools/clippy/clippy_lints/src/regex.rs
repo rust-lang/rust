@@ -143,7 +143,7 @@ fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
 
 fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     let mut parser = regex_syntax::ParserBuilder::new()
-        .unicode(utf8)
+        .unicode(true)
         .allow_invalid_utf8(!utf8)
         .build();
 

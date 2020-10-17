@@ -35,7 +35,9 @@ error: expected one of `!` or `[`, found `}`
   --> $DIR/issue-63135.rs:3:16
    |
 LL | fn i(n{...,f #
-   |                ^ expected one of `!` or `[`
+   |      -         ^ expected one of `!` or `[`
+   |      |
+   |      while parsing the fields for this pattern
 
 error: aborting due to 5 previous errors
 

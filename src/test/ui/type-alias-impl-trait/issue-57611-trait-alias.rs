@@ -16,6 +16,10 @@ struct X;
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
     //~^ ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
 
     fn bar(&self) -> Self::Bar {
         |x| x

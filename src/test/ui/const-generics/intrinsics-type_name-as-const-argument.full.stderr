@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/intrinsics-type_name-as-const-argument.rs:15:8
+   |
+LL |     T: Trait<{std::intrinsics::type_name::<T>()}>
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+

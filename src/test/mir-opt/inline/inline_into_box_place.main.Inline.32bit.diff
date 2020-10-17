@@ -17,7 +17,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/inline-into-box-place.rs:8:9: 8:11
           StorageLive(_2);                 // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
           _2 = Box(std::vec::Vec<u32>);    // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
--         (*_2) = Vec::<u32>::new() -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
+-         (*_2) = Vec::<u32>::new() -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 +         _4 = &mut (*_2);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 +         ((*_4).0: alloc::raw_vec::RawVec<u32>) = const alloc::raw_vec::RawVec::<u32> { ptr: Unique::<u32> { pointer: {0x4 as *const u32}, _marker: PhantomData::<u32> }, cap: 0_usize, alloc: std::alloc::Global }; // scope 2 at $SRC_DIR/alloc/src/vec.rs:LL:COL
 +                                          // ty::Const
@@ -27,34 +27,33 @@
 -                                          // + span: $DIR/inline-into-box-place.rs:8:33: 8:41
 -                                          // + user_ty: UserType(1)
 -                                          // + literal: Const { ty: fn() -> std::vec::Vec<u32> {std::vec::Vec::<u32>::new}, val: Value(Scalar(<ZST>)) }
+-     }
+- 
+-     bb1: {
 +                                          // + span: $SRC_DIR/alloc/src/vec.rs:LL:COL
 +                                          // + user_ty: UserType(0)
 +                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
 +         ((*_4).1: usize) = const 0_usize; // scope 2 at $SRC_DIR/alloc/src/vec.rs:LL:COL
-+         _1 = move _2;                    // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
-+         StorageDead(_2);                 // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
-+         _0 = const ();                   // scope 0 at $DIR/inline-into-box-place.rs:7:11: 9:2
-+         drop(_1) -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
+          _1 = move _2;                    // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
+          StorageDead(_2);                 // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
+          _0 = const ();                   // scope 0 at $DIR/inline-into-box-place.rs:7:11: 9:2
+-         drop(_1) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
++         drop(_1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
       }
   
-      bb1 (cleanup): {
-          resume;                          // scope 0 at $DIR/inline-into-box-place.rs:7:1: 9:2
-      }
-  
-      bb2: {
--         _1 = move _2;                    // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
--         StorageDead(_2);                 // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
--         _0 = const ();                   // scope 0 at $DIR/inline-into-box-place.rs:7:11: 9:2
--         drop(_1) -> [return: bb3, unwind: bb1]; // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
--     }
-- 
--     bb3: {
+-     bb2: {
++     bb1: {
           StorageDead(_1);                 // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/inline-into-box-place.rs:9:2: 9:2
+      }
+  
+-     bb3 (cleanup): {
++     bb2 (cleanup): {
+          resume;                          // scope 0 at $DIR/inline-into-box-place.rs:7:1: 9:2
 -     }
 - 
 -     bb4 (cleanup): {
--         _3 = alloc::alloc::box_free::<Vec<u32>>(move (_2.0: std::ptr::Unique<std::vec::Vec<u32>>)) -> bb1; // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
+-         _3 = alloc::alloc::box_free::<Vec<u32>>(move (_2.0: std::ptr::Unique<std::vec::Vec<u32>>)) -> bb3; // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:42: 8:43
 -                                          // + literal: Const { ty: unsafe fn(std::ptr::Unique<std::vec::Vec<u32>>) {alloc::alloc::box_free::<std::vec::Vec<u32>>}, val: Value(Scalar(<ZST>)) }

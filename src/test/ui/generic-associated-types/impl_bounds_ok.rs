@@ -10,11 +10,12 @@ trait Foo {
     type C where Self: Clone;
 }
 
+#[derive(Clone)]
 struct Fooy;
 
 impl Foo for Fooy {
     type A<'a> = (&'a ());
-    type B<'a, 'b> = (&'a(), &'b ());
+    type B<'a: 'b, 'b> = (&'a(), &'b ());
     type C = String;
 }
 
@@ -24,7 +25,7 @@ struct Fooer<T>(T);
 impl<T> Foo for Fooer<T> {
     type A<'x> where T: 'x = (&'x ());
     type B<'u, 'v> where 'u: 'v = (&'v &'u ());
-    type C where Self: ToOwned = String;
+    type C where Self: Clone + ToOwned = String;
 }
 
 fn main() {}

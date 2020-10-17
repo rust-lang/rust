@@ -13,7 +13,7 @@ type ArgsStore = Vec<OsString>;
 #[cfg_attr(test, allow(dead_code))]
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
     if argc != 0 {
-        let args = alloc::User::<[ByteBuffer]>::from_raw_parts(argv as _, argc as _);
+        let args = unsafe { alloc::User::<[ByteBuffer]>::from_raw_parts(argv as _, argc as _) };
         let args = args
             .iter()
             .map(|a| OsString::from_inner(Buf { inner: a.copy_user_buffer() }))

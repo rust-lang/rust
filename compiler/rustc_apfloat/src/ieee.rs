@@ -1511,11 +1511,16 @@ impl<S: Semantics, T: Semantics> FloatConvert<IeeeFloat<T>> for IeeeFloat<S> {
                 sig::set_bit(&mut r.sig, T::PRECISION - 1);
             }
 
-            // gcc forces the Quiet bit on, which means (float)(double)(float_sNan)
-            // does not give you back the same bits. This is dubious, and we
-            // don't currently do it. You're really supposed to get
-            // an invalid operation signal at runtime, but nobody does that.
-            status = Status::OK;
+            // Convert of sNaN creates qNaN and raises an exception (invalid op).
+            // This also guarantees that a sNaN does not become Inf on a truncation
+            // that loses all payload bits.
+            if self.is_signaling() {
+                // Quiet signaling NaN.
+                sig::set_bit(&mut r.sig, T::QNAN_BIT);
+                status = Status::INVALID_OP;
+            } else {
+                status = Status::OK;
+            }
         } else {
             *loses_info = false;
             status = Status::OK;

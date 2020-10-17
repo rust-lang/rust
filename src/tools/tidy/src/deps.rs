@@ -116,7 +116,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "libz-sys",
     "lock_api",
     "log",
-    "log_settings",
     "maybe-uninit",
     "md-5",
     "measureme",

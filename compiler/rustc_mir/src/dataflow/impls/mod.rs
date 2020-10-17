@@ -358,6 +358,10 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
+        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+            return;
+        }
+
         let enum_ = discr.place().and_then(|discr| {
             switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
         });
@@ -469,6 +473,10 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         discr: &mir::Operand<'tcx>,
         edge_effects: &mut impl SwitchIntEdgeEffects<G>,
     ) {
+        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+            return;
+        }
+
         if !self.mark_inactive_variants_as_uninit {
             return;
         }

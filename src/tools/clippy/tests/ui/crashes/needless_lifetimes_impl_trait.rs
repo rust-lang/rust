@@ -1,5 +1,3 @@
-// run-pass
-
 #![deny(clippy::needless_lifetimes)]
 #![allow(dead_code)]
 

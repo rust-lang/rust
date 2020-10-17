@@ -4,7 +4,6 @@ use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
-use rustc_span::Span;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -94,7 +93,11 @@ pub fn elaborate_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let obligations = predicates.map(|predicate| predicate_obligation(predicate, None)).collect();
+    let obligations = predicates
+        .map(|predicate| {
+            predicate_obligation(predicate, ty::ParamEnv::empty(), ObligationCause::dummy())
+        })
+        .collect();
     elaborate_obligations(tcx, obligations)
 }
 
@@ -109,15 +112,10 @@ pub fn elaborate_obligations<'tcx>(
 
 fn predicate_obligation<'tcx>(
     predicate: ty::Predicate<'tcx>,
-    span: Option<Span>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
 ) -> PredicateObligation<'tcx> {
-    let cause = if let Some(span) = span {
-        ObligationCause::dummy_with_span(span)
-    } else {
-        ObligationCause::dummy()
-    };
-
-    Obligation { cause, param_env: ty::ParamEnv::empty(), recursion_depth: 0, predicate }
+    Obligation { cause, param_env, recursion_depth: 0, predicate }
 }
 
 impl Elaborator<'tcx> {
@@ -133,10 +131,11 @@ impl Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|&(pred, span)| {
+                let obligations = predicates.predicates.iter().map(|&(pred, _)| {
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &ty::Binder::bind(data.trait_ref)),
-                        Some(span),
+                        obligation.param_env,
+                        obligation.cause.clone(),
                     )
                 });
                 debug!("super_predicates: data={:?}", data);
@@ -233,7 +232,13 @@ impl Elaborator<'tcx> {
                         })
                         .map(|predicate_kind| predicate_kind.to_predicate(tcx))
                         .filter(|&predicate| visited.insert(predicate))
-                        .map(|predicate| predicate_obligation(predicate, None)),
+                        .map(|predicate| {
+                            predicate_obligation(
+                                predicate,
+                                obligation.param_env,
+                                obligation.cause.clone(),
+                            )
+                        }),
                 );
             }
             ty::PredicateAtom::TypeWellFormedFromEnv(..) => {

@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_sugg;
+use crate::utils::{in_macro, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_ast::ast::{BindingMode, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;
@@ -69,11 +69,30 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
         if let [segment] = &path.segments[..];
         if segment.ident.name == kw::SelfUpper;
         then {
+            // In case we have a named lifetime, we check if the name comes from expansion.
+            // If it does, at this point we know the rest of the parameter was written by the user,
+            // so let them decide what the name of the lifetime should be.
+            // See #6089 for more details.
+            let mut applicability = Applicability::MachineApplicable;
             let self_param = match (binding_mode, mutbl) {
                 (Mode::Ref(None), Mutability::Mut) => "&mut self".to_string(),
-                (Mode::Ref(Some(lifetime)), Mutability::Mut) => format!("&{} mut self", &lifetime.ident.name),
+                (Mode::Ref(Some(lifetime)), Mutability::Mut) => {
+                    if in_macro(lifetime.ident.span) {
+                        applicability = Applicability::HasPlaceholders;
+                        "&'_ mut self".to_string()
+                    } else {
+                        format!("&{} mut self", &lifetime.ident.name)
+                    }
+                },
                 (Mode::Ref(None), Mutability::Not) => "&self".to_string(),
-                (Mode::Ref(Some(lifetime)), Mutability::Not) => format!("&{} self", &lifetime.ident.name),
+                (Mode::Ref(Some(lifetime)), Mutability::Not) => {
+                    if in_macro(lifetime.ident.span) {
+                        applicability = Applicability::HasPlaceholders;
+                        "&'_ self".to_string()
+                    } else {
+                        format!("&{} self", &lifetime.ident.name)
+                    }
+                },
                 (Mode::Value, Mutability::Mut) => "mut self".to_string(),
                 (Mode::Value, Mutability::Not) => "self".to_string(),
             };
@@ -85,7 +104,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
                 "the type of the `self` parameter does not need to be arbitrary",
                 "consider to change this parameter to",
                 self_param,
-                Applicability::MachineApplicable,
+                applicability,
             )
         }
     }
@@ -93,7 +112,8 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
 
 impl EarlyLintPass for NeedlessArbitrarySelfType {
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &Param) {
-        if !p.is_self() {
+        // Bail out if the parameter it's not a receiver or was not written by the user
+        if !p.is_self() || in_macro(p.span) {
             return;
         }
 

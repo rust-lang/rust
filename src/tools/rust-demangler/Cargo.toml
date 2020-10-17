@@ -1,10 +1,11 @@
 [package]
 authors = ["The Rust Project Developers"]
 name = "rust-demangler"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2018"
 
 [dependencies]
+regex = "1.0"
 rustc-demangle = "0.1"
 
 [[bin]]

@@ -26,6 +26,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         eliminate_frame_pointer: false, // FIXME 43575
         relro_level: RelroLevel::Full,
+        dwarf_version: Some(2),
         ..Default::default()
     }
 }

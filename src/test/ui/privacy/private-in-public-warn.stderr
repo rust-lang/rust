@@ -130,16 +130,10 @@ LL |     pub trait Tr2<T: PrivTr> {}
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 
 error: private trait `traits::PrivTr` in public interface (error E0445)
-  --> $DIR/private-in-public-warn.rs:57:5
+  --> $DIR/private-in-public-warn.rs:58:9
    |
-LL | /     pub trait Tr3 {
-LL | |
-LL | |
-LL | |         type Alias: PrivTr;
-LL | |         fn f<T: PrivTr>(arg: T) {}
-LL | |
-LL | |     }
-   | |_____^
+LL |         type Alias: PrivTr;
+   |         ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>

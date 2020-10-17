@@ -14,9 +14,12 @@ pub struct RWLock {
 }
 
 // Check at compile time that RWLock size matches C definition (see test_c_rwlock_initializer below)
+//
+// # Safety
+// Never called, as it is a compile time check.
 #[allow(dead_code)]
 unsafe fn rw_lock_size_assert(r: RWLock) {
-    mem::transmute::<RWLock, [u8; 144]>(r);
+    unsafe { mem::transmute::<RWLock, [u8; 144]>(r) };
 }
 
 impl RWLock {
@@ -112,7 +115,7 @@ impl RWLock {
     pub unsafe fn read_unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
-        self.__read_unlock(rguard, wguard);
+        unsafe { self.__read_unlock(rguard, wguard) };
     }
 
     #[inline]
@@ -148,7 +151,7 @@ impl RWLock {
     pub unsafe fn write_unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
-        self.__write_unlock(rguard, wguard);
+        unsafe { self.__write_unlock(rguard, wguard) };
     }
 
     // only used by __rust_rwlock_unlock below
@@ -158,9 +161,9 @@ impl RWLock {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
         if *wguard.lock_var() == true {
-            self.__write_unlock(rguard, wguard);
+            unsafe { self.__write_unlock(rguard, wguard) };
         } else {
-            self.__read_unlock(rguard, wguard);
+            unsafe { self.__read_unlock(rguard, wguard) };
         }
     }
 
@@ -179,7 +182,7 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
-    (*p).read();
+    unsafe { (*p).read() };
     return 0;
 }
 
@@ -189,7 +192,7 @@ pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
-    (*p).write();
+    unsafe { (*p).write() };
     return 0;
 }
 #[cfg(not(test))]
@@ -198,6 +201,6 @@ pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
-    (*p).unlock();
+    unsafe { (*p).unlock() };
     return 0;
 }

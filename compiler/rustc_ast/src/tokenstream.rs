@@ -295,12 +295,6 @@ impl TokenStream {
                 .collect(),
         ))
     }
-
-    pub fn map<F: FnMut(TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
-        TokenStream(Lrc::new(
-            self.0.iter().map(|(tree, is_joint)| (f(tree.clone()), *is_joint)).collect(),
-        ))
-    }
 }
 
 // 99.5%+ of the time we have 1 or 2 elements in this vector.

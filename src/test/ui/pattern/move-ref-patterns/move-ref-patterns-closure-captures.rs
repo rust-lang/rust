@@ -1,5 +1,3 @@
-#![feature(move_ref_pattern)]
-
 fn main() {
     struct U;
     fn accept_fn_once(_: &impl FnOnce()) {}

@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `str: Clone` is not satisfied
+  --> $DIR/check-trait-object-bounds-4.rs:15:5
+   |
+LL | fn f<T: X + ?Sized>() {
+   |         - required by this bound in `f`
+...
+LL |     f::<dyn X<Y = str>>();
+   |     ^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

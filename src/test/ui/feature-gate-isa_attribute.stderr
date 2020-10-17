@@ -1,0 +1,25 @@
+error: malformed `instruction_set` attribute input
+  --> $DIR/feature-gate-isa_attribute.rs:1:1
+   |
+LL | #[instruction_set]
+   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[instruction_set(set)]`
+
+error[E0658]: the `#[instruction_set]` attribute is an experimental feature
+  --> $DIR/feature-gate-isa_attribute.rs:1:1
+   |
+LL | #[instruction_set]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #74727 <https://github.com/rust-lang/rust/issues/74727> for more information
+   = help: add `#![feature(isa_attribute)]` to the crate attributes to enable
+
+error[E0778]: must specify an instruction set
+  --> $DIR/feature-gate-isa_attribute.rs:1:1
+   |
+LL | #[instruction_set]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0658, E0778.
+For more information about an error, try `rustc --explain E0658`.

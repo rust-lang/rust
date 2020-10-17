@@ -191,7 +191,7 @@ fn wait_timeout_wake() {
 
 #[test]
 #[should_panic]
-#[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(not(unix), ignore)]
 fn two_mutexes() {
     let m = Arc::new(Mutex::new(()));
     let m2 = m.clone();

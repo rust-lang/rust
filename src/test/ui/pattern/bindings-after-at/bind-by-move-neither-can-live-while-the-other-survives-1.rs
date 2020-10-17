@@ -3,7 +3,6 @@
 // where one side is by-ref and the other is by-move.
 
 #![feature(bindings_after_at)]
-#![feature(move_ref_pattern)]
 
 struct X {
     x: (),

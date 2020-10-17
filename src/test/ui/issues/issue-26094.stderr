@@ -4,11 +4,14 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
 LL |         $other(None)
    |                ---- supplied 1 argument
 ...
-LL | fn some_function() {}
-   | ------------------ defined here
-...
 LL |     some_macro!(some_function);
    |                 ^^^^^^^^^^^^^ expected 0 arguments
+   |
+note: function defined here
+  --> $DIR/issue-26094.rs:7:4
+   |
+LL | fn some_function() {}
+   |    ^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

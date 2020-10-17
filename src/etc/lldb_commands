@@ -1,18 +1,18 @@
-type synthetic add -l lldb_lookup.synthetic_lookup -x \".*\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)String$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^&str$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^&\\[.+\\]$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(std::ffi::([a-z_]+::)+)OsString$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)Vec<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)VecDeque<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)BTreeSet<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)BTreeMap<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(std::collections::([a-z_]+::)+)HashMap<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(std::collections::([a-z_]+::)+)HashSet<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)Rc<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(alloc::([a-z_]+::)+)Arc<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::([a-z_]+::)+)Cell<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::([a-z_]+::)+)Ref<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::([a-z_]+::)+)RefMut<.+>$\" --category Rust
-type summary add -F lldb_lookup.summary_lookup  -e -x -h \"^(core::([a-z_]+::)+)RefCell<.+>$\" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x ".*" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)String$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&str$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&\\[.+\\]$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::ffi::([a-z_]+::)+)OsString$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)Vec<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)VecDeque<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)BTreeSet<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)BTreeMap<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::collections::([a-z_]+::)+)HashMap<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::collections::([a-z_]+::)+)HashSet<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)Rc<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)Arc<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)Cell<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)Ref<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)RefMut<.+>$" --category Rust
+type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)RefCell<.+>$" --category Rust
 type category enable Rust

@@ -85,7 +85,7 @@
 //! # Contributing changes to the documentation
 //!
 //! Check out the rust contribution guidelines [here](
-//! https://rustc-dev-guide.rust-lang.org/getting-started.html).
+//! https://rustc-dev-guide.rust-lang.org/contributing.html#writing-documentation).
 //! The source for this documentation can be found on
 //! [GitHub](https://github.com/rust-lang/rust).
 //! To contribute changes, make sure you read the guidelines first, then submit
@@ -226,6 +226,7 @@
 #![feature(asm)]
 #![feature(associated_type_bounds)]
 #![feature(atomic_mut_ptr)]
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
@@ -236,10 +237,10 @@
 #![feature(clamp)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
-#![cfg_attr(not(bootstrap), feature(const_fn_floating_point_arithmetic))]
+#![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_transmute)]
 #![feature(const_fn)]
-#![cfg_attr(not(bootstrap), feature(const_fn_fn_ptr_basics))]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_ip)]
 #![feature(const_ipv6)]
 #![feature(const_raw_ptr_deref)]
@@ -248,7 +249,6 @@
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(decl_macro)]
-#![cfg_attr(bootstrap, feature(doc_alias))]
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
@@ -319,7 +319,7 @@
 #![feature(unsafe_block_in_unsafe_fn)]
 #![feature(unsafe_cell_get_mut)]
 #![feature(unsafe_cell_raw_get)]
-#![feature(untagged_unions)]
+#![cfg_attr(bootstrap, feature(untagged_unions))]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
 #![feature(wake_trait)]

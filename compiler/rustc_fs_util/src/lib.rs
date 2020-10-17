@@ -75,33 +75,6 @@ pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<Li
     }
 }
 
-#[derive(Debug)]
-pub enum RenameOrCopyRemove {
-    Rename,
-    CopyRemove,
-}
-
-/// Rename `p` into `q`, preferring to use `rename` if possible.
-/// If `rename` fails (rename may fail for reasons such as crossing
-/// filesystem), fallback to copy & remove
-pub fn rename_or_copy_remove<P: AsRef<Path>, Q: AsRef<Path>>(
-    p: P,
-    q: Q,
-) -> io::Result<RenameOrCopyRemove> {
-    let p = p.as_ref();
-    let q = q.as_ref();
-    match fs::rename(p, q) {
-        Ok(()) => Ok(RenameOrCopyRemove::Rename),
-        Err(_) => match fs::copy(p, q) {
-            Ok(_) => {
-                fs::remove_file(p)?;
-                Ok(RenameOrCopyRemove::CopyRemove)
-            }
-            Err(e) => Err(e),
-        },
-    }
-}
-
 #[cfg(unix)]
 pub fn path_to_c_string(p: &Path) -> CString {
     use std::ffi::OsStr;

@@ -48,8 +48,41 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
         FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Pointer<M::PointerTag>>,
 }
 
+// The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
+// boundary and dropped in the other thread, it would exit the span in the other thread.
+struct SpanGuard(tracing::Span, std::marker::PhantomData<*const u8>);
+
+impl SpanGuard {
+    /// By default a `SpanGuard` does nothing.
+    fn new() -> Self {
+        Self(tracing::Span::none(), std::marker::PhantomData)
+    }
+
+    /// If a span is entered, we exit the previous span (if any, normally none) and enter the
+    /// new span. This is mainly so we don't have to use `Option` for the `tracing_span` field of
+    /// `Frame` by creating a dummy span to being with and then entering it once the frame has
+    /// been pushed.
+    fn enter(&mut self, span: tracing::Span) {
+        // This executes the destructor on the previous instance of `SpanGuard`, ensuring that
+        // we never enter or exit more spans than vice versa. Unless you `mem::leak`, then we
+        // can't protect the tracing stack, but that'll just lead to weird logging, no actual
+        // problems.
+        *self = Self(span, std::marker::PhantomData);
+        self.0.with_subscriber(|(id, dispatch)| {
+            dispatch.enter(id);
+        });
+    }
+}
+
+impl Drop for SpanGuard {
+    fn drop(&mut self) {
+        self.0.with_subscriber(|(id, dispatch)| {
+            dispatch.exit(id);
+        });
+    }
+}
+
 /// A stack frame.
-#[derive(Clone)]
 pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
@@ -79,6 +112,11 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     pub locals: IndexVec<mir::Local, LocalState<'tcx, Tag>>,
+
+    /// The span of the `tracing` crate is stored here.
+    /// When the guard is dropped, the span is exited. This gives us
+    /// a full stack trace on all tracing statements.
+    tracing_span: SpanGuard,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -184,6 +222,7 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
             locals: self.locals,
             loc: self.loc,
             extra,
+            tracing_span: self.tracing_span,
         }
     }
 }
@@ -438,16 +477,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir_of_opt_const_arg(def)[promoted]);
+            return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
         }
         match instance {
             ty::InstanceDef::Item(def) => {
                 if self.tcx.is_mir_available(def.did) {
-                    if let Some((did, param_did)) = def.as_const_arg() {
-                        Ok(self.tcx.optimized_mir_of_const_arg((did, param_did)))
-                    } else {
-                        Ok(self.tcx.optimized_mir(def.did))
-                    }
+                    Ok(self.tcx.optimized_mir_opt_const_arg(def))
                 } else {
                     throw_unsup!(NoMirFor(def.did))
                 }
@@ -637,11 +672,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
-        if !self.stack().is_empty() {
-            info!("PAUSING({}) {}", self.frame_idx(), self.frame().instance);
-        }
-        ::log_settings::settings().indentation += 1;
-
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
@@ -652,6 +682,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // all methods actually know about the frame
             locals: IndexVec::new(),
             instance,
+            tracing_span: SpanGuard::new(),
             extra: (),
         };
         let frame = M::init_frame_extra(self, pre_frame)?;
@@ -696,7 +727,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
         self.frame_mut().loc = Ok(mir::Location::START);
-        info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
+
+        let span = info_span!("frame", "{}", instance);
+        self.frame_mut().tracing_span.enter(span);
 
         Ok(())
     }
@@ -747,10 +780,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// cause us to continue unwinding.
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
         info!(
-            "LEAVING({}) {} (unwinding = {})",
-            self.frame_idx(),
-            self.frame().instance,
-            unwinding
+            "popping stack frame ({})",
+            if unwinding { "during unwinding" } else { "returning from function" }
         );
 
         // Sanity check `unwinding`.
@@ -766,7 +797,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
-        ::log_settings::settings().indentation -= 1;
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
@@ -821,15 +851,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if let Some(ret) = next_block {
                 self.return_to_block(ret)?;
             }
-        }
-
-        if !self.stack().is_empty() {
-            info!(
-                "CONTINUING({}) {} (unwinding = {})",
-                self.frame_idx(),
-                self.frame().instance,
-                unwinding
-            );
         }
 
         Ok(())
@@ -995,7 +1016,16 @@ where
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
         // Exhaustive match on fields to make sure we forget no field.
-        let Frame { body, instance, return_to_block, return_place, locals, loc, extra } = self;
+        let Frame {
+            body,
+            instance,
+            return_to_block,
+            return_place,
+            locals,
+            loc,
+            extra,
+            tracing_span: _,
+        } = self;
         body.hash_stable(hcx, hasher);
         instance.hash_stable(hcx, hasher);
         return_to_block.hash_stable(hcx, hasher);

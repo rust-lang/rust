@@ -25,6 +25,19 @@ pub trait AsRawFd {
     /// This method does **not** pass ownership of the raw file descriptor
     /// to the caller. The descriptor is only guaranteed to be valid while
     /// the original object has not yet been destroyed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// # use std::io;
+    /// use std::os::unix::io::{AsRawFd, RawFd};
+    ///
+    /// let mut f = File::open("foo.txt")?;
+    /// // Note that `raw_fd` is only valid as long as `f` exists.
+    /// let raw_fd: RawFd = f.as_raw_fd();
+    /// # Ok::<(), io::Error>(())
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_raw_fd(&self) -> RawFd;
 }
@@ -45,6 +58,21 @@ pub trait FromRawFd {
     /// descriptor they are wrapping. Usage of this function could
     /// accidentally allow violating this contract which can cause memory
     /// unsafety in code that relies on it being true.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// # use std::io;
+    /// use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
+    ///
+    /// let f = File::open("foo.txt")?;
+    /// let raw_fd: RawFd = f.into_raw_fd();
+    /// // SAFETY: no other functions should call `from_raw_fd`, so there
+    /// // is only one owner for the file descriptor.
+    /// let f = unsafe { File::from_raw_fd(raw_fd) };
+    /// # Ok::<(), io::Error>(())
+    /// ```
     #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_fd(fd: RawFd) -> Self;
 }
@@ -58,6 +86,18 @@ pub trait IntoRawFd {
     /// This function **transfers ownership** of the underlying file descriptor
     /// to the caller. Callers are then the unique owners of the file descriptor
     /// and must close the descriptor once it's no longer needed.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    /// # use std::io;
+    /// use std::os::unix::io::{IntoRawFd, RawFd};
+    ///
+    /// let f = File::open("foo.txt")?;
+    /// let raw_fd: RawFd = f.into_raw_fd();
+    /// # Ok::<(), io::Error>(())
+    /// ```
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_fd(self) -> RawFd;
 }

@@ -1,0 +1,9 @@
+error[E0778]: `#[instruction_set]` requires an argument
+  --> $DIR/E0778.rs:3:1
+   |
+LL | #[instruction_set()]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0778`.

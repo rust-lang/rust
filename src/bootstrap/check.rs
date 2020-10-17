@@ -1,9 +1,12 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, std_cargo};
 use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
+use crate::{
+    builder::{Builder, Kind, RunConfig, ShouldRun, Step},
+    Subcommand,
+};
 use crate::{Compiler, Mode};
 use std::path::PathBuf;
 
@@ -74,35 +77,37 @@ impl Step for Std {
         //
         // Currently only the "libtest" tree of crates does this.
 
-        let mut cargo = builder.cargo(
-            compiler,
-            Mode::Std,
-            SourceType::InTree,
-            target,
-            cargo_subcommand(builder.kind),
-        );
-        std_cargo(builder, target, compiler.stage, &mut cargo);
-        cargo.arg("--all-targets");
+        if let Subcommand::Check { all_targets: true, .. } = builder.config.cmd {
+            let mut cargo = builder.cargo(
+                compiler,
+                Mode::Std,
+                SourceType::InTree,
+                target,
+                cargo_subcommand(builder.kind),
+            );
+            std_cargo(builder, target, compiler.stage, &mut cargo);
+            cargo.arg("--all-targets");
 
-        // Explicitly pass -p for all dependencies krates -- this will force cargo
-        // to also check the tests/benches/examples for these crates, rather
-        // than just the leaf crate.
-        for krate in builder.in_tree_crates("test") {
-            cargo.arg("-p").arg(krate.name);
+            // Explicitly pass -p for all dependencies krates -- this will force cargo
+            // to also check the tests/benches/examples for these crates, rather
+            // than just the leaf crate.
+            for krate in builder.in_tree_crates("test") {
+                cargo.arg("-p").arg(krate.name);
+            }
+
+            builder.info(&format!(
+                "Checking std test/bench/example targets ({} -> {})",
+                &compiler.host, target
+            ));
+            run_cargo(
+                builder,
+                cargo,
+                args(builder.kind),
+                &libstd_test_stamp(builder, compiler, target),
+                vec![],
+                true,
+            );
         }
-
-        builder.info(&format!(
-            "Checking std test/bench/example targets ({} -> {})",
-            &compiler.host, target
-        ));
-        run_cargo(
-            builder,
-            cargo,
-            args(builder.kind),
-            &libstd_test_stamp(builder, compiler, target),
-            vec![],
-            true,
-        );
     }
 }
 
@@ -143,7 +148,9 @@ impl Step for Rustc {
             cargo_subcommand(builder.kind),
         );
         rustc_cargo(builder, &mut cargo, target);
-        cargo.arg("--all-targets");
+        if let Subcommand::Check { all_targets: true, .. } = builder.config.cmd {
+            cargo.arg("--all-targets");
+        }
 
         // Explicitly pass -p for all compiler krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather
@@ -205,7 +212,9 @@ macro_rules! tool_check_step {
                     &[],
                 );
 
-                cargo.arg("--all-targets");
+                if let Subcommand::Check { all_targets: true, .. } = builder.config.cmd {
+                    cargo.arg("--all-targets");
+                }
 
                 builder.info(&format!(
                     "Checking {} artifacts ({} -> {})",

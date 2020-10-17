@@ -1,3 +1,4 @@
+// ignore-compare-mode-chalk
 trait Z<'a, T: ?Sized>
 where
     T: Z<'a, u16>,

@@ -341,9 +341,7 @@ impl<T> PerNS<Option<T>> {
 
     /// Returns an iterator over the items which are `Some`.
     pub fn present_items(self) -> impl Iterator<Item = T> {
-        use std::iter::once;
-
-        once(self.type_ns).chain(once(self.value_ns)).chain(once(self.macro_ns)).filter_map(|it| it)
+        IntoIter::new([self.type_ns, self.value_ns, self.macro_ns]).filter_map(|it| it)
     }
 }
 

@@ -4,7 +4,7 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -58,13 +58,13 @@ fn may_be_reference(ty: Ty<'tcx>) -> bool {
 }
 
 impl<'tcx> MirPass<'tcx> for AddRetag {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }
 
         // We need an `AllCallEdges` pass before we can do any work.
-        super::add_call_guards::AllCallEdges.run_pass(tcx, src, body);
+        super::add_call_guards::AllCallEdges.run_pass(tcx, body);
 
         let (span, arg_count) = (body.span, body.arg_count);
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();

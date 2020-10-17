@@ -795,6 +795,7 @@ impl<'a> Parser<'a> {
         }
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
+            e.span_label(path.span, "while parsing the fields for this pattern");
             e.emit();
             self.recover_stmt();
             (vec![], true)
@@ -844,7 +845,7 @@ impl<'a> Parser<'a> {
 
             // check that a comma comes after every field
             if !ate_comma {
-                let err = self.struct_span_err(self.prev_token.span, "expected `,`");
+                let err = self.struct_span_err(self.token.span, "expected `,`");
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }

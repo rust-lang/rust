@@ -1,7 +1,6 @@
 // Test that mixing `Copy` and non-`Copy` types in `@` patterns is forbidden.
 
 #![feature(bindings_after_at)]
-#![feature(move_ref_pattern)]
 
 #[derive(Copy, Clone)]
 struct C;

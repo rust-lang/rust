@@ -1,0 +1,27 @@
+error: restriction lints are not meant to be all enabled
+  --> $DIR/blanket_clippy_restriction_lints.rs:4:9
+   |
+LL | #![warn(clippy::restriction)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
+   = help: try enabling only the lints you really need
+
+error: restriction lints are not meant to be all enabled
+  --> $DIR/blanket_clippy_restriction_lints.rs:5:9
+   |
+LL | #![deny(clippy::restriction)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try enabling only the lints you really need
+
+error: restriction lints are not meant to be all enabled
+  --> $DIR/blanket_clippy_restriction_lints.rs:6:11
+   |
+LL | #![forbid(clippy::restriction)]
+   |           ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try enabling only the lints you really need
+
+error: aborting due to 3 previous errors
+

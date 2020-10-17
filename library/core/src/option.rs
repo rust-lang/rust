@@ -141,6 +141,9 @@
 //! ```
 //!
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
+//! [`Box<U>`]: ../../std/boxed/struct.Box.html
+//! [`num::NonZero*`]: crate::num
+//! [`ptr::NonNull<U>`]: crate::ptr::NonNull
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -684,6 +687,7 @@ impl<T> Option<T> {
     /// assert_eq!(Some(4).filter(is_even), Some(4));
     /// ```
     ///
+    /// [`Some(t)`]: Some
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {

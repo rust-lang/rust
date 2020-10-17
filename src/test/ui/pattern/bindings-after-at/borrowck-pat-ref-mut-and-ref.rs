@@ -1,5 +1,4 @@
 #![feature(bindings_after_at)]
-#![feature(move_ref_pattern)]
 
 enum Option<T> {
     None,

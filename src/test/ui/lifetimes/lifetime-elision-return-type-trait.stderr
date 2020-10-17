@@ -3,11 +3,6 @@ error[E0277]: the trait bound `std::result::Result<(), _>: Future` is not satisf
    |
 LL | fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Future` is not implemented for `std::result::Result<(), _>`
-LL |
-LL |     Ok(())
-   |     ------ this returned value is of type `std::result::Result<(), _>`
-   |
-   = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error
 

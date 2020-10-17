@@ -60,11 +60,17 @@ error: lint `clippy::regex_macro` has been removed: `the regex! macro has been r
 LL | #[warn(clippy::regex_macro)]
    |        ^^^^^^^^^^^^^^^^^^^
 
+error: lint `clippy::drop_bounds` has been removed: `this lint has been uplifted to rustc and is now called `drop_bounds``
+  --> $DIR/deprecated.rs:11:8
+   |
+LL | #[warn(clippy::drop_bounds)]
+   |        ^^^^^^^^^^^^^^^^^^^
+
 error: lint `clippy::str_to_string` has been removed: `using `str::to_string` is common even today and specialization will likely happen soon`
   --> $DIR/deprecated.rs:1:8
    |
 LL | #[warn(clippy::str_to_string)]
    |        ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

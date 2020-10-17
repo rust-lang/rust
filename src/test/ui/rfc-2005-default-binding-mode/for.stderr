@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/for.rs:8:23
+  --> $DIR/for.rs:6:23
    |
 LL |     for (n, mut m) in &tups {
    |             -----     ^^^^^

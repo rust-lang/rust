@@ -1,5 +1,5 @@
 error: cannot move out of value because it is borrowed
-  --> $DIR/default-binding-modes-both-sides-independent.rs:28:9
+  --> $DIR/default-binding-modes-both-sides-independent.rs:27:9
    |
 LL |     let ref a @ b = NotCopy;
    |         -----^^^-
@@ -8,7 +8,7 @@ LL |     let ref a @ b = NotCopy;
    |         value borrowed, by `a`, here
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/default-binding-modes-both-sides-independent.rs:31:9
+  --> $DIR/default-binding-modes-both-sides-independent.rs:30:9
    |
 LL |     let ref mut a @ b = NotCopy;
    |         ---------^^^-
@@ -17,7 +17,7 @@ LL |     let ref mut a @ b = NotCopy;
    |         value borrowed, by `a`, here
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/default-binding-modes-both-sides-independent.rs:36:12
+  --> $DIR/default-binding-modes-both-sides-independent.rs:35:12
    |
 LL |         Ok(ref a @ b) | Err(b @ ref a) => {
    |            -----^^^-
@@ -26,7 +26,7 @@ LL |         Ok(ref a @ b) | Err(b @ ref a) => {
    |            value borrowed, by `a`, here
 
 error: borrow of moved value
-  --> $DIR/default-binding-modes-both-sides-independent.rs:36:29
+  --> $DIR/default-binding-modes-both-sides-independent.rs:35:29
    |
 LL |         Ok(ref a @ b) | Err(b @ ref a) => {
    |                             -^^^-----
@@ -36,7 +36,7 @@ LL |         Ok(ref a @ b) | Err(b @ ref a) => {
    |                             move occurs because `b` has type `NotCopy` which does not implement the `Copy` trait
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/default-binding-modes-both-sides-independent.rs:44:9
+  --> $DIR/default-binding-modes-both-sides-independent.rs:43:9
    |
 LL |         ref a @ b => {
    |         -----^^^-
@@ -45,7 +45,7 @@ LL |         ref a @ b => {
    |         value borrowed, by `a`, here
 
 error[E0505]: cannot move out of value because it is borrowed
-  --> $DIR/default-binding-modes-both-sides-independent.rs:31:21
+  --> $DIR/default-binding-modes-both-sides-independent.rs:30:21
    |
 LL |     let ref mut a @ b = NotCopy;
    |         ------------^

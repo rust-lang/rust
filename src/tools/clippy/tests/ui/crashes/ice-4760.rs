@@ -1,4 +1,3 @@
-// run-pass
 const COUNT: usize = 2;
 struct Thing;
 trait Dummy {}

@@ -120,7 +120,7 @@ h3.impl, h3.method, h3.type {
 }
 
 h1, h2, h3, h4,
-.sidebar, a.source, .search-input, .content table :not(code)>a,
+.sidebar, a.source, .search-input, .content table td:first-child > a,
 .collapse-toggle, div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle {
 	font-family: "Fira Sans", sans-serif;
@@ -390,15 +390,11 @@ nav.sub {
 	cursor: pointer;
 }
 
+.docblock-short {
+	overflow-wrap: anywhere;
+}
 .docblock-short p {
 	display: inline;
-}
-
-.docblock-short.nowrap {
-	display: block;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 }
 
 .docblock-short p {
@@ -1098,6 +1094,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	border-style: solid;
 }
 
+.tooltip:hover .tooltiptext {
+	display: inline;
+}
+
 .tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
 	font-weight: bold;
 	font-size: 20px;
@@ -1539,6 +1539,14 @@ h4 > .notable-traits {
 	.notable-traits .notable-traits-tooltiptext {
 		left: 0;
 		top: 100%;
+	}
+
+	/* We don't display the help button on mobile devices. */
+	.help-button {
+		display: none;
+	}
+	.search-container > div {
+		width: calc(100% - 32px);
 	}
 }
 

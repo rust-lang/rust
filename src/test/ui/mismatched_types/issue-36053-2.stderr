@@ -1,3 +1,11 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/issue-36053-2.rs:7:32
+   |
+LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
+   |                                ^^^^^^ -------------- found signature of `for<'r> fn(&'r str) -> _`
+   |                                |
+   |                                expected signature of `for<'r> fn(&'r &str) -> _`
+
 error[E0599]: no method named `count` found for struct `Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>` in the current scope
   --> $DIR/issue-36053-2.rs:7:55
    |
@@ -19,14 +27,6 @@ LL | pub struct Filter<I, P> {
            which is required by `Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>: Iterator`
            `Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>: Iterator`
            which is required by `&mut Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:53]>: Iterator`
-
-error[E0631]: type mismatch in closure arguments
-  --> $DIR/issue-36053-2.rs:7:32
-   |
-LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
-   |                                ^^^^^^ -------------- found signature of `for<'r> fn(&'r str) -> _`
-   |                                |
-   |                                expected signature of `for<'r> fn(&'r &str) -> _`
 
 error: aborting due to 2 previous errors
 

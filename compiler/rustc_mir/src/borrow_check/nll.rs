@@ -2,14 +2,14 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, InstanceDef, RegionKind, RegionVid};
+use rustc_middle::ty::{self, RegionKind, RegionVid};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -24,7 +24,6 @@ use polonius_engine::{Algorithm, Output};
 use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::{InitKind, InitLocation, MoveData};
 use crate::dataflow::ResultsCursor;
-use crate::transform::MirSource;
 use crate::util as mir_util;
 use crate::util::pretty;
 
@@ -59,11 +58,12 @@ crate struct NllOutput<'tcx> {
 /// `compute_regions`.
 pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
+    let def = body.source.with_opt_param().as_local().unwrap();
+
     debug!("replace_regions_in_mir(def={:?})", def);
 
     // Compute named region information. This also renumbers the inputs/outputs.
@@ -72,8 +72,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    let source = MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None };
-    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
+    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, body, |_, _| Ok(()));
 
     universal_regions
 }
@@ -158,7 +157,6 @@ fn populate_polonius_move_facts(
 /// This may result in errors being reported.
 pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def_id: LocalDefId,
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
@@ -182,7 +180,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
             param_env,
             body,
             promoted,
-            def_id,
             &universal_regions,
             location_table,
             borrow_set,
@@ -272,10 +269,12 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     // Generate various additional constraints.
     invalidation::generate_invalidates(infcx.tcx, &mut all_facts, location_table, body, borrow_set);
 
+    let def_id = body.source.def_id();
+
     // Dump facts if requested.
     let polonius_output = all_facts.and_then(|all_facts| {
         if infcx.tcx.sess.opts.debugging_opts.nll_facts {
-            let def_path = infcx.tcx.def_path(def_id.to_def_id());
+            let def_path = infcx.tcx.def_path(def_id);
             let dir_path =
                 PathBuf::from("nll-facts").join(def_path.to_filename_friendly_no_crate());
             all_facts.write_to_dir(dir_path, location_table).unwrap();
@@ -295,7 +294,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, &body, def_id.to_def_id(), polonius_output.clone());
+        regioncx.solve(infcx, &body, polonius_output.clone());
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
@@ -315,16 +314,15 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
 pub(super) fn dump_mir_results<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
-    source: MirSource<'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
-    if !mir_util::dump_enabled(infcx.tcx, "nll", source.def_id()) {
+    if !mir_util::dump_enabled(infcx.tcx, "nll", body.source.def_id()) {
         return;
     }
 
-    mir_util::dump_mir(infcx.tcx, None, "nll", &0, source, body, |pass_where, out| {
+    mir_util::dump_mir(infcx.tcx, None, "nll", &0, body, |pass_where, out| {
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => {
@@ -352,14 +350,14 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = try {
         let mut file =
-            pretty::create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, source)?;
+            pretty::create_dump_file(infcx.tcx, "regioncx.all.dot", None, "nll", &0, body.source)?;
         regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 
     // Also dump the inference graph constraints as a graphviz file.
     let _: io::Result<()> = try {
         let mut file =
-            pretty::create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, source)?;
+            pretty::create_dump_file(infcx.tcx, "regioncx.scc.dot", None, "nll", &0, body.source)?;
         regioncx.dump_graphviz_scc_constraints(&mut file)?;
     };
 }
@@ -367,14 +365,13 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
 pub(super) fn dump_annotation<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     body: &Body<'tcx>,
-    mir_def_id: DefId,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
     opaque_type_values: &FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     errors_buffer: &mut Vec<Diagnostic>,
 ) {
     let tcx = infcx.tcx;
-    let base_def_id = tcx.closure_base_def_id(mir_def_id);
+    let base_def_id = tcx.closure_base_def_id(body.source.def_id());
     if !tcx.has_attr(base_def_id, sym::rustc_regions) {
         return;
     }

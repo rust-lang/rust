@@ -159,6 +159,7 @@ impl DefId {
         DefId { krate: LOCAL_CRATE, index }
     }
 
+    /// Returns whether the item is defined in the crate currently being compiled.
     #[inline]
     pub fn is_local(self) -> bool {
         self.krate == LOCAL_CRATE

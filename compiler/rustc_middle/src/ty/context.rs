@@ -534,10 +534,6 @@ impl<'tcx> TypeckResults<'tcx> {
         self.node_type(pat.hir_id)
     }
 
-    pub fn pat_ty_opt(&self, pat: &hir::Pat<'_>) -> Option<Ty<'tcx>> {
-        self.node_type_opt(pat.hir_id)
-    }
-
     // Returns the type of an expression as a monotype.
     //
     // NB (1): This is the PRE-ADJUSTMENT TYPE for the expression.  That is, in
@@ -588,10 +584,7 @@ impl<'tcx> TypeckResults<'tcx> {
             return false;
         }
 
-        match self.type_dependent_defs().get(expr.hir_id) {
-            Some(Ok((DefKind::AssocFn, _))) => true,
-            _ => false,
-        }
+        matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
     pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
@@ -1086,7 +1079,7 @@ impl<'tcx> TyCtxt<'tcx> {
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
-        let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
+        let data_layout = TargetDataLayout::parse(&s.target).unwrap_or_else(|err| {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(arena);
@@ -1529,7 +1522,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Determines whether identifiers in the assembly have strict naming rules.
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(self) -> bool {
-        self.sess.target.target.arch.contains("nvptx")
+        self.sess.target.arch.contains("nvptx")
     }
 
     /// Returns `&'static core::panic::Location<'static>`.

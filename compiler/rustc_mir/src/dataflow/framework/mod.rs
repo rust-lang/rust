@@ -13,9 +13,9 @@
 //! ```ignore(cross-crate-imports)
 //! use rustc_mir::dataflow::Analysis; // Makes `into_engine` available.
 //!
-//! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>, did: DefId) {
+//! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
 //!     let analysis = MyAnalysis::new()
-//!         .into_engine(tcx, body, did)
+//!         .into_engine(tcx, body)
 //!         .iterate_to_fixpoint()
 //!         .into_results_cursor(body);
 //!
@@ -33,7 +33,6 @@
 use std::borrow::BorrowMut;
 use std::cmp::Ordering;
 
-use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
@@ -218,16 +217,11 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ///     .iterate_to_fixpoint()
     ///     .into_results_cursor(body);
     /// ```
-    fn into_engine(
-        self,
-        tcx: TyCtxt<'tcx>,
-        body: &'mir mir::Body<'tcx>,
-        def_id: DefId,
-    ) -> Engine<'mir, 'tcx, Self>
+    fn into_engine(self, tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {
-        Engine::new_generic(tcx, body, def_id, self)
+        Engine::new_generic(tcx, body, self)
     }
 }
 
@@ -381,16 +375,11 @@ where
 
     /* Extension methods */
 
-    fn into_engine(
-        self,
-        tcx: TyCtxt<'tcx>,
-        body: &'mir mir::Body<'tcx>,
-        def_id: DefId,
-    ) -> Engine<'mir, 'tcx, Self>
+    fn into_engine(self, tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {
-        Engine::new_gen_kill(tcx, body, def_id, self)
+        Engine::new_gen_kill(tcx, body, self)
     }
 }
 

@@ -334,8 +334,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         self.call(expect, &[cond, self.const_bool(expected)], None)
     }
 
-    fn sideeffect(&mut self) {
-        if self.tcx.sess.opts.debugging_opts.insert_sideeffect {
+    fn sideeffect(&mut self, unconditional: bool) {
+        if unconditional || self.tcx.sess.opts.debugging_opts.insert_sideeffect {
             let fnname = self.get_intrinsic(&("llvm.sideeffect"));
             self.call(fnname, &[], None);
         }
@@ -367,7 +367,7 @@ fn try_intrinsic(
         bx.store(bx.const_i32(0), dest, ret_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, try_func, data, catch_func, dest);
-    } else if bx.sess().target.target.options.is_like_emscripten {
+    } else if bx.sess().target.options.is_like_emscripten {
         codegen_emcc_try(bx, try_func, data, catch_func, dest);
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func, dest);
@@ -390,7 +390,7 @@ fn codegen_msvc_try(
 ) {
     let llfn = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
-        bx.sideeffect();
+        bx.sideeffect(false);
 
         let mut normal = bx.build_sibling_block("normal");
         let mut catchswitch = bx.build_sibling_block("catchswitch");
@@ -553,7 +553,7 @@ fn codegen_gnu_try(
         //      call %catch_func(%data, %ptr)
         //      ret 1
 
-        bx.sideeffect();
+        bx.sideeffect(false);
 
         let mut then = bx.build_sibling_block("then");
         let mut catch = bx.build_sibling_block("catch");
@@ -615,7 +615,7 @@ fn codegen_emcc_try(
         //      call %catch_func(%data, %catch_data)
         //      ret 1
 
-        bx.sideeffect();
+        bx.sideeffect(false);
 
         let mut then = bx.build_sibling_block("then");
         let mut catch = bx.build_sibling_block("catch");
@@ -793,14 +793,18 @@ fn generic_simd_intrinsic(
         require_simd!(arg_tys[1], "argument");
         let v_len = arg_tys[1].simd_size(tcx);
         require!(
-            m_len == v_len,
+            // Allow masks for vectors with fewer than 8 elements to be
+            // represented with a u8 or i8.
+            m_len == v_len || (m_len == 8 && v_len < 8),
             "mismatched lengths: mask length `{}` != other vector length `{}`",
             m_len,
             v_len
         );
         let i1 = bx.type_i1();
-        let i1xn = bx.type_vector(i1, m_len);
-        let m_i1s = bx.bitcast(args[0].immediate(), i1xn);
+        let im = bx.type_ix(v_len);
+        let i1xn = bx.type_vector(i1, v_len);
+        let m_im = bx.trunc(args[0].immediate(), im);
+        let m_i1s = bx.bitcast(m_im, i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
@@ -1718,10 +1722,10 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
     match ty.kind() {
         ty::Int(t) => {
-            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.ptr_width)), true))
+            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), true))
         }
         ty::Uint(t) => {
-            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.ptr_width)), false))
+            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), false))
         }
         _ => None,
     }

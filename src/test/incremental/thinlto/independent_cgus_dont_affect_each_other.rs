@@ -37,7 +37,9 @@ mod foo {
 
     #[cfg(not(cfail1))]
     pub fn inlined_fn() -> u32 {
-        1234
+        // See `cgu_keeps_identical_fn.rs` for why this is different
+        // from the other version of this function.
+        12345
     }
 }
 

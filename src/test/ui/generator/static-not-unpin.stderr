@@ -1,11 +1,11 @@
-error[E0277]: `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6 _]` cannot be unpinned
+error[E0277]: `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6]` cannot be unpinned
   --> $DIR/static-not-unpin.rs:14:18
    |
 LL | fn assert_unpin<T: Unpin>(_: T) {
    |                    ----- required by this bound in `assert_unpin`
 ...
 LL |     assert_unpin(generator);
-   |                  ^^^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6 _]`
+   |                  ^^^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6]`
 
 error: aborting due to previous error
 

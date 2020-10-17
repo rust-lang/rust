@@ -1,5 +1,3 @@
-// run-pass
-
 use std::collections::HashSet;
 
 // See rust-lang/rust-clippy#2774.

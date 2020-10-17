@@ -43,28 +43,16 @@ plain text.
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
 and enabled with a `#![feature(...)]` attribute in your crate.
 
-### Documenting platform-/feature-specific information
+### `#[doc(cfg)]`: Recording what platforms or features are required for code to be present
 
-Because of the way Rustdoc documents a crate, the documentation it creates is specific to the target
-rustc compiles for. Anything that's specific to any other target is dropped via `#[cfg]` attribute
-processing early in the compilation process. However, Rustdoc has a trick up its sleeve to handle
-platform-specific code if it *does* receive it.
+You can use `#[doc(cfg(...))]` to tell Rustdoc exactly which platform items appear on.
+This has two effects:
 
-Because Rustdoc doesn't need to fully compile a crate to binary, it replaces function bodies with
-`loop {}` to prevent having to process more than necessary. This means that any code within a
-function that requires platform-specific pieces is ignored. Combined with a special attribute,
-`#[doc(cfg(...))]`, you can tell Rustdoc exactly which platform something is supposed to run on,
-ensuring that doctests are only run on the appropriate platforms.
+1. doctests will only run on the appropriate platforms, and
+2. When Rustdoc renders documentation for that item, it will be accompanied by a banner explaining
+   that the item is only available on certain platforms.
 
-The `#[doc(cfg(...))]` attribute has another effect: When Rustdoc renders documentation for that
-item, it will be accompanied by a banner explaining that the item is only available on certain
-platforms.
-
-For Rustdoc to document an item, it needs to see it, regardless of what platform it's currently
-running on. To aid this, Rustdoc sets the flag `#[cfg(doc)]` when running on your crate.
-Combining this with the target platform of a given item allows it to appear when building your crate
-normally on that platform, as well as when building documentation anywhere.
-
+`#[doc(cfg)]` is intended to be used alongside [`#[cfg(doc)]`][cfg-doc].
 For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during the
 documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
 the item is supposed to be used on Windows. For example:
@@ -81,6 +69,12 @@ pub struct WindowsToken;
 #[cfg(any(unix, doc))]
 #[doc(cfg(unix))]
 pub struct UnixToken;
+
+/// Token struct that is only available with the `serde` feature
+#[cfg(feature = "serde")]
+#[doc(cfg(feature = "serde"))]
+#[derive(serde::Deserialize)]
+pub struct SerdeToken;
 ```
 
 In this sample, the tokens will only appear on their respective platforms, but they will both appear
@@ -90,6 +84,7 @@ in documentation.
 `#![feature(doc_cfg)]` feature gate. For more information, see [its chapter in the Unstable
 Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
 
+[cfg-doc]: ./advanced-features.md
 [unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
 [issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
 

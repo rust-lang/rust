@@ -10,9 +10,8 @@ pub struct Portable;
 // @has doc_cfg/unix_only/index.html \
 //  '//*[@id="main"]/*[@class="stability"]/*[@class="stab portability"]' \
 //  'This is supported on Unix only.'
-// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AUnix\Z'
-// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AUnix and ARM\Z'
-// @count - '//*[@class="stab portability"]' 3
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AARM\Z'
+// @count - '//*[@class="stab portability"]' 2
 #[doc(cfg(unix))]
 pub mod unix_only {
     // @has doc_cfg/unix_only/fn.unix_only_function.html \
@@ -26,7 +25,7 @@ pub mod unix_only {
     // @has doc_cfg/unix_only/trait.ArmOnly.html \
     //  '//*[@id="main"]/*[@class="stability"]/*[@class="stab portability"]' \
     //  'This is supported on Unix and ARM only.'
-    // @count - '//*[@class="stab portability"]' 3
+    // @count - '//*[@class="stab portability"]' 2
     #[doc(cfg(target_arch = "arm"))]
     pub trait ArmOnly {
         fn unix_and_arm_only_function();

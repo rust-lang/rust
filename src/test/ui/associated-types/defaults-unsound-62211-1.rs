@@ -11,22 +11,17 @@
 
 use std::{
     fmt::Display,
-    ops::{AddAssign, Deref}
+    ops::{AddAssign, Deref},
 };
-
 
 trait UncheckedCopy: Sized {
     // This Output is said to be Copy. Yet we default to Self
     // and it's accepted, not knowing if Self ineed is Copy
-    type Output: Copy
+    type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
     //~^ ERROR the trait bound `Self: Copy` is not satisfied
-    + Deref<Target = str>
-    //~^ ERROR the trait bound `Self: Deref` is not satisfied
-    + AddAssign<&'static str>
-    //~^ ERROR cannot add-assign `&'static str` to `Self`
-    + From<Self>
-    + Display = Self;
-    //~^ ERROR `Self` doesn't implement `std::fmt::Display`
+    //~| ERROR the trait bound `Self: Deref` is not satisfied
+    //~| ERROR cannot add-assign `&'static str` to `Self`
+    //~| ERROR `Self` doesn't implement `std::fmt::Display`
 
     // We said the Output type was Copy, so we can Copy it freely!
     fn unchecked_copy(other: &Self::Output) -> Self::Output {
@@ -39,10 +34,6 @@ trait UncheckedCopy: Sized {
 }
 
 impl<T> UncheckedCopy for T {}
-//~^ ERROR `T` doesn't implement `std::fmt::Display`
-//~| ERROR the trait bound `T: Deref` is not satisfied
-//~| ERROR cannot add-assign `&'static str` to `T`
-//~| ERROR the trait bound `T: Copy` is not satisfied
 
 fn bug<T: UncheckedCopy>(origin: T) {
     let origin = T::make_origin(origin);

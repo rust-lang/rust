@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/try_error_result.rs",
+          "summary": {
+            "functions": {
+              "count": 2,
+              "covered": 2,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 2,
+              "covered": 2,
+              "percent": 100
+            },
+            "lines": {
+              "count": 16,
+              "covered": 15,
+              "percent": 93.75
+            },
+            "regions": {
+              "count": 13,
+              "covered": 12,
+              "notcovered": 1,
+              "percent": 92.3076923076923
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 2,
+          "covered": 2,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 2,
+          "covered": 2,
+          "percent": 100
+        },
+        "lines": {
+          "count": 16,
+          "covered": 15,
+          "percent": 93.75
+        },
+        "regions": {
+          "count": 13,
+          "covered": 12,
+          "notcovered": 1,
+          "percent": 92.3076923076923
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

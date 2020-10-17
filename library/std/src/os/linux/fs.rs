@@ -20,7 +20,7 @@ pub trait MetadataExt {
     /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
     /// cross-Unix abstractions contained within the raw stat.
     ///
-    /// [`stat`]: crate::os::linux::raw::stat
+    /// [`stat`]: struct@crate::os::linux::raw::stat
     ///
     /// # Examples
     ///

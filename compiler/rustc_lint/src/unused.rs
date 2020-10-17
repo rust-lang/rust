@@ -200,7 +200,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 ty::Adt(def, _) => check_must_use_def(cx, def.did, span, descr_pre, descr_post),
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
-                    for (predicate, _) in cx.tcx.predicates_of(def).predicates {
+                    for &(predicate, _) in cx.tcx.explicit_item_bounds(def) {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
                         if let ty::PredicateAtom::Trait(ref poly_trait_predicate, _) =
                             predicate.skip_binders()

@@ -121,11 +121,6 @@ impl Diagnostic {
         self.level == Level::Cancelled
     }
 
-    /// Set the sorting span.
-    pub fn set_sort_span(&mut self, sp: Span) {
-        self.sort_span = sp;
-    }
-
     /// Adds a span/label to be included in the resulting snippet.
     ///
     /// This is pushed onto the [`MultiSpan`] that was created when the diagnostic
@@ -533,14 +528,6 @@ impl Diagnostic {
 
     pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
-    }
-
-    /// Used by a lint. Copies over all details *but* the "main
-    /// message".
-    pub fn copy_details_not_message(&mut self, from: &Diagnostic) {
-        self.span = from.span.clone();
-        self.code = from.code.clone();
-        self.children.extend(from.children.iter().cloned())
     }
 
     /// Convenience function for internal use, clients should use one of the

@@ -16,7 +16,7 @@ fn unnecessary_sort_by() {
     vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
     vec.sort_unstable_by(|a, b| id(-a).cmp(&id(-b)));
     // Reverse examples
-    vec.sort_by(|a, b| b.cmp(a));
+    vec.sort_by(|a, b| b.cmp(a)); // not linted to avoid suggesting `Reverse(b)` which would borrow
     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
     // Negative examples (shouldn't be changed)
@@ -26,10 +26,11 @@ fn unnecessary_sort_by() {
     vec.sort_by(|_, b| b.cmp(c));
     vec.sort_unstable_by(|a, _| a.cmp(c));
 
-    // Ignore vectors of references
+    // Vectors of references are fine as long as the resulting key does not borrow
     let mut vec: Vec<&&&isize> = vec![&&&3, &&&6, &&&1, &&&2, &&&5];
     vec.sort_by(|a, b| (***a).abs().cmp(&(***b).abs()));
     vec.sort_unstable_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+    // `Reverse(b)` would borrow in the following cases, don't lint
     vec.sort_by(|a, b| b.cmp(a));
     vec.sort_unstable_by(|a, b| b.cmp(a));
 }
@@ -68,10 +69,9 @@ mod issue_5754 {
     }
 }
 
-// `Vec::sort_by_key` closure parameter is `F: FnMut(&T) -> K`
-// The suggestion is destructuring T and we know T is not a reference, so test that non-Copy T are
-// not linted.
+// The closure parameter is not dereferenced anymore, so non-Copy types can be linted
 mod issue_6001 {
+    use super::*;
     struct Test(String);
 
     impl Test {

@@ -3,14 +3,14 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::UNALIGNED_REFERENCES;
 
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util;
 
 pub struct CheckPackedRef;
 
 impl<'tcx> MirPass<'tcx> for CheckPackedRef {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let param_env = tcx.param_env(src.instance.def_id());
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let param_env = tcx.param_env(body.source.def_id());
         let source_info = SourceInfo::outermost(body.span);
         let mut checker = PackedRefChecker { body, tcx, param_env, source_info };
         checker.visit_body(&body);

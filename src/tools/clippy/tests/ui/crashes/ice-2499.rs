@@ -1,5 +1,3 @@
-// run-pass
-
 #![allow(dead_code, clippy::char_lit_as_u8, clippy::needless_bool)]
 
 /// Should not trigger an ICE in `SpanlessHash` / `consts::constant`

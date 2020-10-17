@@ -1,7 +1,7 @@
 //! This pass removes jumps to basic blocks containing only a return, and replaces them with a
 //! return instead.
 
-use crate::transform::{simplify, MirPass, MirSource};
+use crate::transform::{simplify, MirPass};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 pub struct MultipleReturnTerminators;
 
 impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level < 3 {
             return;
         }

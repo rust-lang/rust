@@ -1,3 +1,5 @@
+// check-pass
+
 use std::ops::Add;
 
 trait Trait<T> {
@@ -18,7 +20,11 @@ enum Either<L, R> {
 }
 
 impl<L, R> Either<L, R> {
-    fn converge<T>(self) -> T where L: Trait<T>, R: Trait<T> {
+    fn converge<T>(self) -> T
+    where
+        L: Trait<T>,
+        R: Trait<T>,
+    {
         match self {
             Either::Left(val) => val.get(),
             Either::Right(val) => val.get(),
@@ -26,22 +32,16 @@ impl<L, R> Either<L, R> {
     }
 }
 
-fn add_generic<A: Add<B>, B>(lhs: A, rhs: B) -> Either<
-    impl Trait<<A as Add<B>>::Output>,
-    impl Trait<<A as Add<B>>::Output>
-> {
-    if true {
-        Either::Left(Holder(lhs + rhs))
-    } else {
-        Either::Right(Holder(lhs + rhs))
-    }
+fn add_generic<A: Add<B>, B>(
+    lhs: A,
+    rhs: B,
+) -> Either<impl Trait<<A as Add<B>>::Output>, impl Trait<<A as Add<B>>::Output>> {
+    if true { Either::Left(Holder(lhs + rhs)) } else { Either::Right(Holder(lhs + rhs)) }
 }
 
 fn add_one(
     value: u32,
 ) -> Either<impl Trait<<u32 as Add<u32>>::Output>, impl Trait<<u32 as Add<u32>>::Output>> {
-    //~^ ERROR: the trait bound `impl Trait<<u32 as Add>::Output>: Trait<u32>`
-    //~| ERROR: the trait bound `impl Trait<<u32 as Add>::Output>: Trait<u32>`
     add_generic(value, 1u32)
 }
 

@@ -1149,19 +1149,19 @@ impl PrintWithSpace for hir::Mutability {
 
 impl clean::Import {
     crate fn print(&self) -> impl fmt::Display + '_ {
-        display_fn(move |f| match *self {
-            clean::Import::Simple(ref name, ref src) => {
-                if *name == src.path.last_name() {
-                    write!(f, "use {};", src.print())
+        display_fn(move |f| match self.kind {
+            clean::ImportKind::Simple(ref name) => {
+                if *name == self.source.path.last_name() {
+                    write!(f, "use {};", self.source.print())
                 } else {
-                    write!(f, "use {} as {};", src.print(), *name)
+                    write!(f, "use {} as {};", self.source.print(), *name)
                 }
             }
-            clean::Import::Glob(ref src) => {
-                if src.path.segments.is_empty() {
+            clean::ImportKind::Glob => {
+                if self.source.path.segments.is_empty() {
                     write!(f, "use *;")
                 } else {
-                    write!(f, "use {}::*;", src.print())
+                    write!(f, "use {}::*;", self.source.print())
                 }
             }
         })

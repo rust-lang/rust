@@ -1,7 +1,6 @@
 // See issue #12534.
 
 #![feature(bindings_after_at)]
-#![feature(move_ref_pattern)]
 
 fn main() {}
 

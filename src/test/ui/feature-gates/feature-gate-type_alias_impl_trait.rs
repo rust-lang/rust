@@ -1,3 +1,4 @@
+// ignore-compare-mode-chalk
 use std::fmt::Debug;
 
 type Foo = impl Debug; //~ ERROR `impl Trait` in type aliases is unstable

@@ -1,13 +1,13 @@
 // Targets the Big endian Cortex-R4/R5 processor (ARMv7-R)
 
 use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions, TargetResult};
+use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         llvm_target: "armebv7r-unknown-none-eabi".to_string(),
         target_endian: "big".to_string(),
-        target_pointer_width: "32".to_string(),
+        pointer_width: 32,
         target_c_int_width: "32".to_string(),
         data_layout: "E-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
@@ -26,5 +26,5 @@ pub fn target() -> TargetResult {
             emit_debug_gdb_scripts: false,
             ..Default::default()
         },
-    })
+    }
 }

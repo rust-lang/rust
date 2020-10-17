@@ -82,6 +82,20 @@ fn main() {
     for i in 1..3 {
         println!("{}", arr[i]);
     }
+
+    // Fix #5945
+    let mut vec = vec![1, 2, 3, 4];
+    for i in 0..vec.len() - 1 {
+        vec[i] += 1;
+    }
+    let mut vec = vec![1, 2, 3, 4];
+    for i in vec.len() - 3..vec.len() {
+        vec[i] += 1;
+    }
+    let mut vec = vec![1, 2, 3, 4];
+    for i in vec.len() - 3..vec.len() - 1 {
+        vec[i] += 1;
+    }
 }
 
 mod issue2277 {

@@ -1,4 +1,5 @@
 // run-pass
+// ignore-compare-mode-chalk
 struct Foo<A: Repr>(<A as Repr>::Data);
 
 impl<A> Copy for Foo<A> where <A as Repr>::Data: Copy { }

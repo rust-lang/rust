@@ -81,7 +81,7 @@ fn parse_args<'a>(
         } // accept trailing commas
 
         // Parse options
-        if p.eat(&token::Ident(sym::options, false)) {
+        if p.eat_keyword(sym::options) {
             parse_options(&mut p, &mut args)?;
             allow_templates = false;
             continue;
@@ -101,19 +101,19 @@ fn parse_args<'a>(
         };
 
         let mut explicit_reg = false;
-        let op = if p.eat(&token::Ident(kw::In, false)) {
+        let op = if p.eat_keyword(kw::In) {
             let reg = parse_reg(&mut p, &mut explicit_reg)?;
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::In { reg, expr }
-        } else if p.eat(&token::Ident(sym::out, false)) {
+        } else if p.eat_keyword(sym::out) {
             let reg = parse_reg(&mut p, &mut explicit_reg)?;
             let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: false }
-        } else if p.eat(&token::Ident(sym::lateout, false)) {
+        } else if p.eat_keyword(sym::lateout) {
             let reg = parse_reg(&mut p, &mut explicit_reg)?;
             let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: true }
-        } else if p.eat(&token::Ident(sym::inout, false)) {
+        } else if p.eat_keyword(sym::inout) {
             let reg = parse_reg(&mut p, &mut explicit_reg)?;
             let expr = p.parse_expr()?;
             if p.eat(&token::FatArrow) {
@@ -123,7 +123,7 @@ fn parse_args<'a>(
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: false }
             }
-        } else if p.eat(&token::Ident(sym::inlateout, false)) {
+        } else if p.eat_keyword(sym::inlateout) {
             let reg = parse_reg(&mut p, &mut explicit_reg)?;
             let expr = p.parse_expr()?;
             if p.eat(&token::FatArrow) {
@@ -133,10 +133,10 @@ fn parse_args<'a>(
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: true }
             }
-        } else if p.eat(&token::Ident(kw::Const, false)) {
+        } else if p.eat_keyword(kw::Const) {
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::Const { expr }
-        } else if p.eat(&token::Ident(sym::sym, false)) {
+        } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;
             match expr.kind {
                 ast::ExprKind::Path(..) => {}
@@ -164,7 +164,7 @@ fn parse_args<'a>(
             args.templates.push(template);
             continue;
         } else {
-            return Err(p.expect_one_of(&[], &[]).unwrap_err());
+            return p.unexpected();
         };
 
         allow_templates = false;
@@ -333,21 +333,22 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
     p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
 
     while !p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
-        if p.eat(&token::Ident(sym::pure, false)) {
+        if p.eat_keyword(sym::pure) {
             try_set_option(p, args, sym::pure, ast::InlineAsmOptions::PURE);
-        } else if p.eat(&token::Ident(sym::nomem, false)) {
+        } else if p.eat_keyword(sym::nomem) {
             try_set_option(p, args, sym::nomem, ast::InlineAsmOptions::NOMEM);
-        } else if p.eat(&token::Ident(sym::readonly, false)) {
+        } else if p.eat_keyword(sym::readonly) {
             try_set_option(p, args, sym::readonly, ast::InlineAsmOptions::READONLY);
-        } else if p.eat(&token::Ident(sym::preserves_flags, false)) {
+        } else if p.eat_keyword(sym::preserves_flags) {
             try_set_option(p, args, sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS);
-        } else if p.eat(&token::Ident(sym::noreturn, false)) {
+        } else if p.eat_keyword(sym::noreturn) {
             try_set_option(p, args, sym::noreturn, ast::InlineAsmOptions::NORETURN);
-        } else if p.eat(&token::Ident(sym::nostack, false)) {
+        } else if p.eat_keyword(sym::nostack) {
             try_set_option(p, args, sym::nostack, ast::InlineAsmOptions::NOSTACK);
-        } else {
-            p.expect(&token::Ident(sym::att_syntax, false))?;
+        } else if p.eat_keyword(sym::att_syntax) {
             try_set_option(p, args, sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX);
+        } else {
+            return p.unexpected();
         }
 
         // Allow trailing commas

@@ -33,7 +33,7 @@ pub fn push_debuginfo_type_name<'tcx>(
 ) {
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
-    let cpp_like_names = tcx.sess.target.target.options.is_like_msvc;
+    let cpp_like_names = tcx.sess.target.options.is_like_msvc;
 
     match *t.kind() {
         ty::Bool => output.push_str("bool"),

@@ -41,12 +41,12 @@ fn unwrap(_1: Option<T>) -> T {
         _3 = move ((_1 as Some).0: T);   // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
         _0 = move _3;                    // scope 1 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
         StorageDead(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
-        _6 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
+        _5 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
         return;                          // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:2: 12:2
     }
 
     bb4 (cleanup): {
-        _5 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
+        _7 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
         resume;                          // scope 0 at $DIR/no-drop-for-inactive-variant.rs:7:1: 12:2
     }
 }

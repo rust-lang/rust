@@ -6,6 +6,7 @@ LL | #![feature(specialization)]
    |
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
 
 warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/deafult-generic-associated-type-bound.rs:4:12
@@ -18,8 +19,8 @@ LL | #![feature(generic_associated_types)]
 error[E0277]: can't compare `T` with `T`
   --> $DIR/deafult-generic-associated-type-bound.rs:19:5
    |
-LL |     type U<'a>: PartialEq<&'a Self>;
-   |     -------------------------------- required by `X::U`
+LL |     type U<'a>: PartialEq<&'a Self> where Self: 'a;
+   |                 ------------------- required by this bound in `X::U`
 ...
 LL |     default type U<'a> = &'a T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `T == T`

@@ -501,9 +501,9 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 ///
 /// # Examples
 ///
-/// Let’s re-implement the counter iterator from [module-level documentation]:
+/// Let’s re-implement the counter iterator from the [module-level documentation]:
 ///
-/// [module-level documentation]: index.html
+/// [module-level documentation]: super
 ///
 /// ```
 /// let mut count = 0;

@@ -711,10 +711,6 @@ impl<'tcx> LateContext<'tcx> {
         }
     }
 
-    pub fn current_lint_root(&self) -> hir::HirId {
-        self.last_node_with_lint_attrs
-    }
-
     /// Check if a `DefId`'s path matches the given absolute type path usage.
     ///
     /// Anonymous scopes such as `extern` imports are matched with `kw::Invalid`;

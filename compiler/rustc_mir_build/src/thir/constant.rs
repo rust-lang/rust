@@ -31,7 +31,7 @@ crate fn lit_to_const<'tcx>(
         (ast::LitKind::ByteStr(data), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
-            let allocation = Allocation::from_byte_aligned_bytes(data as &Vec<u8>);
+            let allocation = Allocation::from_byte_aligned_bytes(data as &[u8]);
             let allocation = tcx.intern_const_alloc(allocation);
             ConstValue::Slice { data: allocation, start: 0, end: data.len() }
         }

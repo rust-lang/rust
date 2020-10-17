@@ -16,7 +16,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -138,6 +138,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn llbb(&self) -> &'ll BasicBlock {
         unsafe { llvm::LLVMGetInsertBlock(self.llbuilder) }
     }
+
+    fn set_span(&self, _span: Span) {}
 
     fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
@@ -306,8 +308,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         use rustc_middle::ty::{Int, Uint};
 
         let new_kind = match ty.kind() {
-            Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),
-            Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.ptr_width)),
+            Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
+            Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.pointer_width)),
             t @ (Uint(_) | Int(_)) => t.clone(),
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
@@ -539,7 +541,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
-        if self.sess().target.target.arch == "amdgpu" {
+        if self.sess().target.arch == "amdgpu" {
             // amdgpu/LLVM does something weird and thinks a i64 value is
             // split into a v2i32, halving the bitwidth LLVM expects,
             // tripping an assertion. So, for now, just disable this
@@ -669,7 +671,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // WebAssembly has saturating floating point to integer casts if the
         // `nontrapping-fptoint` target feature is activated. We'll use those if
         // they are available.
-        if self.sess().target.target.arch == "wasm32"
+        if self.sess().target.arch == "wasm32"
             && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
         {
             let src_ty = self.cx.val_ty(val);
@@ -694,7 +696,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // WebAssembly has saturating floating point to integer casts if the
         // `nontrapping-fptoint` target feature is activated. We'll use those if
         // they are available.
-        if self.sess().target.target.arch == "wasm32"
+        if self.sess().target.arch == "wasm32"
             && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
         {
             let src_ty = self.cx.val_ty(val);
@@ -1425,7 +1427,7 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     fn wasm_and_missing_nontrapping_fptoint(&self) -> bool {
-        self.sess().target.target.arch == "wasm32"
+        self.sess().target.arch == "wasm32"
             && !self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
     }
 }

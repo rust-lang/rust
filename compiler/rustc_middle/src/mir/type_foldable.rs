@@ -21,10 +21,9 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 
         let kind = match self.kind {
             Goto { target } => Goto { target },
-            SwitchInt { ref discr, switch_ty, ref values, ref targets } => SwitchInt {
+            SwitchInt { ref discr, switch_ty, ref targets } => SwitchInt {
                 discr: discr.fold_with(folder),
                 switch_ty: switch_ty.fold_with(folder),
-                values: values.clone(),
                 targets: targets.clone(),
             },
             Drop { ref place, target, unwind } => {

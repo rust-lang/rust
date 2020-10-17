@@ -45,5 +45,33 @@ mod with_version {
     other!(Foo);
 }
 
+mod actix_web_test {
+    include!("actix-web/src/extract.rs");
+
+    struct Foo;
+    tuple_from_req!(Foo);
+}
+
+mod actix_web_version_test {
+    include!("actix-web-2.0.0/src/extract.rs");
+
+    struct Foo;
+    tuple_from_req!(Foo);
+}
+
+mod actori_web_test {
+    include!("actori-web/src/extract.rs");
+
+    struct Foo;
+    tuple_from_req!(Foo);
+}
+
+mod actori_web_version_test {
+    include!("actori-web-2.0.0/src/extract.rs");
+
+    struct Foo;
+    tuple_from_req!(Foo);
+}
+
 
 fn main() {}

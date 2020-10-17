@@ -229,8 +229,8 @@ fn exported_symbols_provider_local(
         // needs to be exported.
         // However, on platforms that don't allow for Rust dylibs, having
         // external linkage is enough for monomorphization to be linked to.
-        let need_visibility = tcx.sess.target.target.options.dynamic_linking
-            && !tcx.sess.target.target.options.only_cdylib;
+        let need_visibility =
+            tcx.sess.target.options.dynamic_linking && !tcx.sess.target.options.only_cdylib;
 
         let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
 
@@ -391,7 +391,7 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
 
     if is_extern && !std_internal {
-        let target = &tcx.sess.target.target.llvm_target;
+        let target = &tcx.sess.target.llvm_target;
         // WebAssembly cannot export data symbols, so reduce their export level
         if target.contains("emscripten") {
             if let Some(Node::Item(&hir::Item { kind: hir::ItemKind::Static(..), .. })) =

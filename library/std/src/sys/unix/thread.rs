@@ -6,10 +6,12 @@ use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 
-#[cfg(not(target_os = "l4re"))]
+#[cfg(not(any(target_os = "l4re", target_os = "vxworks")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 #[cfg(target_os = "l4re")]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
+#[cfg(target_os = "vxworks")]
+pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 
 pub struct Thread {
     id: libc::pthread_t,
@@ -152,10 +154,11 @@ impl Thread {
         target_os = "haiku",
         target_os = "l4re",
         target_os = "emscripten",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     ))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Haiku, and Emscripten have no way to set a thread name.
+        // Newlib, Haiku, Emscripten, and VxWorks have no way to set a thread name.
     }
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(_name: &CStr) {

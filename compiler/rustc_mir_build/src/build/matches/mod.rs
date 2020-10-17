@@ -228,8 +228,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
     ) -> BlockAnd<()> {
-        let match_scope = self.scopes.topmost();
-
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
@@ -250,7 +248,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let arm_block = this.bind_pattern(
                         outer_source_info,
                         candidate,
-                        arm.guard.as_ref().map(|g| (g, match_scope)),
+                        arm.guard.as_ref(),
                         &fake_borrow_temps,
                         scrutinee_span,
                         Some(arm.scope),
@@ -287,7 +285,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        guard: Option<(&Guard<'tcx>, region::Scope)>,
+        guard: Option<&Guard<'tcx>>,
         fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_scope: Option<region::Scope>,
@@ -1592,7 +1590,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
-        guard: Option<(&Guard<'tcx>, region::Scope)>,
+        guard: Option<&Guard<'tcx>>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         schedule_drops: bool,
@@ -1704,7 +1702,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        if let Some((guard, region_scope)) = guard {
+        if let Some(guard) = guard {
             let tcx = self.hir.tcx();
             let bindings = parent_bindings
                 .iter()
@@ -1748,12 +1746,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unreachable
             });
             let outside_scope = self.cfg.start_new_block();
-            self.exit_scope(
-                source_info.span,
-                region_scope,
-                otherwise_post_guard_block,
-                outside_scope,
-            );
+            self.exit_top_scope(otherwise_post_guard_block, outside_scope, source_info);
             self.false_edges(
                 outside_scope,
                 otherwise_block,

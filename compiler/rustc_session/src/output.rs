@@ -151,18 +151,16 @@ pub fn filename_for_input(
         CrateType::Rlib => outputs.out_directory.join(&format!("lib{}.rlib", libname)),
         CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib => {
             let (prefix, suffix) =
-                (&sess.target.target.options.dll_prefix, &sess.target.target.options.dll_suffix);
+                (&sess.target.options.dll_prefix, &sess.target.options.dll_suffix);
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
         }
         CrateType::Staticlib => {
-            let (prefix, suffix) = (
-                &sess.target.target.options.staticlib_prefix,
-                &sess.target.target.options.staticlib_suffix,
-            );
+            let (prefix, suffix) =
+                (&sess.target.options.staticlib_prefix, &sess.target.options.staticlib_suffix);
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
         }
         CrateType::Executable => {
-            let suffix = &sess.target.target.options.exe_suffix;
+            let suffix = &sess.target.options.exe_suffix;
             let out_filename = outputs.path(OutputType::Exe);
             if suffix.is_empty() { out_filename } else { out_filename.with_extension(&suffix[1..]) }
         }
@@ -179,35 +177,29 @@ pub fn filename_for_input(
 /// interaction with Rust code through static library is the only
 /// option for now
 pub fn default_output_for_target(sess: &Session) -> CrateType {
-    if !sess.target.target.options.executables {
-        CrateType::Staticlib
-    } else {
-        CrateType::Executable
-    }
+    if !sess.target.options.executables { CrateType::Staticlib } else { CrateType::Executable }
 }
 
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool {
     match crate_type {
         CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro => {
-            if !sess.target.target.options.dynamic_linking {
+            if !sess.target.options.dynamic_linking {
                 return true;
             }
-            if sess.crt_static(Some(crate_type))
-                && !sess.target.target.options.crt_static_allows_dylibs
-            {
+            if sess.crt_static(Some(crate_type)) && !sess.target.options.crt_static_allows_dylibs {
                 return true;
             }
         }
         _ => {}
     }
-    if sess.target.target.options.only_cdylib {
+    if sess.target.options.only_cdylib {
         match crate_type {
             CrateType::ProcMacro | CrateType::Dylib => return true,
             _ => {}
         }
     }
-    if !sess.target.target.options.executables {
+    if !sess.target.options.executables {
         if crate_type == CrateType::Executable {
             return true;
         }

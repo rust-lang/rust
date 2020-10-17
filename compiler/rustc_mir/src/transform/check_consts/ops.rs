@@ -42,18 +42,6 @@ pub trait NonConstOp: std::fmt::Debug {
 }
 
 #[derive(Debug)]
-pub struct Abort;
-impl NonConstOp for Abort {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        mcf_status_in_item(ccx)
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        mcf_build_error(ccx, span, "abort is not stable in const fn")
-    }
-}
-
-#[derive(Debug)]
 pub struct FloatingPointOp;
 impl NonConstOp for FloatingPointOp {
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
@@ -151,14 +139,15 @@ impl NonConstOp for FnPtrCast {
 }
 
 #[derive(Debug)]
-pub struct Generator;
+pub struct Generator(pub hir::GeneratorKind);
 impl NonConstOp for Generator {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
         Status::Forbidden
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        ccx.tcx.sess.struct_span_err(span, "Generators and `async` functions cannot be `const`")
+        let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
+        ccx.tcx.sess.struct_span_err(span, &msg)
     }
 }
 
@@ -569,12 +558,17 @@ pub mod ty {
     #[derive(Debug)]
     pub struct ImplTrait;
     impl NonConstOp for ImplTrait {
-        fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-            mcf_status_in_item(ccx)
+        fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+            Status::Unstable(sym::const_impl_trait)
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-            mcf_build_error(ccx, span, "`impl Trait` in const fn is unstable")
+            feature_err(
+                &ccx.tcx.sess.parse_sess,
+                sym::const_impl_trait,
+                span,
+                &format!("`impl Trait` is not allowed in {}s", ccx.const_kind()),
+            )
         }
     }
 

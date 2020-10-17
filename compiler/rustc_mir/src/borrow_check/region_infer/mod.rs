@@ -548,9 +548,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
-        mir_def_id: DefId,
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
+        let mir_def_id = body.source.def_id();
         self.propagate_constraints(body, infcx.tcx);
 
         let mut errors_buffer = RegionErrors::new();
@@ -1225,7 +1225,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// it. However, it works pretty well in practice. In particular,
     /// this is needed to deal with projection outlives bounds like
     ///
-    ///     <T as Foo<'0>>::Item: '1
+    /// ```ignore (internal compiler representation so lifetime syntax is invalid)
+    /// <T as Foo<'0>>::Item: '1
+    /// ```
     ///
     /// In particular, this routine winds up being important when
     /// there are bounds like `where <T as Foo<'a>>::Item: 'b` in the

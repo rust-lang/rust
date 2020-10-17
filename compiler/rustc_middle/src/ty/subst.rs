@@ -1,6 +1,5 @@
 // Type substitutions.
 
-use crate::infer::canonical::Canonical;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
@@ -647,8 +646,6 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
         ty::fold::shift_region(self.tcx, region, self.binders_passed)
     }
 }
-
-pub type CanonicalUserSubsts<'tcx> = Canonical<'tcx, UserSubsts<'tcx>>;
 
 /// Stores the user-given substs to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).

@@ -115,7 +115,6 @@ fn get_symbol_hash<'tcx>(
         }
 
         // also include any type parameters (for generic items)
-        assert!(!substs.has_erasable_regions());
         substs.hash_stable(&mut hcx, &mut hasher);
 
         if let Some(instantiating_crate) = instantiating_crate {

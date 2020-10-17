@@ -123,10 +123,26 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
         mut f: F,
     ) {
+        let _: Option<()> = self.find_map_relevant_impl(def_id, self_ty, |did| {
+            f(did);
+            None
+        });
+    }
+
+    /// Applies function to every impl that could possibly match the self type `self_ty` and returns
+    /// the first non-none value.
+    pub fn find_map_relevant_impl<T, F: FnMut(DefId) -> Option<T>>(
+        self,
+        def_id: DefId,
+        self_ty: Ty<'tcx>,
+        mut f: F,
+    ) -> Option<T> {
         let impls = self.trait_impls_of(def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
+            if let result @ Some(_) = f(impl_def_id) {
+                return result;
+            }
         }
 
         // simplify_type(.., false) basically replaces type parameters and
@@ -157,14 +173,20 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
-                    f(impl_def_id);
+                    if let result @ Some(_) = f(impl_def_id) {
+                        return result;
+                    }
                 }
             }
         } else {
             for &impl_def_id in impls.non_blanket_impls.values().flatten() {
-                f(impl_def_id);
+                if let result @ Some(_) = f(impl_def_id) {
+                    return result;
+                }
             }
         }
+
+        None
     }
 
     /// Returns an iterator containing all impls

@@ -3,12 +3,13 @@ use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
     GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemEnum, Lifetime,
-    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Stability, Type,
-    TypeBinding, TypeKind, Visibility, WherePredicate,
+    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Type, TypeBinding,
+    TypeKind, Visibility, WherePredicate,
 };
 use crate::core::DocContext;
 
 use itertools::Itertools;
+use rustc_attr::Stability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -102,14 +103,14 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
 // extract the stability index for a node from tcx, if possible
 pub fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
-    cx.tcx.lookup_stability(def_id).clean(cx)
+    cx.tcx.lookup_stability(def_id).cloned()
 }
 
 pub fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation> {
     cx.tcx.lookup_deprecation(def_id).clean(cx)
 }
 
-pub fn external_generic_args(
+fn external_generic_args(
     cx: &DocContext<'_>,
     trait_did: Option<DefId>,
     has_self: bool,
@@ -159,7 +160,7 @@ pub fn external_generic_args(
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-pub fn external_path(
+pub(super) fn external_path(
     cx: &DocContext<'_>,
     name: Symbol,
     trait_did: Option<DefId>,
@@ -361,7 +362,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
         let primitive = match *target {
             ResolvedPath { did, .. } if did.is_local() => continue,
             ResolvedPath { did, .. } => {
-                ret.extend(inline::build_impls(cx, did, None));
+                ret.extend(inline::build_impls(cx, None, did, None));
                 continue;
             }
             _ => match target.primitive_type() {
@@ -371,7 +372,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
         };
         for &did in primitive.impls(tcx) {
             if !did.is_local() {
-                inline::build_impl(cx, did, None, ret);
+                inline::build_impl(cx, None, did, None, ret);
             }
         }
     }

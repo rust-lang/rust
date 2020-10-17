@@ -3,7 +3,6 @@
 //! which are available for use externally when compiled as a library.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefIdSet;
 use rustc_hir::HirId;
 use rustc_macros::HashStable;
 use std::fmt;
@@ -59,7 +58,3 @@ impl<Id: Hash + Eq + fmt::Debug> fmt::Debug for AccessLevels<Id> {
         fmt::Debug::fmt(&self.map, f)
     }
 }
-
-/// A set containing all exported definitions from external crates.
-/// The set does not contain any entries from local crates.
-pub type ExternalExports = DefIdSet;

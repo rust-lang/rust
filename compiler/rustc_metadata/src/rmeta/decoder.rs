@@ -313,27 +313,6 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
         Ok(ty)
     }
 
-    fn cached_predicate_for_shorthand<F>(
-        &mut self,
-        shorthand: usize,
-        or_insert_with: F,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error>
-    where
-        F: FnOnce(&mut Self) -> Result<ty::Predicate<'tcx>, Self::Error>,
-    {
-        let tcx = self.tcx();
-
-        let key = ty::CReaderCacheKey { cnum: self.cdata().cnum, pos: shorthand };
-
-        if let Some(&pred) = tcx.pred_rcache.borrow().get(&key) {
-            return Ok(pred);
-        }
-
-        let pred = or_insert_with(self)?;
-        tcx.pred_rcache.borrow_mut().insert(key, pred);
-        Ok(pred)
-    }
-
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
@@ -937,7 +916,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .inferred_outlives
             .get(self, item_id)
-            .map(|predicates| predicates.decode((self, tcx)))
+            .map(|predicates| tcx.arena.alloc_from_iter(predicates.decode((self, tcx))))
             .unwrap_or_default()
     }
 
@@ -947,6 +926,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx: TyCtxt<'tcx>,
     ) -> ty::GenericPredicates<'tcx> {
         self.root.tables.super_predicates.get(self, item_id).unwrap().decode((self, tcx))
+    }
+
+    fn get_explicit_item_bounds(
+        &self,
+        item_id: DefIndex,
+        tcx: TyCtxt<'tcx>,
+    ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+        self.root
+            .tables
+            .explicit_item_bounds
+            .get(self, item_id)
+            .map(|bounds| tcx.arena.alloc_from_iter(bounds.decode((self, tcx))))
+            .unwrap_or_default()
     }
 
     fn get_generics(&self, item_id: DefIndex, sess: &Session) -> ty::Generics {
@@ -1009,6 +1001,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_impl_trait(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Option<ty::TraitRef<'tcx>> {
         self.root.tables.impl_trait_ref.get(self, id).map(|tr| tr.decode((self, tcx)))
+    }
+
+    fn get_expn_that_defined(&self, id: DefIndex, sess: &Session) -> ExpnId {
+        self.root.tables.expn_that_defined.get(self, id).unwrap().decode((self, sess))
     }
 
     /// Iterates over all the stability attributes in the given crate.

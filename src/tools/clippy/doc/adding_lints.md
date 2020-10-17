@@ -189,7 +189,8 @@ declare_clippy_lint! {
 
 * The section of lines prefixed with `///` constitutes the lint documentation
   section. This is the default documentation style and will be displayed
-  [like this][example_lint_page].
+  [like this][example_lint_page]. To render and open this documentation locally
+  in a browser, run `cargo dev serve`.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the
   [lint naming guidelines][lint_naming] here when naming your lint.
   In short, the name should state the thing that is being checked for and

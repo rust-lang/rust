@@ -13,7 +13,7 @@
 use super::wasm32_base;
 use super::{LinkerFlavor, LldFlavor, Target};
 
-pub fn target() -> Result<Target, String> {
+pub fn target() -> Target {
     let mut options = wasm32_base::options();
     let clang_args = options.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
 
@@ -30,10 +30,10 @@ pub fn target() -> Result<Target, String> {
         .unwrap()
         .push("--no-entry".to_string());
 
-    Ok(Target {
+    Target {
         llvm_target: "wasm32-unknown-unknown".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
+        pointer_width: 32,
         target_c_int_width: "32".to_string(),
         target_os: "unknown".to_string(),
         target_env: String::new(),
@@ -42,5 +42,5 @@ pub fn target() -> Result<Target, String> {
         arch: "wasm32".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Wasm),
         options,
-    })
+    }
 }

@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/issue-75627.rs:3:26
+   |
+LL | unsafe impl Send for Foo<T> {}
+   |                          ^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0412`.

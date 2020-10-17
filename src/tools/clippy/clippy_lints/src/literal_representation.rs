@@ -264,13 +264,10 @@ impl LiteralDigitGrouping {
 
         let (part, mistyped_suffixes, missing_char) = if let Some((_, exponent)) = &mut num_lit.exponent {
             (exponent, &["32", "64"][..], 'f')
+        } else if num_lit.fraction.is_some() {
+            (&mut num_lit.integer, &["32", "64"][..], 'f')
         } else {
-            num_lit
-                .fraction
-                .as_mut()
-                .map_or((&mut num_lit.integer, &["8", "16", "32", "64"][..], 'i'), |fraction| {
-                    (fraction, &["32", "64"][..], 'f')
-                })
+            (&mut num_lit.integer, &["8", "16", "32", "64"][..], 'i')
         };
 
         let mut split = part.rsplit('_');

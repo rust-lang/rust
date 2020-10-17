@@ -1,21 +1,21 @@
-error[E0723]: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn_impl_trait.rs:2:24
+error[E0658]: `impl Trait` is not allowed in constant functions
+  --> $DIR/min_const_fn_impl_trait.rs:4:24
    |
 LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> {
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #77463 <https://github.com/rust-lang/rust/issues/77463> for more information
+   = help: add `#![feature(const_impl_trait)]` to the crate attributes to enable
 
-error[E0723]: `impl Trait` in const fn is unstable
-  --> $DIR/min_const_fn_impl_trait.rs:7:23
+error[E0658]: `impl Trait` is not allowed in constant functions
+  --> $DIR/min_const_fn_impl_trait.rs:8:23
    |
 LL | const fn no_rpit() -> impl std::fmt::Debug {}
    |                       ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #77463 <https://github.com/rust-lang/rust/issues/77463> for more information
+   = help: add `#![feature(const_impl_trait)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0723`.
+For more information about this error, try `rustc --explain E0658`.

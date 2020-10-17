@@ -26,7 +26,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
     if items.eh_personality().is_none() {
         items.missing.push(LangItem::EhPersonality);
     }
-    if tcx.sess.target.target.options.is_like_emscripten && items.eh_catch_typeinfo().is_none() {
+    if tcx.sess.target.options.is_like_emscripten && items.eh_catch_typeinfo().is_none() {
         items.missing.push(LangItem::EhCatchTypeinfo);
     }
 
@@ -64,7 +64,10 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
             if item == LangItem::PanicImpl {
                 tcx.sess.err("`#[panic_handler]` function required, but not found");
             } else if item == LangItem::Oom {
-                tcx.sess.err("`#[alloc_error_handler]` function required, but not found");
+                if !tcx.features().default_alloc_error_handler {
+                    tcx.sess.err("`#[alloc_error_handler]` function required, but not found.");
+                    tcx.sess.note_without_error("Use `#![feature(default_alloc_error_handler)]` for a default error handler.");
+                }
             } else {
                 tcx.sess.err(&format!("language item required, but not found: `{}`", name));
             }

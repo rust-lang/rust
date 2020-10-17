@@ -16,6 +16,7 @@ impl<T> Foo for Fooy<T> {
     //~^ ERROR the parameter type `T` may not live long enough
     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
     //~^ ERROR lifetime bound not satisfied
+    //~| ERROR lifetime bound not satisfied
     type C where Self: Copy = String;
     //~^ ERROR the trait bound `T: Copy` is not satisfied
 }

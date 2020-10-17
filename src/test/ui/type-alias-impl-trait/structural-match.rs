@@ -1,4 +1,4 @@
-#![feature(const_fn, type_alias_impl_trait)]
+#![feature(const_impl_trait, type_alias_impl_trait)]
 
 type Foo = impl Send;
 

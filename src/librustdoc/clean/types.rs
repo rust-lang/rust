@@ -4,7 +4,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::lazy::SyncOnceCell as OnceCell;
-use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
@@ -12,18 +11,20 @@ use std::{slice, vec};
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
+use rustc_ast::{FloatTy, IntTy, UintTy};
+use rustc_attr::{Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
-use rustc_middle::middle::stability;
 use rustc_middle::ty::{AssocKind, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol, SymbolStr};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
@@ -177,6 +178,7 @@ impl Item {
     pub fn is_stripped(&self) -> bool {
         match self.inner {
             StrippedItem(..) => true,
+            ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
@@ -195,7 +197,7 @@ impl Item {
         self.stability.as_ref().and_then(|ref s| {
             let mut classes = Vec::with_capacity(2);
 
-            if s.level == stability::Unstable {
+            if s.level.is_unstable() {
                 classes.push("unstable");
             }
 
@@ -208,8 +210,11 @@ impl Item {
         })
     }
 
-    pub fn stable_since(&self) -> Option<&str> {
-        self.stability.as_ref().map(|s| &s.since[..])
+    pub fn stable_since(&self) -> Option<SymbolStr> {
+        match self.stability?.level {
+            StabilityLevel::Stable { since, .. } => Some(since.as_str()),
+            StabilityLevel::Unstable { .. } => None,
+        }
     }
 
     pub fn is_non_exhaustive(&self) -> bool {
@@ -252,7 +257,7 @@ pub enum ItemEnum {
     FunctionItem(Function),
     ModuleItem(Module),
     TypedefItem(Typedef, bool /* is associated type */),
-    OpaqueTyItem(OpaqueTy, bool /* is associated type */),
+    OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
@@ -370,32 +375,27 @@ impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum DocFragment {
-    /// A doc fragment created from a `///` or `//!` doc comment.
-    SugaredDoc(usize, rustc_span::Span, String),
-    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
-    RawDoc(usize, rustc_span::Span, String),
-    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
-    /// given filename and the file contents.
-    Include(usize, rustc_span::Span, String, String),
+pub struct DocFragment {
+    pub line: usize,
+    pub span: rustc_span::Span,
+    /// The module this doc-comment came from.
+    ///
+    /// This allows distinguishing between the original documentation and a pub re-export.
+    /// If it is `None`, the item was not re-exported.
+    pub parent_module: Option<DefId>,
+    pub doc: String,
+    pub kind: DocFragmentKind,
 }
 
-impl DocFragment {
-    pub fn as_str(&self) -> &str {
-        match *self {
-            DocFragment::SugaredDoc(_, _, ref s) => &s[..],
-            DocFragment::RawDoc(_, _, ref s) => &s[..],
-            DocFragment::Include(_, _, _, ref s) => &s[..],
-        }
-    }
-
-    pub fn span(&self) -> rustc_span::Span {
-        match *self {
-            DocFragment::SugaredDoc(_, span, _)
-            | DocFragment::RawDoc(_, span, _)
-            | DocFragment::Include(_, span, _, _) => span,
-        }
-    }
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum DocFragmentKind {
+    /// A doc fragment created from a `///` or `//!` doc comment.
+    SugaredDoc,
+    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
+    RawDoc,
+    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
+    /// given filename and the file contents.
+    Include { filename: String },
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -407,12 +407,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
             if !acc.is_empty() {
                 acc.push('\n');
             }
-            match *frag {
-                DocFragment::SugaredDoc(_, _, ref docs)
-                | DocFragment::RawDoc(_, _, ref docs)
-                | DocFragment::Include(_, _, _, ref docs) => acc.push_str(docs),
-            }
-
+            acc.push_str(&frag.doc);
             acc
         })
     }
@@ -536,54 +531,74 @@ impl Attributes {
         false
     }
 
-    pub fn from_ast(diagnostic: &::rustc_errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
+    pub fn from_ast(
+        diagnostic: &::rustc_errors::Handler,
+        attrs: &[ast::Attribute],
+        additional_attrs: Option<(&[ast::Attribute], DefId)>,
+    ) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
-        let other_attrs = attrs
-            .iter()
-            .filter_map(|attr| {
-                if let Some(value) = attr.doc_str() {
-                    let value = beautify_doc_string(value);
-                    let mk_fragment: fn(_, _, _) -> _ = if attr.is_doc_comment() {
-                        DocFragment::SugaredDoc
-                    } else {
-                        DocFragment::RawDoc
-                    };
-
-                    let line = doc_line;
-                    doc_line += value.lines().count();
-                    doc_strings.push(mk_fragment(line, attr.span, value));
-
-                    if sp.is_none() {
-                        sp = Some(attr.span);
-                    }
-                    None
+        let clean_attr = |(attr, parent_module): (&ast::Attribute, _)| {
+            if let Some(value) = attr.doc_str() {
+                trace!("got doc_str={:?}", value);
+                let value = beautify_doc_string(value);
+                let kind = if attr.is_doc_comment() {
+                    DocFragmentKind::SugaredDoc
                 } else {
-                    if attr.has_name(sym::doc) {
-                        if let Some(mi) = attr.meta() {
-                            if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
-                                // Extracted #[doc(cfg(...))]
-                                match Cfg::parse(cfg_mi) {
-                                    Ok(new_cfg) => cfg &= new_cfg,
-                                    Err(e) => diagnostic.span_err(e.span, e.msg),
-                                }
-                            } else if let Some((filename, contents)) =
-                                Attributes::extract_include(&mi)
-                            {
-                                let line = doc_line;
-                                doc_line += contents.lines().count();
-                                doc_strings.push(DocFragment::Include(
-                                    line, attr.span, filename, contents,
-                                ));
+                    DocFragmentKind::RawDoc
+                };
+
+                let line = doc_line;
+                doc_line += value.lines().count();
+                doc_strings.push(DocFragment {
+                    line,
+                    span: attr.span,
+                    doc: value,
+                    kind,
+                    parent_module,
+                });
+
+                if sp.is_none() {
+                    sp = Some(attr.span);
+                }
+                None
+            } else {
+                if attr.has_name(sym::doc) {
+                    if let Some(mi) = attr.meta() {
+                        if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
+                            // Extracted #[doc(cfg(...))]
+                            match Cfg::parse(cfg_mi) {
+                                Ok(new_cfg) => cfg &= new_cfg,
+                                Err(e) => diagnostic.span_err(e.span, e.msg),
                             }
+                        } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
+                        {
+                            let line = doc_line;
+                            doc_line += contents.lines().count();
+                            doc_strings.push(DocFragment {
+                                line,
+                                span: attr.span,
+                                doc: contents,
+                                kind: DocFragmentKind::Include { filename },
+                                parent_module: parent_module,
+                            });
                         }
                     }
-                    Some(attr.clone())
                 }
-            })
+                Some(attr.clone())
+            }
+        };
+
+        // Additional documentation should be shown before the original documentation
+        let other_attrs = additional_attrs
+            .into_iter()
+            .map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
+            .flatten()
+            .chain(attrs.iter().map(|attr| (attr, None)))
+            .filter_map(clean_attr)
             .collect();
 
         // treat #[target_feature(enable = "feat")] attributes as if they were
@@ -621,7 +636,7 @@ impl Attributes {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value(&self) -> Option<&str> {
-        self.doc_strings.first().map(|s| s.as_str())
+        self.doc_strings.first().map(|s| s.doc.as_str())
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
@@ -665,9 +680,13 @@ impl Attributes {
                                     "../".repeat(depth)
                                 }
                                 Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
-                                Some(&(_, _, ExternalLocation::Unknown)) | None => {
-                                    String::from("https://doc.rust-lang.org/nightly")
-                                }
+                                Some(&(_, _, ExternalLocation::Unknown)) | None => String::from(
+                                    if UnstableFeatures::from_environment().is_nightly_build() {
+                                        "https://doc.rust-lang.org/nightly"
+                                    } else {
+                                        "https://doc.rust-lang.org"
+                                    },
+                                ),
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
@@ -695,7 +714,7 @@ impl Attributes {
         self.other_attrs
             .lists(sym::doc)
             .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
+            .filter_map(|a| a.value_str().map(|s| s.to_string()))
             .filter(|v| !v.is_empty())
             .collect::<FxHashSet<_>>()
     }
@@ -1247,6 +1266,28 @@ impl GetDefId for Type {
 }
 
 impl PrimitiveType {
+    pub fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
+        match prim {
+            hir::PrimTy::Int(IntTy::Isize) => PrimitiveType::Isize,
+            hir::PrimTy::Int(IntTy::I8) => PrimitiveType::I8,
+            hir::PrimTy::Int(IntTy::I16) => PrimitiveType::I16,
+            hir::PrimTy::Int(IntTy::I32) => PrimitiveType::I32,
+            hir::PrimTy::Int(IntTy::I64) => PrimitiveType::I64,
+            hir::PrimTy::Int(IntTy::I128) => PrimitiveType::I128,
+            hir::PrimTy::Uint(UintTy::Usize) => PrimitiveType::Usize,
+            hir::PrimTy::Uint(UintTy::U8) => PrimitiveType::U8,
+            hir::PrimTy::Uint(UintTy::U16) => PrimitiveType::U16,
+            hir::PrimTy::Uint(UintTy::U32) => PrimitiveType::U32,
+            hir::PrimTy::Uint(UintTy::U64) => PrimitiveType::U64,
+            hir::PrimTy::Uint(UintTy::U128) => PrimitiveType::U128,
+            hir::PrimTy::Float(FloatTy::F32) => PrimitiveType::F32,
+            hir::PrimTy::Float(FloatTy::F64) => PrimitiveType::F64,
+            hir::PrimTy::Str => PrimitiveType::Str,
+            hir::PrimTy::Bool => PrimitiveType::Bool,
+            hir::PrimTy::Char => PrimitiveType::Char,
+        }
+    }
+
     pub fn from_symbol(s: Symbol) -> Option<PrimitiveType> {
         match s {
             sym::isize => Some(PrimitiveType::Isize),
@@ -1622,11 +1663,28 @@ pub struct Impl {
 }
 
 #[derive(Clone, Debug)]
-pub enum Import {
+pub struct Import {
+    pub kind: ImportKind,
+    pub source: ImportSource,
+    pub should_be_displayed: bool,
+}
+
+impl Import {
+    pub fn new_simple(name: String, source: ImportSource, should_be_displayed: bool) -> Self {
+        Self { kind: ImportKind::Simple(name), source, should_be_displayed }
+    }
+
+    pub fn new_glob(source: ImportSource, should_be_displayed: bool) -> Self {
+        Self { kind: ImportKind::Glob, source, should_be_displayed }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ImportKind {
     // use source as str;
-    Simple(String, ImportSource),
+    Simple(String),
     // use source::*;
-    Glob(ImportSource),
+    Glob,
 }
 
 #[derive(Clone, Debug)]
@@ -1645,15 +1703,6 @@ pub struct Macro {
 pub struct ProcMacro {
     pub kind: MacroKind,
     pub helpers: Vec<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct Stability {
-    pub level: stability::StabilityLevel,
-    pub feature: String,
-    pub since: String,
-    pub unstable_reason: Option<String>,
-    pub issue: Option<NonZeroU32>,
 }
 
 #[derive(Clone, Debug)]

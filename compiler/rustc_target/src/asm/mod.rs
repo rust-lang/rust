@@ -176,6 +176,7 @@ pub enum InlineAsmArch {
     Nvptx64,
     Hexagon,
     Mips,
+    Mips64,
 }
 
 impl FromStr for InlineAsmArch {
@@ -192,6 +193,7 @@ impl FromStr for InlineAsmArch {
             "nvptx64" => Ok(Self::Nvptx64),
             "hexagon" => Ok(Self::Hexagon),
             "mips" => Ok(Self::Mips),
+            "mips64" => Ok(Self::Mips64),
             _ => Err(()),
         }
     }
@@ -259,7 +261,7 @@ impl InlineAsmReg {
             InlineAsmArch::Hexagon => {
                 Self::Hexagon(HexagonInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
-            InlineAsmArch::Mips => {
+            InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
                 Self::Mips(MipsInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
         })
@@ -409,7 +411,9 @@ impl InlineAsmRegClass {
                 InlineAsmArch::Hexagon => {
                     Self::Hexagon(HexagonInlineAsmRegClass::parse(arch, name)?)
                 }
-                InlineAsmArch::Mips => Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?),
+                InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
+                    Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?)
+                }
             })
         })
     }
@@ -565,7 +569,7 @@ pub fn allocatable_registers(
             hexagon::fill_reg_map(arch, has_feature, target, &mut map);
             map
         }
-        InlineAsmArch::Mips => {
+        InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
             let mut map = mips::regclass_map();
             mips::fill_reg_map(arch, has_feature, target, &mut map);
             map

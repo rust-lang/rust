@@ -1,0 +1,21 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/projection-bound-cycle.rs:5:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0275]: overflow evaluating the requirement `<T as Foo>::Item: Sized`
+  --> $DIR/projection-bound-cycle.rs:47:5
+   |
+LL | struct OnlySized<T> where T: Sized { f: T }
+   |                  - required by this bound in `OnlySized`
+...
+LL |     type Assoc = OnlySized<<T as Foo>::Item>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0275`.

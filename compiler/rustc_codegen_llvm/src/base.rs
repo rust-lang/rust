@@ -60,7 +60,7 @@ pub fn write_compressed_metadata<'tcx>(
         unsafe { llvm::LLVMAddGlobal(metadata_llmod, common::val_ty(llconst), buf.as_ptr()) };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section_name = metadata::metadata_section_name(&tcx.sess.target.target);
+        let section_name = metadata::metadata_section_name(&tcx.sess.target);
         let name = SmallCStr::new(section_name);
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 

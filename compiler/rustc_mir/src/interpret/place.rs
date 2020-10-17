@@ -3,6 +3,7 @@
 //! All high-level functions to write to memory work on places as destinations.
 
 use std::convert::TryFrom;
+use std::fmt::Debug;
 use std::hash::Hash;
 
 use rustc_macros::HashStable;
@@ -86,7 +87,7 @@ pub struct PlaceTy<'tcx, Tag = ()> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-impl<'tcx, Tag> ::std::ops::Deref for PlaceTy<'tcx, Tag> {
+impl<'tcx, Tag> std::ops::Deref for PlaceTy<'tcx, Tag> {
     type Target = Place<Tag>;
     #[inline(always)]
     fn deref(&self) -> &Place<Tag> {
@@ -101,7 +102,7 @@ pub struct MPlaceTy<'tcx, Tag = ()> {
     pub layout: TyAndLayout<'tcx>,
 }
 
-impl<'tcx, Tag> ::std::ops::Deref for MPlaceTy<'tcx, Tag> {
+impl<'tcx, Tag> std::ops::Deref for MPlaceTy<'tcx, Tag> {
     type Target = MemPlace<Tag>;
     #[inline(always)]
     fn deref(&self) -> &MemPlace<Tag> {
@@ -226,7 +227,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 }
 
 // These are defined here because they produce a place.
-impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
@@ -251,7 +252,7 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
     }
 }
 
-impl<Tag: ::std::fmt::Debug> Place<Tag> {
+impl<Tag: Debug> Place<Tag> {
     #[inline]
     pub fn assert_mem_place(self) -> MemPlace<Tag> {
         match self {
@@ -261,7 +262,7 @@ impl<Tag: ::std::fmt::Debug> Place<Tag> {
     }
 }
 
-impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
+impl<'tcx, Tag: Debug> PlaceTy<'tcx, Tag> {
     #[inline]
     pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
         MPlaceTy { mplace: self.place.assert_mem_place(), layout: self.layout }
@@ -272,7 +273,7 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 impl<'mir, 'tcx: 'mir, Tag, M> InterpCx<'mir, 'tcx, M>
 where
     // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
-    Tag: ::std::fmt::Debug + Copy + Eq + Hash + 'static,
+    Tag: Debug + Copy + Eq + Hash + 'static,
     M: Machine<'mir, 'tcx, PointerTag = Tag>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKind>, Allocation<Tag, M::AllocExtra>)>,

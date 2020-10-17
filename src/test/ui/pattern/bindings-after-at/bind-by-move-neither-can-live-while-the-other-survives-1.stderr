@@ -1,5 +1,5 @@
 error: cannot move out of value because it is borrowed
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:15:14
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:14:14
    |
 LL |         Some(ref _y @ _z) => {}
    |              ------^^^--
@@ -8,7 +8,7 @@ LL |         Some(ref _y @ _z) => {}
    |              value borrowed, by `_y`, here
 
 error: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:21:14
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:20:14
    |
 LL |         Some(_z @ ref _y) => {}
    |              --^^^------
@@ -18,7 +18,7 @@ LL |         Some(_z @ ref _y) => {}
    |              move occurs because `_z` has type `X` which does not implement the `Copy` trait
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:29:14
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:28:14
    |
 LL |         Some(ref mut _y @ _z) => {}
    |              ----------^^^--
@@ -27,7 +27,7 @@ LL |         Some(ref mut _y @ _z) => {}
    |              value borrowed, by `_y`, here
 
 error: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:35:14
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:34:14
    |
 LL |         Some(_z @ ref mut _y) => {}
    |              --^^^----------
@@ -37,7 +37,7 @@ LL |         Some(_z @ ref mut _y) => {}
    |              move occurs because `_z` has type `X` which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:21:19
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:20:19
    |
 LL |         Some(_z @ ref _y) => {}
    |              -----^^^^^^
@@ -52,7 +52,7 @@ LL |         Some(ref _z @ ref _y) => {}
    |              ^^^
 
 error[E0382]: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:35:19
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:34:19
    |
 LL |         Some(_z @ ref mut _y) => {}
    |              -----^^^^^^^^^^

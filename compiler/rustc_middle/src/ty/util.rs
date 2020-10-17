@@ -6,9 +6,9 @@ use crate::mir::interpret::{sign_extend, truncate};
 use crate::ty::fold::TypeFolder;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
-use crate::ty::subst::{GenericArgKind, InternalSubsts, Subst, SubstsRef};
+use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::TyKind::*;
-use crate::ty::{self, DefIdTree, GenericParamDefKind, List, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -341,19 +341,19 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn calculate_dtor(
         self,
         adt_did: DefId,
-        validate: &mut dyn FnMut(Self, DefId) -> Result<(), ErrorReported>,
+        validate: impl Fn(Self, DefId) -> Result<(), ErrorReported>,
     ) -> Option<ty::Destructor> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure().coherent_trait(drop_trait);
 
-        let mut dtor_did = None;
         let ty = self.type_of(adt_did);
-        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
+        let dtor_did = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).in_definition_order().next() {
                 if validate(self, impl_did).is_ok() {
-                    dtor_did = Some(item.def_id);
+                    return Some(item.def_id);
                 }
             }
+            None
         });
 
         Some(ty::Destructor { did: dtor_did? })
@@ -509,20 +509,6 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(ty::Binder::bind(env_ty))
     }
 
-    /// Given the `DefId` of some item that has no type or const parameters, make
-    /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self, item_def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } => {
-                bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
-            }
-            GenericParamDefKind::Const { .. } => {
-                bug!("empty_substs_for_def_id: {:?} has const parameters", item_def_id)
-            }
-        })
-    }
-
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.
     pub fn is_static(self, def_id: DefId) -> bool {
         self.static_mutability(def_id).is_some()
@@ -646,8 +632,8 @@ impl<'tcx> ty::TyS<'tcx> {
             }
             ty::Char => Some(std::char::MAX as u128),
             ty::Float(fty) => Some(match fty {
-                ast::FloatTy::F32 => ::rustc_apfloat::ieee::Single::INFINITY.to_bits(),
-                ast::FloatTy::F64 => ::rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+                ast::FloatTy::F32 => rustc_apfloat::ieee::Single::INFINITY.to_bits(),
+                ast::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
             }),
             _ => None,
         };

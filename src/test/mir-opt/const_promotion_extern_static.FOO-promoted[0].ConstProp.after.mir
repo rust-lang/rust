@@ -5,8 +5,6 @@ promoted[0] in FOO: &[&i32; 1] = {
     let mut _1: [&i32; 1];               // in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
     let mut _2: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:13:32: 13:45
     let mut _3: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
-    scope 1 {
-    }
 
     bb0: {
         _3 = const {alloc2: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:13:42: 13:43

@@ -1476,7 +1476,8 @@ impl<T> Vec<T> {
     /// `'a`. If the type has only static references, or none at all, then this
     /// may be chosen to be `'static`.
     ///
-    /// This function is similar to the `leak` function on `Box`.
+    /// This function is similar to the [`leak`][Box::leak] function on [`Box`]
+    /// except that there is no way to recover the leaked memory.
     ///
     /// This function is mainly useful for data that lives for the remainder of
     /// the program's life. Dropping the returned reference will cause a memory
@@ -1599,50 +1600,6 @@ impl<T: Clone> Vec<T> {
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
-    }
-}
-
-impl<T: Default> Vec<T> {
-    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
-    ///
-    /// If `new_len` is greater than `len`, the `Vec` is extended by the
-    /// difference, with each additional slot filled with [`Default::default()`].
-    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
-    ///
-    /// This method uses [`Default`] to create new values on every push. If
-    /// you'd rather [`Clone`] a given value, use [`resize`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// #![feature(vec_resize_default)]
-    ///
-    /// let mut vec = vec![1, 2, 3];
-    /// vec.resize_default(5);
-    /// assert_eq!(vec, [1, 2, 3, 0, 0]);
-    ///
-    /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.resize_default(2);
-    /// assert_eq!(vec, [1, 2]);
-    /// ```
-    ///
-    /// [`resize`]: Vec::resize
-    #[unstable(feature = "vec_resize_default", issue = "41758")]
-    #[rustc_deprecated(
-        reason = "This is moving towards being removed in favor \
-                  of `.resize_with(Default::default)`.  If you disagree, please comment \
-                  in the tracking issue.",
-        since = "1.33.0"
-    )]
-    pub fn resize_default(&mut self, new_len: usize) {
-        let len = self.len();
-
-        if new_len > len {
-            self.extend_with(new_len - len, ExtendDefault);
-        } else {
-            self.truncate(new_len);
-        }
     }
 }
 
@@ -2591,6 +2548,8 @@ __impl_slice_eq1! { [] Vec<A>, &[B], #[stable(feature = "rust1", since = "1.0.0"
 __impl_slice_eq1! { [] Vec<A>, &mut [B], #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] &[A], Vec<B>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
 __impl_slice_eq1! { [] &mut [A], Vec<B>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
+__impl_slice_eq1! { [] Vec<A>, [B], #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
+__impl_slice_eq1! { [] [A], Vec<B>, #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
 __impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B> where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &[B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &mut [B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }

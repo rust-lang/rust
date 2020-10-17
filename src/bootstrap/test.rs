@@ -966,6 +966,15 @@ impl Step for Compiletest {
     /// compiletest `mode` and `suite` arguments. For example `mode` can be
     /// "run-pass" or `suite` can be something like `debuginfo`.
     fn run(self, builder: &Builder<'_>) {
+        if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
+            eprintln!("\
+error: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
+help: use `--stage 1` instead
+note: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
+            );
+            std::process::exit(1);
+        }
+
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;

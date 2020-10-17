@@ -191,6 +191,48 @@ fn test_into_from_raw_unsized() {
 }
 
 #[test]
+fn into_from_weak_raw() {
+    let x = Rc::new(box "hello");
+    let y = Rc::downgrade(&x);
+
+    let y_ptr = Weak::into_raw(y);
+    unsafe {
+        assert_eq!(**y_ptr, "hello");
+
+        let y = Weak::from_raw(y_ptr);
+        let y_up = Weak::upgrade(&y).unwrap();
+        assert_eq!(**y_up, "hello");
+        drop(y_up);
+
+        assert_eq!(Rc::try_unwrap(x).map(|x| *x), Ok("hello"));
+    }
+}
+
+#[test]
+fn test_into_from_weak_raw_unsized() {
+    use std::fmt::Display;
+    use std::string::ToString;
+
+    let arc: Rc<str> = Rc::from("foo");
+    let weak: Weak<str> = Rc::downgrade(&arc);
+
+    let ptr = Weak::into_raw(weak.clone());
+    let weak2 = unsafe { Weak::from_raw(ptr) };
+
+    assert_eq!(unsafe { &*ptr }, "foo");
+    assert!(weak.ptr_eq(&weak2));
+
+    let arc: Rc<dyn Display> = Rc::new(123);
+    let weak: Weak<dyn Display> = Rc::downgrade(&arc);
+
+    let ptr = Weak::into_raw(weak.clone());
+    let weak2 = unsafe { Weak::from_raw(ptr) };
+
+    assert_eq!(unsafe { &*ptr }.to_string(), "123");
+    assert!(weak.ptr_eq(&weak2));
+}
+
+#[test]
 fn get_mut() {
     let mut x = Rc::new(3);
     *Rc::get_mut(&mut x).unwrap() = 4;

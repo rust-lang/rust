@@ -2,7 +2,7 @@ use crate::ty::subst::{GenericArg, Subst};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::mini_set::MiniSet;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 
@@ -269,7 +269,7 @@ pub trait Printer<'tcx>: Sized {
 /// deeply nested tuples that have no DefId.
 fn characteristic_def_id_of_type_cached<'a>(
     ty: Ty<'a>,
-    visited: &mut MiniSet<Ty<'a>>,
+    visited: &mut SsoHashSet<Ty<'a>>,
 ) -> Option<DefId> {
     match *ty.kind() {
         ty::Adt(adt_def, _) => Some(adt_def.did),
@@ -316,7 +316,7 @@ fn characteristic_def_id_of_type_cached<'a>(
     }
 }
 pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
-    characteristic_def_id_of_type_cached(ty, &mut MiniSet::new())
+    characteristic_def_id_of_type_cached(ty, &mut SsoHashSet::new())
 }
 
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::RegionKind {

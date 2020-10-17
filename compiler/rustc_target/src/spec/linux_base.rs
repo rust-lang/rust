@@ -28,6 +28,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
         has_elf_tls: true,
+        crt_static_respected: true,
         ..Default::default()
     }
 }

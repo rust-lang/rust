@@ -1,4 +1,4 @@
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 use crate::util::patch::MirPatch;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
@@ -20,7 +20,7 @@ pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) 
 }
 
 impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, body);
     }
 }
@@ -43,7 +43,7 @@ impl RemoveNoopLandingPads {
                     // These are all nops in a landing pad
                 }
 
-                StatementKind::Assign(box (place, Rvalue::Use(_))) => {
+                StatementKind::Assign(box (place, Rvalue::Use(_) | Rvalue::Discriminant(_))) => {
                     if place.as_local().is_some() {
                         // Writing to a local (e.g., a drop flag) does not
                         // turn a landing pad to a non-nop

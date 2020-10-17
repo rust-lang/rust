@@ -202,9 +202,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
             closure_hir_id, substs, final_upvar_tys
         );
-        for (upvar_ty, final_upvar_ty) in substs.upvar_tys().zip(final_upvar_tys) {
-            self.demand_suptype(span, upvar_ty, final_upvar_ty);
-        }
+
+        // Build a tuple (U0..Un) of the final upvar types U0..Un
+        // and unify the upvar tupe type in the closure with it:
+        let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
+        self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
         // If we are also inferred the closure kind here,
         // process any deferred resolutions.

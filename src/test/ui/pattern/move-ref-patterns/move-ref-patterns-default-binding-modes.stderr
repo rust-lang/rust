@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/move-ref-patterns-default-binding-modes.rs:10:22
+  --> $DIR/move-ref-patterns-default-binding-modes.rs:8:22
    |
 LL |     let (a, mut b) = &p;
    |             -----    ^^
@@ -8,7 +8,7 @@ LL |     let (a, mut b) = &p;
    |             move occurs because `b` has type `U`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/move-ref-patterns-default-binding-modes.rs:14:22
+  --> $DIR/move-ref-patterns-default-binding-modes.rs:12:22
    |
 LL |     let (a, mut b) = &mut p;
    |             -----    ^^^^^^

@@ -8,6 +8,7 @@ use rustc_span::{self, Span, Symbol};
 
 use rustc_hir as hir;
 use rustc_hir::def_id::CrateNum;
+use rustc_hir::HirId;
 
 pub struct Module<'hir> {
     pub name: Option<Symbol>,
@@ -236,6 +237,7 @@ pub struct Macro<'hir> {
 
 pub struct ExternCrate<'hir> {
     pub name: Symbol,
+    pub hir_id: HirId,
     pub cnum: CrateNum,
     pub path: Option<String>,
     pub vis: &'hir hir::Visibility<'hir>,
@@ -243,6 +245,7 @@ pub struct ExternCrate<'hir> {
     pub span: Span,
 }
 
+#[derive(Debug)]
 pub struct Import<'hir> {
     pub name: Symbol,
     pub id: hir::HirId,

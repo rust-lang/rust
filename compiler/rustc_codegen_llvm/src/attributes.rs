@@ -6,7 +6,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::query::Providers;
@@ -18,7 +18,7 @@ use crate::attributes;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Attribute};
 use crate::llvm_util;
-pub use rustc_attr::{InlineAttr, OptimizeAttr};
+pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
 use crate::context::CodegenCx;
 use crate::value::Value;
@@ -31,7 +31,7 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
         Hint => Attribute::InlineHint.apply_llfn(Function, val),
         Always => Attribute::AlwaysInline.apply_llfn(Function, val),
         Never => {
-            if cx.tcx().sess.target.target.arch != "amdgpu" {
+            if cx.tcx().sess.target.arch != "amdgpu" {
                 Attribute::NoInline.apply_llfn(Function, val);
             }
         }
@@ -91,8 +91,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
         let mcount_name =
-            CString::new(cx.sess().target.target.options.target_mcount.as_str().as_bytes())
-                .unwrap();
+            CString::new(cx.sess().target.options.target_mcount.as_str().as_bytes()).unwrap();
 
         llvm::AddFunctionAttrStringValue(
             llfn,
@@ -106,7 +105,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
-    if !cx.sess().target.target.options.stack_probes {
+    if !cx.sess().target.options.stack_probes {
         return;
     }
 
@@ -175,7 +174,6 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
         .split(',')
         .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
     sess.target
-        .target
         .options
         .features
         .split(',')
@@ -192,6 +190,18 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         const_cstr!("target-cpu"),
         target_cpu.as_c_str(),
     );
+}
+
+pub fn apply_tune_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+    if let Some(tune) = llvm_util::tune_cpu(cx.tcx.sess) {
+        let tune_cpu = SmallCStr::new(tune);
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            const_cstr!("tune-cpu"),
+            tune_cpu.as_c_str(),
+        );
+    }
 }
 
 /// Sets the `NonLazyBind` LLVM attribute on a given function,
@@ -303,12 +313,19 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // Without this, ThinLTO won't inline Rust functions into Clang generated
     // functions (because Clang annotates functions this way too).
     apply_target_cpu_attr(cx, llfn);
+    // tune-cpu is only conveyed through the attribute for our purpose.
+    // The target doesn't care; the subtarget reads our attribute.
+    apply_tune_cpu_attr(cx, llfn);
 
     let features = llvm_target_features(cx.tcx.sess)
         .map(|s| s.to_string())
         .chain(codegen_fn_attrs.target_features.iter().map(|f| {
             let feature = &f.as_str();
             format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+        }))
+        .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
+            InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
+            InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
         .collect::<Vec<String>>()
         .join(",");
@@ -326,7 +343,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // Note that currently the `wasm-import-module` doesn't do anything, but
     // eventually LLVM 7 should read this and ferry the appropriate import
     // module to the output file.
-    if cx.tcx.sess.target.target.arch == "wasm32" {
+    if cx.tcx.sess.target.arch == "wasm32" {
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
             llvm::AddFunctionAttrStringValue(
                 llfn,
@@ -348,25 +365,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     }
 }
 
-pub fn provide(providers: &mut Providers) {
-    providers.supported_target_features = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        if tcx.sess.opts.actually_rustdoc {
-            // rustdoc needs to be able to document functions that use all the features, so
-            // provide them all.
-            llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
-        } else {
-            llvm_util::supported_target_features(tcx.sess)
-                .iter()
-                .map(|&(a, b)| (a.to_string(), b))
-                .collect()
-        }
-    };
-
-    provide_extern(providers);
-}
-
-pub fn provide_extern(providers: &mut Providers) {
+pub fn provide_both(providers: &mut Providers) {
     providers.wasm_import_module_map = |tcx, cnum| {
         // Build up a map from DefId to a `NativeLib` structure, where
         // `NativeLib` internally contains information about

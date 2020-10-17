@@ -280,7 +280,7 @@ impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
 // within a private module. Once RFC 2145 has been implemented look into
 // improving this.
 mod sealed_trait {
-    /// Trait which permits the allowed types to be used with [VaList::arg].
+    /// Trait which permits the allowed types to be used with [super::VaListImpl::arg].
     #[unstable(
         feature = "c_variadic",
         reason = "the `c_variadic` feature has not been properly tested on \

@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use clap::{App, Arg, SubCommand};
-use clippy_dev::{fmt, new_lint, ra_setup, stderr_length_check, update_lints};
+use clippy_dev::{fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
 
 fn main() {
     let matches = App::new("Clippy developer tooling")
@@ -100,6 +100,19 @@ fn main() {
                         .required(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("serve")
+                .about("Launch a local 'ALL the Clippy Lints' website in a browser")
+                .arg(
+                    Arg::with_name("port")
+                        .long("port")
+                        .short("p")
+                        .help("Local port for the http server")
+                        .default_value("8000")
+                        .validator_os(serve::validate_port),
+                )
+                .arg(Arg::with_name("lint").help("Which lint's page to load initially (optional)")),
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -129,6 +142,11 @@ fn main() {
             stderr_length_check::check();
         },
         ("ra-setup", Some(matches)) => ra_setup::run(matches.value_of("rustc-repo-path")),
+        ("serve", Some(matches)) => {
+            let port = matches.value_of("port").unwrap().parse().unwrap();
+            let lint = matches.value_of("lint");
+            serve::run(port, lint);
+        },
         _ => {},
     }
 }

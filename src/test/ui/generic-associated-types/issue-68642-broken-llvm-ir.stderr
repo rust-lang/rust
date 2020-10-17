@@ -11,7 +11,7 @@ error[E0277]: expected a `Fn<()>` closure, found `T`
   --> $DIR/issue-68642-broken-llvm-ir.rs:15:5
    |
 LL |     type F<'a>: Fn() -> u32;
-   |     ------------------------ required by `Fun::F`
+   |                 ----------- required by this bound in `Fun::F`
 ...
 LL |     type F<'a> = Self;
    |     ^^^^^^^^^^^^^^^^^^ expected an `Fn<()>` closure, found `T`

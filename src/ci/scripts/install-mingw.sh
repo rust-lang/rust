@@ -42,6 +42,13 @@ if isWindows; then
             arch=x86_64
             mingw_archive="${MINGW_ARCHIVE_64}"
             ;;
+        *aarch64*)
+            # aarch64 is a cross-compiled target. Use the x86_64
+            # mingw, since that's the host architecture.
+            bits=64
+            arch=x86_64
+            mingw_archive="${MINGW_ARCHIVE_64}"
+            ;;
         *)
             echo "src/ci/scripts/install-mingw.sh can't detect the builder's architecture"
             echo "please tweak it to recognize the builder named '${CI_JOB_NAME}'"

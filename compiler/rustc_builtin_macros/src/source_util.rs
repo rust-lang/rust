@@ -13,8 +13,6 @@ use rustc_span::{self, Pos, Span};
 use smallvec::SmallVec;
 use std::rc::Rc;
 
-use rustc_data_structures::sync::Lrc;
-
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
 // a given file into the current one.
@@ -216,7 +214,7 @@ pub fn expand_include_bytes(
         }
     };
     match cx.source_map().load_binary_file(&file) {
-        Ok(bytes) => base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes)))),
+        Ok(bytes) => base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(bytes.into()))),
         Err(e) => {
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)

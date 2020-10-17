@@ -927,7 +927,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         sp: Span,
         nested: F,
     ) {
-        let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
+        let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs, None);
         if let Some(ref cfg) = attrs.cfg {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;

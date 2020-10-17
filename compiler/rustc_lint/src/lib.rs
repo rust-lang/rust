@@ -53,6 +53,7 @@ mod non_ascii_idents;
 mod nonstandard_style;
 mod passes;
 mod redundant_semicolon;
+mod traits;
 mod types;
 mod unused;
 
@@ -63,8 +64,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, BROKEN_INTRA_DOC_LINKS, ELIDED_LIFETIMES_IN_PATHS,
-    EXPLICIT_OUTLIVES_REQUIREMENTS, INVALID_CODEBLOCK_ATTRIBUTES, MISSING_DOC_CODE_EXAMPLES,
-    PRIVATE_DOC_TESTS,
+    EXPLICIT_OUTLIVES_REQUIREMENTS, INVALID_CODEBLOCK_ATTRIBUTES, INVALID_HTML_TAGS,
+    MISSING_DOC_CODE_EXAMPLES, PRIVATE_DOC_TESTS,
 };
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -75,6 +76,7 @@ use internal::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
 use redundant_semicolon::*;
+use traits::*;
 use types::*;
 use unused::*;
 
@@ -157,6 +159,7 @@ macro_rules! late_lint_passes {
                 MissingDebugImplementations: MissingDebugImplementations::default(),
                 ArrayIntoIter: ArrayIntoIter,
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
+                DropTraitConstraints: DropTraitConstraints,
             ]
         );
     };
@@ -308,7 +311,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         PRIVATE_INTRA_DOC_LINKS,
         INVALID_CODEBLOCK_ATTRIBUTES,
         MISSING_DOC_CODE_EXAMPLES,
-        PRIVATE_DOC_TESTS
+        PRIVATE_DOC_TESTS,
+        INVALID_HTML_TAGS
     );
 
     // Register renamed and removed lints.

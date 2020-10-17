@@ -7,7 +7,6 @@ pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
 use crate::ich::StableHashingContext;
-use crate::infer::canonical::Canonical;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::mir::interpret::ErrorHandled;
@@ -656,8 +655,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
 #[rustc_diagnostic_item = "Ty"]
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
-pub type CanonicalTy<'tcx> = Canonical<'tcx, Ty<'tcx>>;
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
 pub struct UpvarPath {
     pub hir_id: hir::HirId,
@@ -767,10 +764,6 @@ pub enum IntVarValue {
 pub struct FloatVarValue(pub ast::FloatTy);
 
 impl ty::EarlyBoundRegion {
-    pub fn to_bound_region(&self) -> ty::BoundRegion {
-        ty::BoundRegion::BrNamed(self.def_id, self.name)
-    }
-
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
@@ -817,14 +810,6 @@ impl GenericParamDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         if let GenericParamDefKind::Lifetime = self.kind {
             ty::EarlyBoundRegion { def_id: self.def_id, index: self.index, name: self.name }
-        } else {
-            bug!("cannot convert a non-lifetime parameter def to an early bound region")
-        }
-    }
-
-    pub fn to_bound_region(&self) -> ty::BoundRegion {
-        if let GenericParamDefKind::Lifetime = self.kind {
-            self.to_early_bound_region_data().to_bound_region()
         } else {
             bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
@@ -1002,22 +987,6 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
         instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
-    }
-
-    pub fn instantiate_supertrait(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        poly_trait_ref: &ty::PolyTraitRef<'tcx>,
-    ) -> InstantiatedPredicates<'tcx> {
-        assert_eq!(self.parent, None);
-        InstantiatedPredicates {
-            predicates: self
-                .predicates
-                .iter()
-                .map(|(pred, _)| pred.subst_supertrait(tcx, poly_trait_ref))
-                .collect(),
-            spans: self.predicates.iter().map(|(_, sp)| *sp).collect(),
-        }
     }
 }
 
@@ -1303,7 +1272,6 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
-pub type PolyOutlivesPredicate<A, B> = ty::Binder<OutlivesPredicate<A, B>>;
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
 pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<RegionOutlivesPredicate<'tcx>>;
@@ -2468,8 +2436,10 @@ impl<'tcx> AdtDef {
         self.variants.iter().flat_map(|v| v.fields.iter())
     }
 
+    /// Whether the ADT lacks fields. Note that this includes uninhabited enums,
+    /// e.g., `enum Void {}` is considered payload free as well.
     pub fn is_payloadfree(&self) -> bool {
-        !self.variants.is_empty() && self.variants.iter().all(|v| v.fields.is_empty())
+        self.variants.iter().all(|v| v.fields.is_empty())
     }
 
     /// Return a `VariantDef` given a variant id.
@@ -2681,15 +2651,15 @@ impl<'tcx> ClosureKind {
     /// Returns `true` if a type that impls this closure kind
     /// must also implement `other`.
     pub fn extends(self, other: ty::ClosureKind) -> bool {
-        match (self, other) {
-            (ClosureKind::Fn, ClosureKind::Fn) => true,
-            (ClosureKind::Fn, ClosureKind::FnMut) => true,
-            (ClosureKind::Fn, ClosureKind::FnOnce) => true,
-            (ClosureKind::FnMut, ClosureKind::FnMut) => true,
-            (ClosureKind::FnMut, ClosureKind::FnOnce) => true,
-            (ClosureKind::FnOnce, ClosureKind::FnOnce) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (ClosureKind::Fn, ClosureKind::Fn)
+                | (ClosureKind::Fn, ClosureKind::FnMut)
+                | (ClosureKind::Fn, ClosureKind::FnOnce)
+                | (ClosureKind::FnMut, ClosureKind::FnMut)
+                | (ClosureKind::FnMut, ClosureKind::FnOnce)
+                | (ClosureKind::FnOnce, ClosureKind::FnOnce)
+        )
     }
 
     /// Returns the representative scalar type for this closure kind.
@@ -2815,15 +2785,15 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
         let is_associated_item = if let Some(def_id) = def_id.as_local() {
-            match self.hir().get(self.hir().local_def_id_to_hir_id(def_id)) {
-                Node::TraitItem(_) | Node::ImplItem(_) => true,
-                _ => false,
-            }
+            matches!(
+                self.hir().get(self.hir().local_def_id_to_hir_id(def_id)),
+                Node::TraitItem(_) | Node::ImplItem(_)
+            )
         } else {
-            match self.def_kind(def_id) {
-                DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => true,
-                _ => false,
-            }
+            matches!(
+                self.def_kind(def_id),
+                DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy
+            )
         };
 
         is_associated_item.then(|| self.associated_item(def_id))
@@ -2953,13 +2923,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
-            ty::InstanceDef::Item(def) => {
-                if let Some((did, param_did)) = def.as_const_arg() {
-                    self.optimized_mir_of_const_arg((did, param_did))
-                } else {
-                    self.optimized_mir(def.did)
-                }
-            }
+            ty::InstanceDef::Item(def) => self.optimized_mir_opt_const_arg(def),
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)
@@ -3034,10 +2998,12 @@ impl<'tcx> TyCtxt<'tcx> {
                 .hygienic_eq(def_name.span.ctxt(), self.expansion_that_defined(def_parent_def_id))
     }
 
-    fn expansion_that_defined(self, scope: DefId) -> ExpnId {
+    pub fn expansion_that_defined(self, scope: DefId) -> ExpnId {
         match scope.as_local() {
+            // Parsing and expansion aren't incremental, so we don't
+            // need to go through a query for the same-crate case.
             Some(scope) => self.hir().definitions().expansion_that_defined(scope),
-            None => ExpnId::root(),
+            None => self.expn_that_defined(scope),
         }
     }
 

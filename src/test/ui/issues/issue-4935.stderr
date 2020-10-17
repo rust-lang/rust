@@ -1,13 +1,16 @@
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/issue-4935.rs:5:13
    |
-LL | fn foo(a: usize) {}
-   | ---------------- defined here
-LL |
 LL | fn main() { foo(5, 6) }
    |             ^^^ -  - supplied 2 arguments
    |             |
    |             expected 1 argument
+   |
+note: function defined here
+  --> $DIR/issue-4935.rs:3:4
+   |
+LL | fn foo(a: usize) {}
+   |    ^^^ --------
 
 error: aborting due to previous error
 

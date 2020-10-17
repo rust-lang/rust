@@ -4,7 +4,6 @@ use crate::ast::{self, Lit, LitKind};
 use crate::token::{self, Token};
 use crate::tokenstream::TokenTree;
 
-use rustc_data_structures::sync::Lrc;
 use rustc_lexer::unescape::{unescape_byte, unescape_char};
 use rustc_lexer::unescape::{unescape_byte_literal, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -108,7 +107,7 @@ impl LitKind {
                 });
                 error?;
                 buf.shrink_to_fit();
-                LitKind::ByteStr(Lrc::new(buf))
+                LitKind::ByteStr(buf.into())
             }
             token::ByteStrRaw(_) => {
                 let s = symbol.as_str();
@@ -128,7 +127,7 @@ impl LitKind {
                     symbol.to_string().into_bytes()
                 };
 
-                LitKind::ByteStr(Lrc::new(bytes))
+                LitKind::ByteStr(bytes.into())
             }
             token::Err => LitKind::Err(symbol),
         })

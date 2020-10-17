@@ -160,3 +160,21 @@ impl AsRawFd for io::Stderr {
         sys::stdio::Stderr.as_raw_fd()
     }
 }
+
+impl<'a> AsRawFd for io::StdinLock<'a> {
+    fn as_raw_fd(&self) -> RawFd {
+        sys::stdio::Stdin.as_raw_fd()
+    }
+}
+
+impl<'a> AsRawFd for io::StdoutLock<'a> {
+    fn as_raw_fd(&self) -> RawFd {
+        sys::stdio::Stdout.as_raw_fd()
+    }
+}
+
+impl<'a> AsRawFd for io::StderrLock<'a> {
+    fn as_raw_fd(&self) -> RawFd {
+        sys::stdio::Stderr.as_raw_fd()
+    }
+}

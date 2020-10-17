@@ -1,42 +1,47 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![feature(once_cell)]
 
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
+use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub mod fmt;
 pub mod new_lint;
 pub mod ra_setup;
+pub mod serve;
 pub mod stderr_length_check;
 pub mod update_lints;
 
-lazy_static! {
-    static ref DEC_CLIPPY_LINT_RE: Regex = Regex::new(
+static DEC_CLIPPY_LINT_RE: SyncLazy<Regex> = SyncLazy::new(|| {
+    Regex::new(
         r#"(?x)
-        declare_clippy_lint!\s*[\{(]
-        (?:\s+///.*)*
-        \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
-        (?P<cat>[a-z_]+)\s*,\s*
-        "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
-    "#
+    declare_clippy_lint!\s*[\{(]
+    (?:\s+///.*)*
+    \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
+    (?P<cat>[a-z_]+)\s*,\s*
+    "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
+"#,
     )
-    .unwrap();
-    static ref DEC_DEPRECATED_LINT_RE: Regex = Regex::new(
+    .unwrap()
+});
+
+static DEC_DEPRECATED_LINT_RE: SyncLazy<Regex> = SyncLazy::new(|| {
+    Regex::new(
         r#"(?x)
-        declare_deprecated_lint!\s*[{(]\s*
-        (?:\s+///.*)*
-        \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
-        "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
-    "#
+    declare_deprecated_lint!\s*[{(]\s*
+    (?:\s+///.*)*
+    \s+pub\s+(?P<name>[A-Z_][A-Z_0-9]*)\s*,\s*
+    "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
+"#,
     )
-    .unwrap();
-    static ref NL_ESCAPE_RE: Regex = Regex::new(r#"\\\n\s*"#).unwrap();
-}
+    .unwrap()
+});
+static NL_ESCAPE_RE: SyncLazy<Regex> = SyncLazy::new(|| Regex::new(r#"\\\n\s*"#).unwrap());
 
 pub static DOCS_LINK: &str = "https://rust-lang.github.io/rust-clippy/master/index.html";
 

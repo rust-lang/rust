@@ -12,6 +12,7 @@ use getopts::Options;
 
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
+use crate::setup::Profile;
 use crate::{Build, DocTests};
 
 /// Deserialized version of all flags for this compile.
@@ -29,6 +30,7 @@ pub struct Flags {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub exclude: Vec<PathBuf>,
+    pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub dry_run: bool,
@@ -47,6 +49,9 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Check {
+        // Whether to run checking over all targets (e.g., unit / integration
+        // tests).
+        all_targets: bool,
         paths: Vec<PathBuf>,
     },
     Clippy {
@@ -91,7 +96,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Setup {
-        path: String,
+        profile: Profile,
     },
 }
 
@@ -120,6 +125,7 @@ Subcommands:
     dist        Build distribution artifacts
     install     Install distribution artifacts
     run, r      Run tools contained in this repository
+    setup       Create a config.toml (making it easier to use `x.py` itself)
 
 To learn more about a subcommand, run `./x.py <subcommand> -h`",
         );
@@ -133,6 +139,11 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         opts.optmulti("", "host", "host targets to build", "HOST");
         opts.optmulti("", "target", "target targets to build", "TARGET");
         opts.optmulti("", "exclude", "build paths to exclude", "PATH");
+        opts.optflag(
+            "",
+            "include-default-paths",
+            "include default paths in addition to the provided ones",
+        );
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
         opts.optflag("", "dry-run", "dry run; don't build anything");
         opts.optopt(
@@ -249,6 +260,9 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                     "enable this to generate a Rustfix coverage file, which is saved in \
                         `/<build_base>/rustfix_missing_coverage.txt`",
                 );
+            }
+            "check" | "c" => {
+                opts.optflag("", "all-targets", "Check all targets");
             }
             "bench" => {
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
@@ -459,15 +473,21 @@ Arguments:
                 );
             }
             "setup" => {
-                subcommand_help.push_str(
+                subcommand_help.push_str(&format!(
                     "\n
+x.py setup creates a `config.toml` which changes the defaults for x.py itself.
+
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
 
         ./x.py setup library
 
-    The profile is optional and you will be prompted interactively if it is not given.",
-                );
+    The profile is optional and you will be prompted interactively if it is not given.
+    The following profiles are available:
+
+{}",
+                    Profile::all_for_help("        ").trim_end()
+                ));
             }
             _ => {}
         };
@@ -484,7 +504,9 @@ Arguments:
 
         let cmd = match subcommand.as_str() {
             "build" | "b" => Subcommand::Build { paths },
-            "check" | "c" => Subcommand::Check { paths },
+            "check" | "c" => {
+                Subcommand::Check { paths, all_targets: matches.opt_present("all-targets") }
+            }
             "clippy" => Subcommand::Clippy { paths },
             "fix" => Subcommand::Fix { paths },
             "test" | "t" => Subcommand::Test {
@@ -525,18 +547,24 @@ Arguments:
                 Subcommand::Run { paths }
             }
             "setup" => {
-                let path = if paths.len() > 1 {
+                let profile = if paths.len() > 1 {
                     println!("\nat most one profile can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {
-                    t!(path.into_os_string().into_string().map_err(|path| format!(
-                        "{} is not a valid UTF8 string",
-                        path.to_string_lossy()
-                    )))
+                    let profile_string = t!(path.into_os_string().into_string().map_err(
+                        |path| format!("{} is not a valid UTF8 string", path.to_string_lossy())
+                    ));
+
+                    profile_string.parse().unwrap_or_else(|err| {
+                        eprintln!("error: {}", err);
+                        eprintln!("help: the available profiles are:");
+                        eprint!("{}", Profile::all_for_help("- "));
+                        std::process::exit(1);
+                    })
                 } else {
                     t!(crate::setup::interactive_path())
                 };
-                Subcommand::Setup { path }
+                Subcommand::Setup { profile }
             }
             _ => {
                 usage(1, &opts, verbose, &subcommand_help);
@@ -601,6 +629,7 @@ Arguments:
                 .into_iter()
                 .map(|p| p.into())
                 .collect::<Vec<_>>(),
+            include_default_paths: matches.opt_present("include-default-paths"),
             deny_warnings: parse_deny_warnings(&matches),
             llvm_skip_rebuild: matches.opt_str("llvm-skip-rebuild").map(|s| s.to_lowercase()).map(
                 |s| s.parse::<bool>().expect("`llvm-skip-rebuild` should be either true or false"),

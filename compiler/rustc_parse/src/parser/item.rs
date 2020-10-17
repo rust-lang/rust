@@ -1744,7 +1744,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        let span = lo.to(self.token.span);
+        let span = lo.until(self.token.span);
 
         Ok(Param {
             attrs: attrs.into(),

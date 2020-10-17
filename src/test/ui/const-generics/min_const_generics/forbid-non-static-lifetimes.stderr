@@ -1,0 +1,21 @@
+error[E0658]: a non-static lifetime is not allowed in a `const`
+  --> $DIR/forbid-non-static-lifetimes.rs:9:22
+   |
+LL |     test::<{ let _: &'a (); 3 },>();
+   |                      ^^
+   |
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+
+error[E0658]: a non-static lifetime is not allowed in a `const`
+  --> $DIR/forbid-non-static-lifetimes.rs:23:16
+   |
+LL |     [(); (|_: &'a u8| (), 0).1];
+   |                ^^
+   |
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
+   = help: add `#![feature(const_generics)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,87 +1,59 @@
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:1
    |
 LL | / fn bar<'a, 'b>()
 LL | |
 LL | |
-LL | |     where <() as Project<'a, 'b>>::Item : Eq
-   | |____________________________________________^
+LL | | where
+LL | |     <() as Project<'a, 'b>>::Item: Eq,
+   | |______________________________________^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:8...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:8
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 24:8...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:8
    |
 LL | fn bar<'a, 'b>()
    |        ^^
-note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the function body at 22:12...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:12
+note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the function body at 24:12...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:12
    |
 LL | fn bar<'a, 'b>()
    |            ^^
 note: ...so that the types are compatible
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:1
    |
 LL | / fn bar<'a, 'b>()
 LL | |
 LL | |
-LL | |     where <() as Project<'a, 'b>>::Item : Eq
-   | |____________________________________________^
+LL | | where
+LL | |     <() as Project<'a, 'b>>::Item: Eq,
+   | |______________________________________^
    = note: expected `Project<'a, 'b>`
               found `Project<'_, '_>`
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
-   |
-LL | / fn bar<'a, 'b>()
-LL | |
-LL | |
-LL | |     where <() as Project<'a, 'b>>::Item : Eq
-   | |____________________________________________^
-   |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:8...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:8
-   |
-LL | fn bar<'a, 'b>()
-   |        ^^
-note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the function body at 22:12...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:12
-   |
-LL | fn bar<'a, 'b>()
-   |            ^^
-note: ...so that the types are compatible
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
-   |
-LL | / fn bar<'a, 'b>()
-LL | |
-LL | |
-LL | |     where <() as Project<'a, 'b>>::Item : Eq
-   | |____________________________________________^
-   = note: expected `Project<'a, 'b>`
-              found `Project<'_, '_>`
-
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:4
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:4
    |
 LL | fn bar<'a, 'b>()
    |    ^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 22:8...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:8
+note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 24:8...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:8
    |
 LL | fn bar<'a, 'b>()
    |        ^^
-note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the function body at 22:12...
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:12
+note: ...but the lifetime must also be valid for the lifetime `'b` as defined on the function body at 24:12...
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:12
    |
 LL | fn bar<'a, 'b>()
    |            ^^
 note: ...so that the types are compatible
-  --> $DIR/regions-normalize-in-where-clause-list.rs:22:4
+  --> $DIR/regions-normalize-in-where-clause-list.rs:24:4
    |
 LL | fn bar<'a, 'b>()
    |    ^^^
    = note: expected `Project<'a, 'b>`
               found `Project<'_, '_>`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0495`.

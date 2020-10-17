@@ -2,7 +2,7 @@ error: C-variadic function must be declared with at least one named argument
   --> $DIR/variadic-ffi-no-fixed-args.rs:2:12
    |
 LL |     fn foo(...);
-   |            ^^^^
+   |            ^^^
 
 error: aborting due to previous error
 

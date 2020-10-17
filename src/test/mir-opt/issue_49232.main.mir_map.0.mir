@@ -17,70 +17,52 @@ fn main() -> () {
     }
 
     bb1: {
-        falseUnwind -> [real: bb3, cleanup: bb4]; // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
+        falseUnwind -> [real: bb2, cleanup: bb11]; // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
     bb2: {
-        goto -> bb14;                    // scope 0 at $DIR/issue-49232.rs:15:2: 15:2
-    }
-
-    bb3: {
         StorageLive(_2);                 // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
         StorageLive(_3);                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
         _3 = const true;                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
         FakeRead(ForMatchedPlace, _3);   // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
-        switchInt(_3) -> [false: bb5, otherwise: bb6]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
+        switchInt(_3) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
     }
 
-    bb4 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-49232.rs:5:1: 15:2
+    bb3: {
+        falseEdge -> [real: bb5, imaginary: bb4]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
+    }
+
+    bb4: {
+        _0 = const ();                   // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
+        goto -> bb10;                    // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
     bb5: {
-        falseEdge -> [real: bb7, imaginary: bb6]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
+        _2 = const 4_i32;                // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
+        goto -> bb8;                     // scope 0 at $DIR/issue-49232.rs:8:13: 11:14
     }
 
     bb6: {
-        _0 = const ();                   // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
-        goto -> bb8;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
-    }
-
-    bb7: {
-        _2 = const 4_i32;                // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
-        goto -> bb12;                    // scope 0 at $DIR/issue-49232.rs:8:13: 11:14
-    }
-
-    bb8: {
-        StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
-        goto -> bb9;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
-    }
-
-    bb9: {
-        StorageDead(_2);                 // scope 0 at $DIR/issue-49232.rs:14:5: 14:6
-        goto -> bb2;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
-    }
-
-    bb10: {
         unreachable;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
-    bb11: {
-        goto -> bb12;                    // scope 0 at $DIR/issue-49232.rs:8:13: 11:14
+    bb7: {
+        goto -> bb8;                     // scope 0 at $DIR/issue-49232.rs:8:13: 11:14
     }
 
-    bb12: {
+    bb8: {
         FakeRead(ForLet, _2);            // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
         StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
         StorageLive(_5);                 // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
         StorageLive(_6);                 // scope 1 at $DIR/issue-49232.rs:13:14: 13:21
         _6 = &_2;                        // scope 1 at $DIR/issue-49232.rs:13:14: 13:21
-        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb4]; // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
+        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb9, unwind: bb11]; // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
                                          // mir::Constant
                                          // + span: $DIR/issue-49232.rs:13:9: 13:13
                                          // + literal: Const { ty: fn(&i32) {std::mem::drop::<&i32>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb13: {
+    bb9: {
         StorageDead(_6);                 // scope 1 at $DIR/issue-49232.rs:13:21: 13:22
         StorageDead(_5);                 // scope 1 at $DIR/issue-49232.rs:13:22: 13:23
         _1 = const ();                   // scope 0 at $DIR/issue-49232.rs:6:10: 14:6
@@ -88,7 +70,13 @@ fn main() -> () {
         goto -> bb1;                     // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
-    bb14: {
+    bb10: {
+        StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
+        StorageDead(_2);                 // scope 0 at $DIR/issue-49232.rs:14:5: 14:6
         return;                          // scope 0 at $DIR/issue-49232.rs:15:2: 15:2
+    }
+
+    bb11 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-49232.rs:5:1: 15:2
     }
 }

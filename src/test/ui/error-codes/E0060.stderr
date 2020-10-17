@@ -1,13 +1,16 @@
 error[E0060]: this function takes at least 1 argument but 0 arguments were supplied
   --> $DIR/E0060.rs:6:14
    |
-LL |     fn printf(_: *const u8, ...) -> u32;
-   |     ------------------------------------ defined here
-...
 LL |     unsafe { printf(); }
    |              ^^^^^^-- supplied 0 arguments
    |              |
    |              expected at least 1 argument
+   |
+note: function defined here
+  --> $DIR/E0060.rs:2:8
+   |
+LL |     fn printf(_: *const u8, ...) -> u32;
+   |        ^^^^^^
 
 error: aborting due to previous error
 

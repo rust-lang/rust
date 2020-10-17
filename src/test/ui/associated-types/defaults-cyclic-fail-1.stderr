@@ -1,34 +1,15 @@
-error[E0275]: overflow evaluating the requirement `<() as Tr>::B == _`
-  --> $DIR/defaults-cyclic-fail-1.rs:10:6
-   |
-LL | impl Tr for () {}
-   |      ^^
-
 error[E0271]: type mismatch resolving `<bool as Tr>::B == _`
-  --> $DIR/defaults-cyclic-fail-1.rs:28:6
-   |
-LL | impl Tr for bool {
-   |      ^^ cyclic type of infinite size
-
-error[E0271]: type mismatch resolving `<usize as Tr>::B == _`
-  --> $DIR/defaults-cyclic-fail-1.rs:35:6
-   |
-LL | impl Tr for usize {
-   |      ^^ cyclic type of infinite size
-
-error[E0271]: type mismatch resolving `<bool as Tr>::B == _`
-  --> $DIR/defaults-cyclic-fail-1.rs:30:5
+  --> $DIR/defaults-cyclic-fail-1.rs:26:5
    |
 LL |     type A = Box<Self::B>;
    |     ^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
 
 error[E0271]: type mismatch resolving `<usize as Tr>::A == _`
-  --> $DIR/defaults-cyclic-fail-1.rs:37:5
+  --> $DIR/defaults-cyclic-fail-1.rs:32:5
    |
 LL |     type B = &'static Self::A;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic type of infinite size
 
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0271, E0275.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.

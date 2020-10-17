@@ -58,25 +58,6 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
 }
 
 impl hir::Pat<'_> {
-    pub fn is_refutable(&self) -> bool {
-        match self.kind {
-            PatKind::Lit(_)
-            | PatKind::Range(..)
-            | PatKind::Path(hir::QPath::Resolved(Some(..), _) | hir::QPath::TypeRelative(..)) => {
-                true
-            }
-
-            PatKind::Path(hir::QPath::Resolved(_, ref path))
-            | PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..)
-            | PatKind::Struct(hir::QPath::Resolved(_, ref path), ..) => match path.res {
-                Res::Def(DefKind::Variant, _) => true,
-                _ => false,
-            },
-            PatKind::Slice(..) => true,
-            _ => false,
-        }
-    }
-
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
     pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, Ident)) {
@@ -113,15 +94,6 @@ impl hir::Pat<'_> {
     pub fn contains_bindings(&self) -> bool {
         self.satisfies(|p| match p.kind {
             PatKind::Binding(..) => true,
-            _ => false,
-        })
-    }
-
-    /// Checks if the pattern contains any patterns that bind something to
-    /// an ident or wildcard, e.g., `foo`, or `Foo(_)`, `foo @ Bar(..)`,
-    pub fn contains_bindings_or_wild(&self) -> bool {
-        self.satisfies(|p| match p.kind {
-            PatKind::Binding(..) | PatKind::Wild => true,
             _ => false,
         })
     }

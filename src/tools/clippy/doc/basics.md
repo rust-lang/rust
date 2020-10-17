@@ -13,6 +13,7 @@ Lints] or [Common Tools].
   - [Setup](#setup)
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
+  - [PR](#pr)
 
 ## Get the Code
 
@@ -110,3 +111,8 @@ cargo dev new_lint
 # (experimental) Setup Clippy to work with rust-analyzer
 cargo dev ra-setup
 ```
+
+## PR
+
+We follow a rustc no merge-commit policy.
+See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.

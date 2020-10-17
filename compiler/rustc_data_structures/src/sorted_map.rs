@@ -93,7 +93,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     /// Iterate over elements, sorted by key
     #[inline]
-    pub fn iter(&self) -> ::std::slice::Iter<'_, (K, V)> {
+    pub fn iter(&self) -> std::slice::Iter<'_, (K, V)> {
         self.data.iter()
     }
 
@@ -134,7 +134,7 @@ impl<K: Ord, V> SortedMap<K, V> {
         R: RangeBounds<K>,
     {
         let (start, end) = self.range_slice_indices(range);
-        self.data.splice(start..end, ::std::iter::empty());
+        self.data.splice(start..end, std::iter::empty());
     }
 
     /// Mutate all keys with the given function `f`. This mutation must not
@@ -241,7 +241,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
 impl<K: Ord, V> IntoIterator for SortedMap<K, V> {
     type Item = (K, V);
-    type IntoIter = ::std::vec::IntoIter<(K, V)>;
+    type IntoIter = std::vec::IntoIter<(K, V)>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.data.into_iter()

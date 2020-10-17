@@ -1384,17 +1384,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::PolyTraitRef<'tcx>,
     ) {
         let get_trait_impl = |trait_def_id| {
-            let mut trait_impl = None;
-            self.tcx.for_each_relevant_impl(
+            self.tcx.find_map_relevant_impl(
                 trait_def_id,
                 trait_ref.skip_binder().self_ty(),
-                |impl_def_id| {
-                    if trait_impl.is_none() {
-                        trait_impl = Some(impl_def_id);
-                    }
-                },
-            );
-            trait_impl
+                |impl_def_id| Some(impl_def_id),
+            )
         };
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
         let all_traits = self.tcx.all_traits(LOCAL_CRATE);

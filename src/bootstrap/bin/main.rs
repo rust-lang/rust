@@ -7,13 +7,15 @@
 
 use std::env;
 
-use bootstrap::{Build, Config, Subcommand};
+use bootstrap::{Build, Config, Subcommand, VERSION};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
 
-    let changelog_suggestion = check_version(&config);
+    // check_version warnings are not printed during setup
+    let changelog_suggestion =
+        if matches!(config.cmd, Subcommand::Setup {..}) { None } else { check_version(&config) };
 
     // NOTE: Since `./configure` generates a `config.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.
@@ -40,8 +42,6 @@ fn main() {
 }
 
 fn check_version(config: &Config) -> Option<String> {
-    const VERSION: usize = 2;
-
     let mut msg = String::new();
 
     let suggestion = if let Some(seen) = config.changelog_seen {

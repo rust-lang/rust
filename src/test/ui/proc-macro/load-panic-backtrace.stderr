@@ -1,6 +1,6 @@
 at 'panic-derive', $DIR/auxiliary/test-macros.rs:43:5
 error: proc-macro derive panicked
-  --> $DIR/load-panic-backtrace.rs:17:10
+  --> $DIR/load-panic-backtrace.rs:20:10
    |
 LL | #[derive(Panic)]
    |          ^^^^^

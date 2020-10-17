@@ -13,7 +13,7 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
 LL |     let fp = BufWriter::new(fp);
    |              ^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    | 
-  ::: $SRC_DIR/std/src/io/buffered.rs:LL:COL
+  ::: $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
    |                         ----- required by this bound in `BufWriter`
@@ -26,7 +26,7 @@ error[E0277]: the trait bound `&dyn std::io::Write: std::io::Write` is not satis
 LL |     let fp = BufWriter::new(fp);
    |              ^^^^^^^^^^^^^^^^^^ the trait `std::io::Write` is not implemented for `&dyn std::io::Write`
    | 
-  ::: $SRC_DIR/std/src/io/buffered.rs:LL:COL
+  ::: $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
    |                         ----- required by this bound in `BufWriter`
@@ -39,7 +39,7 @@ error[E0599]: no method named `write_fmt` found for struct `BufWriter<&dyn std::
 LL |     writeln!(fp, "hello world").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ method not found in `BufWriter<&dyn std::io::Write>`
    | 
-  ::: $SRC_DIR/std/src/io/buffered.rs:LL:COL
+  ::: $SRC_DIR/std/src/io/buffered/bufwriter.rs:LL:COL
    |
 LL | pub struct BufWriter<W: Write> {
    | ------------------------------ doesn't satisfy `BufWriter<&dyn std::io::Write>: std::io::Write`

@@ -1,3 +1,6 @@
+//~ NOTE not a function
+//~^ NOTE not a foreign function or static
+//~^^ NOTE not a function or static
 // This test enumerates as many compiler-builtin ungated attributes as
 // possible (that is, all the mutually compatible ones), and checks
 // that we get "expected" (*) warnings for each in the various weird
@@ -52,20 +55,8 @@
 #![forbid(x5200)] //~ WARN unknown lint: `x5200`
 #![deny(x5100)] //~ WARN unknown lint: `x5100`
 #![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
-#![macro_export] //~ WARN unused attribute
 // skipping testing of cfg
 // skipping testing of cfg_attr
-#![main] //~ WARN unused attribute
-#![start] //~ WARN unused attribute
-// see issue-43106-gating-of-test.rs for crate-level; but non crate-level is below at "4200"
-// see issue-43106-gating-of-bench.rs for crate-level; but non crate-level is below at "4100"
-#![repr()]
-//~^ WARN unused attribute
-#![path = "3800"] //~ WARN unused attribute
-#![automatically_derived] //~ WARN unused attribute
-#![no_mangle]
-#![no_link] //~ WARN unused attribute
-// see issue-43106-gating-of-derive.rs
 #![should_panic] //~ WARN unused attribute
 #![ignore] //~ WARN unused attribute
 #![no_implicit_prelude]
@@ -75,12 +66,16 @@
 // (cannot easily test gating of crate-level #[no_std]; but non crate-level is below at "2600")
 #![proc_macro_derive()] //~ WARN unused attribute
 #![doc = "2400"]
-#![cold]
-#![export_name = "2200"]
+#![cold] //~ WARN attribute should be applied to a function
+//~^ WARN
 // see issue-43106-gating-of-builtin-attrs-error.rs
 #![link()]
 #![link_name = "1900"]
+//~^ WARN attribute should be applied to a foreign function
+//~^^ WARN this was previously accepted by the compiler
 #![link_section = "1800"]
+//~^ WARN attribute should be applied to a function or static
+//~^^ WARN this was previously accepted by the compiler
 // see issue-43106-gating-of-rustc_deprecated.rs
 #![must_use]
 // see issue-43106-gating-of-stable.rs
@@ -252,42 +247,6 @@ mod plugin_registrar {
     //~^ WARN unused attribute
     //~| WARN use of deprecated attribute
     //~| HELP may be removed in a future compiler version
-}
-
-#[main]
-//~^ WARN unused attribute
-mod main {
-    mod inner { #![main] }
-    //~^ WARN unused attribute
-
-    // for `fn f()` case, see feature-gate-main.rs
-
-    #[main] struct S;
-    //~^ WARN unused attribute
-
-    #[main] type T = S;
-    //~^ WARN unused attribute
-
-    #[main] impl S { }
-    //~^ WARN unused attribute
-}
-
-#[start]
-//~^ WARN unused attribute
-mod start {
-    mod inner { #![start] }
-    //~^ WARN unused attribute
-
-    // for `fn f()` case, see feature-gate-start.rs
-
-    #[start] struct S;
-    //~^ WARN unused attribute
-
-    #[start] type T = S;
-    //~^ WARN unused attribute
-
-    #[start] impl S { }
-    //~^ WARN unused attribute
 }
 
 // At time of unit test authorship, if compiling without `--test` then

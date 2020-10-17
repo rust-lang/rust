@@ -1,18 +1,17 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use super::{MirPass, MirSource};
-use rustc_middle::mir::visit::Visitor;
-use rustc_middle::{
-    mir::{
-        AggregateKind, BasicBlock, Body, BorrowKind, Location, MirPhase, Operand, Rvalue,
-        Statement, StatementKind, Terminator, TerminatorKind,
-    },
-    ty::{
-        self,
-        relate::{Relate, RelateResult, TypeRelation},
-        ParamEnv, Ty, TyCtxt,
-    },
+use crate::dataflow::impls::MaybeStorageLive;
+use crate::dataflow::{Analysis, ResultsCursor};
+use crate::util::storage::AlwaysLiveLocals;
+
+use super::MirPass;
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{
+    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
+    SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
 };
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -32,10 +31,19 @@ pub struct Validator {
 }
 
 impl<'tcx> MirPass<'tcx> for Validator {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        let param_env = tcx.param_env(source.def_id());
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let def_id = body.source.def_id();
+        let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
-        TypeChecker { when: &self.when, source, body, tcx, param_env, mir_phase }.visit_body(body);
+
+        let always_live_locals = AlwaysLiveLocals::new(body);
+        let storage_liveness = MaybeStorageLive::new(always_live_locals)
+            .into_engine(tcx, body)
+            .iterate_to_fixpoint()
+            .into_results_cursor(body);
+
+        TypeChecker { when: &self.when, body, tcx, param_env, mir_phase, storage_liveness }
+            .visit_body(body);
     }
 }
 
@@ -133,11 +141,11 @@ pub fn equal_up_to_regions(
 
 struct TypeChecker<'a, 'tcx> {
     when: &'a str,
-    source: MirSource<'tcx>,
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
+    storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -149,7 +157,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span,
             &format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.source.instance,
+                self.body.source.instance,
                 self.when,
                 location,
                 msg.as_ref()
@@ -210,6 +218,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
+    fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
+        if context.is_use() {
+            // Uses of locals must occur while the local's storage is allocated.
+            self.storage_liveness.seek_after_primary_effect(location);
+            let locals_with_storage = self.storage_liveness.get();
+            if !locals_with_storage.contains(*local) {
+                self.fail(location, format!("use of local {:?}, which has no storage here", local));
+            }
+        }
+    }
+
+    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo<'tcx>) {
+        // Debuginfo can contain field projections, which count as a use of the base local. Skip
+        // debuginfo so that we avoid the storage liveness assertion in that case.
+        self.visit_source_info(&var_debug_info.source_info);
+    }
+
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         // `Operand::Copy` is only supposed to be used with `Copy` types.
         if let Operand::Copy(place) = operand {
@@ -310,7 +335,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Goto { target } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
-            TerminatorKind::SwitchInt { targets, values, switch_ty, discr } => {
+            TerminatorKind::SwitchInt { targets, switch_ty, discr } => {
                 let ty = discr.ty(&self.body.local_decls, self.tcx);
                 if ty != *switch_ty {
                     self.fail(
@@ -321,19 +346,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                if targets.len() != values.len() + 1 {
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered `SwitchInt` terminator with {} values, but {} targets (should be values+1)",
-                            values.len(),
-                            targets.len(),
-                        ),
-                    );
+                for (_, target) in targets.iter() {
+                    self.check_edge(location, target, EdgeKind::Normal);
                 }
-                for target in targets {
-                    self.check_edge(location, *target, EdgeKind::Normal);
-                }
+                self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
             }
             TerminatorKind::Drop { target, unwind, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
@@ -415,6 +431,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop => {}
+        }
+    }
+
+    fn visit_source_scope(&mut self, scope: &SourceScope) {
+        if self.body.source_scopes.get(*scope).is_none() {
+            self.tcx.sess.diagnostic().delay_span_bug(
+                self.body.span,
+                &format!(
+                    "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
+                    self.body.source.instance, self.when, scope,
+                ),
+            );
         }
     }
 }

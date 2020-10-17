@@ -16,7 +16,6 @@
 #![feature(maybe_uninit_slice)]
 #![cfg_attr(test, feature(test))]
 
-use rustc_data_structures::cold_path;
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
@@ -26,6 +25,12 @@ use std::marker::{PhantomData, Send};
 use std::mem::{self, MaybeUninit};
 use std::ptr;
 use std::slice;
+
+#[inline(never)]
+#[cold]
+pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
+    f()
+}
 
 /// An arena that can hold objects of only one type.
 pub struct TypedArena<T> {

@@ -1212,6 +1212,7 @@ struct LLVMRustThinLTOData {
   StringMap<FunctionImporter::ImportMapTy> ImportLists;
   StringMap<FunctionImporter::ExportSetTy> ExportLists;
   StringMap<GVSummaryMapTy> ModuleToDefinedGVSummaries;
+  StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
 
   LLVMRustThinLTOData() : Index(/* HaveGVs = */ false) {}
 };
@@ -1308,7 +1309,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   //
   // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp` with some of this
   // being lifted from `lib/LTO/LTO.cpp` as well
-  StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
     if (I.second.SummaryList.size() > 1)
@@ -1323,7 +1323,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   auto recordNewLinkage = [&](StringRef ModuleIdentifier,
                               GlobalValue::GUID GUID,
                               GlobalValue::LinkageTypes NewLinkage) {
-    ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
+    Ret->ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
 #if LLVM_VERSION_GE(9, 0)
   thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
@@ -1491,7 +1491,7 @@ extern "C" typedef void (*LLVMRustModuleNameCallback)(void*, // payload
 // Calls `module_name_callback` for each module import done by ThinLTO.
 // The callback is provided with regular null-terminated C strings.
 extern "C" void
-LLVMRustGetThinLTOModuleImports(const LLVMRustThinLTOData *data,
+LLVMRustGetThinLTOModules(const LLVMRustThinLTOData *data,
                                 LLVMRustModuleNameCallback module_name_callback,
                                 void* callback_payload) {
   for (const auto& importing_module : data->ImportLists) {
@@ -1652,4 +1652,37 @@ LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
   auto *MD = M->getNamedMetadata("llvm.dbg.cu");
   MD->clearOperands();
   MD->addOperand(Unit);
+}
+
+// Computes the LTO cache key for the provided 'ModId' in the given 'Data',
+// storing the result in 'KeyOut'.
+// Currently, this cache key is a SHA-1 hash of anything that could affect
+// the result of optimizing this module (e.g. module imports, exports, liveness
+// of access globals, etc).
+// The precise details are determined by LLVM in `computeLTOCacheKey`, which is
+// used during the normal linker-plugin incremental thin-LTO process.
+extern "C" void
+LLVMRustComputeLTOCacheKey(RustStringRef KeyOut, const char *ModId, LLVMRustThinLTOData *Data) {
+  SmallString<40> Key;
+  llvm::lto::Config conf;
+  const auto &ImportList = Data->ImportLists.lookup(ModId);
+  const auto &ExportList = Data->ExportLists.lookup(ModId);
+  const auto &ResolvedODR = Data->ResolvedODR.lookup(ModId);
+  const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(ModId);
+  std::set<GlobalValue::GUID> CfiFunctionDefs;
+  std::set<GlobalValue::GUID> CfiFunctionDecls;
+
+  // Based on the 'InProcessThinBackend' constructor in LLVM
+  for (auto &Name : Data->Index.cfiFunctionDefs())
+    CfiFunctionDefs.insert(
+        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
+  for (auto &Name : Data->Index.cfiFunctionDecls())
+    CfiFunctionDecls.insert(
+        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
+
+  llvm::computeLTOCacheKey(Key, conf, Data->Index, ModId,
+      ImportList, ExportList, ResolvedODR, DefinedGlobals, CfiFunctionDefs, CfiFunctionDecls
+  );
+
+  LLVMRustStringWriteImpl(KeyOut, Key.c_str(), Key.size());
 }

@@ -1,6 +1,6 @@
-use crate::spec::{LinkArgs, LinkerFlavor, Target, TargetResult};
+use crate::spec::{LinkArgs, LinkerFlavor, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
     base.cpu = "hexagonv60".to_string();
     base.max_atomic_width = Some(32);
@@ -17,10 +17,10 @@ pub fn target() -> TargetResult {
     base.pre_link_args = LinkArgs::new();
     base.post_link_args = LinkArgs::new();
 
-    Ok(Target {
+    Target {
         llvm_target: "hexagon-unknown-linux-musl".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
+        pointer_width: 32,
         target_c_int_width: "32".to_string(),
         data_layout: concat!(
             "e-m:e-p:32:32:32-a:0-n16:32-i64:64:64-i32:32",
@@ -35,5 +35,5 @@ pub fn target() -> TargetResult {
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: base,
-    })
+    }
 }

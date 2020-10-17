@@ -92,7 +92,7 @@ rustc_queries! {
         /// Computes the `DefId` of the corresponding const parameter in case the `key` is a
         /// const argument and returns `None` otherwise.
         ///
-        /// ```rust
+        /// ```ignore (incomplete)
         /// let a = foo::<7>();
         /// //            ^ Calling `opt_const_param_of` for this argument,
         ///
@@ -156,21 +156,48 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
-        /// Returns the list of predicates that can be used for
-        /// `SelectionCandidate::ProjectionCandidate` and
+        /// Returns the list of bounds that can be used for
+        /// `SelectionCandidate::ProjectionCandidate(_)` and
         /// `ProjectionTyCandidate::TraitDef`.
-        /// Specifically this is the bounds (equivalent to) those
-        /// written on the trait's type definition, or those
-        /// after the `impl` keyword
+        /// Specifically this is the bounds written on the trait's type
+        /// definition, or those after the `impl` keyword
         ///
+        /// ```ignore (incomplete)
         /// type X: Bound + 'lt
-        ///         ^^^^^^^^^^^
+        /// //      ^^^^^^^^^^^
         /// impl Debug + Display
-        ///      ^^^^^^^^^^^^^^^
+        /// //   ^^^^^^^^^^^^^^^
+        /// ```
         ///
         /// `key` is the `DefId` of the associated type or opaque type.
-        query projection_predicates(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
-            desc { |tcx| "finding projection predicates for `{}`", tcx.def_path_str(key) }
+        ///
+        /// Bounds from the parent (e.g. with nested impl trait) are not included.
+        query explicit_item_bounds(key: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+            desc { |tcx| "finding item bounds for `{}`", tcx.def_path_str(key) }
+        }
+
+        /// Elaborated version of the predicates from `explicit_item_bounds`.
+        ///
+        /// For example:
+        ///
+        /// ```
+        /// trait MyTrait {
+        ///     type MyAType: Eq + ?Sized;
+        /// }
+        /// ```
+        ///
+        /// `explicit_item_bounds` returns `[<Self as MyTrait>::MyAType: Eq]`,
+        /// and `item_bounds` returns
+        /// ```text
+        /// [
+        ///     <Self as Trait>::MyAType: Eq,
+        ///     <Self as Trait>::MyAType: PartialEq<<Self as Trait>::MyAType>
+        /// ]
+        /// ```
+        ///
+        /// Bounds from the parent (e.g. with nested impl trait) are not included.
+        query item_bounds(key: DefId) -> &'tcx ty::List<ty::Predicate<'tcx>> {
+            desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
         }
 
         query projection_ty_from_predicates(key: (DefId, DefId)) -> Option<ty::ProjectionTy<'tcx>> {
@@ -190,6 +217,11 @@ rustc_queries! {
         query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {
             eval_always
             desc { |tcx| "parent module of `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
+        /// Internal helper query. Use `tcx.expansion_that_defined` instead
+        query expn_that_defined(key: DefId) -> rustc_span::ExpnId {
+            desc { |tcx| "expansion that defined `{}`", tcx.def_path_str(key) }
         }
     }
 
@@ -363,6 +395,24 @@ rustc_queries! {
         /// `inferred_outlives_of` predicates.
         query predicates_defined_on(key: DefId) -> ty::GenericPredicates<'tcx> {
             desc { |tcx| "computing predicates of `{}`", tcx.def_path_str(key) }
+        }
+
+        /// Returns everything that looks like a predicate written explicitly
+        /// by the user on a trait item.
+        ///
+        /// Traits are unusual, because predicates on associated types are
+        /// converted into bounds on that type for backwards compatibility:
+        ///
+        /// trait X where Self::U: Copy { type U; }
+        ///
+        /// becomes
+        ///
+        /// trait X { type U: Copy; }
+        ///
+        /// `explicit_predicates_of` and `explicit_item_bounds` will then take
+        /// the appropriate subsets of the predicates here.
+        query trait_explicit_predicates_and_bounds(key: LocalDefId) -> ty::GenericPredicates<'tcx> {
+            desc { |tcx| "computing explicit predicates of trait `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
         /// Returns the predicates written explicitly by the user.

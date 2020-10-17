@@ -32,7 +32,7 @@ use crate::interpret::{
     InterpCx, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand,
     PlaceTy, Pointer, ScalarMaybeUninit, StackPopCleanup,
 };
-use crate::transform::{MirPass, MirSource};
+use crate::transform::MirPass;
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
 /// Needed for #66397, because otherwise we eval into large places and that can cause OOM or just
@@ -60,30 +60,31 @@ macro_rules! throw_machine_stop_str {
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
-        if source.promoted.is_some() {
+        if body.source.promoted.is_some() {
             return;
         }
 
         use rustc_middle::hir::map::blocks::FnLikeNode;
-        let hir_id = tcx.hir().local_def_id_to_hir_id(source.def_id().expect_local());
+        let def_id = body.source.def_id().expect_local();
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
-        let is_assoc_const = tcx.def_kind(source.def_id()) == DefKind::AssocConst;
+        let is_assoc_const = tcx.def_kind(def_id.to_def_id()) == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
-            trace!("ConstProp skipped for {:?}", source.def_id());
+            trace!("ConstProp skipped for {:?}", def_id);
             return;
         }
 
-        let is_generator = tcx.type_of(source.def_id()).is_generator();
+        let is_generator = tcx.type_of(def_id.to_def_id()).is_generator();
         // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
         // computing their layout.
         if is_generator {
-            trace!("ConstProp skipped for generator {:?}", source.def_id());
+            trace!("ConstProp skipped for generator {:?}", def_id);
             return;
         }
 
@@ -114,7 +115,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // the normalization code (leading to cycle errors), since
         // it's usually never invoked in this way.
         let predicates = tcx
-            .predicates_of(source.def_id())
+            .predicates_of(def_id.to_def_id())
             .predicates
             .iter()
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
@@ -122,20 +123,21 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             tcx,
             traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),
         ) {
-            trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", source.def_id());
+            trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;
         }
 
-        trace!("ConstProp starting for {:?}", source.def_id());
+        trace!("ConstProp starting for {:?}", def_id);
 
         let dummy_body = &Body::new(
+            body.source,
             body.basic_blocks().clone(),
             body.source_scopes.clone(),
             body.local_decls.clone(),
             Default::default(),
             body.arg_count,
             Default::default(),
-            tcx.def_span(source.def_id()),
+            tcx.def_span(def_id),
             body.generator_kind,
         );
 
@@ -143,10 +145,10 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // constants, instead of just checking for const-folding succeeding.
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx, source);
+        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
         optimization_finder.visit_body(body);
 
-        trace!("ConstProp done for {:?}", source.def_id());
+        trace!("ConstProp done for {:?}", def_id);
     }
 }
 
@@ -346,9 +348,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         body: &Body<'tcx>,
         dummy_body: &'mir Body<'tcx>,
         tcx: TyCtxt<'tcx>,
-        source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
-        let def_id = source.def_id();
+        let def_id = body.source.def_id();
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 

@@ -6,6 +6,7 @@ LL |     for _ in [0..1] {}
    |
    = help: the trait `Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
    = note: `[start..end]` is an array of one `Range`; you might have meant to have a `Range` without the brackets: `start..end`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[std::ops::Range<{integer}>; 1]`
    = note: required by `into_iter`
 
 error[E0277]: `[RangeInclusive<{integer}>; 1]` is not an iterator
@@ -16,6 +17,7 @@ LL |     for _ in [0..=1] {}
    |
    = help: the trait `Iterator` is not implemented for `[RangeInclusive<{integer}>; 1]`
    = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[RangeInclusive<{integer}>; 1]`
    = note: required by `into_iter`
 
 error[E0277]: `[RangeFrom<{integer}>; 1]` is not an iterator
@@ -26,6 +28,7 @@ LL |     for _ in [0..] {}
    |
    = help: the trait `Iterator` is not implemented for `[RangeFrom<{integer}>; 1]`
    = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[RangeFrom<{integer}>; 1]`
    = note: required by `into_iter`
 
 error[E0277]: `[RangeTo<{integer}>; 1]` is not an iterator
@@ -36,6 +39,7 @@ LL |     for _ in [..1] {}
    |
    = help: the trait `Iterator` is not implemented for `[RangeTo<{integer}>; 1]`
    = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[RangeTo<{integer}>; 1]`
    = note: required by `into_iter`
 
 error[E0277]: `[RangeToInclusive<{integer}>; 1]` is not an iterator
@@ -46,6 +50,7 @@ LL |     for _ in [..=1] {}
    |
    = help: the trait `Iterator` is not implemented for `[RangeToInclusive<{integer}>; 1]`
    = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[RangeToInclusive<{integer}>; 1]`
    = note: required by `into_iter`
 
 error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
@@ -56,6 +61,7 @@ LL |     for _ in [start..end] {}
    |
    = help: the trait `Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
    = note: `[start..end]` is an array of one `Range`; you might have meant to have a `Range` without the brackets: `start..end`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[std::ops::Range<{integer}>; 1]`
    = note: required by `into_iter`
 
 error[E0277]: `[std::ops::Range<{integer}>; 1]` is not an iterator
@@ -66,6 +72,7 @@ LL |     for _ in array_of_range {}
    |
    = help: the trait `Iterator` is not implemented for `[std::ops::Range<{integer}>; 1]`
    = note: `[start..end]` is an array of one `Range`; you might have meant to have a `Range` without the brackets: `start..end`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[std::ops::Range<{integer}>; 1]`
    = note: required by `into_iter`
 
 error[E0277]: `[std::ops::Range<{integer}>; 2]` is not an iterator
@@ -76,6 +83,7 @@ LL |     for _ in [0..1, 2..3] {}
    |
    = help: the trait `Iterator` is not implemented for `[std::ops::Range<{integer}>; 2]`
    = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[std::ops::Range<{integer}>; 2]`
    = note: required by `into_iter`
 
 error[E0277]: `[RangeInclusive<{integer}>; 1]` is not an iterator
@@ -86,6 +94,7 @@ LL |     for _ in [0..=1] {}
    |
    = help: the trait `Iterator` is not implemented for `[RangeInclusive<{integer}>; 1]`
    = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: required because of the requirements on the impl of `IntoIterator` for `[RangeInclusive<{integer}>; 1]`
    = note: required by `into_iter`
 
 error: aborting due to 9 previous errors

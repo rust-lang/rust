@@ -1,13 +1,16 @@
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/arg-count-mismatch.rs:5:28
    |
-LL | fn f(x: isize) { }
-   | -------------- defined here
-LL | 
 LL | fn main() { let i: (); i = f(); }
    |                            ^-- supplied 0 arguments
    |                            |
    |                            expected 1 argument
+   |
+note: function defined here
+  --> $DIR/arg-count-mismatch.rs:3:4
+   |
+LL | fn f(x: isize) { }
+   |    ^ --------
 
 error: aborting due to previous error
 

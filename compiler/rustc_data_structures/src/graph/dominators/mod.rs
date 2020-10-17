@@ -9,6 +9,7 @@ use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
 use rustc_index::vec::{Idx, IndexVec};
 use std::borrow::BorrowMut;
+use std::cmp::Ordering;
 
 #[cfg(test)]
 mod tests;
@@ -107,6 +108,14 @@ impl<Node: Idx> Dominators<Node> {
     pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
         // FIXME -- could be optimized by using post-order-rank
         self.dominators(node).any(|n| n == dom)
+    }
+
+    /// Provide deterministic ordering of nodes such that, if any two nodes have a dominator
+    /// relationship, the dominator will always precede the dominated. (The relative ordering
+    /// of two unrelated nodes will also be consistent, but otherwise the order has no
+    /// meaning.) This method cannot be used to determine if either Node dominates the other.
+    pub fn rank_partial_cmp(&self, lhs: Node, rhs: Node) -> Option<Ordering> {
+        self.post_order_rank[lhs].partial_cmp(&self.post_order_rank[rhs])
     }
 }
 

@@ -59,9 +59,7 @@ pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(PredicateObligation<'_>, 32);
 
-pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
-pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 

@@ -1,16 +1,9 @@
 use super::super::*;
 
-pub(super) fn test_target(target: TargetResult) {
-    // Grab the TargetResult struct. If we successfully retrieved
-    // a Target, then the test JSON encoding/decoding can run for this
-    // Target on this testing platform (i.e., checking the iOS targets
-    // only on a Mac test platform).
-    if let Ok(original) = target {
-        original.check_consistency();
-        let as_json = original.to_json();
-        let parsed = Target::from_json(as_json).unwrap();
-        assert_eq!(original, parsed);
-    }
+// Test target self-consistency and JSON encoding/decoding roundtrip.
+pub(super) fn test_target(target: Target) {
+    target.check_consistency();
+    assert_eq!(Target::from_json(target.to_json()), Ok(target));
 }
 
 impl Target {

@@ -3,6 +3,7 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -13,7 +14,8 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
-use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_serialize::json;
+use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
 use std::any::Any;
@@ -331,6 +333,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn linker(&'tcx self) -> Result<Linker> {
         let dep_graph = self.dep_graph()?;
         let prepare_outputs = self.prepare_outputs()?;
+        let crate_hash = self.global_ctxt()?.peek_mut().enter(|tcx| tcx.crate_hash(LOCAL_CRATE));
         let ongoing_codegen = self.ongoing_codegen()?;
 
         let sess = self.session().clone();
@@ -340,6 +343,7 @@ impl<'tcx> Queries<'tcx> {
             sess,
             dep_graph: dep_graph.peek().clone(),
             prepare_outputs: prepare_outputs.take(),
+            crate_hash,
             ongoing_codegen: ongoing_codegen.take(),
             codegen_backend,
         })
@@ -350,17 +354,30 @@ pub struct Linker {
     sess: Lrc<Session>,
     dep_graph: DepGraph,
     prepare_outputs: OutputFilenames,
+    crate_hash: Svh,
     ongoing_codegen: Box<dyn Any>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
 }
 
 impl Linker {
     pub fn link(self) -> Result<()> {
-        let codegen_results =
-            self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess, &self.dep_graph)?;
-        let prof = self.sess.prof.clone();
+        let (codegen_results, work_products) =
+            self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess)?;
+
+        self.sess.compile_status()?;
+
+        let sess = &self.sess;
         let dep_graph = self.dep_graph;
+        sess.time("serialize_work_products", || {
+            rustc_incremental::save_work_product_index(&sess, &dep_graph, work_products)
+        });
+
+        let prof = self.sess.prof.clone();
         prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
+
+        // Now that we won't touch anything in the incremental compilation directory
+        // any more, we can finalize it (which involves renaming it)
+        rustc_incremental::finalize_session_directory(&self.sess, self.crate_hash);
 
         if !self
             .sess
@@ -371,6 +388,19 @@ impl Linker {
         {
             return Ok(());
         }
+
+        if sess.opts.debugging_opts.no_link {
+            // FIXME: use a binary format to encode the `.rlink` file
+            let rlink_data = json::encode(&codegen_results).map_err(|err| {
+                sess.fatal(&format!("failed to encode rlink: {}", err));
+            })?;
+            let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
+            std::fs::write(&rlink_file, rlink_data).map_err(|err| {
+                sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
+            })?;
+            return Ok(());
+        }
+
         self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
     }
 }

@@ -193,36 +193,36 @@ impl StepDescription {
             );
         }
 
-        if paths.is_empty() {
-            for (desc, should_run) in v.iter().zip(should_runs) {
+        if paths.is_empty() || builder.config.include_default_paths {
+            for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default {
                     for pathset in &should_run.paths {
                         desc.maybe_run(builder, pathset);
                     }
                 }
             }
-        } else {
-            for path in paths {
-                // strip CurDir prefix if present
-                let path = match path.strip_prefix(".") {
-                    Ok(p) => p,
-                    Err(_) => path,
-                };
+        }
 
-                let mut attempted_run = false;
-                for (desc, should_run) in v.iter().zip(&should_runs) {
-                    if let Some(suite) = should_run.is_suite_path(path) {
-                        attempted_run = true;
-                        desc.maybe_run(builder, suite);
-                    } else if let Some(pathset) = should_run.pathset_for_path(path) {
-                        attempted_run = true;
-                        desc.maybe_run(builder, pathset);
-                    }
-                }
+        for path in paths {
+            // strip CurDir prefix if present
+            let path = match path.strip_prefix(".") {
+                Ok(p) => p,
+                Err(_) => path,
+            };
 
-                if !attempted_run {
-                    panic!("error: no rules matched {}", path.display());
+            let mut attempted_run = false;
+            for (desc, should_run) in v.iter().zip(&should_runs) {
+                if let Some(suite) = should_run.is_suite_path(path) {
+                    attempted_run = true;
+                    desc.maybe_run(builder, suite);
+                } else if let Some(pathset) = should_run.pathset_for_path(path) {
+                    attempted_run = true;
+                    desc.maybe_run(builder, pathset);
                 }
+            }
+
+            if !attempted_run {
+                panic!("error: no rules matched {}", path.display());
             }
         }
     }
@@ -462,6 +462,7 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::RustDev,
                 dist::Extended,
+                dist::BuildManifest,
                 dist::HashSign
             ),
             Kind::Install => describe!(
@@ -477,7 +478,7 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
-            Kind::Run => describe!(run::ExpandYamlAnchors,),
+            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest),
         }
     }
 
@@ -532,7 +533,7 @@ impl<'a> Builder<'a> {
     pub fn new(build: &Build) -> Builder<'_> {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
-            Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
+            Subcommand::Check { ref paths, all_targets: _ } => (Kind::Check, &paths[..]),
             Subcommand::Clippy { ref paths } => (Kind::Clippy, &paths[..]),
             Subcommand::Fix { ref paths } => (Kind::Fix, &paths[..]),
             Subcommand::Doc { ref paths, .. } => (Kind::Doc, &paths[..]),

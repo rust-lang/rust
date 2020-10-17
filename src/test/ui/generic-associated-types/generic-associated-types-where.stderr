@@ -1,5 +1,17 @@
+error[E0277]: `T` doesn't implement `std::fmt::Display`
+  --> $DIR/generic-associated-types-where.rs:21:5
+   |
+LL |     type Assoc2<T> = Vec<T>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `T` cannot be formatted with the default formatter
+   |
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+help: consider restricting type parameter `T`
+   |
+LL |     type Assoc2<T: std::fmt::Display> = Vec<T>;
+   |                  ^^^^^^^^^^^^^^^^^^^
+
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/generic-associated-types-where.rs:22:5
+  --> $DIR/generic-associated-types-where.rs:23:5
    |
 LL |     type Assoc3<T>;
    |     --------------- definition of `Assoc3` from trait
@@ -7,6 +19,7 @@ LL |     type Assoc3<T>;
 LL |     type Assoc3<T> where T: Iterator = Vec<T>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Iterator`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0276`.
+Some errors have detailed explanations: E0276, E0277.
+For more information about an error, try `rustc --explain E0276`.

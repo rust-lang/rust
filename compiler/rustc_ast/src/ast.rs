@@ -27,6 +27,7 @@ use crate::token::{self, CommentKind, DelimToken};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable_Generic;
@@ -166,13 +167,6 @@ pub enum GenericArgs {
 }
 
 impl GenericArgs {
-    pub fn is_parenthesized(&self) -> bool {
-        match *self {
-            Parenthesized(..) => true,
-            _ => false,
-        }
-    }
-
     pub fn is_angle_bracketed(&self) -> bool {
         match *self {
             AngleBracketed(..) => true,
@@ -856,13 +850,6 @@ impl BinOpKind {
         }
     }
 
-    pub fn is_shift(&self) -> bool {
-        match *self {
-            BinOpKind::Shl | BinOpKind::Shr => true,
-            _ => false,
-        }
-    }
-
     pub fn is_comparison(&self) -> bool {
         use BinOpKind::*;
         // Note for developers: please keep this as is;
@@ -871,11 +858,6 @@ impl BinOpKind {
             Eq | Lt | Le | Ne | Gt | Ge => true,
             And | Or | Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr => false,
         }
-    }
-
-    /// Returns `true` if the binary operator takes its arguments by value
-    pub fn is_by_value(&self) -> bool {
-        !self.is_comparison()
     }
 }
 
@@ -895,14 +877,6 @@ pub enum UnOp {
 }
 
 impl UnOp {
-    /// Returns `true` if the unary operator takes its argument by value
-    pub fn is_by_value(u: UnOp) -> bool {
-        match u {
-            UnOp::Neg | UnOp::Not => true,
-            _ => false,
-        }
-    }
-
     pub fn to_string(op: UnOp) -> &'static str {
         match op {
             UnOp::Deref => "*",
@@ -1606,7 +1580,7 @@ pub enum LitKind {
     /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`).
-    ByteStr(Lrc<Vec<u8>>),
+    ByteStr(Lrc<[u8]>),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -1752,13 +1726,6 @@ impl IntTy {
         }
     }
 
-    pub fn val_to_string(&self, val: i128) -> String {
-        // Cast to a `u128` so we can correctly print `INT128_MIN`. All integral types
-        // are parsed as `u128`, so we wouldn't want to print an extra negative
-        // sign.
-        format!("{}{}", val as u128, self.name_str())
-    }
-
     pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             IntTy::Isize => return None,
@@ -1817,10 +1784,6 @@ impl UintTy {
         }
     }
 
-    pub fn val_to_string(&self, val: u128) -> String {
-        format!("{}{}", val, self.name_str())
-    }
-
     pub fn bit_width(&self) -> Option<u64> {
         Some(match *self {
             UintTy::Usize => return None,
@@ -1864,12 +1827,33 @@ pub enum AssocTyConstraintKind {
     Bound { bounds: GenericBounds },
 }
 
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Encodable, Decodable, Debug)]
 pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
     pub tokens: Option<TokenStream>,
+}
+
+impl Clone for Ty {
+    fn clone(&self) -> Self {
+        ensure_sufficient_stack(|| Self {
+            id: self.id,
+            kind: self.kind.clone(),
+            span: self.span,
+            tokens: self.tokens.clone(),
+        })
+    }
+}
+
+impl Ty {
+    pub fn peel_refs(&self) -> &Self {
+        let mut final_ty = self;
+        while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = &ty;
+        }
+        final_ty
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

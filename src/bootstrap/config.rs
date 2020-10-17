@@ -61,6 +61,7 @@ pub struct Config {
     pub profiler: bool,
     pub ignore_git: bool,
     pub exclude: Vec<PathBuf>,
+    pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub test_compare_mode: bool,
@@ -390,7 +391,7 @@ struct Llvm {
     use_libcxx: Option<bool>,
     use_linker: Option<String>,
     allow_old_toolchain: Option<bool>,
-    download_ci_llvm: Option<bool>,
+    download_ci_llvm: Option<StringOrBool>,
 }
 
 #[derive(Deserialize, Default, Clone, Merge)]
@@ -532,6 +533,7 @@ impl Config {
 
         let mut config = Config::default_opts();
         config.exclude = flags.exclude;
+        config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
         config.on_fail = flags.on_fail;
@@ -574,7 +576,7 @@ impl Config {
             include_path.push("src");
             include_path.push("bootstrap");
             include_path.push("defaults");
-            include_path.push(format!("config.toml.{}", include));
+            include_path.push(format!("config.{}.toml", include));
             let included_toml = get_toml(&include_path);
             toml.merge(included_toml);
         }
@@ -733,7 +735,14 @@ impl Config {
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
-            config.llvm_from_ci = llvm.download_ci_llvm.unwrap_or(false);
+            config.llvm_from_ci = match llvm.download_ci_llvm {
+                Some(StringOrBool::String(s)) => {
+                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    config.build.triple == "x86_64-unknown-linux-gnu"
+                }
+                Some(StringOrBool::Bool(b)) => b,
+                None => false,
+            };
 
             if config.llvm_from_ci {
                 // None of the LLVM options, except assertions, are supported

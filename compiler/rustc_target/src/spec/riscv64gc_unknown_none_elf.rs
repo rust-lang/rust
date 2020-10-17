@@ -1,12 +1,12 @@
 use crate::spec::{CodeModel, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
-use crate::spec::{Target, TargetOptions, TargetResult};
+use crate::spec::{Target, TargetOptions};
 
-pub fn target() -> TargetResult {
-    Ok(Target {
+pub fn target() -> Target {
+    Target {
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n64-S128".to_string(),
         llvm_target: "riscv64".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
+        pointer_width: 64,
         target_c_int_width: "32".to_string(),
         target_os: "none".to_string(),
         target_env: String::new(),
@@ -29,5 +29,5 @@ pub fn target() -> TargetResult {
             eh_frame_header: false,
             ..Default::default()
         },
-    })
+    }
 }

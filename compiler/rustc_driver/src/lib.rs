@@ -134,9 +134,52 @@ pub fn diagnostics_registry() -> Registry {
     Registry::new(&rustc_error_codes::DIAGNOSTICS)
 }
 
+pub struct RunCompiler<'a, 'b> {
+    at_args: &'a [String],
+    callbacks: &'b mut (dyn Callbacks + Send),
+    file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
+    emitter: Option<Box<dyn Write + Send>>,
+    make_codegen_backend:
+        Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
+}
+
+impl<'a, 'b> RunCompiler<'a, 'b> {
+    pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
+        Self { at_args, callbacks, file_loader: None, emitter: None, make_codegen_backend: None }
+    }
+    pub fn set_make_codegen_backend(
+        &mut self,
+        make_codegen_backend: Option<
+            Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
+        >,
+    ) -> &mut Self {
+        self.make_codegen_backend = make_codegen_backend;
+        self
+    }
+    pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
+        self.emitter = emitter;
+        self
+    }
+    pub fn set_file_loader(
+        &mut self,
+        file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
+    ) -> &mut Self {
+        self.file_loader = file_loader;
+        self
+    }
+    pub fn run(self) -> interface::Result<()> {
+        run_compiler(
+            self.at_args,
+            self.callbacks,
+            self.file_loader,
+            self.emitter,
+            self.make_codegen_backend,
+        )
+    }
+}
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // The FileLoader provides a way to load files from sources other than the file system.
-pub fn run_compiler(
+fn run_compiler(
     at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
@@ -155,8 +198,7 @@ pub fn run_compiler(
             ),
         }
     }
-    let diagnostic_output =
-        emitter.map(|emitter| DiagnosticOutput::Raw(emitter)).unwrap_or(DiagnosticOutput::Default);
+    let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let matches = match handle_options(&args) {
         Some(matches) => matches,
         None => return Ok(()),
@@ -600,7 +642,7 @@ impl RustcDefaultCalls {
             let codegen_results: CodegenResults = json::decode(&rlink_data).unwrap_or_else(|err| {
                 sess.fatal(&format!("failed to decode rlink: {}", err));
             });
-            compiler.codegen_backend().link(&sess, Box::new(codegen_results), &outputs)
+            compiler.codegen_backend().link(&sess, codegen_results, &outputs)
         } else {
             sess.fatal("rlink must be a file")
         }
@@ -628,7 +670,7 @@ impl RustcDefaultCalls {
                 Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
-                    locator::list_file_metadata(&sess.target.target, path, metadata_loader, &mut v)
+                    locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v)
                         .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
@@ -672,7 +714,8 @@ impl RustcDefaultCalls {
         for req in &sess.opts.prints {
             match *req {
                 TargetList => {
-                    let mut targets = rustc_target::spec::get_targets().collect::<Vec<String>>();
+                    let mut targets =
+                        rustc_target::spec::TARGETS.iter().copied().collect::<Vec<_>>();
                     targets.sort();
                     println!("{}", targets.join("\n"));
                 }
@@ -681,7 +724,7 @@ impl RustcDefaultCalls {
                     "{}",
                     sess.target_tlib_path.as_ref().unwrap_or(&sess.host_tlib_path).dir.display()
                 ),
-                TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
+                TargetSpec => println!("{}", sess.target.to_json().pretty()),
                 FileNames | CrateName => {
                     let input = input.unwrap_or_else(|| {
                         early_error(ErrorOutputType::default(), "no input file provided")
@@ -1215,9 +1258,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // If backtraces are enabled, also print the query stack
     let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
 
-    if backtrace {
-        TyCtxt::try_print_query_stack(&handler);
-    }
+    let num_frames = if backtrace { None } else { Some(2) };
+
+    TyCtxt::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
     unsafe {
@@ -1251,11 +1294,21 @@ pub fn init_env_logger(env: &str) {
         Ok(s) if s.is_empty() => return,
         Ok(_) => {}
     }
-    let builder = tracing_subscriber::FmtSubscriber::builder();
+    let filter = tracing_subscriber::EnvFilter::from_env(env);
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_indent_lines(true)
+        .with_ansi(true)
+        .with_targets(true)
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .with_wraparound(10)
+        .with_verbose_exit(true)
+        .with_verbose_entry(true)
+        .with_indent_amount(2);
 
-    let builder = builder.with_env_filter(tracing_subscriber::EnvFilter::from_env(env));
-
-    builder.init()
+    use tracing_subscriber::layer::SubscriberExt;
+    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
 pub fn main() -> ! {
@@ -1275,7 +1328,7 @@ pub fn main() -> ! {
                 })
             })
             .collect::<Vec<_>>();
-        run_compiler(&args, &mut callbacks, None, None, None)
+        RunCompiler::new(&args, &mut callbacks).run()
     });
     // The extra `\t` is necessary to align this label with the others.
     print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());

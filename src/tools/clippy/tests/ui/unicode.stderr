@@ -1,13 +1,25 @@
-error: zero-width space detected
+error: invisible character detected
   --> $DIR/unicode.rs:3:12
    |
 LL |     print!("Here >​< is a ZWS, and ​another");
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >/u{200B}< is a ZWS, and /u{200B}another"`
    |
-   = note: `-D clippy::zero-width-space` implied by `-D warnings`
+   = note: `-D clippy::invisible-characters` implied by `-D warnings`
+
+error: invisible character detected
+  --> $DIR/unicode.rs:5:12
+   |
+LL |     print!("Here >­< is a SHY, and ­another");
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >/u{AD}< is a SHY, and /u{AD}another"`
+
+error: invisible character detected
+  --> $DIR/unicode.rs:7:12
+   |
+LL |     print!("Here >⁠< is a WJ, and ⁠another");
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider replacing the string with: `"Here >/u{2060}< is a WJ, and /u{2060}another"`
 
 error: non-NFC Unicode sequence detected
-  --> $DIR/unicode.rs:9:12
+  --> $DIR/unicode.rs:13:12
    |
 LL |     print!("̀àh?");
    |            ^^^^^ help: consider replacing the string with: `"̀àh?"`
@@ -15,12 +27,12 @@ LL |     print!("̀àh?");
    = note: `-D clippy::unicode-not-nfc` implied by `-D warnings`
 
 error: literal non-ASCII character detected
-  --> $DIR/unicode.rs:15:12
+  --> $DIR/unicode.rs:19:12
    |
 LL |     print!("Üben!");
    |            ^^^^^^^ help: consider replacing the string with: `"/u{dc}ben!"`
    |
    = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 

@@ -402,11 +402,6 @@ impl<K: DepKind> DepGraph<K> {
         self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
     }
 
-    #[inline]
-    pub fn prev_dep_node_index_of(&self, dep_node: &DepNode<K>) -> SerializedDepNodeIndex {
-        self.data.as_ref().unwrap().previous.node_to_index(dep_node)
-    }
-
     /// Checks whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
     pub fn previous_work_product(&self, v: &WorkProductId) -> Option<WorkProduct> {

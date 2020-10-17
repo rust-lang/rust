@@ -55,6 +55,8 @@ cfg_if::cfg_if! {
         pub mod mutex;
         #[path = "rwlock_atomics.rs"]
         pub mod rwlock;
+        #[path = "futex_atomics.rs"]
+        pub mod futex;
     } else {
         #[path = "../unsupported/condvar.rs"]
         pub mod condvar;
@@ -66,5 +68,6 @@ cfg_if::cfg_if! {
 }
 
 #[path = "../unsupported/common.rs"]
+#[deny(unsafe_op_in_unsafe_fn)]
 mod common;
 pub use common::*;

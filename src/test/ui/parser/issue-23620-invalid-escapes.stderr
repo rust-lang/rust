@@ -80,9 +80,9 @@ error: incorrect unicode escape sequence
   --> $DIR/issue-23620-invalid-escapes.rs:32:14
    |
 LL |     let _ = "\u8f";
-   |              ^^--
-   |                |
-   |                help: format of unicode escape sequences uses braces: `\u{8f}`
+   |              ^^^-
+   |              |
+   |              help: format of unicode escape sequences uses braces: `\u{8f}`
 
 error: aborting due to 13 previous errors
 

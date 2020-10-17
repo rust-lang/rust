@@ -181,10 +181,9 @@ pub(crate) fn emit_unescape_error(
 
             if suggestion_len > 0 {
                 suggestion.push('}');
-                let lo = char_span.lo();
-                let hi = lo + BytePos(suggestion_len as u32);
+                let hi = char_span.lo() + BytePos(suggestion_len as u32);
                 diag.span_suggestion(
-                    span.with_lo(lo).with_hi(hi),
+                    span.with_hi(hi),
                     "format of unicode escape sequences uses braces",
                     suggestion,
                     Applicability::MaybeIncorrect,

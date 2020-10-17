@@ -92,18 +92,14 @@ pub type Result = result::Result<(), Error>;
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Error;
 
-/// A collection of methods that are required to format a message into a stream.
+/// A trait for writing or formatting into Unicode-accepting buffers or streams.
 ///
-/// This trait is the type which this modules requires when formatting
-/// information. This is similar to the standard library's [`io::Write`] trait,
-/// but it is only intended for use in libcore.
+/// This trait only accepts UTF-8–encoded data and is not [flushable]. If you only
+/// want to accept Unicode and you don't need flushing, you should implement this trait;
+/// otherwise you should implement [`std::io::Write`].
 ///
-/// This trait should generally not be implemented by consumers of the standard
-/// library. The [`write!`] macro accepts an instance of [`io::Write`], and the
-/// [`io::Write`] trait is favored over implementing this trait.
-///
-/// [`write!`]: ../../std/macro.write.html
-/// [`io::Write`]: ../../std/io/trait.Write.html
+/// [`std::io::Write`]: ../../std/io/trait.Write.html
+/// [flushable]: ../../std/io/trait.Write.html#tymethod.flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
     /// Writes a string slice into this writer, returning whether the write
@@ -1058,7 +1054,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// [`write!`]: ../../std/macro.write.html
+/// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter {
@@ -1886,7 +1882,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "{10, 11}");
     /// ```
     ///
-    /// [`format_args!`]: ../../std/macro.format_args.html
+    /// [`format_args!`]: crate::format_args
     ///
     /// In this more complex example, we use [`format_args!`] and `.debug_set()`
     /// to build a list of match arms:

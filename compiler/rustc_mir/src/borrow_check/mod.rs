@@ -17,7 +17,7 @@ use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
@@ -36,7 +36,6 @@ use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathInd
 use crate::dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
-use crate::transform::MirSource;
 
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
@@ -112,7 +111,7 @@ fn mir_borrowck<'tcx>(
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted, def)
+        do_mir_borrowck(&infcx, input_body, promoted)
     });
     debug!("mir_borrowck done");
 
@@ -123,8 +122,9 @@ fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
-    def: ty::WithOptConstParam<LocalDefId>,
 ) -> BorrowCheckResult<'tcx> {
+    let def = input_body.source.with_opt_param().as_local().unwrap();
+
     debug!("do_mir_borrowck(def = {:?})", def);
 
     let tcx = infcx.tcx;
@@ -186,7 +186,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // will have a lifetime tied to the inference context.
     let mut body = input_body.clone();
     let mut promoted = input_promoted.clone();
-    let free_regions = nll::replace_regions_in_mir(infcx, def, param_env, &mut body, &mut promoted);
+    let free_regions = nll::replace_regions_in_mir(infcx, param_env, &mut body, &mut promoted);
     let body = &body; // no further changes
 
     let location_table = &LocationTable::new(&body);
@@ -204,7 +204,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
@@ -222,7 +222,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         nll_errors,
     } = nll::compute_regions(
         infcx,
-        def.did,
         free_regions,
         body,
         &promoted,
@@ -236,20 +235,13 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_mir_results(
-        infcx,
-        MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None },
-        &body,
-        &regioncx,
-        &opt_closure_req,
-    );
+    nll::dump_mir_results(infcx, &body, &regioncx, &opt_closure_req);
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
     nll::dump_annotation(
         infcx,
         &body,
-        def.did.to_def_id(),
         &regioncx,
         &opt_closure_req,
         &opaque_type_values,
@@ -264,15 +256,15 @@ fn do_mir_borrowck<'a, 'tcx>(
     let regioncx = Rc::new(regioncx);
 
     let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_uninits = MaybeUninitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_ever_inits = EverInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def.did.to_def_id())
+        .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
@@ -293,7 +285,6 @@ fn do_mir_borrowck<'a, 'tcx>(
                 infcx,
                 param_env,
                 body: promoted_body,
-                mir_def_id: def.did,
                 move_data: &move_data,
                 location_table: &LocationTable::new(promoted_body),
                 movable_generator,
@@ -327,7 +318,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx,
         param_env,
         body,
-        mir_def_id: def.did,
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,
@@ -481,7 +471,6 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
     param_env: ParamEnv<'tcx>,
     body: &'cx Body<'tcx>,
-    mir_def_id: LocalDefId,
     move_data: &'cx MoveData<'tcx>,
 
     /// Map from MIR `Location` to `LocationIndex`; created
@@ -682,7 +671,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
         self.check_activations(loc, span, flow_state);
 
         match term.kind {
-            TerminatorKind::SwitchInt { ref discr, switch_ty: _, values: _, targets: _ } => {
+            TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
             TerminatorKind::Drop { place: ref drop_place, target: _, unwind: _ } => {

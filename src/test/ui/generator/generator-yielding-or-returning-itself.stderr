@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6 _] as Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6 _]`
+error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6] as Generator>::Return == [generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 19:6]`
   --> $DIR/generator-yielding-or-returning-itself.rs:15:5
    |
 LL | pub fn want_cyclic_generator_return<T>(_: T)
@@ -14,7 +14,7 @@ LL |     want_cyclic_generator_return(|| {
            see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
            for more information
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _] as Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6 _]`
+error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6] as Generator>::Yield == [generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 32:6]`
   --> $DIR/generator-yielding-or-returning-itself.rs:28:5
    |
 LL | pub fn want_cyclic_generator_yield<T>(_: T)

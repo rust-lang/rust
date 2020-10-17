@@ -201,6 +201,37 @@ impl Cfg {
             _ => false,
         }
     }
+
+    /// Attempt to simplify this cfg by assuming that `assume` is already known to be true, will
+    /// return `None` if simplification managed to completely eliminate any requirements from this
+    /// `Cfg`.
+    ///
+    /// See `tests::test_simplify_with` for examples.
+    pub(crate) fn simplify_with(&self, assume: &Cfg) -> Option<Cfg> {
+        if self == assume {
+            return None;
+        }
+
+        if let Cfg::All(a) = self {
+            let mut sub_cfgs: Vec<Cfg> = if let Cfg::All(b) = assume {
+                a.iter().filter(|a| !b.contains(a)).cloned().collect()
+            } else {
+                a.iter().filter(|&a| a != assume).cloned().collect()
+            };
+            let len = sub_cfgs.len();
+            return match len {
+                0 => None,
+                1 => sub_cfgs.pop(),
+                _ => Some(Cfg::All(sub_cfgs)),
+            };
+        } else if let Cfg::All(b) = assume {
+            if b.contains(self) {
+                return None;
+            }
+        }
+
+        Some(self.clone())
+    }
 }
 
 impl ops::Not for Cfg {
