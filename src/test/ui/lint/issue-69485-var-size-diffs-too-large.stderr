@@ -1,5 +1,5 @@
 error: the type `[u8; 18446744073709551615]` is too big for the current architecture
-  --> $DIR/issue-69485-var-size-diffs-too-large.rs:5:12
+  --> $DIR/issue-69485-var-size-diffs-too-large.rs:6:12
    |
 LL |     Bug::V([0; !0]);
    |            ^^^^^^^
