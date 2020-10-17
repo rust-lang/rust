@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `dyn Bar: CastTo<[i32]>` is not satisfied
-  --> $DIR/issue-71659.rs:92:18
+error[E0277]: the trait bound `dyn Foo: CastTo<[i32]>` is not satisfied
+  --> $DIR/issue-71659.rs:30:15
    |
-LL |     let x = (*x).cast::<[i32]>();
-   |                  ^^^^ the trait `CastTo<[i32]>` is not implemented for `dyn Bar`
+LL |     let x = x.cast::<[i32]>();
+   |               ^^^^ the trait `CastTo<[i32]>` is not implemented for `dyn Foo`
 
 error: aborting due to previous error
 
