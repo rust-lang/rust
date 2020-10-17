@@ -133,69 +133,6 @@ fn filter_next() {
     let _ = foo.filter().next();
 }
 
-/// Checks implementation of `SEARCH_IS_SOME` lint.
-#[rustfmt::skip]
-fn search_is_some() {
-    let v = vec![3, 2, 1, 0, -1, -2, -3];
-    let y = &&42;
-
-    // Check `find().is_some()`, single-line case.
-    let _ = v.iter().find(|&x| *x < 0).is_some();
-    let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
-    let _ = (0..1).find(|x| *x == 0).is_some();
-    let _ = v.iter().find(|x| **x == 0).is_some();
-
-    // Check `find().is_some()`, multi-line case.
-    let _ = v.iter().find(|&x| {
-                              *x < 0
-                          }
-                   ).is_some();
-
-    // Check `position().is_some()`, single-line case.
-    let _ = v.iter().position(|&x| x < 0).is_some();
-
-    // Check `position().is_some()`, multi-line case.
-    let _ = v.iter().position(|&x| {
-                                  x < 0
-                              }
-                   ).is_some();
-
-    // Check `rposition().is_some()`, single-line case.
-    let _ = v.iter().rposition(|&x| x < 0).is_some();
-
-    // Check `rposition().is_some()`, multi-line case.
-    let _ = v.iter().rposition(|&x| {
-                                   x < 0
-                               }
-                   ).is_some();
-    
-    let s1 = String::from("hello world");
-    let s2 = String::from("world");
-    // Check caller `find()` is a &`static str case
-    let _ = "hello world".find("world").is_some();
-    let _ = "hello world".find(&s2).is_some();
-    let _ = "hello world".find(&s2[2..]).is_some();
-    // Check caller of `find()` is a String case
-    let _ = s1.find("world").is_some();
-    let _ = s1.find(&s2).is_some();
-    let _ = s1.find(&s2[2..]).is_some();
-    //  Check caller of `find()` is a slice of String case
-    let _ = s1[2..].find("world").is_some();
-    let _ = s1[2..].find(&s2).is_some();
-    let _ = s1[2..].find(&s2[2..]).is_some();
-
-    // Check that we don't lint if `find()` is called with
-    // Pattern that is not a string
-    let _ = s1.find(|c: char| c == 'o' || c == 'l').is_some();
-
-    // Check that we don't lint if the caller is not an `Iterator` or string
-    let foo = IteratorFalsePositives { foo: 0 };
-    let _ = foo.find().is_some();
-    let _ = foo.position().is_some();
-    let _ = foo.rposition().is_some();
-}
-
 fn main() {
     filter_next();
-    search_is_some();
 }
