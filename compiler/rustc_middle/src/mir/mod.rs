@@ -146,7 +146,7 @@ impl<'tcx> MirSource<'tcx> {
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
 pub struct Body<'tcx> {
-    /// A list of basic blocks. References to basic block use a newtyped index type `BasicBlock`
+    /// A list of basic blocks. References to basic block use a newtyped index type [`BasicBlock`]
     /// that indexes into this vector.
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 
@@ -1105,6 +1105,9 @@ rustc_index::newtype_index! {
     /// however there is a MIR pass ([`CriticalCallEdges`]) that removes *critical edges*, which
     /// are edges that go from a multi-successor node to a multi-predecessor node. This pass is
     /// needed because some analyses require that there are no critical edges in the CFG.
+    ///
+    /// Note that this type is just an index into [`Body.basic_blocks`](Body::basic_blocks);
+    /// the actual data that a basic block holds is in [`BasicBlockData`].
     ///
     /// Read more about basic blocks in the [rustc-dev-guide][guide-mir].
     ///
