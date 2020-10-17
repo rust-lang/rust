@@ -6,8 +6,6 @@
 -     let _1: u32;                         // in scope 0 at $DIR/simplify-locals.rs:56:14: 56:21
 -     let mut _2: &mut u32;                // in scope 0 at $DIR/simplify-locals.rs:56:15: 56:21
 -     let mut _3: *mut u32;                // in scope 0 at $DIR/simplify-locals.rs:56:20: 56:21
-+     let mut _1: &mut u32;                // in scope 0 at $DIR/simplify-locals.rs:56:15: 56:21
-+     let mut _2: *mut u32;                // in scope 0 at $DIR/simplify-locals.rs:56:20: 56:21
       scope 1 {
       }
   
@@ -19,12 +17,8 @@
 -         _2 = &mut (*_3);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
 -         _1 = (*_2);                      // scope 1 at $DIR/simplify-locals.rs:56:14: 56:21
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
-+         StorageLive(_1);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
-+         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:56:20: 56:21
-+         _2 = &/*tls*/ mut X;             // scope 1 at $DIR/simplify-locals.rs:56:20: 56:21
-+         _1 = &mut (*_2);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
-          StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
-          StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
+-         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
+-         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
           _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:54:9: 57:2
           return;                          // scope 0 at $DIR/simplify-locals.rs:57:2: 57:2
       }

@@ -5,6 +5,7 @@
 
 // build-fail
 // normalize-stderr-test: ".nll/" -> "/"
+// compile-flags: -Zmir-opt-level=0
 
 struct S<T> {
     t: T,

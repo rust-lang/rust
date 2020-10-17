@@ -439,31 +439,7 @@ impl Visitor<'_> for UsedLocals {
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
 
             StatementKind::Assign(box (ref place, ref rvalue)) => {
-                let can_skip = match rvalue {
-                    Rvalue::Use(_)
-                    | Rvalue::Discriminant(_)
-                    | Rvalue::BinaryOp(_, _, _)
-                    | Rvalue::CheckedBinaryOp(_, _, _)
-                    | Rvalue::Repeat(_, _)
-                    | Rvalue::AddressOf(_, _)
-                    | Rvalue::Len(_)
-                    | Rvalue::UnaryOp(_, _)
-                    | Rvalue::Aggregate(_, _) => true,
-
-                    Rvalue::Ref(..)
-                    | Rvalue::ThreadLocalRef(..)
-                    | Rvalue::Cast(..)
-                    | Rvalue::NullaryOp(..) => false,
-                };
-                if can_skip {
-                    self.visit_lhs(place, location);
-                } else {
-                    self.visit_place(
-                        place,
-                        PlaceContext::MutatingUse(MutatingUseContext::Store),
-                        location,
-                    );
-                }
+                self.visit_lhs(place, location);
                 self.visit_rvalue(rvalue, location);
             }
 
