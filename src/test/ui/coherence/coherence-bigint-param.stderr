@@ -4,7 +4,7 @@ error[E0210]: type parameter `T` must be covered by another type when it appears
 LL | impl<T> Remote1<BigInt> for T { }
    |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`BigInt`)
    |
-   = note: implementing a foreign trait is only possible if at least one of the types for which is it implemented is local, and no uncovered type parameters appear before that first local type
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
    = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
 
 error: aborting due to previous error
