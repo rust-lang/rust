@@ -827,6 +827,8 @@ enum Constructor<'tcx> {
     IntRange(IntRange<'tcx>),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
     FloatRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
+    /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
+    Str(&'tcx ty::Const<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
@@ -863,7 +865,7 @@ impl<'tcx> Constructor<'tcx> {
 
         match self {
             // Those constructors can only match themselves.
-            Single | Variant(_) | ConstantValue(..) | FloatRange(..) => {
+            Single | Variant(_) | ConstantValue(..) | Str(..) | FloatRange(..) => {
                 if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
             }
             &Slice(slice) => {
@@ -1013,6 +1015,7 @@ impl<'tcx> Constructor<'tcx> {
                 }
             },
             &ConstantValue(value) => PatKind::Constant { value },
+            &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(cx.tcx),
             NonExhaustive => PatKind::Wild,
@@ -1167,7 +1170,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
+            ConstantValue(..) | Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive => {
+                Fields::empty()
+            }
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -2106,6 +2111,7 @@ fn pat_constructor<'tcx>(
             } else {
                 match value.ty.kind() {
                     ty::Float(_) => Some(FloatRange(value, value, RangeEnd::Included)),
+                    ty::Ref(_, t, _) if t.is_str() => Some(Str(value)),
                     _ => Some(ConstantValue(value)),
                 }
             }
@@ -2508,7 +2514,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                         return None;
                     }
                 }
-                ConstantValue(ctor_value) => {
+                ConstantValue(ctor_value) | Str(ctor_value) => {
                     let pat_value = match *pat.kind {
                         PatKind::Constant { value } => value,
                         _ => span_bug!(
