@@ -849,19 +849,30 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 }
 
-struct FunctionCallFinder {
+struct FunctionCallFinder<'tcx> {
+    tcx: TyCtxt<'tcx>,
     found: bool,
 }
 
-impl FunctionCallFinder {
-    fn new() -> Self {
-        FunctionCallFinder { found: false }
+impl<'tcx> FunctionCallFinder<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        FunctionCallFinder { tcx, found: false }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for FunctionCallFinder {
+impl<'tcx> Visitor<'tcx> for FunctionCallFinder<'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, _location: Location) {
-        if let TerminatorKind::Call { .. } = terminator.kind {
+        if let TerminatorKind::Call { func: Operand::Constant(ref f), .. } = terminator.kind {
+            if let ty::FnDef(def_id, _) = *f.literal.ty.kind() {
+                // Don't forbid intrinsics.
+                let f = self.tcx.fn_sig(def_id);
+                if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
+                    return;
+                }
+
+                // FIXME: We may also want to check for `tcx.is_mir_available(def_id)`.
+            }
+
             self.found = true;
         }
     }
@@ -884,7 +895,7 @@ pub fn is_trivial_mir(tcx: TyCtxt<'tcx>, did: DefId) -> bool {
         let body = tcx
             .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did))
             .borrow();
-        let mut finder = FunctionCallFinder::new();
+        let mut finder = FunctionCallFinder::new(tcx);
         finder.visit_body(&body);
         debug!("is_trivial_mir = {}", !finder.found);
         !finder.found
