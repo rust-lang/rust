@@ -2436,8 +2436,10 @@ impl<'tcx> AdtDef {
         self.variants.iter().flat_map(|v| v.fields.iter())
     }
 
+    /// Whether the ADT lacks fields. Note that this includes uninhabited enums,
+    /// e.g., `enum Void {}` is considered payload free as well.
     pub fn is_payloadfree(&self) -> bool {
-        !self.variants.is_empty() && self.variants.iter().all(|v| v.fields.is_empty())
+        self.variants.iter().all(|v| v.fields.is_empty())
     }
 
     /// Return a `VariantDef` given a variant id.
