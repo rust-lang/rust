@@ -834,13 +834,6 @@ enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
-    fn is_slice(&self) -> bool {
-        match self {
-            Slice(_) => true,
-            _ => false,
-        }
-    }
-
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -2111,7 +2104,10 @@ fn pat_constructor<'tcx>(
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantValue(value))
+                match value.ty.kind() {
+                    ty::Float(_) => Some(FloatRange(value, value, RangeEnd::Included)),
+                    _ => Some(ConstantValue(value)),
+                }
             }
         }
         PatKind::Range(PatRange { lo, hi, end }) => {
@@ -2443,35 +2439,6 @@ fn lint_overlapping_patterns<'tcx>(
     }
 }
 
-fn constructor_covered_by_range<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ctor: &Constructor<'tcx>,
-    pat: &Pat<'tcx>,
-) -> Option<()> {
-    if let Single = ctor {
-        return Some(());
-    }
-
-    let (pat_from, pat_to, pat_end, ty) = match *pat.kind {
-        PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-        PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
-        _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
-    };
-    let (ctor_from, ctor_to, ctor_end) = match *ctor {
-        ConstantValue(value) => (value, value, RangeEnd::Included),
-        FloatRange(from, to, ctor_end) => (from, to, ctor_end),
-        _ => bug!("`constructor_covered_by_range` called with {:?}", ctor),
-    };
-    trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, pat_from, pat_to, ty);
-
-    let to = compare_const_vals(tcx, ctor_to, pat_to, param_env, ty)?;
-    let from = compare_const_vals(tcx, ctor_from, pat_from, param_env, ty)?;
-    let intersects = (from == Ordering::Greater || from == Ordering::Equal)
-        && (to == Ordering::Less || (pat_end == ctor_end && to == Ordering::Equal));
-    if intersects { Some(()) } else { None }
-}
-
 /// This is the main specialization step. It expands the pattern
 /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
 /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
@@ -2516,27 +2483,51 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Deref { ref subpattern } => Some(Fields::from_single_pattern(subpattern)),
 
-        PatKind::Constant { value } if constructor.is_slice() => {
-            span_bug!(pat.span, "unexpected const-val {:?} with ctor {:?}", value, constructor)
-        }
-
         PatKind::Constant { .. } | PatKind::Range { .. } => {
-            // If the constructor is a:
-            // - Single value: add a row if the pattern contains the constructor.
-            // - Range: add a row if the constructor intersects the pattern.
-            if let IntRange(ctor) = constructor {
-                let pat = IntRange::from_pat(cx.tcx, cx.param_env, pat)?;
-                ctor.intersection(cx.tcx, &pat)?;
-                // Constructor splitting should ensure that all intersections we encounter
-                // are actually inclusions.
-                assert!(ctor.is_subrange(&pat));
-            } else {
-                // Fallback for non-ranges and ranges that involve
-                // floating-point numbers, which are not conveniently handled
-                // by `IntRange`. For these cases, the constructor may not be a
-                // range so intersection actually devolves into being covered
-                // by the pattern.
-                constructor_covered_by_range(cx.tcx, cx.param_env, constructor, pat)?;
+            match constructor {
+                Single => {}
+                IntRange(ctor) => {
+                    let pat = IntRange::from_pat(cx.tcx, cx.param_env, pat)?;
+                    ctor.intersection(cx.tcx, &pat)?;
+                    // Constructor splitting should ensure that all intersections we encounter
+                    // are actually inclusions.
+                    assert!(ctor.is_subrange(&pat));
+                }
+                FloatRange(ctor_from, ctor_to, ctor_end) => {
+                    let (pat_from, pat_to, pat_end, ty) = match *pat.kind {
+                        PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
+                        PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
+                        _ => unreachable!(), // This is ensured by the branch we're in
+                    };
+                    let to = compare_const_vals(cx.tcx, ctor_to, pat_to, cx.param_env, ty)?;
+                    let from = compare_const_vals(cx.tcx, ctor_from, pat_from, cx.param_env, ty)?;
+                    let intersects = (from == Ordering::Greater || from == Ordering::Equal)
+                        && (to == Ordering::Less
+                            || (pat_end == *ctor_end && to == Ordering::Equal));
+                    if !intersects {
+                        return None;
+                    }
+                }
+                ConstantValue(ctor_value) => {
+                    let pat_value = match *pat.kind {
+                        PatKind::Constant { value } => value,
+                        _ => span_bug!(
+                            pat.span,
+                            "unexpected range pattern {:?} for constant value ctor",
+                            pat
+                        ),
+                    };
+
+                    // FIXME: there's probably a more direct way of comparing for equality
+                    if compare_const_vals(cx.tcx, ctor_value, pat_value, cx.param_env, pat.ty)?
+                        != Ordering::Equal
+                    {
+                        return None;
+                    }
+                }
+                _ => {
+                    span_bug!(pat.span, "unexpected pattern {:?} with ctor {:?}", pat, constructor)
+                }
             }
             Some(Fields::empty())
         }
