@@ -223,10 +223,8 @@ impl<T> TypedArena<T> {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = last_chunk.storage.len();
-                if new_cap < HUGE_PAGE / elem_size {
-                    new_cap = new_cap.checked_mul(2).unwrap();
-                }
+                new_cap = last_chunk.storage.len().min(HUGE_PAGE / elem_size / 2);
+                new_cap = new_cap * 2;
             } else {
                 new_cap = PAGE / elem_size;
             }
@@ -343,10 +341,8 @@ impl DroplessArena {
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
-                new_cap = last_chunk.storage.len();
-                if new_cap < HUGE_PAGE {
-                    new_cap = new_cap.checked_mul(2).unwrap();
-                }
+                new_cap = last_chunk.storage.len().min(HUGE_PAGE / 2);
+                new_cap = new_cap * 2;
             } else {
                 new_cap = PAGE;
             }
