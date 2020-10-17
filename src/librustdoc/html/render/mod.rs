@@ -808,7 +808,7 @@ function handleThemeButtonsBlur(e) {{
 themePicker.onclick = switchThemeButtonState;
 themePicker.onblur = handleThemeButtonsBlur;
 {}.forEach(function(item) {{
-    var but = document.createElement(\"button\");
+    var but = document.createElement("button");
     but.textContent = item;
     but.onclick = function(el) {{
         switchTheme(currentTheme, mainTheme, item, true);
@@ -1031,11 +1031,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     // with rustdoc running in parallel.
     all_indexes.sort();
     {
-        let mut v = String::from("var searchIndex = JSON.parse(\"{\\n");
+        let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
         // "addSearchOptions" has to be called first so the crate filtering can be set before the
         // search might start (if it's set into the URL for example).
-        v.push_str("\\\n}\");\naddSearchOptions(searchIndex);initSearch(searchIndex);");
+        v.push_str("\\\n}');\naddSearchOptions(searchIndex);initSearch(searchIndex);");
         cx.shared.fs.write(&dst, &v)?;
     }
     if options.enable_index_page {
