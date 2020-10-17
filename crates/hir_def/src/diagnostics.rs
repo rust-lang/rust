@@ -7,6 +7,9 @@ use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use hir_expand::{HirFileId, InFile};
 
+// Diagnostic: unresolved-module
+//
+// This diagnostic is triggered if rust-analyzer is unable to discover referred module.
 #[derive(Debug)]
 pub struct UnresolvedModule {
     pub file: HirFileId,
@@ -29,6 +32,9 @@ impl Diagnostic for UnresolvedModule {
     }
 }
 
+// Diagnostic: unresolved-extern-crate
+//
+// This diagnostic is triggered if rust-analyzer is unable to discover referred extern crate.
 #[derive(Debug)]
 pub struct UnresolvedExternCrate {
     pub file: HirFileId,
@@ -50,6 +56,9 @@ impl Diagnostic for UnresolvedExternCrate {
     }
 }
 
+// Diagnostic: unresolved-import
+//
+// This diagnostic is triggered if rust-analyzer is unable to discover imported module.
 #[derive(Debug)]
 pub struct UnresolvedImport {
     pub file: HirFileId,
