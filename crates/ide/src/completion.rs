@@ -233,12 +233,28 @@ mod tests {
 
     #[test]
     fn test_no_completions_required() {
+        // There must be no hint for 'in' keyword.
         check_no_completion(
             r#"
             fn foo() {
                 for i i<|>
             }
             "#,
-        )
+        );
+        // After 'in' keyword hints may be spawned.
+        check_detail_and_documentation(
+            r#"
+            /// Do the foo
+            fn foo() -> &'static str { "foo" }
+
+            fn bar() {
+                for c in fo<|>
+            }
+            "#,
+            DetailAndDocumentation {
+                detail: "fn foo() -> &'static str",
+                documentation: "Do the foo",
+            },
+        );
     }
 }
