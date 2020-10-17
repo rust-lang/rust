@@ -1240,9 +1240,6 @@ impl<'a> Resolver<'a> {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
             if !session.contains_name(&krate.attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
-                if session.rust_2018() {
-                    extern_prelude.insert(Ident::with_dummy_span(sym::meta), Default::default());
-                }
             }
         }
 
