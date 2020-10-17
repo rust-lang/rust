@@ -1,5 +1,5 @@
 use crate::io::prelude::*;
-use crate::io::{copy, empty, repeat, sink, Empty, Repeat, Sink};
+use crate::io::{copy, empty, repeat, sink, Empty, Repeat, SeekFrom, Sink};
 
 #[test]
 fn copy_copies() {
@@ -27,6 +27,26 @@ fn empty_reads() {
     assert_eq!(e.read(&mut [0]).unwrap(), 0);
     assert_eq!(e.read(&mut [0; 1024]).unwrap(), 0);
     assert_eq!(e.by_ref().read(&mut [0; 1024]).unwrap(), 0);
+}
+
+#[test]
+fn empty_seeks() {
+    let mut e = empty();
+    assert!(matches!(e.seek(SeekFrom::Start(0)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::Start(1)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::Start(u64::MAX)), Ok(0)));
+
+    assert!(matches!(e.seek(SeekFrom::End(i64::MIN)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::End(-1)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::End(0)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::End(1)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::End(i64::MAX)), Ok(0)));
+
+    assert!(matches!(e.seek(SeekFrom::Current(i64::MIN)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::Current(-1)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::Current(0)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::Current(1)), Ok(0)));
+    assert!(matches!(e.seek(SeekFrom::Current(i64::MAX)), Ok(0)));
 }
 
 #[test]
