@@ -87,7 +87,6 @@ impl<K, V> LeafNode<K, V> {
 #[repr(C)]
 // gdb_providers.py uses this type name for introspection.
 struct InternalNode<K, V> {
-    // gdb_providers.py uses this field name for introspection.
     data: LeafNode<K, V>,
 
     /// The pointers to the children of this node. `len + 1` of these are considered
