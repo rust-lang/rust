@@ -619,6 +619,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// +++++++++++++++++++++++++++++
 /// + _     + [_, _, tail @ ..] +
 /// +++++++++++++++++++++++++++++
+/// ```
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
