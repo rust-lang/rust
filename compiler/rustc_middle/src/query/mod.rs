@@ -327,6 +327,7 @@ rustc_queries! {
 
         query is_trivial_mir(key: DefId) -> bool {
             desc { |tcx| "checking if MIR for `{}` is trivial", tcx.def_path_str(key) }
+            cache_on_disk_if { key.is_local() }
         }
 
         /// MIR after our optimization passes have run. This is MIR that is ready
