@@ -123,6 +123,10 @@ pub(crate) fn fn_is_prev(element: SyntaxElement) -> bool {
         .filter(|it| it.kind() == FN_KW)
         .is_some()
 }
+#[test]
+fn test_fn_is_prev() {
+    check_pattern_is_applicable(r"fn l<|>", fn_is_prev);
+}
 
 /// Check if the token previous to the previous one is `for`.
 /// For example, `for _ i<|>` => true.
@@ -133,6 +137,10 @@ pub(crate) fn for_is_prev2(element: SyntaxElement) -> bool {
         .and_then(|it| previous_non_trivia_token(it))
         .filter(|it| it.kind() == FOR_KW)
         .is_some()
+}
+#[test]
+fn test_for_is_prev2() {
+    check_pattern_is_applicable(r"for i i<|>", for_is_prev2);
 }
 
 #[test]
