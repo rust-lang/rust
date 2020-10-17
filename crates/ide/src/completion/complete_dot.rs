@@ -413,4 +413,19 @@ fn foo() {
             "#]],
         );
     }
+
+    #[test]
+    fn completes_method_call_when_receiver_is_a_macro_call() {
+        check(
+            r#"
+struct S;
+impl S { fn foo(&self) {} }
+macro_rules! make_s { () => { S }; }
+fn main() { make_s!().f<|>; }
+"#,
+            expect![[r#"
+                me foo() fn foo(&self)
+            "#]],
+        )
+    }
 }
