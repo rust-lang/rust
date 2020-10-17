@@ -255,9 +255,15 @@ impl Command {
         let maybe_env = self.env.capture_if_changed();
         maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
     }
+
     #[allow(dead_code)]
     pub fn env_saw_path(&self) -> bool {
         self.env.have_changed_path()
+    }
+
+    #[allow(dead_code)]
+    pub fn program_is_path(&self) -> bool {
+        self.program.to_bytes().contains(&b'/')
     }
 
     pub fn setup_io(

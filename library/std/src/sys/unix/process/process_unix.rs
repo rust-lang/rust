@@ -285,7 +285,7 @@ impl Command {
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
-            || self.env_saw_path()
+            || (self.env_saw_path() && !self.program_is_path())
             || !self.get_closures().is_empty()
         {
             return Ok(None);
