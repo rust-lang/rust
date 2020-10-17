@@ -966,9 +966,28 @@
                     ]
                 },
                 {
-                    "comment": "double-quoted raw strings and raw byte strings",
+                    "comment": "double-quoted raw strings and raw byte strings (no hash)",
                     "name": "string.quoted.double.rust",
-                    "begin": "(b?r)(#*)(\")",
+                    "begin": "(b?r)(\")",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "string.quoted.byte.raw.rust"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.string.rust"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.rust"
+                        }
+                    }
+                },
+                {
+                    "comment": "double-quoted raw strings and raw byte strings (with hash)",
+                    "name": "string.quoted.double.rust",
+                    "begin": "(b?r)(#+)(\")",
                     "beginCaptures": {
                         "1": {
                             "name": "string.quoted.byte.raw.rust"
@@ -980,7 +999,7 @@
                             "name": "punctuation.definition.string.rust"
                         }
                     },
-                    "end": "(\")(#*)",
+                    "end": "(\")(#+)",
                     "endCaptures": {
                         "1": {
                             "name": "punctuation.definition.string.rust"
