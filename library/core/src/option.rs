@@ -667,7 +667,7 @@ impl<T> Option<T> {
     /// Returns [`None`] if the option is [`None`], otherwise calls `predicate`
     /// with the wrapped value and returns:
     ///
-    /// - [`Some(t)`] if `predicate` returns `true` (where `t` is the wrapped
+    /// - [`Some`] if `predicate` returns `true` (where `t` is the wrapped
     ///   value), and
     /// - [`None`] if `predicate` returns `false`.
     ///
@@ -686,8 +686,6 @@ impl<T> Option<T> {
     /// assert_eq!(Some(3).filter(is_even), None);
     /// assert_eq!(Some(4).filter(is_even), Some(4));
     /// ```
-    ///
-    /// [`Some(t)`]: Some
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
