@@ -127,9 +127,7 @@ impl CoverageKind {
         match *self {
             Counter { id, .. } => ExpressionOperandId::from(id),
             Expression { id, .. } => ExpressionOperandId::from(id),
-            Unreachable => {
-                bug!("Unreachable coverage cannot be part of an expression")
-            }
+            Unreachable => bug!("Unreachable coverage cannot be part of an expression"),
         }
     }
 

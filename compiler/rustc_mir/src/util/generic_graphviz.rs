@@ -3,9 +3,11 @@ use rustc_graphviz as dot;
 use rustc_middle::ty::TyCtxt;
 use std::io::{self, Write};
 
-pub struct GraphvizWriter<'a, G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes, 
-NodeContentFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
-EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>
+pub struct GraphvizWriter<
+    'a,
+    G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes,
+    NodeContentFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
+    EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
 > {
     graph: &'a G,
     is_subgraph: bool,
@@ -15,11 +17,19 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
     edge_labels_fn: EdgeLabelsFn,
 }
 
-impl<'a, G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes, 
-NodeContentFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
-EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>
-> GraphvizWriter<'a, G, NodeContentFn, EdgeLabelsFn> {
-    pub fn new(graph: &'a G, graphviz_name: &str, node_content_fn: NodeContentFn, edge_labels_fn: EdgeLabelsFn) -> Self {
+impl<
+    'a,
+    G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes,
+    NodeContentFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
+    EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
+> GraphvizWriter<'a, G, NodeContentFn, EdgeLabelsFn>
+{
+    pub fn new(
+        graph: &'a G,
+        graphviz_name: &str,
+        node_content_fn: NodeContentFn,
+        edge_labels_fn: EdgeLabelsFn,
+    ) -> Self {
         Self {
             graph,
             is_subgraph: false,
@@ -30,7 +40,12 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
         }
     }
 
-    pub fn new_subgraph(graph: &'a G, graphviz_name: &str, node_content_fn: NodeContentFn, edge_labels_fn: EdgeLabelsFn) -> Self {
+    pub fn new_subgraph(
+        graph: &'a G,
+        graphviz_name: &str,
+        node_content_fn: NodeContentFn,
+        edge_labels_fn: EdgeLabelsFn,
+    ) -> Self {
         Self {
             graph,
             is_subgraph: true,
@@ -46,16 +61,12 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
     }
 
     /// Write a graphviz DOT of the graph
-    pub fn write_graphviz<'tcx, W>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        w: &mut W,
-    ) -> io::Result<()>
+    pub fn write_graphviz<'tcx, W>(&self, tcx: TyCtxt<'tcx>, w: &mut W) -> io::Result<()>
     where
-        W: Write
+        W: Write,
     {
         let kind = if self.is_subgraph { "subgraph" } else { "digraph" };
-        let cluster = if self.is_subgraph { "cluster_" } else { "" }; // Prints a border around graph
+        let cluster = if self.is_subgraph { "cluster_" } else { "" }; // Print border around graph
         // FIXME(richkadel): If/when migrating the MIR graphviz to this generic implementation,
         // prepend "Mir_" to the graphviz_safe_def_name(def_id)
         writeln!(w, "{} {}{} {{", kind, cluster, self.graphviz_name)?;
@@ -96,14 +107,9 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
     }
 
     /// Write a graphviz DOT node for the given node.
-    pub fn write_node<W>(
-        &self,
-        node: G::Node,
-        dark_mode: bool,
-        w: &mut W,
-    ) -> io::Result<()>
+    pub fn write_node<W>(&self, node: G::Node, dark_mode: bool, w: &mut W) -> io::Result<()>
     where
-        W: Write
+        W: Write,
     {
         // Start a new node with the label to follow, in one of DOT's pseudo-HTML tables.
         write!(w, r#"    {} [shape="none", label=<"#, self.node(node))?;
@@ -129,7 +135,11 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
         )?;
 
         for section in (self.node_content_fn)(node) {
-            write!(w, r#"<tr><td align="left" balign="left">{}</td></tr>"#, dot::escape_html(&section).replace("\n", "<br/>"))?;
+            write!(
+                w,
+                r#"<tr><td align="left" balign="left">{}</td></tr>"#,
+                dot::escape_html(&section).replace("\n", "<br/>")
+            )?;
         }
 
         // Close the table
@@ -142,7 +152,7 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
     /// Write graphviz DOT edges with labels between the given node and all of its successors.
     fn write_edges<W>(&self, source: G::Node, w: &mut W) -> io::Result<()>
     where
-        W: Write
+        W: Write,
     {
         let edge_labels = (self.edge_labels_fn)(source);
         for (index, target) in self.graph.successors(source).enumerate() {
@@ -162,7 +172,7 @@ EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Ve
     /// will appear below the graph.
     fn write_graph_label<W>(&self, label: &str, w: &mut W) -> io::Result<()>
     where
-        W: Write
+        W: Write,
     {
         let lines = label.split("\n").map(|s| dot::escape_html(s)).collect::<Vec<_>>();
         let escaped_label = lines.join(r#"<br align="left"/>"#);

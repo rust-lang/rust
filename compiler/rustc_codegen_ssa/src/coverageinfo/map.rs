@@ -84,7 +84,10 @@ impl FunctionCoverage {
         rhs: ExpressionOperandId,
         region: Option<CodeRegion>,
     ) {
-        debug!("add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?} at {:?}", expression_id, lhs, op, rhs, region);
+        debug!(
+            "add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?} at {:?}",
+            expression_id, lhs, op, rhs, region
+        );
         let expression_index = self.expression_index(u32::from(expression_id));
         self.expressions[expression_index]
             .replace(Expression { lhs, op, rhs, region })
@@ -134,8 +137,7 @@ impl FunctionCoverage {
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &'a CodeRegion)>) {
         let mut counter_expressions = Vec::with_capacity(self.expressions.len());
         let mut expression_regions = Vec::with_capacity(self.expressions.len());
-        let mut new_indexes =
-            IndexVec::from_elem_n(None, self.expressions.len());
+        let mut new_indexes = IndexVec::from_elem_n(None, self.expressions.len());
         // Note that an `Expression`s at any given index can include other expressions as
         // operands, but expression operands can only come from the subset of expressions having
         // `expression_index`s lower than the referencing `Expression`. Therefore, it is
@@ -175,8 +177,6 @@ impl FunctionCoverage {
                 entry.as_ref().map(|expression| (original_index, expression))
             })
         {
-            // TODO(richkadel): remove this debug:
-            debug!("Attempting to add {:?} = {:?}", original_index, expression);
             let optional_region = &expression.region;
             let Expression { lhs, op, rhs, .. } = *expression;
 
@@ -185,8 +185,14 @@ impl FunctionCoverage {
                     id_to_counter(&new_indexes, rhs).map(|rhs_counter| (lhs_counter, rhs_counter))
                 })
             {
-                debug_assert!((lhs_counter.id as usize) < usize::max(self.counters.len(), self.expressions.len()));
-                debug_assert!((rhs_counter.id as usize) < usize::max(self.counters.len(), self.expressions.len()));
+                debug_assert!(
+                    (lhs_counter.id as usize)
+                        < usize::max(self.counters.len(), self.expressions.len())
+                );
+                debug_assert!(
+                    (rhs_counter.id as usize)
+                        < usize::max(self.counters.len(), self.expressions.len())
+                );
                 // Both operands exist. `Expression` operands exist in `self.expressions` and have
                 // been assigned a `new_index`.
                 let mapped_expression_index =
