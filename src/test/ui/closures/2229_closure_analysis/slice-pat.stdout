@@ -12,9 +12,16 @@ For closure=DefId(0:5 ~ slice_pat[317d]::main::{closure#0}): capture information
             },
         ],
     }: CaptureInfo {
-        expr_id: None,
+        expr_id: Some(
+            HirId {
+                owner: DefId(0:3 ~ slice_pat[317d]::main),
+                local_id: 179,
+            },
+        ),
         capture_kind: ByValue(
-            None,
+            Some(
+                $DIR/slice-pat.rs:21:33: 21:36 (#0),
+            ),
         ),
     },
 }
