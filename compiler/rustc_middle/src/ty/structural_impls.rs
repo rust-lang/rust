@@ -549,7 +549,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateAtom<'a> {
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<T> {
     type Lifted = ty::Binder<T::Lifted>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(self.as_ref().skip_binder()).map(ty::Binder::bind)
+        tcx.lift(self.as_ref().skip_binder()).map(|v| self.rebind(v))
     }
 }
 

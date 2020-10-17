@@ -192,6 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     obligation.predicate
                 );
 
+                let bound_predicate = obligation.predicate.bound_atom();
                 if let ty::PredicateAtom::Projection(proj_predicate) =
                     obligation.predicate.skip_binders()
                 {
@@ -199,7 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // the complete signature.
                     self.deduce_sig_from_projection(
                         Some(obligation.cause.span),
-                        ty::Binder::bind(proj_predicate),
+                        bound_predicate.rebind(proj_predicate),
                     )
                 } else {
                     None

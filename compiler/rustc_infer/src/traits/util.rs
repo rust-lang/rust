@@ -126,14 +126,15 @@ impl Elaborator<'tcx> {
     fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
 
-        match obligation.predicate.skip_binders() {
+        let bound_predicate = obligation.predicate.bound_atom();
+        match bound_predicate.skip_binder() {
             ty::PredicateAtom::Trait(data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
                 let obligations = predicates.predicates.iter().map(|&(pred, _)| {
                     predicate_obligation(
-                        pred.subst_supertrait(tcx, &ty::Binder::bind(data.trait_ref)),
+                        pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
                         obligation.param_env,
                         obligation.cause.clone(),
                     )

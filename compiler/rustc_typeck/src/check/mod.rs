@@ -850,7 +850,8 @@ fn bounds_from_generic_predicates<'tcx>(
     let mut projections = vec![];
     for (predicate, _) in predicates.predicates {
         debug!("predicate {:?}", predicate);
-        match predicate.skip_binders() {
+        let bound_predicate = predicate.bound_atom();
+        match bound_predicate.skip_binder() {
             ty::PredicateAtom::Trait(trait_predicate, _) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
@@ -861,7 +862,7 @@ fn bounds_from_generic_predicates<'tcx>(
                 }
             }
             ty::PredicateAtom::Projection(projection_pred) => {
-                projections.push(ty::Binder::bind(projection_pred));
+                projections.push(bound_predicate.rebind(projection_pred));
             }
             _ => {}
         }

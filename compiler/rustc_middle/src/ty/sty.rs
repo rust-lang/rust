@@ -703,14 +703,16 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
             ExistentialPredicate::Trait(tr) => {
-                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
+                self.rebind(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                Binder(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
+                self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
-                let trait_ref =
-                    Binder(ty::TraitRef { def_id: did, substs: tcx.mk_substs_trait(self_ty, &[]) });
+                let trait_ref = self.rebind(ty::TraitRef {
+                    def_id: did,
+                    substs: tcx.mk_substs_trait(self_ty, &[]),
+                });
                 trait_ref.without_const().to_predicate(tcx)
             }
         }
@@ -775,7 +777,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
 impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     pub fn principal(&self) -> Option<ty::Binder<ExistentialTraitRef<'tcx>>> {
-        self.skip_binder().principal().map(Binder::bind)
+        self.map_bound(|b| b.principal()).transpose()
     }
 
     pub fn principal_def_id(&self) -> Option<DefId> {
@@ -858,8 +860,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
-        // Note that we preserve binding levels
-        Binder(ty::TraitPredicate { trait_ref: self.skip_binder() })
+        self.map_bound(|trait_ref| ty::TraitPredicate { trait_ref })
     }
 }
 
@@ -999,6 +1000,19 @@ impl<T> Binder<T> {
         F: FnOnce(T) -> U,
     {
         Binder(f(self.0))
+    }
+
+    /// Wraps a `value` in a binder, using the same bound variables as the
+    /// current `Binder`. This should not be used if the new value *changes*
+    /// the bound variables. Note: the (old or new) value itself does not
+    /// necessarily need to *name* all the bound variables.
+    ///
+    /// This currently doesn't do anything different than `bind`, because we
+    /// don't actually track bound vars. However, semantically, it is different
+    /// because bound vars aren't allowed to change here, whereas they are
+    /// in `bind`. This may be (debug) asserted in the future.
+    pub fn rebind<U>(&self, value: U) -> Binder<U> {
+        Binder(value)
     }
 
     /// Unwraps and returns the value within, but only if it contains

@@ -673,17 +673,9 @@ fn codegen_emcc_try(
 fn gen_fn<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     name: &str,
-    inputs: Vec<Ty<'tcx>>,
-    output: Ty<'tcx>,
+    rust_fn_sig: ty::PolyFnSig<'tcx>,
     codegen: &mut dyn FnMut(Builder<'_, 'll, 'tcx>),
 ) -> &'ll Value {
-    let rust_fn_sig = ty::Binder::bind(cx.tcx.mk_fn_sig(
-        inputs.into_iter(),
-        output,
-        false,
-        hir::Unsafety::Unsafe,
-        Abi::Rust,
-    ));
     let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
     let llfn = cx.declare_fn(name, &fn_abi);
     cx.set_frame_pointer_elimination(llfn);
@@ -710,22 +702,31 @@ fn get_rust_try_fn<'ll, 'tcx>(
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
-    let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+    // `unsafe fn(*mut i8) -> ()`
+    let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
         iter::once(i8p),
         tcx.mk_unit(),
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust,
     )));
-    let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+    // `unsafe fn(*mut i8, *mut i8) -> ()`
+    let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
         [i8p, i8p].iter().cloned(),
         tcx.mk_unit(),
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust,
     )));
-    let output = tcx.types.i32;
-    let rust_try = gen_fn(cx, "__rust_try", vec![try_fn_ty, i8p, catch_fn_ty], output, codegen);
+    // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
+    let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
+        vec![try_fn_ty, i8p, catch_fn_ty].into_iter(),
+        tcx.types.i32,
+        false,
+        hir::Unsafety::Unsafe,
+        Abi::Rust,
+    ));
+    let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));
     rust_try
 }

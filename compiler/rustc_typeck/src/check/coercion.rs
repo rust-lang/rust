@@ -583,7 +583,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let trait_pred = match obligation.predicate.skip_binders() {
+            let bound_predicate = obligation.predicate.bound_atom();
+            let trait_pred = match bound_predicate.skip_binder() {
                 ty::PredicateAtom::Trait(trait_pred, _)
                     if traits.contains(&trait_pred.def_id()) =>
                 {
@@ -594,7 +595,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    ty::Binder::bind(trait_pred)
+                    bound_predicate.rebind(trait_pred)
                 }
                 _ => {
                     coercion.obligations.push(obligation);

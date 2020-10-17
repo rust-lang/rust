@@ -81,8 +81,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
         interner: &RustInterner<'tcx>,
     ) -> chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>> {
         let clauses = self.environment.into_iter().map(|predicate| {
-            let (predicate, binders, _named_regions) =
-                collect_bound_vars(interner, interner.tcx, &predicate.bound_atom(interner.tcx));
+            let (predicate, binders, _named_regions) = collect_bound_vars(
+                interner,
+                interner.tcx,
+                &predicate.bound_atom_with_opt_escaping(interner.tcx),
+            );
             let consequence = match predicate {
                 ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
                     chalk_ir::DomainGoal::FromEnv(chalk_ir::FromEnv::Ty(ty.lower_into(interner)))
@@ -133,8 +136,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predicate<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::GoalData<RustInterner<'tcx>> {
-        let (predicate, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, &self.bound_atom(interner.tcx));
+        let (predicate, binders, _named_regions) = collect_bound_vars(
+            interner,
+            interner.tcx,
+            &self.bound_atom_with_opt_escaping(interner.tcx),
+        );
 
         let value = match predicate {
             ty::PredicateAtom::Trait(predicate, _) => {
@@ -653,8 +659,11 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
         self,
         interner: &RustInterner<'tcx>,
     ) -> Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
-        let (predicate, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, &self.bound_atom(interner.tcx));
+        let (predicate, binders, _named_regions) = collect_bound_vars(
+            interner,
+            interner.tcx,
+            &self.bound_atom_with_opt_escaping(interner.tcx),
+        );
         let value = match predicate {
             ty::PredicateAtom::Trait(predicate, _) => {
                 Some(chalk_ir::WhereClause::Implemented(predicate.trait_ref.lower_into(interner)))
@@ -762,27 +771,22 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
         self,
         interner: &RustInterner<'tcx>,
     ) -> Option<chalk_solve::rust_ir::QuantifiedInlineBound<RustInterner<'tcx>>> {
-        match self.bound_atom(interner.tcx).skip_binder() {
-            ty::PredicateAtom::Trait(predicate, _) => {
-                let (predicate, binders, _named_regions) =
-                    collect_bound_vars(interner, interner.tcx, &ty::Binder::bind(predicate));
-
-                Some(chalk_ir::Binders::new(
-                    binders,
-                    chalk_solve::rust_ir::InlineBound::TraitBound(
-                        predicate.trait_ref.lower_into(interner),
-                    ),
-                ))
-            }
-            ty::PredicateAtom::Projection(predicate) => {
-                let (predicate, binders, _named_regions) =
-                    collect_bound_vars(interner, interner.tcx, &ty::Binder::bind(predicate));
-
-                Some(chalk_ir::Binders::new(
-                    binders,
-                    chalk_solve::rust_ir::InlineBound::AliasEqBound(predicate.lower_into(interner)),
-                ))
-            }
+        let (predicate, binders, _named_regions) = collect_bound_vars(
+            interner,
+            interner.tcx,
+            &self.bound_atom_with_opt_escaping(interner.tcx),
+        );
+        match predicate {
+            ty::PredicateAtom::Trait(predicate, _) => Some(chalk_ir::Binders::new(
+                binders,
+                chalk_solve::rust_ir::InlineBound::TraitBound(
+                    predicate.trait_ref.lower_into(interner),
+                ),
+            )),
+            ty::PredicateAtom::Projection(predicate) => Some(chalk_ir::Binders::new(
+                binders,
+                chalk_solve::rust_ir::InlineBound::AliasEqBound(predicate.lower_into(interner)),
+            )),
             ty::PredicateAtom::TypeOutlives(_predicate) => None,
             ty::PredicateAtom::WellFormed(_ty) => None,
 
