@@ -104,6 +104,18 @@ pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -
         .unwrap();
 }
 
+pub(crate) fn check_pattern_is_not_applicable(code: &str, check: fn(SyntaxElement) -> bool) {
+    let (analysis, pos) = fixture::position(code);
+    analysis
+        .with_db(|db| {
+            let sema = Semantics::new(db);
+            let original_file = sema.parse(pos.file_id);
+            let token = original_file.syntax().token_at_offset(pos.offset).left_biased().unwrap();
+            assert!(!check(NodeOrToken::Token(token)));
+        })
+        .unwrap();
+}
+
 pub(crate) fn get_all_completion_items(
     config: CompletionConfig,
     code: &str,

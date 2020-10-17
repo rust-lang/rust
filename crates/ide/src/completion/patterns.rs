@@ -9,7 +9,7 @@ use syntax::{
 };
 
 #[cfg(test)]
-use crate::completion::test_utils::check_pattern_is_applicable;
+use crate::completion::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
 
 pub(crate) fn has_trait_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
@@ -34,6 +34,22 @@ pub(crate) fn has_impl_parent(element: SyntaxElement) -> bool {
 fn test_has_impl_parent() {
     check_pattern_is_applicable(r"impl A { f<|> }", has_impl_parent);
 }
+
+pub(crate) fn has_impl_trait_parent(element: SyntaxElement) -> bool {
+    not_same_range_ancestor(element)
+        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
+        .and_then(|it| it.parent())
+        .filter(|it| it.kind() == IMPL)
+        .map(|it| ast::Impl::cast(it).unwrap())
+        .map(|it| it.trait_().is_some())
+        .unwrap_or(false)
+}
+#[test]
+fn test_has_impl_trait_parent() {
+    check_pattern_is_applicable(r"impl Foo for Bar { f<|> }", has_impl_trait_parent);
+    check_pattern_is_not_applicable(r"impl A { f<|> }", has_impl_trait_parent);
+}
+
 pub(crate) fn has_field_list_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element).filter(|it| it.kind() == RECORD_FIELD_LIST).is_some()
 }
