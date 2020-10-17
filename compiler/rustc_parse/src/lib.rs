@@ -227,7 +227,7 @@ pub fn parse_in<'a, T>(
     let mut parser = Parser::new(sess, tts, false, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
-        parser.unexpected()?;
+        let _: () = parser.unexpected()?;
     }
     Ok(result)
 }

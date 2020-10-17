@@ -2556,6 +2556,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    //TODO: Add explanation.
+    pub FALL_BACK_TO_NEVER_TYPE,
+    Deny,
+    "Unresolved variable might fall back to never_type `!`"
+}
+
+declare_lint! {
     /// The `cenum_impl_drop_cast` lint detects an `as` cast of a field-less
     /// `enum` that implements [`Drop`].
     ///
@@ -2770,6 +2777,7 @@ declare_lint_pass! {
         MISSING_DOC_CODE_EXAMPLES,
         INVALID_HTML_TAGS,
         PRIVATE_DOC_TESTS,
+        FALL_BACK_TO_NEVER_TYPE,
         WHERE_CLAUSES_OBJECT_SAFETY,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,

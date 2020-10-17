@@ -701,6 +701,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(prev_diverges);
         }
 
+        if self.diverges.get().is_always() {
+            self.dead_nodes.borrow_mut().insert(blk.hir_id);
+            debug!("expr with HIR id {:?} is dead on exit", blk.hir_id);
+        }
+
         let mut ty = ctxt.coerce.unwrap().complete(self);
 
         if self.has_errors.get() || ty.references_error() {

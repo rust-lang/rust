@@ -205,7 +205,7 @@ pub struct LocalTableInContext<'a, V> {
 /// stored/returned.
 fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
     if hir_id.owner != hir_owner {
-        ty::tls::with(|tcx| {
+        let _: () = ty::tls::with(|tcx| {
             bug!(
                 "node {} with HirId::owner {:?} cannot be placed in TypeckResults with hir_owner {:?}",
                 tcx.hir().node_to_string(hir_id),

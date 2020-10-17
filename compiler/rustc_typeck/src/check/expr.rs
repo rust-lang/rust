@@ -215,6 +215,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.diverges.set(self.diverges.get() | old_diverges);
         self.has_errors.set(self.has_errors.get() | old_has_errors);
 
+        if self.diverges.get().is_always() {
+            self.dead_nodes.borrow_mut().insert(expr.hir_id);
+            debug!("expr with HIR id {:?} is dead on exit", expr.hir_id);
+        }
+
         debug!("type of {} is...", self.tcx.hir().node_to_string(expr.hir_id));
         debug!("... {:?}, expected is {:?}", ty, expected);
 

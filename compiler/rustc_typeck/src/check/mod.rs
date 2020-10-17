@@ -566,10 +566,12 @@ fn typeck_with_fallback<'tcx>(
         fcx.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
 
+        let unsolved_variables = fcx.unsolved_variables();
+
         // We do fallback in two passes, to try to generate
         // better error messages.
         // The first time, we do *not* replace opaque types.
-        for ty in &fcx.unsolved_variables() {
+        for ty in &unsolved_variables {
             fallback_has_occurred |= fcx.fallback_if_possible(ty, FallbackMode::NoOpaque);
         }
         // We now see if we can make progress. This might
@@ -596,6 +598,16 @@ fn typeck_with_fallback<'tcx>(
         // we will generate a confusing type-check error that does not explicitly
         // refer to opaque types.
         fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
+
+        // We run through the list of `unsolved_variables` gathered earlier and
+        // check if there are any that are marked `Diverging` at this point. if
+        // so, this would imply, that they were assigned Divergent type because
+        // of fallback. Any type in `unsolved_variables` that is now `!`, is `!`
+        // as a result of fallback.
+        let mut from_diverging_fallback = unsolved_variables;
+        let diverging_default = fcx.tcx.mk_diverging_default();
+        from_diverging_fallback
+            .retain(|ty| fcx.infcx.resolve_vars_if_possible(ty) == diverging_default);
 
         // We now run fallback again, but this time we allow it to replace
         // unconstrained opaque type variables, in addition to performing
@@ -630,7 +642,7 @@ fn typeck_with_fallback<'tcx>(
             fcx.regionck_expr(body);
         }
 
-        fcx.resolve_type_vars_in_body(body)
+        fcx.resolve_type_vars_in_body(body, &from_diverging_fallback)
     });
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds

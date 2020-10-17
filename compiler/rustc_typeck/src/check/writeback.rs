@@ -34,6 +34,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_type_vars_in_body(
         &self,
         body: &'tcx hir::Body<'tcx>,
+        from_diverging_fallback: &Vec<Ty<'tcx>>,
     ) -> &'tcx ty::TypeckResults<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
         let item_def_id = self.tcx.hir().local_def_id(item_id);
@@ -43,7 +44,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rustc_dump_user_substs =
             self.tcx.has_attr(item_def_id.to_def_id(), sym::rustc_dump_user_substs);
 
-        let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
+        let mut wbcx =
+            WritebackCx::new(self, body, rustc_dump_user_substs, from_diverging_fallback);
         for param in body.params {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
@@ -100,6 +102,11 @@ struct WritebackCx<'cx, 'tcx> {
     body: &'tcx hir::Body<'tcx>,
 
     rustc_dump_user_substs: bool,
+
+    /// List of type variables which became the never type `!`
+    /// as a result of fallback.
+    /// This is used to issue lints and warnings for the user.
+    from_diverging_fallback: &'cx Vec<Ty<'tcx>>,
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
@@ -107,6 +114,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         fcx: &'cx FnCtxt<'cx, 'tcx>,
         body: &'tcx hir::Body<'tcx>,
         rustc_dump_user_substs: bool,
+        from_diverging_fallback: &'cx Vec<Ty<'tcx>>,
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id.owner;
 
@@ -115,6 +123,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             typeck_results: ty::TypeckResults::new(owner),
             body,
             rustc_dump_user_substs,
+            from_diverging_fallback,
         }
     }
 
@@ -521,8 +530,35 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.visit_adjustments(span, hir_id);
 
         // Resolve the type of the node with id `node_id`
-        let n_ty = self.fcx.node_ty(hir_id);
-        let n_ty = self.resolve(&n_ty, &span);
+        let n_ty_original = self.fcx.node_ty(hir_id);
+        let n_ty = self.resolve(&n_ty_original, &span);
+
+        debug!("visit_node_id: {:?}", self.from_diverging_fallback);
+        // check whether the node type contains any of the variables that
+        // became `!` as a result of type fallback but they are not part of the
+        // dead nodes. if so, warn. Note that, we concern ourselves with only
+        // the `n_ty_original` and don't `walk()` the subparts of a type. So, for a
+        // variable like `Foo<Bar<Bas<...<N>>>>` even if `N` is diverging type,
+        // we will not generate a warning. This might be okay as sometimes we may
+        // have things like `Result<i32, T> where even though `T` is diverging,
+        // it might never be used and warning would be confusing for the user.
+        if !self.from_diverging_fallback.is_empty() {
+            debug!("hir_id:{}", &hir_id);
+            debug!("n_ty_original:{}", &n_ty_original);
+            if !self.fcx.dead_nodes.borrow().contains(&hir_id)
+                && self.from_diverging_fallback.contains(&n_ty_original)
+            {
+                self.tcx().struct_span_lint_hir(
+                    rustc_session::lint::builtin::FALL_BACK_TO_NEVER_TYPE,
+                    hir_id,
+                    span,
+                    |lint| {
+                        lint.build(&format!("resulted from diverging fallback: {:?}", n_ty)).emit()
+                    },
+                );
+            }
+        }
+
         self.write_ty_to_typeck_results(hir_id, n_ty);
         debug!("node {:?} has type {:?}", hir_id, n_ty);
 

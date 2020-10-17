@@ -14,6 +14,7 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::OpaqueTypeDecl;
 use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt};
 
+use rustc_data_structures::fx::FxHashSet;
 use std::cell::RefCell;
 use std::ops::Deref;
 
@@ -68,6 +69,10 @@ pub struct Inherited<'a, 'tcx> {
     pub(super) opaque_types_vars: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
     pub(super) body_id: Option<hir::BodyId>,
+
+    /// This keeps track of the dead nodes. We use this to determine
+    /// if there are live nodes with the diverging fallback for linting.
+    pub(super) dead_nodes: RefCell<FxHashSet<hir::HirId>>,
 }
 
 impl<'a, 'tcx> Deref for Inherited<'a, 'tcx> {
@@ -126,6 +131,7 @@ impl Inherited<'a, 'tcx> {
             opaque_types: RefCell::new(Default::default()),
             opaque_types_vars: RefCell::new(Default::default()),
             body_id,
+            dead_nodes: RefCell::new(FxHashSet::default()),
         }
     }
 
