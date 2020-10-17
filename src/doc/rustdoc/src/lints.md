@@ -292,11 +292,11 @@ This lint is **nightly-only** and **warns by default**. It detects links which
 could use the "automatic" link syntax. For example:
 
 ```rust
-/// http://hello.rs
-/// [http://a.com](http://a.com)
-/// [http://b.com]
+/// http://example.org
+/// [http://example.com](http://example.com)
+/// [http://example.net]
 ///
-/// [http://b.com]: http://b.com
+/// [http://example.com]: http://example.com
 pub fn foo() {}
 ```
 
@@ -304,21 +304,22 @@ Which will give:
 
 ```text
 warning: this URL is not a hyperlink
- --> foo.rs:3:5
+ --> foo.rs:1:5
   |
-3 | /// http://hello.rs
-  |     ^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://hello.rs>`
+1 | /// http://example.org
+  |     ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.org>`
   |
+  = note: `#[warn(url_improvements)]` on by default
 
 warning: unneeded long form for URL
- --> foo.rs:4:5
+ --> foo.rs:2:5
   |
-4 | /// [http://a.com](http://a.com)
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://a.com>`
+2 | /// [http://example.com](http://example.com)
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.com>`
 
-warning: unneeded long form for URL
- --> foo.rs:5:5
+warning: this URL is not a hyperlink
+ --> foo.rs:3:6
   |
-5 | /// [http://b.com]
-  |     ^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://b.com>`
+3 | /// [http://example.net]
+  |      ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.net>`
 ```
