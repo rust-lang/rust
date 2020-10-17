@@ -1,6 +1,7 @@
--include ../tools.mk
+include ../../run-make-fulldeps/tools.mk
 
-# ignore-musl
+# ignore-wasm32
+# ignore-thumb
 
 all: foo
 	$(call RUN,foo)
