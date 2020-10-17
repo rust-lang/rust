@@ -35,6 +35,11 @@ const ID_SEPARATOR: &str = ",";
 
 const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 
+/// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
+/// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
+/// to construct the coverage map.
+pub struct InstrumentCoverage;
+
 #[derive(Debug, Clone)]
 struct DebugOptions {
     allow_unused_expressions: bool,
@@ -138,10 +143,119 @@ impl Default for ExpressionFormat {
     }
 }
 
-/// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
-/// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
-/// to construct the coverage map.
-pub struct InstrumentCoverage;
+#[derive(Debug)]
+struct DebugCounter {
+    counter_kind: CoverageKind,
+    some_block_label: Option<String>,
+}
+
+impl DebugCounter {
+    fn new(counter_kind: CoverageKind, some_block_label: Option<String>) -> Self {
+        Self {
+            counter_kind,
+            some_block_label,
+        }
+    }
+}
+
+struct DebugCounters {
+    some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
+}
+
+impl DebugCounters {
+    pub fn new() -> Self {
+        Self {
+            some_counters: None,
+        }
+    }
+
+    pub fn enable(&mut self) {
+        self.some_counters.replace(FxHashMap::default());
+    }
+
+    pub fn is_enabled(&mut self) -> bool {
+        self.some_counters.is_some()
+    }
+
+    pub fn add_counter(&mut self, counter_kind: &CoverageKind, some_block_label: Option<String>) {
+        if let Some(counters) = &mut self.some_counters {
+            let id: ExpressionOperandId = match *counter_kind {
+                CoverageKind::Counter { id, .. } => id.into(),
+                | CoverageKind::Expression { id, .. } => id.into(),
+                _ => bug!("the given `CoverageKind` is not an counter or expression: {:?}", counter_kind),
+            };
+            counters.insert(id.into(), DebugCounter::new(counter_kind.clone(), some_block_label)).expect_none("attempt to add the same counter_kind to DebugCounters more than once");
+        }
+    }
+
+    pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
+        self.some_counters.as_ref().map_or(None, |counters| counters.get(&operand).map_or(None, |debug_counter| debug_counter.some_block_label.as_ref()))
+    }
+
+    pub fn format_counter(&self, counter_kind: &CoverageKind) -> String {
+        match *counter_kind {
+            CoverageKind::Counter { .. } => format!("Counter({})", self.format_counter_kind(counter_kind)),
+            CoverageKind::Expression { .. } => format!("Expression({})", self.format_counter_kind(counter_kind)),
+            CoverageKind::Unreachable { .. } => "Unreachable".to_owned(),
+        }
+    }
+
+    fn format_counter_kind(&self, counter_kind: &CoverageKind) -> String {
+        let counter_format = &debug_options().counter_format;
+        if let CoverageKind::Expression { id, lhs, op, rhs } = *counter_kind {
+            if counter_format.operation {
+                return format!(
+                    "{}{} {} {}",
+                    if counter_format.id || self.some_counters.is_none() {
+                        format!("#{} = ", id.index() )
+                    } else {
+                        String::new()
+                    },
+                    self.format_operand(lhs),
+                    if op == Op::Add { "+" } else { "-" },
+                    self.format_operand(rhs),
+                );
+            }
+        }
+
+        let id: ExpressionOperandId = match *counter_kind {
+            CoverageKind::Counter { id, .. } => id.into(),
+            | CoverageKind::Expression { id, .. } => id.into(),
+            _ => bug!("the given `CoverageKind` is not an counter or expression: {:?}", counter_kind),
+        };
+        if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
+            let counters = self.some_counters.as_ref().unwrap();
+            if let Some(DebugCounter { some_block_label: Some(block_label), .. }) = counters.get(&id.into()) {
+                return if counter_format.id {
+                    format!("{}#{}", block_label, id.index())
+                } else {
+                    format!("{}", block_label)
+                }
+            }
+        }
+        format!("#{}", id.index())
+    }
+
+    fn format_operand(&self, operand: ExpressionOperandId) -> String {
+        if operand.index() == 0 {
+            return String::from("0");
+        }
+        if let Some(counters) = &self.some_counters {
+            if let Some(DebugCounter { counter_kind, some_block_label }) = counters.get(&operand) {
+                if let CoverageKind::Expression { .. } = counter_kind {
+                    if let Some(block_label) = some_block_label {
+                        if debug_options().counter_format.block {
+                            return format!("{}:({})", block_label, self.format_counter_kind(counter_kind));
+                        }
+                    }
+                    return format!("({})", self.format_counter_kind(counter_kind));
+                }
+                return format!("{}", self.format_counter_kind(counter_kind));
+            }
+        }
+        format!("#{}", operand.index().to_string())
+    }
+}
 
 /// The `query` provider for `CoverageInfo`, requested by `codegen_coverage()` (to inject each
 /// counter) and `FunctionCoverage::new()` (to extract the coverage map metadata from the MIR).
@@ -923,120 +1037,6 @@ struct TraversalContext {
     worklist: Vec<BasicCoverageBlock>,
 }
 
-#[derive(Debug)]
-struct DebugCounter {
-    counter_kind: CoverageKind,
-    some_block_label: Option<String>,
-}
-
-impl DebugCounter {
-    fn new(counter_kind: CoverageKind, some_block_label: Option<String>) -> Self {
-        Self {
-            counter_kind,
-            some_block_label,
-        }
-    }
-}
-
-struct DebugCounters {
-    some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
-}
-
-impl DebugCounters {
-    pub fn new() -> Self {
-        Self {
-            some_counters: None,
-        }
-    }
-
-    pub fn enable(&mut self) {
-        self.some_counters.replace(FxHashMap::default());
-    }
-
-    pub fn is_enabled(&mut self) -> bool {
-        self.some_counters.is_some()
-    }
-
-    pub fn add_counter(&mut self, counter_kind: &CoverageKind, some_block_label: Option<String>) {
-        if let Some(counters) = &mut self.some_counters {
-            let id: ExpressionOperandId = match *counter_kind {
-                CoverageKind::Counter { id, .. } => id.into(),
-                | CoverageKind::Expression { id, .. } => id.into(),
-                _ => bug!("the given `CoverageKind` is not an counter or expression: {:?}", counter_kind),
-            };
-            counters.insert(id.into(), DebugCounter::new(counter_kind.clone(), some_block_label)).expect_none("attempt to add the same counter_kind to DebugCounters more than once");
-        }
-    }
-
-    pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
-        self.some_counters.as_ref().map_or(None, |counters| counters.get(&operand).map_or(None, |debug_counter| debug_counter.some_block_label.as_ref()))
-    }
-
-    pub fn format_counter(&self, counter_kind: &CoverageKind) -> String {
-        match *counter_kind {
-            CoverageKind::Counter { .. } => format!("Counter({})", self.format_counter_kind(counter_kind)),
-            CoverageKind::Expression { .. } => format!("Expression({})", self.format_counter_kind(counter_kind)),
-            CoverageKind::Unreachable { .. } => "Unreachable".to_owned(),
-        }
-    }
-
-    fn format_counter_kind(&self, counter_kind: &CoverageKind) -> String {
-        let counter_format = &debug_options().counter_format;
-        if let CoverageKind::Expression { id, lhs, op, rhs } = *counter_kind {
-            if counter_format.operation {
-                return format!(
-                    "{}{} {} {}",
-                    if counter_format.id || self.some_counters.is_none() {
-                        format!("#{} = ", id.index() )
-                    } else {
-                        String::new()
-                    },
-                    self.format_operand(lhs),
-                    if op == Op::Add { "+" } else { "-" },
-                    self.format_operand(rhs),
-                );
-            }
-        }
-
-        let id: ExpressionOperandId = match *counter_kind {
-            CoverageKind::Counter { id, .. } => id.into(),
-            | CoverageKind::Expression { id, .. } => id.into(),
-            _ => bug!("the given `CoverageKind` is not an counter or expression: {:?}", counter_kind),
-        };
-        if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
-            let counters = self.some_counters.as_ref().unwrap();
-            if let Some(DebugCounter { some_block_label: Some(block_label), .. }) = counters.get(&id.into()) {
-                return if counter_format.id {
-                    format!("{}#{}", block_label, id.index())
-                } else {
-                    format!("{}", block_label)
-                }
-            }
-        }
-        format!("#{}", id.index())
-    }
-
-    fn format_operand(&self, operand: ExpressionOperandId) -> String {
-        if operand.index() == 0 {
-            return String::from("0");
-        }
-        if let Some(counters) = &self.some_counters {
-            if let Some(DebugCounter { counter_kind, some_block_label }) = counters.get(&operand) {
-                if let CoverageKind::Expression { .. } = counter_kind {
-                    if let Some(block_label) = some_block_label {
-                        if debug_options().counter_format.block {
-                            return format!("{}:({})", block_label, self.format_counter_kind(counter_kind));
-                        }
-                    }
-                    return format!("({})", self.format_counter_kind(counter_kind));
-                }
-                return format!("{}", self.format_counter_kind(counter_kind));
-            }
-        }
-        format!("#{}", operand.index().to_string())
-    }
-}
-
 struct Instrumentor<'a, 'tcx> {
     pass_name: &'a str,
     tcx: TyCtxt<'tcx>,
@@ -1130,13 +1130,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         if level_enabled!(tracing::Level::DEBUG) || dump_graphviz {
             debug_used_expression_operands = Some(FxHashMap::default());
             debug_unused_expressions = Some(Vec::new());
-// TODO(richkadel): remove me:
-//            const SIMPLIFY_EXPRESSIONS: bool = false;
-//            if SIMPLIFY_EXPRESSIONS {
             if debug_options().simplify_expressions {
                 self.debug_expressions_cache.replace(FxHashMap::default());
             }
-            // CAUTION! The `SIMPLIFY_EXPRESSIONS` option is only helpful for some debugging
+            // CAUTION! The `simplify_expressions` option is only helpful for some debugging
             // situations and it can change the generated MIR `Coverage` statements (resulting in
             // differences in behavior when enabled, under `DEBUG`, compared to normal operation and
             // testing).
@@ -1165,10 +1162,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             debug_edge_to_counter = Some(FxHashMap::default());
         }
 
+        let mut bcbs_with_coverage = BitSet::new_empty(self.basic_coverage_blocks.num_nodes());
+        for covspan in &coverage_spans {
+            bcbs_with_coverage.insert(covspan.bcb);
+        }
+
         // Analyze the coverage graph (aka, BCB control flow graph), and inject expression-optimized
         // counters.
-
-        self.make_bcb_counters(&mut collect_intermediate_expressions);
+        self.make_bcb_counters(bcbs_with_coverage, &mut collect_intermediate_expressions);
 
         // If debugging, add any intermediate expressions (which are not associated with any BCB) to
         // the `debug_used_expression_operands` map.
@@ -1438,14 +1439,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 // FIXME(richkadel): Determine if unused expressions can and should be prevented, and
                 // if so, it would be a `bug!` if encountered in the future. At the present time,
                 // however we do sometimes encounter unused expressions (in only a subset of test cases)
-                // even when `SIMPLIFY_EXPRESSIONS` is disabled. It's not yet clear what causes this, or
+                // even when `simplify_expressions` is disabled. It's not yet clear what causes this, or
                 // if it should be allowed in the long term, but as long as the coverage capability
                 // still works, generate warning messages only, for now.
-// TODO(richkadel): remove:
-//                const ALLOW_UNUSED_EXPRESSIONS: bool = true;
-//                if self.debug_expressions_cache.is_some() || ALLOW_UNUSED_EXPRESSIONS {
                 if self.debug_expressions_cache.is_some() || debug_options().allow_unused_expressions {
-                    // Note, the debugging const `SIMPLIFY_EXPRESSIONS`, which initializes the
+                    // Note, the debugging option `simplify_expressions`, which initializes the
                     // `debug_expressions_cache` can cause some counters to become unused, and
                     // is not a bug.
                     //
@@ -1518,7 +1516,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     ///
     /// Returns non-code-span expressions created to represent intermediate values (if required),
     /// such as to add two counters so the result can be subtracted from another counter.
-    fn make_bcb_counters(&mut self, collect_intermediate_expressions: &mut Vec<CoverageKind>) {
+    fn make_bcb_counters(
+        &mut self,
+        bcbs_with_coverage: BitSet<BasicCoverageBlock>,
+        collect_intermediate_expressions: &mut Vec<CoverageKind>,
+    ) {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
         let num_bcbs = self.basic_coverage_blocks.num_nodes();
         let mut backedges = IndexVec::from_elem_n(
@@ -1606,6 +1608,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         }
                     }
                 }
+            }
+
+            if !bcbs_with_coverage.contains(bcb) {
+                continue;
             }
 
             let bcb_counter_operand = self.get_or_make_counter_operand(bcb, collect_intermediate_expressions);
