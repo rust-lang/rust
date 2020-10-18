@@ -145,10 +145,11 @@ impl Emitter for JsonEmitter {
                 }
             })
             .collect();
+        let report = FutureIncompatReport { future_incompat_report: data };
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            writeln!(&mut self.dst, "{}", as_pretty_json(&report))
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            writeln!(&mut self.dst, "{}", as_json(&report))
         }
         .and_then(|_| self.dst.flush());
         if let Err(e) = result {
@@ -252,6 +253,11 @@ struct ArtifactNotification<'a> {
 struct FutureBreakageItem {
     future_breakage_date: Option<&'static str>,
     diagnostic: Diagnostic,
+}
+
+#[derive(Encodable)]
+struct FutureIncompatReport {
+    future_incompat_report: Vec<FutureBreakageItem>,
 }
 
 impl Diagnostic {

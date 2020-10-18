@@ -36,6 +36,17 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
+#[derive(Deserialize)]
+struct FutureIncompatReport {
+    future_incompat_report: Vec<FutureBreakageItem>
+}
+
+#[derive(Deserialize)]
+struct FutureBreakageItem {
+    future_breakage_date: Option<String>,
+    diagnostic: Diagnostic
+}
+
 impl DiagnosticSpan {
     /// Returns the deepest source span in the macro call stack with a given file name.
     /// This is either the supplied span, or the span for some macro callsite that expanded to it.
@@ -94,10 +105,14 @@ pub fn extract_rendered(output: &str) -> String {
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
-    output.lines().flat_map(|line| parse_line(file_name, line, output, proc_res)).collect()
+    let lines = output.lines();
+    let last_line = lines.next_back();
+    lines.flat_map(|line| parse_line(file_name, line, output, proc_res, false)).chain(
+        last_line.into_iter().flat_map(|line| parse_line(file_name, line, output, proc_res, true))
+    ).collect()
 }
 
-fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
+fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes, last_line: bool) -> Vec<Error> {
     // The compiler sometimes intermingles non-JSON stuff into the
     // output.  This hack just skips over such lines. Yuck.
     if line.starts_with('{') {

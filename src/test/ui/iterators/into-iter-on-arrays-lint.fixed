@@ -1,5 +1,6 @@
 // run-pass
 // run-rustfix
+// compiler-flags: -Z emit-future-compat-report
 
 fn main() {
     let small = [1, 2];

@@ -308,7 +308,7 @@ impl Session {
     }
 
     fn emit_future_breakage(&self) {
-        if !self.opts.debugging_opts.emit_future_compat_report {
+        if !self.opts.debugging_opts.emit_future_incompat_report {
             return;
         }
 
