@@ -1,6 +1,6 @@
-//! FIXME: write short doc here
+//! Completes macro invocations used in item position.
 
-use crate::completion::{CompletionContext, Completions};
+use crate::{CompletionContext, Completions};
 
 pub(super) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &CompletionContext) {
     // Show only macros in top level.
@@ -17,7 +17,7 @@ pub(super) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &Compl
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Reference);

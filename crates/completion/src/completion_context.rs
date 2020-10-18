@@ -1,6 +1,7 @@
-//! FIXME: write short doc here
+//! See `CompletionContext` structure.
 
-use base_db::SourceDatabase;
+use base_db::{FilePosition, SourceDatabase};
+use call_info::ActiveParameter;
 use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
 use ide_db::RootDatabase;
 use syntax::{
@@ -13,18 +14,14 @@ use test_utils::mark;
 use text_edit::Indel;
 
 use crate::{
-    call_info::ActiveParameter,
-    completion::{
-        patterns::{
-            fn_is_prev, for_is_prev2, has_bind_pat_parent, has_block_expr_parent,
-            has_field_list_parent, has_impl_as_prev_sibling, has_impl_parent,
-            has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
-            has_trait_parent, if_is_prev, inside_impl_trait_block, is_in_loop_body, is_match_arm,
-            unsafe_is_prev,
-        },
-        CompletionConfig,
+    patterns::{
+        fn_is_prev, for_is_prev2, has_bind_pat_parent, has_block_expr_parent,
+        has_field_list_parent, has_impl_as_prev_sibling, has_impl_parent,
+        has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
+        has_trait_parent, if_is_prev, inside_impl_trait_block, is_in_loop_body, is_match_arm,
+        unsafe_is_prev,
     },
-    FilePosition,
+    CompletionConfig,
 };
 
 /// `CompletionContext` is created early during completion to figure out, where

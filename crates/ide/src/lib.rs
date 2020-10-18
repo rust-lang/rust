@@ -23,8 +23,6 @@ mod prime_caches;
 mod display;
 
 mod call_hierarchy;
-mod call_info;
-mod completion;
 mod diagnostics;
 mod expand_macro;
 mod extend_selection;
@@ -65,10 +63,6 @@ use crate::display::ToNav;
 
 pub use crate::{
     call_hierarchy::CallItem,
-    call_info::CallInfo,
-    completion::{
-        CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
-    },
     diagnostics::{Diagnostic, DiagnosticsConfig, Fix, Severity},
     display::NavigationTarget,
     expand_macro::ExpandedMacro,
@@ -85,6 +79,10 @@ pub use crate::{
     syntax_highlighting::{
         Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
     },
+};
+pub use call_info::CallInfo;
+pub use completion::{
+    CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
 };
 
 pub use assists::{

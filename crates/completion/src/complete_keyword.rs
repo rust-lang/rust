@@ -1,11 +1,9 @@
-//! FIXME: write short doc here
+//! Completes keywords.
 
 use syntax::{ast, SyntaxKind};
 use test_utils::mark;
 
-use crate::completion::{
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
-};
+use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
 
 pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     // complete keyword "crate" in use stmt
@@ -177,7 +175,7 @@ fn complete_return(
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{
+    use crate::{
         test_utils::{check_edit, completion_list},
         CompletionKind,
     };

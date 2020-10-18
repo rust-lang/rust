@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! See `CompletionItem` structure.
 
 use std::fmt;
 
@@ -6,7 +6,7 @@ use hir::Documentation;
 use syntax::TextRange;
 use text_edit::TextEdit;
 
-use crate::completion::completion_config::SnippetCap;
+use crate::completion_config::SnippetCap;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -360,15 +360,15 @@ impl<'a> Into<CompletionItem> for Builder {
 
 /// Represents an in-progress set of completions being built.
 #[derive(Debug, Default)]
-pub(crate) struct Completions {
+pub struct Completions {
     buf: Vec<CompletionItem>,
 }
 
 impl Completions {
-    pub(crate) fn add(&mut self, item: impl Into<CompletionItem>) {
+    pub fn add(&mut self, item: impl Into<CompletionItem>) {
         self.buf.push(item.into())
     }
-    pub(crate) fn add_all<I>(&mut self, items: I)
+    pub fn add_all<I>(&mut self, items: I)
     where
         I: IntoIterator,
         I::Item: Into<CompletionItem>,

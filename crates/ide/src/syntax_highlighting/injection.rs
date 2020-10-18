@@ -3,14 +3,12 @@
 use std::{collections::BTreeMap, convert::TryFrom};
 
 use ast::{HasQuotes, HasStringValue};
+use call_info::ActiveParameter;
 use hir::Semantics;
 use itertools::Itertools;
 use syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
-use crate::{
-    call_info::ActiveParameter, Analysis, Highlight, HighlightModifier, HighlightTag,
-    HighlightedRange, RootDatabase,
-};
+use crate::{Analysis, Highlight, HighlightModifier, HighlightTag, HighlightedRange, RootDatabase};
 
 use super::HighlightedRangeStack;
 

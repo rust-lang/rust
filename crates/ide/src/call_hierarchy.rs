@@ -2,13 +2,13 @@
 
 use indexmap::IndexMap;
 
+use call_info::FnCallNode;
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{ast, match_ast, AstNode, TextRange};
 
 use crate::{
-    call_info::FnCallNode, display::ToNav, goto_definition, references, FilePosition,
-    NavigationTarget, RangeInfo,
+    display::ToNav, goto_definition, references, FilePosition, NavigationTarget, RangeInfo,
 };
 
 #[derive(Debug, Clone)]

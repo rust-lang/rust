@@ -213,7 +213,7 @@ fn check_todo(path: &Path, text: &str) {
         // `ast::make`.
         "ast/make.rs",
         // The documentation in string literals may contain anything for its own purposes
-        "completion/generated_features.rs",
+        "completion/src/generated_features.rs",
     ];
     if need_todo.iter().any(|p| path.ends_with(p)) {
         return;

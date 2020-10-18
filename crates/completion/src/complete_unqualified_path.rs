@@ -4,7 +4,7 @@ use hir::{Adt, ModuleDef, ScopeDef, Type};
 use syntax::AstNode;
 use test_utils::mark;
 
-use crate::completion::{CompletionContext, Completions};
+use crate::{CompletionContext, Completions};
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
@@ -68,7 +68,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_utils::mark;
 
-    use crate::completion::{
+    use crate::{
         test_utils::{check_edit, completion_list},
         CompletionKind,
     };

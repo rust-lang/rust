@@ -6,7 +6,7 @@
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind};
 
-use crate::completion::{
+use crate::{
     completion_context::CompletionContext,
     completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
     generated_features::FEATURES,
@@ -389,7 +389,7 @@ const DEFAULT_LINT_COMPLETIONS: &[LintCompletion] = &[
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Attribute);

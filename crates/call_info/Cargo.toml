@@ -1,0 +1,26 @@
+[package]
+name = "call_info"
+version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+either = "1.5.3"
+
+stdx = { path = "../stdx", version = "0.0.0" }
+syntax = { path = "../syntax", version = "0.0.0" }
+base_db = { path = "../base_db", version = "0.0.0" }
+ide_db = { path = "../ide_db", version = "0.0.0" }
+test_utils = { path = "../test_utils", version = "0.0.0" }
+
+# call_info crate should depend only on the top-level `hir` package. if you need
+# something from some `hir_xxx` subpackage, reexport the API via `hir`.
+hir = { path = "../hir", version = "0.0.0" }
+
+[dev-dependencies]
+expect-test = "1.0"

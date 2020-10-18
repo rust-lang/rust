@@ -1,6 +1,6 @@
-//! FIXME: write short doc here
+//! This file provides snippet completions, like `pd` => `eprintln!(...)`.
 
-use crate::completion::{
+use crate::{
     completion_config::SnippetCap, completion_item::Builder, CompletionContext, CompletionItem,
     CompletionItemKind, CompletionKind, Completions,
 };
@@ -71,7 +71,7 @@ fn ${1:feature}() {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Snippet);
