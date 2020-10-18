@@ -22,7 +22,7 @@ use std::str;
 
 use tracing::{debug, info};
 
-pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
+pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 
 #[macro_use]
 pub mod parser;
