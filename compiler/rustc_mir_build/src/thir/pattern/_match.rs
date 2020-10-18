@@ -2113,6 +2113,9 @@ fn pat_constructor<'tcx>(
                 match value.ty.kind() {
                     ty::Float(_) => Some(FloatRange(value, value, RangeEnd::Included)),
                     ty::Ref(_, t, _) if t.is_str() => Some(Str(value)),
+                    // All constants that can be structurally matched have already been expanded
+                    // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
+                    // opaque.
                     _ => Some(Opaque),
                 }
             }
