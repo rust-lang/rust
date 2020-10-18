@@ -82,7 +82,6 @@ mod json;
 mod markdown;
 mod passes;
 mod theme;
-mod visit_ast;
 mod visit_lib;
 
 pub fn main() {
