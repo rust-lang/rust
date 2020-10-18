@@ -64,7 +64,11 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
         hir_id: HirId,
     ) {
         match fn_kind {
-            FnKind::ItemFn(.., visibility, _) if visibility.node.is_pub() => return,
+            FnKind::ItemFn(.., visibility, _) | FnKind::Method(.., Some(visibility), _) => {
+                if visibility.node.is_pub() {
+                    return;
+                }
+            },
             FnKind::Closure(..) => return,
             _ => (),
         }

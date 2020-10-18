@@ -76,6 +76,20 @@ fn func9(a: bool) -> Result<i32, ()> {
     Err(())
 }
 
+struct A;
+
+impl A {
+    // should not be linted
+    pub fn func10() -> Option<i32> {
+        Some(1)
+    }
+
+    // should be linted
+    fn func11() -> Option<i32> {
+        Some(1)
+    }
+}
+
 fn main() {
     // method calls are not linted
     func1(true, true);
