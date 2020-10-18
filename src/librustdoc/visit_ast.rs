@@ -73,16 +73,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
         // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
         // moving them back to their correct locations.
-        krate.exported_macros.iter().for_each(|def| {
-            let visit_macro = || self.visit_local_macro(def, None);
+        'exported_macros: for def in krate.exported_macros {
             // The `def` of a macro in `exported_macros` should correspond to either:
             //  - a `#[macro-export] macro_rules!` macro,
             //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
             //  - a `pub macro`.
             // Only the last two need to be fixed, thus:
             if def.ast.macro_rules {
-                top_level_module.macros.push(visit_macro());
-                return;
+                top_level_module.macros.push((def, None));
+                continue 'exported_macros;
             }
             let tcx = self.cx.tcx;
             /* Because of #77828 we cannot do the simpler:
@@ -104,7 +103,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         // `fn f() { pub macro m() {} }`
                         // then the item is not accessible, and should thus act as if it didn't
                         // exist (unless "associated macros" (inside an `impl`) were a thing…).
-                        return;
+                        continue 'exported_macros;
                     }
                 };
                 cur_mod = cur_mod
@@ -113,8 +112,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .find(|module| module.name == Some(path_segment_ty_ns))
                     .unwrap();
             }
-            cur_mod.macros.push(visit_macro());
-        });
+            cur_mod.macros.push((def, None));
+        }
 
         self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
 
