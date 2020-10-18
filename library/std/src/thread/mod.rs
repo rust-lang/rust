@@ -175,8 +175,14 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
+#[unstable(feature = "available_concurrency", issue = "74479")]
+mod available_concurrency;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
+
+#[unstable(feature = "available_concurrency", issue = "74479")]
+pub use available_concurrency::available_concurrency;
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key

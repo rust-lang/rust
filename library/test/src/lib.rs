@@ -24,6 +24,7 @@
 #![feature(rustc_private)]
 #![feature(nll)]
 #![feature(bool_to_option)]
+#![feature(available_concurrency)]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
