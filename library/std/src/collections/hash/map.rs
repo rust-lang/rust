@@ -2229,7 +2229,6 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(or_insert_with_key)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, usize> = HashMap::new();
@@ -2239,7 +2238,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 9);
     /// ```
     #[inline]
-    #[unstable(feature = "or_insert_with_key", issue = "71024")]
+    #[stable(feature = "or_insert_with_key", since = "1.49.0")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
