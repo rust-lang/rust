@@ -149,12 +149,10 @@ impl FunctionCoverage {
                 if id == ExpressionOperandId::ZERO {
                     Some(Counter::zero())
                 } else if id.index() < self.counters.len() {
+                    // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
+                    // and may not have their own `CodeRegion`s,
                     let index = CounterValueReference::from(id.index());
-                    self.counters
-                        .get(index)
-                        .expect("counter id is out of range")
-                        .as_ref()
-                        .map(|_| Counter::counter_value_reference(index))
+                    Some(Counter::counter_value_reference(index))
                 } else {
                     let index = self.expression_index(u32::from(id));
                     self.expressions

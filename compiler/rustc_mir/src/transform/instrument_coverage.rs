@@ -1244,12 +1244,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             } else {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
             };
-            debug!(
-                "Injecting {} at: {:?}:\n{}\n==========",
-                self.format_counter(&counter_kind),
-                span,
-                source_map.span_to_snippet(span).expect("Error getting source for span"),
-            );
             if let Some(bcb_to_coverage_spans_with_counters) =
                 debug_bcb_to_coverage_spans_with_counters.as_mut()
             {
@@ -1258,25 +1252,12 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     .or_insert_with(|| Vec::new())
                     .push((covspan.clone(), counter_kind.clone()));
             }
-            let mut code_region = None;
-            if span.hi() == body_span.hi() {
-                // All functions execute a `Return`-terminated `BasicBlock`, regardless of how the
-                // function returns; but only some functions also _can_ return after a `Goto` block
-                // that ends on the closing brace of the function (with the `Return`). When this
-                // happens, the last character is counted 2 (or possibly more) times, when we know
-                // the function returned only once (of course). By giving all `Goto` terminators at
-                // the end of a function a `non-reportable` code region, they are still counted
-                // if appropriate, but they don't increment the line counter, as long as their is
-                // also a `Return` on that last line.
-                if let TerminatorKind::Goto { .. } = self.bcb_terminator(bcb).kind {
-                    code_region =
-                        Some(make_non_reportable_code_region(file_name, &source_file, span));
-                }
-            }
-            if code_region.is_none() {
-                code_region = Some(make_code_region(file_name, &source_file, span, body_span));
+            let some_code_region = if self.is_code_region_redundant(bcb, span, body_span) {
+                None
+            } else {
+                Some(make_code_region(file_name, &source_file, span, body_span))
             };
-            self.inject_statement(counter_kind, self.bcb_last_bb(bcb), code_region.unwrap());
+            self.inject_statement(counter_kind, self.bcb_last_bb(bcb), some_code_region);
         }
 
         // The previous step looped through the `CoverageSpan`s and injected the counter from the
@@ -1423,18 +1404,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                         target_bb
                     };
 
-                    let span = self.mir_body[inject_to_bb].terminator().source_info.span;
-                    debug!(
-                        "make_non_reportable_code_region for {:?} at span={:?}, counter={}",
-                        inject_to_bb,
-                        span,
-                        self.format_counter(&counter_kind)
-                    );
-                    self.inject_statement(
-                        counter_kind,
-                        inject_to_bb,
-                        make_non_reportable_code_region(file_name, &source_file, span),
-                    );
+                    self.inject_statement(counter_kind, inject_to_bb, None);
                 }
                 CoverageKind::Expression { .. } => {
                     self.inject_intermediate_expression(counter_kind)
@@ -1581,6 +1551,28 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             spanview::write_document(tcx, def_id, span_viewables, &title, &mut file)
                 .expect("Unexpected IO error dumping coverage spans as HTML");
         }
+    }
+
+    fn is_code_region_redundant(
+        &self,
+        bcb: BasicCoverageBlock,
+        span: Span,
+        body_span: Span,
+    ) -> bool {
+        if span.hi() == body_span.hi() {
+            // All functions execute a `Return`-terminated `BasicBlock`, regardless of how the
+            // function returns; but only some functions also _can_ return after a `Goto` block
+            // that ends on the closing brace of the function (with the `Return`). When this
+            // happens, the last character is counted 2 (or possibly more) times, when we know
+            // the function returned only once (of course). By giving all `Goto` terminators at
+            // the end of a function a `non-reportable` code region, they are still counted
+            // if appropriate, but they don't increment the line counter, as long as their is
+            // also a `Return` on that last line.
+            if let TerminatorKind::Goto { .. } = self.bcb_terminator(bcb).kind {
+                return true;
+            }
+        }
+        false
     }
 
     /// Traverse the BCB CFG and add either a `Counter` or `Expression` to ever BCB, to be
@@ -2139,16 +2131,19 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         &mut self,
         counter_kind: CoverageKind,
         bb: BasicBlock,
-        code_region: CodeRegion,
+        some_code_region: Option<CodeRegion>,
     ) {
-        debug!("  injecting statement {:?} covering {:?}", counter_kind, code_region);
+        debug!(
+            "  injecting statement {:?} for {:?} at code region: {:?}",
+            counter_kind, bb, some_code_region
+        );
         let data = &mut self.mir_body[bb];
         let source_info = data.terminator().source_info;
         let statement = Statement {
             source_info,
             kind: StatementKind::Coverage(box Coverage {
                 kind: counter_kind,
-                code_region: Some(code_region),
+                code_region: some_code_region,
             }),
         };
         data.statements.push(statement);
@@ -2762,8 +2757,8 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
         //
         // However, in other cases, a visible `CoverageSpan` is not wanted, but the `Goto`
         // block must still be counted (for example, to contribute its count to an `Expression`
-        // that reports the execution count for some other block). The code region for the `Goto`
-        // counters, in these cases, is created using `make_non_reportable_code_region()`.
+        // that reports the execution count for some other block). In these cases, the code region
+        // is set to `None`.
         TerminatorKind::Goto { .. } => {
             Some(function_source_span(terminator.source_info.span.shrink_to_hi(), body_span))
         }
@@ -2786,35 +2781,6 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
 fn function_source_span(span: Span, body_span: Span) -> Span {
     let span = original_sp(span, body_span).with_ctxt(SyntaxContext::root());
     if body_span.contains(span) { span } else { body_span }
-}
-
-/// Make a non-reportable code region. (Used coverage-generated "edge counters", and for some
-/// `Goto`-terminated blocks.)
-///
-/// Only the `Span`s `hi()` position is used, and an empty `Span` at that location is generated,
-/// for coverage counting.
-///
-/// The coverage map generation phase (part of codegen) knows to report any `Counter` or
-/// `Expression` with an empty span as what LLVM's Coverage Mapping Specification calls a
-/// `GapRegion`, rather than a `CodeRegion` (used in all other cases). Counters associated with a
-/// `GapRegion` still contribute their counter values to other expressions, but if the `GapRegion`s
-/// line has any other `CodeRegion` covering the same line, the `GapRegion` will not be counted
-/// toward the line execution count. This prevents double-counting line execution, which would
-/// otherwise occur.
-fn make_non_reportable_code_region(
-    file_name: Symbol,
-    source_file: &Lrc<SourceFile>,
-    span: Span,
-) -> CodeRegion {
-    let (start_line, start_col) = source_file.lookup_file_pos(span.hi());
-    let (end_line, end_col) = (start_line, start_col);
-    CodeRegion {
-        file_name,
-        start_line: start_line as u32,
-        start_col: start_col.to_u32() + 1,
-        end_line: end_line as u32,
-        end_col: end_col.to_u32() + 1,
-    }
 }
 
 /// Convert the Span into its file name, start line and column, and end line and column

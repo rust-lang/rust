@@ -126,33 +126,15 @@ impl CoverageMapGenerator {
                 let (filenames_index, _) = self.filenames.insert_full(c_filename);
                 virtual_file_mapping.push(filenames_index as u32);
             }
-            debug!("Adding counter {:?} to map for {:?}", counter, region,);
-            if start_line == end_line && start_col == end_col {
-                // The MIR `InstrumentCoverage` pass generates empty spans _ONLY_ for `BasicBlocks`
-                // that contribute to the counts of `CoverageKind::Expression`s, but don't represent
-                // specific source code to count.
-                //
-                // Make empty spans `GapRegion`s so their region executions counts are still
-                // available to any expressions that might reference them, but they don't affect
-                // the line execution count (as long as the line has at least one other counter).
-                mapping_regions.push(CounterMappingRegion::gap_region(
-                    counter,
-                    current_file_id,
-                    start_line,
-                    start_col,
-                    end_line,
-                    end_col,
-                ));
-            } else {
-                mapping_regions.push(CounterMappingRegion::code_region(
-                    counter,
-                    current_file_id,
-                    start_line,
-                    start_col,
-                    end_line,
-                    end_col,
-                ));
-            }
+            debug!("Adding counter {:?} to map for {:?}", counter, region);
+            mapping_regions.push(CounterMappingRegion::code_region(
+                counter,
+                current_file_id,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            ));
         }
 
         // Encode and append the current function's coverage mapping data

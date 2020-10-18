@@ -10,24 +10,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let Coverage { kind, code_region } = coverage;
         match kind {
             CoverageKind::Counter { function_source_hash, id } => {
-                bx.add_coverage_counter(
-                    self.instance,
-                    function_source_hash,
-                    id,
-                    code_region.expect("counters always have code regions"),
-                );
-
                 let coverageinfo = bx.tcx().coverageinfo(self.instance.def_id());
 
                 let fn_name = bx.create_pgo_func_name_var(self.instance);
                 let hash = bx.const_u64(function_source_hash);
                 let num_counters = bx.const_u32(coverageinfo.num_counters);
-                let id = bx.const_u32(u32::from(id));
+                let index = bx.const_u32(u32::from(id));
                 debug!(
                     "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
-                    fn_name, hash, num_counters, id,
+                    fn_name, hash, num_counters, index,
                 );
-                bx.instrprof_increment(fn_name, hash, num_counters, id);
+                bx.instrprof_increment(fn_name, hash, num_counters, index);
+
+                if let Some(code_region) = code_region {
+                    bx.add_coverage_counter(self.instance, function_source_hash, id, code_region);
+                }
+                // Note: Some counters do not have code regions, but may still be referenced from
+                // expressions.
             }
             CoverageKind::Expression { id, lhs, op, rhs } => {
                 bx.add_coverage_counter_expression(self.instance, id, lhs, op, rhs, code_region);
