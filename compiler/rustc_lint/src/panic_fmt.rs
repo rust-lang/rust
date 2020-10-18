@@ -1,7 +1,9 @@
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty;
+use rustc_span::sym;
 
 declare_lint! {
     /// The `panic_fmt` lint detects `panic!("..")` with `{` or `}` in the string literal.
@@ -46,11 +48,26 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     if let hir::ExprKind::Lit(lit) = &arg.kind {
         if let ast::LitKind::Str(sym, _) = lit.node {
             if sym.as_str().contains(&['{', '}'][..]) {
-                cx.struct_span_lint(PANIC_FMT, f.span, |lint| {
-                    lint.build("Panic message contains a brace")
-                    .note("This message is not used as a format string, but will be in a future Rust version")
-                    .emit();
-                });
+                let expn = f.span.ctxt().outer_expn_data();
+                if let Some(id) = expn.macro_def_id {
+                    if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
+                        || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
+                    {
+                        cx.struct_span_lint(PANIC_FMT, expn.call_site, |lint| {
+                            let mut l = lint.build("Panic message contains a brace");
+                            l.note("This message is not used as a format string, but will be in a future Rust version");
+                            if expn.call_site.contains(arg.span) {
+                                l.span_suggestion(
+                                    arg.span.shrink_to_lo(),
+                                    "add a \"{}\" format string to use the message literally",
+                                    "\"{}\", ".into(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            l.emit();
+                        });
+                    }
+                }
             }
         }
     }
