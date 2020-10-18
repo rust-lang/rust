@@ -16,7 +16,7 @@ pub fn f() -> <usize as Trait>::X {
 }
 
 pub struct S {
-    // @has 'normalize_assoc_item/struct.S.html' '//span[@id="structfield.box_me_up"]' 'box_me_up: Box<S>'
+    // @has 'normalize_assoc_item/struct.S.html' '//span[@id="structfield.box_me_up"]' 'box_me_up: Box<S, Global>'
     pub box_me_up: <S as Trait>::X,
     // @has 'normalize_assoc_item/struct.S.html' '//span[@id="structfield.generic"]' 'generic: (usize, isize)'
     pub generic: <Generic<usize> as Trait>::X,
@@ -61,3 +61,8 @@ pub const A: <usize as Lifetimes<'static>>::Y = &0;
 extern crate inner;
 // @has 'normalize_assoc_item/fn.foo.html' '//pre[@class="rust fn"]' "pub fn foo() -> i32"
 pub use inner::foo;
+
+// @has 'normalize_assoc_item/fn.h.html' '//pre[@class="rust fn"]' "pub fn h<T>() -> IntoIter<T, Global>"
+pub fn h<T>() -> <Vec<T> as IntoIterator>::IntoIter {
+    vec![].into_iter()
+}
