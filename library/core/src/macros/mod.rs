@@ -2,7 +2,7 @@
 #[macro_export]
 #[allow_internal_unstable(core_panic, const_caller_location)]
 #[stable(feature = "core", since = "1.6.0")]
-#[rustc_diagnostic_item = "core_panic_macro"]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "core_panic_macro")]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
@@ -1216,7 +1216,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    #[rustc_diagnostic_item = "assert_macro"]
+    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "assert_macro")]
     #[allow_internal_unstable(core_panic)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
