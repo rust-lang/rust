@@ -791,6 +791,7 @@ symbols! {
         panic_runtime,
         panic_str,
         panic_unwind,
+        panicking,
         param_attrs,
         parent_trait,
         partial_cmp,
