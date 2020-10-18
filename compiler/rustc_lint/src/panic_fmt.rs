@@ -47,19 +47,18 @@ impl<'tcx> LateLintPass<'tcx> for PanicFmt {
 fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>) {
     if let hir::ExprKind::Lit(lit) = &arg.kind {
         if let ast::LitKind::Str(sym, _) = lit.node {
-            let s = sym.as_str();
-            let open = s.find('{');
-            let close = s[open.unwrap_or(0)..].find('}');
-            let looks_like_placeholder = match (open, close) {
-                (Some(_), Some(_)) => true,
-                (Some(_), None) | (None, Some(_)) => false,
-                (None, None) => return, // OK, no braces.
-            };
             let expn = f.span.ctxt().outer_expn_data();
             if let Some(id) = expn.macro_def_id {
                 if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
                     || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
                 {
+                    let s = sym.as_str();
+                    if !s.contains(&['{', '}'][..]) {
+                        return;
+                    }
+                    let s = s.replace("{{", "").replace("}}", "");
+                    let looks_like_placeholder =
+                        s.find('{').map_or(false, |i| s[i + 1..].contains('}'));
                     let expn = {
                         // Unwrap another level of macro expansion if this
                         // panic!() was expanded from assert!().
