@@ -4,6 +4,7 @@
     unused_must_use,
     unused_variables,
     clippy::unused_unit,
+    clippy::unnecessary_wrap,
     clippy::or_fun_call
 )]
 

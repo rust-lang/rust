@@ -1,5 +1,5 @@
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:15:12
+  --> $DIR/redundant_pattern_matching.rs:16:12
    |
 LL |     if let Ok(_) = &result {}
    |     -------^^^^^---------- help: try this: `if result.is_ok()`
@@ -7,13 +7,13 @@ LL |     if let Ok(_) = &result {}
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:17:12
+  --> $DIR/redundant_pattern_matching.rs:18:12
    |
 LL |     if let Ok(_) = Ok::<i32, i32>(42) {}
    |     -------^^^^^--------------------- help: try this: `if Ok::<i32, i32>(42).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:19:12
+  --> $DIR/redundant_pattern_matching.rs:20:12
    |
 LL |     if let Err(_) = Err::<i32, i32>(42) {}
    |     -------^^^^^^---------------------- help: try this: `if Err::<i32, i32>(42).is_err()`

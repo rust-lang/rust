@@ -4,6 +4,7 @@
 #![allow(clippy::let_underscore_drop)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::map_identity)]
+#![allow(clippy::unnecessary_wrap)]
 
 fn main() {
     // mapping to Option on Iterator
