@@ -53,7 +53,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
             let looks_like_placeholder = match (open, close) {
                 (Some(_), Some(_)) => true,
                 (Some(_), None) | (None, Some(_)) => false,
-                (None, None) => return // OK, no braces.
+                (None, None) => return, // OK, no braces.
             };
             let expn = f.span.ctxt().outer_expn_data();
             if let Some(id) = expn.macro_def_id {
@@ -64,9 +64,10 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                         // Unwrap another level of macro expansion if this
                         // panic!() was expanded from assert!().
                         let parent = expn.call_site.ctxt().outer_expn_data();
-                        if parent.macro_def_id.map_or(false, |id| {
-                            cx.tcx.is_diagnostic_item(sym::assert_macro, id)
-                        }) {
+                        if parent
+                            .macro_def_id
+                            .map_or(false, |id| cx.tcx.is_diagnostic_item(sym::assert_macro, id))
+                        {
                             parent
                         } else {
                             expn
