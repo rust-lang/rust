@@ -1,4 +1,4 @@
-error[E0369]: cannot multiply `&T` to `&T`
+error[E0369]: cannot multiply `&T` by `&T`
   --> $DIR/issue-35668.rs:2:23
    |
 LL |     a.iter().map(|a| a*a)

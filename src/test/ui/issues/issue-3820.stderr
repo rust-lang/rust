@@ -1,4 +1,4 @@
-error[E0369]: cannot multiply `{integer}` to `Thing`
+error[E0369]: cannot multiply `Thing` by `{integer}`
   --> $DIR/issue-3820.rs:14:15
    |
 LL |     let w = u * 3;

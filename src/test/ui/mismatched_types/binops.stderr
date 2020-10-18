@@ -14,7 +14,7 @@ LL |     2 as usize - Some(1);
    |
    = help: the trait `Sub<Option<{integer}>>` is not implemented for `usize`
 
-error[E0277]: cannot multiply `()` to `{integer}`
+error[E0277]: cannot multiply `{integer}` by `()`
   --> $DIR/binops.rs:4:7
    |
 LL |     3 * ();
