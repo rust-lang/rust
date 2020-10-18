@@ -874,57 +874,131 @@ fn join_bounds(
     items: &[ast::GenericBound],
     need_indent: bool,
 ) -> Option<String> {
+    join_bounds_inner(context, shape, items, need_indent, false)
+}
+
+fn join_bounds_inner(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    items: &[ast::GenericBound],
+    need_indent: bool,
+    force_newline: bool,
+) -> Option<String> {
     debug_assert!(!items.is_empty());
 
-    // Try to join types in a single line
-    let joiner = match context.config.type_punctuation_density() {
-        TypeDensity::Compressed => "+",
-        TypeDensity::Wide => " + ",
-    };
-    let type_strs = items
-        .iter()
-        .map(|item| item.rewrite(context, shape))
-        .collect::<Option<Vec<_>>>()?;
-    let result = type_strs.join(joiner);
-    if items.len() <= 1 || (!result.contains('\n') && result.len() <= shape.width) {
-        return Some(result);
-    }
-
-    // We need to use multiple lines.
-    let (type_strs, offset) = if need_indent {
-        // Rewrite with additional indentation.
-        let nested_shape = shape
-            .block_indent(context.config.tab_spaces())
-            .with_max_width(context.config);
-        let type_strs = items
-            .iter()
-            .map(|item| item.rewrite(context, nested_shape))
-            .collect::<Option<Vec<_>>>()?;
-        (type_strs, nested_shape.indent)
-    } else {
-        (type_strs, shape.indent)
-    };
-
+    let generic_bounds_in_order = is_generic_bounds_in_order(items);
     let is_bound_extendable = |s: &str, b: &ast::GenericBound| match b {
         ast::GenericBound::Outlives(..) => true,
         ast::GenericBound::Trait(..) => last_line_extendable(s),
     };
-    let mut result = String::with_capacity(128);
-    result.push_str(&type_strs[0]);
-    let mut can_be_put_on_the_same_line = is_bound_extendable(&result, &items[0]);
-    let generic_bounds_in_order = is_generic_bounds_in_order(items);
-    for (bound, bound_str) in items[1..].iter().zip(type_strs[1..].iter()) {
-        if generic_bounds_in_order && can_be_put_on_the_same_line {
-            result.push_str(joiner);
-        } else {
-            result.push_str(&offset.to_string_with_newline(context.config));
-            result.push_str("+ ");
-        }
-        result.push_str(bound_str);
-        can_be_put_on_the_same_line = is_bound_extendable(bound_str, bound);
-    }
 
-    Some(result)
+    let result = items.iter().enumerate().try_fold(
+        (String::new(), None, false),
+        |(strs, prev_trailing_span, prev_extendable), (i, item)| {
+            let trailing_span = if i < items.len() - 1 {
+                let hi = context
+                    .snippet_provider
+                    .span_before(mk_sp(items[i + 1].span().lo(), item.span().hi()), "+");
+
+                Some(mk_sp(item.span().hi(), hi))
+            } else {
+                None
+            };
+            let (leading_span, has_leading_comment) = if i > 0 {
+                let lo = context
+                    .snippet_provider
+                    .span_after(mk_sp(items[i - 1].span().hi(), item.span().lo()), "+");
+
+                let span = mk_sp(lo, item.span().lo());
+
+                let has_comments = contains_comment(context.snippet(span));
+
+                (Some(mk_sp(lo, item.span().lo())), has_comments)
+            } else {
+                (None, false)
+            };
+            let prev_has_trailing_comment = match prev_trailing_span {
+                Some(ts) => contains_comment(context.snippet(ts)),
+                _ => false,
+            };
+
+            let shape = if i > 0 && need_indent && force_newline {
+                shape
+                    .block_indent(context.config.tab_spaces())
+                    .with_max_width(context.config)
+            } else {
+                shape
+            };
+            let whitespace = if force_newline && (!prev_extendable || !generic_bounds_in_order) {
+                shape
+                    .indent
+                    .to_string_with_newline(context.config)
+                    .to_string()
+            } else {
+                String::from(" ")
+            };
+
+            let joiner = match context.config.type_punctuation_density() {
+                TypeDensity::Compressed => String::from("+"),
+                TypeDensity::Wide => whitespace + "+ ",
+            };
+            let joiner = if has_leading_comment {
+                joiner.trim_end()
+            } else {
+                &joiner
+            };
+            let joiner = if prev_has_trailing_comment {
+                joiner.trim_start()
+            } else {
+                joiner
+            };
+
+            let (trailing_str, extendable) = if i == 0 {
+                let bound_str = item.rewrite(context, shape)?;
+                let bound_str_clone = bound_str.clone();
+                (bound_str, is_bound_extendable(&bound_str_clone, item))
+            } else {
+                let bound_str = &item.rewrite(context, shape)?;
+                match leading_span {
+                    Some(ls) if has_leading_comment => (
+                        combine_strs_with_missing_comments(
+                            context, joiner, bound_str, ls, shape, true,
+                        )?,
+                        is_bound_extendable(bound_str, item),
+                    ),
+                    _ => (
+                        String::from(joiner) + bound_str,
+                        is_bound_extendable(bound_str, item),
+                    ),
+                }
+            };
+            match prev_trailing_span {
+                Some(ts) if prev_has_trailing_comment => combine_strs_with_missing_comments(
+                    context,
+                    &strs,
+                    &trailing_str,
+                    ts,
+                    shape,
+                    true,
+                )
+                .map(|v| (v, trailing_span, extendable)),
+                _ => Some((
+                    String::from(strs) + &trailing_str,
+                    trailing_span,
+                    extendable,
+                )),
+            }
+        },
+    )?;
+
+    if !force_newline
+        && items.len() > 1
+        && (result.0.contains('\n') || result.0.len() > shape.width)
+    {
+        join_bounds_inner(context, shape, items, need_indent, true)
+    } else {
+        Some(result.0)
+    }
 }
 
 pub(crate) fn can_be_overflowed_type(
