@@ -1711,6 +1711,7 @@ impl str {
     ///
     /// assert_eq!("Hello\tworld", s.trim());
     /// ```
+    #[inline]
     #[must_use = "this returns the trimmed string as a slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1748,6 +1749,7 @@ impl str {
     /// let s = "  עברית  ";
     /// assert!(Some('ע') == s.trim_start().chars().next());
     /// ```
+    #[inline]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
@@ -1785,6 +1787,7 @@ impl str {
     /// let s = "  עברית  ";
     /// assert!(Some('ת') == s.trim_end().chars().rev().next());
     /// ```
+    #[inline]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
@@ -1823,6 +1826,7 @@ impl str {
     /// let s = "  עברית";
     /// assert!(Some('ע') == s.trim_left().chars().next());
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
         since = "1.33.0",
@@ -1864,6 +1868,7 @@ impl str {
     /// let s = "עברית  ";
     /// assert!(Some('ת') == s.trim_right().chars().rev().next());
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
         since = "1.33.0",
@@ -2261,6 +2266,7 @@ impl str {
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         // SAFETY: safe because we transmute two types with the same layout.
         let me = unsafe { self.as_bytes_mut() };
@@ -2287,6 +2293,7 @@ impl str {
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         // SAFETY: safe because we transmute two types with the same layout.
         let me = unsafe { self.as_bytes_mut() };
