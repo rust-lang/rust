@@ -76,16 +76,21 @@ fn func9(a: bool) -> Result<i32, ()> {
     Err(())
 }
 
+// should not be linted
+fn func10() -> Option<()> {
+    unimplemented!()
+}
+
 struct A;
 
 impl A {
     // should not be linted
-    pub fn func10() -> Option<i32> {
+    pub fn func11() -> Option<i32> {
         Some(1)
     }
 
     // should be linted
-    fn func11() -> Option<i32> {
+    fn func12() -> Option<i32> {
         Some(1)
     }
 }

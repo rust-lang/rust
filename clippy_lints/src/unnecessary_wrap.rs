@@ -1,5 +1,5 @@
 use crate::utils::{
-    is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
+    in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
     visitors::find_all_ret_expressions,
 };
 use if_chain::if_chain;
@@ -84,6 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
         let mut suggs = Vec::new();
         let can_sugg = find_all_ret_expressions(cx, &body.value, |ret_expr| {
             if_chain! {
+                if !in_macro(ret_expr.span);
                 if let ExprKind::Call(ref func, ref args) = ret_expr.kind;
                 if let ExprKind::Path(ref qpath) = func.kind;
                 if match_qpath(qpath, path);

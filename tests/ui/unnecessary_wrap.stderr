@@ -86,16 +86,16 @@ LL |     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wrap.rs:88:5
+  --> $DIR/unnecessary_wrap.rs:93:5
    |
-LL | /     fn func11() -> Option<i32> {
+LL | /     fn func12() -> Option<i32> {
 LL | |         Some(1)
 LL | |     }
    | |_____^
    |
 help: remove `Option` from the return type...
    |
-LL |     fn func11() -> i32 {
+LL |     fn func12() -> i32 {
    |                    ^^^
 help: ...and change the returning expressions
    |
