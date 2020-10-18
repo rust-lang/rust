@@ -18,7 +18,7 @@ union U4<T: Copy> {
 
 fn generic_noncopy<T: Default>() {
     let mut u3 = U3 { a: ManuallyDrop::new(T::default()) };
-    u3.a = ManuallyDrop::new(T::default()); //~ ERROR assignment to non-`Copy` union field is unsafe
+    u3.a = ManuallyDrop::new(T::default()); // OK (assignment does not drop)
     *u3.a = T::default(); //~ ERROR access to union field is unsafe
 }
 
@@ -41,7 +41,7 @@ fn main() {
     // let U1 { .. } = u1; // OK
 
     let mut u2 = U2 { a: ManuallyDrop::new(String::from("old")) }; // OK
-    u2.a = ManuallyDrop::new(String::from("new")); //~ ERROR assignment to non-`Copy` union
+    u2.a = ManuallyDrop::new(String::from("new")); // OK (assignment does not drop)
     *u2.a = String::from("new"); //~ ERROR access to union field is unsafe
 
     let mut u3 = U3 { a: ManuallyDrop::new(0) }; // OK
@@ -49,6 +49,6 @@ fn main() {
     *u3.a = 1; //~ ERROR access to union field is unsafe
 
     let mut u3 = U3 { a: ManuallyDrop::new(String::from("old")) }; // OK
-    u3.a = ManuallyDrop::new(String::from("new")); //~ ERROR assignment to non-`Copy` union
+    u3.a = ManuallyDrop::new(String::from("new")); // OK (assignment does not drop)
     *u3.a = String::from("new"); //~ ERROR access to union field is unsafe
 }

@@ -235,37 +235,40 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     UnsafetyViolationKind::GeneralAndConstFn,
                     UnsafetyViolationDetails::DerefOfRawPointer,
                 ),
-                ty::Adt(adt, _) => {
-                    if adt.is_union() {
-                        if context == PlaceContext::MutatingUse(MutatingUseContext::Store)
-                            || context == PlaceContext::MutatingUse(MutatingUseContext::Drop)
-                            || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
-                        {
-                            let elem_ty = match elem {
-                                ProjectionElem::Field(_, ty) => ty,
-                                _ => span_bug!(
-                                    self.source_info.span,
-                                    "non-field projection {:?} from union?",
-                                    place
-                                ),
-                            };
-                            if !elem_ty.is_copy_modulo_regions(
+                ty::Adt(adt, _) if adt.is_union() => {
+                    if context == PlaceContext::MutatingUse(MutatingUseContext::Store)
+                        || context == PlaceContext::MutatingUse(MutatingUseContext::Drop)
+                        || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
+                    {
+                        let elem_ty = match elem {
+                            ProjectionElem::Field(_, ty) => ty,
+                            _ => span_bug!(
+                                self.source_info.span,
+                                "non-field projection {:?} from union?",
+                                place
+                            ),
+                        };
+                        let manually_drop = elem_ty
+                            .ty_adt_def()
+                            .map_or(false, |adt_def| adt_def.is_manually_drop());
+                        let nodrop = manually_drop
+                            || elem_ty.is_copy_modulo_regions(
                                 self.tcx.at(self.source_info.span),
                                 self.param_env,
-                            ) {
-                                self.require_unsafe(
-                                    UnsafetyViolationKind::GeneralAndConstFn,
-                                    UnsafetyViolationDetails::AssignToNonCopyUnionField,
-                                )
-                            } else {
-                                // write to non-move union, safe
-                            }
-                        } else {
+                            );
+                        if !nodrop {
                             self.require_unsafe(
                                 UnsafetyViolationKind::GeneralAndConstFn,
-                                UnsafetyViolationDetails::AccessToUnionField,
+                                UnsafetyViolationDetails::AssignToDroppingUnionField,
                             )
+                        } else {
+                            // write to non-drop union field, safe
                         }
+                    } else {
+                        self.require_unsafe(
+                            UnsafetyViolationKind::GeneralAndConstFn,
+                            UnsafetyViolationDetails::AccessToUnionField,
+                        )
                     }
                 }
                 _ => {}
