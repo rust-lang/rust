@@ -45,7 +45,12 @@ macro_rules! compat_fn {
             static PTR: AtomicUsize = AtomicUsize::new(0);
 
             #[allow(unused_variables)]
-            unsafe extern "system" fn fallback($($argname: $argtype),*) -> $rettype $body
+            unsafe extern "system" fn fallback($($argname: $argtype),*) -> $rettype {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    $body
+                }
+            }
 
             /// This address is stored in `PTR` to incidate an unavailable API.
             ///
