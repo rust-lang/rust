@@ -2431,6 +2431,7 @@ impl AsRef<[u8]> for str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for &str {
     /// Creates an empty str
+    #[inline]
     fn default() -> Self {
         ""
     }
@@ -2439,6 +2440,7 @@ impl Default for &str {
 #[stable(feature = "default_mut_str", since = "1.28.0")]
 impl Default for &mut str {
     /// Creates an empty mutable str
+    #[inline]
     fn default() -> Self {
         // SAFETY: The empty string is valid UTF-8.
         unsafe { from_utf8_unchecked_mut(&mut []) }
