@@ -449,6 +449,49 @@ void TypeAnalyzer::considerTBAA() {
   for (BasicBlock &BB : *fntypeinfo.Function) {
     for (Instruction &I : BB) {
 
+      if (CallInst* call = dyn_cast<CallInst>(&I)) {
+        if (call->getCalledFunction() && call->getCalledFunction()->getName() == "__enzyme_float") {
+          assert(call->getNumArgOperands() == 2);
+          assert(call->getArgOperand(0)->getType()->isPointerTy());
+          assert(isa<ConstantInt>(call->getArgOperand(1)));
+          TypeTree TT;
+          for(size_t i=0; i<cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue(); i+=4)
+            TT.insert({(int)i}, Type::getFloatTy(call->getContext()));
+          TT.insert({}, BaseType::Pointer);
+          updateAnalysis(call->getOperand(0), TT.Only(-1), call);
+        }
+        if (call->getCalledFunction() && call->getCalledFunction()->getName() == "__enzyme_double") {
+          assert(call->getNumArgOperands() == 2);
+          assert(call->getArgOperand(0)->getType()->isPointerTy());
+          assert(isa<ConstantInt>(call->getArgOperand(1)));
+          TypeTree TT;
+          for(size_t i=0; i<cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue(); i+=8)
+            TT.insert({(int)i}, Type::getDoubleTy(call->getContext()));
+          TT.insert({}, BaseType::Pointer);
+          updateAnalysis(call->getOperand(0), TT.Only(-1), call);
+        }
+        if (call->getCalledFunction() && call->getCalledFunction()->getName() == "__enzyme_integer") {
+          assert(call->getNumArgOperands() == 2);
+          assert(call->getArgOperand(0)->getType()->isPointerTy());
+          assert(isa<ConstantInt>(call->getArgOperand(1)));
+          TypeTree TT;
+          for(size_t i=0; i<cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue(); i++)
+            TT.insert({(int)i}, BaseType::Integer);
+          TT.insert({}, BaseType::Pointer);
+          updateAnalysis(call->getOperand(0), TT.Only(-1), call);
+        }
+        if (call->getCalledFunction() && call->getCalledFunction()->getName() == "__enzyme_pointer") {
+          assert(call->getNumArgOperands() == 2);
+          assert(call->getArgOperand(0)->getType()->isPointerTy());
+          assert(isa<ConstantInt>(call->getArgOperand(1)));
+          TypeTree TT;
+          for(size_t i=0; i<cast<ConstantInt>(call->getArgOperand(1))->getLimitedValue(); i+= ( (DL.getPointerSizeInBits() + 7) / 8))
+            TT.insert({(int)i}, BaseType::Pointer);
+          TT.insert({}, BaseType::Pointer);
+          updateAnalysis(call->getOperand(0), TT.Only(-1), call);
+        }
+      }
+
       TypeTree vdptr = parseTBAA(I, DL);
 
       // If we don't have any useful information,
@@ -2279,6 +2322,16 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
     analyzeFunction(fn).dump();
     llvm::errs() << "could not deduce type of integer " << *val
                  << " num:" << num << " q:" << q.str() << " \n";
+
+    llvm::DiagnosticLocation loc = fn.Function->getSubprogram();
+    Instruction* codeLoc = &*fn.Function->getEntryBlock().begin();
+    if (auto inst = dyn_cast<Instruction>(val)) {
+      loc = inst->getDebugLoc();
+      codeLoc = inst;
+    }
+    EmitFailure("CannotDeduceType", loc, codeLoc,
+      "failed to deduce type of value ", *val);
+
     assert(0 && "could not deduce type of integer");
   }
   return dt;

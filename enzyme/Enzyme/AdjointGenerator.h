@@ -31,6 +31,7 @@
 #include "LibraryFuncs.h"
 #include "GradientUtils.h"
 
+#define DEBUG_TYPE "enzyme"
 using namespace llvm;
 
 // Helper instruction visitor that generates adjoints
@@ -1114,11 +1115,13 @@ public:
           goto known;
         }
       }
-      llvm::errs() << "cannot deduce type for mti: " << MTI << " " << *orig_op0
-                   << "\n";
-      TR.firstPointer(size, orig_op0, /*errifnotfound*/ true,
-                      /*pointerIntSame*/ true);
-      assert(0 && "bad mti");
+      EmitFailure("CannotDeduceType", MTI.getDebugLoc(), &MTI,
+        "failed to deduce type of copy ", MTI);
+
+      LLVM_DEBUG(
+        TR.firstPointer(size, orig_op0, /*errifnotfound*/ true,
+                      /*pointerIntSame*/ true););
+      llvm_unreachable("bad mti");
     }
   known:;
 
@@ -1677,6 +1680,12 @@ public:
       if (Mode == DerivativeMode::Reverse) {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
+      return;
+    }
+    if (called &&
+        (called->getName() == "__enzyme_float" || called->getName() == "__enzyme_double" ||
+        called->getName() == "__enzyme_integer" || called->getName() == "__enzyme_pointer")) {
+      eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       return;
     }
 
@@ -2314,6 +2323,7 @@ public:
           /*subdretptr*/ subdretptr, /*topLevel*/ subtopLevel,
           tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
           subdata, gutils->AtomicAdd); //, LI, DT);
+      if (!newcalled) return;
     } else {
 
       assert(!subtopLevel);

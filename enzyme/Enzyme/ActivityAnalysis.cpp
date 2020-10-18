@@ -118,7 +118,9 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   // of arguments
   if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI) ||
       Name == "__cxa_guard_acquire" || Name == "__cxa_guard_release" ||
-      Name == "__cxa_guard_abort" || Name == "printf" || Name == "puts")
+      Name == "__cxa_guard_abort" || Name == "printf" || Name == "puts" ||
+      Name == "__enzyme_float" || Name == "__enzyme_double" ||
+      Name == "__enzyme_integer" || Name == "__enzyme_pointer")
     return true;
 
   /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive use
@@ -1036,7 +1038,9 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
           called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
           called->getName() == "__cxa_guard_acquire" ||
           called->getName() == "__cxa_guard_release" ||
-          called->getName() == "__cxa_guard_abort") {
+          called->getName() == "__cxa_guard_abort" ||
+          called->getName() == "__enzyme_float" || called->getName() == "__enzyme_double" ||
+          called->getName() == "__enzyme_integer" || called->getName() == "__enzyme_pointer") {
         return true;
       }
       // If requesting emptty unknown functions to be considered inactive, abide

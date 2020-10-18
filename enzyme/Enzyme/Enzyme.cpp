@@ -61,7 +61,8 @@ llvm::cl::opt<bool>
     EnzymePostOpt("enzmye-postopt", cl::init(false), cl::Hidden,
                   cl::desc("Run enzymepostprocessing optimizations"));
 
-void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool PostOpt) {
+/// Return whether successful
+bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool PostOpt) {
 
   Value *fn = CI->getArgOperand(0);
 
@@ -73,6 +74,11 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
   }
   while (auto ci = dyn_cast<ConstantExpr>(fn)) {
     fn = ci->getOperand(0);
+  }
+  if (!isa<Function>(fn)) {
+    EmitFailure("NoFunctionToDifferentiate", CI->getDebugLoc(), CI,
+      "failed to find fn to differentiate", *CI, " - found - ", *fn);
+    return false;
   }
   auto FT = cast<Function>(fn)->getFunctionType();
   assert(fn);
@@ -108,7 +114,9 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
       } else if (MS == "enzyme_const") {
         ty = DIFFE_TYPE::CONSTANT;
       } else {
-        assert(0 && "illegal diffe metadata string");
+        EmitFailure("IllegalDiffeType", CI->getDebugLoc(), CI,
+          "illegal enzyme metadata classification ", *CI);
+        return false;
       }
       ++i;
       res = CI->getArgOperand(i);
@@ -185,11 +193,14 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
         }
       }
       if (!res->getType()->canLosslesslyBitCastTo(PTy)) {
-        llvm::errs() << "Cannot cast(1) __enzyme_autodiff argument " << i
-                     << " " << *res << "|" << *res->getType() << " to argument "
-                     << truei << " " << *PTy << "\n"
-                     << "orig: " << *FT << "\n";
-        report_fatal_error("Illegal cast(1)");
+        auto loc = CI->getDebugLoc();
+        if (auto arg = dyn_cast<Instruction>(res)) {
+          loc = arg->getDebugLoc();
+        }
+        EmitFailure("IllegalArgCast", loc, CI,
+          "Cannot cast __enzyme_autodiff primal argument ", i, ", found ", *res, ", type ", *res->getType(),
+          " - to arg ", truei, " ", *PTy);
+        return false;
       }
       res = Builder.CreateBitCast(res, PTy);
     }
@@ -209,7 +220,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
               assert(res);
               assert(PTy);
               assert(FT);
-              llvm::errs() << "Warning cast(2) __builtin_autodiff argument "
+              llvm::errs() << "Warning cast(2) __enzyme_autodiff argument "
                            << i << " " << *res << "|" << *res->getType()
                            << " to argument " << truei << " " << *PTy << "\n"
                            << "orig: " << *FT << "\n";
@@ -221,11 +232,14 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
           assert(res->getType());
           assert(PTy);
           assert(FT);
-          llvm::errs() << "Cannot cast(2) __builtin_autodiff argument " << i
-                       << " " << *res << "|" << *res->getType()
-                       << " to argument " << truei << " " << *PTy << "\n"
-                       << "orig: " << *FT << "\n";
-          report_fatal_error("Illegal cast(2)");
+          auto loc = CI->getDebugLoc();
+          if (auto arg = dyn_cast<Instruction>(res)) {
+            loc = arg->getDebugLoc();
+          }
+          EmitFailure("IllegalArgCast", loc, CI,
+            "Cannot cast __enzyme_autodiff shadow argument", i, ", found ", *res, ", type ", *res->getType(),
+            " - to arg ", truei, " ", *PTy);
+          return false;
         }
         res = Builder.CreateBitCast(res, PTy);
       }
@@ -272,6 +286,9 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
       /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
       /*addedType*/ nullptr, type_args, volatile_args,
       /*index mapping*/ nullptr, AtomicAdd, PostOpt);
+
+  if (!newFunc)
+    return false;
                                   
 
   if (differentialReturn)
@@ -293,10 +310,11 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA, bool Po
     CI->replaceAllUsesWith(UndefValue::get(CI->getType()));
   }
   CI->eraseFromParent();
+  return true;
 }
 
 static bool
-lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI, AAResults &AA, bool PostOpt) {
+lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI, AAResults &AA, bool PostOpt, bool& successful) {
 
   bool Changed = false;
 
@@ -323,9 +341,10 @@ reset:
       if (Fn && (Fn->getName() == "__enzyme_autodiff" ||
                  Fn->getName().startswith("__enzyme_autodiff") ||
                  Fn->getName().contains("__enzyme_autodiff"))) {
-        HandleAutoDiff(CI, TLI, AA, PostOpt);
+        successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
         Changed = true;
-        goto reset;
+        if (successful)
+          goto reset;
       }
     }
   }
@@ -349,6 +368,7 @@ public:
     AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<GlobalsAAWrapperPass>();
     AU.addRequired<BasicAAWrapperPass>();
+
     // AU.addRequiredID(LCSSAID);
 
     // LoopInfo is required to ensure that all loops have preheaders
@@ -371,7 +391,6 @@ public:
     auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
     auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     */
-
     bool changed = false;
     for (Function &F : M) {
       if (F.empty())
@@ -390,7 +409,36 @@ public:
 
       // auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
       // auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-      changed |= lowerEnzymeCalls(F, TLI, AA, PostOpt);
+
+      bool successful = true;
+      changed |= lowerEnzymeCalls(F, TLI, AA, PostOpt, successful);
+
+      if (!successful) {
+        M.getContext().diagnose((EnzymeFailure("FailedToDifferentiate",
+                F.getSubprogram(), &*F.getEntryBlock().begin()) << "EnzymeFailure when replacing __enzyme_autodiff calls in " << F.getName()));
+      }
+    }
+
+    std::vector<CallInst*> toErase;
+    for (Function &F : M) {
+      if (F.empty())
+        continue;
+
+      for(BasicBlock& BB: F) {
+        for(Instruction& I : BB) {
+          if (auto CI = dyn_cast<CallInst>(&I)) {
+            if (auto called = CI->getCalledFunction()) {
+              if (called->getName() == "__enzyme_float" || called->getName() == "__enzyme_double" ||
+                  called->getName() == "__enzyme_integer" || called->getName() == "__enzyme_pointer") {
+                toErase.push_back(CI);
+              }
+            }
+          }
+        }
+      }
+    }
+    for(auto I : toErase) {
+      I->eraseFromParent();
     }
     return changed;
   }

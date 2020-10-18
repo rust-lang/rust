@@ -32,6 +32,23 @@
 
 using namespace llvm;
 
+EnzymeFailure::EnzymeFailure(llvm::StringRef RemarkName,
+                             const llvm::DiagnosticLocation &Loc,
+                             const llvm::Instruction *CodeRegion) :
+                             DiagnosticInfoIROptimization(
+           EnzymeFailure::ID(), DS_Error, "enzyme", RemarkName,
+           *CodeRegion->getParent()->getParent(), Loc, CodeRegion) {}
+ 
+      llvm::DiagnosticKind EnzymeFailure::ID() {
+        static auto id = llvm::getNextAvailablePluginDiagnosticKind();
+        return (llvm::DiagnosticKind)id;
+      }
+
+/// \see DiagnosticInfoOptimizationBase::isEnabled.
+bool EnzymeFailure::isEnabled() const {
+  return true;
+}
+
 /// Convert a floating type to a string
 static inline std::string tofltstr(Type *T) {
   switch (T->getTypeID()) {

@@ -47,6 +47,38 @@
 
 #include <set>
 
+#include "llvm/IR/DiagnosticInfo.h"
+
+
+#include "llvm/Analysis/OptimizationRemarkEmitter.h"
+
+template<typename... Args>
+void EmitFailure(llvm::StringRef RemarkName,
+                 const llvm::DiagnosticLocation &Loc,
+                 const llvm::Instruction *CodeRegion, Args&... args) {
+
+  llvm::OptimizationRemarkEmitter ORE(CodeRegion->getParent()->getParent());
+  std::string str;
+  llvm::raw_string_ostream ss(str);
+  (ss << ... << args);
+  ORE.emit(llvm::DiagnosticInfoOptimizationFailure("enzyme", RemarkName, Loc, CodeRegion->getParent()) << str);
+}
+
+ class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {
+ public:
+
+   EnzymeFailure(llvm::StringRef RemarkName,
+                 const llvm::DiagnosticLocation &Loc,
+                 const llvm::Instruction *CodeRegion);
+ 
+   static llvm::DiagnosticKind ID();
+   static bool classof(const DiagnosticInfo *DI) {
+     return DI->getKind() == ID();
+   }
+ 
+   /// \see DiagnosticInfoOptimizationBase::isEnabled.
+   bool isEnabled() const override;
+};
 
 static inline llvm::Function* isCalledFunction(llvm::Value* val) {
   if (llvm::CallInst* CI = llvm::dyn_cast<llvm::CallInst>(val)) {

@@ -1219,22 +1219,22 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
         type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd);
-    auto newf = CreatePrimalAndGradient(
+    Constant* newf = CreatePrimalAndGradient(
         fn, retType, /*constant_args*/ types, TLI, TA, AA,
         /*returnValue*/ false, /*dretPtr*/ false, /*topLevel*/ false,
         /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
         uncacheable_args,
-        /*map*/ &augdata, AtomicAdd); // llvm::Optional<std::map<std::pair<llvm::Instruction*,
-                           // std::string>, unsigned int> >({}));
+        /*map*/ &augdata, AtomicAdd);
+    if (!newf) newf = UndefValue::get(fn->getType());
     auto cdata = ConstantStruct::get(
         StructType::get(newf->getContext(),
                         {augdata.fn->getType(), newf->getType()}),
         {augdata.fn, newf});
     std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
-    auto GV = newf->getParent()->getNamedValue(globalname);
+    auto GV = fn->getParent()->getNamedValue(globalname);
 
     if (GV == nullptr) {
-      GV = new GlobalVariable(*newf->getParent(), cdata->getType(), true,
+      GV = new GlobalVariable(*fn->getParent(), cdata->getType(), true,
                               GlobalValue::LinkageTypes::InternalLinkage, cdata,
                               globalname);
     }
