@@ -1,0 +1,28 @@
+   0: func_d
+             at $DIR/backtrace-std.rs:18
+   1: func_c
+             at $DIR/backtrace-std.rs:17
+   2: func_b
+             at $DIR/backtrace-std.rs:11
+   3: func_a
+             at $DIR/backtrace-std.rs:10
+   4: main
+             at $DIR/backtrace-std.rs:21
+   5: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
+RUSTLIB/core/src/ops/function.rs:227
+   6: std::sys_common::backtrace::__rust_begin_short_backtrace
+RUSTLIB/std/src/sys_common/backtrace.rs:125
+   7: std::rt::lang_start::{closure#0}
+RUSTLIB/std/src/rt.rs:66
+   8: std::ops::function::impls::call_once
+RUSTLIB/core/src/ops/function.rs:259
+   9: std::panicking::r#try::do_call
+RUSTLIB/std/src/panicking.rs:381
+  10: std::panicking::r#try
+RUSTLIB/std/src/panicking.rs:345
+  11: std::panic::catch_unwind
+RUSTLIB/std/src/panic.rs:382
+  12: std::rt::lang_start_internal
+RUSTLIB/std/src/rt.rs:51
+  13: std::rt::lang_start
+RUSTLIB/std/src/rt.rs:65
