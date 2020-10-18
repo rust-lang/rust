@@ -53,6 +53,18 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                     if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
                         || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
                     {
+                        let expn = {
+                            // Unwrap another level of macro expansion if this
+                            // panic!() was expanded from assert!().
+                            let parent = expn.call_site.ctxt().outer_expn_data();
+                            if parent.macro_def_id.map_or(false, |id| {
+                                cx.tcx.is_diagnostic_item(sym::assert_macro, id)
+                            }) {
+                                parent
+                            } else {
+                                expn
+                            }
+                        };
                         cx.struct_span_lint(PANIC_FMT, expn.call_site, |lint| {
                             let mut l = lint.build("Panic message contains a brace");
                             l.note("This message is not used as a format string, but will be in a future Rust version");
