@@ -44,6 +44,9 @@ pub struct TypedArena<T> {
     /// A vector of arena chunks.
     chunks: RefCell<Vec<TypedArenaChunk<T>>>,
 
+    /// A vector that holds references to heap allocated vectors.
+    vecs: RefCell<Vec<Vec<T>>>,
+
     /// Marker indicating that dropping the arena causes its owned
     /// instances of `T` to be dropped.
     _own: PhantomData<T>,
@@ -109,6 +112,7 @@ impl<T> Default for TypedArena<T> {
             ptr: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
             chunks: RefCell::new(vec![]),
+            vecs: RefCell::new(vec![]),
             _own: PhantomData,
         }
     }
@@ -192,17 +196,25 @@ impl<T> TypedArena<T> {
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);
         let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
-        if vec.is_empty() {
-            return &mut [];
-        }
-        // Move the content to the arena by copying it and then forgetting
-        // the content of the SmallVec
-        unsafe {
-            let len = vec.len();
-            let start_ptr = self.alloc_raw_slice(len);
-            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            vec.set_len(0);
-            slice::from_raw_parts_mut(start_ptr, len)
+        if vec.spilled() {
+            // Don't copy the vector contents, store the vector in a separate list instead
+            let mut vec = vec.into_vec();
+            let slice = unsafe { slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.len()) };
+            self.vecs.borrow_mut().push(vec);
+            slice
+        } else {
+            if vec.is_empty() {
+                return &mut [];
+            }
+            // Move the content to the arena by copying it and then forgetting
+            // the content of the SmallVec
+            unsafe {
+                let len = vec.len();
+                let start_ptr = self.alloc_raw_slice(len);
+                vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+                vec.set_len(0);
+                slice::from_raw_parts_mut(start_ptr, len)
+            }
         }
     }
 
