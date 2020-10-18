@@ -35,15 +35,18 @@ use assists::utils::get_missing_assoc_items;
 use hir::{self, HasAttrs, HasSource};
 use syntax::{
     ast::{self, edit, Impl},
+    display::function_declaration,
     AstNode, SyntaxKind, SyntaxNode, TextRange, T,
 };
 use text_edit::TextEdit;
 
 use crate::{
-    completion::{
-        CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
-    },
-    display::function_declaration,
+    CompletionContext,
+    CompletionItem,
+    CompletionItemKind,
+    CompletionKind,
+    Completions,
+    // display::function_declaration,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -237,7 +240,7 @@ fn make_const_compl_syntax(const_: &ast::Const) -> String {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{
+    use crate::{
         test_utils::{check_edit, completion_list},
         CompletionKind,
     };

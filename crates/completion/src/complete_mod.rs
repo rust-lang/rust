@@ -150,7 +150,7 @@ fn module_chain_to_containing_module_file(
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
     use expect_test::{expect, Expect};
 
     fn check(ra_fixture: &str, expect: Expect) {

@@ -1,15 +1,27 @@
 //! Runs completion for testing purposes.
 
+use base_db::{fixture::ChangeFixture, FileLoader, FilePosition};
 use hir::Semantics;
+use ide_db::RootDatabase;
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
 use syntax::{AstNode, NodeOrToken, SyntaxElement};
-use test_utils::assert_eq_text;
+use test_utils::{assert_eq_text, RangeOrOffset};
 
-use crate::{
-    completion::{completion_item::CompletionKind, CompletionConfig},
-    fixture, CompletionItem,
-};
+use crate::{completion_item::CompletionKind, CompletionConfig, CompletionItem};
+
+/// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
+    let change_fixture = ChangeFixture::parse(ra_fixture);
+    let mut database = RootDatabase::default();
+    database.apply_change(change_fixture.change);
+    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker (<|>)");
+    let offset = match range_or_offset {
+        RangeOrOffset::Range(_) => panic!(),
+        RangeOrOffset::Offset(it) => it,
+    };
+    (database, FilePosition { file_id, offset })
+}
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
     do_completion_with_config(CompletionConfig::default(), code, kind)
@@ -79,47 +91,40 @@ pub(crate) fn check_edit_with_config(
     ra_fixture_after: &str,
 ) {
     let ra_fixture_after = trim_indent(ra_fixture_after);
-    let (analysis, position) = fixture::position(ra_fixture_before);
+    let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        analysis.completions(&config, position).unwrap().unwrap().into();
+        crate::completions(&db, &config, position).unwrap().into();
     let (completion,) = completions
         .iter()
         .filter(|it| it.lookup() == what)
         .collect_tuple()
         .unwrap_or_else(|| panic!("can't find {:?} completion in {:#?}", what, completions));
-    let mut actual = analysis.file_text(position.file_id).unwrap().to_string();
+    let mut actual = db.file_text(position.file_id).to_string();
     completion.text_edit().apply(&mut actual);
     assert_eq_text!(&ra_fixture_after, &actual)
 }
 
 pub(crate) fn check_pattern_is_applicable(code: &str, check: fn(SyntaxElement) -> bool) {
-    let (analysis, pos) = fixture::position(code);
-    analysis
-        .with_db(|db| {
-            let sema = Semantics::new(db);
-            let original_file = sema.parse(pos.file_id);
-            let token = original_file.syntax().token_at_offset(pos.offset).left_biased().unwrap();
-            assert!(check(NodeOrToken::Token(token)));
-        })
-        .unwrap();
+    let (db, pos) = position(code);
+
+    let sema = Semantics::new(&db);
+    let original_file = sema.parse(pos.file_id);
+    let token = original_file.syntax().token_at_offset(pos.offset).left_biased().unwrap();
+    assert!(check(NodeOrToken::Token(token)));
 }
 
 pub(crate) fn check_pattern_is_not_applicable(code: &str, check: fn(SyntaxElement) -> bool) {
-    let (analysis, pos) = fixture::position(code);
-    analysis
-        .with_db(|db| {
-            let sema = Semantics::new(db);
-            let original_file = sema.parse(pos.file_id);
-            let token = original_file.syntax().token_at_offset(pos.offset).left_biased().unwrap();
-            assert!(!check(NodeOrToken::Token(token)));
-        })
-        .unwrap();
+    let (db, pos) = position(code);
+    let sema = Semantics::new(&db);
+    let original_file = sema.parse(pos.file_id);
+    let token = original_file.syntax().token_at_offset(pos.offset).left_biased().unwrap();
+    assert!(!check(NodeOrToken::Token(token)));
 }
 
 pub(crate) fn get_all_completion_items(
     config: CompletionConfig,
     code: &str,
 ) -> Vec<CompletionItem> {
-    let (analysis, position) = fixture::position(code);
-    analysis.completions(&config, position).unwrap().unwrap().into()
+    let (db, position) = position(code);
+    crate::completions(&db, &config, position).unwrap().into()
 }

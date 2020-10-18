@@ -6,7 +6,7 @@ use syntax::{
     match_ast, AstNode,
 };
 
-use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
+use crate::{CompletionContext, CompletionItem, CompletionKind, Completions};
 
 /// Complete repeated parameters, both name and type. For example, if all
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
@@ -68,7 +68,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Magic);

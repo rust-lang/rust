@@ -3,16 +3,17 @@
 
 use hir::{HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
 use itertools::Itertools;
-use syntax::ast::NameOwner;
+use syntax::{ast::NameOwner, display::*};
 use test_utils::mark;
 
 use crate::{
-    completion::{
+    // display::{const_label, function_declaration, macro_label, type_label},
+    CompletionScore,
+    RootDatabase,
+    {
         completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
         CompletionKind, Completions,
     },
-    display::{const_label, function_declaration, macro_label, type_label},
-    CompletionScore, RootDatabase,
 };
 
 impl Completions {
@@ -487,13 +488,8 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        completion::{
-            test_utils::{
-                check_edit, check_edit_with_config, do_completion, get_all_completion_items,
-            },
-            CompletionConfig, CompletionKind,
-        },
-        CompletionScore,
+        test_utils::{check_edit, check_edit_with_config, do_completion, get_all_completion_items},
+        CompletionConfig, CompletionKind, CompletionScore,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -1277,7 +1273,6 @@ fn go(world: &WorldSnapshot) { go(w<|>) }
 
     #[test]
     fn too_many_arguments() {
-        mark::check!(too_many_arguments);
         check_scores(
             r#"
 struct Foo;

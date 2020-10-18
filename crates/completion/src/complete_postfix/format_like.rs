@@ -14,7 +14,7 @@
 //   + `logw` -> `log::warn!(...)`
 //   + `loge` -> `log::error!(...)`
 
-use crate::completion::{
+use crate::{
     complete_postfix::postfix_snippet, completion_config::SnippetCap,
     completion_context::CompletionContext, completion_item::Completions,
 };

@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Postfix completions, like `Ok(10).ifl<|>` => `if let Ok() = Ok(10) { <|> }`.
 
 mod format_like;
 
@@ -11,11 +11,9 @@ use text_edit::TextEdit;
 
 use self::format_like::add_format_like_completions;
 use crate::{
-    completion::{
-        completion_config::SnippetCap,
-        completion_context::CompletionContext,
-        completion_item::{Builder, CompletionKind, Completions},
-    },
+    completion_config::SnippetCap,
+    completion_context::CompletionContext,
+    completion_item::{Builder, CompletionKind, Completions},
     CompletionItem, CompletionItemKind,
 };
 
@@ -263,7 +261,7 @@ fn postfix_snippet(
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{
+    use crate::{
         test_utils::{check_edit, completion_list},
         CompletionKind,
     };

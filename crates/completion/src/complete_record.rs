@@ -1,5 +1,5 @@
 //! Complete fields in record literals and patterns.
-use crate::completion::{CompletionContext, Completions};
+use crate::{CompletionContext, Completions};
 
 pub(super) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let missing_fields = match (ctx.record_pat_syntax.as_ref(), ctx.record_lit_syntax.as_ref()) {
@@ -20,7 +20,7 @@ pub(super) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Reference);

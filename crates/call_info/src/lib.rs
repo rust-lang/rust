@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! This crate provides primitives for tracking the information about a call site.
+use base_db::FilePosition;
 use either::Either;
 use hir::{HasAttrs, HirDisplay, Semantics, Type};
 use ide_db::RootDatabase;
@@ -8,8 +9,6 @@ use syntax::{
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 use test_utils::mark;
-
-use crate::FilePosition;
 
 /// Contains information about a call site. Specifically the
 /// `FunctionSignature`and current parameter.
@@ -40,7 +39,7 @@ impl CallInfo {
 }
 
 /// Computes parameter information for the given call expression.
-pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
+pub fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id);
     let file = file.syntax();
@@ -141,13 +140,13 @@ fn call_info_impl(
 }
 
 #[derive(Debug)]
-pub(crate) struct ActiveParameter {
-    pub(crate) ty: Type,
-    pub(crate) name: String,
+pub struct ActiveParameter {
+    pub ty: Type,
+    pub name: String,
 }
 
 impl ActiveParameter {
-    pub(crate) fn at(db: &RootDatabase, position: FilePosition) -> Option<Self> {
+    pub fn at(db: &RootDatabase, position: FilePosition) -> Option<Self> {
         let sema = Semantics::new(db);
         let file = sema.parse(position.file_id);
         let file = file.syntax();
@@ -156,7 +155,7 @@ impl ActiveParameter {
         Self::at_token(&sema, token)
     }
 
-    pub(crate) fn at_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Self> {
+    pub fn at_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Self> {
         let (signature, active_parameter) = call_info_impl(&sema, token)?;
 
         let idx = active_parameter?;
@@ -172,7 +171,7 @@ impl ActiveParameter {
 }
 
 #[derive(Debug)]
-pub(crate) enum FnCallNode {
+pub enum FnCallNode {
     CallExpr(ast::CallExpr),
     MethodCallExpr(ast::MethodCallExpr),
 }
@@ -196,7 +195,7 @@ impl FnCallNode {
         })
     }
 
-    pub(crate) fn with_node_exact(node: &SyntaxNode) -> Option<FnCallNode> {
+    pub fn with_node_exact(node: &SyntaxNode) -> Option<FnCallNode> {
         match_ast! {
             match node {
                 ast::CallExpr(it) => Some(FnCallNode::CallExpr(it)),
@@ -206,7 +205,7 @@ impl FnCallNode {
         }
     }
 
-    pub(crate) fn name_ref(&self) -> Option<ast::NameRef> {
+    pub fn name_ref(&self) -> Option<ast::NameRef> {
         match self {
             FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()? {
                 ast::Expr::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
@@ -229,14 +228,28 @@ impl FnCallNode {
 
 #[cfg(test)]
 mod tests {
+    use base_db::{fixture::ChangeFixture, FilePosition};
     use expect_test::{expect, Expect};
-    use test_utils::mark;
+    use ide_db::RootDatabase;
+    use test_utils::{mark, RangeOrOffset};
 
-    use crate::fixture;
+    /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+    pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
+        let change_fixture = ChangeFixture::parse(ra_fixture);
+        let mut database = RootDatabase::default();
+        database.apply_change(change_fixture.change);
+        let (file_id, range_or_offset) =
+            change_fixture.file_position.expect("expected a marker (<|>)");
+        let offset = match range_or_offset {
+            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Offset(it) => it,
+        };
+        (database, FilePosition { file_id, offset })
+    }
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let (analysis, position) = fixture::position(ra_fixture);
-        let call_info = analysis.call_info(position).unwrap();
+        let (db, position) = position(ra_fixture);
+        let call_info = crate::call_info(&db, position);
         let actual = match call_info {
             Some(call_info) => {
                 let docs = match &call_info.doc {

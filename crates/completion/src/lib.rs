@@ -1,3 +1,5 @@
+//! `completions` crate provides utilities for generating completions of user input.
+
 mod completion_config;
 mod completion_item;
 mod completion_context;
@@ -21,17 +23,15 @@ mod complete_macro_in_item_position;
 mod complete_trait_impl;
 mod complete_mod;
 
+use base_db::FilePosition;
 use ide_db::RootDatabase;
 
 use crate::{
-    completion::{
-        completion_context::CompletionContext,
-        completion_item::{CompletionKind, Completions},
-    },
-    FilePosition,
+    completion_context::CompletionContext,
+    completion_item::{CompletionKind, Completions},
 };
 
-pub use crate::completion::{
+pub use crate::{
     completion_config::CompletionConfig,
     completion_item::{CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat},
 };
@@ -105,7 +105,7 @@ pub use crate::completion::{
 /// `foo` *should* be present among the completion variants. Filtering by
 /// identifier prefix/fuzzy match should be done higher in the stack, together
 /// with ordering of completions (currently this is done by the client).
-pub(crate) fn completions(
+pub fn completions(
     db: &RootDatabase,
     config: &CompletionConfig,
     position: FilePosition,
@@ -139,8 +139,8 @@ pub(crate) fn completions(
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::completion_config::CompletionConfig;
-    use crate::fixture;
+    use crate::completion_config::CompletionConfig;
+    use crate::test_utils;
 
     struct DetailAndDocumentation<'a> {
         detail: &'a str,
@@ -148,9 +148,9 @@ mod tests {
     }
 
     fn check_detail_and_documentation(ra_fixture: &str, expected: DetailAndDocumentation) {
-        let (analysis, position) = fixture::position(ra_fixture);
+        let (db, position) = test_utils::position(ra_fixture);
         let config = CompletionConfig::default();
-        let completions = analysis.completions(&config, position).unwrap().unwrap();
+        let completions: Vec<_> = crate::completions(&db, &config, position).unwrap().into();
         for item in completions {
             if item.detail() == Some(expected.detail) {
                 let opt = item.documentation();
@@ -163,14 +163,18 @@ mod tests {
     }
 
     fn check_no_completion(ra_fixture: &str) {
-        let (analysis, position) = fixture::position(ra_fixture);
+        let (db, position) = test_utils::position(ra_fixture);
         let config = CompletionConfig::default();
-        analysis.completions(&config, position).unwrap();
 
-        let completions: Option<Vec<String>> = analysis
-            .completions(&config, position)
-            .unwrap()
-            .and_then(|completions| if completions.is_empty() { None } else { Some(completions) })
+        let completions: Option<Vec<String>> = crate::completions(&db, &config, position)
+            .and_then(|completions| {
+                let completions: Vec<_> = completions.into();
+                if completions.is_empty() {
+                    None
+                } else {
+                    Some(completions)
+                }
+            })
             .map(|completions| {
                 completions.into_iter().map(|completion| format!("{:?}", completion)).collect()
             });

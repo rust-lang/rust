@@ -128,6 +128,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
+name = "call_info"
+version = "0.0.0"
+dependencies = [
+ "base_db",
+ "either",
+ "expect-test",
+ "hir",
+ "ide_db",
+ "stdx",
+ "syntax",
+ "test_utils",
+]
+
+[[package]]
 name = "cargo_metadata"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -247,6 +261,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e56268c17a6248366d66d4a47a3381369d068cce8409bb1716ed77ea32163bb"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "completion"
+version = "0.0.0"
+dependencies = [
+ "assists",
+ "base_db",
+ "call_info",
+ "expect-test",
+ "hir",
+ "ide_db",
+ "itertools",
+ "log",
+ "profile",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
 ]
 
 [[package]]
@@ -609,7 +643,9 @@ version = "0.0.0"
 dependencies = [
  "assists",
  "base_db",
+ "call_info",
  "cfg",
+ "completion",
  "either",
  "expect-test",
  "hir",

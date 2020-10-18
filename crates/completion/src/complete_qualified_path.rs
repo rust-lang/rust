@@ -5,7 +5,7 @@ use rustc_hash::FxHashSet;
 use syntax::AstNode;
 use test_utils::mark;
 
-use crate::completion::{CompletionContext, Completions};
+use crate::{CompletionContext, Completions};
 
 pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_qual {
@@ -149,7 +149,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_utils::mark;
 
-    use crate::completion::{
+    use crate::{
         test_utils::{check_edit, completion_list},
         CompletionKind,
     };

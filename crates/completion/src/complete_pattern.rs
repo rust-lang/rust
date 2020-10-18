@@ -1,6 +1,6 @@
-//! FIXME: write short doc here
+//! Completes constats and paths in patterns.
 
-use crate::completion::{CompletionContext, Completions};
+use crate::{CompletionContext, Completions};
 
 /// Completes constats and paths in patterns.
 pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
@@ -35,7 +35,7 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Reference);

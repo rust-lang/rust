@@ -4,7 +4,7 @@ use hir::{HasVisibility, Type};
 use rustc_hash::FxHashSet;
 use test_utils::mark;
 
-use crate::completion::{completion_context::CompletionContext, completion_item::Completions};
+use crate::{completion_context::CompletionContext, completion_item::Completions};
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -64,7 +64,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_utils::mark;
 
-    use crate::completion::{test_utils::completion_list, CompletionKind};
+    use crate::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Reference);

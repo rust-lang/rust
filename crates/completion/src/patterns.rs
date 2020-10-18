@@ -9,7 +9,7 @@ use syntax::{
 };
 
 #[cfg(test)]
-use crate::completion::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
+use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
 
 pub(crate) fn has_trait_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
