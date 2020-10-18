@@ -14,7 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
-use crate::dep_graph::DepContext;
+use crate::dep_graph::HasDepContext;
 use crate::query::job::QueryMap;
 
 use rustc_data_structures::stable_hasher::HashStable;
@@ -23,7 +23,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_span::def_id::DefId;
 
-pub trait QueryContext: DepContext {
+pub trait QueryContext: HasDepContext {
     type Query: Clone + HashStable<Self::StableHashingContext>;
 
     fn incremental_verify_ich(&self) -> bool;
@@ -44,6 +44,6 @@ pub trait QueryContext: DepContext {
         &self,
         token: QueryJobId<Self::DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce(Self) -> R,
+        compute: impl FnOnce() -> R,
     ) -> R;
 }

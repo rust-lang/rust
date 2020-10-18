@@ -33,9 +33,9 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
 }
 
 impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
-    pub(crate) fn to_dep_node(&self, tcx: CTX, key: &K) -> DepNode<CTX::DepKind>
+    pub(crate) fn to_dep_node(&self, tcx: CTX::DepContext, key: &K) -> DepNode<CTX::DepKind>
     where
-        K: crate::dep_graph::DepNodeParams<CTX>,
+        K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
     {
         DepNode::construct(tcx, self.dep_kind, key)
     }
