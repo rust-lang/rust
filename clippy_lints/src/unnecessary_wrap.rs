@@ -122,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
                             fn_decl.output.span(),
                             format!("remove `{}` from the return type...", return_type).as_str(),
                             inner_ty,
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
                     });
                     diag.multipart_suggestion(
