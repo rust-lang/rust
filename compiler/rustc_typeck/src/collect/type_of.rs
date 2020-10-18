@@ -112,12 +112,16 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         tcx.sess.delay_span_bug(tcx.def_span(def_id), "anon const with Res::Err");
                         return None;
                     }
-                    _ => span_bug!(
-                        DUMMY_SP,
-                        "unexpected anon const res {:?} in path: {:?}",
-                        res,
-                        path,
-                    ),
+                    _ => {
+                        // If the user tries to specify generics on a type that does not take them,
+                        // e.g. `usize<T>`, we may hit this branch, in which case we treat it as if
+                        // no arguments have been passed. An error should already have been emitted.
+                        tcx.sess.delay_span_bug(
+                            tcx.def_span(def_id),
+                            &format!("unexpected anon const res {:?} in path: {:?}", res, path),
+                        );
+                        return None;
+                    }
                 };
 
                 generics
