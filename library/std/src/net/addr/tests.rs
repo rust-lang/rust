@@ -68,7 +68,7 @@ fn bind_udp_socket_bad() {
     // returns its own address, it is still an error to bind a UDP socket to
     // a non-local address, and so we still get an error here in that case.
 
-    const INPUT_23076: &'static str = "1200::AB00:1234::2552:7777:1313:34300";
+    const INPUT_23076: &str = "1200::AB00:1234::2552:7777:1313:34300";
 
     assert!(crate::net::UdpSocket::bind(INPUT_23076).is_err())
 }
