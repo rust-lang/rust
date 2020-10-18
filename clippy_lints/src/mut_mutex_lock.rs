@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// *value += 1;
     /// ```
     pub MUT_MUTEX_LOCK,
-    correctness,
+    style,
     "`&mut Mutex::lock` does unnecessary locking"
 }
 
@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for MutMutexLock {
                     "calling `&mut Mutex::lock` unnecessarily locks an exclusive (mutable) reference",
                     "change this to",
                     "get_mut".to_owned(),
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
             }
         }

@@ -1504,7 +1504,7 @@ vec![
     },
     Lint {
         name: "mut_mutex_lock",
-        group: "correctness",
+        group: "style",
         desc: "`&mut Mutex::lock` does unnecessary locking",
         deprecation: None,
         module: "mut_mutex_lock",
