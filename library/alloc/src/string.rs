@@ -49,7 +49,6 @@ use core::iter::{FromIterator, FusedIterator};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
-use core::slice;
 use core::str::{lossy, pattern::Pattern};
 
 use crate::borrow::{Cow, ToOwned};
@@ -1507,14 +1506,14 @@ impl String {
         // of the vector version. The data is just plain bytes.
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
-        let Range { start, end } = slice::check_range(self.len(), range);
+        let Range { start, end } = range.assert_len(self.len());
         assert!(self.is_char_boundary(start));
         assert!(self.is_char_boundary(end));
 
         // Take out two simultaneous borrows. The &mut String won't be accessed
         // until iteration is over, in Drop.
         let self_ptr = self as *mut _;
-        // SAFETY: `check_range` and `is_char_boundary` do the appropriate bounds checks.
+        // SAFETY: `assert_len` and `is_char_boundary` do the appropriate bounds checks.
         let chars_iter = unsafe { self.get_unchecked(start..end) }.chars();
 
         Drain { start, end, iter: chars_iter, string: self_ptr }

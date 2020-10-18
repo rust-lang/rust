@@ -91,8 +91,6 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
-#[unstable(feature = "slice_check_range", issue = "76393")]
-pub use core::slice::check_range;
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunks;
 #[unstable(feature = "array_chunks", issue = "74985")]

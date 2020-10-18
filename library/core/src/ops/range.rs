@@ -1,5 +1,9 @@
 use crate::fmt;
 use crate::hash::Hash;
+use crate::slice::index::{
+    slice_end_index_len_fail, slice_end_index_overflow_fail, slice_index_order_fail,
+    slice_start_index_overflow_fail,
+};
 
 /// An unbounded range (`..`).
 ///
@@ -700,6 +704,92 @@ pub trait RangeBounds<T: ?Sized> {
     /// ```
     #[stable(feature = "collections_range", since = "1.28.0")]
     fn end_bound(&self) -> Bound<&T>;
+
+    /// Performs bounds-checking of this range.
+    ///
+    /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
+    /// [`slice::get_unchecked_mut`] for slices of the given length.
+    ///
+    /// [`slice::get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
+    /// [`slice::get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range would be out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// let v = [10, 40, 30];
+    /// assert_eq!(1..2, (1..2).assert_len(v.len()));
+    /// assert_eq!(0..2, (..2).assert_len(v.len()));
+    /// assert_eq!(1..3, (1..).assert_len(v.len()));
+    /// ```
+    ///
+    /// Panics when [`Index::index`] would panic:
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// (2..1).assert_len(3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// (1..4).assert_len(3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// (1..=usize::MAX).assert_len(3);
+    /// ```
+    ///
+    /// [`Index::index`]: crate::ops::Index::index
+    #[track_caller]
+    #[unstable(feature = "range_bounds_assert_len", issue = "76393")]
+    fn assert_len(self, len: usize) -> Range<usize>
+    where
+        Self: RangeBounds<usize>,
+    {
+        let start: Bound<&usize> = self.start_bound();
+        let start = match start {
+            Bound::Included(&start) => start,
+            Bound::Excluded(start) => {
+                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
+            }
+            Bound::Unbounded => 0,
+        };
+
+        let end: Bound<&usize> = self.end_bound();
+        let end = match end {
+            Bound::Included(end) => {
+                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
+            }
+            Bound::Excluded(&end) => end,
+            Bound::Unbounded => len,
+        };
+
+        if start > end {
+            slice_index_order_fail(start, end);
+        }
+        if end > len {
+            slice_end_index_len_fail(end, len);
+        }
+
+        Range { start, end }
+    }
 
     /// Returns `true` if `item` is contained in the range.
     ///
