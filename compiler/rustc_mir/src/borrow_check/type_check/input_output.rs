@@ -73,7 +73,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         // Equate expected input tys with those in the MIR.
-        for (&normalized_input_ty, argument_index) in normalized_input_tys.iter().zip(0..) {
+        for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
 
@@ -87,8 +87,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
 
         if let Some(user_provided_sig) = user_provided_sig {
-            for (&user_provided_input_ty, argument_index) in
-                user_provided_sig.inputs().iter().zip(0..)
+            for (argument_index, &user_provided_input_ty) in
+                user_provided_sig.inputs().iter().enumerate()
             {
                 // In MIR, closures begin an implicit `self`, so
                 // argument N is stored in local N+2.
