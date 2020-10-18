@@ -106,8 +106,7 @@ fn main() {
 
     match QUUX {
         QUUX => {}
-        QUUX => {} // should not be emitting unreachable warning
-        //~^ ERROR unreachable pattern
+        QUUX => {}
         _ => {}
     }
 }

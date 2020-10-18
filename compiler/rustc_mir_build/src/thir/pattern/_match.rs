@@ -394,9 +394,15 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
+        is_my_head_ctor: bool,
     ) -> Option<PatStack<'p, 'tcx>> {
-        let new_fields =
-            specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns)?;
+        let new_fields = specialize_one_pattern(
+            cx,
+            self.head(),
+            constructor,
+            ctor_wild_subpatterns,
+            is_my_head_ctor,
+        )?;
         Some(new_fields.push_on_patstack(&self.0[1..]))
     }
 }
@@ -574,6 +580,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                                 cx,
                                 constructor,
                                 ctor_wild_subpatterns,
+                                false,
                             )
                         })
                         .collect()
@@ -599,7 +606,9 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             SpecializationCache::Incompatible => self
                 .patterns
                 .iter()
-                .filter_map(|r| r.specialize_constructor(cx, constructor, ctor_wild_subpatterns))
+                .filter_map(|r| {
+                    r.specialize_constructor(cx, constructor, ctor_wild_subpatterns, false)
+                })
                 .collect(),
         }
     }
@@ -821,8 +830,6 @@ enum Constructor<'tcx> {
     Single,
     /// Enum variants.
     Variant(DefId),
-    /// Literal values.
-    ConstantValue(&'tcx ty::Const<'tcx>),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange<'tcx>),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -831,27 +838,22 @@ enum Constructor<'tcx> {
     Str(&'tcx ty::Const<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
+    /// Constants that must not be matched structurally. They are treated as black
+    /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
+    /// don't count towards making a match exhaustive.
+    Opaque,
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
     NonExhaustive,
 }
 
 impl<'tcx> Constructor<'tcx> {
-    fn variant_index_for_adt<'a>(
-        &self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
-        adt: &'tcx ty::AdtDef,
-    ) -> VariantIdx {
+    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match *self {
             Variant(id) => adt.variant_index_with_id(id),
             Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            ConstantValue(c) => cx
-                .tcx
-                .destructure_const(cx.param_env.and(c))
-                .variant
-                .expect("destructed const of adt without variant id"),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }
     }
@@ -865,7 +867,7 @@ impl<'tcx> Constructor<'tcx> {
 
         match self {
             // Those constructors can only match themselves.
-            Single | Variant(_) | ConstantValue(..) | Str(..) | FloatRange(..) => {
+            Single | Variant(_) | Str(..) | FloatRange(..) => {
                 if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
             }
             &Slice(slice) => {
@@ -936,6 +938,7 @@ impl<'tcx> Constructor<'tcx> {
             }
             // This constructor is never covered by anything else
             NonExhaustive => vec![NonExhaustive],
+            Opaque => bug!("unexpected opaque ctor {:?} found in all_ctors", self),
         }
     }
 
@@ -975,7 +978,7 @@ impl<'tcx> Constructor<'tcx> {
                             PatKind::Variant {
                                 adt_def: adt,
                                 substs,
-                                variant_index: self.variant_index_for_adt(cx, adt),
+                                variant_index: self.variant_index_for_adt(adt),
                                 subpatterns,
                             }
                         } else {
@@ -1014,11 +1017,11 @@ impl<'tcx> Constructor<'tcx> {
                     PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
             },
-            &ConstantValue(value) => PatKind::Constant { value },
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(cx.tcx),
             NonExhaustive => PatKind::Wild,
+            Opaque => bug!("we should not try to apply an opaque constructor {:?}", self),
         };
 
         Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
@@ -1122,7 +1125,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         // Use T as the sub pattern type of Box<T>.
                         Fields::from_single_pattern(wildcard_from_ty(substs.type_at(0)))
                     } else {
-                        let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                        let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
                         // Whether we must not match the fields of this variant exhaustively.
                         let is_non_exhaustive =
                             variant.is_field_list_non_exhaustive() && !adt.did.is_local();
@@ -1170,9 +1173,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            ConstantValue(..) | Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive => {
-                Fields::empty()
-            }
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque => Fields::empty(),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -2085,7 +2086,7 @@ fn is_useful_specialized<'p, 'tcx>(
     // We cache the result of `Fields::wildcards` because it is used a lot.
     let ctor_wild_subpatterns = Fields::wildcards(cx, &ctor, ty);
     let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
-    v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns)
+    v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns, true)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false))
         .map(|u| u.apply_constructor(cx, &ctor, ty, &ctor_wild_subpatterns))
         .unwrap_or(NotUseful)
@@ -2112,7 +2113,7 @@ fn pat_constructor<'tcx>(
                 match value.ty.kind() {
                     ty::Float(_) => Some(FloatRange(value, value, RangeEnd::Included)),
                     ty::Ref(_, t, _) if t.is_str() => Some(Str(value)),
-                    _ => Some(ConstantValue(value)),
+                    _ => Some(Opaque),
                 }
             }
         }
@@ -2461,13 +2462,24 @@ fn specialize_one_pattern<'p, 'tcx>(
     pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &Fields<'p, 'tcx>,
+    is_its_own_ctor: bool, // Whether `ctor` is known to be derived from `pat`
 ) -> Option<Fields<'p, 'tcx>> {
     if let NonExhaustive = constructor {
-        // Only a wildcard pattern can match the special extra constructor
+        // Only a wildcard pattern can match the special extra constructor.
         if !pat.is_wildcard() {
             return None;
         }
         return Some(Fields::empty());
+    }
+
+    if let Opaque = constructor {
+        // Only a wildcard pattern can match an opaque constant, unless we're specializing the
+        // value against its own constructor.
+        if is_its_own_ctor || pat.is_wildcard() {
+            return Some(Fields::empty());
+        } else {
+            return None;
+        }
     }
 
     let result = match *pat.kind {
@@ -2491,7 +2503,6 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Constant { .. } | PatKind::Range { .. } => {
             match constructor {
-                Single => {}
                 IntRange(ctor) => {
                     let pat = IntRange::from_pat(cx.tcx, cx.param_env, pat)?;
                     ctor.intersection(cx.tcx, &pat)?;
@@ -2514,7 +2525,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                         return None;
                     }
                 }
-                ConstantValue(ctor_value) | Str(ctor_value) => {
+                Str(ctor_value) => {
                     let pat_value = match *pat.kind {
                         PatKind::Constant { value } => value,
                         _ => span_bug!(
@@ -2532,7 +2543,9 @@ fn specialize_one_pattern<'p, 'tcx>(
                     }
                 }
                 _ => {
-                    span_bug!(pat.span, "unexpected pattern {:?} with ctor {:?}", pat, constructor)
+                    // If we reach here, we must be trying to inspect an opaque constant. Thus we skip
+                    // the row.
+                    return None;
                 }
             }
             Some(Fields::empty())

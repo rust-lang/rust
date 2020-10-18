@@ -144,11 +144,5 @@ error: unreachable pattern
 LL |         _ => {} // should not be emitting unreachable warning
    |         ^
 
-error: unreachable pattern
-  --> $DIR/consts-opaque.rs:109:9
-   |
-LL |         QUUX => {} // should not be emitting unreachable warning
-   |         ^^^^
-
-error: aborting due to 23 previous errors
+error: aborting due to 22 previous errors
 
