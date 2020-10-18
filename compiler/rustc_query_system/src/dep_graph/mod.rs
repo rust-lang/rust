@@ -63,6 +63,27 @@ pub trait DepContext: Copy {
     fn profiler(&self) -> &SelfProfilerRef;
 }
 
+pub trait HasDepContext: Copy {
+    type DepKind: self::DepKind;
+    type StableHashingContext;
+    type DepContext: self::DepContext<
+        DepKind = Self::DepKind,
+        StableHashingContext = Self::StableHashingContext,
+    >;
+
+    fn dep_context(&self) -> &Self::DepContext;
+}
+
+impl<T: DepContext> HasDepContext for T {
+    type DepKind = T::DepKind;
+    type StableHashingContext = T::StableHashingContext;
+    type DepContext = Self;
+
+    fn dep_context(&self) -> &Self::DepContext {
+        self
+    }
+}
+
 /// Describe the different families of dependency nodes.
 pub trait DepKind: Copy + fmt::Debug + Eq + Hash {
     const NULL: Self;

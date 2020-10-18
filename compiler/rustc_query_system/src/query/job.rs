@@ -10,7 +10,8 @@ use std::num::NonZeroU32;
 
 #[cfg(parallel_compiler)]
 use {
-    super::QueryContext,
+    crate::dep_graph::DepContext,
+    crate::query::QueryContext,
     parking_lot::{Condvar, Mutex},
     rustc_data_structures::fx::FxHashSet,
     rustc_data_structures::stable_hasher::{HashStable, StableHasher},
@@ -432,7 +433,7 @@ where
 {
     // Deterministically pick an entry point
     // FIXME: Sort this instead
-    let mut hcx = tcx.create_stable_hashing_context();
+    let mut hcx = tcx.dep_context().create_stable_hashing_context();
     queries
         .iter()
         .min_by_key(|v| {

@@ -48,7 +48,7 @@ impl QueryContext for TyCtxt<'tcx> {
         &self,
         token: QueryJobId<Self::DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce(Self) -> R,
+        compute: impl FnOnce() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
@@ -65,7 +65,7 @@ impl QueryContext for TyCtxt<'tcx> {
 
             // Use the `ImplicitCtxt` while we execute the query.
             tls::enter_context(&new_icx, |_| {
-                rustc_data_structures::stack::ensure_sufficient_stack(|| compute(*self))
+                rustc_data_structures::stack::ensure_sufficient_stack(compute)
             })
         })
     }

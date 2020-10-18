@@ -23,7 +23,7 @@ use super::debug::EdgeFilter;
 use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
 use super::serialized::SerializedDepNodeIndex;
-use super::{DepContext, DepKind, DepNode, WorkProductId};
+use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -235,7 +235,7 @@ impl<K: DepKind> DepGraph<K> {
     ///   `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
-    pub fn with_task<Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -261,7 +261,7 @@ impl<K: DepKind> DepGraph<K> {
         )
     }
 
-    fn with_task_impl<Ctxt: DepContext<DepKind = K>, A, R>(
+    fn with_task_impl<Ctxt: HasDepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -271,14 +271,15 @@ impl<K: DepKind> DepGraph<K> {
         hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if let Some(ref data) = self.data {
+            let dcx = cx.dep_context();
             let task_deps = create_task(key).map(Lock::new);
             let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
             let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
-            let mut hcx = cx.create_stable_hashing_context();
+            let mut hcx = dcx.create_stable_hashing_context();
             let current_fingerprint = hash_result(&mut hcx, &result);
 
-            let print_status = cfg!(debug_assertions) && cx.debug_dep_tasks();
+            let print_status = cfg!(debug_assertions) && dcx.debug_dep_tasks();
 
             // Intern the new `DepNode`.
             let dep_node_index = if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
@@ -408,7 +409,7 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "eval-always" task which is a task
     /// that runs whenever anything changes.
-    pub fn with_eval_always_task<Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_eval_always_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
