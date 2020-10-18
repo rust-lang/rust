@@ -598,7 +598,7 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
 }
 
-pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &'static BuiltinAttribute>> =
+pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &BuiltinAttribute>> =
     SyncLazy::new(|| {
         let mut map = FxHashMap::default();
         for attr in BUILTIN_ATTRIBUTES.iter() {
