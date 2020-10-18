@@ -80,13 +80,6 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
     where
         CTX: 'a;
 
-    fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode<CTX::DepKind>
-    where
-        Self::Key: crate::dep_graph::DepNodeParams<CTX>,
-    {
-        DepNode::construct(tcx, Self::DEP_KIND, key)
-    }
-
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: CTX, key: Self::Key) -> Self::Value;
 
