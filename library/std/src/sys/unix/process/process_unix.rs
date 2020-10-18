@@ -135,7 +135,7 @@ impl Command {
         let mut pidfd: libc::pid_t = -1;
 
         // On Linux, attempt to use the `clone3` syscall, which
-        // supports more argument (in prarticular, the ability to create a pidfd).
+        // supports more argument (in particular, the ability to create a pidfd).
         // If this fails, we will fall through this block to a call to `fork()`
         cfg_if::cfg_if! {
             if #[cfg(target_os = "linux")] {
