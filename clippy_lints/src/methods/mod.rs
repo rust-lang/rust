@@ -1748,7 +1748,7 @@ fn lint_or_fun_call<'tcx>(
                     "try this",
                     format!(
                         "{}.unwrap_or_default()",
-                        snippet_with_applicability(cx, self_expr.span, "_", &mut applicability)
+                        snippet_with_applicability(cx, self_expr.span, "..", &mut applicability)
                     ),
                     applicability,
                 );
@@ -2155,7 +2155,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::
             return;
         };
 
-        let snippet = snippet_with_macro_callsite(cx, arg.span, "_");
+        let snippet = snippet_with_macro_callsite(cx, arg.span, "..");
 
         span_lint_and_sugg(
             cx,
@@ -2191,9 +2191,9 @@ fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::E
             "try this",
             format!(
                 "{}.push_str({}{})",
-                snippet_with_applicability(cx, args[0].span, "_", &mut applicability),
+                snippet_with_applicability(cx, args[0].span, "..", &mut applicability),
                 ref_str,
-                snippet_with_applicability(cx, target.span, "_", &mut applicability)
+                snippet_with_applicability(cx, target.span, "..", &mut applicability)
             ),
             applicability,
         );
@@ -2460,7 +2460,7 @@ fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args:
     let mut applicability = Applicability::MachineApplicable;
     let expr_ty = cx.typeck_results().expr_ty(&get_args[0]);
     let get_args_str = if get_args.len() > 1 {
-        snippet_with_applicability(cx, get_args[1].span, "_", &mut applicability)
+        snippet_with_applicability(cx, get_args[1].span, "..", &mut applicability)
     } else {
         return; // not linting on a .get().unwrap() chain or variant
     };
@@ -2520,7 +2520,7 @@ fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args:
         format!(
             "{}{}[{}]",
             borrow_str,
-            snippet_with_applicability(cx, get_args[0].span, "_", &mut applicability),
+            snippet_with_applicability(cx, get_args[0].span, "..", &mut applicability),
             get_args_str
         ),
         applicability,
@@ -2536,7 +2536,7 @@ fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[
                 cx,
                 ITER_SKIP_NEXT,
                 expr.span.trim_start(caller.span).unwrap(),
-                "called `skip(x).next()` on an iterator",
+                "called `skip(..).next()` on an iterator",
                 "use `nth` instead",
                 hint,
                 Applicability::MachineApplicable,
@@ -2739,11 +2739,11 @@ fn lint_map_unwrap_or_else<'tcx>(
 
         // lint message
         let msg = if is_option {
-            "called `map(f).unwrap_or_else(g)` on an `Option` value. This can be done more directly by calling \
-            `map_or_else(g, f)` instead"
+            "called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling \
+            `map_or_else(<g>, <f>)` instead"
         } else {
-            "called `map(f).unwrap_or_else(g)` on a `Result` value. This can be done more directly by calling \
-            `.map_or_else(g, f)` instead"
+            "called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling \
+            `.map_or_else(<g>, <f>)` instead"
         };
         // get snippets for args to map() and unwrap_or_else()
         let map_snippet = snippet(cx, map_args[1].span, "..");
@@ -2809,8 +2809,8 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         if is_option {
             let self_snippet = snippet(cx, map_or_args[0].span, "..");
             let func_snippet = snippet(cx, map_or_args[2].span, "..");
-            let msg = "called `map_or(None, f)` on an `Option` value. This can be done more directly by calling \
-                       `and_then(f)` instead";
+            let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
+                       `and_then(..)` instead";
             (
                 OPTION_MAP_OR_NONE,
                 msg,
@@ -2848,8 +2848,8 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
 fn lint_filter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, filter_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
-                   `.find(p)` instead.";
+        let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
+                   `.find(..)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
             // add note if not multi-line
@@ -2879,9 +2879,9 @@ fn lint_skip_while_next<'tcx>(
             cx,
             SKIP_WHILE_NEXT,
             expr.span,
-            "called `skip_while(p).next()` on an `Iterator`",
+            "called `skip_while(<p>).next()` on an `Iterator`",
             None,
-            "this is more succinctly expressed by calling `.find(!p)` instead",
+            "this is more succinctly expressed by calling `.find(!<p>)` instead",
         );
     }
 }
@@ -2895,7 +2895,7 @@ fn lint_filter_map<'tcx>(
 ) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).map(q)` on an `Iterator`";
+        let msg = "called `filter(..).map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.filter_map(..)` instead";
         span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
     }
@@ -2904,8 +2904,8 @@ fn lint_filter_map<'tcx>(
 /// lint use of `filter_map().next()` for `Iterators`
 fn lint_filter_map_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, filter_args: &'tcx [hir::Expr<'_>]) {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter_map(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
-                   `.find_map(p)` instead.";
+        let msg = "called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
+                   `.find_map(..)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
             span_lint_and_note(
@@ -2931,7 +2931,7 @@ fn lint_find_map<'tcx>(
 ) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, &map_args[0], &paths::ITERATOR) {
-        let msg = "called `find(p).map(q)` on an `Iterator`";
+        let msg = "called `find(..).map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.find_map(..)` instead";
         span_lint_and_help(cx, FIND_MAP, expr.span, msg, None, hint);
     }
@@ -2946,7 +2946,7 @@ fn lint_filter_map_map<'tcx>(
 ) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter_map(p).map(q)` on an `Iterator`";
+        let msg = "called `filter_map(..).map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by only calling `.filter_map(..)` instead";
         span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
     }
@@ -2961,7 +2961,7 @@ fn lint_filter_flat_map<'tcx>(
 ) {
     // lint if caller of `.filter().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(p).flat_map(q)` on an `Iterator`";
+        let msg = "called `filter(..).flat_map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
                     and filtering by returning `iter::empty()`";
         span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
@@ -2977,7 +2977,7 @@ fn lint_filter_map_flat_map<'tcx>(
 ) {
     // lint if caller of `.filter_map().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`";
+        let msg = "called `filter_map(..).flat_map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
                     and filtering by returning `iter::empty()`";
         span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
@@ -3148,9 +3148,9 @@ fn lint_chars_cmp(
                 "like this",
                 format!("{}{}.{}({})",
                         if info.eq { "" } else { "!" },
-                        snippet_with_applicability(cx, args[0][0].span, "_", &mut applicability),
+                        snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
                         suggest,
-                        snippet_with_applicability(cx, arg_char[0].span, "_", &mut applicability)),
+                        snippet_with_applicability(cx, arg_char[0].span, "..", &mut applicability)),
                 applicability,
             );
 
@@ -3197,7 +3197,7 @@ fn lint_chars_cmp_with_unwrap<'tcx>(
                 "like this",
                 format!("{}{}.{}('{}')",
                         if info.eq { "" } else { "!" },
-                        snippet_with_applicability(cx, args[0][0].span, "_", &mut applicability),
+                        snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
                         suggest,
                         c),
                 applicability,
@@ -3272,7 +3272,7 @@ fn lint_single_char_pattern(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, arg: &h
 fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability) {
-        let base_string_snippet = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
+        let base_string_snippet = snippet_with_applicability(cx, args[0].span, "..", &mut applicability);
         let sugg = format!("{}.push({})", base_string_snippet, extension_string);
         span_lint_and_sugg(
             cx,
@@ -3315,7 +3315,7 @@ fn lint_asref(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, as_re
                 expr.span,
                 &format!("this call to `{}` does nothing", call_name),
                 "try this",
-                snippet_with_applicability(cx, recvr.span, "_", &mut applicability).to_string(),
+                snippet_with_applicability(cx, recvr.span, "..", &mut applicability).to_string(),
                 applicability,
             );
         }

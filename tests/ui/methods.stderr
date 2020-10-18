@@ -8,7 +8,7 @@ LL | |     }
    |
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
-error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead.
   --> $DIR/methods.rs:126:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
@@ -17,7 +17,7 @@ LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    = note: `-D clippy::filter-next` implied by `-D warnings`
    = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
-error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead.
   --> $DIR/methods.rs:129:13
    |
 LL |       let _ = v.iter().filter(|&x| {
