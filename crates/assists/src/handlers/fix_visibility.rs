@@ -1,9 +1,11 @@
 use base_db::FileId;
 use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
-use syntax::{ast, AstNode, TextRange, TextSize};
+use syntax::{
+    ast::{self, VisibilityOwner},
+    AstNode, TextRange, TextSize,
+};
 
 use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
-use ast::VisibilityOwner;
 
 // FIXME: this really should be a fix for diagnostic, rather than an assist.
 
