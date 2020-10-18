@@ -63,12 +63,10 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
         span: Span,
         hir_id: HirId,
     ) {
-        if_chain! {
-            if let FnKind::ItemFn(.., visibility, _) = fn_kind;
-            if visibility.node.is_pub();
-            then {
-                return;
-            }
+        match fn_kind {
+            FnKind::ItemFn(.., visibility, _) if visibility.node.is_pub() => return,
+            FnKind::Closure(..) => return,
+            _ => (),
         }
 
         let (return_type, path) = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {
