@@ -267,6 +267,7 @@ symbols! {
         asm,
         assert,
         assert_inhabited,
+        assert_macro,
         assert_receiver_is_total_eq,
         assert_uninit_valid,
         assert_zero_valid,
