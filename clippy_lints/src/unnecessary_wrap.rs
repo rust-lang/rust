@@ -1,6 +1,6 @@
 use crate::utils::{
-    in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
-    visitors::find_all_ret_expressions,
+    in_macro, is_type_diagnostic_item, match_path, match_qpath, paths, return_ty, snippet, span_lint_and_then,
+    trait_ref_of_method, visitors::find_all_ret_expressions,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -63,6 +63,14 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
         span: Span,
         hir_id: HirId,
     ) {
+        if_chain! {
+            if let Some(trait_ref) = trait_ref_of_method(cx, hir_id);
+            if match_path(trait_ref.path, &paths::PARTIAL_ORD);
+            then {
+                return;
+            }
+        }
+
         match fn_kind {
             FnKind::ItemFn(.., visibility, _) | FnKind::Method(.., Some(visibility), _) => {
                 if visibility.node.is_pub() {
