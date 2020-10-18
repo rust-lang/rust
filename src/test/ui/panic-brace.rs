@@ -6,4 +6,5 @@ fn main() {
     std::panic!("another one: }"); //~ WARN Panic message contains a brace
     core::panic!("Hello {}"); //~ WARN Panic message contains an unused formatting placeholder
     assert!(false, "{:03x} bla"); //~ WARN Panic message contains an unused formatting placeholder
+    debug_assert!(false, "{{}} bla"); //~ WARN Panic message contains a brace
 }

@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicFmt {
 fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>) {
     if let hir::ExprKind::Lit(lit) = &arg.kind {
         if let ast::LitKind::Str(sym, _) = lit.node {
-            let expn = f.span.ctxt().outer_expn_data();
+            let mut expn = f.span.ctxt().outer_expn_data();
             if let Some(id) = expn.macro_def_id {
                 if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
                     || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
@@ -59,19 +59,17 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                     let s = s.replace("{{", "").replace("}}", "");
                     let looks_like_placeholder =
                         s.find('{').map_or(false, |i| s[i + 1..].contains('}'));
-                    let expn = {
-                        // Unwrap another level of macro expansion if this
-                        // panic!() was expanded from assert!().
+                    // Unwrap another level of macro expansion if this panic!()
+                    // was expanded from assert!() or debug_assert!().
+                    for &assert in &[sym::assert_macro, sym::debug_assert_macro] {
                         let parent = expn.call_site.ctxt().outer_expn_data();
                         if parent
                             .macro_def_id
-                            .map_or(false, |id| cx.tcx.is_diagnostic_item(sym::assert_macro, id))
+                            .map_or(false, |id| cx.tcx.is_diagnostic_item(assert, id))
                         {
-                            parent
-                        } else {
-                            expn
+                            expn = parent;
                         }
-                    };
+                    }
                     if looks_like_placeholder {
                         cx.struct_span_lint(PANIC_FMT, arg.span.source_callsite(), |lint| {
                             let mut l = lint.build("Panic message contains an unused formatting placeholder");

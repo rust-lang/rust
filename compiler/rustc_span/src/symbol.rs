@@ -416,6 +416,7 @@ symbols! {
         dead_code,
         dealloc,
         debug,
+        debug_assert_macro,
         debug_assertions,
         debug_struct,
         debug_trait,
