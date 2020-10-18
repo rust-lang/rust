@@ -252,7 +252,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ReplaceUseVisitor<'a, 'tcx> {
         //   _2 = _1;
         //   use(move _2);   <- can replace with `use(_1)`
         // Or:
-        //   use(move _2, move _1); <- can replace with `use(_1, _1)`
+        //   use(move _2, move _1); <- can replace with `use(_1, _1)`, if the inputs may alias (*)
         if let Operand::Copy(place) | Operand::Move(place) = operand {
             if let Some(local) = place.as_local() {
                 if let Some(known_place) = self.local_values.get(local) {
@@ -261,6 +261,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ReplaceUseVisitor<'a, 'tcx> {
                 }
             }
         }
+
+        // (*) Some MIR statements and terminators may forbid aliasing between some of the places
+        // they access. This only happens between output and input places, never between multiple
+        // input places, so what this pass is safe: Any local that is mutated will invalidate all
+        // affected locals and so won't be replaced or used as a replacement.
     }
 }
 
