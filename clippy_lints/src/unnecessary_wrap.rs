@@ -5,7 +5,7 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::*;
+use rustc_hir::{Body, ExprKind, FnDecl, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
