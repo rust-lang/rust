@@ -47,24 +47,52 @@ impl<'tcx> LateLintPass<'tcx> for PanicFmt {
 fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>) {
     if let hir::ExprKind::Lit(lit) = &arg.kind {
         if let ast::LitKind::Str(sym, _) = lit.node {
-            if sym.as_str().contains(&['{', '}'][..]) {
-                let expn = f.span.ctxt().outer_expn_data();
-                if let Some(id) = expn.macro_def_id {
-                    if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
-                        || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
-                    {
-                        let expn = {
-                            // Unwrap another level of macro expansion if this
-                            // panic!() was expanded from assert!().
-                            let parent = expn.call_site.ctxt().outer_expn_data();
-                            if parent.macro_def_id.map_or(false, |id| {
-                                cx.tcx.is_diagnostic_item(sym::assert_macro, id)
-                            }) {
-                                parent
-                            } else {
-                                expn
+            let s = sym.as_str();
+            let open = s.find('{');
+            let close = s[open.unwrap_or(0)..].find('}');
+            let looks_like_placeholder = match (open, close) {
+                (Some(_), Some(_)) => true,
+                (Some(_), None) | (None, Some(_)) => false,
+                (None, None) => return // OK, no braces.
+            };
+            let expn = f.span.ctxt().outer_expn_data();
+            if let Some(id) = expn.macro_def_id {
+                if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
+                    || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
+                {
+                    let expn = {
+                        // Unwrap another level of macro expansion if this
+                        // panic!() was expanded from assert!().
+                        let parent = expn.call_site.ctxt().outer_expn_data();
+                        if parent.macro_def_id.map_or(false, |id| {
+                            cx.tcx.is_diagnostic_item(sym::assert_macro, id)
+                        }) {
+                            parent
+                        } else {
+                            expn
+                        }
+                    };
+                    if looks_like_placeholder {
+                        cx.struct_span_lint(PANIC_FMT, arg.span.source_callsite(), |lint| {
+                            let mut l = lint.build("Panic message contains an unused formatting placeholder");
+                            l.note("This message is not used as a format string when given without arguments, but will be in a future Rust version");
+                            if expn.call_site.contains(arg.span) {
+                                l.span_suggestion(
+                                    arg.span.shrink_to_hi(),
+                                    "add the missing argument(s)",
+                                    ", argument".into(),
+                                    Applicability::HasPlaceholders,
+                                );
+                                l.span_suggestion(
+                                    arg.span.shrink_to_lo(),
+                                    "or add a \"{}\" format string to use the message literally",
+                                    "\"{}\", ".into(),
+                                    Applicability::MaybeIncorrect,
+                                );
                             }
-                        };
+                            l.emit();
+                        });
+                    } else {
                         cx.struct_span_lint(PANIC_FMT, expn.call_site, |lint| {
                             let mut l = lint.build("Panic message contains a brace");
                             l.note("This message is not used as a format string, but will be in a future Rust version");
