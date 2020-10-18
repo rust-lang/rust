@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
             }
         });
 
-        if can_sugg {
+        if can_sugg && !suggs.is_empty() {
             span_lint_and_then(
                 cx,
                 UNNECESSARY_WRAP,
