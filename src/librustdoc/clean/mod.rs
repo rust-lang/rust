@@ -29,6 +29,7 @@ use rustc_span::{self, ExpnKind, Pos};
 use rustc_typeck::hir_ty_to_ty;
 
 use std::collections::hash_map::Entry;
+use std::collections::BTreeMap;
 use std::default::Default;
 use std::hash::Hash;
 use std::rc::Rc;
@@ -57,6 +58,12 @@ crate trait Clean<T> {
 impl<T: Clean<U>, U> Clean<Vec<U>> for [T] {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
+    }
+}
+
+impl<K, V: Clean<U>, U> Clean<Vec<U>> for BTreeMap<K, V> {
+    fn clean(&self, cx: &DocContext<'_>) -> Vec<U> {
+        self.values().map(|x| x.clean(cx)).collect()
     }
 }
 
@@ -221,6 +228,72 @@ impl Clean<ExternalCrate> for CrateNum {
     }
 }
 
+impl Clean<Item> for hir::Item<'_> {
+    fn clean(&self, _cx: &DocContext<'_>) -> Item {
+        unimplemented!()
+    }
+}
+
+impl Clean<Item> for hir::Crate<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> Item {
+        // TODO: use tcx.crate_name instead
+        let name = None;
+        let attrs = self.item.attrs.clean(cx);
+
+        // Get _all_ the items!
+        let mut items = self.items.clean(cx);
+        items.extend(self.exported_macros.clean(cx));
+        items.extend(self.trait_items.clean(cx));
+        items.extend(self.impl_items.clean(cx));
+        // NOTE: bodies intentionally skipped
+
+        items.extend(self.trait_impls.iter().flat_map(|(_trait, impls)| {
+            impls.into_iter().map(|&impl_| cx.tcx.hir().item(impl_).clean(cx))
+        }));
+        items.extend(self.modules.clean(cx).into_iter().flatten());
+        items.extend(self.proc_macros.iter().map(|hir_id| {
+            let _def_id = hir_id.owner.local_def_index;
+            // TODO: look how `rustc_metadata::rmeta::encoder` does this
+            unimplemented!()
+        }));
+
+        // determine if we should display the inner contents or
+        // the outer `mod` item for the source code.
+        // TODO: for the crate root, I think this should always be `self.item.span`?
+        let span = {
+            let sm = cx.sess().source_map();
+            let outer = sm.lookup_char_pos(self.item.span.lo());
+            let inner = sm.lookup_char_pos(self.item.module.inner.lo());
+            if outer.file.start_pos == inner.file.start_pos {
+                // mod foo { ... }
+                self.item.span
+            } else {
+                // mod foo; (and a separate SourceFile for the contents)
+                self.item.module.inner
+            }
+        };
+
+        let id = hir::CRATE_HIR_ID;
+        Item {
+            name,
+            attrs,
+            source: span.clean(cx),
+            visibility: Visibility::Public,
+            stability: cx.stability(id),
+            deprecation: cx.deprecation(id).clean(cx),
+            def_id: cx.tcx.hir().local_def_id(id).to_def_id(),
+            kind: ModuleItem(Module { is_crate: true, items }),
+        }
+    }
+}
+
+impl Clean<Vec<Item>> for hir::ModuleItems {
+    fn clean(&self, _cx: &DocContext<'_>) -> Vec<Item> {
+        unimplemented!()
+    }
+}
+
+/*
 impl Clean<Item> for doctree::Module<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         // maintain a stack of mod ids, for doc comment path resolution
@@ -276,6 +349,7 @@ impl Clean<Item> for doctree::Module<'_> {
         }
     }
 }
+*/
 
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &DocContext<'_>) -> Attributes {
@@ -718,7 +792,6 @@ impl Clean<Generics> for hir::Generics<'_> {
 impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> Generics {
         use self::WherePredicate as WP;
-        use std::collections::BTreeMap;
 
         let (gens, preds) = *self;
 
@@ -2280,24 +2353,9 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
     }
 }
 
-impl Clean<Item> for doctree::Macro {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_def_id_and_parts(
-            self.def_id,
-            Some(self.name),
-            MacroItem(Macro {
-                source: format!(
-                    "macro_rules! {} {{\n{}}}",
-                    self.name,
-                    self.matchers
-                        .iter()
-                        .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
-                        .collect::<String>()
-                ),
-                imported_from: self.imported_from.clean(cx),
-            }),
-            cx,
-        )
+impl Clean<Item> for hir::MacroDef<'_> {
+    fn clean(&self, _cx: &DocContext<'_>) -> Item {
+        unimplemented!()
     }
 }
 

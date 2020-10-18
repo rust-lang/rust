@@ -24,7 +24,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
 
     let krate = cx.tcx.hir().krate();
-    let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
+    //let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
 
     let mut r = cx.renderinfo.get_mut();
     r.deref_trait_did = cx.tcx.lang_items().deref_trait();
@@ -41,10 +41,10 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
-    let mut module = module.clean(cx);
+    let mut krate = krate.clean(cx);
     let mut masked_crates = FxHashSet::default();
 
-    match module.kind {
+    match krate.kind {
         ItemKind::ModuleItem(ref module) => {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
@@ -62,7 +62,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
     let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
     {
-        let m = match module.kind {
+        let m = match krate.kind {
             ItemKind::ModuleItem(ref mut m) => m,
             _ => unreachable!(),
         };
@@ -92,7 +92,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
         name,
         version: None,
         src,
-        module: Some(module),
+        module: Some(krate),
         externs,
         primitives,
         external_traits: cx.external_traits.clone(),
