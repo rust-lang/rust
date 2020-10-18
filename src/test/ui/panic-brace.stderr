@@ -1,0 +1,51 @@
+warning: Panic message contains a brace
+  --> $DIR/panic-brace.rs:5:5
+   |
+LL |     panic!("here's a brace: {");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(panic_fmt)]` on by default
+   = note: This message is not used as a format string, but will be in a future Rust version
+help: add a "{}" format string to use the message literally
+   |
+LL |     panic!("{}", "here's a brace: {");
+   |            ^^^^^
+
+warning: Panic message contains a brace
+  --> $DIR/panic-brace.rs:6:5
+   |
+LL |     std::panic!("another one: }");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: This message is not used as a format string, but will be in a future Rust version
+help: add a "{}" format string to use the message literally
+   |
+LL |     std::panic!("{}", "another one: }");
+   |                 ^^^^^
+
+warning: Panic message contains a brace
+  --> $DIR/panic-brace.rs:7:5
+   |
+LL |     core::panic!("Hello { { {");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: This message is not used as a format string, but will be in a future Rust version
+help: add a "{}" format string to use the message literally
+   |
+LL |     core::panic!("{}", "Hello { { {");
+   |                  ^^^^^
+
+warning: Panic message contains a brace
+  --> $DIR/panic-brace.rs:8:5
+   |
+LL |     assert!(false, "} } }...");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: This message is not used as a format string, but will be in a future Rust version
+help: add a "{}" format string to use the message literally
+   |
+LL |     assert!(false, "{}", "} } }...");
+   |                    ^^^^^
+
+warning: 4 warnings emitted
+
