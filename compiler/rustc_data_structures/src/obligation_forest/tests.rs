@@ -80,6 +80,13 @@ where
     type Obligation = O;
     type Error = E;
 
+    fn checked_process_obligation(
+        &mut self,
+        obligation: &mut Self::Obligation,
+    ) -> ProcessResult<Self::Obligation, Self::Error> {
+        (self.process_obligation)(obligation)
+    }
+
     fn process_obligation(
         &mut self,
         obligation: &mut Self::Obligation,

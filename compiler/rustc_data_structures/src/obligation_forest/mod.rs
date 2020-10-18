@@ -733,6 +733,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         // `for index in 0..self.nodes.len() { ... }` because the range would
         // be computed with the initial length, and we would miss the appended
         // nodes. Therefore we use a `while` loop.
+        let mut completed = vec![];
         loop {
             let mut i = 0;
             let mut made_progress_this_iteration = false;
@@ -826,10 +827,15 @@ impl<O: ForestObligation> ObligationForest<O> {
 
             self.mark_successes();
             self.process_cycles(processor);
-            self.compress(do_completed);
+            if let Some(mut c) = self.compress(do_completed) {
+                completed.append(&mut c);
+            }
         }
 
-        Some(Outcome { completed: None, errors })
+        Some(Outcome {
+            completed: if do_completed == DoCompleted::Yes { Some(completed) } else { None },
+            errors,
+        })
     }
 
     /// Checks which nodes have been unblocked since the last time this was called. All nodes that
