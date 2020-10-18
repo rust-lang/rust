@@ -694,23 +694,15 @@
         "interpolations": {
             "comment": "curly brace interpolations",
             "name": "meta.interpolation.rust",
-            "begin": "{",
-            "beginCaptures": {
-                "0": {
+            "match": "({)[^\"{}]*(})",
+            "captures": {
+                "1": {
+                    "name": "punctuation.definition.interpolation.rust"
+                },
+                "2": {
                     "name": "punctuation.definition.interpolation.rust"
                 }
-            },
-            "end": "}",
-            "endCaptures": {
-                "0": {
-                    "name": "punctuation.definition.interpolation.rust"
-                }
-            },
-            "patterns": [
-                {
-                    "include": "#interpolations"
-                }
-            ]
+            }
         },
         "lifetimes": {
             "patterns": [
