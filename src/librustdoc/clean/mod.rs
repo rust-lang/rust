@@ -2354,8 +2354,30 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
 }
 
 impl Clean<Item> for hir::MacroDef<'_> {
-    fn clean(&self, _cx: &DocContext<'_>) -> Item {
-        unimplemented!()
+    fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let tts: Vec<_> = self.ast.body.inner_tokens().trees().collect();
+        // Extract the spans of all matchers. They represent the "interface" of the macro.
+        let matchers = tts.chunks(4).map(|arm| arm[0].span());
+
+        Item {
+            name: Some(self.ident.name.to_string()), // TODO: this should store a Symbol
+            attrs: self.attrs.clean(cx),
+            source: self.span.clean(cx),
+            visibility: Public,
+            stability: cx.stability(self.hir_id),
+            deprecation: cx.deprecation(self.hir_id).clean(cx),
+            def_id: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
+            kind: MacroItem(Macro {
+                source: format!(
+                    "macro_rules! {} {{\n{}}}",
+                    self.ident.name,
+                    matchers
+                        .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
+                        .collect::<String>()
+                ),
+                imported_from: None,
+            }),
+        }
     }
 }
 
