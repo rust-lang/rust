@@ -32,8 +32,7 @@ use crate::utils::{
     is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath,
     match_trait_method, match_type, match_var, method_calls, method_chain_args, paths, remove_blocks, return_ty,
     single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty_depth,
-    SpanlessEq,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -2753,16 +2752,15 @@ fn lint_map_unwrap_or_else<'tcx>(
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
         let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
         if same_span && !multiline {
-            span_lint_and_note(
+            let var_snippet = snippet(cx, map_args[0].span, "..");
+            span_lint_and_sugg(
                 cx,
                 MAP_UNWRAP_OR,
                 expr.span,
                 msg,
-                None,
-                &format!(
-                    "replace `map({0}).unwrap_or_else({1})` with `map_or_else({1}, {0})`",
-                    map_snippet, unwrap_snippet,
-                ),
+                "try this",
+                format!("{}.map_or_else({}, {})", var_snippet, unwrap_snippet, map_snippet),
+                Applicability::MachineApplicable,
             );
             return true;
         } else if same_span && multiline {
@@ -2852,14 +2850,16 @@ fn lint_filter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, fil
                    `.find(..)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
+            let iter_snippet = snippet(cx, filter_args[0].span, "..");
             // add note if not multi-line
-            span_lint_and_note(
+            span_lint_and_sugg(
                 cx,
                 FILTER_NEXT,
                 expr.span,
                 msg,
-                None,
-                &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet),
+                "try this",
+                format!("{}.find({})", iter_snippet, filter_snippet),
+                Applicability::MachineApplicable,
             );
         } else {
             span_lint(cx, FILTER_NEXT, expr.span, msg);
@@ -2908,13 +2908,15 @@ fn lint_filter_map_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>,
                    `.find_map(..)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
-            span_lint_and_note(
+            let iter_snippet = snippet(cx, filter_args[0].span, "..");
+            span_lint_and_sugg(
                 cx,
                 FILTER_MAP_NEXT,
                 expr.span,
                 msg,
-                None,
-                &format!("replace `filter_map({0}).next()` with `find_map({0})`", filter_snippet),
+                "try this",
+                format!("{}.find_map({})", iter_snippet, filter_snippet),
+                Applicability::MachineApplicable,
             );
         } else {
             span_lint(cx, FILTER_MAP_NEXT, expr.span, msg);

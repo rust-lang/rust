@@ -109,9 +109,7 @@ LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
 LL | |         // Should lint even though this call is on a separate line.
 LL | |         .unwrap_or_else(|| 0);
-   | |_____________________________^
-   |
-   = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
+   | |_____________________________^ help: try this: `opt.map_or_else(|| 0, |x| x + 1)`
 
 error: called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling `map_or_else(<g>, <f>)` instead
   --> $DIR/map_unwrap_or.rs:55:13
@@ -137,25 +135,19 @@ error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be do
   --> $DIR/map_unwrap_or.rs:88:13
    |
 LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|e| 0); // should lint even though this call is on a separate line
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: replace `map(|x| x + 1).unwrap_or_else(|e| 0)` with `map_or_else(|e| 0, |x| x + 1)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `res.map_or_else(|e| 0, |x| x + 1)`
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling `.map_or_else(<g>, <f>)` instead
   --> $DIR/map_unwrap_or.rs:90:13
    |
 LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|e| 0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: replace `map(|x| x + 1).unwrap_or_else(|e| 0)` with `map_or_else(|e| 0, |x| x + 1)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `res.map_or_else(|e| 0, |x| x + 1)`
 
 error: called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling `.map_or_else(<g>, <f>)` instead
   --> $DIR/map_unwrap_or.rs:91:13
    |
 LL |     let _ = res.map(|x| x + 1).unwrap_or_else(|e| 0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: replace `map(|x| x + 1).unwrap_or_else(|e| 0)` with `map_or_else(|e| 0, |x| x + 1)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `res.map_or_else(|e| 0, |x| x + 1)`
 
 error: aborting due to 13 previous errors
 

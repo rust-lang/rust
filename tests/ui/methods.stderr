@@ -12,10 +12,9 @@ error: called `filter(..).next()` on an `Iterator`. This is more succinctly expr
   --> $DIR/methods.rs:126:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `v.iter().find(|&x| *x < 0)`
    |
    = note: `-D clippy::filter-next` implied by `-D warnings`
-   = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead.
   --> $DIR/methods.rs:129:13
