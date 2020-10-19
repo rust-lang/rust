@@ -1138,9 +1138,7 @@ impl<'a> State<'a> {
     fn print_expr_anon_const(&mut self, anon_const: &hir::AnonConst) {
         self.ibox(INDENT_UNIT);
         self.s.word_space("const");
-        self.s.word("{");
         self.print_anon_const(anon_const);
-        self.s.word("}");
         self.end()
     }
 
