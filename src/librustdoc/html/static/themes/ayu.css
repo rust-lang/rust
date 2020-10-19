@@ -219,7 +219,8 @@ a {
 }
 
 .docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
-.docblock-short a:not(.srclink):not(.test-arrow), .stability a {
+.docblock-short a:not(.srclink):not(.test-arrow), .stability a,
+#help a {
 	color: #39AFD7;
 }
 
@@ -273,6 +274,10 @@ a {
 	box-shadow: 0px 6px 20px 0px black;
 	border: none;
 	border-radius: 4px;
+}
+
+#help > div > span {
+	border-bottom-color: #5c6773;
 }
 
 .since {

@@ -1184,7 +1184,7 @@ impl Stdio {
     }
 
     /// This stream will be ignored. This is the equivalent of attaching the
-    /// stream to `/dev/null`
+    /// stream to `/dev/null`.
     ///
     /// # Examples
     ///

@@ -713,7 +713,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         R: Try<Ok = B>,
     {
         if self.is_empty() {
-            return Try::from_ok(init);
+            return try { init };
         }
 
         let mut accum = init;
@@ -731,7 +731,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             accum = f(accum, self.start.clone())?;
         }
 
-        Try::from_ok(accum)
+        try { accum }
     }
 
     #[inline]
@@ -818,7 +818,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         R: Try<Ok = B>,
     {
         if self.is_empty() {
-            return Try::from_ok(init);
+            return try { init };
         }
 
         let mut accum = init;
@@ -836,7 +836,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
             accum = f(accum, self.start.clone())?;
         }
 
-        Try::from_ok(accum)
+        try { accum }
     }
 
     #[inline]

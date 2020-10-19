@@ -303,7 +303,7 @@ where
             acc = iter.try_fold(acc, fold)?;
             self.iter = None;
         }
-        Try::from_ok(acc)
+        try { acc }
     }
 
     #[inline]
@@ -353,7 +353,7 @@ where
             acc = iter.try_rfold(acc, fold)?;
             self.iter = None;
         }
-        Try::from_ok(acc)
+        try { acc }
     }
 
     #[inline]

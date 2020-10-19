@@ -129,6 +129,7 @@
 #![feature(str_split_as_str)]
 #![feature(str_split_inclusive_as_str)]
 #![feature(transparent_unions)]
+#![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]
 #![cfg_attr(bootstrap, feature(untagged_unions))]
