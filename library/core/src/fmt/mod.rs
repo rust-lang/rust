@@ -1082,7 +1082,9 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
             // a string piece.
             for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
-                run(&mut formatter, arg, &args.args)?;
+                // SAFETY: arg and args.args come from the same Arguments,
+                // which guarantees the indexes are always within bounds.
+                unsafe { run(&mut formatter, arg, &args.args) }?;
                 idx += 1;
             }
         }
@@ -1096,25 +1098,36 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
+unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
     fmt.flags = arg.format.flags;
-    fmt.width = getcount(args, &arg.format.width);
-    fmt.precision = getcount(args, &arg.format.precision);
+    // SAFETY: arg and args come from the same Arguments,
+    // which guarantees the indexes are always within bounds.
+    unsafe {
+        fmt.width = getcount(args, &arg.format.width);
+        fmt.precision = getcount(args, &arg.format.precision);
+    }
 
     // Extract the correct argument
-    let value = args[arg.position];
+
+    // SAFETY: arg and args come from the same Arguments,
+    // which guarantees its index is always within bounds.
+    let value = unsafe { args.get_unchecked(arg.position) };
 
     // Then actually do some printing
     (value.formatter)(value.value, fmt)
 }
 
-fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
+unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
     match *cnt {
         rt::v1::Count::Is(n) => Some(n),
         rt::v1::Count::Implied => None,
-        rt::v1::Count::Param(i) => args[i].as_usize(),
+        rt::v1::Count::Param(i) => {
+            // SAFETY: cnt and args come from the same Arguments,
+            // which guarantees this index is always within bounds.
+            unsafe { args.get_unchecked(i).as_usize() }
+        }
     }
 }
 
