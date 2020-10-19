@@ -129,7 +129,9 @@ export async function createTask(runnable: ra.Runnable, config: Config): Promise
     }
 
     const args = [...runnable.args.cargoArgs]; // should be a copy!
-    args.push(...runnable.args.cargoExtraArgs); // Append user-specified cargo options.
+    if (runnable.args.cargoExtraArgs) {
+        args.push(...runnable.args.cargoExtraArgs); // Append user-specified cargo options.
+    }
     if (runnable.args.executableArgs.length > 0) {
         args.push('--', ...runnable.args.executableArgs);
     }
