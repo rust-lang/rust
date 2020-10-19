@@ -796,14 +796,22 @@ body.blur > :not(#help) {
 	clear: left;
 	display: block;
 }
+#help > div > span {
+	text-align: center;
+	display: block;
+	margin: 10px 0;
+	font-size: 18px;
+	border-bottom: 1px solid #ccc;
+	padding-bottom: 4px;
+	margin-bottom: 6px;
+}
 #help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }
 #help h1, #help h2 { margin-top: 0; }
 #help > div div {
 	width: 50%;
 	float: left;
-	padding: 20px;
-	padding-left: 17px;
+	padding: 0 20px 20px 17px;;
 }
 
 .stab {

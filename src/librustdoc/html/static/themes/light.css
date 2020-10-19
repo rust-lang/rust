@@ -175,7 +175,8 @@ a {
 }
 
 .docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
-.docblock-short a:not(.srclink):not(.test-arrow), .stability a {
+.docblock-short a:not(.srclink):not(.test-arrow), .stability a,
+#help a {
 	color: #3873AD;
 }
 
@@ -227,6 +228,10 @@ a.test-arrow {
 #help > div {
 	background: #e9e9e9;
 	border-color: #bfbfbf;
+}
+
+#help > div > span {
+	border-bottom-color: #bfbfbf;
 }
 
 .since {
