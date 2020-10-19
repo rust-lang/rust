@@ -207,25 +207,31 @@ class StdRefCellProvider:
         yield "borrow", self.borrow
 
 
-# Yields children (in a provider's sense of the word) for a tree headed by a node.
-# In particular, yields each key/value pair in the node and in any child nodes.
-def children_of_node(node_ptr, height):
+# Extracts leaf portion and edges array (if any) from a BoxedNode.
+def unbox_node(unique, height):
     def cast_to_internal(node):
         internal_type_name = node.type.target().name.replace("LeafNode", "InternalNode", 1)
         internal_type = lookup_type(internal_type_name)
         return node.cast(internal_type.pointer())
 
+    node_ptr = unwrap_unique_or_non_null(unique)
     leaf = node_ptr.dereference()
+    edges = cast_to_internal(node_ptr)["edges"] if height > 0 else None
+    return leaf, edges
+
+
+# Yields children (in a provider's sense of the word) for a tree headed by a BoxedNode.
+# In particular, yields each key/value pair in the node and in any child nodes.
+def children_of_node(leaf, edges, height):
     keys = leaf["keys"]
     vals = leaf["vals"]
-    edges = cast_to_internal(node_ptr)["edges"] if height > 0 else None
     length = leaf["len"]
 
     for i in xrange(0, length + 1):
         if height > 0:
             boxed_child_node = edges[i]["value"]["value"]
-            child_node = unwrap_unique_or_non_null(boxed_child_node["ptr"])
-            for child in children_of_node(child_node, height - 1):
+            child_leaf, child_edges = unbox_node(boxed_child_node["ptr"], height - 1)
+            for child in children_of_node(child_leaf, child_edges, height - 1):
                 yield child
         if i < length:
             # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
@@ -240,12 +246,30 @@ def children_of_map(map):
         root = map["root"]
         if root.type.name.startswith("core::option::Option<"):
             root = root.cast(gdb.lookup_type(root.type.name[21:-1]))
-        node_ptr = root["node"]
-        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
-            node_ptr = node_ptr["ptr"]
-        node_ptr = unwrap_unique_or_non_null(node_ptr)
-        height = root["height"]
-        for child in children_of_node(node_ptr, height):
+        if root.type.has_key("inner"):
+            root = root["inner"]
+            content = root[root.type.fields()[0]]
+            fields = content.type.fields()
+            discriminant = int(content[fields[0]]) + 1
+            variant = fields[discriminant]
+            root = content[variant]
+            node_ptr = unwrap_unique_or_non_null(root["node"])
+            node = node_ptr.dereference()
+            if variant.name == "Leaf":
+                height = 0
+                leaf = node
+                edges = None
+            else:
+                height = root["height"][ZERO_FIELD]  # unwrap NonZeroUsize
+                leaf = node["data"]
+                edges = node["edges"]
+        else:
+            height = root["height"]
+            unique = root["node"]
+            if unique.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+                unique = unique["ptr"]
+            leaf, edges = unbox_node(unique, height)
+        for child in children_of_node(leaf, edges, height):
             yield child
 
 
