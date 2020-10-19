@@ -116,6 +116,7 @@ Here are some useful self-diagnostic commands:
 * **Rust Analyzer: Show RA Version** shows the version of `rust-analyzer` binary.
 * **Rust Analyzer: Status** prints some statistics about the server, and dependency information for the current file.
 * To enable server-side logging, run with `env RA_LOG=info` and see `Output > Rust Analyzer Language Server` in VS Code's panel.
+* To log project loading (sysroot & `cargo metadata`), set `RA_LOG=project_model=debug`.
 * To log all LSP requests, add `"rust-analyzer.trace.server": "verbose"` to the settings and look for `Rust Analyzer Language Server Trace` in the panel.
 * To enable client-side logging, add `"rust-analyzer.trace.extension": true` to the settings and open `Output > Rust Analyzer Client` in the panel.
 
