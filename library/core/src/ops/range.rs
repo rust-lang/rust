@@ -495,7 +495,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
         Idx: PartialOrd<U>,
         U: ?Sized + PartialOrd<Idx>,
     {
-        !self.exhausted && <Self as RangeBounds<Idx>>::contains(self, item)
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
     /// Returns `true` if the range contains no items.
@@ -891,7 +891,13 @@ impl<T> RangeBounds<T> for RangeInclusive<T> {
         Included(&self.start)
     }
     fn end_bound(&self) -> Bound<&T> {
-        Included(&self.end)
+        if self.exhausted {
+            // When the iterator is exhausted, we usually have start == end,
+            // but we want the range to appear empty, containing nothing.
+            Excluded(&self.end)
+        } else {
+            Included(&self.end)
+        }
     }
 }
 
