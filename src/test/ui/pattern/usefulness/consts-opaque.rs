@@ -44,11 +44,13 @@ fn main() {
         //~^ ERROR unreachable pattern
     }
 
-    // FIXME: this causes an ICE (https://github.com/rust-lang/rust/issues/78071)
-    //match FOO_REF_REF {
-    //    FOO_REF_REF => {}
-    //    Foo(_) => {}
-    //}
+    // This used to cause an ICE (https://github.com/rust-lang/rust/issues/78071)
+    match FOO_REF_REF {
+        FOO_REF_REF => {}
+        //~^ WARNING must be annotated with `#[derive(PartialEq, Eq)]`
+        //~| WARNING this was previously accepted by the compiler but is being phased out
+        Foo(_) => {}
+    }
 
     match BAR {
         Bar => {}
