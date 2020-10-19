@@ -86,6 +86,13 @@ pub fn extract_rendered(output: &str) -> String {
             if line.starts_with('{') {
                 if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
                     diagnostic.rendered
+                } else if let Ok(report) = serde_json::from_str::<FutureIncompatReport>(line) {
+                    Some(format!("Future incompatibility report: {}",
+                            report.future_incompat_report.into_iter().map(|item| {
+                                format!("Future breakage date: {}, diagnostic:\n{}",
+                                        item.future_breakage_date.unwrap_or_else(|| "None".to_string()),
+                                        item.diagnostic.rendered.unwrap_or_else(|| "Not rendered".to_string()))
+                            }).collect::<String>()))
                 } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
                     // Ignore the notification.
                     None
@@ -105,14 +112,10 @@ pub fn extract_rendered(output: &str) -> String {
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
-    let lines = output.lines();
-    let last_line = lines.next_back();
-    lines.flat_map(|line| parse_line(file_name, line, output, proc_res, false)).chain(
-        last_line.into_iter().flat_map(|line| parse_line(file_name, line, output, proc_res, true))
-    ).collect()
+    output.lines().flat_map(|line| parse_line(file_name, line, output, proc_res)).collect()
 }
 
-fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes, last_line: bool) -> Vec<Error> {
+fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
     // The compiler sometimes intermingles non-JSON stuff into the
     // output.  This hack just skips over such lines. Yuck.
     if line.starts_with('{') {
