@@ -357,4 +357,15 @@ mod nested_elision_sites {
     }
 }
 
+mod issue6159 {
+    use std::ops::Deref;
+    pub fn apply_deref<'a, T, F, R>(x: &'a T, f: F) -> R
+    where
+        T: Deref,
+        F: FnOnce(&'a T::Target) -> R,
+    {
+        f(x.deref())
+    }
+}
+
 fn main() {}

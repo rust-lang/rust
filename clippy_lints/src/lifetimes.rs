@@ -414,7 +414,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereCl
                 let mut visitor = RefVisitor::new(cx);
                 // walk the type F, it may not contain LT refs
                 walk_ty(&mut visitor, &pred.bounded_ty);
-                if !visitor.lts.is_empty() {
+                if !visitor.all_lts().is_empty() {
                     return true;
                 }
                 // if the bounds define new lifetimes, they are fine to occur
@@ -424,7 +424,9 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereCl
                     walk_param_bound(&mut visitor, bound);
                 }
                 // and check that all lifetimes are allowed
-                return visitor.all_lts().iter().any(|it| !allowed_lts.contains(it));
+                if visitor.all_lts().iter().any(|it| !allowed_lts.contains(it)) {
+                    return true;
+                }
             },
             WherePredicate::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
