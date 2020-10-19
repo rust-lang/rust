@@ -94,22 +94,27 @@ pub fn extract_rendered(output: &str) -> String {
                 if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
                     diagnostic.rendered
                 } else if let Ok(report) = serde_json::from_str::<FutureIncompatReport>(line) {
-                    Some(format!(
-                        "Future incompatibility report: {}",
-                        report
-                            .future_incompat_report
-                            .into_iter()
-                            .map(|item| {
-                                format!(
-                                    "Future breakage date: {}, diagnostic:\n{}",
-                                    item.future_breakage_date.unwrap_or_else(|| "None".to_string()),
-                                    item.diagnostic
-                                        .rendered
-                                        .unwrap_or_else(|| "Not rendered".to_string())
-                                )
-                            })
-                            .collect::<String>()
-                    ))
+                    if report.future_incompat_report.is_empty() {
+                        None
+                    } else {
+                        Some(format!(
+                            "Future incompatibility report: {}",
+                            report
+                                .future_incompat_report
+                                .into_iter()
+                                .map(|item| {
+                                    format!(
+                                        "Future breakage date: {}, diagnostic:\n{}",
+                                        item.future_breakage_date
+                                            .unwrap_or_else(|| "None".to_string()),
+                                        item.diagnostic
+                                            .rendered
+                                            .unwrap_or_else(|| "Not rendered".to_string())
+                                    )
+                                })
+                                .collect::<String>()
+                        ))
+                    }
                 } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
                     // Ignore the notification.
                     None
