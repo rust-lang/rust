@@ -212,13 +212,13 @@ impl TyKind<'tcx> {
     }
 
     /// Get the article ("a" or "an") to use with this type.
-    ///
-    /// **Panics if `self` is [`TyKind::Error`].**
     pub fn article(&self) -> &'static str {
         match self {
             Int(_) | Float(_) | Array(_, _) => "an",
             Adt(def, _) if def.is_enum() => "an",
-            Error(_) => panic!(),
+            // This should never happen, but ICEing and causing the user's code
+            // to not compile felt too harsh.
+            Error(_) => "a",
             _ => "a",
         }
     }
