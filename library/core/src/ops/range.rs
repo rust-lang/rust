@@ -479,13 +479,23 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!(0.0..=f32::NAN).contains(&0.0));
     /// assert!(!(f32::NAN..=1.0).contains(&1.0));
     /// ```
+    ///
+    /// This method always returns `false` after iteration has finished:
+    ///
+    /// ```
+    /// let mut r = 3..=5;
+    /// assert!(r.contains(&3) && r.contains(&5));
+    /// for _ in r.by_ref() {}
+    /// // Precise field values are unspecified here
+    /// assert!(!r.contains(&3) && !r.contains(&5));
+    /// ```
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
         U: ?Sized + PartialOrd<Idx>,
     {
-        <Self as RangeBounds<Idx>>::contains(self, item)
+        !self.exhausted && <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
     /// Returns `true` if the range contains no items.
