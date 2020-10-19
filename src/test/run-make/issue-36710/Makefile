@@ -1,7 +1,6 @@
 include ../../run-make-fulldeps/tools.mk
 
-# ignore-wasm32
-# ignore-thumb
+# ignore-32bit wrong/no cross compiler and sometimes we pass wrong gcc args (-m64)
 
 all: foo
 	$(call RUN,foo)
