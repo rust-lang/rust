@@ -17,12 +17,10 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust,ignore
-    /// // example code where clippy issues a warning
     /// let x: &Option<&u32> = &Some(&0u32);
     /// ```
     /// Use instead:
     /// ```rust,ignore
-    /// // example code which does not raise clippy warning
     /// let x: Option<&u32> = Some(&0u32);
     /// ```
     pub REF_OPTION_REF,
