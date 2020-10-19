@@ -2,7 +2,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:7:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
+   |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
@@ -13,11 +13,13 @@ error[E0282]: type annotations needed
 LL |     |x| String::from("x".as_ref());
    |      ^ consider giving this closure parameter a type
 
-error[E0283]: type annotations needed
+error[E0283]: type annotations needed for `&T`
   --> $DIR/issue-72690.rs:15:17
    |
 LL |     let _ = "x".as_ref();
-   |                 ^^^^^^ cannot infer type for type `str`
+   |         -       ^^^^^^ cannot infer type for type parameter `T` declared on the trait `AsRef`
+   |         |
+   |         consider giving this pattern the explicit type `&T`, where the type parameter `T` is specified
    |
    = note: cannot satisfy `str: AsRef<_>`
 
@@ -25,7 +27,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:19:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
+   |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
@@ -34,7 +36,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:25:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
+   |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
@@ -43,41 +45,34 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:33:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
+   |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
 
-error[E0283]: type annotations needed for `String`
+error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:41:5
    |
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
-LL |     let _ = String::from("x");
-   |         - consider giving this pattern a type
+   |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
 
-error[E0283]: type annotations needed for `String`
+error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:47:5
    |
-LL |     let _ = String::from("x");
-   |         - consider giving this pattern a type
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
+   |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
 
-error[E0283]: type annotations needed for `String`
+error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:55:5
    |
-LL |     let _ = String::from("x");
-   |         - consider giving this pattern a type
-...
 LL |     String::from("x".as_ref());
-   |     ^^^^^^^^^^^^ cannot infer type for struct `String`
+   |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
