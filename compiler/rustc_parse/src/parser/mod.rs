@@ -548,7 +548,11 @@ impl<'a> Parser<'a> {
 
     fn check_inline_const(&mut self) -> bool {
         self.check_keyword(kw::Const)
-            && self.look_ahead(1, |t| t == &token::OpenDelim(DelimToken::Brace))
+            && self.look_ahead(1, |t| match t.kind {
+                token::Interpolated(ref nt) => matches!(**nt, token::NtBlock(..)),
+                token::OpenDelim(DelimToken::Brace) => true,
+                _ => false,
+            })
     }
 
     /// Checks to see if the next token is either `+` or `+=`.
