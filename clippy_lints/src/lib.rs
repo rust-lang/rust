@@ -906,8 +906,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
     // end register lints, do not remove this comment, it’s used in `update_lints`
 
-    store.register_late_pass(|| box await_holding_invalid::AwaitHoldingLock);
-    store.register_late_pass(|| box await_holding_invalid::AwaitHoldingRefCellRef);
+    store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
     store.register_late_pass(|| box serde_api::SerdeAPI);
     store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
     store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());

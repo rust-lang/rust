@@ -49,48 +49,6 @@ declare_clippy_lint! {
     "Inside an async function, holding a MutexGuard while calling await"
 }
 
-declare_lint_pass!(AwaitHoldingLock => [AWAIT_HOLDING_LOCK]);
-
-impl LateLintPass<'_> for AwaitHoldingLock {
-    fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
-        use AsyncGeneratorKind::{Block, Closure, Fn};
-        if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
-            let body_id = BodyId {
-                hir_id: body.value.hir_id,
-            };
-            let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-            let typeck_results = cx.tcx.typeck(def_id);
-            check_interior_types_lock(cx, &typeck_results.generator_interior_types, body.value.span);
-        }
-    }
-}
-
-fn check_interior_types_lock(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
-    for ty_cause in ty_causes {
-        if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
-            if is_mutex_guard(cx, adt.did) {
-                span_lint_and_note(
-                    cx,
-                    AWAIT_HOLDING_LOCK,
-                    ty_cause.span,
-                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.",
-                    ty_cause.scope_span.or(Some(span)),
-                    "these are all the await points this lock is held through",
-                );
-            }
-        }
-    }
-}
-
-fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    match_def_path(cx, def_id, &paths::MUTEX_GUARD)
-        || match_def_path(cx, def_id, &paths::RWLOCK_READ_GUARD)
-        || match_def_path(cx, def_id, &paths::RWLOCK_WRITE_GUARD)
-        || match_def_path(cx, def_id, &paths::PARKING_LOT_MUTEX_GUARD)
-        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_READ_GUARD)
-        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_WRITE_GUARD)
-}
-
 declare_clippy_lint! {
     /// **What it does:** Checks for calls to await while holding a
     /// `RefCell` `Ref` or `RefMut`.
@@ -130,9 +88,9 @@ declare_clippy_lint! {
     "Inside an async function, holding a RefCell ref while calling await"
 }
 
-declare_lint_pass!(AwaitHoldingRefCellRef => [AWAIT_HOLDING_REFCELL_REF]);
+declare_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF]);
 
-impl LateLintPass<'_> for AwaitHoldingRefCellRef {
+impl LateLintPass<'_> for AwaitHolding {
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
         use AsyncGeneratorKind::{Block, Closure, Fn};
         if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
@@ -141,14 +99,24 @@ impl LateLintPass<'_> for AwaitHoldingRefCellRef {
             };
             let def_id = cx.tcx.hir().body_owner_def_id(body_id);
             let typeck_results = cx.tcx.typeck(def_id);
-            check_interior_types_refcell(cx, &typeck_results.generator_interior_types, body.value.span);
+            check_interior_types(cx, &typeck_results.generator_interior_types, body.value.span);
         }
     }
 }
 
-fn check_interior_types_refcell(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
+fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
     for ty_cause in ty_causes {
         if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
+            if is_mutex_guard(cx, adt.did) {
+                span_lint_and_note(
+                    cx,
+                    AWAIT_HOLDING_LOCK,
+                    ty_cause.span,
+                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.",
+                    ty_cause.scope_span.or(Some(span)),
+                    "these are all the await points this lock is held through",
+                );
+            }
             if is_refcell_ref(cx, adt.did) {
                 span_lint_and_note(
                         cx,
@@ -161,6 +129,15 @@ fn check_interior_types_refcell(cx: &LateContext<'_>, ty_causes: &[GeneratorInte
             }
         }
     }
+}
+
+fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    match_def_path(cx, def_id, &paths::MUTEX_GUARD)
+        || match_def_path(cx, def_id, &paths::RWLOCK_READ_GUARD)
+        || match_def_path(cx, def_id, &paths::RWLOCK_WRITE_GUARD)
+        || match_def_path(cx, def_id, &paths::PARKING_LOT_MUTEX_GUARD)
+        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_READ_GUARD)
+        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_WRITE_GUARD)
 }
 
 fn is_refcell_ref(cx: &LateContext<'_>, def_id: DefId) -> bool {
