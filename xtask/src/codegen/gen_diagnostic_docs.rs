@@ -1,6 +1,6 @@
 //! Generates `assists.md` documentation.
 
-use std::{fmt, fs, path::PathBuf};
+use std::{fmt, path::PathBuf};
 
 use crate::{
     codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode, PREAMBLE},
@@ -8,8 +8,9 @@ use crate::{
 };
 
 pub fn generate_diagnostic_docs(mode: Mode) -> Result<()> {
-    let features = Diagnostic::collect()?;
-    let contents = features.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
+    let diagnostics = Diagnostic::collect()?;
+    let contents =
+        diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_diagnostic.adoc");
     codegen::update(&dst, &contents, mode)?;
@@ -33,7 +34,7 @@ impl Diagnostic {
         return Ok(res);
 
         fn collect_file(acc: &mut Vec<Diagnostic>, path: PathBuf) -> Result<()> {
-            let text = fs::read_to_string(&path)?;
+            let text = xshell::read_file(&path)?;
             let comment_blocks = extract_comment_blocks_with_empty_lines("Diagnostic", &text);
 
             for block in comment_blocks {

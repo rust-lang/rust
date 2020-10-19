@@ -1,6 +1,6 @@
 //! Generates `assists.md` documentation.
 
-use std::{fmt, fs, path::PathBuf};
+use std::{fmt, path::PathBuf};
 
 use crate::{
     codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode, PREAMBLE},
@@ -33,7 +33,7 @@ impl Feature {
         return Ok(res);
 
         fn collect_file(acc: &mut Vec<Feature>, path: PathBuf) -> Result<()> {
-            let text = fs::read_to_string(&path)?;
+            let text = xshell::read_file(&path)?;
             let comment_blocks = extract_comment_blocks_with_empty_lines("Feature", &text);
 
             for block in comment_blocks {
