@@ -27,37 +27,35 @@ pub fn expand_assert<'cx>(
     // context to pick up whichever is currently in scope.
     let sp = cx.with_call_site_ctxt(sp);
 
-    let panic_call = {
-        if let Some(tokens) = custom_message {
-            // Pass the custom message to panic!().
-            cx.expr(
-                sp,
-                ExprKind::MacCall(MacCall {
-                    path: Path::from_ident(Ident::new(sym::panic, sp)),
-                    args: P(MacArgs::Delimited(
-                        DelimSpan::from_single(sp),
-                        MacDelimiter::Parenthesis,
-                        tokens,
-                    )),
-                    prior_type_ascription: None,
-                }),
-            )
-        } else {
-            // Pass our own message directly to $crate::panicking::panic(),
-            // because it might contain `{` and `}` that should always be
-            // passed literally.
-            cx.expr_call_global(
-                sp,
-                cx.std_path(&[sym::panicking, sym::panic]),
-                vec![cx.expr_str(
-                    DUMMY_SP,
-                    Symbol::intern(&format!(
-                        "assertion failed: {}",
-                        pprust::expr_to_string(&cond_expr).escape_debug()
-                    )),
-                )],
-            )
-        }
+    let panic_call = if let Some(tokens) = custom_message {
+        // Pass the custom message to panic!().
+        cx.expr(
+            sp,
+            ExprKind::MacCall(MacCall {
+                path: Path::from_ident(Ident::new(sym::panic, sp)),
+                args: P(MacArgs::Delimited(
+                    DelimSpan::from_single(sp),
+                    MacDelimiter::Parenthesis,
+                    tokens,
+                )),
+                prior_type_ascription: None,
+            }),
+        )
+    } else {
+        // Pass our own message directly to $crate::panicking::panic(),
+        // because it might contain `{` and `}` that should always be
+        // passed literally.
+        cx.expr_call_global(
+            sp,
+            cx.std_path(&[sym::panicking, sym::panic]),
+            vec![cx.expr_str(
+                DUMMY_SP,
+                Symbol::intern(&format!(
+                    "assertion failed: {}",
+                    pprust::expr_to_string(&cond_expr).escape_debug()
+                )),
+            )],
+        )
     };
     let if_expr =
         cx.expr_if(sp, cx.expr(sp, ExprKind::Unary(UnOp::Not, cond_expr)), panic_call, None);
