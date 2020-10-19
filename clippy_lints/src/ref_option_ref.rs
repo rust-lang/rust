@@ -1,4 +1,4 @@
-use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint_and_sugg};
+use crate::utils::{last_path_segment, snippet, span_lint_and_sugg};
 use rustc_hir::{GenericArg, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -12,7 +12,8 @@ declare_clippy_lint! {
     /// **Why is this bad?** Since `&` is Copy, it's useless to have a
     /// reference on `Option<&T>`.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** It may be irrevelent to use this lint on
+    /// public API code as it will make a breaking change to apply it.
     ///
     /// **Example:**
     ///
