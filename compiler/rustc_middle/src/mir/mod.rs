@@ -821,9 +821,6 @@ pub struct LocalDecl<'tcx> {
     /// flag drop flags to avoid triggering this check as they are introduced
     /// after typeck.
     ///
-    /// Unsafety checking will also ignore dereferences of these locals,
-    /// so they can be used for raw pointers only used in a desugaring.
-    ///
     /// This should be sound because the drop flags are fully algebraic, and
     /// therefore don't affect the OIBIT or outlives properties of the
     /// generator.
