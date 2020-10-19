@@ -23,7 +23,7 @@ use crate::slice::index::{
 ///
 /// ```compile_fail,E0277
 /// for i in .. {
-///    // ...
+///     // ...
 /// }
 /// ```
 ///
@@ -31,12 +31,12 @@ use crate::slice::index::{
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);  // RangeFull
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]); // This is the `RangeFull`
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -56,22 +56,26 @@ impl fmt::Debug for RangeFull {
 /// A (half-open) range bounded inclusively below and exclusively above
 /// (`start..end`).
 ///
-/// The `Range` `start..end` contains all values with `x >= start` and
-/// `x < end`. It is empty unless `start < end`.
+/// The range `start..end` contains all values with `start <= x < end`.
+/// It is empty if `start >= end`.
 ///
 /// # Examples
+///
+/// The `start..end` syntax is a `Range`:
 ///
 /// ```
 /// assert_eq!((3..5), std::ops::Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..6).sum());
+/// ```
 ///
+/// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);  // Range
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]); // This is a `Range`
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 #[lang = "Range"]
 #[doc(alias = "..")]
@@ -164,17 +168,21 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// # Examples
 ///
+/// The `start..` syntax is a `RangeFrom`:
+///
 /// ```
 /// assert_eq!((2..), std::ops::RangeFrom { start: 2 });
 /// assert_eq!(2 + 3 + 4, (2..).take(3).sum());
+/// ```
 ///
+/// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);  // RangeFrom
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]); // This is a `RangeFrom`
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 #[lang = "RangeFrom"]
 #[doc(alias = "..")]
@@ -248,12 +256,12 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);  // RangeTo
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]); // This is a `RangeTo`
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -314,17 +322,21 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///
 /// # Examples
 ///
+/// The `start..=end` syntax is a `RangeInclusive`:
+///
 /// ```
 /// assert_eq!((3..=5), std::ops::RangeInclusive::new(3, 5));
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
+/// ```
 ///
+/// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]); // This is a `RangeInclusive`
 /// ```
 #[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
@@ -538,12 +550,12 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);  // RangeToInclusive
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]); // This is a `RangeToInclusive`
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -665,9 +677,9 @@ impl<T: Clone> Bound<&T> {
     }
 }
 
-#[stable(feature = "collections_range", since = "1.28.0")]
 /// `RangeBounds` is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
+#[stable(feature = "collections_range", since = "1.28.0")]
 pub trait RangeBounds<T: ?Sized> {
     /// Start index bound.
     ///
