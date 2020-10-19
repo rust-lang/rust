@@ -250,10 +250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             let mut scope_var_ids =
                 self.guard_bindings.pop().expect("should have pushed at least one earlier");
             for var_id in scope_var_ids.drain(..) {
-                assert!(
-                    self.guard_bindings_set.remove(&var_id),
-                    "variable should be placed in scope earlier"
-                );
+                self.guard_bindings_set.remove(&var_id);
             }
         }
         self.visit_expr(body);
