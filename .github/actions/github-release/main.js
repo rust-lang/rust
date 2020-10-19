@@ -70,6 +70,7 @@ async function runOnce() {
     repo,
     name,
     tag_name: name,
+    target_commitish: sha,
     prerelease: name === 'nightly',
   });
 
