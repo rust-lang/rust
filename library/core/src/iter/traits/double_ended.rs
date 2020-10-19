@@ -224,7 +224,7 @@ pub trait DoubleEndedIterator: Iterator {
         while let Some(x) = self.next_back() {
             accum = f(accum, x)?;
         }
-        Try::from_ok(accum)
+        try { accum }
     }
 
     /// An iterator method that reduces the iterator's elements to a single,

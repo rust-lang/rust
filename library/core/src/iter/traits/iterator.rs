@@ -1887,7 +1887,7 @@ pub trait Iterator {
         while let Some(x) = self.next() {
             accum = f(accum, x)?;
         }
-        Try::from_ok(accum)
+        try { accum }
     }
 
     /// An iterator method that applies a fallible function to each item in the
