@@ -79,16 +79,16 @@ jobs:
       with:
         node-version: 12.x
 
-    - run: echo "::set-env name=TAG::$(date --iso --utc)"
+    - run: echo "TAG=$(date --iso --utc)" >> $GITHUB_ENV
       if: github.ref == 'refs/heads/release'
-    - run: echo "::set-env name=TAG::nightly"
+    - run: echo "TAG=nightly" >> $GITHUB_ENV
       if: github.ref != 'refs/heads/release'
     - run: 'echo "TAG: $TAG"'
 
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - run: echo "::set-env name=HEAD_SHA::$(git rev-parse HEAD)"
+    - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
     - run: 'echo "HEAD_SHA: $HEAD_SHA"'
 
     - uses: actions/download-artifact@v1
