@@ -48,7 +48,20 @@ fn enforce_trait_manually_implementable(
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
 
-    // Disallow *all* explicit impls of `DiscriminantKind`, `Sized` and `Unsize` for now.
+    // Disallow *all* explicit impls of `Pointee`, `DiscriminantKind`, `Sized` and `Unsize` for now.
+    if did == li.pointee_trait() {
+        let span = impl_header_span(tcx, impl_def_id);
+        struct_span_err!(
+            tcx.sess,
+            span,
+            E0322,
+            "explicit impls for the `Pointee` trait are not permitted"
+        )
+        .span_label(span, "impl of 'Pointee' not allowed")
+        .emit();
+        return;
+    }
+
     if did == li.discriminant_kind_trait() {
         let span = impl_header_span(tcx, impl_def_id);
         struct_span_err!(

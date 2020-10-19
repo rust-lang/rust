@@ -133,6 +133,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(str_split_as_str)]
 #![feature(str_split_inclusive_as_str)]
+#![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]

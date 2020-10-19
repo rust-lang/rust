@@ -476,6 +476,9 @@ pub enum ImplSource<'tcx, N> {
     /// ImplSource for a builtin `DeterminantKind` trait implementation.
     DiscriminantKind(ImplSourceDiscriminantKindData),
 
+    /// ImplSource for a builtin `Pointee` trait implementation.
+    Pointee(ImplSourcePointeeData),
+
     /// ImplSource automatically generated for a generator.
     Generator(ImplSourceGeneratorData<'tcx, N>),
 
@@ -494,7 +497,8 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Generator(c) => c.nested,
             ImplSource::Object(d) => d.nested,
             ImplSource::FnPointer(d) => d.nested,
-            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData) => Vec::new(),
+            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
+            | ImplSource::Pointee(ImplSourcePointeeData) => Vec::new(),
             ImplSource::TraitAlias(d) => d.nested,
         }
     }
@@ -509,7 +513,8 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Generator(c) => &c.nested[..],
             ImplSource::Object(d) => &d.nested[..],
             ImplSource::FnPointer(d) => &d.nested[..],
-            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData) => &[],
+            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
+            | ImplSource::Pointee(ImplSourcePointeeData) => &[],
             ImplSource::TraitAlias(d) => &d.nested[..],
         }
     }
@@ -553,6 +558,9 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             }),
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData) => {
                 ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
+            }
+            ImplSource::Pointee(ImplSourcePointeeData) => {
+                ImplSource::Pointee(ImplSourcePointeeData)
             }
             ImplSource::TraitAlias(d) => ImplSource::TraitAlias(ImplSourceTraitAliasData {
                 alias_def_id: d.alias_def_id,
@@ -631,6 +639,9 @@ pub struct ImplSourceFnPointerData<'tcx, N> {
 // FIXME(@lcnr): This should be  refactored and merged with other builtin vtables.
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct ImplSourceDiscriminantKindData;
+
+#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+pub struct ImplSourcePointeeData;
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceTraitAliasData<'tcx, N> {

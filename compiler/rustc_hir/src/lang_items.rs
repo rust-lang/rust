@@ -201,6 +201,10 @@ language_item_table! {
     // The associated item of `trait DiscriminantKind`.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy;
 
+    PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait;
+    Metadata,                sym::metadata_type,       metadata_type,              Target::AssocTy;
+    DynMetadata,             sym::dyn_metadata,        dyn_metadata,               Target::Struct;
+
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait;
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait;

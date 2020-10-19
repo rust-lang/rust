@@ -1318,8 +1318,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let is_global =
             |cand: &ty::PolyTraitRef<'_>| cand.is_global() && !cand.has_late_bound_regions();
 
-        // (*) Prefer `BuiltinCandidate { has_nested: false }` and `DiscriminantKindCandidate`
-        // to anything else.
+        // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
+        // and `DiscriminantKindCandidate` to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
@@ -1332,8 +1332,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // (*)
-            (BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate, _) => true,
-            (_, BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate) => false,
+            (
+                BuiltinCandidate { has_nested: false }
+                | DiscriminantKindCandidate
+                | PointeeCandidate,
+                _,
+            ) => true,
+            (
+                _,
+                BuiltinCandidate { has_nested: false }
+                | DiscriminantKindCandidate
+                | PointeeCandidate,
+            ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 if other.value == victim.value && victim.constness == Constness::NotConst {

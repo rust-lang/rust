@@ -82,6 +82,12 @@ pub use crate::intrinsics::copy;
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
+#[cfg(not(bootstrap))]
+mod metadata;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
+pub use metadata::{metadata, DynMetadata, Pointee, Thin};
+
 mod non_null;
 #[stable(feature = "nonnull", since = "1.25.0")]
 pub use non_null::NonNull;
