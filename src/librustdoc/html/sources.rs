@@ -8,7 +8,7 @@ use crate::html::layout;
 use crate::html::render::{SharedContext, BASIC_KEYWORDS};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileName;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
@@ -84,7 +84,7 @@ impl<'a> SourceCollector<'a> {
         };
 
         // Remove the utf-8 BOM if any
-        if contents.starts_with("\u{feff}") {
+        if contents.starts_with('\u{feff}') {
             contents.drain(..3);
         }
 
@@ -99,16 +99,15 @@ impl<'a> SourceCollector<'a> {
             href.push('/');
         });
         self.scx.ensure_dir(&cur)?;
-        let mut fname = p.file_name().expect("source has no filename").to_os_string();
-        fname.push(".html");
+
+        let src_fname =
+            String::from(p.file_name().expect("source has no filename").to_string_lossy());
+        let fname = OsString::from(src_fname.clone() + ".html");
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let title = format!(
-            "{} -- source",
-            cur.file_name().expect("failed to get file name").to_string_lossy()
-        );
-        let desc = format!("Source to the Rust file `{}`.", filename);
+        let title = format!("{} – source", src_fname,);
+        let desc = format!("Source of the Rust file `{}`.", filename);
         let page = layout::Page {
             title: &title,
             css_class: "source",
