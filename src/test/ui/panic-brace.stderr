@@ -1,35 +1,35 @@
-warning: Panic message contains a brace
+warning: panic message contains a brace
   --> $DIR/panic-brace.rs:5:5
    |
 LL |     panic!("here's a brace: {");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(panic_fmt)]` on by default
-   = note: This message is not used as a format string, but will be in a future Rust version
+   = note: this message is not used as a format string, but will be in a future Rust version
 help: add a "{}" format string to use the message literally
    |
 LL |     panic!("{}", "here's a brace: {");
    |            ^^^^^
 
-warning: Panic message contains a brace
+warning: panic message contains a brace
   --> $DIR/panic-brace.rs:6:5
    |
 LL |     std::panic!("another one: }");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: This message is not used as a format string, but will be in a future Rust version
+   = note: this message is not used as a format string, but will be in a future Rust version
 help: add a "{}" format string to use the message literally
    |
 LL |     std::panic!("{}", "another one: }");
    |                 ^^^^^
 
-warning: Panic message contains an unused formatting placeholder
+warning: panic message contains an unused formatting placeholder
   --> $DIR/panic-brace.rs:7:18
    |
 LL |     core::panic!("Hello {}");
    |                  ^^^^^^^^^^
    |
-   = note: This message is not used as a format string when given without arguments, but will be in a future Rust version
+   = note: this message is not used as a format string when given without arguments, but will be in a future Rust version
 help: add the missing argument(s)
    |
 LL |     core::panic!("Hello {}", argument);
@@ -39,13 +39,13 @@ help: or add a "{}" format string to use the message literally
 LL |     core::panic!("{}", "Hello {}");
    |                  ^^^^^
 
-warning: Panic message contains an unused formatting placeholder
+warning: panic message contains an unused formatting placeholder
   --> $DIR/panic-brace.rs:8:20
    |
 LL |     assert!(false, "{:03x} bla");
    |                    ^^^^^^^^^^^^
    |
-   = note: This message is not used as a format string when given without arguments, but will be in a future Rust version
+   = note: this message is not used as a format string when given without arguments, but will be in a future Rust version
 help: add the missing argument(s)
    |
 LL |     assert!(false, "{:03x} bla", argument);
@@ -55,13 +55,13 @@ help: or add a "{}" format string to use the message literally
 LL |     assert!(false, "{}", "{:03x} bla");
    |                    ^^^^^
 
-warning: Panic message contains a brace
+warning: panic message contains a brace
   --> $DIR/panic-brace.rs:9:5
    |
 LL |     debug_assert!(false, "{{}} bla");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: This message is not used as a format string, but will be in a future Rust version
+   = note: this message is not used as a format string, but will be in a future Rust version
 help: add a "{}" format string to use the message literally
    |
 LL |     debug_assert!(false, "{}", "{{}} bla");

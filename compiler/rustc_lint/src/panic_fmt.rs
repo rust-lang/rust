@@ -72,8 +72,8 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                     }
                     if looks_like_placeholder {
                         cx.struct_span_lint(PANIC_FMT, arg.span.source_callsite(), |lint| {
-                            let mut l = lint.build("Panic message contains an unused formatting placeholder");
-                            l.note("This message is not used as a format string when given without arguments, but will be in a future Rust version");
+                            let mut l = lint.build("panic message contains an unused formatting placeholder");
+                            l.note("this message is not used as a format string when given without arguments, but will be in a future Rust version");
                             if expn.call_site.contains(arg.span) {
                                 l.span_suggestion(
                                     arg.span.shrink_to_hi(),
@@ -92,8 +92,8 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                         });
                     } else {
                         cx.struct_span_lint(PANIC_FMT, expn.call_site, |lint| {
-                            let mut l = lint.build("Panic message contains a brace");
-                            l.note("This message is not used as a format string, but will be in a future Rust version");
+                            let mut l = lint.build("panic message contains a brace");
+                            l.note("this message is not used as a format string, but will be in a future Rust version");
                             if expn.call_site.contains(arg.span) {
                                 l.span_suggestion(
                                     arg.span.shrink_to_lo(),
