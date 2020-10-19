@@ -2529,17 +2529,69 @@ fn specialize_one_pattern<'p, 'tcx>(
     pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    is_its_own_ctor: bool, // Whether `ctor` is known to be derived from `pat`
+    is_its_own_ctor: bool, // Whether `constructor` is known to be derived from `pat`
 ) -> Option<Fields<'p, 'tcx>> {
-    if let NonExhaustive = constructor {
-        // Only a wildcard pattern can match the special extra constructor.
-        if !pat.is_wildcard() {
-            return None;
-        }
-        return Some(Fields::empty());
+    if pat.is_wildcard() {
+        return Some(ctor_wild_subpatterns.clone());
     }
 
-    if let Opaque = constructor {
+    let ty = pat.ty;
+    // `unwrap` is safe because `pat` is not a wildcard.
+    let pat_ctor = pat_constructor(cx.tcx, cx.param_env, pat).unwrap();
+
+    let result = match (constructor, &pat_ctor, pat.kind.as_ref()) {
+        (Single, Single, PatKind::Leaf { subpatterns }) => {
+            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
+        }
+        (Single, Single, PatKind::Deref { subpattern }) => {
+            Some(Fields::from_single_pattern(subpattern))
+        }
+        (Variant(_), Variant(_), _) if constructor != &pat_ctor => None,
+        (Variant(_), Variant(_), PatKind::Variant { subpatterns, .. }) => {
+            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
+        }
+
+        (IntRange(ctor_range), IntRange(pat_range), _) => {
+            ctor_range.intersection(cx.tcx, &pat_range)?;
+            // Constructor splitting should ensure that all intersections we encounter
+            // are actually inclusions.
+            assert!(ctor_range.is_subrange(&pat_range));
+            Some(Fields::empty())
+        }
+        (FloatRange(ctor_from, ctor_to, ctor_end), FloatRange(pat_from, pat_to, pat_end), _) => {
+            let to = compare_const_vals(cx.tcx, ctor_to, pat_to, cx.param_env, ty)?;
+            let from = compare_const_vals(cx.tcx, ctor_from, pat_from, cx.param_env, ty)?;
+            let intersects = (from == Ordering::Greater || from == Ordering::Equal)
+                && (to == Ordering::Less || (pat_end == ctor_end && to == Ordering::Equal));
+            if intersects { Some(Fields::empty()) } else { None }
+        }
+        (Str(ctor_val), Str(pat_val), _) => {
+            // FIXME: there's probably a more direct way of comparing for equality
+            let comparison = compare_const_vals(cx.tcx, ctor_val, pat_val, cx.param_env, ty)?;
+            if comparison == Ordering::Equal { Some(Fields::empty()) } else { None }
+        }
+
+        (Slice(ctor_slice), Slice(pat_slice), _)
+            if !pat_slice.pattern_kind().covers_length(ctor_slice.arity()) =>
+        {
+            None
+        }
+        (
+            Slice(ctor_slice),
+            Slice(_),
+            PatKind::Array { prefix, suffix, .. } | PatKind::Slice { prefix, suffix, .. },
+        ) => {
+            // Number of subpatterns for the constructor
+            let ctor_arity = ctor_slice.arity();
+
+            // Replace the prefix and the suffix with the given patterns, leaving wildcards in
+            // the middle if there was a subslice pattern `..`.
+            let prefix = prefix.iter().enumerate();
+            let suffix =
+                suffix.iter().enumerate().map(|(i, p)| (ctor_arity as usize - suffix.len() + i, p));
+            Some(ctor_wild_subpatterns.replace_fields_indexed(prefix.chain(suffix)))
+        }
+
         // Only a wildcard pattern can match an opaque constant, unless we're specializing the
         // value against its own constructor. That happens when we call
         // `v.specialize_constructor(ctor)` with `ctor` obtained from `pat_constructor(v.head())`.
@@ -2559,109 +2611,23 @@ fn specialize_one_pattern<'p, 'tcx>(
         //     (FOO, false) => {}
         // }
         // ```
-        if is_its_own_ctor || pat.is_wildcard() {
-            return Some(Fields::empty());
-        } else {
-            return None;
-        }
-    }
+        (Opaque, Opaque, _) if is_its_own_ctor => Some(Fields::empty()),
+        // We are trying to inspect an opaque constant. Thus we skip the row.
+        (Opaque, _, _) | (_, Opaque, _) => None,
+        // Only a wildcard pattern can match the special extra constructor.
+        (NonExhaustive, _, _) => None,
 
-    let result = match *pat.kind {
-        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
-
-        PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.clone()),
-
-        PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
-            let variant = &adt_def.variants[variant_index];
-            if constructor != &Variant(variant.def_id) {
-                return None;
-            }
-            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
-        }
-
-        PatKind::Leaf { ref subpatterns } => {
-            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
-        }
-
-        PatKind::Deref { ref subpattern } => Some(Fields::from_single_pattern(subpattern)),
-
-        PatKind::Constant { .. } | PatKind::Range { .. } => {
-            match constructor {
-                IntRange(ctor) => {
-                    let pat = IntRange::from_pat(cx.tcx, cx.param_env, pat)?;
-                    ctor.intersection(cx.tcx, &pat)?;
-                    // Constructor splitting should ensure that all intersections we encounter
-                    // are actually inclusions.
-                    assert!(ctor.is_subrange(&pat));
-                }
-                FloatRange(ctor_from, ctor_to, ctor_end) => {
-                    let (pat_from, pat_to, pat_end, ty) = match *pat.kind {
-                        PatKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-                        PatKind::Range(PatRange { lo, hi, end }) => (lo, hi, end, lo.ty),
-                        _ => unreachable!(), // This is ensured by the branch we're in
-                    };
-                    let to = compare_const_vals(cx.tcx, ctor_to, pat_to, cx.param_env, ty)?;
-                    let from = compare_const_vals(cx.tcx, ctor_from, pat_from, cx.param_env, ty)?;
-                    let intersects = (from == Ordering::Greater || from == Ordering::Equal)
-                        && (to == Ordering::Less
-                            || (pat_end == *ctor_end && to == Ordering::Equal));
-                    if !intersects {
-                        return None;
-                    }
-                }
-                Str(ctor_value) => {
-                    let pat_value = match *pat.kind {
-                        PatKind::Constant { value } => value,
-                        _ => span_bug!(
-                            pat.span,
-                            "unexpected range pattern {:?} for constant value ctor",
-                            pat
-                        ),
-                    };
-
-                    // FIXME: there's probably a more direct way of comparing for equality
-                    if compare_const_vals(cx.tcx, ctor_value, pat_value, cx.param_env, pat.ty)?
-                        != Ordering::Equal
-                    {
-                        return None;
-                    }
-                }
-                _ => {
-                    // If we reach here, we must be trying to inspect an opaque constant. Thus we skip
-                    // the row.
-                    return None;
-                }
-            }
-            Some(Fields::empty())
-        }
-
-        PatKind::Array { ref prefix, ref slice, ref suffix }
-        | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
-            Slice(_) => {
-                // Number of subpatterns for this pattern
-                let pat_len = prefix.len() + suffix.len();
-                // Number of subpatterns for this constructor
-                let arity = ctor_wild_subpatterns.len();
-
-                if (slice.is_none() && arity != pat_len) || pat_len > arity {
-                    return None;
-                }
-
-                // Replace the prefix and the suffix with the given patterns, leaving wildcards in
-                // the middle if there was a subslice pattern `..`.
-                let prefix = prefix.iter().enumerate();
-                let suffix = suffix.iter().enumerate().map(|(i, p)| (arity - suffix.len() + i, p));
-                Some(ctor_wild_subpatterns.replace_fields_indexed(prefix.chain(suffix)))
-            }
-            _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
-        },
-
-        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
+        _ => bug!("trying to specialize pattern {:?} with constructor {:?}", pat, constructor),
     };
+
     debug!(
         "specialize({:#?}, {:#?}, {:#?}) = {:#?}",
         pat, constructor, ctor_wild_subpatterns, result
     );
+
+    if let Some(fields) = &result {
+        debug_assert_eq!(fields.len(), ctor_wild_subpatterns.len());
+    }
 
     result
 }
