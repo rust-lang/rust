@@ -228,9 +228,47 @@ impl Clean<ExternalCrate> for CrateNum {
     }
 }
 
+/*
+impl Clean<ItemEnum> for hir::ItemKind<'_> {
+    fn clean(&self, _cx: &DocContext<'_>) -> ItemEnum {
+        match self {
+            ExternalCrate(name) => 
+        }
+    }
+}
+*/
+
 impl Clean<Item> for hir::Item<'_> {
-    fn clean(&self, _cx: &DocContext<'_>) -> Item {
-        unimplemented!()
+    fn clean(&self, cx: &DocContext<'_>) -> Item {
+        use hir::ItemKind;
+
+        let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
+        let name = cx.tcx.item_name(def_id).clean(cx);
+        let inner = match self.kind {
+            // TODO: should store Symbol, not String
+            ItemKind::ExternCrate(renamed) => ExternCrateItem(name.clone(), renamed.clean(cx)),
+            ItemKind::Use(path, kind) => {
+                unimplemented!()
+            }
+                /*
+                ImportItem(Import {
+                kind: kind.clean(cx),
+                source: path.clean(cx),
+            }),
+            */
+            _ => unimplemented!(),
+        };
+
+        Item {
+            def_id,
+            inner,
+            name: Some(name),
+            source: cx.tcx.def_span(def_id).clean(cx),
+            attrs: self.attrs.clean(cx), // should this use tcx.attrs instead?
+            visibility: self.vis.clean(cx), // TODO: use tcx.visibility once #78077 lands
+            stability: cx.tcx.lookup_stability(def_id).copied(),
+            deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
+        }
     }
 }
 
