@@ -52,7 +52,14 @@ https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
         let path = changelog_dir.join(format!("{}-changelog-{}.adoc", today, changelog_n));
         write_file(&path, &contents)?;
 
-        for &adoc in ["manual.adoc", "generated_features.adoc", "generated_assists.adoc"].iter() {
+        for &adoc in [
+            "manual.adoc",
+            "generated_features.adoc",
+            "generated_assists.adoc",
+            "generated_diagnostic.adoc",
+        ]
+        .iter()
+        {
             let src = project_root().join("./docs/user/").join(adoc);
             let dst = website_root.join(adoc);
             cp(src, dst)?;
