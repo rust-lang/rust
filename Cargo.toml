@@ -31,16 +31,14 @@ path = "src/driver.rs"
 # begin automatic update
 clippy_lints = { version = "0.0.212", path = "clippy_lints" }
 # end automatic update
-semver = "0.10"
+semver = "0.11"
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util"}
 tempfile = { version = "3.1.0", optional = true }
-lazy_static = "1.0"
 
 [dev-dependencies]
-cargo_metadata = "0.11.1"
+cargo_metadata = "0.12"
 compiletest_rs = { version = "0.5.0", features = ["tmp"] }
 tester = "0.7"
-lazy_static = "1.0"
 clippy-mini-macro-test = { version = "0.2", path = "mini-macro" }
 serde = { version = "1.0", features = ["derive"] }
 derive-new = "0.5"

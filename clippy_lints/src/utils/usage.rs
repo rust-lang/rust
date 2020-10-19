@@ -1,10 +1,11 @@
+use crate::utils;
 use crate::utils::match_var;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, HirId, Path};
+use rustc_hir::{Expr, ExprKind, HirId, Path};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
@@ -173,4 +174,51 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
     }
+}
+
+struct ReturnBreakContinueMacroVisitor {
+    seen_return_break_continue: bool,
+}
+
+impl ReturnBreakContinueMacroVisitor {
+    fn new() -> ReturnBreakContinueMacroVisitor {
+        ReturnBreakContinueMacroVisitor {
+            seen_return_break_continue: false,
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
+    type Map = Map<'tcx>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+        if self.seen_return_break_continue {
+            // No need to look farther if we've already seen one of them
+            return;
+        }
+        match &ex.kind {
+            ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => {
+                self.seen_return_break_continue = true;
+            },
+            // Something special could be done here to handle while or for loop
+            // desugaring, as this will detect a break if there's a while loop
+            // or a for loop inside the expression.
+            _ => {
+                if utils::in_macro(ex.span) {
+                    self.seen_return_break_continue = true;
+                } else {
+                    rustc_hir::intravisit::walk_expr(self, ex);
+                }
+            },
+        }
+    }
+}
+
+pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
+    let mut recursive_visitor = ReturnBreakContinueMacroVisitor::new();
+    recursive_visitor.visit_expr(expression);
+    recursive_visitor.seen_return_break_continue
 }
