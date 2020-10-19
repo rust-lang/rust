@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// let x: Option<&u32> = Some(&0u32);
     /// ```
     pub REF_OPTION_REF,
-    style,
+    pedantic,
     "use `Option<&T>` instead of `&Option<&T>`"
 }
 
