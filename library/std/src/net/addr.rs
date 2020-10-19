@@ -364,6 +364,7 @@ impl SocketAddrV6 {
                 sin6_addr: *ip.as_inner(),
                 sin6_flowinfo: flowinfo,
                 sin6_scope_id: scope_id,
+                ..unsafe { mem::zeroed() }
             },
         }
     }
