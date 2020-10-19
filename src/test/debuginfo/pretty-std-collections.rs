@@ -101,7 +101,7 @@ fn main() {
         btree_set.insert(i);
     }
 
-    let mut empty_btree_set: BTreeSet<i32> = BTreeSet::new();
+    let empty_btree_set: BTreeSet<i32> = BTreeSet::new();
 
     // BTreeMap
     let mut btree_map = BTreeMap::new();
@@ -109,7 +109,7 @@ fn main() {
         btree_map.insert(i, i);
     }
 
-    let mut empty_btree_map: BTreeMap<i32, u32> = BTreeMap::new();
+    let empty_btree_map: BTreeMap<i32, u32> = BTreeMap::new();
 
     let mut option_btree_map: BTreeMap<bool, Option<bool>> = BTreeMap::new();
     option_btree_map.insert(false, None);

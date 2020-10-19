@@ -1418,7 +1418,7 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     fn into_iter(self) -> IntoIter<K, V> {
         let mut me = ManuallyDrop::new(self);
         if let Some(root) = me.root.take() {
-            let (f, b) = root.into_ref().full_range();
+            let (f, b) = root.full_range();
 
             IntoIter { front: Some(f), back: Some(b), length: me.length }
         } else {

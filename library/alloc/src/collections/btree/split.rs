@@ -9,7 +9,7 @@ impl<K, V> Root<K, V> {
         K: Borrow<Q>,
     {
         debug_assert!(right_root.height() == 0);
-        debug_assert!(right_root.node_as_ref().len() == 0);
+        debug_assert!(right_root.len() == 0);
 
         let left_root = self;
         for _ in 0..left_root.height() {
@@ -48,7 +48,7 @@ impl<K, V> Root<K, V> {
 
     /// Removes empty levels on the top, but keeps an empty leaf if the entire tree is empty.
     fn fix_top(&mut self) {
-        while self.height() > 0 && self.node_as_ref().len() == 0 {
+        while self.height() > 0 && self.len() == 0 {
             self.pop_internal_level();
         }
     }
