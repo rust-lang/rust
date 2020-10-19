@@ -1007,13 +1007,13 @@ impl<'tcx> LocalDecl<'tcx> {
     }
 
     /// Returns `Some` if this is a reference to a static item that is used to
-    /// access that static
+    /// access that static.
     pub fn is_ref_to_static(&self) -> bool {
         matches!(self.local_info, Some(box LocalInfo::StaticRef { .. }))
     }
 
-    /// Returns `Some` if this is a reference to a static item that is used to
-    /// access that static
+    /// Returns `Some` if this is a reference to a thread-local static item that is used to
+    /// access that static.
     pub fn is_ref_to_thread_local(&self) -> bool {
         match self.local_info {
             Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
