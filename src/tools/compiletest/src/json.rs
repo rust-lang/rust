@@ -79,6 +79,12 @@ struct DiagnosticCode {
     explanation: Option<String>,
 }
 
+pub fn rustfix_diagnostics_only(output: &str) -> String {
+    output.lines().filter(|line| {
+        line.starts_with('{') && serde_json::from_str::<Diagnostic>(line).is_ok()
+    }).collect()
+}
+
 pub fn extract_rendered(output: &str) -> String {
     output
         .lines()
@@ -126,11 +132,17 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
                 expected_errors
             }
             Err(error) => {
-                proc_res.fatal(Some(&format!(
-                    "failed to decode compiler output as json: \
-                     `{}`\nline: {}\noutput: {}",
-                    error, line, output
-                )));
+                // Ignore the future compat report message - this is handled
+                // by `extract_rendered`
+                if serde_json::from_str::<FutureIncompatReport>(line).is_ok() {
+                    vec![]
+                } else {
+                    proc_res.fatal(Some(&format!(
+                        "failed to decode compiler output as json: \
+                         `{}`\nline: {}\noutput: {}",
+                        error, line, output
+                    )));
+                }
             }
         }
     } else {

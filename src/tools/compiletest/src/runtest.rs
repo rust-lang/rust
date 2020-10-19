@@ -2978,6 +2978,7 @@ impl<'test> TestCx<'test> {
         self.prune_duplicate_outputs(&modes_to_prune);
 
         let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
+        let rustfix_input = json::rustfix_diagnostics_only(&proc_res.stderr);
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
@@ -2988,7 +2989,7 @@ impl<'test> TestCx<'test> {
             // This will return an empty `Vec` in case the executed test file has a
             // `compile-flags: --error-format=xxxx` header with a value other than `json`.
             let suggestions = get_suggestions_from_json(
-                &proc_res.stderr,
+                &rustfix_input,
                 &HashSet::new(),
                 Filter::MachineApplicableOnly,
             )
@@ -3015,7 +3016,7 @@ impl<'test> TestCx<'test> {
             // Apply suggestions from rustc to the code itself
             let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file).unwrap();
             let suggestions = get_suggestions_from_json(
-                &proc_res.stderr,
+                &rustfix_input,
                 &HashSet::new(),
                 if self.props.rustfix_only_machine_applicable {
                     Filter::MachineApplicableOnly
