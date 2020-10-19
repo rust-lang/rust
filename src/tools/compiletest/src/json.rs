@@ -38,13 +38,13 @@ struct DiagnosticSpan {
 
 #[derive(Deserialize)]
 struct FutureIncompatReport {
-    future_incompat_report: Vec<FutureBreakageItem>
+    future_incompat_report: Vec<FutureBreakageItem>,
 }
 
 #[derive(Deserialize)]
 struct FutureBreakageItem {
     future_breakage_date: Option<String>,
-    diagnostic: Diagnostic
+    diagnostic: Diagnostic,
 }
 
 impl DiagnosticSpan {
@@ -80,9 +80,10 @@ struct DiagnosticCode {
 }
 
 pub fn rustfix_diagnostics_only(output: &str) -> String {
-    output.lines().filter(|line| {
-        line.starts_with('{') && serde_json::from_str::<Diagnostic>(line).is_ok()
-    }).collect()
+    output
+        .lines()
+        .filter(|line| line.starts_with('{') && serde_json::from_str::<Diagnostic>(line).is_ok())
+        .collect()
 }
 
 pub fn extract_rendered(output: &str) -> String {
@@ -93,12 +94,22 @@ pub fn extract_rendered(output: &str) -> String {
                 if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
                     diagnostic.rendered
                 } else if let Ok(report) = serde_json::from_str::<FutureIncompatReport>(line) {
-                    Some(format!("Future incompatibility report: {}",
-                            report.future_incompat_report.into_iter().map(|item| {
-                                format!("Future breakage date: {}, diagnostic:\n{}",
-                                        item.future_breakage_date.unwrap_or_else(|| "None".to_string()),
-                                        item.diagnostic.rendered.unwrap_or_else(|| "Not rendered".to_string()))
-                            }).collect::<String>()))
+                    Some(format!(
+                        "Future incompatibility report: {}",
+                        report
+                            .future_incompat_report
+                            .into_iter()
+                            .map(|item| {
+                                format!(
+                                    "Future breakage date: {}, diagnostic:\n{}",
+                                    item.future_breakage_date.unwrap_or_else(|| "None".to_string()),
+                                    item.diagnostic
+                                        .rendered
+                                        .unwrap_or_else(|| "Not rendered".to_string())
+                                )
+                            })
+                            .collect::<String>()
+                    ))
                 } else if serde_json::from_str::<ArtifactNotification>(line).is_ok() {
                     // Ignore the notification.
                     None

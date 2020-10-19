@@ -1,6 +1,6 @@
 // run-pass
 // run-rustfix
-// compiler-flags: -Z emit-future-compat-report
+// compile-flags: -Z emit-future-incompat-report
 
 fn main() {
     let small = [1, 2];
@@ -56,4 +56,7 @@ fn main() {
     (&small as &[_]).into_iter();
     small[..].into_iter();
     std::iter::IntoIterator::into_iter(&[1, 2]);
+
+    #[allow(array_into_iter)]
+    [0, 1].into_iter();
 }
