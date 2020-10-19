@@ -53,8 +53,8 @@ enum LR_NonZero {
 fn test_panic_msg<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
     let err = panic::catch_unwind(op).err();
     assert_eq!(
-        err.as_ref().and_then(|a| a.downcast_ref::<String>()).map(|s| &**s),
-        Some(msg)
+        err.as_ref().and_then(|a| a.downcast_ref::<&str>()),
+        Some(&msg)
     );
 }
 
