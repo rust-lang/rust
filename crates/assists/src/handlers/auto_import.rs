@@ -6,7 +6,7 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
-// Feature: Import Insertion
+// Feature: Auto Import
 //
 // Using the `auto-import` assist it is possible to insert missing imports for unresolved items.
 // When inserting an import it will do so in a structured manner by keeping imports grouped,
