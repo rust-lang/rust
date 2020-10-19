@@ -119,15 +119,11 @@ struct BoxedNode<K, V> {
 }
 
 impl<K, V> BoxedNode<K, V> {
-    fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Box::into_unique(node) }
+    fn from_owned(mut node: NonNull<LeafNode<K, V>>) -> Self {
+        BoxedNode { ptr: unsafe { Unique::new_unchecked(node.as_mut()) } }
     }
 
-    fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::from(&mut Box::leak(node).data) }
-    }
-
-    fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
+    fn as_nonnull(&self) -> NonNull<LeafNode<K, V>> {
         NonNull::from(self.ptr)
     }
 }
@@ -135,58 +131,59 @@ impl<K, V> BoxedNode<K, V> {
 /// An owned tree.
 ///
 /// Note that this does not have a destructor, and must be cleaned up manually.
-pub struct Root<K, V> {
-    node: BoxedNode<K, V>,
-    /// The number of levels below the root node.
-    height: usize,
-}
+pub type Root<K, V> = NodeRef<marker::Owned, K, V, marker::LeafOrInternal>;
 
 unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
 unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
 
 impl<K, V> Root<K, V> {
-    /// Returns the number of levels below the root.
-    pub fn height(&self) -> usize {
-        self.height
-    }
-
     /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
-        Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
+        Self::from_leaf(Box::new(unsafe { LeafNode::new() }))
     }
 
-    /// Borrows and returns an immutable reference to the node owned by the root.
+    fn from_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
+        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
+    }
+
+    fn from_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
+        NodeRef { height, node: NonNull::from(&mut Box::leak(internal).data), _marker: PhantomData }
+    }
+
+    /// Reborrows the owned node as an immutable reference.
     pub fn node_as_ref(&self) -> NodeRef<marker::Immut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Borrows and returns a mutable reference to the node owned by the root.
+    /// Reborrows the owned node as a mutable reference.
     pub fn node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Borrows and returns a mutable reference to the leaf node owned by the root.
+    /// Reborrows the owned leaf node as a mutable reference.
     /// # Safety
     /// The root node is a leaf.
     unsafe fn leaf_node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Leaf> {
         debug_assert!(self.height == 0);
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Borrows and returns a mutable reference to the internal node owned by the root.
+    /// Reborrows the owned internal node as a mutable reference.
     /// # Safety
     /// The root node is not a leaf.
     unsafe fn internal_node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         debug_assert!(self.height > 0);
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
+    /// Reborrows the owned internal node as a slightly mutable reference.
     pub fn node_as_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    pub fn into_ref(self) -> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+    /// Narrows the type-specific node reference to a type-agnostic pointer.
+    fn into_boxed_node(self) -> BoxedNode<K, V> {
+        BoxedNode::from_owned(self.node)
     }
 
     /// Adds a new internal node with a single edge pointing to the previous root node,
@@ -194,10 +191,11 @@ impl<K, V> Root<K, V> {
     /// and is the opposite of `pop_internal_level`.
     pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].write(unsafe { ptr::read(&mut self.node) });
-
-        self.node = BoxedNode::from_internal(new_node);
-        self.height += 1;
+        let new_height = self.height + 1;
+        super::mem::take_mut(self, |root| {
+            new_node.edges[0].write(root.into_boxed_node());
+            Root::from_internal(new_node, new_height)
+        });
 
         unsafe {
             let mut ret = self.internal_node_as_mut();
@@ -218,15 +216,14 @@ impl<K, V> Root<K, V> {
     pub fn pop_internal_level(&mut self) {
         assert!(self.height > 0);
 
-        let top = self.node.ptr;
+        let top = self.node;
 
-        let mut internal_node = unsafe { self.internal_node_as_mut() };
-        self.node = unsafe { internal_node.as_internal_mut().edges[0].assume_init_read() };
-        self.height -= 1;
+        let internal_node = NodeRef { height: self.height, node: self.node, _marker: PhantomData };
+        *self = internal_node.first_edge().descend();
         self.node_as_mut().as_leaf_mut().parent = None;
 
         unsafe {
-            Global.dealloc(NonNull::from(top).cast(), Layout::new::<InternalNode<K, V>>());
+            Global.dealloc(top.cast(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -368,6 +365,10 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
 }
 
 impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
+    fn from_boxed_node(edge: BoxedNode<K, V>, height: usize) -> Self {
+        NodeRef { height, node: edge.as_nonnull(), _marker: PhantomData }
+    }
+
     /// Finds the parent of the current node. Returns `Ok(handle)` if the current
     /// node actually has a parent, where `handle` points to the edge of the parent
     /// that points to the current node. Returns `Err(self)` if the current node has
@@ -650,7 +651,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         unsafe {
             ptr::write(self.key_mut_at(idx), key);
             ptr::write(self.val_mut_at(idx), val);
-            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).write(edge.node);
+            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).write(edge.into_boxed_node());
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
         }
     }
@@ -664,7 +665,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
             slice_insert(self.vals_mut(), 0, val);
-            slice_insert(self.edges_mut(), 0, edge.node);
+            slice_insert(self.edges_mut(), 0, edge.into_boxed_node());
         }
 
         self.as_leaf_mut().len += 1;
@@ -688,10 +689,10 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(internal) => {
-                    let edge = ptr::read(internal.edge_at(idx + 1));
-                    let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.node_as_mut().as_leaf_mut().parent = None;
-                    Some(new_root)
+                    let boxed_node = ptr::read(internal.edge_at(idx + 1));
+                    let mut edge = Root::from_boxed_node(boxed_node, internal.height - 1);
+                    edge.node_as_mut().as_leaf_mut().parent = None;
+                    Some(edge)
                 }
             };
 
@@ -714,13 +715,13 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(mut internal) => {
-                    let edge = slice_remove(internal.edges_mut(), 0);
-                    let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.node_as_mut().as_leaf_mut().parent = None;
+                    let boxed_node = slice_remove(internal.edges_mut(), 0);
+                    let mut edge = Root::from_boxed_node(boxed_node, internal.height - 1);
+                    edge.node_as_mut().as_leaf_mut().parent = None;
 
                     internal.correct_childrens_parent_links(0..old_len);
 
-                    Some(new_root)
+                    Some(edge)
                 }
             };
 
@@ -984,7 +985,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         unsafe {
             slice_insert(self.node.keys_mut(), self.idx, key);
             slice_insert(self.node.vals_mut(), self.idx, val);
-            slice_insert(self.node.edges_mut(), self.idx + 1, edge.node);
+            slice_insert(self.node.edges_mut(), self.idx + 1, edge.into_boxed_node());
             self.node.as_leaf_mut().len += 1;
 
             self.node.correct_childrens_parent_links((self.idx + 1)..=self.node.len());
@@ -1074,11 +1075,10 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
         // reference (Rust issue #73987) and invalidate any other references
         // to or inside the array, should any be around.
         let internal_node = self.node.as_internal_ptr();
-        NodeRef {
-            height: self.node.height - 1,
-            node: unsafe { (&*(*internal_node).edges.get_unchecked(self.idx).as_ptr()).as_ptr() },
-            _marker: PhantomData,
-        }
+        NodeRef::from_boxed_node(
+            unsafe { (*internal_node).edges.get_unchecked(self.idx).assume_init_read() },
+            self.node.height - 1,
+        )
     }
 }
 
@@ -1163,7 +1163,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
 
             let (k, v) = self.split_leaf_data(&mut new_node);
 
-            let right = Root { node: BoxedNode::from_leaf(new_node), height: 0 };
+            let right = Root::from_leaf(new_node);
             (self.node, k, v, right)
         }
     }
@@ -1215,7 +1215,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             let (k, v) = self.split_leaf_data(&mut new_node.data);
 
             let height = self.node.height;
-            let mut right = Root { node: BoxedNode::from_internal(new_node), height };
+            let mut right = Root::from_internal(new_node, height);
 
             right.internal_node_as_mut().correct_childrens_parent_links(0..=new_len);
 
