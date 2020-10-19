@@ -315,7 +315,13 @@ impl<'a> Parser<'a> {
             PatKind::Box(pat)
         } else if self.check_inline_const() {
             // Parse `const pat`
-            PatKind::Lit(self.parse_const_block(lo.to(self.token.span))?)
+            let const_expr = self.parse_const_block(lo.to(self.token.span))?;
+
+            if let Some(re) = self.parse_range_end() {
+                self.parse_pat_range_begin_with(const_expr, re)?
+            } else {
+                PatKind::Lit(const_expr)
+            }
         } else if self.can_be_ident_pat() {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,
@@ -716,17 +722,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Is the token `dist` away from the current suitable as the start of a range patterns end?
-    fn is_pat_range_end_start(&self, dist: usize) -> bool {
-        self.look_ahead(dist, |t| {
-            t.is_path_start() // e.g. `MY_CONST`;
+    fn is_pat_range_end_start(&mut self, dist: usize) -> bool {
+        self.check_inline_const()
+            || self.look_ahead(dist, |t| {
+                t.is_path_start() // e.g. `MY_CONST`;
                 || t.kind == token::Dot // e.g. `.5` for recovery;
                 || t.can_begin_literal_maybe_minus() // e.g. `42`.
                 || t.is_whole_expr()
-        })
+            })
     }
 
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
-        if self.check_path() {
+        if self.check_inline_const() {
+            self.parse_const_block(self.token.span)
+        } else if self.check_path() {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
