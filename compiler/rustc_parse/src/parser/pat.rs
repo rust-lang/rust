@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
             let pat = self.parse_pat_with_range_pat(false, None)?;
             self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_token.span));
             PatKind::Box(pat)
-        } else if self.check_inline_const() {
+        } else if self.check_inline_const(0) {
             // Parse `const pat`
             let const_expr = self.parse_const_block(lo.to(self.token.span))?;
 
@@ -722,8 +722,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Is the token `dist` away from the current suitable as the start of a range patterns end?
-    fn is_pat_range_end_start(&mut self, dist: usize) -> bool {
-        self.check_inline_const()
+    fn is_pat_range_end_start(&self, dist: usize) -> bool {
+        self.check_inline_const(dist)
             || self.look_ahead(dist, |t| {
                 t.is_path_start() // e.g. `MY_CONST`;
                 || t.kind == token::Dot // e.g. `.5` for recovery;
@@ -733,7 +733,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
-        if self.check_inline_const() {
+        if self.check_inline_const(0) {
             self.parse_const_block(self.token.span)
         } else if self.check_path() {
             let lo = self.token.span;
