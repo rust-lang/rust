@@ -102,6 +102,22 @@ static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
   return false;
 }
 
+const char* KnownInactiveFunctions[] = {
+  "__assert_fail",
+  "__cxa_guard_acquire",  "__cxa_guard_release",
+  "__cxa_guard_abort", "printf", "puts",
+  "__enzyme_float", "__enzyme_double", "__enzyme_integer", "__enzyme_pointer",
+  "__kmpc_for_static_init_4", "__kmpc_for_static_init_4u",
+  "__kmpc_for_static_init_8", "__kmpc_for_static_init_8u",
+  "__kmpc_for_static_fini",
+  "__kmpc_dispatch_init_4", "__kmpc_dispatch_init_4u", 
+  "__kmpc_dispatch_init_8", "__kmpc_dispatch_init_8u", 
+  "__kmpc_dispatch_next_4", "__kmpc_dispatch_next_4u",
+  "__kmpc_dispatch_next_8", "__kmpc_dispatch_next_8u",
+  "__kmpc_dispatch_fini_4", "__kmpc_dispatch_fini_4u",
+  "__kmpc_dispatch_fini_8", "__kmpc_dispatch_fini_8u",
+};
+
 /// Is the use of value val as an argument of call CI known to be inactive
 /// This tool can only be used when in DOWN mode
 bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
@@ -116,12 +132,12 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
 
   // Allocations, deallocations, and c++ guards don't impact the activity
   // of arguments
-  if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI) ||
-      Name == "__cxa_guard_acquire" || Name == "__cxa_guard_release" ||
-      Name == "__cxa_guard_abort" || Name == "printf" || Name == "puts" ||
-      Name == "__enzyme_float" || Name == "__enzyme_double" ||
-      Name == "__enzyme_integer" || Name == "__enzyme_pointer")
+  if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI))
     return true;
+  for(auto FuncName : KnownInactiveFunctions) {
+    if (Name == FuncName)
+      return true;
+  }
 
   /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive use
   if (F->getIntrinsicID() == Intrinsic::memset && CI->getArgOperand(0) != val &&
@@ -1033,16 +1049,16 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
   // Calls to print/assert/cxa guard are definitionally inactive
   if (auto op = dyn_cast<CallInst>(inst)) {
     if (auto called = op->getCalledFunction()) {
-      if (called->getName() == "printf" || called->getName() == "puts" ||
-          called->getName() == "__assert_fail" || called->getName() == "free" ||
-          called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
-          called->getName() == "__cxa_guard_acquire" ||
-          called->getName() == "__cxa_guard_release" ||
-          called->getName() == "__cxa_guard_abort" ||
-          called->getName() == "__enzyme_float" || called->getName() == "__enzyme_double" ||
-          called->getName() == "__enzyme_integer" || called->getName() == "__enzyme_pointer") {
+      if (called->getName() == "free" ||
+          called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm") {
         return true;
       }
+
+      for(auto FuncName : KnownInactiveFunctions) {
+        if (called->getName() == FuncName)
+          return true;
+      }
+
       // If requesting emptty unknown functions to be considered inactive, abide
       // by those rules
       if (!isCertainPrintMallocOrFree(called) && called->empty() &&

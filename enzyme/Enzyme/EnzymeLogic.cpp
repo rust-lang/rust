@@ -1042,7 +1042,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
         pair.second.clear();
     }
   }
-
+  assert(constant_args.size() == todiff->getFunctionType()->getNumParams());
   using CacheKey = std::tuple<Function *, DIFFE_TYPE /*retType*/,
                              std::vector<DIFFE_TYPE> /*constant_args*/,
                              std::map<Argument *, bool> /*uncacheable_args*/,
@@ -1189,6 +1189,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     auto in_arg = todiff->arg_begin();
     auto pp_arg = gutils->oldFunc->arg_begin();
     for (; pp_arg != gutils->oldFunc->arg_end();) {
+      assert(_uncacheable_args.find(in_arg) != _uncacheable_args.end());
       _uncacheable_argsPP[pp_arg] = _uncacheable_args.find(in_arg)->second;
       ++pp_arg;
       ++in_arg;

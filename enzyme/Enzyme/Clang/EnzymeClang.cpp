@@ -26,11 +26,17 @@
 
 #include "../Enzyme.h"
 
+#include "llvm/LinkAllPasses.h"
+
 using namespace llvm;
 
 // This function is of type PassManagerBuilder::ExtensionFn
 static void loadPass(const PassManagerBuilder &Builder, legacy::PassManagerBase &PM) {
   PM.add(createEnzymePass(/*PostOpt*/true));
+  PM.add(createGVNPass());
+  PM.add(createSROAPass());
+  PM.add(createLoopDeletionPass());
+  //PM.add(SimplifyCFGPass());
 }
 
 // These constructors add our pass to a list of global extensions.

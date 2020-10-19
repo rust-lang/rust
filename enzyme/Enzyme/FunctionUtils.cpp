@@ -172,6 +172,22 @@ static bool IsFunctionRecursive(Function *F) {
   return Results[F] == DefinitelyRecursive;
 }
 
+static inline bool OnlyUsedInOMP(AllocaInst* AI) {
+  bool ompUse = false;
+  for(auto U : AI->users()) {
+    if (isa<StoreInst>(U)) continue;
+    if (auto CI = dyn_cast<CallInst>(U)) {
+      if (auto F = CI->getCalledFunction()) {
+        if (F->getName() == "__kmpc_for_static_init_4") {
+          ompUse = true;
+        }
+      }
+    }
+  }
+
+  if (!ompUse) return false;
+  return true;
+}
 /// Convert necessary stack allocations into mallocs for use in the reverse
 /// pass. Specifically if we're not topLevel all allocations must be upgraded
 /// Even if topLevel any allocations that aren't in the entry block (and
@@ -184,6 +200,7 @@ static inline void UpgradeAllocasToMallocs(Function* NewF, bool topLevel) {
       if (auto AI = dyn_cast<AllocaInst>(&I)) {
         bool UsableEverywhere = AI->getParent() == &NewF->getEntryBlock();
         // TODO use is_value_needed_in_reverse (requiring GradientUtils)
+        if (OnlyUsedInOMP(AI)) continue;
         if (!UsableEverywhere || !topLevel) {
           ToConvert.push_back(AI);
         }

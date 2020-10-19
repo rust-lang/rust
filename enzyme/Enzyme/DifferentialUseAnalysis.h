@@ -84,6 +84,14 @@ bool is_value_needed_in_reverse(
         return seen[idx] = true;
       }
 
+      if (auto CI = dyn_cast<CallInst>(use)) {
+        if (auto F = CI->getCalledFunction()) {
+          if (F->getName() == "__kmpc_for_static_init_4") {
+            return seen[idx] = true;
+          }
+        }
+      }
+
       if (is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel, seen)) {
         return seen[idx] = true;
       }

@@ -639,11 +639,14 @@ static const Loop *PickMostRelevantLoop(const Loop *A, const Loop *B,
 /// getRelevantLoop - Get the most relevant loop associated with the given
 /// expression, according to PickMostRelevantLoop.
 const Loop *fake::SCEVExpander::getRelevantLoop(const SCEV *S) {
+  assert(S);
   // Test whether we've already computed the most relevant loop for this SCEV.
   auto Pair = RelevantLoops.insert(std::make_pair(S, nullptr));
+  if (!S) return nullptr;
   if (!Pair.second)
     return Pair.first->second;
 
+  assert(S);
   if (isa<SCEVConstant>(S))
     // A constant has no relevant loops.
     return nullptr;
@@ -717,8 +720,10 @@ Value *fake::SCEVExpander::visitAddExpr(const SCEVAddExpr *S) {
   // to form more involved GEPs.
   SmallVector<std::pair<const Loop *, const SCEV *>, 8> OpsAndLoops;
   for (std::reverse_iterator<SCEVAddExpr::op_iterator> I(S->op_end()),
-       E(S->op_begin()); I != E; ++I)
+       E(S->op_begin()); I != E; ++I) {
+         assert(*I);
     OpsAndLoops.push_back(std::make_pair(getRelevantLoop(*I), *I));
+  }
 
   // Sort by loop. Use a stable sort so that constants follow non-constants and
   // pointer operands precede non-pointer operands.

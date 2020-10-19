@@ -179,6 +179,19 @@ public:
   void visitFCmpInst(llvm::FCmpInst &I) { eraseIfUnused(I); }
 
   void visitLoadInst(llvm::LoadInst &LI) {
+    // If a load of an omp init argument, don't cache for reverse
+    // and don't do any adjoint propagation (assumed integral)
+    for(auto U : LI.getPointerOperand()->users()) {
+      if (auto CI = dyn_cast<CallInst>(U)) {
+        if (auto F = CI->getCalledFunction()) {
+          if (F->getName() == "__kmpc_for_static_init_4") {
+            eraseIfUnused(LI);
+            return;
+          }
+        }
+      }
+    }
+
     bool constantval = gutils->isConstantValue(&LI);
 #if LLVM_VERSION_MAJOR >= 10
     auto alignment = LI.getAlign();
@@ -337,6 +350,18 @@ public:
     Value *orig_val = SI.getValueOperand();
     Value *val = gutils->getNewFromOriginal(orig_val);
     Type *valType = orig_val->getType();
+
+    // If a store of an omp init argument, don't delete in reverse
+    // and don't do any adjoint propagation (assumed integral)
+    for(auto U : orig_ptr->users()) {
+      if (auto CI = dyn_cast<CallInst>(U)) {
+        if (auto F = CI->getCalledFunction()) {
+          if (F->getName() == "__kmpc_for_static_init_4") {
+            return;
+          }
+        }
+      }
+    }
 
     if (unnecessaryStores.count(&SI)) {
       eraseIfUnused(SI);
@@ -1612,6 +1637,18 @@ public:
   }
 
   void visitOMPCall(llvm::CallInst& call) {
+    Function* kmpc = call.getCalledFunction();
+
+    if (uncacheable_args_map.find(&call) == uncacheable_args_map.end()) {
+      llvm::errs() << " call: " << call << "\n";
+      for (auto &pair : uncacheable_args_map) {
+        llvm::errs() << " + " << *pair.first << "\n";
+      }
+    }
+
+    assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end());
+    const std::map<Argument *, bool> &uncacheable_argsAbove =
+        uncacheable_args_map.find(&call)->second;
 
     IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
     BuilderZ.setFastMathFlags(getFast());
@@ -1629,14 +1666,252 @@ public:
       llvm_unreachable("could not derive underlying task contents from omp call");
     }
 
-    llvm::errs()  << "openmp calls not handled yet\n";
-    llvm_unreachable("openmp calls not handled yet");
-    if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
+    std::map<Argument *, bool> uncacheable_args;
+    {
+    auto in_arg = call.getCalledFunction()->arg_begin();
+    auto pp_arg = task->arg_begin();
 
+    // Global.tid is cacheable
+    uncacheable_args[pp_arg] = false;
+    ++pp_arg;
+    // Bound.tid is cacheable
+    uncacheable_args[pp_arg] = false;
+    ++pp_arg;
+
+    // Ignore the first three args of init call
+    ++in_arg;
+    ++in_arg;
+    ++in_arg;
+
+    for(auto &a : uncacheable_argsAbove) {
+      llvm::errs() << "- " << *a.first << "\n";
+    }
+    for (; pp_arg != task->arg_end();) {
+      // If var-args then we may still have args even though outermost
+      // has no more
+      if (in_arg == call.getCalledFunction()->arg_end()) {
+        uncacheable_args[pp_arg] = true;
+      } else {
+        llvm::errs() << *in_arg << "\n";
+        assert(uncacheable_argsAbove.find(in_arg) != uncacheable_argsAbove.end());
+        uncacheable_args[pp_arg] = uncacheable_argsAbove.find(in_arg)->second;
+        ++in_arg;
+      }
+      ++pp_arg;
+    }
+    }
+
+    auto called = task;
+    bool modifyPrimal = true;
+
+    bool foreignFunction = called == nullptr || called->empty();
+
+    SmallVector<Value *, 8> args = {0, 0, 0};
+    SmallVector<Value *, 8> pre_args = {0, 0, 0};
+    std::vector<DIFFE_TYPE> argsInverted = { DIFFE_TYPE::CONSTANT, DIFFE_TYPE::CONSTANT };
+    std::vector<Instruction *> postCreate;
+    std::vector<Instruction *> userReplace;
+
+    for (unsigned i = 3; i < call.getNumArgOperands(); ++i) {
+
+      auto argi = gutils->getNewFromOriginal(call.getArgOperand(i));
+
+      pre_args.push_back(argi);
+
+      if (Mode != DerivativeMode::Forward) {
+        IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
+        args.push_back(lookup(argi, Builder2));
+      }
+
+      if (gutils->isConstantValue(call.getArgOperand(i)) && !foreignFunction) {
+        argsInverted.push_back(DIFFE_TYPE::CONSTANT);
+        continue;
+      }
+
+      auto argType = argi->getType();
+
+      if (!argType->isFPOrFPVectorTy() &&
+          TR.query(call.getArgOperand(i)).Inner0().isPossiblePointer()) {
+        DIFFE_TYPE ty = DIFFE_TYPE::DUP_ARG;
+        if (argType->isPointerTy()) {
+          #if LLVM_VERSION_MAJOR >= 12
+          auto at = getUnderlyingObject(
+              call.getArgOperand(i), 100);
+          #else
+          auto at = GetUnderlyingObject(
+              call.getArgOperand(i),
+              gutils->oldFunc->getParent()->getDataLayout(), 100);
+          #endif
+          if (auto arg = dyn_cast<Argument>(at)) {
+            if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
+              ty = DIFFE_TYPE::DUP_NONEED;
+            }
+          }
+        }
+        argsInverted.push_back(ty);
+
+        if (Mode != DerivativeMode::Forward) {
+          IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
+          args.push_back(
+              gutils->invertPointerM(call.getArgOperand(i), Builder2));
+        }
+        pre_args.push_back(
+            gutils->invertPointerM(call.getArgOperand(i), BuilderZ));
+
+        // Note sometimes whattype mistakenly says something should be constant
+        // [because composed of integer pointers alone]
+        assert(whatType(argType) == DIFFE_TYPE::DUP_ARG ||
+               whatType(argType) == DIFFE_TYPE::CONSTANT);
+      } else { 
+        assert(0 && "out for omp not handled");
+        argsInverted.push_back(DIFFE_TYPE::OUT_DIFF);
+        assert(whatType(argType) == DIFFE_TYPE::OUT_DIFF ||
+               whatType(argType) == DIFFE_TYPE::CONSTANT);
+      }
+    }
+
+    DIFFE_TYPE subretType = DIFFE_TYPE::CONSTANT;
+
+    Value *tape = nullptr;
+    CallInst *augmentcall = nullptr;
+    Value *cachereplace = nullptr;
+
+    FnTypeInfo nextTypeInfo(called);
+
+    if (called) {
+      std::map<Value *, std::set<int64_t>> intseen;
+
+      TypeTree IntPtr;
+      IntPtr.insert({-1,-1}, BaseType::Integer);
+      IntPtr.insert({-1}, BaseType::Pointer);
+
+      int argnum = 0;
+      for (auto &arg : called->args()) {
+        if (argnum <= 1) {
+          nextTypeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(
+              &arg, IntPtr));
+          nextTypeInfo.KnownValues.insert(
+              std::pair<Argument *, std::set<int64_t>>(&arg, {}));
+        } else {
+          nextTypeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(
+              &arg, TR.query(call.getArgOperand(argnum - 2 + 3))));
+          nextTypeInfo.KnownValues.insert(
+              std::pair<Argument *, std::set<int64_t>>(
+                  &arg, TR.knownIntegralValues(call.getArgOperand(argnum - 2 + 3))));
+        }
+
+        ++argnum;
+      }
+      nextTypeInfo.Return = TR.query(&call);
+    }
+
+    // llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>
+    // sub_index_map;
+    Optional<int> tapeIdx;
+    Optional<int> returnIdx;
+    Optional<int> differetIdx;
+
+    const AugmentedReturn *subdata = nullptr;
+    if (Mode == DerivativeMode::Reverse) {
+      assert(augmentedReturn);
+      if (augmentedReturn) {
+        auto fd = augmentedReturn->subaugmentations.find(&call);
+        if (fd != augmentedReturn->subaugmentations.end()) {
+          subdata = fd->second;
+        }
+      }
+    }
+
+
+    if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
+      if (called) {
+          subdata = &CreateAugmentedPrimal(
+              cast<Function>(called), subretType, argsInverted, gutils->TLI,
+              TR.analysis, gutils->AA, /*return is used*/ false,
+              nextTypeInfo, uncacheable_args, false, /*AtomicAdd*/true);
+          if (Mode == DerivativeMode::Forward) {
+            assert(augmentedReturn);
+            auto subaugmentations =
+                (std::map<const llvm::CallInst *, AugmentedReturn *>
+                     *)&augmentedReturn->subaugmentations;
+            insert_or_assign2<const llvm::CallInst*, AugmentedReturn*>(*subaugmentations, &call,
+                             (AugmentedReturn *)subdata);
+          }
+        
+        assert(subdata);
+        auto numargs = ConstantInt::get(Type::getInt32Ty(call.getContext()), pre_args.size() - 3);
+        auto newcalled = subdata->fn;
+        pre_args[0] = gutils->getNewFromOriginal(call.getArgOperand(0));
+        pre_args[1] = numargs;
+        pre_args[2] = BuilderZ.CreatePointerCast(newcalled, kmpc->getFunctionType()->getParamType(2));
+        augmentcall = BuilderZ.CreateCall(kmpc->getFunctionType(), kmpc, pre_args);
+        augmentcall->setCallingConv(call.getCallingConv());
+        augmentcall->setDebugLoc(call.getDebugLoc());
+        if (tapeIdx.hasValue()) {
+          tape = (tapeIdx.getValue() == -1)
+                     ? augmentcall
+                     : BuilderZ.CreateExtractValue(
+                           augmentcall, {(unsigned)tapeIdx.getValue()}, "subcache");
+          if (tape->getType()->isEmptyTy()) {
+            auto tt = tape->getType();
+            gutils->erase(cast<Instruction>(tape));
+            tape = UndefValue::get(tt);
+          }
+          tape = gutils->cacheForReverse(BuilderZ, tape,
+                                   getIndex(&call, CacheType::Tape));
+        }
+        gutils->getNewFromOriginal(&call)->eraseFromParent();
+
+      } else {
+        assert(0 && "unhandled unknown outline");
+      }
+    }
+
+    if (!subdata) {
+      llvm::errs() << *gutils->oldFunc->getParent() << "\n";
+      llvm::errs() << *gutils->oldFunc << "\n";
+      llvm::errs() << *gutils->newFunc << "\n";
+      llvm::errs() << *called << "\n";
+      llvm_unreachable("no subdata");
+    }
+
+    auto found = subdata->returns.find(AugmentedStruct::DifferentialReturn);
+    assert(found == subdata->returns.end());;
+
+    found = subdata->returns.find(AugmentedStruct::Return);
+    assert (found == subdata->returns.end());
+
+    found = subdata->returns.find(AugmentedStruct::Tape);
+    if (found != subdata->returns.end()) {
+      assert(0 && "openmp tape is unhandled");
+      tapeIdx = found->second;
     }
 
     if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
-      
+      IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
+
+      Value *newcalled = nullptr;
+      if (called) {
+        newcalled = CreatePrimalAndGradient(
+            cast<Function>(called), subretType, argsInverted, gutils->TLI,
+            TR.analysis, gutils->AA, /*returnValue*/ false,
+            /*subdretptr*/ false, /*topLevel*/ false,
+            tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
+            subdata, /*AtomicAdd*/true);
+        if (!newcalled) return;
+
+        auto numargs = ConstantInt::get(Type::getInt32Ty(call.getContext()), args.size() - 3);
+        args[0] = lookup(gutils->getNewFromOriginal(call.getArgOperand(0)), Builder2);
+        args[1] = numargs;
+        args[2] = Builder2.CreatePointerCast(newcalled, kmpc->getFunctionType()->getParamType(2));
+        CallInst *diffes = Builder2.CreateCall(kmpc->getFunctionType(), kmpc, args);
+        diffes->setCallingConv(call.getCallingConv());
+        diffes->setDebugLoc(call.getDebugLoc());
+
+
+      } else{ 
+        assert(0 && "openmp indirect unhandled");
+      }
     }
   }
 
@@ -1660,6 +1935,18 @@ public:
     CallInst *orig = &call;
 
     Function *called = orig->getCalledFunction();
+
+    if (Mode != DerivativeMode::Forward) {
+      if (called && called->getName() == "__kmpc_for_static_init_4") {
+        IRBuilder<> Builder2(call.getParent()); getReverseBuilder(Builder2);
+        auto fini = called->getParent()->getFunction("__kmpc_for_static_fini");
+        assert(fini);
+        Value* args[] = {lookup(gutils->getNewFromOriginal(call.getArgOperand(0)), Builder2), lookup(gutils->getNewFromOriginal(call.getArgOperand(1)), Builder2)};
+        auto fcall = Builder2.CreateCall(fini->getFunctionType(), fini, args);
+        fcall->setCallingConv(fini->getCallingConv());
+        return;
+      }
+    }
 
     #if LLVM_VERSION_MAJOR >= 11
     if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand())) {
