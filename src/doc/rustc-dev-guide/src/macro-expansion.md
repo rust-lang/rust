@@ -512,7 +512,7 @@ We use these items in macro parser:
   token stream and parsing session. The token stream is what we are about to
   ask the MBE parser to parse. We will consume the raw stream of tokens and
   output a binding of metavariables to corresponding token trees. The parsing
-  session can be used to report parser errros.
+  session can be used to report parser errors.
 - `ms` a _matcher_. This is a sequence of token trees that we want to match
   the token stream against.
 
