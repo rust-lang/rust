@@ -3122,7 +3122,9 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("failed to compile fixed code", &res);
             }
             if !res.stderr.is_empty() && !self.props.rustfix_only_machine_applicable {
-                self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
+                if !json::rustfix_diagnostics_only(&res.stderr).is_empty() {
+                    self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
+                }
             }
         }
     }
