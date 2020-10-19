@@ -832,9 +832,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-server"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff7452ee21b8de64f10ceb4e9fee1212e1a9579cd717226613333e751676c86a"
+checksum = "9c85acaf36c53bf15da2b8b35afeea56747707261f59eb0b77229081dd72b04e"
 dependencies = [
  "crossbeam-channel 0.5.0",
  "log",
@@ -1952,18 +1952,18 @@ dependencies = [
 
 [[package]]
 name = "xshell"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61df06d11158eb34971a4e44904defd3419f625b7d9fb0e8b0817b0623e0daae"
+checksum = "3e9bbfccbb2233e6b0473b7870d4b0811a402e9e249a5e8394e768e5a5c9c37d"
 dependencies = [
  "xshell-macros",
 ]
 
 [[package]]
 name = "xshell-macros"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40bef8018dc67100c99ee2f9866451e9d196a7effa9e40646717545a2ee42691"
+checksum = "b94f1c632d730a1704b21dc551a4c74fbed713cfa59593708f94943548206134"
 
 [[package]]
 name = "xtask"
