@@ -210,6 +210,18 @@ impl TyKind<'tcx> {
             _ => false,
         }
     }
+
+    /// Get the article ("a" or "an") to use with this type.
+    pub fn article(&self) -> &'static str {
+        match self {
+            Int(_) | Float(_) | Array(_, _) => "an",
+            Adt(def, _) if def.is_enum() => "an",
+            // This should never happen, but ICEing and causing the user's code
+            // to not compile felt too harsh.
+            Error(_) => "a",
+            _ => "a",
+        }
+    }
 }
 
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
