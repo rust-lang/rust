@@ -9,7 +9,7 @@
 // `InferredIndex` is a newtype'd int representing the index of such
 // a variable.
 
-use rustc_arena::TypedArena;
+use rustc_arena::DroplessArena;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::HirIdMap;
@@ -47,7 +47,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 
 pub struct TermsContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
-    pub arena: &'a TypedArena<VarianceTerm<'a>>,
+    pub arena: &'a DroplessArena,
 
     // For marker types, UnsafeCell, and other lang items where
     // variance is hardcoded, records the item-id and the hardcoded
@@ -64,7 +64,7 @@ pub struct TermsContext<'a, 'tcx> {
 
 pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
-    arena: &'a mut TypedArena<VarianceTerm<'a>>,
+    arena: &'a DroplessArena,
 ) -> TermsContext<'a, 'tcx> {
     let mut terms_cx = TermsContext {
         tcx,
