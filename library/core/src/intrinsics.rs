@@ -1660,22 +1660,22 @@ extern "rust-intrinsic" {
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `checked_add` method. For example,
-    /// [`u32::checked_add`]
+    /// primitives via the `wrapping_add` method. For example,
+    /// [`u32::wrapping_add`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `checked_sub` method. For example,
-    /// [`u32::checked_sub`]
+    /// primitives via the `wrapping_sub` method. For example,
+    /// [`u32::wrapping_sub`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `checked_mul` method. For example,
-    /// [`u32::checked_mul`]
+    /// primitives via the `wrapping_mul` method. For example,
+    /// [`u32::wrapping_mul`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 
