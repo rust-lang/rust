@@ -103,8 +103,8 @@ impl Crate {
         db.crate_graph()[self.id].edition
     }
 
-    pub fn declaration_name(self, db: &dyn HirDatabase) -> Option<CrateName> {
-        db.crate_graph()[self.id].declaration_name.clone()
+    pub fn display_name(self, db: &dyn HirDatabase) -> Option<CrateName> {
+        db.crate_graph()[self.id].display_name.clone()
     }
 
     pub fn query_external_importables(

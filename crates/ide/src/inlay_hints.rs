@@ -215,7 +215,7 @@ fn hint_iterator(
         .last()
         .and_then(|strukt| strukt.as_adt())?;
     let krate = strukt.krate(db)?;
-    if krate.declaration_name(db).as_deref() != Some("core") {
+    if krate.display_name(db).as_deref() != Some("core") {
         return None;
     }
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;

@@ -127,11 +127,13 @@ impl PartialEq for ProcMacro {
 pub struct CrateData {
     pub root_file_id: FileId,
     pub edition: Edition,
-    /// A name used in the package's project declaration: for Cargo projects, it's [package].name,
-    /// can be different for other project types or even absent (a dummy crate for the code snippet, for example).
-    /// NOTE: The crate can be referenced as a dependency under a different name,
-    /// this one should be used when working with crate hierarchies.
-    pub declaration_name: Option<CrateName>,
+    /// A name used in the package's project declaration: for Cargo projects,
+    /// it's [package].name, can be different for other project types or even
+    /// absent (a dummy crate for the code snippet, for example).
+    ///
+    /// For purposes of analysis, crates are anonymous (only names in
+    /// `Dependency` matters), this name should only be used for UI.
+    pub display_name: Option<CrateName>,
     pub cfg_options: CfgOptions,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
@@ -160,7 +162,7 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
-        declaration_name: Option<CrateName>,
+        display_name: Option<CrateName>,
         cfg_options: CfgOptions,
         env: Env,
         proc_macro: Vec<(SmolStr, Arc<dyn tt::TokenExpander>)>,
@@ -171,7 +173,7 @@ impl CrateGraph {
         let data = CrateData {
             root_file_id: file_id,
             edition,
-            declaration_name,
+            display_name,
             cfg_options,
             env,
             proc_macro,
@@ -310,8 +312,8 @@ impl CrateGraph {
         }
     }
 
-    fn hacky_find_crate(&self, declaration_name: &str) -> Option<CrateId> {
-        self.iter().find(|it| self[*it].declaration_name.as_deref() == Some(declaration_name))
+    fn hacky_find_crate(&self, display_name: &str) -> Option<CrateId> {
+        self.iter().find(|it| self[*it].display_name.as_deref() == Some(display_name))
     }
 }
 
