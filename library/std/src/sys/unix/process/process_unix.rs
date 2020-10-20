@@ -281,7 +281,7 @@ impl Command {
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
         use crate::mem::MaybeUninit;
-        use crate::sys;
+        use crate::sys::{self, cvt_nz};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
@@ -341,10 +341,6 @@ impl Command {
                     libc::posix_spawnattr_destroy(self.0.as_mut_ptr());
                 }
             }
-        }
-
-        fn cvt_nz(error: libc::c_int) -> io::Result<()> {
-            if error == 0 { Ok(()) } else { Err(io::Error::from_raw_os_error(error)) }
         }
 
         unsafe {
