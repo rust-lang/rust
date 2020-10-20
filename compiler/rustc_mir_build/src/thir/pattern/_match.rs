@@ -846,6 +846,9 @@ enum Constructor<'tcx> {
     Opaque,
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
     NonExhaustive,
+    /// Fake constructor for those types for which we can't list constructors explicitely, like
+    /// `f64` and `&str`.
+    Unlistable,
     /// Wildcard pattern.
     Wildcard,
 }
@@ -949,6 +952,9 @@ impl<'tcx> Constructor<'tcx> {
             }
             // This constructor is never covered by anything else
             NonExhaustive => vec![NonExhaustive],
+            // This constructor is only covered by `Single`s
+            Unlistable if other_ctors.iter().any(|c| *c == Single) => vec![],
+            Unlistable => vec![Unlistable],
             Opaque => bug!("found unexpected opaque ctor in all_ctors"),
             Wildcard => bug!("found unexpected wildcard ctor in all_ctors"),
         }
@@ -1068,6 +1074,11 @@ impl<'tcx> Constructor<'tcx> {
             (Opaque, _) | (_, Opaque) => false,
             // Only a wildcard pattern can match the special extra constructor.
             (NonExhaustive, _) => false,
+            // If we encounter a `Single` here, this means there was only one constructor for this
+            // type after all.
+            (Unlistable, Single) => true,
+            // Otherwise, only a wildcard pattern can match the special extra constructor.
+            (Unlistable, _) => false,
 
             _ => bug!("trying to compare incompatible constructors {:?} and {:?}", self, other),
         }
@@ -1146,7 +1157,7 @@ impl<'tcx> Constructor<'tcx> {
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(pcx.cx.tcx),
-            NonExhaustive => PatKind::Wild,
+            NonExhaustive | Unlistable => PatKind::Wild,
             Opaque => bug!("we should not try to apply an opaque constructor"),
             Wildcard => bug!(
                 "trying to apply a wildcard constructor; this should have been done in `apply_constructors`"
@@ -1286,7 +1297,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         }
                     }
                 }
-                _ => Fields::empty(),
+                _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
             },
             Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
@@ -1295,9 +1306,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Wildcard => {
-                Fields::empty()
-            }
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Unlistable
+            | Wildcard => Fields::empty(),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -1616,9 +1626,9 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
                 .unwrap(),
         )
     };
-    match *pcx.ty.kind() {
+    match pcx.ty.kind() {
         ty::Bool => vec![make_range(0, 1)],
-        ty::Array(ref sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
+        ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
             let len = len.eval_usize(cx.tcx, cx.param_env);
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
@@ -1627,26 +1637,11 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             }
         }
         // Treat arrays of a constant but unknown length like slices.
-        ty::Array(ref sub_ty, _) | ty::Slice(ref sub_ty) => {
+        ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
             let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
             vec![Slice(Slice { array_len: None, kind })]
         }
         ty::Adt(def, substs) if def.is_enum() => {
-            let ctors: Vec<_> = if cx.tcx.features().exhaustive_patterns {
-                // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                // uninhabited.
-                def.variants
-                    .iter()
-                    .filter(|v| {
-                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                            .contains(cx.tcx, cx.module)
-                    })
-                    .map(|v| Variant(v.def_id))
-                    .collect()
-            } else {
-                def.variants.iter().map(|v| Variant(v.def_id)).collect()
-            };
-
             // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
             // additional "unknown" constructor.
             // There is no point in enumerating all possible variants, because the user can't
@@ -1672,7 +1667,22 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             let is_secretly_empty =
                 def.variants.is_empty() && !cx.tcx.features().exhaustive_patterns;
 
-            if is_secretly_empty || is_declared_nonexhaustive { vec![NonExhaustive] } else { ctors }
+            if is_secretly_empty || is_declared_nonexhaustive {
+                vec![NonExhaustive]
+            } else if cx.tcx.features().exhaustive_patterns {
+                // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                // uninhabited.
+                def.variants
+                    .iter()
+                    .filter(|v| {
+                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
+                            .contains(cx.tcx, cx.module)
+                    })
+                    .map(|v| Variant(v.def_id))
+                    .collect()
+            } else {
+                def.variants.iter().map(|v| Variant(v.def_id)).collect()
+            }
         }
         ty::Char => {
             vec![
@@ -1690,24 +1700,22 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
             vec![NonExhaustive]
         }
-        ty::Int(ity) => {
+        &ty::Int(ity) => {
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = min - 1;
             vec![make_range(min, max)]
         }
-        ty::Uint(uty) => {
+        &ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
             let max = truncate(u128::MAX, size);
             vec![make_range(0, max)]
         }
-        _ => {
-            if cx.is_uninhabited(pcx.ty) {
-                vec![]
-            } else {
-                vec![Single]
-            }
-        }
+        _ if cx.is_uninhabited(pcx.ty) => vec![],
+        ty::Adt(..) | ty::Tuple(..) => vec![Single],
+        ty::Ref(_, t, _) if !t.is_str() => vec![Single],
+        // This type is one for which we don't know how to list constructors, like &str of f64.
+        _ => vec![Unlistable],
     }
 }
 
