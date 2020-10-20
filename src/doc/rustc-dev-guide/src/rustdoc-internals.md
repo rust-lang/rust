@@ -201,7 +201,7 @@ server. To test these features locally, you can run a local HTTP server, like
 this:
 
 ```bash
-$ ./x.py doc library/std --stage 1
+$ ./x.py doc library/std
 # The documentation has been generated into `build/[YOUR ARCH]/doc`.
 $ python3 -m http.server -d build/[YOUR ARCH]/doc
 ```
