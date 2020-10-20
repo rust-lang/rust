@@ -1,69 +1,24 @@
-use syntax::ast;
+use std::iter;
+
+use hir::AsName;
+use ide_db::RootDatabase;
+use syntax::{
+    ast,
+    ast::{make, ArgListOwner},
+    AstNode,
+};
+use test_utils::mark;
 
 use crate::{
+    assist_context::{AssistContext, Assists},
     utils::import_assets::{ImportAssets, ImportCandidate},
-    utils::{insert_use, mod_path_to_ast, ImportScope},
-    AssistContext, AssistId, AssistKind, Assists, GroupLabel,
+    utils::mod_path_to_ast,
+    AssistId, AssistKind, GroupLabel,
 };
 
-// Feature: Auto Import
+// Assist: qualify_path
 //
-// Using the `auto-import` assist it is possible to insert missing imports for unresolved items.
-// When inserting an import it will do so in a structured manner by keeping imports grouped,
-// separated by a newline in the following order:
-//
-// - `std` and `core`
-// - External Crates
-// - Current Crate, paths prefixed by `crate`
-// - Current Module, paths prefixed by `self`
-// - Super Module, paths prefixed by `super`
-//
-// Example:
-// ```rust
-// use std::fs::File;
-//
-// use itertools::Itertools;
-// use syntax::ast;
-//
-// use crate::utils::insert_use;
-//
-// use self::auto_import;
-//
-// use super::AssistContext;
-// ```
-//
-// .Merge Behaviour
-//
-// It is possible to configure how use-trees are merged with the `importMergeBehaviour` setting.
-// It has the following configurations:
-//
-// - `full`: This setting will cause auto-import to always completely merge use-trees that share the
-//  same path prefix while also merging inner trees that share the same path-prefix. This kind of
-//  nesting is only supported in Rust versions later than 1.24.
-// - `last`: This setting will cause auto-import to merge use-trees as long as the resulting tree
-//  will only contain a nesting of single segment paths at the very end.
-// - `none`: This setting will cause auto-import to never merge use-trees keeping them as simple
-//  paths.
-//
-// In `VS Code` the configuration for this is `rust-analyzer.assist.importMergeBehaviour`.
-//
-// .Import Prefix
-//
-// The style of imports in the same crate is configurable through the `importPrefix` setting.
-// It has the following configurations:
-//
-// - `by_crate`: This setting will force paths to be always absolute, starting with the `crate`
-//  prefix, unless the item is defined outside of the current crate.
-// - `by_self`: This setting will force paths that are relative to the current module to always
-//  start with `self`. This will result in paths that always start with either `crate`, `self`,
-//  `super` or an extern crate identifier.
-// - `plain`: This setting does not impose any restrictions in imports.
-//
-// In `VS Code` the configuration for this is `rust-analyzer.assist.importPrefix`.
-
-// Assist: auto_import
-//
-// If the name is unresolved, provides all possible imports for it.
+// If the name is unresolved, provides all possible qualified paths for it.
 //
 // ```
 // fn main() {
@@ -73,14 +28,12 @@ use crate::{
 // ```
 // ->
 // ```
-// use std::collections::HashMap;
-//
 // fn main() {
-//     let map = HashMap::new();
+//     let map = std::collections::HashMap::new();
 // }
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
-pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let import_assets =
         if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
             ImportAssets::for_regular_path(path_under_caret, &ctx.sema)
@@ -91,54 +44,167 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
         } else {
             None
         }?;
-    let proposed_imports = import_assets.search_for_imports(&ctx.sema, &ctx.config.insert_use);
+    let proposed_imports = import_assets.search_for_relative_paths(&ctx.sema);
     if proposed_imports.is_empty() {
         return None;
     }
 
+    let candidate = import_assets.import_candidate();
     let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
-    let group = import_group_message(import_assets.import_candidate());
-    let scope = ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), ctx)?;
-    let syntax = scope.as_syntax_node();
-    for (import, _) in proposed_imports {
+
+    let qualify_candidate = match candidate {
+        ImportCandidate::QualifierStart(_) => {
+            mark::hit!(qualify_path_qualifier_start);
+            let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+            let segment = path.segment()?;
+            QualifyCandidate::QualifierStart(segment)
+        }
+        ImportCandidate::UnqualifiedName(_) => {
+            mark::hit!(qualify_path_unqualified_name);
+            QualifyCandidate::UnqualifiedName
+        }
+        ImportCandidate::TraitAssocItem(_) => {
+            mark::hit!(qualify_path_trait_assoc_item);
+            let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+            let (qualifier, segment) = (path.qualifier()?, path.segment()?);
+            QualifyCandidate::TraitAssocItem(qualifier, segment)
+        }
+        ImportCandidate::TraitMethod(_) => {
+            mark::hit!(qualify_path_trait_method);
+            let mcall_expr = ast::MethodCallExpr::cast(import_assets.syntax_under_caret().clone())?;
+            QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
+        }
+    };
+
+    let group_label = group_label(candidate);
+    for (import, item) in proposed_imports {
         acc.add_group(
-            &group,
-            AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{}`", &import),
+            &group_label,
+            AssistId("qualify_path", AssistKind::QuickFix),
+            label(candidate, &import),
             range,
             |builder| {
-                let new_syntax =
-                    insert_use(&scope, mod_path_to_ast(&import), ctx.config.insert_use.merge);
-                builder.replace(syntax.text_range(), new_syntax.to_string())
+                qualify_candidate.qualify(
+                    |replace_with: String| builder.replace(range, replace_with),
+                    import,
+                    item,
+                )
             },
         );
     }
     Some(())
 }
 
-fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
-    let name = match import_candidate {
-        ImportCandidate::UnqualifiedName(candidate)
-        | ImportCandidate::QualifierStart(candidate) => format!("Import {}", &candidate.name),
-        ImportCandidate::TraitAssocItem(candidate) => {
-            format!("Import a trait for item {}", &candidate.name)
+enum QualifyCandidate<'db> {
+    QualifierStart(ast::PathSegment),
+    UnqualifiedName,
+    TraitAssocItem(ast::Path, ast::PathSegment),
+    TraitMethod(&'db RootDatabase, ast::MethodCallExpr),
+}
+
+impl QualifyCandidate<'_> {
+    fn qualify(&self, mut replacer: impl FnMut(String), import: hir::ModPath, item: hir::ItemInNs) {
+        match self {
+            QualifyCandidate::QualifierStart(segment) => {
+                let import = mod_path_to_ast(&import);
+                replacer(format!("{}::{}", import, segment));
+            }
+            QualifyCandidate::UnqualifiedName => replacer(mod_path_to_ast(&import).to_string()),
+            QualifyCandidate::TraitAssocItem(qualifier, segment) => {
+                let import = mod_path_to_ast(&import);
+                replacer(format!("<{} as {}>::{}", qualifier, import, segment));
+            }
+            &QualifyCandidate::TraitMethod(db, ref mcall_expr) => {
+                Self::qualify_trait_method(db, mcall_expr, replacer, import, item);
+            }
         }
-        ImportCandidate::TraitMethod(candidate) => {
-            format!("Import a trait for method {}", &candidate.name)
+    }
+
+    fn qualify_trait_method(
+        db: &RootDatabase,
+        mcall_expr: &ast::MethodCallExpr,
+        mut replacer: impl FnMut(String),
+        import: hir::ModPath,
+        item: hir::ItemInNs,
+    ) -> Option<()> {
+        let receiver = mcall_expr.receiver()?;
+        let trait_method_name = mcall_expr.name_ref()?;
+        let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
+        let trait_ = item_as_trait(item)?;
+        let method = find_trait_method(db, trait_, &trait_method_name)?;
+        if let Some(self_access) = method.self_param(db).map(|sp| sp.access(db)) {
+            let import = mod_path_to_ast(&import);
+            let receiver = match self_access {
+                hir::Access::Shared => make::expr_ref(receiver, false),
+                hir::Access::Exclusive => make::expr_ref(receiver, true),
+                hir::Access::Owned => receiver,
+            };
+            replacer(format!(
+                "{}::{}{}",
+                import,
+                trait_method_name,
+                match arg_list.clone() {
+                    Some(args) => make::arg_list(iter::once(receiver).chain(args)),
+                    None => make::arg_list(iter::once(receiver)),
+                }
+            ));
         }
+        Some(())
+    }
+}
+
+fn find_trait_method(
+    db: &RootDatabase,
+    trait_: hir::Trait,
+    trait_method_name: &ast::NameRef,
+) -> Option<hir::Function> {
+    if let Some(hir::AssocItem::Function(method)) =
+        trait_.items(db).into_iter().find(|item: &hir::AssocItem| {
+            item.name(db).map(|name| name == trait_method_name.as_name()).unwrap_or(false)
+        })
+    {
+        Some(method)
+    } else {
+        None
+    }
+}
+
+fn item_as_trait(item: hir::ItemInNs) -> Option<hir::Trait> {
+    if let hir::ModuleDef::Trait(trait_) = hir::ModuleDef::from(item.as_module_def_id()?) {
+        Some(trait_)
+    } else {
+        None
+    }
+}
+
+fn group_label(candidate: &ImportCandidate) -> GroupLabel {
+    let name = match candidate {
+        ImportCandidate::UnqualifiedName(it) | ImportCandidate::QualifierStart(it) => &it.name,
+        ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => &it.name,
     };
-    GroupLabel(name)
+    GroupLabel(format!("Qualify {}", name))
+}
+
+fn label(candidate: &ImportCandidate, import: &hir::ModPath) -> String {
+    match candidate {
+        ImportCandidate::UnqualifiedName(_) => format!("Qualify as `{}`", &import),
+        ImportCandidate::QualifierStart(_) => format!("Qualify with `{}`", &import),
+        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", &import),
+        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", &import),
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    use super::*;
 
     #[test]
     fn applicable_when_found_an_import_partial() {
+        mark::check!(qualify_path_unqualified_name);
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             mod std {
                 pub mod fmt {
@@ -157,9 +223,9 @@ mod tests {
                 }
             }
 
-            use std::fmt::{self, Formatter};
+            use std::fmt;
 
-            Formatter
+            fmt::Formatter
             ",
         );
     }
@@ -167,7 +233,7 @@ mod tests {
     #[test]
     fn applicable_when_found_an_import() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             <|>PubStruct
 
@@ -176,9 +242,7 @@ mod tests {
             }
             ",
             r"
-            use PubMod::PubStruct;
-
-            PubStruct
+            PubMod::PubStruct
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -188,9 +252,9 @@ mod tests {
     }
 
     #[test]
-    fn applicable_when_found_an_import_in_macros() {
+    fn applicable_in_macros() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             macro_rules! foo {
                 ($i:ident) => { fn foo(a: $i) {} }
@@ -202,12 +266,10 @@ mod tests {
             }
             ",
             r"
-            use PubMod::PubStruct;
-
             macro_rules! foo {
                 ($i:ident) => { fn foo(a: $i) {} }
             }
-            foo!(PubStruct);
+            foo!(PubMod::PubStruct);
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -217,44 +279,9 @@ mod tests {
     }
 
     #[test]
-    fn auto_imports_are_merged() {
-        check_assist(
-            auto_import,
-            r"
-            use PubMod::PubStruct1;
-
-            struct Test {
-                test: Pub<|>Struct2<u8>,
-            }
-
-            pub mod PubMod {
-                pub struct PubStruct1;
-                pub struct PubStruct2<T> {
-                    _t: T,
-                }
-            }
-            ",
-            r"
-            use PubMod::{PubStruct1, PubStruct2};
-
-            struct Test {
-                test: PubStruct2<u8>,
-            }
-
-            pub mod PubMod {
-                pub struct PubStruct1;
-                pub struct PubStruct2<T> {
-                    _t: T,
-                }
-            }
-            ",
-        );
-    }
-
-    #[test]
     fn applicable_when_found_multiple_imports() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             PubSt<|>ruct
 
@@ -269,9 +296,7 @@ mod tests {
             }
             ",
             r"
-            use PubMod3::PubStruct;
-
-            PubStruct
+            PubMod3::PubStruct
 
             pub mod PubMod1 {
                 pub struct PubStruct;
@@ -289,7 +314,7 @@ mod tests {
     #[test]
     fn not_applicable_for_already_imported_types() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             use PubMod::PubStruct;
 
@@ -305,7 +330,7 @@ mod tests {
     #[test]
     fn not_applicable_for_types_with_private_paths() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             PrivateStruct<|>
 
@@ -319,7 +344,7 @@ mod tests {
     #[test]
     fn not_applicable_when_no_imports_found() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             "
             PubStruct<|>",
         );
@@ -328,7 +353,7 @@ mod tests {
     #[test]
     fn not_applicable_in_import_statements() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             use PubStruct<|>;
 
@@ -339,9 +364,9 @@ mod tests {
     }
 
     #[test]
-    fn function_import() {
+    fn qualify_function() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             test_function<|>
 
@@ -350,9 +375,7 @@ mod tests {
             }
             ",
             r"
-            use PubMod::test_function;
-
-            test_function
+            PubMod::test_function
 
             pub mod PubMod {
                 pub fn test_function() {};
@@ -362,9 +385,9 @@ mod tests {
     }
 
     #[test]
-    fn macro_import() {
+    fn qualify_macro() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
 //- /lib.rs crate:crate_with_macro
 #[macro_export]
@@ -377,19 +400,18 @@ fn main() {
     foo<|>
 }
 ",
-            r"use crate_with_macro::foo;
-
+            r"
 fn main() {
-    foo
+    crate_with_macro::foo
 }
 ",
         );
     }
 
     #[test]
-    fn auto_import_target() {
+    fn qualify_path_target() {
         check_assist_target(
-            auto_import,
+            qualify_path,
             r"
             struct AssistInfo {
                 group_label: Option<<|>GroupLabel>,
@@ -404,7 +426,7 @@ fn main() {
     #[test]
     fn not_applicable_when_path_start_is_imported() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             pub mod mod1 {
                 pub mod mod2 {
@@ -425,7 +447,7 @@ fn main() {
     #[test]
     fn not_applicable_for_imported_function() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             pub mod test_mod {
                 pub fn test_function() {}
@@ -442,7 +464,7 @@ fn main() {
     #[test]
     fn associated_struct_function() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub struct TestStruct {}
@@ -456,8 +478,6 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestStruct;
-
             mod test_mod {
                 pub struct TestStruct {}
                 impl TestStruct {
@@ -466,7 +486,7 @@ fn main() {
             }
 
             fn main() {
-                TestStruct::test_function
+                test_mod::TestStruct::test_function
             }
             ",
         );
@@ -474,8 +494,9 @@ fn main() {
 
     #[test]
     fn associated_struct_const() {
+        mark::check!(qualify_path_qualifier_start);
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub struct TestStruct {}
@@ -489,8 +510,6 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestStruct;
-
             mod test_mod {
                 pub struct TestStruct {}
                 impl TestStruct {
@@ -499,7 +518,7 @@ fn main() {
             }
 
             fn main() {
-                TestStruct::TEST_CONST
+                test_mod::TestStruct::TEST_CONST
             }
             ",
         );
@@ -508,7 +527,7 @@ fn main() {
     #[test]
     fn associated_trait_function() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub trait TestTrait {
@@ -525,8 +544,6 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestTrait;
-
             mod test_mod {
                 pub trait TestTrait {
                     fn test_function();
@@ -538,7 +555,7 @@ fn main() {
             }
 
             fn main() {
-                test_mod::TestStruct::test_function
+                <test_mod::TestStruct as test_mod::TestTrait>::test_function
             }
             ",
         );
@@ -547,7 +564,7 @@ fn main() {
     #[test]
     fn not_applicable_for_imported_trait_for_function() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub trait TestTrait {
@@ -578,8 +595,9 @@ fn main() {
 
     #[test]
     fn associated_trait_const() {
+        mark::check!(qualify_path_trait_assoc_item);
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub trait TestTrait {
@@ -596,8 +614,6 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestTrait;
-
             mod test_mod {
                 pub trait TestTrait {
                     const TEST_CONST: u8;
@@ -609,7 +625,7 @@ fn main() {
             }
 
             fn main() {
-                test_mod::TestStruct::TEST_CONST
+                <test_mod::TestStruct as test_mod::TestTrait>::TEST_CONST
             }
             ",
         );
@@ -618,7 +634,7 @@ fn main() {
     #[test]
     fn not_applicable_for_imported_trait_for_const() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub trait TestTrait {
@@ -649,8 +665,9 @@ fn main() {
 
     #[test]
     fn trait_method() {
+        mark::check!(qualify_path_trait_method);
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub trait TestTrait {
@@ -668,8 +685,6 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestTrait;
-
             mod test_mod {
                 pub trait TestTrait {
                     fn test_method(&self);
@@ -682,7 +697,85 @@ fn main() {
 
             fn main() {
                 let test_struct = test_mod::TestStruct {};
-                test_struct.test_method()
+                test_mod::TestTrait::test_method(&test_struct)
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn trait_method_multi_params() {
+        check_assist(
+            qualify_path,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(&self, test: i32);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(&self, test: i32) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_struct.test_meth<|>od(42)
+            }
+            ",
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(&self, test: i32);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(&self, test: i32) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_mod::TestTrait::test_method(&test_struct, 42)
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn trait_method_consume() {
+        check_assist(
+            qualify_path,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(self) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_struct.test_meth<|>od()
+            }
+            ",
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method(self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method(self) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_mod::TestTrait::test_method(test_struct)
             }
             ",
         );
@@ -691,7 +784,7 @@ fn main() {
     #[test]
     fn trait_method_cross_crate() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             //- /main.rs crate:main deps:dep
             fn main() {
@@ -710,11 +803,9 @@ fn main() {
             }
             ",
             r"
-            use dep::test_mod::TestTrait;
-
             fn main() {
                 let test_struct = dep::test_mod::TestStruct {};
-                test_struct.test_method()
+                dep::test_mod::TestTrait::test_method(&test_struct)
             }
             ",
         );
@@ -723,7 +814,7 @@ fn main() {
     #[test]
     fn assoc_fn_cross_crate() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             //- /main.rs crate:main deps:dep
             fn main() {
@@ -741,10 +832,8 @@ fn main() {
             }
             ",
             r"
-            use dep::test_mod::TestTrait;
-
             fn main() {
-                dep::test_mod::TestStruct::test_function
+                <dep::test_mod::TestStruct as dep::test_mod::TestTrait>::test_function
             }
             ",
         );
@@ -753,7 +842,7 @@ fn main() {
     #[test]
     fn assoc_const_cross_crate() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
             //- /main.rs crate:main deps:dep
             fn main() {
@@ -771,10 +860,8 @@ fn main() {
             }
             ",
             r"
-            use dep::test_mod::TestTrait;
-
             fn main() {
-                dep::test_mod::TestStruct::CONST
+                <dep::test_mod::TestStruct as dep::test_mod::TestTrait>::CONST
             }
             ",
         );
@@ -783,7 +870,7 @@ fn main() {
     #[test]
     fn assoc_fn_as_method_cross_crate() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             //- /main.rs crate:main deps:dep
             fn main() {
@@ -807,7 +894,7 @@ fn main() {
     #[test]
     fn private_trait_cross_crate() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             //- /main.rs crate:main deps:dep
             fn main() {
@@ -831,7 +918,7 @@ fn main() {
     #[test]
     fn not_applicable_for_imported_trait_for_method() {
         check_assist_not_applicable(
-            auto_import,
+            qualify_path,
             r"
             mod test_mod {
                 pub trait TestTrait {
@@ -864,7 +951,7 @@ fn main() {
     #[test]
     fn dep_import() {
         check_assist(
-            auto_import,
+            qualify_path,
             r"
 //- /lib.rs crate:dep
 pub struct Struct;
@@ -874,10 +961,9 @@ fn main() {
     Struct<|>
 }
 ",
-            r"use dep::Struct;
-
+            r"
 fn main() {
-    Struct
+    dep::Struct
 }
 ",
         );
@@ -887,7 +973,7 @@ fn main() {
     fn whole_segment() {
         // Tests that only imports whose last segment matches the identifier get suggested.
         check_assist(
-            auto_import,
+            qualify_path,
             r"
 //- /lib.rs crate:dep
 pub mod fmt {
@@ -901,11 +987,10 @@ struct S;
 
 impl f<|>mt::Display for S {}
 ",
-            r"use dep::fmt;
-
+            r"
 struct S;
 
-impl fmt::Display for S {}
+impl dep::fmt::Display for S {}
 ",
         );
     }
@@ -914,7 +999,7 @@ impl fmt::Display for S {}
     fn macro_generated() {
         // Tests that macro-generated items are suggested from external crates.
         check_assist(
-            auto_import,
+            qualify_path,
             r"
 //- /lib.rs crate:dep
 macro_rules! mac {
@@ -930,10 +1015,9 @@ fn main() {
     Cheese<|>;
 }
 ",
-            r"use dep::Cheese;
-
+            r"
 fn main() {
-    Cheese;
+    dep::Cheese;
 }
 ",
         );
@@ -943,7 +1027,7 @@ fn main() {
     fn casing() {
         // Tests that differently cased names don't interfere and we only suggest the matching one.
         check_assist(
-            auto_import,
+            qualify_path,
             r"
 //- /lib.rs crate:dep
 pub struct FMT;
@@ -954,10 +1038,9 @@ fn main() {
     FMT<|>;
 }
 ",
-            r"use dep::FMT;
-
+            r"
 fn main() {
-    FMT;
+    dep::FMT;
 }
 ",
         );

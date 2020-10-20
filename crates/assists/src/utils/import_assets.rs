@@ -1,6 +1,4 @@
 //! Look up accessible paths for items.
-use std::collections::BTreeSet;
-
 use either::Either;
 use hir::{AsAssocItem, AssocItemContainer, ModuleDef, Semantics};
 use ide_db::{imports_locator, RootDatabase};
@@ -29,12 +27,12 @@ pub(crate) enum ImportCandidate {
 #[derive(Debug)]
 pub(crate) struct TraitImportCandidate {
     pub ty: hir::Type,
-    pub name: String,
+    pub name: ast::NameRef,
 }
 
 #[derive(Debug)]
 pub(crate) struct PathImportCandidate {
-    pub name: String,
+    pub name: ast::NameRef,
 }
 
 #[derive(Debug)]
@@ -86,9 +84,9 @@ impl ImportAssets {
     fn get_search_query(&self) -> &str {
         match &self.import_candidate {
             ImportCandidate::UnqualifiedName(candidate)
-            | ImportCandidate::QualifierStart(candidate) => &candidate.name,
+            | ImportCandidate::QualifierStart(candidate) => candidate.name.text(),
             ImportCandidate::TraitAssocItem(candidate)
-            | ImportCandidate::TraitMethod(candidate) => &candidate.name,
+            | ImportCandidate::TraitMethod(candidate) => candidate.name.text(),
         }
     }
 
@@ -96,7 +94,7 @@ impl ImportAssets {
         &self,
         sema: &Semantics<RootDatabase>,
         config: &InsertUseConfig,
-    ) -> BTreeSet<hir::ModPath> {
+    ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
         let _p = profile::span("import_assists::search_for_imports");
         self.search_for(sema, Some(config.prefix_kind))
     }
@@ -106,7 +104,7 @@ impl ImportAssets {
     pub(crate) fn search_for_relative_paths(
         &self,
         sema: &Semantics<RootDatabase>,
-    ) -> BTreeSet<hir::ModPath> {
+    ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
         let _p = profile::span("import_assists::search_for_relative_paths");
         self.search_for(sema, None)
     }
@@ -115,7 +113,7 @@ impl ImportAssets {
         &self,
         sema: &Semantics<RootDatabase>,
         prefixed: Option<hir::PrefixKind>,
-    ) -> BTreeSet<hir::ModPath> {
+    ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
         let db = sema.db;
         let mut trait_candidates = FxHashSet::default();
         let current_crate = self.module_with_name_to_import.krate();
@@ -181,7 +179,7 @@ impl ImportAssets {
             }
         };
 
-        imports_locator::find_imports(sema, current_crate, &self.get_search_query())
+        let mut res = imports_locator::find_imports(sema, current_crate, &self.get_search_query())
             .into_iter()
             .filter_map(filter)
             .filter_map(|candidate| {
@@ -191,10 +189,13 @@ impl ImportAssets {
                 } else {
                     self.module_with_name_to_import.find_use_path(db, item)
                 }
+                .map(|path| (path, item))
             })
-            .filter(|use_path| !use_path.segments.is_empty())
+            .filter(|(use_path, _)| !use_path.segments.is_empty())
             .take(20)
-            .collect::<BTreeSet<_>>()
+            .collect::<Vec<_>>();
+        res.sort_by_key(|(path, _)| path.clone());
+        res
     }
 
     fn assoc_to_trait(assoc: AssocItemContainer) -> Option<hir::Trait> {
@@ -215,7 +216,7 @@ impl ImportCandidate {
             Some(_) => None,
             None => Some(Self::TraitMethod(TraitImportCandidate {
                 ty: sema.type_of_expr(&method_call.receiver()?)?,
-                name: method_call.name_ref()?.syntax().to_string(),
+                name: method_call.name_ref()?,
             })),
         }
     }
@@ -243,24 +244,17 @@ impl ImportCandidate {
                     hir::PathResolution::Def(hir::ModuleDef::Adt(assoc_item_path)) => {
                         ImportCandidate::TraitAssocItem(TraitImportCandidate {
                             ty: assoc_item_path.ty(sema.db),
-                            name: segment.syntax().to_string(),
+                            name: segment.name_ref()?,
                         })
                     }
                     _ => return None,
                 }
             } else {
-                ImportCandidate::QualifierStart(PathImportCandidate {
-                    name: qualifier_start.syntax().to_string(),
-                })
+                ImportCandidate::QualifierStart(PathImportCandidate { name: qualifier_start })
             }
         } else {
             ImportCandidate::UnqualifiedName(PathImportCandidate {
-                name: segment
-                    .syntax()
-                    .descendants()
-                    .find_map(ast::NameRef::cast)?
-                    .syntax()
-                    .to_string(),
+                name: segment.syntax().descendants().find_map(ast::NameRef::cast)?,
             })
         };
         Some(candidate)

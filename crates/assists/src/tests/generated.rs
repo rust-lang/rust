@@ -713,6 +713,25 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_qualify_path() {
+    check_doc_test(
+        "qualify_path",
+        r#####"
+fn main() {
+    let map = HashMap<|>::new();
+}
+pub mod std { pub mod collections { pub struct HashMap { } } }
+"#####,
+        r#####"
+fn main() {
+    let map = std::collections::HashMap::new();
+}
+pub mod std { pub mod collections { pub struct HashMap { } } }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_dbg() {
     check_doc_test(
         "remove_dbg",
