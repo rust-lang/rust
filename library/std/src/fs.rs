@@ -1701,8 +1701,9 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// The `dst` path will be a link pointing to the `src` path. Note that systems
 /// often require these two paths to both be located on the same filesystem.
 ///
-/// If `src` names a symbolic link, it is not followed. The created hard link
-/// points to the symbolic link itself.
+/// If `src` names a symbolic link, it is platform-specific whether the symbolic
+/// link is followed. On platforms where it's possible to not follow it, it is
+/// not followed, and the created hard link points to the symbolic link itself.
 ///
 /// # Platform-specific behavior
 ///
