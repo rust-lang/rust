@@ -14,8 +14,20 @@ import tempfile
 
 from time import time
 
-if False:
-    from typing import Any, List, Optional, Dict, IO, TextIO, ContextManager, SupportsInt, Iterator
+# The main python type checker, mypy, is satisfied if types are imported inside an
+# `if False:` block.
+# Other type checkers may require `typing` to be actually imported.
+# Pyright, which is used by Microsoft's pylance rls server is one such example.
+# This code does an `if False` import so mypy can be run in python2 mode and
+# an actual import for other checkers in python3.5+ where the typing module
+# exists in the stdlib.
+#
+# In older python3 versions, some of the types imported from typing may not exist
+# but that doesn't affect runtime.
+if False or sys.version_info >= (3,5):
+    import typing  # exists only in 3.5+
+    if typing.TYPE_CHECKING:  # won't execute at runtime
+        from typing import Any, List, Optional, Dict, IO, SupportsInt, Iterator, Text, Sequence
 
 def support_xz():  # type: () -> bool
     try:
@@ -145,7 +157,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=0, match=None):
 
 
 def run(args, verbose=0, exception=False, **kwargs):
-    # type: (List[str], int, bool, Any) -> None
+    # type: (Sequence[Text], int, bool, Any) -> None
     """Run a child program in a new process"""
     if verbose:
         print("running: " + ' '.join(args))
@@ -217,7 +229,7 @@ def default_build_triple():  # type: () -> str
         'Haiku': 'unknown-haiku',
         'NetBSD': 'unknown-netbsd',
         'OpenBSD': 'unknown-openbsd'
-    }
+    }  # type: Dict[Text, Text]
 
     # Consider the direct transformation first and then the special cases
     if ostype in ostype_mapper:
@@ -286,7 +298,7 @@ def default_build_triple():  # type: () -> str
         'x86': 'i686',
         'x86-64': 'x86_64',
         'x86_64': 'x86_64'
-    }
+    }  # type: Dict[Text, Text]
 
     # Consider the direct transformation first and then the special cases
     if cputype in cputype_mapper:
@@ -474,7 +486,7 @@ class RustBuild(object):
             get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
-    def _download_ci_llvm(self, llvm_sha, llvm_assertions):  # type: (str, bool) -> None
+    def _download_ci_llvm(self, llvm_sha, llvm_assertions):  # type: (Text, bool) -> None
         cache_prefix = "llvm-{}-{}".format(llvm_sha, llvm_assertions)
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, cache_prefix)
@@ -625,7 +637,7 @@ class RustBuild(object):
         return os.path.join(self.llvm_root(), '.llvm-stamp')
 
 
-    def program_out_of_date(self, stamp_path, extra=""):  # type: (str, str) -> bool
+    def program_out_of_date(self, stamp_path, extra=""):  # type: (str, Text) -> bool
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
             return True
@@ -842,7 +854,7 @@ class RustBuild(object):
         return default_build_triple()
 
     def check_submodule(self, module, slow_submodules):
-        # type: (str, bool) -> Optional[subprocess.Popen[bytes]]
+        # type: (Text, bool) -> Optional[subprocess.Popen[bytes]]
         if not slow_submodules:
             checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
                                            cwd=os.path.join(self.rust_root, module),
@@ -852,7 +864,7 @@ class RustBuild(object):
             return None
 
     def update_submodule(self, module, checked_out, recorded_submodules):
-        # type: (str, Optional[subprocess.Popen[bytes]], Dict[str, str]) -> None
+        # type: (Text, Optional[subprocess.Popen[bytes]], Dict[Text, Text]) -> None
         module_path = os.path.join(self.rust_root, module)
 
         if checked_out is not None:
@@ -866,7 +878,7 @@ class RustBuild(object):
         run(["git", "submodule", "-q", "sync", module],
             cwd=self.rust_root, verbose=self.verbose)
 
-        update_args = ["git", "submodule", "update", "--init", "--recursive"]
+        update_args = ["git", "submodule", "update", "--init", "--recursive"]  # type: List[Text]
         assert self.git_version is not None
         if self.git_version >= distutils.version.LooseVersion("2.11.0"):
             update_args.append("--progress")
@@ -914,7 +926,7 @@ class RustBuild(object):
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))
             submodules_names.append(module)
-        recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
+        recorded = subprocess.Popen([u"git", u"ls-tree", u"HEAD"] + submodules_names,
                                     cwd=self.rust_root, stdout=subprocess.PIPE)
         recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
         recorded_submodules = {}
