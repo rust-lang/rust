@@ -751,13 +751,20 @@ impl UnusedDelimLint for UnusedParens {
                 if !Self::is_expr_delims_necessary(inner, followed_by_block)
                     && value.attrs.is_empty()
                     && !value.span.from_expansion()
+                    && (ctx != UnusedDelimsCtx::LetScrutineeExpr
+                        || match inner.kind {
+                            ast::ExprKind::Binary(
+                                rustc_span::source_map::Spanned { node, .. },
+                                _,
+                                _,
+                            ) if node.lazy() => false,
+                            _ => true,
+                        })
                 {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
                 }
             }
             ast::ExprKind::Let(_, ref expr) => {
-                // FIXME(#60336): Properly handle `let true = (false && true)`
-                // actually needing the parenthesis.
                 self.check_unused_delims_expr(
                     cx,
                     expr,

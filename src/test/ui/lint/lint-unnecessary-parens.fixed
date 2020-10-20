@@ -60,6 +60,8 @@ fn main() {
     if (v == X { y: true }) {}
     if (X { y: true } == v) {}
     if (X { y: false }.y) {}
+    // this shouldn't warn, because the parens are necessary to disambiguate let chains
+    if let true = (true && false) {}
 
     while (X { y: false }.foo(true)) {}
     while (true | X { y: false }.y) {}
