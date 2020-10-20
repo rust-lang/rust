@@ -396,7 +396,7 @@ mod diagnostics {
                 }
 
                 DiagnosticKind::UnconfiguredCode { ast } => {
-                    sink.push(UnconfiguredCode { file: ast.file_id, node: ast.value.clone() });
+                    sink.push(InactiveCode { file: ast.file_id, node: ast.value.clone() });
                 }
             }
         }

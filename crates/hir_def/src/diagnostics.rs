@@ -91,14 +91,14 @@ impl Diagnostic for UnresolvedImport {
 //
 // This diagnostic is shown for code with inactive `#[cfg]` attributes.
 #[derive(Debug)]
-pub struct UnconfiguredCode {
+pub struct InactiveCode {
     pub file: HirFileId,
     pub node: SyntaxNodePtr,
 }
 
-impl Diagnostic for UnconfiguredCode {
+impl Diagnostic for InactiveCode {
     fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("unconfigured-code")
+        DiagnosticCode("inactive-code")
     }
     fn message(&self) -> String {
         // FIXME: say *why* it is configured out
