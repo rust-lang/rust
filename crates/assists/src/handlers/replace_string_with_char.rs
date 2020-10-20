@@ -26,7 +26,7 @@ pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext) -
     let value = token.value()?;
     let target = token.syntax().text_range();
 
-    if value.is_empty() || value.chars().count() > 1 {
+    if value.chars().take(2).count() != 1 {
         return None;
     }
 
