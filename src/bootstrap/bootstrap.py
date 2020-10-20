@@ -27,7 +27,7 @@ def support_xz():  # type: () -> bool
     except tarfile.CompressionError:
         return False
 
-def get(url, path, verbose=False, do_verify=True):  # type: (str, str, int, bool) -> None
+def get(url, path, verbose=0, do_verify=True):  # type: (str, str, int, bool) -> None
     suffix = '.sha256'
     sha_url = url + suffix
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -118,7 +118,7 @@ def verify(path, sha_path, verbose):  # type: (str, str, int) -> bool
     return verified
 
 
-def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
+def unpack(tarball, tarball_suffix, dst, verbose=0, match=None):
     # type: (str, str, str, int, Optional[str]) -> None
     """Unpack the given tarball file"""
     print("extracting", tarball)
@@ -130,6 +130,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
             name = member.replace(fname + "/", "", 1)
             if match is not None and not name.startswith(match):
                 continue
+            assert isinstance(match, str)
             name = name[len(match) + 1:]
 
             dst_path = os.path.join(dst, name)
@@ -143,7 +144,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
     shutil.rmtree(os.path.join(dst, fname))
 
 
-def run(args, verbose=False, exception=False, **kwargs):
+def run(args, verbose=0, exception=False, **kwargs):
     # type: (List[str], int, bool, Any) -> None
     """Run a child program in a new process"""
     if verbose:
@@ -177,8 +178,8 @@ def require(cmd, exit=True):  # type: (List[str], bool) -> Optional[bytes]
 
 def stage0_data(rust_root):  # type: (str) -> Dict[str, str]
     """Build a dictionary from stage0.txt"""
-    nightlies = os.path.join(rust_root, "src/stage0.txt")
-    with open(nightlies, 'r') as nightlies:
+    nightlies_path = os.path.join(rust_root, "src/stage0.txt")
+    with open(nightlies_path, 'r') as nightlies:
         lines = [line.rstrip() for line in nightlies
                  if not line.startswith("#")]
         return dict([line.split(": ", 1) for line in lines if line])  # type: ignore
@@ -361,11 +362,12 @@ class RustBuild(object):
         self.clean = False
         self.config_toml = ''
         self.rust_root = ''
-        self.use_locked_deps = ''
-        self.use_vendored_sources = ''
-        self.verbose = False
-        self.git_version = None
-        self.nix_deps_dir = None
+        self.use_locked_deps = False
+        self.use_vendored_sources = False
+        self.verbose = 0
+        self.git_version = None  # type: Optional[distutils.version.LooseVersion]
+        self.nix_deps_dir = None  # type: Optional[str]
+        self.loose_version = None  # type: Optional[distutils.version.LooseVersion]
 
     def download_stage0(self):  # type: () -> None
         """Fetch the build system for Rust, written in Rust
@@ -415,8 +417,9 @@ class RustBuild(object):
             with output(self.cargo_stamp()) as cargo_stamp:
                 cargo_stamp.write(self.date)
 
-        if self.rustfmt() and self.rustfmt().startswith(self.bin_root()) and (
-            not os.path.exists(self.rustfmt())
+        rustfmt_path = self.rustfmt()
+        if rustfmt_path is not None and rustfmt_path.startswith(self.bin_root()) and (
+            not os.path.exists(rustfmt_path)
             or self.program_out_of_date(self.rustfmt_stamp(), self.rustfmt_channel)
         ):
             if rustfmt_channel:
@@ -854,8 +857,8 @@ class RustBuild(object):
 
         if checked_out is not None:
             default_encoding = sys.getdefaultencoding()
-            checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
-            if recorded_submodules[module] == checked_out:
+            checked_out_ = checked_out.communicate()[0].decode(default_encoding).strip()
+            if recorded_submodules[module] == checked_out_:
                 return
 
         print("Updating submodule", module)
@@ -864,6 +867,7 @@ class RustBuild(object):
             cwd=self.rust_root, verbose=self.verbose)
 
         update_args = ["git", "submodule", "update", "--init", "--recursive"]
+        assert self.git_version is not None
         if self.git_version >= distutils.version.LooseVersion("2.11.0"):
             update_args.append("--progress")
         update_args.append(module)
@@ -914,8 +918,8 @@ class RustBuild(object):
                                     cwd=self.rust_root, stdout=subprocess.PIPE)
         recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
         recorded_submodules = {}
-        for data in recorded:
-            data = data.split()
+        for data_ in recorded:
+            data = data_.split()
             recorded_submodules[data[3]] = data[2]
         for module in filtered_submodules:
             self.update_submodule(module[0], module[1], recorded_submodules)
