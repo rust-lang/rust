@@ -42,6 +42,7 @@ fn smoke_test_docs_generation() {
     // We don't commit docs to the repo, so we can just overwrite in tests.
     codegen::generate_assists_docs(Mode::Overwrite).unwrap();
     codegen::generate_feature_docs(Mode::Overwrite).unwrap();
+    codegen::generate_diagnostic_docs(Mode::Overwrite).unwrap();
 }
 
 #[test]

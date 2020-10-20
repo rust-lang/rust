@@ -36,6 +36,9 @@ pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut Diag
     validator.validate_body(db);
 }
 
+// Diagnostic: no-such-field
+//
+// This diagnostic is triggered if created structure does not have field provided in record.
 #[derive(Debug)]
 pub struct NoSuchField {
     pub file: HirFileId,
@@ -60,6 +63,17 @@ impl Diagnostic for NoSuchField {
     }
 }
 
+// Diagnostic: missing-structure-fields
+//
+// This diagnostic is triggered if record lacks some fields that exist in the corresponding structure.
+//
+// Example:
+//
+// ```rust
+// struct A { a: u8, b: u8 }
+//
+// let a = A { a: 10 };
+// ```
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
@@ -96,6 +110,21 @@ impl Diagnostic for MissingFields {
     }
 }
 
+// Diagnostic: missing-pat-fields
+//
+// This diagnostic is triggered if pattern lacks some fields that exist in the corresponding structure.
+//
+// Example:
+//
+// ```rust
+// struct A { a: u8, b: u8 }
+//
+// let a = A { a: 10, b: 20 };
+//
+// if let A { a } = a {
+//     // ...
+// }
+// ```
 #[derive(Debug)]
 pub struct MissingPatFields {
     pub file: HirFileId,
@@ -130,6 +159,9 @@ impl Diagnostic for MissingPatFields {
     }
 }
 
+// Diagnostic: missing-match-arm
+//
+// This diagnostic is triggered if `match` block is missing one or more match arms.
 #[derive(Debug)]
 pub struct MissingMatchArms {
     pub file: HirFileId,
@@ -152,6 +184,17 @@ impl Diagnostic for MissingMatchArms {
     }
 }
 
+// Diagnostic: missing-ok-in-tail-expr
+//
+// This diagnostic is triggered if block that should return `Result` returns a value not wrapped in `Ok`.
+//
+// Example:
+//
+// ```rust
+// fn foo() -> Result<u8, ()> {
+//     10
+// }
+// ```
 #[derive(Debug)]
 pub struct MissingOkInTailExpr {
     pub file: HirFileId,
@@ -173,6 +216,9 @@ impl Diagnostic for MissingOkInTailExpr {
     }
 }
 
+// Diagnostic: break-outside-of-loop
+//
+// This diagnostic is triggered if `break` keyword is used outside of a loop.
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
     pub file: HirFileId,
@@ -194,6 +240,9 @@ impl Diagnostic for BreakOutsideOfLoop {
     }
 }
 
+// Diagnostic: missing-unsafe
+//
+// This diagnostic is triggered if operation marked as `unsafe` is used outside of `unsafe` function or block.
 #[derive(Debug)]
 pub struct MissingUnsafe {
     pub file: HirFileId,
@@ -215,6 +264,9 @@ impl Diagnostic for MissingUnsafe {
     }
 }
 
+// Diagnostic: mismatched-arg-count
+//
+// This diagnostic is triggered if function is invoked with an incorrect amount of arguments.
 #[derive(Debug)]
 pub struct MismatchedArgCount {
     pub file: HirFileId,
@@ -264,6 +316,9 @@ impl fmt::Display for CaseType {
     }
 }
 
+// Diagnostic: incorrect-ident-case
+//
+// This diagnostic is triggered if item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
 #[derive(Debug)]
 pub struct IncorrectCase {
     pub file: HirFileId,

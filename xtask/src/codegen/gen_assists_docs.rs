@@ -1,6 +1,6 @@
 //! Generates `assists.md` documentation.
 
-use std::{fmt, fs, path::Path};
+use std::{fmt, path::Path};
 
 use crate::{
     codegen::{self, extract_comment_blocks_with_empty_lines, reformat, Location, Mode, PREAMBLE},
@@ -39,7 +39,7 @@ impl Assist {
         return Ok(res);
 
         fn collect_file(acc: &mut Vec<Assist>, path: &Path) -> Result<()> {
-            let text = fs::read_to_string(path)?;
+            let text = xshell::read_file(path)?;
             let comment_blocks = extract_comment_blocks_with_empty_lines("Assist", &text);
 
             for block in comment_blocks {

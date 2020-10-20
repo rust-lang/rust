@@ -10,6 +10,7 @@ mod gen_parser_tests;
 mod gen_assists_docs;
 mod gen_feature_docs;
 mod gen_features;
+mod gen_diagnostic_docs;
 
 use std::{
     fmt, mem,
@@ -21,6 +22,7 @@ use crate::{ensure_rustfmt, project_root, Result};
 
 pub use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
+    gen_diagnostic_docs::generate_diagnostic_docs,
     gen_feature_docs::generate_feature_docs,
     gen_features::generate_features,
     gen_parser_tests::generate_parser_tests,
@@ -47,6 +49,7 @@ impl CodegenCmd {
         generate_assists_tests(Mode::Overwrite)?;
         generate_assists_docs(Mode::Overwrite)?;
         generate_feature_docs(Mode::Overwrite)?;
+        generate_diagnostic_docs(Mode::Overwrite)?;
         Ok(())
     }
 }
