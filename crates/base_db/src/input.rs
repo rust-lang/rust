@@ -290,6 +290,29 @@ impl CrateGraph {
         }
         false
     }
+
+    // Work around for https://github.com/rust-analyzer/rust-analyzer/issues/6038.
+    // As hacky as it gets.
+    pub fn patch_cfg_if(&mut self) -> bool {
+        let cfg_if = self.hacky_find_crate("cfg_if");
+        let std = self.hacky_find_crate("std");
+        match (cfg_if, std) {
+            (Some(cfg_if), Some(std)) => {
+                self.arena.get_mut(&cfg_if).unwrap().dependencies.clear();
+                self.arena
+                    .get_mut(&std)
+                    .unwrap()
+                    .dependencies
+                    .push(Dependency { crate_id: cfg_if, name: CrateName::new("cfg_if").unwrap() });
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn hacky_find_crate(&self, declaration_name: &str) -> Option<CrateId> {
+        self.iter().find(|it| self[*it].declaration_name.as_deref() == Some(declaration_name))
+    }
 }
 
 impl ops::Index<CrateId> for CrateGraph {
