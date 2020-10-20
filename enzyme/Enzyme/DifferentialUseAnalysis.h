@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -24,14 +25,11 @@
 //===----------------------------------------------------------------------===//
 #include "GradientUtils.h"
 
-enum ValueType {
-  Primal,
-  Shadow
-};
+enum ValueType { Primal, Shadow };
 
 // Determine if a value is needed in the reverse pass. We only use this logic in
 // the top level function right now.
-template<ValueType VT>
+template <ValueType VT>
 bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
     bool topLevel, std::map<std::pair<const Value *, bool>, bool> &seen) {
@@ -139,10 +137,12 @@ bool is_value_needed_in_reverse(
           //   conservatively assume that if legal it is recomputed and not
           //   stored)
           if (!gutils->isConstantInstruction(ci) ||
-              !gutils->isConstantValue(const_cast<Value*>((const Value*)ci)) ||
+              !gutils->isConstantValue(
+                  const_cast<Value *>((const Value *)ci)) ||
               (ci->mayWriteToMemory() && topLevel) ||
               (gutils->legalRecompute(ci, ValueToValueMapTy()) &&
-               is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen))) {
+               is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel,
+                                              seen))) {
             return seen[idx] = true;
           }
           continue;
@@ -239,7 +239,7 @@ bool is_value_needed_in_reverse(
         // isa<LoadInst>(use) || (isa<SelectInst>(use) &&
         // cast<SelectInst>(use)->getCondition() != inst) //TODO remove load?
         //|| isa<SwitchInst>(use) || isa<ExtractElement>(use) ||
-        //isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
+        // isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
         // isa<ExtractValueInst>(use) || isa<AllocaInst>(use)
         /*|| isa<StoreInst>(use)*/) {
       continue;
@@ -255,7 +255,7 @@ bool is_value_needed_in_reverse(
       //   in reverse) or we need this value for the reverse pass (we
       //   conservatively assume that if legal it is recomputed and not stored)
       if (!gutils->isConstantInstruction(ci) ||
-          !gutils->isConstantValue(const_cast<Value*>((const Value*)ci)) ||
+          !gutils->isConstantValue(const_cast<Value *>((const Value *)ci)) ||
           (ci->mayWriteToMemory() && topLevel) ||
           (gutils->legalRecompute(ci, ValueToValueMapTy()) &&
            is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen))) {
@@ -265,7 +265,8 @@ bool is_value_needed_in_reverse(
     }
 
     if (auto inst = dyn_cast<Instruction>(use))
-      if (gutils->isConstantInstruction(const_cast<Instruction *>(inst)) && gutils->isConstantValue(const_cast<Instruction*>(inst)))
+      if (gutils->isConstantInstruction(const_cast<Instruction *>(inst)) &&
+          gutils->isConstantValue(const_cast<Instruction *>(inst)))
         continue;
 
     return seen[idx] = true;
@@ -273,10 +274,9 @@ bool is_value_needed_in_reverse(
   return false;
 }
 
-template<ValueType VT>
-bool is_value_needed_in_reverse(
-    TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    bool topLevel) {
-      std::map<std::pair<const Value *, bool>, bool> seen;
-      return is_value_needed_in_reverse<VT>(TR, gutils, inst, topLevel, seen);
+template <ValueType VT>
+bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils *gutils,
+                                const Value *inst, bool topLevel) {
+  std::map<std::pair<const Value *, bool>, bool> seen;
+  return is_value_needed_in_reverse<VT>(TR, gutils, inst, topLevel, seen);
 }

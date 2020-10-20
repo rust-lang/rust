@@ -1,15 +1,17 @@
 
-//===- MustExitScalarEvolution.cpp - ScalarEvolution assuming loops terminate-=//
+//===- MustExitScalarEvolution.cpp - ScalarEvolution assuming loops
+// terminate-=//
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -24,16 +26,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "MustExitScalarEvolution.h"
-#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 
 using namespace llvm;
 
 #if LLVM_VERSION_MAJOR >= 7
-ScalarEvolution::ExitLimit
-MustExitScalarEvolution::computeExitLimitFromCond(const Loop *L, Value *ExitCond,
-                                            bool ExitIfTrue, bool ControlsExit,
-                                            bool AllowPredicates) {
+ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCond(
+    const Loop *L, Value *ExitCond, bool ExitIfTrue, bool ControlsExit,
+    bool AllowPredicates) {
   ScalarEvolution::ExitLimitCacheTy Cache(L, ExitIfTrue, AllowPredicates);
   return computeExitLimitFromCondCached(Cache, L, ExitCond, ExitIfTrue,
                                         ControlsExit, AllowPredicates);
@@ -48,9 +49,8 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCond(
 }
 #endif
 
-ScalarEvolution::ExitLimit
-MustExitScalarEvolution::computeExitLimit(const Loop *L, BasicBlock *ExitingBlock,
-                                    bool AllowPredicates) {
+ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimit(
+    const Loop *L, BasicBlock *ExitingBlock, bool AllowPredicates) {
   assert(L->contains(ExitingBlock) && "Exit count for non-loop block?");
   // If our exiting block does not dominate the latch, then its connection with
   // loop's exit limit may be far from trivial.
@@ -65,16 +65,16 @@ MustExitScalarEvolution::computeExitLimit(const Loop *L, BasicBlock *ExitingBloc
     bool ExitIfTrue = !L->contains(BI->getSuccessor(0));
     assert(ExitIfTrue == L->contains(BI->getSuccessor(1)) &&
            "It should have one successor in loop and one exit block!");
-    // Proceed to the next level to examine the exit condition expression.
-    #if LLVM_VERSION_MAJOR >= 7
+// Proceed to the next level to examine the exit condition expression.
+#if LLVM_VERSION_MAJOR >= 7
     return computeExitLimitFromCond(L, BI->getCondition(), ExitIfTrue,
                                     /*ControlsExit=*/IsOnlyExit,
                                     AllowPredicates);
-    #else
+#else
     return computeExitLimitFromCond(
         L, BI->getCondition(), BI->getSuccessor(0), BI->getSuccessor(1),
         /*ControlsExit=*/IsOnlyExit, AllowPredicates);
-    #endif
+#endif
   }
 
   if (SwitchInst *SI = dyn_cast<SwitchInst>(Term)) {
@@ -95,7 +95,8 @@ MustExitScalarEvolution::computeExitLimit(const Loop *L, BasicBlock *ExitingBloc
 }
 
 #if LLVM_VERSION_MAJOR >= 7
-ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondCached(
+ScalarEvolution::ExitLimit
+MustExitScalarEvolution::computeExitLimitFromCondCached(
     ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
     bool ControlsExit, bool AllowPredicates) {
 
@@ -109,7 +110,8 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondCach
   return EL;
 }
 #else
-ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondCached(
+ScalarEvolution::ExitLimit
+MustExitScalarEvolution::computeExitLimitFromCondCached(
     ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, BasicBlock *TBB,
     BasicBlock *FBB, bool ControlsExit, bool AllowPredicates) {
 
@@ -125,7 +127,8 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondCach
 #endif
 
 #if LLVM_VERSION_MAJOR >= 7
-ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondImpl(
+ScalarEvolution::ExitLimit
+MustExitScalarEvolution::computeExitLimitFromCondImpl(
     ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, bool ExitIfTrue,
     bool ControlsExit, bool AllowPredicates) {
   // Check if the controlling expression for this loop is an And or Or.
@@ -249,7 +252,8 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondImpl
   return computeExitCountExhaustively(L, ExitCond, ExitIfTrue);
 }
 #else
-ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondImpl(
+ScalarEvolution::ExitLimit
+MustExitScalarEvolution::computeExitLimitFromCondImpl(
     ExitLimitCacheTy &Cache, const Loop *L, Value *ExitCond, BasicBlock *TBB,
     BasicBlock *FBB, bool ControlsExit, bool AllowPredicates) {
   // Check if the controlling expression for this loop is an And or Or.
@@ -377,10 +381,9 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCondImpl
 #endif
 
 #if LLVM_VERSION_MAJOR >= 7
-ScalarEvolution::ExitLimit
-MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L, ICmpInst *ExitCond,
-                                            bool ExitIfTrue, bool ControlsExit,
-                                            bool AllowPredicates) {
+ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
+    const Loop *L, ICmpInst *ExitCond, bool ExitIfTrue, bool ControlsExit,
+    bool AllowPredicates) {
   // If the condition was exit on true, convert the condition to exit on false
   ICmpInst::Predicate Pred;
   if (!ExitIfTrue)
@@ -500,13 +503,9 @@ MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L, ICmpInst *ExitC
                                       ExitCond->getOperand(1), L, OriginalPred);
 }
 #else
-ScalarEvolution::ExitLimit
-MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L,
-                                          ICmpInst *ExitCond,
-                                          BasicBlock *TBB,
-                                          BasicBlock *FBB,
-                                          bool ControlsExit,
-                                          bool AllowPredicates) {
+ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
+    const Loop *L, ICmpInst *ExitCond, BasicBlock *TBB, BasicBlock *FBB,
+    bool ControlsExit, bool AllowPredicates) {
   // If the condition was exit on true, convert the condition to exit on false
   ICmpInst::Predicate Pred;
   if (!L->contains(FBB))
@@ -518,8 +517,7 @@ MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L,
   // Handle common loops like: for (X = "string"; *X; ++X)
   if (LoadInst *LI = dyn_cast<LoadInst>(ExitCond->getOperand(0)))
     if (Constant *RHS = dyn_cast<Constant>(ExitCond->getOperand(1))) {
-      ExitLimit ItCnt =
-        computeLoadConstantCompareExitLimit(LI, RHS, L, Pred);
+      ExitLimit ItCnt = computeLoadConstantCompareExitLimit(LI, RHS, L, Pred);
       if (ItCnt.hasAnyInfo())
         return ItCnt;
     }
@@ -552,38 +550,42 @@ MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L,
             ConstantRange::makeExactICmpRegion(Pred, RHSC->getAPInt());
 
         const SCEV *Ret = AddRec->getNumIterationsInRange(CompRange, *this);
-        if (!isa<SCEVCouldNotCompute>(Ret)) return Ret;
+        if (!isa<SCEVCouldNotCompute>(Ret))
+          return Ret;
       }
 
   switch (Pred) {
-  case ICmpInst::ICMP_NE: {                     // while (X != Y)
+  case ICmpInst::ICMP_NE: { // while (X != Y)
     // Convert to: while (X-Y != 0)
-    ExitLimit EL = howFarToZero(getMinusSCEV(LHS, RHS), L, ControlsExit,
-                                AllowPredicates);
-    if (EL.hasAnyInfo()) return EL;
+    ExitLimit EL =
+        howFarToZero(getMinusSCEV(LHS, RHS), L, ControlsExit, AllowPredicates);
+    if (EL.hasAnyInfo())
+      return EL;
     break;
   }
-  case ICmpInst::ICMP_EQ: {                     // while (X == Y)
+  case ICmpInst::ICMP_EQ: { // while (X == Y)
     // Convert to: while (X-Y == 0)
     ExitLimit EL = howFarToNonZero(getMinusSCEV(LHS, RHS), L);
-    if (EL.hasAnyInfo()) return EL;
+    if (EL.hasAnyInfo())
+      return EL;
     break;
   }
   case ICmpInst::ICMP_SLT:
-  case ICmpInst::ICMP_ULT: {                    // while (X < Y)
+  case ICmpInst::ICMP_ULT: { // while (X < Y)
     bool IsSigned = Pred == ICmpInst::ICMP_SLT;
-    ExitLimit EL = howManyLessThans(LHS, RHS, L, IsSigned, ControlsExit,
-                                    AllowPredicates);
-    if (EL.hasAnyInfo()) return EL;
+    ExitLimit EL =
+        howManyLessThans(LHS, RHS, L, IsSigned, ControlsExit, AllowPredicates);
+    if (EL.hasAnyInfo())
+      return EL;
     break;
   }
   case ICmpInst::ICMP_SGT:
-  case ICmpInst::ICMP_UGT: {                    // while (X > Y)
+  case ICmpInst::ICMP_UGT: { // while (X > Y)
     bool IsSigned = Pred == ICmpInst::ICMP_SGT;
-    ExitLimit EL =
-        howManyGreaterThans(LHS, RHS, L, IsSigned, ControlsExit,
-                            AllowPredicates);
-    if (EL.hasAnyInfo()) return EL;
+    ExitLimit EL = howManyGreaterThans(LHS, RHS, L, IsSigned, ControlsExit,
+                                       AllowPredicates);
+    if (EL.hasAnyInfo())
+      return EL;
     break;
   }
   default:
@@ -601,10 +603,9 @@ MustExitScalarEvolution::computeExitLimitFromICmp(const Loop *L,
 }
 #endif
 
-ScalarEvolution::ExitLimit
-MustExitScalarEvolution::howManyLessThans(const SCEV *LHS, const SCEV *RHS,
-                                    const Loop *L, bool IsSigned,
-                                    bool ControlsExit, bool AllowPredicates) {
+ScalarEvolution::ExitLimit MustExitScalarEvolution::howManyLessThans(
+    const SCEV *LHS, const SCEV *RHS, const Loop *L, bool IsSigned,
+    bool ControlsExit, bool AllowPredicates) {
   SmallPtrSet<const SCEVPredicate *, 4> Predicates;
 
   const SCEVAddRecExpr *IV = dyn_cast<SCEVAddRecExpr>(LHS);

@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -60,7 +61,7 @@ using namespace llvm;
 
 llvm::cl::opt<bool>
     EnzymePrint("enzyme-print", cl::init(false), cl::Hidden,
-                 cl::desc("Print before and after fns for autodiff"));
+                cl::desc("Print before and after fns for autodiff"));
 
 cl::opt<bool> looseTypeAnalysis("enzyme-loose-types", cl::init(false),
                                 cl::Hidden,
@@ -115,11 +116,11 @@ bool is_value_mustcache_from_origin(
     // malloc/free are conservatively considered uncacheable.
     if (auto obj_op = dyn_cast<CallInst>(obj)) {
       Function *called = obj_op->getCalledFunction();
-      #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
       if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand())) {
-      #else
+#else
       if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
-      #endif
+#endif
         if (castinst->isCast()) {
           if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
             if (isAllocationFunction(*fn, TLI) ||
@@ -158,12 +159,12 @@ bool is_load_uncacheable(
 
   // Find the underlying object for the pointer operand of the load instruction.
   auto obj =
-  #if LLVM_VERSION_MAJOR >= 12
+#if LLVM_VERSION_MAJOR >= 12
       getUnderlyingObject(li.getPointerOperand(), 100);
-  #else
+#else
       GetUnderlyingObject(li.getPointerOperand(),
                           gutils->oldFunc->getParent()->getDataLayout(), 100);
-  #endif
+#endif
 
   bool can_modref = is_value_mustcache_from_origin(
       obj, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args);
@@ -173,11 +174,12 @@ bool is_load_uncacheable(
       // Don't consider modref from malloc/free as a need to cache
       if (auto obj_op = dyn_cast<CallInst>(inst2)) {
         Function *called = obj_op->getCalledFunction();
-        #if LLVM_VERSION_MAJOR >= 11
-        if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand())) {
-        #else
+#if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst =
+                dyn_cast<ConstantExpr>(obj_op->getCalledOperand())) {
+#else
         if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
-        #endif
+#endif
           if (castinst->isCast()) {
             if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
               if (isAllocationFunction(*fn, TLI) ||
@@ -249,16 +251,15 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
   for (unsigned i = 0; i < callsite_op->getNumArgOperands(); ++i) {
     args.push_back(callsite_op->getArgOperand(i));
 
-    // If the UnderlyingObject is from one of this function's arguments, then we
-    // need to propagate the volatility.
-    #if LLVM_VERSION_MAJOR >= 12
-    Value *obj = getUnderlyingObject(
-        callsite_op->getArgOperand(i), 100);
-    #else
+// If the UnderlyingObject is from one of this function's arguments, then we
+// need to propagate the volatility.
+#if LLVM_VERSION_MAJOR >= 12
+    Value *obj = getUnderlyingObject(callsite_op->getArgOperand(i), 100);
+#else
     Value *obj = GetUnderlyingObject(
         callsite_op->getArgOperand(i),
         callsite_op->getParent()->getModule()->getDataLayout(), 100);
-    #endif
+#endif
 
     bool init_safe = !is_value_mustcache_from_origin(
         obj, AA, gutils, TLI, unnecessaryInstructions, parent_uncacheable_args);
@@ -272,11 +273,11 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
     // Don't consider modref from malloc/free as a need to cache
     if (auto obj_op = dyn_cast<CallInst>(inst2)) {
       Function *called = obj_op->getCalledFunction();
-      #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
       if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand())) {
-      #else
+#else
       if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
-      #endif
+#endif
         if (castinst->isCast()) {
           if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
             if (isAllocationFunction(*fn, TLI) ||
@@ -353,13 +354,19 @@ compute_uncacheable_args_for_callsites(
   return uncacheable_args_map;
 }
 
-void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const Value*> &unnecessaryValues, llvm::SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions,
-                                      bool returnValue, DerivativeMode mode, TypeResults& TR, GradientUtils* gutils, TargetLibraryInfo& TLI, const std::vector<DIFFE_TYPE> &constant_args) {
+void calculateUnusedValuesInFunction(
+    Function &func, llvm::SmallPtrSetImpl<const Value *> &unnecessaryValues,
+    llvm::SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
+    bool returnValue, DerivativeMode mode, TypeResults &TR,
+    GradientUtils *gutils, TargetLibraryInfo &TLI,
+    const std::vector<DIFFE_TYPE> &constant_args) {
   std::map<std::pair<const Value *, bool>, bool> PrimalSeen;
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        return is_value_needed_in_reverse<Primal>(TR, gutils, val, /*topLevel*/mode == DerivativeMode::Both, PrimalSeen);
+        return is_value_needed_in_reverse<Primal>(
+            TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both,
+            PrimalSeen);
       },
       [&](const Instruction *inst) {
         if (auto II = dyn_cast<IntrinsicInst>(inst)) {
@@ -371,45 +378,49 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
           }
         }
 
-        // We still need this value if used as increment/induction variable for a loop
-        // TODO this really should be more simply replaced by doing the loop normalization
-        // on the original code as preprocessing
+        // We still need this value if used as increment/induction variable for
+        // a loop
+        // TODO this really should be more simply replaced by doing the loop
+        // normalization on the original code as preprocessing
 
-        // Below we specifically check if the instructions or any of its newly-generated
-        // (e.g. not in original function) uses are used in the loop calculation
+        // Below we specifically check if the instructions or any of its
+        // newly-generated (e.g. not in original function) uses are used in the
+        // loop calculation
         auto NewI = gutils->getNewFromOriginal(inst);
-        std::set<Instruction*> todo = {NewI};
+        std::set<Instruction *> todo = {NewI};
         {
-        std::deque<Instruction*> toAnalyze;
-        // Here we get the uses of inst from the original function
-        std::set<Instruction*> UsesFromOrig;
-        for(auto u : inst->users()) {
-          if (auto I = dyn_cast<Instruction>(u)) {
-            UsesFromOrig.insert(gutils->getNewFromOriginal(I));
-          }
-        }
-        // We only analyze uses that were not available in the original function
-        for(auto u : NewI->users()) {
-          if (auto I = dyn_cast<Instruction>(u)) {
-            if (UsesFromOrig.count(I) == 0)
-              toAnalyze.push_back(I);
-          }
-        }
-
-        while(toAnalyze.size()) {
-          auto Next = toAnalyze.front();
-          toAnalyze.pop_front();
-          if (todo.count(Next)) continue;
-          todo.insert(Next);
-          for(auto u : Next->users()) {
+          std::deque<Instruction *> toAnalyze;
+          // Here we get the uses of inst from the original function
+          std::set<Instruction *> UsesFromOrig;
+          for (auto u : inst->users()) {
             if (auto I = dyn_cast<Instruction>(u)) {
-              toAnalyze.push_back(I);
+              UsesFromOrig.insert(gutils->getNewFromOriginal(I));
+            }
+          }
+          // We only analyze uses that were not available in the original
+          // function
+          for (auto u : NewI->users()) {
+            if (auto I = dyn_cast<Instruction>(u)) {
+              if (UsesFromOrig.count(I) == 0)
+                toAnalyze.push_back(I);
+            }
+          }
+
+          while (toAnalyze.size()) {
+            auto Next = toAnalyze.front();
+            toAnalyze.pop_front();
+            if (todo.count(Next))
+              continue;
+            todo.insert(Next);
+            for (auto u : Next->users()) {
+              if (auto I = dyn_cast<Instruction>(u)) {
+                toAnalyze.push_back(I);
+              }
             }
           }
         }
-        }
 
-        for(auto I : todo) {
+        for (auto I : todo) {
           if (gutils->isInstructionUsedInLoopInduction(*I)) {
             return true;
           }
@@ -417,13 +428,13 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
 
         if (auto obj_op = dyn_cast<CallInst>(inst)) {
           Function *called = obj_op->getCalledFunction();
-          #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
           if (auto castinst =
                   dyn_cast<ConstantExpr>(obj_op->getCalledOperand())) {
-          #else
+#else
           if (auto castinst =
                   dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
-          #endif
+#endif
             if (castinst->isCast()) {
               if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
                 if (isDeallocationFunction(*fn, TLI)) {
@@ -440,14 +451,13 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
         if (auto si = dyn_cast<StoreInst>(inst)) {
           if (isa<UndefValue>(si->getValueOperand()))
             return false;
-          #if LLVM_VERSION_MAJOR >= 12
-          auto at = getUnderlyingObject(
-              si->getPointerOperand(), 100);
-          #else
+#if LLVM_VERSION_MAJOR >= 12
+          auto at = getUnderlyingObject(si->getPointerOperand(), 100);
+#else
           auto at = GetUnderlyingObject(
               si->getPointerOperand(),
               gutils->oldFunc->getParent()->getDataLayout(), 100);
-          #endif
+#endif
           if (auto arg = dyn_cast<Argument>(at)) {
             if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
               return false;
@@ -456,14 +466,13 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
         }
 
         if (auto mti = dyn_cast<MemTransferInst>(inst)) {
-          #if LLVM_VERSION_MAJOR >= 12
-          auto at = getUnderlyingObject(
-              mti->getArgOperand(1), 100);
-          #else
+#if LLVM_VERSION_MAJOR >= 12
+          auto at = getUnderlyingObject(mti->getArgOperand(1), 100);
+#else
           auto at = GetUnderlyingObject(
               mti->getArgOperand(1),
               gutils->oldFunc->getParent()->getDataLayout(), 100);
-          #endif
+#endif
           if (auto arg = dyn_cast<Argument>(at)) {
             if (constant_args[arg->getArgNo()] == DIFFE_TYPE::DUP_NONEED) {
               return false;
@@ -493,11 +502,14 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
             }
           }
         }
-        return ( (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) && inst->mayWriteToMemory()) ||
-               is_value_needed_in_reverse<Primal>(TR, gutils, inst,
-                                          /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen);
+        return ((mode == DerivativeMode::Forward ||
+                 mode == DerivativeMode::Both) &&
+                inst->mayWriteToMemory()) ||
+               is_value_needed_in_reverse<Primal>(
+                   TR, gutils, inst,
+                   /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen);
       });
-      #if 0
+#if 0
       llvm::errs() << "unnecessaryValues:\n";
       for(auto a : unnecessaryValues) {
         llvm::errs() << *a << "\n";
@@ -506,56 +518,57 @@ void calculateUnusedValuesInFunction(Function& func, llvm::SmallPtrSetImpl<const
       for(auto a : unnecessaryInstructions) {
         llvm::errs() << *a << "\n";
       }
-      #endif
+#endif
 }
 
-void calculateUnusedStoresInFunction(Function& func, llvm::SmallPtrSetImpl<const Instruction*> &unnecessaryStores, const llvm::SmallPtrSetImpl<const Instruction*> &unnecessaryInstructions,
-                                      GradientUtils* gutils) {
-  calculateUnusedStores(
-      func, unnecessaryStores, [&](const Instruction *inst) {
-        if (auto si = dyn_cast<StoreInst>(inst)) {
-          if (isa<UndefValue>(si->getValueOperand()))
-            return false;
-        }
+void calculateUnusedStoresInFunction(
+    Function &func,
+    llvm::SmallPtrSetImpl<const Instruction *> &unnecessaryStores,
+    const llvm::SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
+    GradientUtils *gutils) {
+  calculateUnusedStores(func, unnecessaryStores, [&](const Instruction *inst) {
+    if (auto si = dyn_cast<StoreInst>(inst)) {
+      if (isa<UndefValue>(si->getValueOperand()))
+        return false;
+    }
 
-        if (auto mti = dyn_cast<MemTransferInst>(inst)) {
-          #if LLVM_VERSION_MAJOR >= 12
-          auto at = getUnderlyingObject(
-              mti->getArgOperand(1), 100);
-          #else
+    if (auto mti = dyn_cast<MemTransferInst>(inst)) {
+#if LLVM_VERSION_MAJOR >= 12
+      auto at = getUnderlyingObject(mti->getArgOperand(1), 100);
+#else
           auto at = GetUnderlyingObject(
               mti->getArgOperand(1),
               func.getParent()->getDataLayout(), 100);
-          #endif
-          if (auto ai = dyn_cast<AllocaInst>(at)) {
-            bool foundStore = false;
-            allInstructionsBetween(
-                gutils->OrigLI, ai, const_cast<MemTransferInst *>(mti),
-                [&](Instruction *I) -> bool {
-                  if (!I->mayWriteToMemory())
-                    return /*earlyBreak*/ false;
-                  if (unnecessaryInstructions.count(I))
-                    return /*earlyBreak*/ false;
+#endif
+      if (auto ai = dyn_cast<AllocaInst>(at)) {
+        bool foundStore = false;
+        allInstructionsBetween(
+            gutils->OrigLI, ai, const_cast<MemTransferInst *>(mti),
+            [&](Instruction *I) -> bool {
+              if (!I->mayWriteToMemory())
+                return /*earlyBreak*/ false;
+              if (unnecessaryInstructions.count(I))
+                return /*earlyBreak*/ false;
 
-                  // if (I == &MTI) return;
-                  if (writesToMemoryReadBy(
-                          gutils->AA,
-                          /*maybeReader*/ const_cast<MemTransferInst *>(mti),
-                          /*maybeWriter*/ I)) {
-                    foundStore = true;
-                    return /*earlyBreak*/ true;
-                  }
-                  return /*earlyBreak*/ false;
-                });
-            if (!foundStore) {
-              // performing a memcpy out of unitialized memory
-              return false;
-            }
-          }
+              // if (I == &MTI) return;
+              if (writesToMemoryReadBy(
+                      gutils->AA,
+                      /*maybeReader*/ const_cast<MemTransferInst *>(mti),
+                      /*maybeWriter*/ I)) {
+                foundStore = true;
+                return /*earlyBreak*/ true;
+              }
+              return /*earlyBreak*/ false;
+            });
+        if (!foundStore) {
+          // performing a memcpy out of unitialized memory
+          return false;
         }
+      }
+    }
 
-        return true;
-      });
+    return true;
+  });
 }
 
 std::string to_string(const std::map<Argument *, bool> &us) {
@@ -582,7 +595,8 @@ getDefaultFunctionTypeForAugmentation(FunctionType *called, bool returnUsed,
   }
 
   auto ret = called->getReturnType();
-  // TODO CONSIDER a.getType()->isIntegerTy() && cast<IntegerType>(a.getType())->getBitWidth() < 16
+  // TODO CONSIDER a.getType()->isIntegerTy() &&
+  // cast<IntegerType>(a.getType())->getBitWidth() < 16
   outs.push_back(Type::getInt8PtrTy(called->getContext()));
   if (!ret->isVoidTy() && !ret->isEmptyTy()) {
     if (returnUsed) {
@@ -601,7 +615,8 @@ std::pair<SmallVector<Type *, 4>, SmallVector<Type *, 4>>
 getDefaultFunctionTypeForGradient(FunctionType *called, DIFFE_TYPE retType) {
   SmallVector<Type *, 4> args;
   SmallVector<Type *, 4> outs;
-    // TODO CONSIDER a.getType()->isIntegerTy() && cast<IntegerType>(a.getType())->getBitWidth() < 16
+  // TODO CONSIDER a.getType()->isIntegerTy() &&
+  // cast<IntegerType>(a.getType())->getBitWidth() < 16
 
   for (auto &argType : called->params()) {
     args.push_back(argType);
@@ -623,7 +638,7 @@ getDefaultFunctionTypeForGradient(FunctionType *called, DIFFE_TYPE retType) {
 }
 
 bool shouldAugmentCall(CallInst *op, const GradientUtils *gutils,
-                                     TypeResults &TR) {
+                       TypeResults &TR) {
   assert(op->getParent()->getParent() == gutils->oldFunc);
 
   Function *called = op->getCalledFunction();
@@ -730,11 +745,11 @@ bool legalCombinedForwardReverse(
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
     const bool subretused) {
   Function *called = origop->getCalledFunction();
-  #if LLVM_VERSION_MAJOR >= 11
-  Value* calledValue = origop->getCalledOperand();
-  #else
-  Value* calledValue = origop->getCalledValue();
-  #endif
+#if LLVM_VERSION_MAJOR >= 11
+  Value *calledValue = origop->getCalledOperand();
+#else
+  Value *calledValue = origop->getCalledValue();
+#endif
 
   if (origop->getNumUses() != 0 && isa<PointerType>(origop->getType())) {
     if (EnzymePrintPerf) {
@@ -778,10 +793,10 @@ bool legalCombinedForwardReverse(
       if (EnzymePrintPerf) {
         if (called)
           llvm::errs() << " [bi] failed to replace function "
-                      << (called->getName()) << " due to " << *I << "\n";
+                       << (called->getName()) << " due to " << *I << "\n";
         else
-          llvm::errs() << " [bi] ailed to replace function "
-                      << (*calledValue) << " due to " << *I << "\n";
+          llvm::errs() << " [bi] ailed to replace function " << (*calledValue)
+                       << " due to " << *I << "\n";
       }
       return;
     }
@@ -823,10 +838,10 @@ bool legalCombinedForwardReverse(
       if (EnzymePrintPerf) {
         if (called)
           llvm::errs() << " [phi] failed to replace function "
-                      << (called->getName()) << " due to " << *I << "\n";
+                       << (called->getName()) << " due to " << *I << "\n";
         else
-          llvm::errs() << " [phi] ailed to replace function "
-                      << (*calledValue) << " due to " << *I << "\n";
+          llvm::errs() << " [phi] ailed to replace function " << (*calledValue)
+                       << " due to " << *I << "\n";
       }
       return;
     }
@@ -835,10 +850,10 @@ bool legalCombinedForwardReverse(
       if (EnzymePrintPerf) {
         if (called)
           llvm::errs() << " [nv] failed to replace function "
-                      << (called->getName()) << " due to " << *I << "\n";
+                       << (called->getName()) << " due to " << *I << "\n";
         else
-          llvm::errs() << " [nv] ailed to replace function "
-                      << (*calledValue) << " due to " << *I << "\n";
+          llvm::errs() << " [nv] ailed to replace function " << (*calledValue)
+                       << " due to " << *I << "\n";
       }
       return;
     }
@@ -847,10 +862,10 @@ bool legalCombinedForwardReverse(
       if (EnzymePrintPerf) {
         if (called)
           llvm::errs() << " [ci] failed to replace function "
-                      << (called->getName()) << " due to " << *I << "\n";
+                       << (called->getName()) << " due to " << *I << "\n";
         else
-          llvm::errs() << " [ci] ailed to replace function "
-                      << (*calledValue) << " due to " << *I << "\n";
+          llvm::errs() << " [ci] ailed to replace function " << (*calledValue)
+                       << " due to " << *I << "\n";
       }
       return;
     }
@@ -864,11 +879,10 @@ bool legalCombinedForwardReverse(
         if (EnzymePrintPerf) {
           if (called)
             llvm::errs() << " [am] failed to replace function "
-                        << (called->getName()) << " due to " << *I << "\n";
+                         << (called->getName()) << " due to " << *I << "\n";
           else
-            llvm::errs() << " [am] ailed to replace function "
-                        << (*calledValue) << " due to " << *I
-                        << "\n";
+            llvm::errs() << " [am] ailed to replace function " << (*calledValue)
+                         << " due to " << *I << "\n";
         }
         return;
       }
@@ -921,12 +935,13 @@ bool legalCombinedForwardReverse(
                                /*maybeWriter*/ post)) {
         if (EnzymePrintPerf) {
           if (called)
-            llvm::errs() << " failed to replace function " << (called->getName())
-                        << " due to " << *post << " usetree: " << *inst << "\n";
-          else
             llvm::errs() << " failed to replace function "
-                        << (*calledValue) << " due to " << *post
-                        << " usetree: " << *inst << "\n";
+                         << (called->getName()) << " due to " << *post
+                         << " usetree: " << *inst << "\n";
+          else
+            llvm::errs() << " failed to replace function " << (*calledValue)
+                         << " due to " << *post << " usetree: " << *inst
+                         << "\n";
         }
         legal = false;
         return true;
@@ -957,11 +972,10 @@ bool legalCombinedForwardReverse(
         if (EnzymePrintPerf) {
           if (called)
             llvm::errs() << " [nonspec] failed to replace function "
-                        << (called->getName()) << " due to " << *inst << "\n";
+                         << (called->getName()) << " due to " << *inst << "\n";
           else
             llvm::errs() << " [nonspec] ailed to replace function "
-                        << (*calledValue) << " due to " << *inst
-                        << "\n";
+                         << (*calledValue) << " due to " << *inst << "\n";
         }
         legal = false;
         // Early exit
@@ -974,11 +988,10 @@ bool legalCombinedForwardReverse(
       if (EnzymePrintPerf) {
         if (called)
           llvm::errs() << " [premove] failed to replace function "
-                      << (called->getName()) << " due to " << *inst << "\n";
+                       << (called->getName()) << " due to " << *inst << "\n";
         else
           llvm::errs() << " [premove] ailed to replace function "
-                      << (*calledValue) << " due to " << *inst
-                      << "\n";
+                       << (*calledValue) << " due to " << *inst << "\n";
       }
       // Early exit
       return true;
@@ -993,11 +1006,10 @@ bool legalCombinedForwardReverse(
   if (EnzymePrintPerf) {
     if (called)
       llvm::errs() << " choosing to replace function " << (called->getName())
-                  << " and do both forward/reverse\n";
+                   << " and do both forward/reverse\n";
     else
-      llvm::errs() << " choosing to replace function "
-                  << (*calledValue)
-                  << " and do both forward/reverse\n";
+      llvm::errs() << " choosing to replace function " << (*calledValue)
+                   << " and do both forward/reverse\n";
   }
 
   return true;
@@ -1044,18 +1056,16 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   }
   assert(constant_args.size() == todiff->getFunctionType()->getNumParams());
   using CacheKey = std::tuple<Function *, DIFFE_TYPE /*retType*/,
-                             std::vector<DIFFE_TYPE> /*constant_args*/,
-                             std::map<Argument *, bool> /*uncacheable_args*/,
-                             bool /*returnUsed*/, const FnTypeInfo>;
-  static std::map<CacheKey, AugmentedReturn>
-      cachedfunctions;
-  static std::map<CacheKey, bool>
-      cachedfinished;
+                              std::vector<DIFFE_TYPE> /*constant_args*/,
+                              std::map<Argument *, bool> /*uncacheable_args*/,
+                              bool /*returnUsed*/, const FnTypeInfo>;
+  static std::map<CacheKey, AugmentedReturn> cachedfunctions;
+  static std::map<CacheKey, bool> cachedfinished;
   CacheKey tup =
-          std::make_tuple(todiff, retType, constant_args,
-                          std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                                     _uncacheable_args.end()),
-                          returnUsed, oldTypeInfo);
+      std::make_tuple(todiff, retType, constant_args,
+                      std::map<Argument *, bool>(_uncacheable_args.begin(),
+                                                 _uncacheable_args.end()),
+                      returnUsed, oldTypeInfo);
   auto found = cachedfunctions.find(tup);
   if (found != cachedfunctions.end()) {
     return found->second;
@@ -1198,11 +1208,13 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
 
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
-  calculateUnusedValuesInFunction(*gutils->oldFunc, unnecessaryValues, unnecessaryInstructions,
-                                      returnUsed, DerivativeMode::Forward, TR, gutils, TLI, constant_args);
+  calculateUnusedValuesInFunction(
+      *gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnUsed,
+      DerivativeMode::Forward, TR, gutils, TLI, constant_args);
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
-  calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores, unnecessaryInstructions, gutils);
+  calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
+                                  unnecessaryInstructions, gutils);
 
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = compute_uncacheable_args_for_callsites(
@@ -1260,8 +1272,8 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   AdjointGenerator<AugmentedReturn *> maker(
       DerivativeMode::Forward, gutils, constant_args, TR, getIndex,
       uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second,
-      nullptr, unnecessaryValues, unnecessaryInstructions,
-      unnecessaryStores, nullptr);
+      nullptr, unnecessaryValues, unnecessaryInstructions, unnecessaryStores,
+      nullptr);
 
   for (BasicBlock &oBB : *gutils->oldFunc) {
     auto term = oBB.getTerminator();
@@ -1322,7 +1334,6 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     if (Arg.hasAttribute(Attribute::StructRet))
       Arg.removeAttr(Attribute::StructRet);
   }
-
 
   if (gutils->newFunc->hasFnAttribute(Attribute::OptimizeNone))
     gutils->newFunc->removeFnAttr(Attribute::OptimizeNone);
@@ -1661,14 +1672,14 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       rep->setTailCallKind(user->getTailCallKind());
       rep->setDebugLoc(user->getDebugLoc());
       assert(user);
-      std::vector<ExtractValueInst*> torep;
+      std::vector<ExtractValueInst *> torep;
       for (auto u : user->users()) {
         assert(u);
         if (auto ei = dyn_cast<ExtractValueInst>(u)) {
           torep.push_back(ei);
         }
       }
-      for(auto ei : torep) {
+      for (auto ei : torep) {
         ei->replaceAllUsesWith(rep);
         ei->eraseFromParent();
       }
@@ -1678,7 +1689,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
   }
   if (PostOpt)
-    optimizeIntermediate(gutils, /*topLevel*/false, NewF);
+    optimizeIntermediate(gutils, /*topLevel*/ false, NewF);
 
   cachedfunctions.find(tup)->second.fn = NewF;
   if (recursive)
@@ -1941,7 +1952,8 @@ Function *CreatePrimalAndGradient(
   if (retType != DIFFE_TYPE::CONSTANT)
     assert(!todiff->getReturnType()->isVoidTy());
 
-  using CacheKey = std::tuple<Function *, DIFFE_TYPE /*retType*/,
+  using CacheKey =
+      std::tuple<Function *, DIFFE_TYPE /*retType*/,
                  std::vector<DIFFE_TYPE> /*constant_args*/,
                  std::map<Argument *, bool> /*uncacheable_args*/,
                  bool /*retval*/, bool /*dretPtr*/, bool /*topLevel*/,
@@ -2061,7 +2073,9 @@ Function *CreatePrimalAndGradient(
       bb.CreateRet(val);
       foundcalled = NewF;
     }
-    return insert_or_assign2<CacheKey, Function*>(cachedfunctions, tup, foundcalled)->second;
+    return insert_or_assign2<CacheKey, Function *>(cachedfunctions, tup,
+                                                   foundcalled)
+        ->second;
   }
 
   assert(!todiff->empty());
@@ -2073,11 +2087,11 @@ Function *CreatePrimalAndGradient(
       topLevel, todiff, TLI, TA, AA, retType, constant_args,
       returnValue ? (dretPtr ? ReturnType::ArgsWithTwoReturns
                              : ReturnType::ArgsWithReturn)
-                  : (dretPtr ? ReturnType::ArgsWithReturn
-                             : ReturnType::Args),
+                  : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args),
       additionalArg);
   gutils->AtomicAdd = AtomicAdd;
-  insert_or_assign2<CacheKey, Function*>(cachedfunctions, tup, gutils->newFunc);
+  insert_or_assign2<CacheKey, Function *>(cachedfunctions, tup,
+                                          gutils->newFunc);
 
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
@@ -2176,12 +2190,14 @@ Function *CreatePrimalAndGradient(
 
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
-  calculateUnusedValuesInFunction(*gutils->oldFunc, unnecessaryValues, unnecessaryInstructions,
-                                    returnValue, topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, TR, gutils, TLI, constant_args);
-
+  calculateUnusedValuesInFunction(
+      *gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnValue,
+      topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, TR, gutils,
+      TLI, constant_args);
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
-  calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores, unnecessaryInstructions, gutils);
+  calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
+                                  unnecessaryInstructions, gutils);
 
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
@@ -2276,7 +2292,7 @@ Function *CreatePrimalAndGradient(
 
       if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
         rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
-                        dretAlloca);
+                       dretAlloca);
       }
 
       if (retType == DIFFE_TYPE::OUT_DIFF) {
@@ -2305,12 +2321,12 @@ Function *CreatePrimalAndGradient(
     // Don't create derivatives for code that results in termination
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
       auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
-      std::vector<BasicBlock*> toRemove;
+      std::vector<BasicBlock *> toRemove;
       for (auto next : successors(&oBB)) {
         auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));
         toRemove.push_back(sucBB);
       }
-      for(auto sucBB : toRemove) {
+      for (auto sucBB : toRemove) {
         sucBB->removePredecessor(newBB);
       }
 

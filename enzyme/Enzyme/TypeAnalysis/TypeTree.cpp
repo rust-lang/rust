@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -39,7 +40,7 @@ using namespace llvm;
 // After a depth len into the index tree, prune any lookups that are not {0} or
 // {-1} Todo handle {double}** to double** where there is a 0 removed
 TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
-                                 llvm::Type *To) const {
+                               llvm::Type *To) const {
   assert(From);
   assert(To);
 

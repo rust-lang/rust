@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -34,20 +35,18 @@ using namespace llvm;
 
 EnzymeFailure::EnzymeFailure(llvm::StringRef RemarkName,
                              const llvm::DiagnosticLocation &Loc,
-                             const llvm::Instruction *CodeRegion) :
-                             DiagnosticInfoIROptimization(
-           EnzymeFailure::ID(), DS_Error, "enzyme", RemarkName,
-           *CodeRegion->getParent()->getParent(), Loc, CodeRegion) {}
- 
-      llvm::DiagnosticKind EnzymeFailure::ID() {
-        static auto id = llvm::getNextAvailablePluginDiagnosticKind();
-        return (llvm::DiagnosticKind)id;
-      }
+                             const llvm::Instruction *CodeRegion)
+    : DiagnosticInfoIROptimization(
+          EnzymeFailure::ID(), DS_Error, "enzyme", RemarkName,
+          *CodeRegion->getParent()->getParent(), Loc, CodeRegion) {}
+
+llvm::DiagnosticKind EnzymeFailure::ID() {
+  static auto id = llvm::getNextAvailablePluginDiagnosticKind();
+  return (llvm::DiagnosticKind)id;
+}
 
 /// \see DiagnosticInfoOptimizationBase::isEnabled.
-bool EnzymeFailure::isEnabled() const {
-  return true;
-}
+bool EnzymeFailure::isEnabled() const { return true; }
 
 /// Convert a floating type to a string
 static inline std::string tofltstr(Type *T) {

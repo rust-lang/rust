@@ -1,14 +1,16 @@
-//===- CacheUtility.h - Caching values in the forward pass for later use  ---===//
+//===- CacheUtility.h - Caching values in the forward pass for later use
+//---===//
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -34,7 +36,6 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
-
 
 #include "MustExitScalarEvolution.h"
 
@@ -93,7 +94,6 @@ enum class UnwrapMode {
   AttemptSingleUnwrap,
 };
 
-
 class CacheUtility {
 public:
   /// The function whose instructions we are caching
@@ -102,6 +102,7 @@ public:
   /// Various analysis results of newFunc
   llvm::TargetLibraryInfo &TLI;
   llvm::DominatorTree DT;
+
 protected:
   llvm::LoopInfo LI;
   llvm::AssumptionCache AC;
@@ -113,32 +114,38 @@ public:
   llvm::BasicBlock *inversionAllocs;
 
 protected:
-  CacheUtility(llvm::TargetLibraryInfo &TLI, llvm::Function* newFunc) : newFunc(newFunc),
-    TLI(TLI), DT(*newFunc), LI(DT), AC(*newFunc), SE(*newFunc, TLI, AC, DT, LI) {
+  CacheUtility(llvm::TargetLibraryInfo &TLI, llvm::Function *newFunc)
+      : newFunc(newFunc), TLI(TLI), DT(*newFunc), LI(DT), AC(*newFunc),
+        SE(*newFunc, TLI, AC, DT, LI) {
     inversionAllocs = llvm::BasicBlock::Create(newFunc->getContext(),
-                                         "allocsForInversion", newFunc);
+                                               "allocsForInversion", newFunc);
   }
+
 public:
   virtual ~CacheUtility();
-  
+
 private:
-  /// Map of Loop to requisite loop information needed for AD (forward/reverse induction/etc)
+  /// Map of Loop to requisite loop information needed for AD (forward/reverse
+  /// induction/etc)
   std::map<llvm::Loop *, LoopContext> loopContexts;
+
 public:
-  /// Given a BasicBlock BB in newFunc, set loopContext to the relevant contained loop and
-  /// return true. If BB is not in a loop, return false
+  /// Given a BasicBlock BB in newFunc, set loopContext to the relevant
+  /// contained loop and return true. If BB is not in a loop, return false
   bool getContext(llvm::BasicBlock *BB, LoopContext &loopContext);
-  /// Return whether the given instruction is used as necessary as part of a loop context
-  /// This includes as the canonical induction variable or increment
-  bool isInstructionUsedInLoopInduction(llvm::Instruction& I) {
+  /// Return whether the given instruction is used as necessary as part of a
+  /// loop context This includes as the canonical induction variable or
+  /// increment
+  bool isInstructionUsedInLoopInduction(llvm::Instruction &I) {
     for (auto &context : loopContexts) {
-      if (context.second.var == &I || context.second.incvar == &I || context.second.limit == &I) {
+      if (context.second.var == &I || context.second.incvar == &I ||
+          context.second.limit == &I) {
         return true;
       }
     }
     return false;
   }
-  
+
   /// Print out all currently cached values
   void dumpScope() {
     llvm::errs() << "scope:\n";
@@ -149,144 +156,166 @@ public:
     llvm::errs() << "end scope\n";
   }
 
-  /// Erase this instruction both from LLVM modules and any local data-structures
-  virtual void erase(llvm::Instruction* I);
-  
+  /// Erase this instruction both from LLVM modules and any local
+  /// data-structures
+  virtual void erase(llvm::Instruction *I);
+
   // Context information to request calculation of loop limit information
   struct LimitContext {
-      // A block inside of the loop, defining the location
-      llvm::BasicBlock* Block;
-      // Instead of getting the actual limits, return a limit of one
-      bool ForceSingleIteration;
+    // A block inside of the loop, defining the location
+    llvm::BasicBlock *Block;
+    // Instead of getting the actual limits, return a limit of one
+    bool ForceSingleIteration;
 
-      LimitContext(llvm::BasicBlock* Block, bool ForceSingleIteration=false) :
-        Block(Block), ForceSingleIteration(ForceSingleIteration) {}
+    LimitContext(llvm::BasicBlock *Block, bool ForceSingleIteration = false)
+        : Block(Block), ForceSingleIteration(ForceSingleIteration) {}
   };
-
 
   /// Given a LimitContext ctx, representing a location inside a loop nest,
   /// break each of the loops up into chunks of loops where each chunk's number
   /// of iterations can be computed at the chunk preheader. Every dynamic loop
   /// defines the start of a chunk. SubLimitType is a vector of chunk objects.
-  /// More specifically it is a vector of { # iters in a Chunk (sublimit), Chunk }
-  /// Each chunk object is a vector of loops contained within the chunk.
-  /// For every loop, this returns pair of the LoopContext and the limit of that loop
-  /// Both the vector of Chunks and vector of Loops within a Chunk go from innermost
-  /// loop to outermost loop.
-  typedef std::vector<std::pair</*sublimit*/ llvm::Value *, /*loop limits*/ std::vector<
-                        std::pair<LoopContext, llvm::Value *>>>> SubLimitType;
+  /// More specifically it is a vector of { # iters in a Chunk (sublimit), Chunk
+  /// } Each chunk object is a vector of loops contained within the chunk. For
+  /// every loop, this returns pair of the LoopContext and the limit of that
+  /// loop Both the vector of Chunks and vector of Loops within a Chunk go from
+  /// innermost loop to outermost loop.
+  typedef std::vector<std::pair<
+      /*sublimit*/ llvm::Value *,
+      /*loop limits*/ std::vector<std::pair<LoopContext, llvm::Value *>>>>
+      SubLimitType;
   SubLimitType getSubLimits(LimitContext ctx);
+
 private:
-  /// Internal data structure used by getSubLimit to avoid computing the same loop
-  /// limit multiple times if possible. Map's a desired limitMinus1 (see getSubLimits)
-  /// and the block the true limit requested to the value of the limit accessible at that block
-  std::map<std::pair<llvm::Value *, llvm::BasicBlock *>, llvm::Value *> LimitCache;
-  /// Internal data structure used by getSubLimit to avoid computing the cumulative loop
-  /// limit multiple times if possible. Map's a desired pair of operands to be multiplied (see getSubLimits)
-  /// and the block the cumulative limit requested to the value of the limit accessible at that block
-  /// This cache is also shared with computeIndexOfChunk
-  std::map<std::tuple<llvm::Value *, llvm::Value*, llvm::BasicBlock *>, llvm::Value *> SizeCache;
+  /// Internal data structure used by getSubLimit to avoid computing the same
+  /// loop limit multiple times if possible. Map's a desired limitMinus1 (see
+  /// getSubLimits) and the block the true limit requested to the value of the
+  /// limit accessible at that block
+  std::map<std::pair<llvm::Value *, llvm::BasicBlock *>, llvm::Value *>
+      LimitCache;
+  /// Internal data structure used by getSubLimit to avoid computing the
+  /// cumulative loop limit multiple times if possible. Map's a desired pair of
+  /// operands to be multiplied (see getSubLimits) and the block the cumulative
+  /// limit requested to the value of the limit accessible at that block This
+  /// cache is also shared with computeIndexOfChunk
+  std::map<std::tuple<llvm::Value *, llvm::Value *, llvm::BasicBlock *>,
+           llvm::Value *>
+      SizeCache;
 
-  /// Given a loop context, compute the corresponding index into said loop at the IRBuilder<>
-  llvm::Value* computeIndexOfChunk(bool inForwardPass, llvm::IRBuilder<> &v, const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops);
-
+  /// Given a loop context, compute the corresponding index into said loop at
+  /// the IRBuilder<>
+  llvm::Value *computeIndexOfChunk(
+      bool inForwardPass, llvm::IRBuilder<> &v,
+      const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops);
 
 private:
   /// Given a cache allocation and an index denoting how many Chunks deep the
   /// allocation is being indexed into, return the invariant metadata describing
   /// used to describe loads/stores to the indexed pointer
-  /// Note that the cache allocation should either be an allocainst (if in fwd/both)
-  /// or an extraction from the tape
-  std::map<std::pair<llvm::Value *, int>, llvm::MDNode *> CachePointerInvariantGroups;
-  /// Given a value being cached, return the invariant metadata of any loads/stores
-  /// to memory storing that value
+  /// Note that the cache allocation should either be an allocainst (if in
+  /// fwd/both) or an extraction from the tape
+  std::map<std::pair<llvm::Value *, int>, llvm::MDNode *>
+      CachePointerInvariantGroups;
+  /// Given a value being cached, return the invariant metadata of any
+  /// loads/stores to memory storing that value
   std::map<llvm::Value *, llvm::MDNode *> ValueInvariantGroups;
-
 
 protected:
   /// A map of values being cached to their underlying allocation/limit context
   std::map<llvm::Value *, std::pair<llvm::AllocaInst *, LimitContext>> scopeMap;
-  
-  /// A map of allocations to a vector of instruction used to create by the allocation
-  /// Keeping track of these values is useful for deallocation. This is stored as
-  /// a vector explicitly to order theses instructions in such a way that they can
-  /// be erased by iterating in reverse order.
-  std::map<llvm::AllocaInst *, std::vector<llvm::Instruction *>> scopeInstructions;
-  
+
+  /// A map of allocations to a vector of instruction used to create by the
+  /// allocation Keeping track of these values is useful for deallocation. This
+  /// is stored as a vector explicitly to order theses instructions in such a
+  /// way that they can be erased by iterating in reverse order.
+  std::map<llvm::AllocaInst *, std::vector<llvm::Instruction *>>
+      scopeInstructions;
+
   /// A map of allocations to a set of instructions which free memory as part of
   /// the cache.
   std::map<llvm::AllocaInst *, std::set<llvm::CallInst *>> scopeFrees;
 
-  /// A map of allocations to a set of instructions which allocate memory as part
-  /// of the cache
+  /// A map of allocations to a set of instructions which allocate memory as
+  /// part of the cache
   std::map<llvm::AllocaInst *, std::vector<llvm::CallInst *>> scopeAllocs;
 
 public:
-    /// Create a cache of Type T at the given LimitContext. If allocateInternal is set
-    /// this will allocate the requesite memory. 
-    /// If extraSize is set, allocations will be a factor of extraSize larger
-    llvm::AllocaInst *createCacheForScope(LimitContext ctx, llvm::Type *T,llvm::StringRef name,
-                                  bool shouldFree, bool allocateInternal = true,
-                                  llvm::Value *extraSize = nullptr);
+  /// Create a cache of Type T at the given LimitContext. If allocateInternal is
+  /// set this will allocate the requesite memory. If extraSize is set,
+  /// allocations will be a factor of extraSize larger
+  llvm::AllocaInst *createCacheForScope(LimitContext ctx, llvm::Type *T,
+                                        llvm::StringRef name, bool shouldFree,
+                                        bool allocateInternal = true,
+                                        llvm::Value *extraSize = nullptr);
 
+  /// High-level utility to "unwrap" an instruction at a new location specified
+  /// by BuilderM. Depending on the mode, it will either just unwrap this
+  /// instruction, all of its instructions operands, and optionally lookup
+  /// values when it is not legal to unwrap. If a value cannot be unwrap'd at a
+  /// given location, this will null. This high-level utility should be
+  /// implemented based off the low-level caching infrastructure provided in
+  /// this class.
+  virtual llvm::Value *unwrapM(llvm::Value *const val,
+                               llvm::IRBuilder<> &BuilderM,
+                               const llvm::ValueToValueMapTy &available,
+                               UnwrapMode mode) = 0;
 
-    /// High-level utility to "unwrap" an instruction at a new location specified by
-    /// BuilderM. Depending on the mode, it will either just unwrap this instruction,
-    /// all of its instructions operands, and optionally lookup values when it is not
-    /// legal to unwrap. If a value cannot be unwrap'd at a given location, this will
-    /// null.
-    /// This high-level utility should be implemented based off the low-level caching
-    /// infrastructure provided in this class.
-    virtual llvm::Value * unwrapM(llvm::Value *const val, llvm::IRBuilder<> &BuilderM,
-                    const llvm::ValueToValueMapTy &available, UnwrapMode mode) = 0;
+  /// High-level utility to get the value an instruction at a new location
+  /// specified by BuilderM. Unlike unwrap, this function can never fail --
+  /// falling back to creating a cache if necessary. This function is
+  /// prepopulated with a set of values that are already known to be available
+  /// and may contain optimizations for getting the value in more efficient ways
+  /// (e.g. unwrap'ing when legal, looking up equivalent values, etc). This
+  /// high-level utility should be implemented based off the low-level caching
+  /// infrastructure provided in this class.
+  virtual llvm::Value *
+  lookupM(llvm::Value *val, llvm::IRBuilder<> &BuilderM,
+          const llvm::ValueToValueMapTy &incoming_availalble =
+              llvm::ValueToValueMapTy()) = 0;
 
-    /// High-level utility to get the value an instruction at a new location specified by
-    /// BuilderM. Unlike unwrap, this function can never fail -- falling back to 
-    /// creating a cache if necessary. This function is prepopulated with a set of
-    /// values that are already known to be available and may contain optimizations
-    /// for getting the value in more efficient ways (e.g. unwrap'ing when legal,
-    /// looking up equivalent values, etc).
-    /// This high-level utility should be implemented based off the low-level caching
-    /// infrastructure provided in this class.
-    virtual llvm::Value * lookupM(llvm::Value *val, llvm::IRBuilder<> &BuilderM,
-            const llvm::ValueToValueMapTy &incoming_availalble = llvm::ValueToValueMapTy()) = 0;
+  /// If an allocation is requested to be freed, this subclass will be called to
+  /// chose how and where to free it. It is by default not implemented, falling
+  /// back to an error. Subclasses who want to free memory should implement this
+  /// function.
+  virtual void freeCache(llvm::BasicBlock *forwardPreheader,
+                         const SubLimitType &antimap, int i,
+                         llvm::AllocaInst *alloc,
+                         llvm::ConstantInt *byteSizeOfType,
+                         llvm::Value *storeInto, llvm::MDNode *InvariantMD) {
+    assert(0 && "freeing cache not handled in this scenario");
+    llvm_unreachable("freeing cache not handled in this scenario");
+  }
 
-    /// If an allocation is requested to be freed, this subclass will be called to
-    /// chose how and where to free it. It is by default not implemented, falling
-    /// back to an error. Subclasses who want to free memory should implement this
-    /// function.
-    virtual void freeCache(llvm::BasicBlock* forwardPreheader, const SubLimitType& antimap,
-                           int i, llvm::AllocaInst* alloc, llvm::ConstantInt* byteSizeOfType,
-                           llvm::Value* storeInto, llvm::MDNode* InvariantMD) {
-        assert(0 && "freeing cache not handled in this scenario");
-        llvm_unreachable("freeing cache not handled in this scenario");
-    } 
+  /// Given an allocation defined at a particular ctx, store the value val
+  /// in the cache at the location defined in the given builder
+  void storeInstructionInCache(LimitContext ctx, llvm::IRBuilder<> &BuilderM,
+                               llvm::Value *val, llvm::AllocaInst *cache);
 
-    /// Given an allocation defined at a particular ctx, store the value val
-    /// in the cache at the location defined in the given builder
-    void storeInstructionInCache(LimitContext ctx, llvm::IRBuilder<> &BuilderM,
-                llvm::Value *val, llvm::AllocaInst *cache);
+  /// Given an allocation defined at a particular ctx, store the instruction
+  /// in the cache right after the instruction is executed
+  void storeInstructionInCache(LimitContext ctx, llvm::Instruction *inst,
+                               llvm::AllocaInst *cache);
 
-    /// Given an allocation defined at a particular ctx, store the instruction
-    /// in the cache right after the instruction is executed
-    void storeInstructionInCache(LimitContext ctx, llvm::Instruction *inst,
-                                llvm::AllocaInst *cache);
+  /// Given an allocation specified by the LimitContext ctx and cache, compute a
+  /// pointer that can hold the underlying type being cached. This value should
+  /// be computed at BuilderM. Optionally, instructions needed to generate this
+  /// pointer can be stored in scopeInstructions
+  llvm::Value *getCachePointer(bool inForwardPass, llvm::IRBuilder<> &BuilderM,
+                               LimitContext ctx, llvm::Value *cache, bool isi1,
+                               bool storeInInstructionsMap,
+                               llvm::Value *extraSize = nullptr);
 
-    /// Given an allocation specified by the LimitContext ctx and cache, compute a pointer
-    /// that can hold the underlying type being cached. This value should be computed at BuilderM.
-    /// Optionally, instructions needed to generate this pointer can be stored in scopeInstructions 
-    llvm::Value *getCachePointer(bool inForwardPass, llvm::IRBuilder<> &BuilderM, LimitContext ctx,
-                            llvm::Value *cache, bool isi1, bool storeInInstructionsMap,
-                            llvm::Value *extraSize = nullptr);
+  /// Given an allocation specified by the LimitContext ctx and cache, lookup
+  /// the underlying cached value.
+  llvm::Value *lookupValueFromCache(bool inForwardPass,
+                                    llvm::IRBuilder<> &BuilderM,
+                                    LimitContext ctx, llvm::Value *cache,
+                                    bool isi1, llvm::Value *extraSize = nullptr,
+                                    llvm::Value *extraOffset = nullptr);
 
-    /// Given an allocation specified by the LimitContext ctx and cache, lookup the underlying cached value.
-    llvm::Value *lookupValueFromCache(bool inForwardPass, llvm::IRBuilder<> &BuilderM, LimitContext ctx,
-                            llvm::Value *cache, bool isi1,
-                            llvm::Value *extraSize = nullptr,
-                            llvm::Value *extraOffset = nullptr);
 protected:
-    // List of values loaded from the cache
-    llvm::SmallPtrSet<llvm::LoadInst*, 10> CacheLookups;
+  // List of values loaded from the cache
+  llvm::SmallPtrSet<llvm::LoadInst *, 10> CacheLookups;
 };
 
 #endif

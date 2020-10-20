@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -37,16 +38,16 @@
 #include "SCEV/ScalarEvolutionExpander.h"
 #include "Utils.h"
 
-#include "llvm/ADT/Triple.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Triple.h"
 
 #include "llvm/IR/Dominators.h"
 
+#include "MustExitScalarEvolution.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/LoopInfo.h"
-#include "MustExitScalarEvolution.h"
 
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/IRBuilder.h"
@@ -56,7 +57,6 @@
 
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Support/Casting.h"
-
 
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
@@ -68,8 +68,6 @@
 #include "LibraryFuncs.h"
 
 using namespace llvm;
-
-
 
 enum class DerivativeMode { Forward, Reverse, Both };
 
@@ -195,7 +193,7 @@ public:
   bool shouldRecompute(const Value *val,
                        const ValueToValueMapTy &available) const;
 
-  void replaceAWithB(Value *A, Value *B, bool storeInCache=false) {
+  void replaceAWithB(Value *A, Value *B, bool storeInCache = false) {
     for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
       if (addedTapeVals[i] == A) {
         addedTapeVals[i] = B;
@@ -214,16 +212,13 @@ public:
             cast<StoreInst>(st)->eraseFromParent();
           scopeInstructions.erase(cache);
           storeInstructionInCache(found->second.second, cast<Instruction>(B),
-                                          cache);
-        } 
+                                  cache);
+        }
       }
-    
+
       scopeMap.erase(A);
-    
-    
     }
-    
-    
+
     if (invertedPointers.find(A) != invertedPointers.end()) {
       invertedPointers[B] = invertedPointers[A];
       invertedPointers.erase(A);
@@ -273,7 +268,7 @@ public:
     }
 
     {
-     std::vector<std::pair<Value *, BasicBlock *>> lookup_cache_pairs;
+      std::vector<std::pair<Value *, BasicBlock *>> lookup_cache_pairs;
       for (auto &a : lookup_cache) {
         if (a.second == I) {
           lookup_cache_pairs.push_back(a.first);
@@ -423,9 +418,11 @@ public:
     }
   }
 
-  Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx);  
+  Value *cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx);
 
-  const SmallVectorImpl<Value *> &getTapeValues() const { return addedTapeVals; }
+  const SmallVectorImpl<Value *> &getTapeValues() const {
+    return addedTapeVals;
+  }
 
 public:
   AAResults &AA;
@@ -434,22 +431,21 @@ public:
                 TypeAnalysis &TA_, AAResults &AA_,
                 ValueToValueMapTy &invertedPointers_,
                 const SmallPtrSetImpl<Value *> &constantvalues_,
-                const SmallPtrSetImpl<Value *> &activevals_,
-                bool ActiveReturn,
+                const SmallPtrSetImpl<Value *> &activevals_, bool ActiveReturn,
                 ValueToValueMapTy &originalToNewFn_, DerivativeMode mode)
-      : CacheUtility(TLI_, newFunc_), mode(mode), oldFunc(oldFunc_), invertedPointers(),
-        OrigDT(*oldFunc_), 
-        #if LLVM_VERSION_MAJOR >= 7
+      : CacheUtility(TLI_, newFunc_), mode(mode), oldFunc(oldFunc_),
+        invertedPointers(), OrigDT(*oldFunc_),
+#if LLVM_VERSION_MAJOR >= 7
         OrigPDT(*oldFunc_),
-        #else
+#else
         OrigPDT(),
-        #endif
-        ATA(new ActivityAnalyzer(AA_, TLI_, constantvalues_, activevals_, ActiveReturn)),
-        OrigLI(OrigDT), 
-        AA(AA_), TA(TA_) {
-    #if LLVM_VERSION_MAJOR <= 6
+#endif
+        ATA(new ActivityAnalyzer(AA_, TLI_, constantvalues_, activevals_,
+                                 ActiveReturn)),
+        OrigLI(OrigDT), AA(AA_), TA(TA_) {
+#if LLVM_VERSION_MAJOR <= 6
     OrigPDT.recalculate(*oldFunc_);
-    #endif
+#endif
     invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
     originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
     for (BasicBlock &BB : *newFunc) {
@@ -493,8 +489,8 @@ private:
     assert(0 && "could not find original block for given reverse block");
     report_fatal_error("could not find original block for given reverse block");
   }
-  public:
 
+public:
   //! This cache stores blocks we may insert as part of getReverseOrLatchMerge
   //! to handle inverse iv iteration
   //  As we don't want to create redundant blocks, we use this convenient cache
@@ -529,7 +525,7 @@ private:
 
   std::map<llvm::Value *, bool> internal_isConstantValue;
   std::map<const llvm::Instruction *, bool> internal_isConstantInstruction;
-  TypeResults* my_TR;
+  TypeResults *my_TR;
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
     my_TR = &TR;
     for (auto &Arg : oldFunc->args()) {
@@ -544,8 +540,9 @@ private:
         internal_isConstantValue[&I] = const_value;
         internal_isConstantInstruction[&I] = const_inst;
 
-        //if (printconst)
-        //llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst << "\n";
+        // if (printconst)
+        // llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst <<
+        // "\n";
       }
     }
   }
@@ -569,7 +566,7 @@ private:
     //! fallback to analysis
     if (isa<Function>(val) || isa<InlineAsm>(val) || isa<Constant>(val) ||
         isa<UndefValue>(val) || isa<MetadataAsValue>(val)) {
-      //llvm::errs() << "calling icv on: " << *val << "\n";
+      // llvm::errs() << "calling icv on: " << *val << "\n";
       return ATA->isConstantValue(*my_TR, val);
     }
 
@@ -689,20 +686,23 @@ private:
 
   /// if full unwrap, don't just unwrap this instruction, but also its operands,
   /// etc
-  Value *
-  unwrapM(Value *const val, IRBuilder<> &BuilderM,
-          const ValueToValueMapTy &available, UnwrapMode mode) override final;
+  Value *unwrapM(Value *const val, IRBuilder<> &BuilderM,
+                 const ValueToValueMapTy &available,
+                 UnwrapMode mode) override final;
 
   void ensureLookupCached(Instruction *inst, bool shouldFree = true) {
     assert(inst);
     if (scopeMap.find(inst) != scopeMap.end())
       return;
-    if (shouldFree) assert(reverseBlocks.size());
+    if (shouldFree)
+      assert(reverseBlocks.size());
     AllocaInst *cache = createCacheForScope(inst->getParent(), inst->getType(),
                                             inst->getName(), shouldFree);
     assert(cache);
-    Value* Val = inst;
-    insert_or_assign(scopeMap, Val, std::pair<AllocaInst*,LimitContext>(cache, LimitContext(inst->getParent())));
+    Value *Val = inst;
+    insert_or_assign(scopeMap, Val,
+                     std::pair<AllocaInst *, LimitContext>(
+                         cache, LimitContext(inst->getParent())));
     storeInstructionInCache(inst->getParent(), inst, cache);
   }
 
@@ -742,7 +742,7 @@ private:
 
         for (auto pair : lcssaFixes[inst]) {
           if (DT.dominates(pair.first, forwardBlock)) {
-           return pair.second;
+            return pair.second;
           }
         }
 
@@ -764,9 +764,9 @@ private:
     return inst;
   }
 
-  Value *
-  lookupM(Value *val, IRBuilder<> &BuilderM,
-          const ValueToValueMapTy &incoming_availalble = ValueToValueMapTy()) override;
+  Value *lookupM(Value *val, IRBuilder<> &BuilderM,
+                 const ValueToValueMapTy &incoming_availalble =
+                     ValueToValueMapTy()) override;
 
   Value *invertPointerM(Value *val, IRBuilder<> &BuilderM);
 
@@ -785,14 +785,15 @@ class DiffeGradientUtils : public GradientUtils {
                      ValueToValueMapTy &invertedPointers_,
                      const SmallPtrSetImpl<Value *> &constantvalues_,
                      const SmallPtrSetImpl<Value *> &returnvals_,
-                     bool ActiveReturn,
-                     ValueToValueMapTy &origToNew_, DerivativeMode mode)
+                     bool ActiveReturn, ValueToValueMapTy &origToNew_,
+                     DerivativeMode mode)
       : GradientUtils(newFunc_, oldFunc_, TLI, TA, AA, invertedPointers_,
-                      constantvalues_, returnvals_, ActiveReturn,
-                      origToNew_, mode) {
+                      constantvalues_, returnvals_, ActiveReturn, origToNew_,
+                      mode) {
     assert(reverseBlocks.size() == 0);
     for (BasicBlock *BB : originalBlocks) {
-      if (BB == inversionAllocs) continue;
+      if (BB == inversionAllocs)
+        continue;
       reverseBlocks[BB] = BasicBlock::Create(BB->getContext(),
                                              "invert" + BB->getName(), newFunc);
     }
@@ -959,11 +960,12 @@ public:
 
       if (oldBitSize > newBitSize && oldBitSize % newBitSize == 0 &&
           !addingType->isVectorTy()) {
-        #if LLVM_VERSION_MAJOR >= 11
-        addingType = VectorType::get(addingType, oldBitSize / newBitSize, false);
-        #else
+#if LLVM_VERSION_MAJOR >= 11
+        addingType =
+            VectorType::get(addingType, oldBitSize / newBitSize, false);
+#else
         addingType = VectorType::get(addingType, oldBitSize / newBitSize);
-        #endif
+#endif
       }
 
       Value *bcold = BuilderM.CreateBitCast(old, addingType);
@@ -1095,14 +1097,18 @@ public:
     return addedSelect;
   }
 
-  virtual void freeCache(llvm::BasicBlock* forwardPreheader, const SubLimitType& sublimits, int i, llvm::AllocaInst* alloc, llvm::ConstantInt* byteSizeOfType, llvm::Value* storeInto, llvm::MDNode* InvariantMD) override {
+  virtual void
+  freeCache(llvm::BasicBlock *forwardPreheader, const SubLimitType &sublimits,
+            int i, llvm::AllocaInst *alloc, llvm::ConstantInt *byteSizeOfType,
+            llvm::Value *storeInto, llvm::MDNode *InvariantMD) override {
     assert(reverseBlocks.find(forwardPreheader) != reverseBlocks.end());
     assert(reverseBlocks[forwardPreheader]);
     IRBuilder<> tbuild(reverseBlocks[forwardPreheader]);
     tbuild.setFastMathFlags(getFast());
 
     // ensure we are before the terminator if it exists
-    if (tbuild.GetInsertBlock()->size() && tbuild.GetInsertBlock()->getTerminator()) {
+    if (tbuild.GetInsertBlock()->size() &&
+        tbuild.GetInsertBlock()->getTerminator()) {
       tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getTerminator());
     }
 
@@ -1111,7 +1117,7 @@ public:
       auto &innercontainedloops = sublimits[j].second;
       for (auto riter = innercontainedloops.rbegin(),
                 rend = innercontainedloops.rend();
-            riter != rend; ++riter) {
+           riter != rend; ++riter) {
         const auto &idx = riter->first;
         if (idx.var)
           antimap[idx.var] = tbuild.CreateLoad(idx.antivaralloc);
@@ -1120,8 +1126,7 @@ public:
 
     auto forfree = cast<LoadInst>(tbuild.CreateLoad(
         unwrapM(storeInto, tbuild, antimap, UnwrapMode::LegalFullUnwrap)));
-    forfree->setMetadata(
-        LLVMContext::MD_invariant_group, InvariantMD);
+    forfree->setMetadata(LLVMContext::MD_invariant_group, InvariantMD);
     forfree->setMetadata(
         LLVMContext::MD_dereferenceable,
         MDNode::get(forfree->getContext(),
@@ -1136,14 +1141,14 @@ public:
     }
     auto ci = cast<CallInst>(CallInst::CreateFree(
         tbuild.CreatePointerCast(forfree,
-                                  Type::getInt8PtrTy(newFunc->getContext())),
+                                 Type::getInt8PtrTy(newFunc->getContext())),
         tbuild.GetInsertBlock()));
     ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
     if (ci->getParent() == nullptr) {
       tbuild.Insert(ci);
     }
     scopeFrees[alloc].insert(ci);
-  } 
+  }
 
 //! align is the alignment that should be specified for load/store to pointer
 #if LLVM_VERSION_MAJOR >= 10
@@ -1166,50 +1171,59 @@ assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
 assert(ptr->getType()->isPointerTy());
 assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
 
-//const SCEV *S = SE.getSCEV(PN);
-//if (SE.getCouldNotCompute() == S)
+// const SCEV *S = SE.getSCEV(PN);
+// if (SE.getCouldNotCompute() == S)
 //  continue;
 
 // atomics
 if (AtomicAdd) {
   if (dif->getType()->isIntOrIntVectorTy()) {
-    
-    ptr = BuilderM.CreateBitCast(ptr, PointerType::get(IntToFloatTy(dif->getType()), cast<PointerType>(ptr->getType())->getAddressSpace()));
+
+    ptr = BuilderM.CreateBitCast(
+        ptr,
+        PointerType::get(IntToFloatTy(dif->getType()),
+                         cast<PointerType>(ptr->getType())->getAddressSpace()));
     dif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
   }
-  if (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() == Triple::nvptx ||
-      llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() == Triple::nvptx64) {
-  if (dif->getType()->isFloatTy()) {
-    //auto atomicAdd = 
-    cast<CallInst>(
-        BuilderM.CreateCall(Intrinsic::getDeclaration(newFunc->getParent(),
-                                                Intrinsic::nvvm_atomic_add_gen_f_sys, {dif->getType(), ptr->getType()}),
-                      {ptr, dif}));
-  } else if (dif->getType()->isDoubleTy()) {
-    //auto atomicAdd = 
-    cast<CallInst>(
-    BuilderM.CreateCall(Intrinsic::getDeclaration(newFunc->getParent(),
-                                            Intrinsic::nvvm_atomic_add_gen_f_sys, {dif->getType(), ptr->getType()}),
-                  {ptr, dif}));
-  } else
-  {
-    llvm::errs() << "unhandled atomic add: " << *ptr << " " << *dif << "\n";
-    llvm_unreachable("unhandled atomic add");
-  }
+  if (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+          Triple::nvptx ||
+      llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+          Triple::nvptx64) {
+    if (dif->getType()->isFloatTy()) {
+      // auto atomicAdd =
+      cast<CallInst>(BuilderM.CreateCall(
+          Intrinsic::getDeclaration(newFunc->getParent(),
+                                    Intrinsic::nvvm_atomic_add_gen_f_sys,
+                                    {dif->getType(), ptr->getType()}),
+          {ptr, dif}));
+    } else if (dif->getType()->isDoubleTy()) {
+      // auto atomicAdd =
+      cast<CallInst>(BuilderM.CreateCall(
+          Intrinsic::getDeclaration(newFunc->getParent(),
+                                    Intrinsic::nvvm_atomic_add_gen_f_sys,
+                                    {dif->getType(), ptr->getType()}),
+          {ptr, dif}));
+    } else {
+      llvm::errs() << "unhandled atomic add: " << *ptr << " " << *dif << "\n";
+      llvm_unreachable("unhandled atomic add");
+    }
   } else {
-    #if LLVM_VERSION_MAJOR >= 9
-      AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
-      #if LLVM_VERSION_MAJOR >= 11
-        AtomicRMWInst* rmw = BuilderM.CreateAtomicRMW (op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
-        if (align)
-          rmw->setAlignment(align.getValue());
-      #else
-        BuilderM.CreateAtomicRMW (op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
-      #endif
-    #else 
-      llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " " << *dif << "\n";
-      llvm_unreachable("unhandled atomic fadd");
-    #endif
+#if LLVM_VERSION_MAJOR >= 9
+    AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
+#if LLVM_VERSION_MAJOR >= 11
+    AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+        op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+    if (align)
+      rmw->setAlignment(align.getValue());
+#else
+    BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
+                             SyncScope::System);
+#endif
+#else
+        llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " "
+                     << *dif << "\n";
+        llvm_unreachable("unhandled atomic fadd");
+#endif
   }
   return;
 }

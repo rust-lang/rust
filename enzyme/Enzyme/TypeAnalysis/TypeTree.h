@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -30,12 +31,12 @@
 #ifndef ENZYME_TYPE_ANALYSIS_TYPE_TREE_H
 #define ENZYME_TYPE_ANALYSIS_TYPE_TREE_H 1
 
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/raw_ostream.h"
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/ErrorHandling.h"
 
 #include "BaseType.h"
 #include "ConcreteType.h"
@@ -58,7 +59,7 @@ typedef std::shared_ptr<const TypeTree> TypeResult;
 typedef std::map<const std::vector<int>, ConcreteType> ConcreteTypeMapType;
 typedef std::map<const std::vector<int>, const TypeResult> TypeTreeMapType;
 
-/// Class representing the underlying types of values as 
+/// Class representing the underlying types of values as
 /// sequences of offsets to a ConcreteType
 class TypeTree : public std::enable_shared_from_this<TypeTree> {
 private:
@@ -66,7 +67,6 @@ private:
   ConcreteTypeMapType mapping;
 
 public:
-
   TypeTree() {}
   TypeTree(ConcreteType dat) {
     if (dat != ConcreteType(BaseType::Unknown)) {
@@ -114,8 +114,8 @@ public:
           if (!(found->second == BaseType::Pointer ||
                 found->second == BaseType::Anything)) {
             llvm::errs() << "FAILED CT: " << str()
-                         << " adding Seq: " << to_string(Seq) << ": " << CT.str()
-                         << "\n";
+                         << " adding Seq: " << to_string(Seq) << ": "
+                         << CT.str() << "\n";
           }
           assert(found->second == BaseType::Pointer ||
                  found->second == BaseType::Anything);
@@ -134,8 +134,8 @@ public:
               found->second = CT;
             } else {
               llvm::errs() << "FAILED dt: " << str()
-                           << " adding v: " << to_string(Seq) << ": " << CT.str()
-                           << "\n";
+                           << " adding v: " << to_string(Seq) << ": "
+                           << CT.str() << "\n";
             }
           }
           assert(found->second == CT);
@@ -154,8 +154,8 @@ public:
               found->second = CT;
             } else {
               llvm::errs() << "FAILED dt: " << str()
-                           << " adding v: " << to_string(Seq) << ": " << CT.str()
-                           << "\n";
+                           << " adding v: " << to_string(Seq) << ": "
+                           << CT.str() << "\n";
             }
           }
           assert(found->second == CT);
@@ -178,15 +178,15 @@ public:
             if (!matches)
               continue;
 
-            if (intsAreLegalSubPointer &&
-                pair.second == BaseType::Integer &&
+            if (intsAreLegalSubPointer && pair.second == BaseType::Integer &&
                 CT == BaseType::Pointer) {
 
             } else {
-              if (CT == BaseType::Anything && pair.second != BaseType::Anything) {
+              if (CT == BaseType::Anything &&
+                  pair.second != BaseType::Anything) {
                 if (pair.second != CT) {
                   llvm::errs() << "inserting into : " << str() << " with "
-                              << to_string(Seq) << " of " << CT.str() << "\n";
+                               << to_string(Seq) << " of " << CT.str() << "\n";
                 }
                 assert(pair.second == CT);
               }
@@ -226,8 +226,8 @@ public:
     }
     if (Seq.size() > 6) {
       llvm::errs() << "not handling more than 6 pointer lookups deep dt:"
-                   << str() << " adding v: " << to_string(Seq) << ": " << CT.str()
-                   << "\n";
+                   << str() << " adding v: " << to_string(Seq) << ": "
+                   << CT.str() << "\n";
       return;
     }
     for (auto Off : Seq) {
@@ -267,7 +267,7 @@ public:
     return false;
   }
 
-  /// Select only the Integer ConcreteTypes 
+  /// Select only the Integer ConcreteTypes
   TypeTree JustInt() const {
     TypeTree vd;
     for (auto &pair : mapping) {
@@ -284,7 +284,7 @@ public:
   // After a depth len into the index tree, prune any lookups that are not {0}
   // or {-1}
   TypeTree KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
-                        llvm::Type *to) const;
+                       llvm::Type *to) const;
 
   /// Helper function to prepend an offset
   static std::vector<int> prependIndex(int Off, const std::vector<int> &Array) {
@@ -334,7 +334,6 @@ public:
     return CT;
   }
 
-
   /// Remove any mappings in the range [start, end) or [len, inf)
   /// This function has special handling for -1's
   TypeTree Clear(size_t start, size_t end, size_t len) const {
@@ -362,9 +361,10 @@ public:
         }
         Result |= SubResult;
       } else if ((size_t)pair.first[0] < start ||
-                 ((size_t)pair.first[0] >= end && (size_t)pair.first[0] < len)) {
+                 ((size_t)pair.first[0] >= end &&
+                  (size_t)pair.first[0] < len)) {
         // Otherwise simply check that the given offset is in range
-        
+
         TypeTree SubResult;
         SubResult.insert(pair.first, pair.second);
         Result |= SubResult;
@@ -464,8 +464,8 @@ public:
     return Result;
   }
 
-  /// Given that this tree represents something of at most size len, canonicalize
-  /// this, creating -1's where possible
+  /// Given that this tree represents something of at most size len,
+  /// canonicalize this, creating -1's where possible
   TypeTree CanonicalizeValue(size_t len, const llvm::DataLayout &dl) const {
 
     // Map of indices[1:] => ( End => possible Index[0] )
@@ -570,9 +570,9 @@ public:
 
   /// Replace mappings in the range in [offset, offset+maxSize] with those in
   // [addOffset, addOffset + maxSize]. In other worse, select all mappings in
-  // [offset, offset+maxSize] then add `addOffset` 
+  // [offset, offset+maxSize] then add `addOffset`
   TypeTree ShiftIndices(const llvm::DataLayout &dl, int offset, int maxSize,
-                         size_t addOffset = 0) const {
+                        size_t addOffset = 0) const {
     TypeTree Result;
 
     for (const auto &pair : mapping) {
@@ -682,15 +682,15 @@ public:
     if (*this == RHS)
       return false;
     mapping.clear();
-    for(const auto& elems : RHS.mapping) {
+    for (const auto &elems : RHS.mapping) {
       mapping.emplace(elems);
     }
     return true;
   }
 
-  /// Set this to the logical or of itself and RHS, returning whether this value changed
-  /// Setting `PointerIntSame` considers pointers and integers as equivalent
-  /// If this is an illegal operation, `LegalOr` will be set to false
+  /// Set this to the logical or of itself and RHS, returning whether this value
+  /// changed Setting `PointerIntSame` considers pointers and integers as
+  /// equivalent If this is an illegal operation, `LegalOr` will be set to false
   bool checkedOrIn(const TypeTree &RHS, bool PointerIntSame, bool &LegalOr) {
     // TODO detect recursive merge and simplify
 
@@ -714,29 +714,31 @@ public:
     return changed;
   }
 
-  /// Set this to the logical or of itself and RHS, returning whether this value changed
-  /// Setting `PointerIntSame` considers pointers and integers as equivalent
-  /// This function will error if doing an illegal Operation
+  /// Set this to the logical or of itself and RHS, returning whether this value
+  /// changed Setting `PointerIntSame` considers pointers and integers as
+  /// equivalent This function will error if doing an illegal Operation
   bool orIn(const TypeTree RHS, bool PointerIntSame) {
     bool Legal = true;
     bool Result = checkedOrIn(RHS, PointerIntSame, Legal);
     if (!Legal) {
-      llvm::errs() << "Illegal orIn: " << str() << " right: " << RHS.str() << " PointerIntSame=" << PointerIntSame << "\n";
+      llvm::errs() << "Illegal orIn: " << str() << " right: " << RHS.str()
+                   << " PointerIntSame=" << PointerIntSame << "\n";
       assert(0 && "Performed illegal ConcreteType::orIn");
       llvm_unreachable("Performed illegal ConcreteType::orIn");
     }
     return Result;
   }
 
-  /// Set this to the logical or of itself and RHS, returning whether this value changed
-  /// This assumes that pointers and integers are distinct
-  /// This function will error if doing an illegal Operation
+  /// Set this to the logical or of itself and RHS, returning whether this value
+  /// changed This assumes that pointers and integers are distinct This function
+  /// will error if doing an illegal Operation
   bool operator|=(const TypeTree &RHS) {
     return orIn(RHS, /*PointerIntSame*/ false);
   }
 
-  /// Set this to the logical and of itself and RHS, returning whether this value changed
-  /// If this and RHS are incompatible at an index, the result will be BaseType::Unknown
+  /// Set this to the logical and of itself and RHS, returning whether this
+  /// value changed If this and RHS are incompatible at an index, the result
+  /// will be BaseType::Unknown
   bool andIn(const TypeTree &RHS) {
     bool changed = false;
 
@@ -760,11 +762,10 @@ public:
     return changed;
   }
 
-  /// Set this to the logical and of itself and RHS, returning whether this value changed
-  /// If this and RHS are incompatible at an index, the result will be BaseType::Unknown
-  bool operator&=(const TypeTree &RHS) {
-    return andIn(RHS);
-  }
+  /// Set this to the logical and of itself and RHS, returning whether this
+  /// value changed If this and RHS are incompatible at an index, the result
+  /// will be BaseType::Unknown
+  bool operator&=(const TypeTree &RHS) { return andIn(RHS); }
 
   /// Set this to the logical `binop` of itself and RHS, using the Binop Op,
   /// returning true if this was changed.
@@ -774,7 +775,7 @@ public:
 
     std::vector<std::vector<int>> toErase;
 
-    for(auto& pair : mapping) {
+    for (auto &pair : mapping) {
       // TODO propagate non-first level operands:
       // Special handling is necessary here because a pointer to an int
       // binop with something should not apply the binop rules to the
@@ -783,7 +784,6 @@ public:
         toErase.push_back(pair.first);
         continue;
       }
-
 
       ConcreteType CT(pair.second);
       ConcreteType RightCT(BaseType::Unknown);
@@ -803,7 +803,7 @@ public:
     }
 
     // mapings just on the right
-    for(auto& pair : RHS.mapping) {
+    for (auto &pair : RHS.mapping) {
       // TODO propagate non-first level operands:
       // Special handling is necessary here because a pointer to an int
       // binop with something should not apply the binop rules to the
@@ -821,7 +821,7 @@ public:
       }
     }
 
-    for(auto vec : toErase) {
+    for (auto vec : toErase) {
       mapping.erase(vec);
     }
 

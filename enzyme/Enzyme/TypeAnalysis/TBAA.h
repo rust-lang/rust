@@ -3,13 +3,14 @@
 //                   Enzyme Project and The LLVM Project
 // First section modified from: TypeBasedAliasAnalysis.cpp in LLVM
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -362,39 +363,31 @@ extern llvm::cl::opt<bool> PrintType;
 /// Derive the ConcreteType corresponding to the string TypeName
 /// The Instruction I denotes the context in which this was found
 static inline ConcreteType getTypeFromTBAAString(std::string TypeName,
-                               Instruction &I) {
-  if (TypeName == "long long" || TypeName == "long" ||
-      TypeName == "int" || TypeName == "bool" ||
-      TypeName == "jtbaa_arraysize" ||
+                                                 Instruction &I) {
+  if (TypeName == "long long" || TypeName == "long" || TypeName == "int" ||
+      TypeName == "bool" || TypeName == "jtbaa_arraysize" ||
       TypeName == "jtbaa_arraylen") {
     if (PrintType) {
-      llvm::errs() << "known tbaa " << I << " " << TypeName
-                   << "\n";
+      llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     }
     return ConcreteType(BaseType::Integer);
-  } else if (TypeName == "any pointer" ||
-             TypeName == "vtable pointer" ||
-             TypeName == "jtbaa_arrayptr" ||
-             TypeName == "jtbaa_tag") {
+  } else if (TypeName == "any pointer" || TypeName == "vtable pointer" ||
+             TypeName == "jtbaa_arrayptr" || TypeName == "jtbaa_tag") {
     if (PrintType) {
-      llvm::errs() << "known tbaa " << I << " " << TypeName
-                   << "\n";
+      llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     }
     return ConcreteType(BaseType::Pointer);
   } else if (TypeName == "float") {
     if (PrintType)
-      llvm::errs() << "known tbaa " << I << " " << TypeName
-                   << "\n";
+      llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     return Type::getFloatTy(I.getContext());
   } else if (TypeName == "double") {
     if (PrintType)
-      llvm::errs() << "known tbaa " << I << " " << TypeName
-                   << "\n";
+      llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     return Type::getDoubleTy(I.getContext());
   } else if (TypeName == "jtbaa_arraybuf") {
     if (PrintType)
-      llvm::errs() << "known tbaa " << I << " " << TypeName
-                   << "\n";
+      llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     if (isa<LoadInst>(&I)) {
       if (I.getType()->isFPOrFPVectorTy()) {
         return I.getType()->getScalarType();
@@ -410,9 +403,8 @@ static inline ConcreteType getTypeFromTBAAString(std::string TypeName,
 /// Given a TBAA access node return the corresponding TypeTree
 /// This includes recursively parsing the access nodes, with
 /// corresponding offsets in the result
-static inline TypeTree parseTBAA(TBAAStructTypeNode AccessType,
-                                  Instruction &I,
-                                  const llvm::DataLayout &DL) {
+static inline TypeTree parseTBAA(TBAAStructTypeNode AccessType, Instruction &I,
+                                 const llvm::DataLayout &DL) {
 
   if (auto *Id = dyn_cast<MDString>(AccessType.getId())) {
     auto CT = getTypeFromTBAAString(Id->getString().str(), I);
@@ -427,7 +419,7 @@ static inline TypeTree parseTBAA(TBAAStructTypeNode AccessType,
     auto Offset = AccessType.getFieldOffset(i);
     auto SubResult = parseTBAA(SubAccess, I, DL);
     Result |= SubResult.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
-                           /*addOffset*/ Offset);
+                                     /*addOffset*/ Offset);
   }
 
   return Result;
@@ -455,8 +447,7 @@ static inline TypeTree parseTBAA(const MDNode *M, Instruction &I,
 
 /// Given an Instruction, return a TypeTree representing any
 /// types that can be derived from TBAA metadata attached
-static inline TypeTree parseTBAA(Instruction &I,
-                                 const llvm::DataLayout &DL) {
+static inline TypeTree parseTBAA(Instruction &I, const llvm::DataLayout &DL) {
   TypeTree Result;
   if (const MDNode *M = I.getMetadata(LLVMContext::MD_tbaa_struct)) {
     for (unsigned i = 0, size = M->getNumOperands(); i < size; i += 3) {
@@ -469,8 +460,9 @@ static inline TypeTree parseTBAA(Instruction &I,
             cast<ConstantInt>(
                 cast<ConstantAsMetadata>(M->getOperand(i + 1))->getValue())
                 ->getLimitedValue();
-        Result |= SubResult.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ Len,
-                               /*add offset*/ Start);
+        Result |=
+            SubResult.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ Len,
+                                   /*add offset*/ Start);
       }
     }
   }

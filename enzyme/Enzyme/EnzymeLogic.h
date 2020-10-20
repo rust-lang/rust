@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -120,14 +121,13 @@ public:
         can_modref_map(can_modref_map) {}
 };
 
-const AugmentedReturn &
-CreateAugmentedPrimal(llvm::Function *todiff, DIFFE_TYPE retType,
-                      const std::vector<DIFFE_TYPE> &constant_args,
-                      llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA,
-                      llvm::AAResults &global_AA, bool returnUsed,
-                      const FnTypeInfo &typeInfo,
-                      const std::map<llvm::Argument *, bool> _uncacheable_args,
-                      bool forceAnonymousTape, bool AtomicAdd, bool PostOpt=false);
+const AugmentedReturn &CreateAugmentedPrimal(
+    llvm::Function *todiff, DIFFE_TYPE retType,
+    const std::vector<DIFFE_TYPE> &constant_args, llvm::TargetLibraryInfo &TLI,
+    TypeAnalysis &TA, llvm::AAResults &global_AA, bool returnUsed,
+    const FnTypeInfo &typeInfo,
+    const std::map<llvm::Argument *, bool> _uncacheable_args,
+    bool forceAnonymousTape, bool AtomicAdd, bool PostOpt = false);
 
 llvm::Function *CreatePrimalAndGradient(
     llvm::Function *todiff, DIFFE_TYPE retType,
@@ -136,7 +136,7 @@ llvm::Function *CreatePrimalAndGradient(
     bool dretUsed, bool topLevel, llvm::Type *additionalArg,
     const FnTypeInfo &typeInfo,
     const std::map<llvm::Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt=false);
+    const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt = false);
 
 extern llvm::cl::opt<bool> looseTypeAnalysis;
 
@@ -148,7 +148,7 @@ extern llvm::cl::opt<bool> nonmarkedglobals_inactiveloads;
 
 class GradientUtils;
 bool shouldAugmentCall(llvm::CallInst *op, const GradientUtils *gutils,
-                                     TypeResults &TR);
+                       TypeResults &TR);
 
 bool legalCombinedForwardReverse(
     llvm::CallInst *origop,
@@ -156,13 +156,17 @@ bool legalCombinedForwardReverse(
     std::vector<llvm::Instruction *> &postCreate,
     std::vector<llvm::Instruction *> &userReplace, GradientUtils *gutils,
     TypeResults &TR,
-    const llvm::SmallPtrSetImpl<const llvm::Instruction *> &unnecessaryInstructions,
+    const llvm::SmallPtrSetImpl<const llvm::Instruction *>
+        &unnecessaryInstructions,
     const bool subretused);
 
-std::pair<llvm::SmallVector<llvm::Type *, 4>, llvm::SmallVector<llvm::Type *, 4>>
-getDefaultFunctionTypeForAugmentation(llvm::FunctionType *called, bool returnUsed,
-                                      DIFFE_TYPE retType);
+std::pair<llvm::SmallVector<llvm::Type *, 4>,
+          llvm::SmallVector<llvm::Type *, 4>>
+getDefaultFunctionTypeForAugmentation(llvm::FunctionType *called,
+                                      bool returnUsed, DIFFE_TYPE retType);
 
-std::pair<llvm::SmallVector<llvm::Type *, 4>, llvm::SmallVector<llvm::Type *, 4>>
-getDefaultFunctionTypeForGradient(llvm::FunctionType *called, DIFFE_TYPE retType);
+std::pair<llvm::SmallVector<llvm::Type *, 4>,
+          llvm::SmallVector<llvm::Type *, 4>>
+getDefaultFunctionTypeForGradient(llvm::FunctionType *called,
+                                  DIFFE_TYPE retType);
 #endif

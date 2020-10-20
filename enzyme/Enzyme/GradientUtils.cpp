@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -44,9 +45,9 @@
 
 #include <algorithm>
 
-Value *
-GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
-        const ValueToValueMapTy &available, UnwrapMode mode) {
+Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
+                              const ValueToValueMapTy &available,
+                              UnwrapMode mode) {
   assert(val);
   assert(val->getName() != "<badref>");
   assert(val->getType());
@@ -159,7 +160,7 @@ GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (op1 == nullptr)
       goto endCheck;
     auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1,
-                                          op->getName() + "_unwrap");
+                                         op->getName() + "_unwrap");
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     unwrap_cache[cidx] = toreturn;
@@ -301,15 +302,16 @@ GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         return nullptr;
     }
 
-    #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
     Value *fn = getOp(op->getCalledOperand());
-    #else
+#else
     Value *fn = getOp(op->getCalledValue());
-    #endif
+#endif
     if (fn == nullptr)
       return nullptr;
 
-    auto toreturn = cast<CallInst>(BuilderM.CreateCall(op->getFunctionType(), fn, args));
+    auto toreturn =
+        cast<CallInst>(BuilderM.CreateCall(op->getFunctionType(), fn, args));
     toreturn->copyIRFlags(op);
     toreturn->setAttributes(op->getAttributes());
     toreturn->setCallingConv(op->getCallingConv());
@@ -366,376 +368,379 @@ endCheck:
   return nullptr;
 }
 
-Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc, int idx) {
-    assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
+Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
+                                      int idx) {
+  assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
 
-    if (tape) {
-      if (idx >= 0 && !tape->getType()->isStructTy()) {
-        llvm::errs() << "cacheForReverse incorrect tape type: " << *tape
-                     << " idx: " << idx << "\n";
+  if (tape) {
+    if (idx >= 0 && !tape->getType()->isStructTy()) {
+      llvm::errs() << "cacheForReverse incorrect tape type: " << *tape
+                   << " idx: " << idx << "\n";
+    }
+    assert(idx < 0 || tape->getType()->isStructTy());
+    if (idx >= 0 &&
+        (unsigned)idx >= cast<StructType>(tape->getType())->getNumElements()) {
+      llvm::errs() << "oldFunc: " << *oldFunc << "\n";
+      llvm::errs() << "newFunc: " << *newFunc << "\n";
+      if (malloc)
+        llvm::errs() << "malloc: " << *malloc << "\n";
+      llvm::errs() << "tape: " << *tape << "\n";
+      llvm::errs() << "idx: " << idx << "\n";
+    }
+    assert(idx < 0 ||
+           (unsigned)idx < cast<StructType>(tape->getType())->getNumElements());
+    Value *ret = (idx < 0) ? tape
+                           : cast<Instruction>(BuilderQ.CreateExtractValue(
+                                 tape, {(unsigned)idx}));
+
+    if (ret->getType()->isEmptyTy()) {
+      if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
+        if (inst->getType() != ret->getType()) {
+          llvm::errs() << "oldFunc: " << *oldFunc << "\n";
+          llvm::errs() << "newFunc: " << *newFunc << "\n";
+          llvm::errs() << "inst==malloc: " << *inst << "\n";
+          llvm::errs() << "ret: " << *ret << "\n";
+        }
+        assert(inst->getType() == ret->getType());
+        inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
+        erase(inst);
       }
-      assert(idx < 0 || tape->getType()->isStructTy());
-      if (idx >= 0 && (unsigned)idx >=
-                          cast<StructType>(tape->getType())->getNumElements()) {
-        llvm::errs() << "oldFunc: " << *oldFunc << "\n";
-        llvm::errs() << "newFunc: " << *newFunc << "\n";
-        if (malloc)
+      Type *retType = ret->getType();
+      if (auto ri = dyn_cast<Instruction>(ret))
+        erase(ri);
+      return UndefValue::get(retType);
+    }
+
+    LimitContext ctx(BuilderQ.GetInsertBlock());
+    if (auto inst = dyn_cast<Instruction>(malloc))
+      ctx = LimitContext(inst->getParent());
+    if (auto found = findInMap(scopeMap, malloc)) {
+      ctx = found->second;
+    }
+
+    bool inLoop;
+    if (ctx.ForceSingleIteration) {
+      inLoop = true;
+      ctx.ForceSingleIteration = false;
+    } else {
+      LoopContext lc;
+      inLoop = getContext(ctx.Block, lc);
+    }
+
+    if (!inLoop) {
+      if (malloc)
+        ret->setName(malloc->getName() + "_fromtape");
+    } else {
+      if (auto ri = dyn_cast<Instruction>(ret))
+        erase(ri);
+      IRBuilder<> entryBuilder(inversionAllocs);
+      entryBuilder.setFastMathFlags(getFast());
+      ret = (idx < 0) ? tape
+                      : cast<Instruction>(entryBuilder.CreateExtractValue(
+                            tape, {(unsigned)idx}));
+
+      Type *innerType = ret->getType();
+      for (size_t i = 0, limit = getSubLimits(BuilderQ.GetInsertBlock()).size();
+           i < limit; ++i) {
+        if (!isa<PointerType>(innerType)) {
+          llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
+                       << "\n";
+          llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock()
+                       << "\n";
+          llvm::errs() << "ret: " << *ret << " type: " << *ret->getType()
+                       << "\n";
+          llvm::errs() << "innerType: " << *innerType << "\n";
+          if (malloc)
+            llvm::errs() << " malloc: " << *malloc << "\n";
+        }
+        assert(isa<PointerType>(innerType));
+        innerType = cast<PointerType>(innerType)->getElementType();
+      }
+
+      assert(malloc);
+      if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
+          cast<IntegerType>(malloc->getType())->getBitWidth() == 1 &&
+          innerType != ret->getType()) {
+        assert(innerType == Type::getInt8Ty(malloc->getContext()));
+      } else {
+        if (innerType != malloc->getType()) {
+          llvm::errs() << *cast<Instruction>(malloc)->getParent()->getParent()
+                       << "\n";
+          llvm::errs() << "innerType: " << *innerType << "\n";
+          llvm::errs() << "malloc->getType(): " << *malloc->getType() << "\n";
+          llvm::errs() << "ret: " << *ret << "\n";
           llvm::errs() << "malloc: " << *malloc << "\n";
-        llvm::errs() << "tape: " << *tape << "\n";
-        llvm::errs() << "idx: " << idx << "\n";
-      }
-      assert(idx < 0 ||
-             (unsigned)idx <
-                 cast<StructType>(tape->getType())->getNumElements());
-      Value *ret = (idx < 0) ? tape
-                             : cast<Instruction>(BuilderQ.CreateExtractValue(
-                                   tape, {(unsigned)idx}));
-
-      if (ret->getType()->isEmptyTy()) {
-        if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
-          if (inst->getType() != ret->getType()) {
-            llvm::errs() << "oldFunc: " << *oldFunc << "\n";
-            llvm::errs() << "newFunc: " << *newFunc << "\n";
-            llvm::errs() << "inst==malloc: " << *inst << "\n";
-            llvm::errs() << "ret: " << *ret << "\n";
-          }
-          assert(inst->getType() == ret->getType());
-          inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
-          erase(inst);
         }
-        Type *retType = ret->getType();
-        if (auto ri = dyn_cast<Instruction>(ret))
-          erase(ri);
-        return UndefValue::get(retType);
       }
 
-      LimitContext ctx(BuilderQ.GetInsertBlock());
-      if (auto inst = dyn_cast<Instruction>(malloc))
-        ctx = LimitContext(inst->getParent());
+      AllocaInst *cache =
+          createCacheForScope(BuilderQ.GetInsertBlock(), innerType,
+                              "mdyncache_fromtape", true, false);
+      assert(malloc);
+      bool isi1 = malloc->getType()->isIntegerTy() &&
+                  cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
+      entryBuilder.CreateStore(ret, cache);
+
+      auto v = lookupValueFromCache(/*forwardPass*/ true, BuilderQ,
+                                    BuilderQ.GetInsertBlock(), cache, isi1);
+      if (malloc) {
+        assert(v->getType() == malloc->getType());
+      }
+      insert_or_assign(scopeMap, v, std::make_pair(cache, ctx));
+      ret = cast<Instruction>(v);
+    }
+
+    if (malloc && !isa<UndefValue>(malloc)) {
+      if (malloc->getType() != ret->getType()) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *malloc << "\n";
+        llvm::errs() << *ret << "\n";
+      }
+      assert(malloc->getType() == ret->getType());
+
+      if (auto orig = isOriginal(malloc))
+        originalToNewFn[orig] = ret;
+
       if (auto found = findInMap(scopeMap, malloc)) {
-        ctx = found->second;
-      }
+        // There already exists an alloaction for this, we should fully remove
+        // it
+        if (!inLoop) {
 
-      bool inLoop;
-      if (ctx.ForceSingleIteration) {
-        inLoop = true;
-        ctx.ForceSingleIteration = false;
-      } else {
-        LoopContext lc;
-        inLoop = getContext(ctx.Block, lc);
-      }
-
-      if (!inLoop) {
-        if (malloc)
-          ret->setName(malloc->getName() + "_fromtape");
-      } else {
-        if (auto ri = dyn_cast<Instruction>(ret))
-          erase(ri);
-        IRBuilder<> entryBuilder(inversionAllocs);
-        entryBuilder.setFastMathFlags(getFast());
-        ret = (idx < 0) ? tape
-                        : cast<Instruction>(entryBuilder.CreateExtractValue(
-                              tape, {(unsigned)idx}));
-
-        Type *innerType = ret->getType();
-        for (size_t i=0, limit=getSubLimits(BuilderQ.GetInsertBlock()).size(); i<limit; ++i) {
-          if (!isa<PointerType>(innerType)) {
-            llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
-                         << "\n";
-            llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock()
-                         << "\n";
-            llvm::errs() << "ret: " << *ret << " type: " << *ret->getType()
-                         << "\n";
-            llvm::errs() << "innerType: " << *innerType << "\n";
-            if (malloc)
-              llvm::errs() << " malloc: " << *malloc << "\n";
+          // Remove stores into
+          auto stores = scopeInstructions[found->first];
+          scopeInstructions.erase(found->first);
+          for (int i = stores.size() - 1; i >= 0; i--) {
+            erase(stores[i]);
           }
-          assert(isa<PointerType>(innerType));
-          innerType = cast<PointerType>(innerType)->getElementType();
-        }
 
-        assert(malloc);
-        if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
-            cast<IntegerType>(malloc->getType())->getBitWidth() == 1 &&
-            innerType != ret->getType()) {
-          assert(innerType == Type::getInt8Ty(malloc->getContext()));
+          std::vector<User *> users;
+          for (auto u : found->first->users()) {
+            users.push_back(u);
+          }
+          for (auto u : users) {
+            if (auto li = dyn_cast<LoadInst>(u)) {
+              IRBuilder<> lb(li);
+              ValueToValueMapTy empty;
+              li->replaceAllUsesWith(
+                  unwrapM(ret, lb, empty, UnwrapMode::LegalFullUnwrap));
+              erase(li);
+            } else {
+              llvm::errs() << "newFunc: " << *newFunc << "\n";
+              llvm::errs() << "malloc: " << *malloc << "\n";
+              llvm::errs() << "scopeMap[malloc]: " << *found->first << "\n";
+              llvm::errs() << "u: " << *u << "\n";
+              assert(0 && "illegal use for out of loop scopeMap");
+            }
+          }
+
+          {
+            AllocaInst *preerase = found->first;
+            scopeMap.erase(malloc);
+            erase(preerase);
+          }
         } else {
-          if (innerType != malloc->getType()) {
-            llvm::errs() << *cast<Instruction>(malloc)->getParent()->getParent()
-                         << "\n";
-            llvm::errs() << "innerType: " << *innerType << "\n";
-            llvm::errs() << "malloc->getType(): " << *malloc->getType() << "\n";
-            llvm::errs() << "ret: " << *ret << "\n";
-            llvm::errs() << "malloc: " << *malloc << "\n";
+          // Remove stores into
+          auto stores = scopeInstructions[found->first];
+          scopeInstructions.erase(found->first);
+          for (int i = stores.size() - 1; i >= 0; i--) {
+            erase(stores[i]);
           }
-        }
 
-        AllocaInst *cache =
-            createCacheForScope(BuilderQ.GetInsertBlock(), innerType,
-                                "mdyncache_fromtape", true, false);
-        assert(malloc);
-        bool isi1 = malloc->getType()->isIntegerTy() &&
-                    cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
-        entryBuilder.CreateStore(ret, cache);
-
-        auto v = lookupValueFromCache(/*forwardPass*/true, BuilderQ, BuilderQ.GetInsertBlock(),
-                                      cache, isi1);
-        if (malloc) {
-          assert(v->getType() == malloc->getType());
-        }
-        insert_or_assign(scopeMap, v, std::make_pair(cache, ctx));
-        ret = cast<Instruction>(v);
-      }
-
-      if (malloc && !isa<UndefValue>(malloc)) {
-        if (malloc->getType() != ret->getType()) {
-          llvm::errs() << *oldFunc << "\n";
-          llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *malloc << "\n";
-          llvm::errs() << *ret << "\n";
-        }
-        assert(malloc->getType() == ret->getType());
-
-        if (auto orig = isOriginal(malloc))
-          originalToNewFn[orig] = ret;
-
-
-        if (auto found = findInMap(scopeMap, malloc)) {
-          // There already exists an alloaction for this, we should fully remove
-          // it
-          if (!inLoop) {
-
-            // Remove stores into
-            auto stores = scopeInstructions[found->first];
-            scopeInstructions.erase(found->first);
-            for (int i = stores.size() - 1; i >= 0; i--) {
-              erase(stores[i]);
-            }
-
-            std::vector<User *> users;
-            for (auto u : found->first->users()) {
-              users.push_back(u);
-            }
-            for (auto u : users) {
-              if (auto li = dyn_cast<LoadInst>(u)) {
-                IRBuilder<> lb(li);
-                ValueToValueMapTy empty;
-                li->replaceAllUsesWith(
-                    unwrapM(ret, lb, empty, UnwrapMode::LegalFullUnwrap));
-                erase(li);
-              } else {
-                llvm::errs() << "newFunc: " << *newFunc << "\n";
-                llvm::errs() << "malloc: " << *malloc << "\n";
-                llvm::errs()
-                    << "scopeMap[malloc]: " << *found->first << "\n";
-                llvm::errs() << "u: " << *u << "\n";
-                assert(0 && "illegal use for out of loop scopeMap");
+          // Remove allocations for scopealloc since it is already allocated
+          // by the augmented forward pass
+          auto allocs = scopeAllocs[found->first];
+          scopeAllocs.erase(found->first);
+          for (auto allocinst : allocs) {
+            CastInst *cast = nullptr;
+            StoreInst *store = nullptr;
+            for (auto use : allocinst->users()) {
+              if (auto ci = dyn_cast<CastInst>(use)) {
+                assert(cast == nullptr);
+                cast = ci;
+              }
+              if (auto si = dyn_cast<StoreInst>(use)) {
+                if (si->getValueOperand() == allocinst) {
+                  assert(store == nullptr);
+                  store = si;
+                }
               }
             }
-
-            {
-              AllocaInst *preerase = found->first;
-              scopeMap.erase(malloc);
-              erase(preerase);
-            }
-          } else {
-            // Remove stores into
-            auto stores = scopeInstructions[found->first];
-            scopeInstructions.erase(found->first);
-            for (int i = stores.size() - 1; i >= 0; i--) {
-              erase(stores[i]);
-            }
-
-            // Remove allocations for scopealloc since it is already allocated
-            // by the augmented forward pass
-            auto allocs = scopeAllocs[found->first];
-            scopeAllocs.erase(found->first);
-            for (auto allocinst : allocs) {
-              CastInst *cast = nullptr;
-              StoreInst *store = nullptr;
-              for (auto use : allocinst->users()) {
-                if (auto ci = dyn_cast<CastInst>(use)) {
-                  assert(cast == nullptr);
-                  cast = ci;
-                }
+            if (cast) {
+              assert(store == nullptr);
+              for (auto use : cast->users()) {
                 if (auto si = dyn_cast<StoreInst>(use)) {
-                  if (si->getValueOperand() == allocinst) {
+                  if (si->getValueOperand() == cast) {
                     assert(store == nullptr);
                     store = si;
                   }
                 }
               }
-              if (cast) {
-                assert(store == nullptr);
-                for (auto use : cast->users()) {
-                  if (auto si = dyn_cast<StoreInst>(use)) {
-                    if (si->getValueOperand() == cast) {
-                      assert(store == nullptr);
-                      store = si;
-                    }
-                  }
-                }
-              }
-              /*
-              if (!store) {
-                  allocinst->getParent()->getParent()->dump();
-                  allocinst->dump();
-              }
-              assert(store);
-              erase(store);
-              */
+            }
+            /*
+            if (!store) {
+                allocinst->getParent()->getParent()->dump();
+                allocinst->dump();
+            }
+            assert(store);
+            erase(store);
+            */
 
-              Instruction *storedinto =
-                  cast ? (Instruction *)cast : (Instruction *)allocinst;
-              for (auto use : storedinto->users()) {
-                // llvm::errs() << " found use of " << *storedinto << " of " <<
-                // use << "\n";
-                if (auto si = dyn_cast<StoreInst>(use))
-                  erase(si);
-              }
-
-              if (cast)
-                erase(cast);
-              // llvm::errs() << "considering inner loop for malloc: " <<
-              // *malloc << " allocinst " << *allocinst << "\n";
-              erase(allocinst);
+            Instruction *storedinto =
+                cast ? (Instruction *)cast : (Instruction *)allocinst;
+            for (auto use : storedinto->users()) {
+              // llvm::errs() << " found use of " << *storedinto << " of " <<
+              // use << "\n";
+              if (auto si = dyn_cast<StoreInst>(use))
+                erase(si);
             }
 
-            // Remove frees
-            auto tofree = scopeFrees[found->first];
-            scopeFrees.erase(found->first);
-            for (auto freeinst : tofree) {
-              std::deque<Value *> ops = {freeinst->getArgOperand(0)};
-              erase(freeinst);
-
-              while (ops.size()) {
-                auto z = dyn_cast<Instruction>(ops[0]);
-                ops.pop_front();
-                if (z && z->getNumUses() == 0) {
-                  for (unsigned i = 0; i < z->getNumOperands(); ++i) {
-                    ops.push_back(z->getOperand(i));
-                  }
-                  erase(z);
-                }
-              }
-            }
-
-            // uses of the alloc
-            std::vector<User *> users;
-            for (auto u : found->first->users()) {
-              users.push_back(u);
-            }
-            for (auto u : users) {
-              if (auto li = dyn_cast<LoadInst>(u)) {
-                IRBuilder<> lb(li);
-                // llvm::errs() << "fixing li: " << *li << "\n";
-                auto replacewith =
-                    (idx < 0) ? tape
-                              : lb.CreateExtractValue(tape, {(unsigned)idx});
-                // llvm::errs() << "fixing with rw: " << *replacewith << "\n";
-                li->replaceAllUsesWith(replacewith);
-                erase(li);
-              } else {
-                llvm::errs() << "newFunc: " << *newFunc << "\n";
-                llvm::errs() << "malloc: " << *malloc << "\n";
-                llvm::errs()
-                    << "scopeMap[malloc]: " << *found->first << "\n";
-                llvm::errs() << "u: " << *u << "\n";
-                assert(0 && "illegal use for out of loop scopeMap");
-              }
-            }
-
-            // cast<Instruction>(scopeMap[malloc])->getParent()->getParent()->dump();
-
-            // llvm::errs() << "did erase for malloc: " << *malloc << " " <<
-            // *scopeMap[malloc] << "\n";
-
-            AllocaInst *preerase = found->first;
-            scopeMap.erase(malloc);
-            erase(preerase);
+            if (cast)
+              erase(cast);
+            // llvm::errs() << "considering inner loop for malloc: " <<
+            // *malloc << " allocinst " << *allocinst << "\n";
+            erase(allocinst);
           }
+
+          // Remove frees
+          auto tofree = scopeFrees[found->first];
+          scopeFrees.erase(found->first);
+          for (auto freeinst : tofree) {
+            std::deque<Value *> ops = {freeinst->getArgOperand(0)};
+            erase(freeinst);
+
+            while (ops.size()) {
+              auto z = dyn_cast<Instruction>(ops[0]);
+              ops.pop_front();
+              if (z && z->getNumUses() == 0) {
+                for (unsigned i = 0; i < z->getNumOperands(); ++i) {
+                  ops.push_back(z->getOperand(i));
+                }
+                erase(z);
+              }
+            }
+          }
+
+          // uses of the alloc
+          std::vector<User *> users;
+          for (auto u : found->first->users()) {
+            users.push_back(u);
+          }
+          for (auto u : users) {
+            if (auto li = dyn_cast<LoadInst>(u)) {
+              IRBuilder<> lb(li);
+              // llvm::errs() << "fixing li: " << *li << "\n";
+              auto replacewith =
+                  (idx < 0) ? tape
+                            : lb.CreateExtractValue(tape, {(unsigned)idx});
+              // llvm::errs() << "fixing with rw: " << *replacewith << "\n";
+              li->replaceAllUsesWith(replacewith);
+              erase(li);
+            } else {
+              llvm::errs() << "newFunc: " << *newFunc << "\n";
+              llvm::errs() << "malloc: " << *malloc << "\n";
+              llvm::errs() << "scopeMap[malloc]: " << *found->first << "\n";
+              llvm::errs() << "u: " << *u << "\n";
+              assert(0 && "illegal use for out of loop scopeMap");
+            }
+          }
+
+          // cast<Instruction>(scopeMap[malloc])->getParent()->getParent()->dump();
+
+          // llvm::errs() << "did erase for malloc: " << *malloc << " " <<
+          // *scopeMap[malloc] << "\n";
+
+          AllocaInst *preerase = found->first;
+          scopeMap.erase(malloc);
+          erase(preerase);
         }
-        // llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
-        cast<Instruction>(malloc)->replaceAllUsesWith(ret);
-        std::string n = malloc->getName().str();
-        erase(cast<Instruction>(malloc));
-        ret->setName(n);
       }
-      return ret;
-    } else {
-      assert(malloc);
-      // assert(!isa<PHINode>(malloc));
+      // llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
+      cast<Instruction>(malloc)->replaceAllUsesWith(ret);
+      std::string n = malloc->getName().str();
+      erase(cast<Instruction>(malloc));
+      ret->setName(n);
+    }
+    return ret;
+  } else {
+    assert(malloc);
+    // assert(!isa<PHINode>(malloc));
 
-      assert(idx >= 0 && (unsigned)idx == addedTapeVals.size());
+    assert(idx >= 0 && (unsigned)idx == addedTapeVals.size());
 
-      if (isa<UndefValue>(malloc)) {
-        addedTapeVals.push_back(malloc);
-        return malloc;
-      }
-
-      LimitContext ctx(BuilderQ.GetInsertBlock());
-      if (auto inst = dyn_cast<Instruction>(malloc))
-        ctx = LimitContext(inst->getParent());
-      if (auto found = findInMap(scopeMap, malloc)) {
-        ctx = found->second;
-      }
-
-      bool inLoop;
-
-      if (ctx.ForceSingleIteration) {
-        inLoop = true;
-        ctx.ForceSingleIteration = false;
-      } else {
-        LoopContext lc;
-        inLoop = getContext(ctx.Block, lc);
-      }
-
-      if (!inLoop) {
-        addedTapeVals.push_back(malloc);
-        return malloc;
-      }
-
-      ensureLookupCached(cast<Instruction>(malloc),
-                         /*shouldFree=*/reverseBlocks.size() > 0);
-      auto found2 = scopeMap.find(malloc);
-      assert(found2 != scopeMap.end());
-      assert(found2->second.first);
-
-      Instruction *toadd = scopeAllocs[found2->second.first][0];
-      for (auto u : toadd->users()) {
-        if (auto ci = dyn_cast<CastInst>(u)) {
-          toadd = ci;
-        }
-      }
-
-      // llvm::errs() << " malloc: " << *malloc << "\n";
-      // llvm::errs() << " toadd: " << *toadd << "\n";
-      Type *innerType = toadd->getType();
-      for (size_t i=0, limit=getSubLimits(LimitContext(BuilderQ.GetInsertBlock())).size(); i<limit; ++i) {
-        innerType = cast<PointerType>(innerType)->getElementType();
-      }
-
-      if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
-          toadd->getType() != innerType &&
-          cast<IntegerType>(malloc->getType())->getBitWidth() == 1) {
-        assert(innerType == Type::getInt8Ty(toadd->getContext()));
-      } else {
-        if (innerType != malloc->getType()) {
-          llvm::errs() << "oldFunc:" << *oldFunc << "\n";
-          llvm::errs() << "newFunc: " << *newFunc << "\n";
-          llvm::errs() << " toadd: " << *toadd << "\n";
-          llvm::errs() << "innerType: " << *innerType << "\n";
-          llvm::errs() << "malloc: " << *malloc << "\n";
-        }
-        assert(innerType == malloc->getType());
-      }
-      addedTapeVals.push_back(toadd);
+    if (isa<UndefValue>(malloc)) {
+      addedTapeVals.push_back(malloc);
       return malloc;
     }
-    llvm::errs() << "Fell through on cacheForReverse. This should never happen.\n";
-    assert(false);
+
+    LimitContext ctx(BuilderQ.GetInsertBlock());
+    if (auto inst = dyn_cast<Instruction>(malloc))
+      ctx = LimitContext(inst->getParent());
+    if (auto found = findInMap(scopeMap, malloc)) {
+      ctx = found->second;
+    }
+
+    bool inLoop;
+
+    if (ctx.ForceSingleIteration) {
+      inLoop = true;
+      ctx.ForceSingleIteration = false;
+    } else {
+      LoopContext lc;
+      inLoop = getContext(ctx.Block, lc);
+    }
+
+    if (!inLoop) {
+      addedTapeVals.push_back(malloc);
+      return malloc;
+    }
+
+    ensureLookupCached(cast<Instruction>(malloc),
+                       /*shouldFree=*/reverseBlocks.size() > 0);
+    auto found2 = scopeMap.find(malloc);
+    assert(found2 != scopeMap.end());
+    assert(found2->second.first);
+
+    Instruction *toadd = scopeAllocs[found2->second.first][0];
+    for (auto u : toadd->users()) {
+      if (auto ci = dyn_cast<CastInst>(u)) {
+        toadd = ci;
+      }
+    }
+
+    // llvm::errs() << " malloc: " << *malloc << "\n";
+    // llvm::errs() << " toadd: " << *toadd << "\n";
+    Type *innerType = toadd->getType();
+    for (size_t
+             i = 0,
+             limit =
+                 getSubLimits(LimitContext(BuilderQ.GetInsertBlock())).size();
+         i < limit; ++i) {
+      innerType = cast<PointerType>(innerType)->getElementType();
+    }
+
+    if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
+        toadd->getType() != innerType &&
+        cast<IntegerType>(malloc->getType())->getBitWidth() == 1) {
+      assert(innerType == Type::getInt8Ty(toadd->getContext()));
+    } else {
+      if (innerType != malloc->getType()) {
+        llvm::errs() << "oldFunc:" << *oldFunc << "\n";
+        llvm::errs() << "newFunc: " << *newFunc << "\n";
+        llvm::errs() << " toadd: " << *toadd << "\n";
+        llvm::errs() << "innerType: " << *innerType << "\n";
+        llvm::errs() << "malloc: " << *malloc << "\n";
+      }
+      assert(innerType == malloc->getType());
+    }
+    addedTapeVals.push_back(toadd);
+    return malloc;
   }
-  
+  llvm::errs()
+      << "Fell through on cacheForReverse. This should never happen.\n";
+  assert(false);
+}
+
 /// Given an edge from BB to branchingBlock get the corresponding block to
 /// branch to in the reverse pass
 BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
@@ -796,7 +801,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
 
       Value *lim = nullptr;
       if (lc.dynamic) {
-        lim = lookupValueFromCache(/*forwardPass*/false, tbuild, lc.preheader,
+        lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lc.preheader,
                                    cast<AllocaInst>(lc.limit), /*isi1*/ false);
       } else {
         lim = lookupM(lc.limit, tbuild);
@@ -1070,22 +1075,21 @@ GradientUtils *GradientUtils::CreateFromClone(
   SmallPtrSet<Instruction *, 20> nonconstant;
   SmallPtrSet<Value *, 2> returnvals;
   ValueToValueMapTy originalToNew;
-  
+
   SmallPtrSet<Value *, 4> constant_values;
   SmallPtrSet<Value *, 4> nonconstant_values;
 
   auto newFunc = CloneFunctionWithReturns(
       /*topLevel*/ false, todiff, AA, TLI, invertedPointers, constant_args,
-      constant_values, nonconstant_values, returnvals, /*returnValue*/ returnValue,
-      "fakeaugmented_" + todiff->getName(), &originalToNew,
+      constant_values, nonconstant_values, returnvals,
+      /*returnValue*/ returnValue, "fakeaugmented_" + todiff->getName(),
+      &originalToNew,
       /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
 
   auto res = new GradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers,
-                               constant_values,
-                               nonconstant_values,
-                               /*ActiveValues*/retType != DIFFE_TYPE::CONSTANT,
-                                originalToNew,
-                               DerivativeMode::Forward);
+                               constant_values, nonconstant_values,
+                               /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
+                               originalToNew, DerivativeMode::Forward);
   return res;
 }
 
@@ -1106,14 +1110,15 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
 
   bool diffeReturnArg = retType == DIFFE_TYPE::OUT_DIFF;
   auto newFunc = CloneFunctionWithReturns(
-      topLevel, todiff, AA, TLI, invertedPointers, constant_args, constant_values,
-      nonconstant_values, returnvals, returnValue, "diffe" + todiff->getName(),
-      &originalToNew, /*diffeReturnArg*/ diffeReturnArg, additionalArg);
+      topLevel, todiff, AA, TLI, invertedPointers, constant_args,
+      constant_values, nonconstant_values, returnvals, returnValue,
+      "diffe" + todiff->getName(), &originalToNew,
+      /*diffeReturnArg*/ diffeReturnArg, additionalArg);
 
   auto res = new DiffeGradientUtils(
-      newFunc, todiff, TLI, TA, AA, invertedPointers, 
-      constant_values, nonconstant_values, /*ActiveValues*/retType != DIFFE_TYPE::CONSTANT, originalToNew,
-      topLevel ? DerivativeMode::Both : DerivativeMode::Reverse);
+      newFunc, todiff, TLI, TA, AA, invertedPointers, constant_values,
+      nonconstant_values, /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
+      originalToNew, topLevel ? DerivativeMode::Both : DerivativeMode::Reverse);
   return res;
 }
 
@@ -1195,7 +1200,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       DIFFE_TYPE typ;
       if (a.getType()->isFPOrFPVectorTy()) {
         typ = DIFFE_TYPE::OUT_DIFF;
-      } else if (a.getType()->isIntegerTy() && cast<IntegerType>(a.getType())->getBitWidth() < 16) {
+      } else if (a.getType()->isIntegerTy() &&
+                 cast<IntegerType>(a.getType())->getBitWidth() < 16) {
         typ = DIFFE_TYPE::CONSTANT;
       } else if (a.getType()->isVoidTy() || a.getType()->isEmptyTy()) {
         typ = DIFFE_TYPE::CONSTANT;
@@ -1209,23 +1215,25 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
                              ? DIFFE_TYPE::OUT_DIFF
                              : DIFFE_TYPE::DUP_ARG;
     if (fn->getReturnType()->isVoidTy() || fn->getReturnType()->isEmptyTy() ||
-        (fn->getReturnType()->isIntegerTy() && cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
+        (fn->getReturnType()->isIntegerTy() &&
+         cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
       retType = DIFFE_TYPE::CONSTANT;
 
-    // TODO re atomic add consider forcing it to be atomic always as fallback if used
-    // in a parallel context
+    // TODO re atomic add consider forcing it to be atomic always as fallback if
+    // used in a parallel context
     auto &augdata = CreateAugmentedPrimal(
         fn, retType, /*constant_args*/ types, TLI, TA, AA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
         type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd);
-    Constant* newf = CreatePrimalAndGradient(
+    Constant *newf = CreatePrimalAndGradient(
         fn, retType, /*constant_args*/ types, TLI, TA, AA,
         /*returnValue*/ false, /*dretPtr*/ false, /*topLevel*/ false,
         /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
         uncacheable_args,
         /*map*/ &augdata, AtomicAdd);
-    if (!newf) newf = UndefValue::get(fn->getType());
+    if (!newf)
+      newf = UndefValue::get(fn->getType());
     auto cdata = ConstantStruct::get(
         StructType::get(newf->getContext(),
                         {augdata.fn->getType(), newf->getType()}),
@@ -1451,7 +1459,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
       // Note that if scev'd this can still be a phi with 0 incoming indicating
       // an unnecessary value to be replaced
       // TODO consider allowing the inverted pointer to become a scev
-      if (!isa<PHINode>(NewV) || cast<PHINode>(NewV)->getNumIncomingValues() == 0) {
+      if (!isa<PHINode>(NewV) ||
+          cast<PHINode>(NewV)->getNumIncomingValues() == 0) {
         bb.SetInsertPoint(bb.GetInsertBlock()->getFirstNonPHI());
       }
       auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
@@ -1668,26 +1677,24 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
   if (auto origInst = isOriginal(inst))
     if (auto li = dyn_cast<LoadInst>(inst)) {
-      #if LLVM_VERSION_MAJOR >= 12
-      auto liobj = getUnderlyingObject(
-          li->getPointerOperand(), 100);
-      #else
+#if LLVM_VERSION_MAJOR >= 12
+      auto liobj = getUnderlyingObject(li->getPointerOperand(), 100);
+#else
       auto liobj = GetUnderlyingObject(
           li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
-      #endif
+#endif
 
       if (scopeMap.find(inst) == scopeMap.end()) {
         for (auto pair : scopeMap) {
           if (auto li2 = dyn_cast<LoadInst>(const_cast<Value *>(pair.first))) {
 
-            #if LLVM_VERSION_MAJOR >= 12
-            auto li2obj =
-                getUnderlyingObject(li2->getPointerOperand(), 100);
-            #else
+#if LLVM_VERSION_MAJOR >= 12
+            auto li2obj = getUnderlyingObject(li2->getPointerOperand(), 100);
+#else
             auto li2obj =
                 GetUnderlyingObject(li2->getPointerOperand(),
                                     oldFunc->getParent()->getDataLayout(), 100);
-            #endif
+#endif
 
             if (liobj == li2obj && DT.dominates(li2, li)) {
               auto orig2 = isOriginal(li2);
@@ -1696,12 +1703,12 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
               bool failed = false;
 
-              //llvm::errs() << "found potential candidate loads: oli:"
+              // llvm::errs() << "found potential candidate loads: oli:"
               //             << *origInst << " oli2: " << *orig2 << "\n";
 
               auto scev1 = SE.getSCEV(li->getPointerOperand());
               auto scev2 = SE.getSCEV(li2->getPointerOperand());
-              //llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2
+              // llvm::errs() << " scev1: " << *scev1 << " scev2: " << *scev2
               //             << "\n";
 
               allInstructionsBetween(
@@ -1710,7 +1717,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                         writesToMemoryReadBy(AA, /*maybeReader*/ origInst,
                                              /*maybeWriter*/ I)) {
                       failed = true;
-                      //llvm::errs() << "FAILED: " << *I << "\n";
+                      // llvm::errs() << "FAILED: " << *I << "\n";
                       return /*earlyBreak*/ true;
                     }
                     return /*earlyBreak*/ false;
@@ -1735,9 +1742,10 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                     // li2
                     if (SE.getSCEV(l1.limit) != SE.getCouldNotCompute() &&
                         SE.getSCEV(l1.limit) == SE.getSCEV(l2.limit)) {
-                      //llvm::errs()
+                      // llvm::errs()
                       //    << " step1: " << *ar1->getStepRecurrence(SE)
-                      //    << " step2: " << *ar2->getStepRecurrence(SE) << "\n";
+                      //    << " step2: " << *ar2->getStepRecurrence(SE) <<
+                      //    "\n";
 
                       inst = li2;
                       idx = std::make_pair(val, BuilderM.GetInsertBlock());
@@ -1788,7 +1796,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               }
 
               Value *lim = unwrapM(l1.limit, v,
-                                   /*available*/ValueToValueMapTy(),
+                                   /*available*/ ValueToValueMapTy(),
                                    UnwrapMode::AttemptFullUnwrapWithLookup);
               if (!lim) {
                 goto noSpeedCache;
@@ -1809,7 +1817,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 Value *start0 = Exp.expandCodeFor(
                     ar1->getStart(), li->getPointerOperand()->getType());
                 start = unwrapM(start0, v,
-                                /*available*/ValueToValueMapTy(),
+                                /*available*/ ValueToValueMapTy(),
                                 UnwrapMode::AttemptFullUnwrapWithLookup);
                 l1.header->dump();
                 std::set<Value *> todo = {start0};
@@ -1864,7 +1872,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 ctx = (BasicBlock *)((size_t)ctx | 1);
               }
 
-              if (auto found = findInMap(scopeMap, (Value*)inst)) {
+              if (auto found = findInMap(scopeMap, (Value *)inst)) {
                 cache = found->first;
               } else {
                 // if freeing reverseblocks must exist
@@ -1873,13 +1881,15 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                     ctx, li->getType(), li->getName(), /*shouldFree*/ true,
                     /*allocate*/ true, /*extraSize*/ lim);
                 assert(cache);
-                scopeMap.insert(std::make_pair(inst, std::make_pair(cache, ctx)));
+                scopeMap.insert(
+                    std::make_pair(inst, std::make_pair(cache, ctx)));
 
                 v.setFastMathFlags(getFast());
                 assert(isOriginalBlock(*v.GetInsertBlock()));
-                Value *outer = getCachePointer(/*inForwardPass*/true, v, ctx, cache, isi1,
-                                               /*storeinstorecache*/ true,
-                                               /*extraSize*/ lim);
+                Value *outer =
+                    getCachePointer(/*inForwardPass*/ true, v, ctx, cache, isi1,
+                                    /*storeinstorecache*/ true,
+                                    /*extraSize*/ lim);
 
                 auto dst_arg = v.CreateBitCast(
                     outer, Type::getInt8PtrTy(inst->getContext()));
@@ -1889,7 +1899,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 auto len_arg = v.CreateMul(
                     ConstantInt::get(lim->getType(), step->getAPInt()), lim, "",
                     true, true);
-                if (Instruction* I = dyn_cast<Instruction>(len_arg))
+                if (Instruction *I = dyn_cast<Instruction>(len_arg))
                   scopeInstructions[cache].push_back(I);
                 auto volatile_arg = ConstantInt::getFalse(inst->getContext());
 
@@ -1924,9 +1934,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 }
 
 #if LLVM_VERSION_MAJOR >= 11
-                  mem->addParamAttr(
-                      1, Attribute::getWithAlignment(
-                             memcpyF->getContext(), li->getAlign()));
+                mem->addParamAttr(
+                    1, Attribute::getWithAlignment(memcpyF->getContext(),
+                                                   li->getAlign()));
 #elif LLVM_VERSION_MAJOR >= 10
                 if (li->getAlign())
                   mem->addParamAttr(
@@ -1945,9 +1955,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               }
 
               assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
-              Value *result =
-                  lookupValueFromCache(/*isForwardPass*/false, BuilderM, ctx, cache, isi1,
-                                       /*extraSize*/ lim, available[l1.var]);
+              Value *result = lookupValueFromCache(
+                  /*isForwardPass*/ false, BuilderM, ctx, cache, isi1,
+                  /*extraSize*/ lim, available[l1.var]);
               lookup_cache[idx] = result;
               return result;
             }
@@ -1961,9 +1971,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   bool isi1 = inst->getType()->isIntegerTy() &&
               cast<IntegerType>(inst->getType())->getBitWidth() == 1;
   assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
-  auto found = findInMap(scopeMap, (Value*)inst);
-  Value *result = lookupValueFromCache(/*isForwardPass*/false, BuilderM, found->second,
-                                       found->first, isi1);
+  auto found = findInMap(scopeMap, (Value *)inst);
+  Value *result = lookupValueFromCache(/*isForwardPass*/ false, BuilderM,
+                                       found->second, found->first, isi1);
   assert(result->getType() == inst->getType());
   lookup_cache[idx] = result;
   assert(result);
@@ -2187,7 +2197,8 @@ void GradientUtils::branchToCorrespondingTarget(
               Value *val = cond2;
               if (i == 1)
                 val = BuilderM.CreateNot(val, "bnot1_");
-              val = BuilderM.CreateAnd(val, otherBranch, "andVal" + std::to_string(i));
+              val = BuilderM.CreateAnd(val, otherBranch,
+                                       "andVal" + std::to_string(i));
               if (&*BuilderM.GetInsertPoint() == found->second) {
                 if (found->second->getNextNode())
                   BuilderM.SetInsertPoint(found->second->getNextNode());
@@ -2375,7 +2386,9 @@ nofast:;
   }
 
   bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
-  Value *which = lookupValueFromCache(/*forwardPass*/isOriginalBlock(*BuilderM.GetInsertBlock()), BuilderM, ctx, cache, isi1);
+  Value *which = lookupValueFromCache(
+      /*forwardPass*/ isOriginalBlock(*BuilderM.GetInsertBlock()), BuilderM,
+      ctx, cache, isi1);
   assert(which);
   assert(which->getType() == T);
 

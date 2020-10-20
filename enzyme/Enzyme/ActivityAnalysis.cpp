@@ -1,14 +1,15 @@
-//===- ActivityAnalysis.cpp - Implementation of Activity Analysis  -----------===//
+//===- ActivityAnalysis.cpp - Implementation of Activity Analysis ---------===//
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -45,8 +46,8 @@
 #include "ActivityAnalysis.h"
 #include "Utils.h"
 
-#include "TypeAnalysis/TBAA.h"
 #include "LibraryFuncs.h"
+#include "TypeAnalysis/TBAA.h"
 
 #include "llvm/Analysis/ValueTracking.h"
 
@@ -59,7 +60,8 @@ cl::opt<bool> nonmarkedglobals_inactive(
     "enzyme-globals-default-inactive", cl::init(false), cl::Hidden,
     cl::desc("Consider all nonmarked globals to be inactive"));
 
-cl::opt<bool> emptyfnconst("enzyme-emptyfn-inactive", cl::init(false), cl::Hidden,
+cl::opt<bool> emptyfnconst("enzyme-emptyfn-inactive", cl::init(false),
+                           cl::Hidden,
                            cl::desc("Empty functions are considered inactive"));
 
 #include "llvm/IR/InstIterator.h"
@@ -84,7 +86,7 @@ static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
     return false;
 
   auto arg = F->arg_begin();
-  for(size_t i=0, size = CI->getNumArgOperands(); i < size; i++) {
+  for (size_t i = 0, size = CI->getNumArgOperands(); i < size; i++) {
     if (val == CI->getArgOperand(i)) {
       // This is a vararg, assume captured
       if (arg == F->arg_end()) {
@@ -102,20 +104,34 @@ static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
   return false;
 }
 
-const char* KnownInactiveFunctions[] = {
-  "__assert_fail",
-  "__cxa_guard_acquire",  "__cxa_guard_release",
-  "__cxa_guard_abort", "printf", "puts",
-  "__enzyme_float", "__enzyme_double", "__enzyme_integer", "__enzyme_pointer",
-  "__kmpc_for_static_init_4", "__kmpc_for_static_init_4u",
-  "__kmpc_for_static_init_8", "__kmpc_for_static_init_8u",
-  "__kmpc_for_static_fini",
-  "__kmpc_dispatch_init_4", "__kmpc_dispatch_init_4u", 
-  "__kmpc_dispatch_init_8", "__kmpc_dispatch_init_8u", 
-  "__kmpc_dispatch_next_4", "__kmpc_dispatch_next_4u",
-  "__kmpc_dispatch_next_8", "__kmpc_dispatch_next_8u",
-  "__kmpc_dispatch_fini_4", "__kmpc_dispatch_fini_4u",
-  "__kmpc_dispatch_fini_8", "__kmpc_dispatch_fini_8u",
+const char *KnownInactiveFunctions[] = {
+    "__assert_fail",
+    "__cxa_guard_acquire",
+    "__cxa_guard_release",
+    "__cxa_guard_abort",
+    "printf",
+    "puts",
+    "__enzyme_float",
+    "__enzyme_double",
+    "__enzyme_integer",
+    "__enzyme_pointer",
+    "__kmpc_for_static_init_4",
+    "__kmpc_for_static_init_4u",
+    "__kmpc_for_static_init_8",
+    "__kmpc_for_static_init_8u",
+    "__kmpc_for_static_fini",
+    "__kmpc_dispatch_init_4",
+    "__kmpc_dispatch_init_4u",
+    "__kmpc_dispatch_init_8",
+    "__kmpc_dispatch_init_8u",
+    "__kmpc_dispatch_next_4",
+    "__kmpc_dispatch_next_4u",
+    "__kmpc_dispatch_next_8",
+    "__kmpc_dispatch_next_8u",
+    "__kmpc_dispatch_fini_4",
+    "__kmpc_dispatch_fini_4u",
+    "__kmpc_dispatch_fini_8",
+    "__kmpc_dispatch_fini_8u",
 };
 
 /// Is the use of value val as an argument of call CI known to be inactive
@@ -134,12 +150,13 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   // of arguments
   if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI))
     return true;
-  for(auto FuncName : KnownInactiveFunctions) {
+  for (auto FuncName : KnownInactiveFunctions) {
     if (Name == FuncName)
       return true;
   }
 
-  /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive use
+  /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive
+  /// use
   if (F->getIntrinsicID() == Intrinsic::memset && CI->getArgOperand(0) != val &&
       CI->getArgOperand(1) != val)
     return true;
@@ -156,23 +173,25 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   if (F->empty())
     return false;
 
-  // With all other options exhausted we have to assume this function could actively
-  // use the value
+  // With all other options exhausted we have to assume this function could
+  // actively use the value
   return false;
 }
 
 /// Call the function propagateFromOperand on all operands of CI
 /// that could impact the activity of the call instruction
-static inline void propagateArgumentInformation(TargetLibraryInfo& TLI, CallInst &CI, 
+static inline void propagateArgumentInformation(
+    TargetLibraryInfo &TLI, CallInst &CI,
     std::function<bool(Value *)> propagateFromOperand) {
-  
+
   if (auto F = CI.getCalledFunction()) {
     // These functions are known to only have the first argument impact
     // the activity of the call instruction
     auto Name = F->getName();
-    if (Name == "lgamma" || Name == "lgammaf" || Name == "lgammal" || Name == "lgamma_r" ||
-        Name == "lgammaf_r" || Name == "lgammal_r" || Name == "__lgamma_r_finite" ||
-        Name == "__lgammaf_r_finite" || Name == "__lgammal_r_finite") {
+    if (Name == "lgamma" || Name == "lgammaf" || Name == "lgammal" ||
+        Name == "lgamma_r" || Name == "lgammaf_r" || Name == "lgammal_r" ||
+        Name == "__lgamma_r_finite" || Name == "__lgammaf_r_finite" ||
+        Name == "__lgammal_r_finite") {
 
       propagateFromOperand(CI.getArgOperand(0));
       return;
@@ -192,7 +211,7 @@ static inline void propagateArgumentInformation(TargetLibraryInfo& TLI, CallInst
       if (F->getIntrinsicID() == Intrinsic::memset) {
         return;
       }
-      if (F->getIntrinsicID() == Intrinsic::memcpy || 
+      if (F->getIntrinsicID() == Intrinsic::memcpy ||
           F->getIntrinsicID() == Intrinsic::memmove) {
         propagateFromOperand(CI.getOperand(0));
         propagateFromOperand(CI.getOperand(1));
@@ -236,13 +255,12 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
 
   /// A store into all integral memory is inactive
   if (auto SI = dyn_cast<StoreInst>(I)) {
-    auto StoreSize =
-        SI->getParent()
-            ->getParent()
-            ->getParent()
-            ->getDataLayout()
-            .getTypeSizeInBits(SI->getValueOperand()->getType()) /
-        8;
+    auto StoreSize = SI->getParent()
+                         ->getParent()
+                         ->getParent()
+                         ->getDataLayout()
+                         .getTypeSizeInBits(SI->getValueOperand()->getType()) /
+                     8;
 
     bool AllIntegral = true;
     bool SeenInteger = false;
@@ -274,16 +292,14 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     return true;
   }
 
-
-
   if (printconst)
-    llvm::errs() << "checking if is constant[" << (int)directions << "] "
-                 << *I << "\n";
+    llvm::errs() << "checking if is constant[" << (int)directions << "] " << *I
+                 << "\n";
 
   // Analyzer for inductive assumption where we attempt to prove this is
   // inactive from a lack of active users
   std::shared_ptr<ActivityAnalyzer> DownHypothesis;
-  
+
   // If this instruction does not write to memory that outlives itself
   // (potentially propagating derivative information), the only way to propagate
   // derivative information is through the return value
@@ -295,11 +311,12 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     // Even if returning a pointer, this instruction is considered inactive
     // since the instruction doesn't prop gradients. Thus, so long as we don't
     // return an object containing a float, this instruction is inactive
-    if (!TR.intType(I, /*errifNotFound*/false).isPossibleFloat()) {
+    if (!TR.intType(I, /*errifNotFound*/ false).isPossibleFloat()) {
       if (printconst)
-        llvm::errs() << " constant instruction from known non-float non-writing "
-                        "instruction "
-                     << *I << "\n";
+        llvm::errs()
+            << " constant instruction from known non-float non-writing "
+               "instruction "
+            << *I << "\n";
       ConstantInstructions.insert(I);
       return true;
     }
@@ -314,33 +331,34 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       return true;
     }
 
-    // Even if the return is nonconstant, it's worth checking explicitly the users
-    // since unlike isConstantValue, returning a pointer does not make the instruction
-    // active
+    // Even if the return is nonconstant, it's worth checking explicitly the
+    // users since unlike isConstantValue, returning a pointer does not make the
+    // instruction active
     if (directions & DOWN) {
       // We shall now induct on this instruction being inactive and try to prove
       // this fact from a lack of active users.
 
       // If we aren't a phi node (and thus potentially recursive on uses) and
-      // already equal to the current direction, we don't need to induct, reducing
-      // runtime.
+      // already equal to the current direction, we don't need to induct,
+      // reducing runtime.
       if (directions == DOWN && !isa<PHINode>(I)) {
         if (isValueInactiveFromUsers(TR, I)) {
           if (printconst)
             llvm::errs() << " constant instruction from users "
                             "instruction "
-                        << *I << "\n";
+                         << *I << "\n";
           ConstantInstructions.insert(I);
           return true;
         }
       } else {
-        DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+        DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
+            new ActivityAnalyzer(*this, DOWN));
         DownHypothesis->ConstantInstructions.insert(I);
         if (DownHypothesis->isValueInactiveFromUsers(TR, I)) {
           if (printconst)
             llvm::errs() << " constant instruction from users "
                             "instruction "
-                        << *I << "\n";
+                         << *I << "\n";
           ConstantInstructions.insert(I);
           insertConstantsFrom(*DownHypothesis);
           return true;
@@ -358,7 +376,8 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     // Technically the additional constraint is that this does not read from
     // active memory, where we have assumed that the only active memory
     // we care about is accessible from arguments passed (and thus not globals)
-    UpHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
+    UpHypothesis =
+        std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
     UpHypothesis->ConstantInstructions.insert(I);
     assert(directions & UP);
     if (UpHypothesis->isInstructionInactiveFromOrigin(TR, I)) {
@@ -368,7 +387,8 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
                      << *I << "\n";
       ConstantInstructions.insert(I);
       insertConstantsFrom(*UpHypothesis);
-      if (DownHypothesis) insertConstantsFrom(*DownHypothesis);
+      if (DownHypothesis)
+        insertConstantsFrom(*DownHypothesis);
       return true;
     }
   }
@@ -376,8 +396,8 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
   // Otherwise we must fall back and assume this instruction to be active.
   ActiveInstructions.insert(I);
   if (printconst)
-    llvm::errs() << "couldnt decide fallback as nonconstant instruction(" << (int)directions
-                 << "):" << *I << "\n";
+    llvm::errs() << "couldnt decide fallback as nonconstant instruction("
+                 << (int)directions << "):" << *I << "\n";
   return false;
 }
 
@@ -431,9 +451,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     case Intrinsic::type_test:
     case Intrinsic::donothing:
     case Intrinsic::prefetch:
-    #if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 8
     case Intrinsic::is_constant:
-    #endif
+#endif
       return true;
     default:
       break;
@@ -468,7 +488,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     return true;
   }
 
-  #if 0
+#if 0
   // This value is certainly a pointer to an integer (and only and integer, not
   // a pointer or float). Therefore its value is constant
   // TODO use typeInfo for more aggressive activity analysis
@@ -481,7 +501,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     ConstantValues.insert(val);
     return true;
   }
-  #endif
+#endif
 
   if (auto GI = dyn_cast<GlobalVariable>(Val)) {
     // If operating under the assumption globals are inactive unless
@@ -493,8 +513,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
     // If this global is unchanging and the internal constant data
     // is inactive, the global is inactive
-    if (GI->isConstant() &&
-        isConstantValue(TR, GI->getInitializer())) {
+    if (GI->isConstant() && isConstantValue(TR, GI->getInitializer())) {
       ConstantValues.insert(Val);
       if (printconst)
         llvm::errs() << " VALUE const global " << *Val << "\n";
@@ -514,24 +533,29 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       return true;
     }
 
-    // If this is a global local to this translation unit with inactive initializer
-    // and no active uses, it is definitionally inactive
-    bool usedJustInThisModule = GI->hasInternalLinkage() || GI->hasPrivateLinkage() || GI->hasPrivateLinkage();
-
+    // If this is a global local to this translation unit with inactive
+    // initializer and no active uses, it is definitionally inactive
+    bool usedJustInThisModule = GI->hasInternalLinkage() ||
+                                GI->hasPrivateLinkage() ||
+                                GI->hasPrivateLinkage();
 
     if (printconst)
-      llvm::errs() << "pre attempting just used in module for: " << *GI << " dir" << (char)directions << " justusedin:" << usedJustInThisModule << "\n";    
-  
+      llvm::errs() << "pre attempting just used in module for: " << *GI
+                   << " dir" << (char)directions
+                   << " justusedin:" << usedJustInThisModule << "\n";
+
     if (directions == 3 && usedJustInThisModule) {
-      // TODO this assumes global initializer cannot refer to itself (lest infinite loop)
+      // TODO this assumes global initializer cannot refer to itself (lest
+      // infinite loop)
       if (!GI->hasInitializer() || isConstantValue(TR, GI->getInitializer())) {
 
         if (printconst)
           llvm::errs() << "attempting just used in module for: " << *GI << "\n";
         // Not looking at users to prove inactive (definition of down)
-        // If all users are inactive, this is therefore inactive. 
-        // Since we won't look at origins to prove, we can inductively assume this is inactive
-        
+        // If all users are inactive, this is therefore inactive.
+        // Since we won't look at origins to prove, we can inductively assume
+        // this is inactive
+
         // As an optimization if we are going down already
         // and we won't use ourselves (done by PHI's), we
         // dont need to inductively assume we're true
@@ -542,7 +566,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             return true;
           }
         } else {
-          auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+          auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
+              new ActivityAnalyzer(*this, DOWN));
           DownHypothesis->ConstantValues.insert(Val);
           if (DownHypothesis->isValueInactiveFromUsers(TR, Val)) {
             insertConstantsFrom(*DownHypothesis);
@@ -588,9 +613,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     return false;
   }
 
-
   std::shared_ptr<ActivityAnalyzer> UpHypothesis;
-  
+
   // Handle types that could contain pointers
   //  Consider all types except
   //   * floating point types (since those are assumed not pointers)
@@ -603,20 +627,19 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
   if (containsPointer) {
 
-
     auto TmpOrig =
-    #if LLVM_VERSION_MAJOR >= 12
+#if LLVM_VERSION_MAJOR >= 12
         getUnderlyingObject(Val, 100);
-    #else
-        GetUnderlyingObject(Val,
-                            TR.info.Function->getParent()->getDataLayout(), 100);
-    #endif 
+#else
+        GetUnderlyingObject(Val, TR.info.Function->getParent()->getDataLayout(),
+                            100);
+#endif
 
     // If we know that our origin is inactive from its arguments,
     // we are definitionally inactive
     if (directions & UP) {
-      // If we are derived from an argument our activity is equal to the activity
-      // of the argument by definition
+      // If we are derived from an argument our activity is equal to the
+      // activity of the argument by definition
       if (isa<Argument>(TmpOrig)) {
         bool res = isConstantValue(TR, TmpOrig);
         if (res) {
@@ -627,11 +650,12 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         return res;
       }
 
-      UpHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
+      UpHypothesis =
+          std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
       UpHypothesis->ConstantValues.insert(Val);
 
-      // If our origin is a load of a known inactive (say inactive argument), we are
-      // also inactive
+      // If our origin is a load of a known inactive (say inactive argument), we
+      // are also inactive
       if (auto LI = dyn_cast<LoadInst>(TmpOrig)) {
 
         if (directions == UP) {
@@ -650,8 +674,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
       // otherwise if the origin is a previously derived known inactive value
       // assess
-      // TODO here we would need to potentially consider loading an active global
-      // as we again assume that active memory is passed explicitly as an argument
+      // TODO here we would need to potentially consider loading an active
+      // global as we again assume that active memory is passed explicitly as an
+      // argument
       if (TmpOrig != Val) {
         if (directions == UP && !isa<PHINode>(TmpOrig)) {
           if (isConstantValue(TR, TmpOrig)) {
@@ -668,11 +693,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       }
     }
 
-    // If not capable of looking at both users and uses, all the ways a pointer can be
-    // loaded/stored cannot be assesed and therefore we default to assume it to be active
+    // If not capable of looking at both users and uses, all the ways a pointer
+    // can be loaded/stored cannot be assesed and therefore we default to assume
+    // it to be active
     if (directions != 3) {
       if (printconst)
-        llvm::errs() << " <Potential Pointer assumed active at " << (int)directions << ">" << *Val << "\n";
+        llvm::errs() << " <Potential Pointer assumed active at "
+                     << (int)directions << ">" << *Val << "\n";
       ActiveValues.insert(Val);
       return false;
     }
@@ -688,10 +715,12 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // Assume the value (not instruction) is itself active
     // In spite of that can we show that there are either no active stores
     // or no active loads
-    std::shared_ptr<ActivityAnalyzer> Hypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, directions));
+    std::shared_ptr<ActivityAnalyzer> Hypothesis =
+        std::shared_ptr<ActivityAnalyzer>(
+            new ActivityAnalyzer(*this, directions));
     Hypothesis->ActiveValues.insert(Val);
 
-    if(isa<Instruction>(Val) || isa<Argument>(Val)) {
+    if (isa<Instruction>(Val) || isa<Argument>(Val)) {
       // These are handled by iterating through all
     } else {
       llvm::errs() << "unknown pointer value type: " << *Val << "\n";
@@ -701,22 +730,25 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
     // Search through all the instructions in this function
     // for potential loads / stores of this value
-    for(BasicBlock& BB : *TR.info.Function) {
-      if (potentialStore && potentiallyActiveLoad) break;
-      for(Instruction& I : BB) {
-        if (potentialStore && potentiallyActiveLoad) break;
+    for (BasicBlock &BB : *TR.info.Function) {
+      if (potentialStore && potentiallyActiveLoad)
+        break;
+      for (Instruction &I : BB) {
+        if (potentialStore && potentiallyActiveLoad)
+          break;
 
         // If this is a malloc or free, this doesn't impact the activity
         if (auto CI = dyn_cast<CallInst>(&I)) {
           if (auto F = CI->getCalledFunction()) {
-            if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI)) {
+            if (isAllocationFunction(*F, TLI) ||
+                isDeallocationFunction(*F, TLI)) {
               continue;
             }
             if (F->getName() == "__cxa_guard_acquire" ||
                 F->getName() == "__cxa_guard_release" ||
                 F->getName() == "__cxa_guard_abort") {
-                continue;
-                }
+              continue;
+            }
 
             bool noUse = true;
             switch (F->getIntrinsicID()) {
@@ -738,20 +770,21 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             case Intrinsic::type_test:
             case Intrinsic::donothing:
             case Intrinsic::prefetch:
-            #if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 8
             case Intrinsic::is_constant:
-            #endif
+#endif
               noUse = true;
               break;
             default:
               noUse = false;
               break;
             }
-            if (noUse) continue;
+            if (noUse)
+              continue;
           }
         }
 
-        Value* memval = Val;
+        Value *memval = Val;
 
         // BasicAA stupidy assumes that non-pointer's don't alias
         // if this is a nonpointer, use something else to force alias
@@ -762,7 +795,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
               memval = ci->getOperand(0);
             }
           }
-          for(auto user : Val->users()) {
+          for (auto user : Val->users()) {
             if (isa<CastInst>(user) && user->getType()->isPointerTy()) {
               memval = user;
               break;
@@ -770,49 +803,59 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         }
 
-        #if LLVM_VERSION_MAJOR >= 9
-        auto AARes = AA.getModRefInfo(&I, MemoryLocation(memval, LocationSize::unknown()));
-        #else
-        auto AARes = AA.getModRefInfo(&I, MemoryLocation(memval, MemoryLocation::UnknownSize));
-        #endif
+#if LLVM_VERSION_MAJOR >= 9
+        auto AARes = AA.getModRefInfo(
+            &I, MemoryLocation(memval, LocationSize::unknown()));
+#else
+        auto AARes = AA.getModRefInfo(
+            &I, MemoryLocation(memval, MemoryLocation::UnknownSize));
+#endif
 
-        // Still having failed to replace the location used by AA, fall back to getModref against any location.
+        // Still having failed to replace the location used by AA, fall back to
+        // getModref against any location.
         if (!memval->getType()->isPointerTy()) {
           if (auto CB = dyn_cast<CallInst>(&I)) {
             AARes = createModRefInfo(AA.getModRefBehavior(CB));
           } else {
             bool mayRead = I.mayReadFromMemory();
             bool mayWrite = I.mayWriteToMemory();
-            AARes = mayRead ? ( mayWrite ?  ModRefInfo::ModRef : ModRefInfo::Ref ) : ( mayWrite ? ModRefInfo::Mod : ModRefInfo::NoModRef);
+            AARes = mayRead
+                        ? (mayWrite ? ModRefInfo::ModRef : ModRefInfo::Ref)
+                        : (mayWrite ? ModRefInfo::Mod : ModRefInfo::NoModRef);
           }
         }
 
-        // TODO this aliasing information is too conservative, the question isn't merely aliasing
-        // but whether there is a path for THIS value to eventually be loaded by it
-        // not simply because there isnt aliasing
+        // TODO this aliasing information is too conservative, the question
+        // isn't merely aliasing but whether there is a path for THIS value to
+        // eventually be loaded by it not simply because there isnt aliasing
 
         // If we haven't already shown a potentially active load
         // check if this loads the given value and is active
         if (!potentiallyActiveLoad && isRefSet(AARes)) {
           if (printconst)
-          llvm::errs() << "potential active load: " << I << "\n";
+            llvm::errs() << "potential active load: " << I << "\n";
           if (auto LI = dyn_cast<LoadInst>(&I)) {
-            // If the ref'ing value is a load check if the loaded value is active
+            // If the ref'ing value is a load check if the loaded value is
+            // active
             potentiallyActiveLoad = !Hypothesis->isConstantValue(TR, LI);
           } else {
-            // Otherwise fallback and check any part of the instruction is active
-            // TODO: note that this can be optimized (especially for function calls)
+            // Otherwise fallback and check any part of the instruction is
+            // active
+            // TODO: note that this can be optimized (especially for function
+            // calls)
             potentiallyActiveLoad = !Hypothesis->isConstantInstruction(TR, &I);
           }
         }
         if (!potentialStore && isModSet(AARes)) {
           if (printconst)
-          llvm::errs() << "potential active store: " << I << "\n";
+            llvm::errs() << "potential active store: " << I << "\n";
           if (auto SI = dyn_cast<StoreInst>(&I)) {
-            potentialStore = !Hypothesis->isConstantValue(TR, SI->getValueOperand());//true;
+            potentialStore = !Hypothesis->isConstantValue(
+                TR, SI->getValueOperand()); // true;
           } else {
             // Otherwise fallback and check if the instruction is active
-            // TODO: note that this can be optimized (especially for function calls)
+            // TODO: note that this can be optimized (especially for function
+            // calls)
             potentialStore = !Hypothesis->isConstantInstruction(TR, &I);
           }
         }
@@ -820,27 +863,31 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     }
 
     if (printconst)
-      llvm::errs() << " </MEMSEARCH" << (int)directions << ">" << *Val << " potentiallyActiveLoad=" << potentiallyActiveLoad << " potentialStore=" << potentialStore << "\n";
+      llvm::errs() << " </MEMSEARCH" << (int)directions << ">" << *Val
+                   << " potentiallyActiveLoad=" << potentiallyActiveLoad
+                   << " potentialStore=" << potentialStore << "\n";
     if (potentiallyActiveLoad && potentialStore) {
       insertAllFrom(*Hypothesis);
       return false;
     } else {
-      // We now know that there isn't a matching active load/store pair in this function
-      // Now the only way that this memory can facilitate a transfer of active information
-      // is if it is done outside of the function
+      // We now know that there isn't a matching active load/store pair in this
+      // function Now the only way that this memory can facilitate a transfer of
+      // active information is if it is done outside of the function
 
       // This can happen if either:
-      // a) the memory had an active load or store before this function was called
-      // b) the memory had an active load or store after this function was called
+      // a) the memory had an active load or store before this function was
+      // called b) the memory had an active load or store after this function
+      // was called
 
       // Case a) can occur if:
       //    1) this memory came from an active global
       //    2) this memory came from an active argument
       //    3) this memory came from a load from active memory
-      // In other words, assuming this value is inactive, going up this location's argument must be inactive
+      // In other words, assuming this value is inactive, going up this
+      // location's argument must be inactive
 
       assert(UpHypothesis);
-      //UpHypothesis.ConstantValues.insert(val);
+      // UpHypothesis.ConstantValues.insert(val);
       UpHypothesis->insertConstantsFrom(*Hypothesis);
       assert(directions & UP);
       bool ActiveUp = !UpHypothesis->isInstructionInactiveFromOrigin(TR, Val);
@@ -851,60 +898,75 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
       // We never verify that an origin wasn't stored somewhere or returned.
       // to remedy correctness for now let's do something extremely simple
-      std::shared_ptr<ActivityAnalyzer> DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+      std::shared_ptr<ActivityAnalyzer> DownHypothesis =
+          std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
       DownHypothesis->ConstantValues.insert(Val);
       DownHypothesis->insertConstantsFrom(*Hypothesis);
-      bool ActiveDown = DownHypothesis->isValueActivelyStoredOrReturned(TR, Val);
+      bool ActiveDown =
+          DownHypothesis->isValueActivelyStoredOrReturned(TR, Val);
       // BEGIN TEMPORARY
 
       if (!ActiveDown && TmpOrig != Val) {
 
-        if (isa<Argument>(TmpOrig) || isa<GlobalVariable>(TmpOrig) || isa<AllocaInst>(TmpOrig) || (isCalledFunction(TmpOrig) && isAllocationFunction(*isCalledFunction(TmpOrig), TLI))) {
-          std::shared_ptr<ActivityAnalyzer> DownHypothesis2 = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*DownHypothesis, DOWN));
+        if (isa<Argument>(TmpOrig) || isa<GlobalVariable>(TmpOrig) ||
+            isa<AllocaInst>(TmpOrig) ||
+            (isCalledFunction(TmpOrig) &&
+             isAllocationFunction(*isCalledFunction(TmpOrig), TLI))) {
+          std::shared_ptr<ActivityAnalyzer> DownHypothesis2 =
+              std::shared_ptr<ActivityAnalyzer>(
+                  new ActivityAnalyzer(*DownHypothesis, DOWN));
           DownHypothesis2->ConstantValues.insert(TmpOrig);
           if (DownHypothesis2->isValueActivelyStoredOrReturned(TR, TmpOrig)) {
             if (printconst)
-            llvm::errs() << " active from ivasor: " << *TmpOrig << "\n";
+              llvm::errs() << " active from ivasor: " << *TmpOrig << "\n";
             ActiveDown = true;
           }
         } else {
           // unknown origin that could've been stored/returned/etc
           if (printconst)
-          llvm::errs() << " active from unknown origin: " << *TmpOrig << "\n";
+            llvm::errs() << " active from unknown origin: " << *TmpOrig << "\n";
           ActiveDown = true;
         }
       }
 
-      //END TEMPORARY
-      
-      // We can now consider the three places derivative information can be transferred
+      // END TEMPORARY
+
+      // We can now consider the three places derivative information can be
+      // transferred
       //   Case A) From the origin
       //   Case B) Though the return
       //   Case C) Within the function (via either load or store)
 
       bool ActiveMemory = false;
 
-      // If it is transferred via active origin and return, clearly this is active
+      // If it is transferred via active origin and return, clearly this is
+      // active
       ActiveMemory |= (ActiveUp && ActiveDown);
 
       // If we come from an active origin and load, memory is clearly active
       ActiveMemory |= (ActiveUp && potentiallyActiveLoad);
 
-      // If we come from an active origin and only store into it, it changes future state
+      // If we come from an active origin and only store into it, it changes
+      // future state
       ActiveMemory |= (ActiveUp && potentialStore);
 
       // If we go to an active return and store active memory, this is active
       ActiveMemory |= (ActiveDown && potentialStore);
-      // Actually more generally, if we are ActiveDown (returning memory that is used)
-      // in active return, we must be active. This is necessary to ensure mallocs
-      // have their differential shadows created when returned [TODO investigate more]
+      // Actually more generally, if we are ActiveDown (returning memory that is
+      // used) in active return, we must be active. This is necessary to ensure
+      // mallocs have their differential shadows created when returned [TODO
+      // investigate more]
       ActiveMemory |= ActiveDown;
 
       // If we go to an active return and only load it, however, that doesnt
       // transfer derivatives and we can say this memory is inactive
 
       if (printconst)
-        llvm::errs() << " @@MEMSEARCH" << (int)directions << ">" << *Val << " potentiallyActiveLoad=" << potentiallyActiveLoad << " potentialStore=" << potentialStore << " ActiveUp=" << ActiveUp << " ActiveDown=" << ActiveDown << " ActiveMemory=" << ActiveMemory << "\n";
+        llvm::errs() << " @@MEMSEARCH" << (int)directions << ">" << *Val
+                     << " potentiallyActiveLoad=" << potentiallyActiveLoad
+                     << " potentialStore=" << potentialStore
+                     << " ActiveUp=" << ActiveUp << " ActiveDown=" << ActiveDown
+                     << " ActiveMemory=" << ActiveMemory << "\n";
 
       if (ActiveMemory) {
         ActiveValues.insert(Val);
@@ -926,9 +988,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   // either activity does not flow in, or activity does not flow out
   // This alone cuts off the flow (being unable to flow through memory)
 
-  // Not looking at uses to prove inactive (definition of up), if the creator of this value
-  // is inactive, we are inactive
-  // Since we won't look at uses to prove, we can inductively assume this is inactive
+  // Not looking at uses to prove inactive (definition of up), if the creator of
+  // this value is inactive, we are inactive Since we won't look at uses to
+  // prove, we can inductively assume this is inactive
   if (directions & UP) {
     if (directions == UP && !isa<PHINode>(Val)) {
       if (isInstructionInactiveFromOrigin(TR, Val)) {
@@ -936,7 +998,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         return true;
       }
     } else {
-      UpHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
+      UpHypothesis =
+          std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, UP));
       UpHypothesis->ConstantValues.insert(Val);
       if (UpHypothesis->isInstructionInactiveFromOrigin(TR, Val)) {
         insertConstantsFrom(*UpHypothesis);
@@ -948,9 +1011,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
   if (directions & DOWN) {
     // Not looking at users to prove inactive (definition of down)
-    // If all users are inactive, this is therefore inactive. 
-    // Since we won't look at origins to prove, we can inductively assume this is inactive
-    
+    // If all users are inactive, this is therefore inactive.
+    // Since we won't look at origins to prove, we can inductively assume this
+    // is inactive
+
     // As an optimization if we are going down already
     // and we won't use ourselves (done by PHI's), we
     // dont need to inductively assume we're true
@@ -963,7 +1027,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         return true;
       }
     } else {
-      auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
+      auto DownHypothesis =
+          std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
       DownHypothesis->ConstantValues.insert(Val);
       if (DownHypothesis->isValueInactiveFromUsers(TR, Val)) {
         insertConstantsFrom(*DownHypothesis);
@@ -977,13 +1042,14 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
   if (printconst)
     llvm::errs() << " Value nonconstant (couldn't disprove)[" << (int)directions
-                  << "]" << *Val << "\n";
+                 << "]" << *Val << "\n";
   ActiveValues.insert(Val);
   return false;
 }
 
 /// Is the instruction guaranteed to be inactive because of its operands
-bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Value* val) {
+bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
+                                                       llvm::Value *val) {
   // Must be an analyzer only searching up
   assert(directions == UP);
   assert(!isa<Argument>(val));
@@ -997,22 +1063,21 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
     return false;
   }
 
-  Instruction* inst = cast<Instruction>(val);
+  Instruction *inst = cast<Instruction>(val);
   if (printconst)
-    llvm::errs() << " < UPSEARCH" << (int)directions << ">" << *inst
-                  << "\n";
+    llvm::errs() << " < UPSEARCH" << (int)directions << ">" << *inst << "\n";
 
   // cpuid is explicitly an inactive instruction
   if (auto call = dyn_cast<CallInst>(inst)) {
-    #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
     if (auto iasm = dyn_cast<InlineAsm>(call->getCalledOperand())) {
-    #else
+#else
     if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue())) {
-    #endif
+#endif
       if (iasm->getAsmString() == "cpuid") {
         if (printconst)
           llvm::errs() << " constant instruction from known cpuid instruction "
-                      << *inst << "\n";
+                       << *inst << "\n";
         return true;
       }
     }
@@ -1027,9 +1092,10 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
   }
 
   if (auto SI = dyn_cast<StoreInst>(inst)) {
-    // if either src or dst is inactive, there cannot be a transfer of active values
-    // and thus the store is inactive
-    if (isConstantValue(TR, SI->getValueOperand()) || isConstantValue(TR, SI->getPointerOperand())) {
+    // if either src or dst is inactive, there cannot be a transfer of active
+    // values and thus the store is inactive
+    if (isConstantValue(TR, SI->getValueOperand()) ||
+        isConstantValue(TR, SI->getPointerOperand())) {
       if (printconst)
         llvm::errs() << " constant instruction as memset " << *inst << "\n";
       return true;
@@ -1037,9 +1103,10 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
   }
 
   if (auto MTI = dyn_cast<MemTransferInst>(inst)) {
-    // if either src or dst is inactive, there cannot be a transfer of active values
-    // and thus the store is inactive
-    if (isConstantValue(TR, MTI->getArgOperand(0)) || isConstantValue(TR, MTI->getArgOperand(1))) {
+    // if either src or dst is inactive, there cannot be a transfer of active
+    // values and thus the store is inactive
+    if (isConstantValue(TR, MTI->getArgOperand(0)) ||
+        isConstantValue(TR, MTI->getArgOperand(1))) {
       if (printconst)
         llvm::errs() << " constant instruction as memset " << *inst << "\n";
       return true;
@@ -1049,12 +1116,12 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
   // Calls to print/assert/cxa guard are definitionally inactive
   if (auto op = dyn_cast<CallInst>(inst)) {
     if (auto called = op->getCalledFunction()) {
-      if (called->getName() == "free" ||
-          called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm") {
+      if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
+          called->getName() == "_ZdlPvm") {
         return true;
       }
 
-      for(auto FuncName : KnownInactiveFunctions) {
+      for (auto FuncName : KnownInactiveFunctions) {
         if (called->getName() == FuncName)
           return true;
       }
@@ -1090,22 +1157,21 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
     case Intrinsic::type_test:
     case Intrinsic::donothing:
     case Intrinsic::prefetch:
-    #if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 8
     case Intrinsic::is_constant:
-    #endif
+#endif
       return true;
     default:
       break;
     }
   }
 
-
   if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
     // A gep's only args that could make it active is the pointer operand
     if (isConstantValue(TR, gep->getPointerOperand())) {
       if (printconst)
-        llvm::errs() << "constant(" << (int)directions << ") up-gep "
-                      << *inst << "\n";
+        llvm::errs() << "constant(" << (int)directions << ") up-gep " << *inst
+                     << "\n";
       return true;
     }
     return false;
@@ -1117,7 +1183,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
         seenuse = true;
         if (printconst)
           llvm::errs() << "nonconstant(" << (int)directions << ")  up-call "
-                        << *inst << " op " << *a << "\n";
+                       << *inst << " op " << *a << "\n";
         return true;
       }
       return false;
@@ -1130,31 +1196,32 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
     // ci->hasFnAttr(Attribute::ArgMemOnly))
     if (!seenuse) {
       if (printconst)
-        llvm::errs() << "constant(" << (int)directions
-                      << ")  up-call:" << *inst << "\n";
+        llvm::errs() << "constant(" << (int)directions << ")  up-call:" << *inst
+                     << "\n";
       return true;
     }
     return !seenuse;
   } else if (auto si = dyn_cast<SelectInst>(inst)) {
 
-    if ( isConstantValue(TR, si->getTrueValue()) &&
-          isConstantValue(TR, si->getFalseValue())) {
+    if (isConstantValue(TR, si->getTrueValue()) &&
+        isConstantValue(TR, si->getFalseValue())) {
 
       if (printconst)
-        llvm::errs() << "constant(" << (int)directions
-                      << ") up-sel:" << *inst << "\n";
+        llvm::errs() << "constant(" << (int)directions << ") up-sel:" << *inst
+                     << "\n";
       return true;
     }
     return false;
   } else {
     bool seenuse = false;
-    //! TODO does not consider reading from global memory that is active and not an argument
+    //! TODO does not consider reading from global memory that is active and not
+    //! an argument
     for (auto &a : inst->operands()) {
       bool hypval = isConstantValue(TR, a);
       if (!hypval) {
         if (printconst)
           llvm::errs() << "nonconstant(" << (int)directions << ")  up-inst "
-                        << *inst << " op " << *a << "\n";
+                       << *inst << " op " << *a << "\n";
         seenuse = true;
         break;
       }
@@ -1162,8 +1229,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
 
     if (!seenuse) {
       if (printconst)
-        llvm::errs() << "constant(" << (int)directions
-                      << ")  up-inst:" << *inst << "\n";
+        llvm::errs() << "constant(" << (int)directions << ")  up-inst:" << *inst
+                     << "\n";
       return true;
     }
     return false;
@@ -1171,40 +1238,42 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Va
 }
 
 /// Is the value free of any active uses
-bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* val) {
+bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
+                                                llvm::Value *val) {
   // Must be an analyzer only searching down
   assert(directions == DOWN);
   // To ensure we can call down
 
   if (printconst)
     llvm::errs() << " <Value USESEARCH" << (int)directions << ">" << *val
-                  << "\n";
+                 << "\n";
 
   bool seenuse = false;
 
-  std::deque<User*> todo;
+  std::deque<User *> todo;
   for (const auto a : val->users()) {
     todo.push_back(a);
   }
-  std::set<Value*> done = { val };
+  std::set<Value *> done = {val};
 
   while (todo.size()) {
-    User* a = todo.front();
+    User *a = todo.front();
     todo.pop_front();
-    if (done.count(a)) continue;
+    if (done.count(a))
+      continue;
     done.insert(a);
 
     if (printconst)
       llvm::errs() << "      considering use of " << *val << " - " << *a
-                    << "\n";
+                   << "\n";
 
     if (!isa<Instruction>(a)) {
       if (isa<ConstantExpr>(a)) {
         if (!isValueInactiveFromUsers(TR, a)) {
-          llvm::errs() << "   inactive user of " << *val << " in " << *a << "\n";
+          llvm::errs() << "   inactive user of " << *val << " in " << *a
+                       << "\n";
           return false;
-        }
-        else
+        } else
           continue;
       }
       if (isa<ConstantData>(a)) {
@@ -1212,16 +1281,15 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
       }
 
       if (printconst)
-        llvm::errs() << "      unknown non instruction use of " << *val << " - " << *a
-                      << "\n";
+        llvm::errs() << "      unknown non instruction use of " << *val << " - "
+                     << *a << "\n";
       return false;
     }
 
     if (isa<AllocaInst>(a)) {
       if (printconst)
         llvm::errs() << "found constant(" << (int)directions
-                      << ")  allocainst use:" << *val << " user " << *a
-                      << "\n";
+                     << ")  allocainst use:" << *val << " user " << *a << "\n";
       continue;
     }
 
@@ -1230,8 +1298,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
     if (cast<Instruction>(a)->getParent()->getParent() != TR.info.Function) {
       if (printconst)
         llvm::errs() << "found use in different function(" << (int)directions
-                      << ")  val:" << *val << " user " << *a
-                      << "\n";
+                     << ")  val:" << *val << " user " << *a << "\n";
       return false;
     }
 
@@ -1245,7 +1312,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
       if (ConstantArg) {
         if (printconst) {
           llvm::errs() << "Value found constant callinst use:" << *val
-                        << " user " << *call << "\n";
+                       << " user " << *call << "\n";
         }
         continue;
       }
@@ -1259,7 +1326,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
         if (TR.intType(I, /*errIfNotFound*/ false).isIntegral()) {
           continue;
         }
-        for(auto u : I->users()) {
+        for (auto u : I->users()) {
           todo.push_back(u);
         }
         continue;
@@ -1267,29 +1334,30 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR, llvm::Value* va
     }
 
     if (printconst)
-      llvm::errs() << "Value nonconstant inst (uses):" << *val << " user "
-                    << *a << "\n";
+      llvm::errs() << "Value nonconstant inst (uses):" << *val << " user " << *a
+                   << "\n";
     seenuse = true;
     break;
   }
 
   if (printconst)
-    llvm::errs() << " </Value USESEARCH" << (int)directions << " const=" << (!seenuse) << ">" << *val << "\n";
+    llvm::errs() << " </Value USESEARCH" << (int)directions
+                 << " const=" << (!seenuse) << ">" << *val << "\n";
   return !seenuse;
 }
 
 /// Is the value potentially actively returned or stored
-bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value* val) {
+bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
+                                                       llvm::Value *val) {
   // Must be an analyzer only searching down
   assert(directions == DOWN);
 
-  if(StoredOrReturnedCache.find(val) != StoredOrReturnedCache.end()) {
+  if (StoredOrReturnedCache.find(val) != StoredOrReturnedCache.end()) {
     return StoredOrReturnedCache[val];
   }
 
   if (printconst)
     llvm::errs() << " <ASOR" << (int)directions << ">" << *val << "\n";
-
 
   StoredOrReturnedCache[val] = false;
 
@@ -1303,12 +1371,13 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Va
     }
 
     if (isa<ReturnInst>(a)) {
-      if (!ActiveReturns) continue;
+      if (!ActiveReturns)
+        continue;
 
       if (printconst)
-      llvm::errs() << " </ASOR" << (int)directions << " active from-ret>" << *val
-                    << "\n";
-      StoredOrReturnedCache[val] = true;                    
+        llvm::errs() << " </ASOR" << (int)directions << " active from-ret>"
+                     << *val << "\n";
+      StoredOrReturnedCache[val] = true;
       return true;
     }
 
@@ -1332,26 +1401,26 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Va
       if (!isConstantValue(TR, SI->getPointerOperand())) {
         StoredOrReturnedCache[val] = true;
         if (printconst)
-        llvm::errs() << " </ASOR" << (int)directions << " active from-store>" << *val
-                      << " store=" << *SI << "\n";
+          llvm::errs() << " </ASOR" << (int)directions << " active from-store>"
+                       << *val << " store=" << *SI << "\n";
         return true;
       }
     }
 
     if (auto inst = dyn_cast<Instruction>(a)) {
       if (!inst->mayWriteToMemory() ||
-        (isa<CallInst>(inst) && AA.onlyReadsMemory(cast<CallInst>(inst)))) {
-          // if not written to memory and returning a known constant, this
-          // cannot be actively returned/stored
-          if (isConstantValue(TR, a)) {
-            continue;
-          }
-          // if not written to memory and returning a value itself
-          // not actively stored or returned, this is not actively
-          // stored or returned
-          if (!isValueActivelyStoredOrReturned(TR, a)) {
-            continue;
-          }
+          (isa<CallInst>(inst) && AA.onlyReadsMemory(cast<CallInst>(inst)))) {
+        // if not written to memory and returning a known constant, this
+        // cannot be actively returned/stored
+        if (isConstantValue(TR, a)) {
+          continue;
+        }
+        // if not written to memory and returning a value itself
+        // not actively stored or returned, this is not actively
+        // stored or returned
+        if (!isValueActivelyStoredOrReturned(TR, a)) {
+          continue;
+        }
       }
     }
 
@@ -1368,8 +1437,8 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Va
         if (!isValueActivelyStoredOrReturned(TR, a)) {
           continue;
         }
-      } else if(isDeallocationFunction(*F, TLI)) {
-        //freeing memory never counts
+      } else if (isDeallocationFunction(*F, TLI)) {
+        // freeing memory never counts
         continue;
       }
     }
@@ -1378,14 +1447,13 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Va
     // TODO handle more memory instructions above to be less conservative
 
     if (printconst)
-    llvm::errs() << " </ASOR" << (int)directions << " active from-unknown>" << *val
-                  << " - use=" << *a << "\n";
+      llvm::errs() << " </ASOR" << (int)directions << " active from-unknown>"
+                   << *val << " - use=" << *a << "\n";
     return StoredOrReturnedCache[val] = true;
   }
 
   if (printconst)
-  llvm::errs() << " </ASOR" << (int)directions << " inactive>" << *val
-               << "\n";
+    llvm::errs() << " </ASOR" << (int)directions << " inactive>" << *val
+                 << "\n";
   return false;
 }
-

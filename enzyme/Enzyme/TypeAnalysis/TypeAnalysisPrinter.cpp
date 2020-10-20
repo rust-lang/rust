@@ -1,14 +1,16 @@
-//===- TypeAnalysisPrinter.cpp - Printer utility pass for Type Analysis ----===//
+//===- TypeAnalysisPrinter.cpp - Printer utility pass for Type Analysis
+//----===//
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -44,8 +46,8 @@
 
 #include "llvm/Support/CommandLine.h"
 
-#include "TypeAnalysis.h"
 #include "../Utils.h"
+#include "TypeAnalysis.h"
 
 using namespace llvm;
 #ifdef DEBUG_TYPE
@@ -54,8 +56,9 @@ using namespace llvm;
 #define DEBUG_TYPE "type-analysis-results"
 
 /// Function TypeAnalysis will be starting its run from
-llvm::cl::opt<std::string> FunctionToAnalyze("type-analysis-func", cl::init(""), cl::Hidden,
-                                 cl::desc("Which function to analyze/print"));
+llvm::cl::opt<std::string>
+    FunctionToAnalyze("type-analysis-func", cl::init(""), cl::Hidden,
+                      cl::desc("Which function to analyze/print"));
 
 namespace {
 
@@ -73,9 +76,9 @@ public:
       return /*changed*/ false;
 
 #if LLVM_VERSION_MAJOR >= 10
-      auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
+    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
 #else
-      auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 #endif
 
     FnTypeInfo type_args(&F);
@@ -93,7 +96,8 @@ public:
       } else if (a.getType()->isIntOrIntVectorTy()) {
         dt = ConcreteType(BaseType::Integer);
       }
-      type_args.Arguments.insert(std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
+      type_args.Arguments.insert(
+          std::pair<Argument *, TypeTree>(&a, dt.Only(-1)));
       // TODO note that here we do NOT propagate constants in type info (and
       // should consider whether we should)
       type_args.KnownValues.insert(

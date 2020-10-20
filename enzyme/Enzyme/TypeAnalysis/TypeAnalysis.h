@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -46,7 +47,7 @@
 struct FnTypeInfo {
   /// Function being analyzed
   llvm::Function *Function;
-  
+
   FnTypeInfo(llvm::Function *fn) : Function(fn) {}
   FnTypeInfo(const FnTypeInfo &) = default;
   FnTypeInfo &operator=(FnTypeInfo &) = default;
@@ -62,13 +63,12 @@ struct FnTypeInfo {
   std::map<llvm::Argument *, std::set<int64_t>> KnownValues;
 
   /// The set of known values val will take
-  std::set<int64_t>
-  knownIntegralValues(llvm::Value *val, const llvm::DominatorTree &DT,
-                std::map<llvm::Value *, std::set<int64_t>> &intseen) const;
+  std::set<int64_t> knownIntegralValues(
+      llvm::Value *val, const llvm::DominatorTree &DT,
+      std::map<llvm::Value *, std::set<int64_t>> &intseen) const;
 };
 
-static inline bool operator<(const FnTypeInfo &lhs,
-                             const FnTypeInfo &rhs) {
+static inline bool operator<(const FnTypeInfo &lhs, const FnTypeInfo &rhs) {
 
   if (lhs.Function < rhs.Function)
     return true;
@@ -103,8 +103,9 @@ public:
   /// Returns whether in the first num bytes there is pointer, int, float, or
   /// none If pointerIntSame is set to true, then consider either as the same
   /// (and thus mergable)
-  ConcreteType firstPointer(size_t num, llvm::Value *val, bool errIfNotFound = true,
-                        bool pointerIntSame = false);
+  ConcreteType firstPointer(size_t num, llvm::Value *val,
+                            bool errIfNotFound = true,
+                            bool pointerIntSame = false);
 
   /// The TypeTree of a particular Value
   TypeTree query(llvm::Value *val);
@@ -118,15 +119,13 @@ public:
   /// Prints all known information
   void dump();
 
-  ///The set of values val will take on during this program
+  /// The set of values val will take on during this program
   std::set<int64_t> knownIntegralValues(llvm::Value *val) const;
 };
-
 
 /// Helper class that computes the fixed-point type results of a given function
 class TypeAnalyzer : public llvm::InstVisitor<TypeAnalyzer> {
 public:
-
   /// List of value's which should be re-analyzed now with new information
   std::deque<llvm::Value *> workList;
 
@@ -163,7 +162,8 @@ public:
 
   llvm::DominatorTree DT;
 
-  TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA, uint8_t direction=BOTH);
+  TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
+               uint8_t direction = BOTH);
 
   /// Get the current results for a given value
   TypeTree getAnalysis(llvm::Value *Val);
@@ -189,7 +189,7 @@ public:
 
   void visitValue(llvm::Value &val);
 
-  void visitConstantExpr(llvm::ConstantExpr& CE);
+  void visitConstantExpr(llvm::ConstantExpr &CE);
 
   void visitCmpInst(llvm::CmpInst &I);
 
@@ -257,7 +257,7 @@ public:
 
   std::set<int64_t> knownIntegralValues(llvm::Value *val);
 
-  //TODO handle fneg on LLVM 10+
+  // TODO handle fneg on LLVM 10+
 };
 
 /// Full interprocedural TypeAnalysis
@@ -277,13 +277,14 @@ public:
   /// Get the underlying data type of value val given a particular context
   /// If the type is not known err if errIfNotFound
   ConcreteType intType(llvm::Value *val, const FnTypeInfo &fn,
-                   bool errIfNotFound = true);
+                       bool errIfNotFound = true);
 
-  /// Get the underlying data type of first num bytes of val given a particular context
-  /// If the type is not known err if errIfNotFound. Consider ints and pointers
-  /// the same if pointerIntSame.
+  /// Get the underlying data type of first num bytes of val given a particular
+  /// context If the type is not known err if errIfNotFound. Consider ints and
+  /// pointers the same if pointerIntSame.
   ConcreteType firstPointer(size_t num, llvm::Value *val, const FnTypeInfo &fn,
-                        bool errIfNotFound = true, bool pointerIntSame = false);
+                            bool errIfNotFound = true,
+                            bool pointerIntSame = false);
 
   /// Get the TyeTree of the returned value of a given function and context
   inline TypeTree getReturnAnalysis(const FnTypeInfo &fn) {

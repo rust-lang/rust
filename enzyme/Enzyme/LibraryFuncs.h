@@ -2,17 +2,16 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
-// author = {Moses, William S. and Churavy, Valentin},
-// booktitle = {Advances in Neural Information Processing Systems 33},
-// year = {2020},
-// note = {To appear in},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+// Automatically Synthesize Fast Gradients}, author = {Moses, William S. and
+// Churavy, Valentin}, booktitle = {Advances in Neural Information Processing
+// Systems 33}, year = {2020}, note = {To appear in},
 // }
 //
 //===----------------------------------------------------------------------===//
@@ -26,8 +25,8 @@
 
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Instructions.h"
 
 /// Return whether a given function is a known C/C++ memory allocation function
 /// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
@@ -95,8 +94,9 @@ static inline bool isAllocationFunction(const llvm::Function &F,
   }
 }
 
-/// Return whether a given function is a known C/C++ memory deallocation function
-/// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
+/// Return whether a given function is a known C/C++ memory deallocation
+/// function For updating below one should read MemoryBuiltins.cpp,
+/// TargetLibraryInfo.cpp
 static inline bool isDeallocationFunction(const llvm::Function &F,
                                           const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
@@ -252,21 +252,19 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   auto FT = FunctionType::get(VoidTy, {IntPtrTy}, false);
 #if LLVM_VERSION_MAJOR >= 9
   Value *freevalue =
-      allocationfn.getParent()
-          ->getOrInsertFunction(freename,
-                                FT)
-          .getCallee();
+      allocationfn.getParent()->getOrInsertFunction(freename, FT).getCallee();
 #else
-  Value *freevalue = allocationfn.getParent()->getOrInsertFunction(
-      freename, FT);
+  Value *freevalue =
+      allocationfn.getParent()->getOrInsertFunction(freename, FT);
 #endif
 
   CallInst *freecall = cast<CallInst>(
-    #if LLVM_VERSION_MAJOR >= 8
-      CallInst::Create(FT, freevalue, {builder.CreatePointerCast(tofree, IntPtrTy)},
-    #else
+#if LLVM_VERSION_MAJOR >= 8
+      CallInst::Create(FT, freevalue,
+                       {builder.CreatePointerCast(tofree, IntPtrTy)},
+#else
       CallInst::Create(freevalue, {builder.CreatePointerCast(tofree, IntPtrTy)},
-    #endif
+#endif
                        "", builder.GetInsertBlock()));
   freecall->setTailCall();
   if (isa<CallInst>(tofree) &&
@@ -282,7 +280,8 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
 }
 
 /// Return whether maybeReader can read from memory written to by maybeWriter
-static inline bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
+static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
+                                        llvm::Instruction *maybeReader,
                                         llvm::Instruction *maybeWriter) {
   using namespace llvm;
   if (auto call = dyn_cast<CallInst>(maybeWriter)) {

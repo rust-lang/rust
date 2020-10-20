@@ -2,13 +2,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -90,15 +91,14 @@ using namespace llvm;
 
 static cl::opt<bool>
     EnzymePreopt("enzyme-preopt", cl::init(true), cl::Hidden,
-                  cl::desc("Run enzyme preprocessing optimizations"));
+                 cl::desc("Run enzyme preprocessing optimizations"));
 
-static cl::opt<bool>
-    EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
-                   cl::desc("Force inlining of autodiff"));
+static cl::opt<bool> EnzymeInline("enzyme-inline", cl::init(false), cl::Hidden,
+                                  cl::desc("Force inlining of autodiff"));
 
 static cl::opt<int>
     EnzymeInlineCount("enzyme-inline-count", cl::init(10000), cl::Hidden,
-                   cl::desc("Limit of number of functions to inline"));
+                      cl::desc("Limit of number of functions to inline"));
 
 // Locally run mem2reg on F, if ASsumptionCache AC is given it will
 // be updated
@@ -140,11 +140,11 @@ static bool IsFunctionRecursive(Function *F) {
   // If we haven't seen this function before, look at all callers
   // and mark this as potentially recursive. If we see this function
   // still as marked as MaybeRecursive, we will definitionally have
-  // found an eventual caller of the original function. If not, 
+  // found an eventual caller of the original function. If not,
   // the function does not eventually call itself (in a static way)
   if (Results.find(F) == Results.end()) {
     Results[F] = MaybeRecursive; // staging
-    for (auto & BB: *F) {
+    for (auto &BB : *F) {
       for (auto &I : BB) {
         if (auto call = dyn_cast<CallInst>(&I)) {
           if (call->getCalledFunction() == nullptr)
@@ -172,10 +172,11 @@ static bool IsFunctionRecursive(Function *F) {
   return Results[F] == DefinitelyRecursive;
 }
 
-static inline bool OnlyUsedInOMP(AllocaInst* AI) {
+static inline bool OnlyUsedInOMP(AllocaInst *AI) {
   bool ompUse = false;
-  for(auto U : AI->users()) {
-    if (isa<StoreInst>(U)) continue;
+  for (auto U : AI->users()) {
+    if (isa<StoreInst>(U))
+      continue;
     if (auto CI = dyn_cast<CallInst>(U)) {
       if (auto F = CI->getCalledFunction()) {
         if (F->getName() == "__kmpc_for_static_init_4") {
@@ -185,22 +186,24 @@ static inline bool OnlyUsedInOMP(AllocaInst* AI) {
     }
   }
 
-  if (!ompUse) return false;
+  if (!ompUse)
+    return false;
   return true;
 }
 /// Convert necessary stack allocations into mallocs for use in the reverse
 /// pass. Specifically if we're not topLevel all allocations must be upgraded
 /// Even if topLevel any allocations that aren't in the entry block (and
 /// therefore may not be reachable in the reverse pass) must be upgraded.
-static inline void UpgradeAllocasToMallocs(Function* NewF, bool topLevel) {
+static inline void UpgradeAllocasToMallocs(Function *NewF, bool topLevel) {
   std::vector<AllocaInst *> ToConvert;
 
-  for (auto &BB: *NewF) {
+  for (auto &BB : *NewF) {
     for (auto &I : BB) {
       if (auto AI = dyn_cast<AllocaInst>(&I)) {
         bool UsableEverywhere = AI->getParent() == &NewF->getEntryBlock();
         // TODO use is_value_needed_in_reverse (requiring GradientUtils)
-        if (OnlyUsedInOMP(AI)) continue;
+        if (OnlyUsedInOMP(AI))
+          continue;
         if (!UsableEverywhere || !topLevel) {
           ToConvert.push_back(AI);
         }
@@ -237,27 +240,29 @@ static inline void UpgradeAllocasToMallocs(Function* NewF, bool topLevel) {
 /// Perform recursive inlinining on NewF up to the given limit
 static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
   for (size_t count = 0; count < Limit; count++) {
-    for (auto & BB: *NewF) {
+    for (auto &BB : *NewF) {
       for (auto &I : BB) {
         if (auto CI = dyn_cast<CallInst>(&I)) {
           if (CI->getCalledFunction() == nullptr)
             continue;
           if (CI->getCalledFunction()->empty())
             continue;
-          if (CI->getCalledFunction()->hasFnAttribute(Attribute::ReturnsTwice) ||
+          if (CI->getCalledFunction()->hasFnAttribute(
+                  Attribute::ReturnsTwice) ||
               CI->getCalledFunction()->hasFnAttribute(Attribute::NoInline))
             continue;
           if (IsFunctionRecursive(CI->getCalledFunction())) {
-            LLVM_DEBUG(llvm::dbgs() << "not inlining recursive " <<
-              CI->getCalledFunction()->getName() << "\n");
+            LLVM_DEBUG(llvm::dbgs()
+                       << "not inlining recursive "
+                       << CI->getCalledFunction()->getName() << "\n");
             continue;
           }
           InlineFunctionInfo IFI;
-          #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
           InlineFunction(*CI, IFI);
-          #else
+#else
           InlineFunction(CI, IFI);
-          #endif
+#endif
           goto outermostContinue;
         }
       }
@@ -266,7 +271,7 @@ static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
     // No functions were inlined, break
     break;
 
-    outermostContinue:;
+  outermostContinue:;
   }
 }
 
@@ -281,19 +286,18 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     AssumptionCache *AC = new AssumptionCache(*NewF);
     DominatorTree *DT = new DominatorTree(*NewF);
     LoopInfo *LI = new LoopInfo(*DT);
-    #if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 6
     PhiValues *PV = new PhiValues(*NewF);
-    #endif
-    auto BAA = new BasicAAResult(
-        NewF->getParent()->getDataLayout(),
-    #if LLVM_VERSION_MAJOR > 6
-        *NewF,
-    #endif
-        TLI, *AC, DT, LI
-    #if LLVM_VERSION_MAJOR > 6
-        ,
-        PV
-    #endif
+#endif
+    auto BAA = new BasicAAResult(NewF->getParent()->getDataLayout(),
+#if LLVM_VERSION_MAJOR > 6
+                                 *NewF,
+#endif
+                                 TLI, *AC, DT, LI
+#if LLVM_VERSION_MAJOR > 6
+                                 ,
+                                 PV
+#endif
     );
     AA.addAAResult(*BAA);
     AA.addAAResult(*(new TypeBasedAAResult()));
@@ -319,7 +323,7 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 
   if (EnzymePreopt) {
     if (EnzymeInline) {
-      ForceRecursiveInlining(NewF, /*Limit*/EnzymeInlineCount);
+      ForceRecursiveInlining(NewF, /*Limit*/ EnzymeInlineCount);
     }
   }
 
@@ -331,11 +335,11 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
         if (auto CI = dyn_cast<CallInst>(&I)) {
 
           Function *called = CI->getCalledFunction();
-          #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
           if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
-          #else
+#else
           if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
-          #endif
+#endif
           {
             if (castinst->isCast()) {
               if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
@@ -378,17 +382,17 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
         AM.registerPass([] { return MemoryDependenceAnalysis(); });
         AM.registerPass([] { return LoopAnalysis(); });
         AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-        #if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 6
         AM.registerPass([] { return PhiValuesAnalysis(); });
-        #endif
+#endif
         AM.registerPass([] { return LazyValueAnalysis(); });
-        #if LLVM_VERSION_MAJOR > 10
+#if LLVM_VERSION_MAJOR > 10
         AM.registerPass([] { return PassInstrumentationAnalysis(); });
-        #endif
-        #if LLVM_VERSION_MAJOR <= 7
+#endif
+#if LLVM_VERSION_MAJOR <= 7
         GVN().run(*NewF, AM);
         SROA().run(*NewF, AM);
-        #endif
+#endif
       }
     }
 
@@ -409,23 +413,23 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
       AM.registerPass([] { return MemoryDependenceAnalysis(); });
       AM.registerPass([] { return LoopAnalysis(); });
       AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-      #if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 6
       AM.registerPass([] { return PhiValuesAnalysis(); });
-      #endif
-      #if LLVM_VERSION_MAJOR >= 8
+#endif
+#if LLVM_VERSION_MAJOR >= 8
       AM.registerPass([] { return PassInstrumentationAnalysis(); });
-      #endif
+#endif
       AM.registerPass([] { return LazyValueAnalysis(); });
       SROA().run(*NewF, AM);
 
-      #if LLVM_VERSION_MAJOR >= 12
+#if LLVM_VERSION_MAJOR >= 12
       SimplifyCFGOptions scfgo;
-      #else
+#else
       SimplifyCFGOptions scfgo(
           /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
           /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
           /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
-      #endif
+#endif
       SimplifyCFGPass(scfgo).run(*NewF, AM);
     }
   }
@@ -437,12 +441,12 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     AM.registerPass([] { return DominatorTreeAnalysis(); });
     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
     AM.registerPass([] { return AssumptionAnalysis(); });
-    #if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 8
     AM.registerPass([] { return PassInstrumentationAnalysis(); });
-    #endif
-    #if LLVM_VERSION_MAJOR >= 11
+#endif
+#if LLVM_VERSION_MAJOR >= 11
     AM.registerPass([] { return MemorySSAAnalysis(); });
-    #endif
+#endif
     LoopSimplifyPass().run(*NewF, AM);
   }
 
@@ -461,15 +465,14 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #if LLVM_VERSION_MAJOR > 6
     PhiValues *PV = new PhiValues(*NewF);
 #endif
-    auto BAA = new BasicAAResult(
-        NewF->getParent()->getDataLayout(),
+    auto BAA = new BasicAAResult(NewF->getParent()->getDataLayout(),
 #if LLVM_VERSION_MAJOR > 6
-        *NewF,
+                                 *NewF,
 #endif
-        TLI, *AC, DT, LI
+                                 TLI, *AC, DT, LI
 #if LLVM_VERSION_MAJOR > 6
-        ,
-        PV
+                                 ,
+                                 PV
 #endif
     );
     AA.addAAResult(*BAA);
@@ -674,19 +677,19 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   AM.registerPass([] { return MemoryDependenceAnalysis(); });
   AM.registerPass([] { return LoopAnalysis(); });
   AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-  #if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 6
   AM.registerPass([] { return PhiValuesAnalysis(); });
-  #endif
+#endif
   AM.registerPass([] { return LazyValueAnalysis(); });
   LoopAnalysisManager LAM;
   AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
   LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
 
-  #if LLVM_VERSION_MAJOR <= 7
+#if LLVM_VERSION_MAJOR <= 7
   GVN().run(*F, AM);
   SROA().run(*F, AM);
   EarlyCSEPass(/*memoryssa*/ true).run(*F, AM);
-  #endif
+#endif
 
   DCEPass().run(*F, AM);
 }

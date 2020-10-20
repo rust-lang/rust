@@ -2,8 +2,8 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
@@ -40,7 +40,6 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
-
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #endif
@@ -49,39 +48,38 @@
 
 #include "llvm/IR/DiagnosticInfo.h"
 
-
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
-template<typename... Args>
+template <typename... Args>
 void EmitFailure(llvm::StringRef RemarkName,
                  const llvm::DiagnosticLocation &Loc,
-                 const llvm::Instruction *CodeRegion, Args&... args) {
+                 const llvm::Instruction *CodeRegion, Args &...args) {
 
   llvm::OptimizationRemarkEmitter ORE(CodeRegion->getParent()->getParent());
   std::string str;
   llvm::raw_string_ostream ss(str);
   (ss << ... << args);
-  ORE.emit(llvm::DiagnosticInfoOptimizationFailure("enzyme", RemarkName, Loc, CodeRegion->getParent()) << str);
+  ORE.emit(llvm::DiagnosticInfoOptimizationFailure("enzyme", RemarkName, Loc,
+                                                   CodeRegion->getParent())
+           << str);
 }
 
- class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {
- public:
+class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {
+public:
+  EnzymeFailure(llvm::StringRef RemarkName, const llvm::DiagnosticLocation &Loc,
+                const llvm::Instruction *CodeRegion);
 
-   EnzymeFailure(llvm::StringRef RemarkName,
-                 const llvm::DiagnosticLocation &Loc,
-                 const llvm::Instruction *CodeRegion);
- 
-   static llvm::DiagnosticKind ID();
-   static bool classof(const DiagnosticInfo *DI) {
-     return DI->getKind() == ID();
-   }
- 
-   /// \see DiagnosticInfoOptimizationBase::isEnabled.
-   bool isEnabled() const override;
+  static llvm::DiagnosticKind ID();
+  static bool classof(const DiagnosticInfo *DI) {
+    return DI->getKind() == ID();
+  }
+
+  /// \see DiagnosticInfoOptimizationBase::isEnabled.
+  bool isEnabled() const override;
 };
 
-static inline llvm::Function* isCalledFunction(llvm::Value* val) {
-  if (llvm::CallInst* CI = llvm::dyn_cast<llvm::CallInst>(val)) {
+static inline llvm::Function *isCalledFunction(llvm::Value *val) {
+  if (llvm::CallInst *CI = llvm::dyn_cast<llvm::CallInst>(val)) {
     return CI->getCalledFunction();
   }
   return nullptr;
@@ -119,11 +117,11 @@ static inline std::string to_string(const std::set<T> &us) {
 /// Print a map, optionally with a shouldPrint function
 /// to decide to print a given value
 template <typename T, typename N>
-static inline void
-dumpMap(const llvm::ValueMap<T, N> &o,
-        std::function<bool(const llvm::Value *)> shouldPrint = [](T) {
-          return true;
-        }) {
+static inline void dumpMap(
+    const llvm::ValueMap<T, N> &o,
+    std::function<bool(const llvm::Value *)> shouldPrint = [](T) {
+      return true;
+    }) {
   llvm::errs() << "<begin dump>\n";
   for (auto a : o) {
     if (shouldPrint(a.first))
@@ -318,11 +316,11 @@ static inline llvm::Type *FloatToIntTy(llvm::Type *T) {
   assert(T->isFPOrFPVectorTy());
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
     return llvm::VectorType::get(FloatToIntTy(ty->getElementType()),
-    #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
                                  ty->getNumElements(), false);
-    #else
+#else
                                  ty->getNumElements());
-    #endif
+#endif
   }
   if (T->isHalfTy())
     return llvm::IntegerType::get(T->getContext(), 16);
@@ -340,11 +338,11 @@ static inline llvm::Type *IntToFloatTy(llvm::Type *T) {
   assert(T->isIntOrIntVectorTy());
   if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
     return llvm::VectorType::get(IntToFloatTy(ty->getElementType()),
-    #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
                                  ty->getNumElements(), false);
-    #else
+#else
                                  ty->getNumElements());
-    #endif
+#endif
   }
   if (auto ty = llvm::dyn_cast<llvm::IntegerType>(T)) {
     switch (ty->getBitWidth()) {
@@ -460,7 +458,7 @@ llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
 /// Insert into a map
 template <typename K, typename V>
 static inline typename std::map<K, V>::iterator
-insert_or_assign(std::map<K, V> &map, K& key, V &&val) {
+insert_or_assign(std::map<K, V> &map, K &key, V &&val) {
   auto found = map.find(key);
   if (found != map.end()) {
     map.erase(found);
@@ -479,11 +477,12 @@ insert_or_assign2(std::map<K, V> &map, K key, V val) {
   return map.emplace(key, val).first;
 }
 
-template<typename K, typename V>
-static inline V* findInMap(std::map<K, V> &map, K key) {
+template <typename K, typename V>
+static inline V *findInMap(std::map<K, V> &map, K key) {
   auto found = map.find(key);
-  if (found == map.end()) return nullptr;
-  V* val = &found->second;
+  if (found == map.end())
+    return nullptr;
+  V *val = &found->second;
   return val;
 }
 

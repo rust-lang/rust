@@ -3,13 +3,14 @@
 //
 //                             Enzyme Project
 //
-// Part of the Enzyme Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
+// Part of the Enzyme Project, under the Apache License v2.0 with LLVM
+// Exceptions. See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 // If using this code in an academic setting, please cite the following:
 // @incollection{enzymeNeurips,
-// title = {Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients},
+// title = {Instead of Rewriting Foreign Code for Machine Learning,
+//          Automatically Synthesize Fast Gradients},
 // author = {Moses, William S. and Churavy, Valentin},
 // booktitle = {Advances in Neural Information Processing Systems 33},
 // year = {2020},
@@ -39,10 +40,12 @@ public:
                                               llvm::BasicBlock *ExitingBlock,
                                               bool AllowPredicates);
 
-  #if LLVM_VERSION_MAJOR >= 7
-  ScalarEvolution::ExitLimit
-  computeExitLimitFromCond(const llvm::Loop *L, llvm::Value *ExitCond, bool ExitIfTrue,
-                           bool ControlsExit, bool AllowPredicates);
+#if LLVM_VERSION_MAJOR >= 7
+  ScalarEvolution::ExitLimit computeExitLimitFromCond(const llvm::Loop *L,
+                                                      llvm::Value *ExitCond,
+                                                      bool ExitIfTrue,
+                                                      bool ControlsExit,
+                                                      bool AllowPredicates);
 
   ScalarEvolution::ExitLimit
   computeExitLimitFromCondCached(ExitLimitCacheTy &Cache, const llvm::Loop *L,
@@ -54,38 +57,37 @@ public:
                                bool ControlsExit, bool AllowPredicates);
 
   ScalarEvolution::ExitLimit
-  computeExitLimitFromICmp(const llvm::Loop *L, llvm::ICmpInst *ExitCond, bool ExitIfTrue,
+  computeExitLimitFromICmp(const llvm::Loop *L, llvm::ICmpInst *ExitCond,
+                           bool ExitIfTrue, bool ControlsExit,
+                           bool AllowPredicates = false);
+#else
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromCond(const llvm::Loop *L, llvm::Value *ExitCond,
+                           llvm::BasicBlock *TBB, llvm::BasicBlock *FBB,
+                           bool ControlsExit, bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromCondCached(ExitLimitCacheTy &Cache, const llvm::Loop *L,
+                                 llvm::Value *ExitCond, llvm::BasicBlock *TBB,
+                                 llvm::BasicBlock *FBB, bool ControlsExit,
+                                 bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromCondImpl(ExitLimitCacheTy &Cache, const llvm::Loop *L,
+                               llvm::Value *ExitCond, llvm::BasicBlock *TBB,
+                               llvm::BasicBlock *FBB, bool ControlsExit,
+                               bool AllowPredicates);
+
+  ScalarEvolution::ExitLimit
+  computeExitLimitFromICmp(const llvm::Loop *L, llvm::ICmpInst *ExitCond,
+                           llvm::BasicBlock *TBB, llvm::BasicBlock *FBB,
                            bool ControlsExit, bool AllowPredicates = false);
-  #else
-  ScalarEvolution::ExitLimit
-  computeExitLimitFromCond(
-    const llvm::Loop *L, llvm::Value *ExitCond, llvm::BasicBlock *TBB, llvm::BasicBlock *FBB,
-    bool ControlsExit, bool AllowPredicates);
+#endif
 
-  ScalarEvolution::ExitLimit
-  computeExitLimitFromCondCached(
-    ExitLimitCacheTy &Cache, const llvm::Loop *L, llvm::Value *ExitCond, llvm::BasicBlock *TBB,
-    llvm::BasicBlock *FBB, bool ControlsExit, bool AllowPredicates);
-
-  ScalarEvolution::ExitLimit
-  computeExitLimitFromCondImpl(
-    ExitLimitCacheTy &Cache, const llvm::Loop *L, llvm::Value *ExitCond, llvm::BasicBlock *TBB,
-    llvm::BasicBlock *FBB, bool ControlsExit, bool AllowPredicates);
-
-  ScalarEvolution::ExitLimit
-  computeExitLimitFromICmp(const llvm::Loop *L,
-                                            llvm::ICmpInst *ExitCond,
-                                            llvm::BasicBlock *TBB,
-                                            llvm::BasicBlock *FBB,
-                                            bool ControlsExit,
-                                            bool AllowPredicates=false);
-  #endif
-
-
-
-  ScalarEvolution::ExitLimit howManyLessThans(const llvm::SCEV *LHS, const llvm::SCEV *RHS,
-                                              const llvm::Loop *L, bool IsSigned,
-                                              bool ControlsExit,
+  ScalarEvolution::ExitLimit howManyLessThans(const llvm::SCEV *LHS,
+                                              const llvm::SCEV *RHS,
+                                              const llvm::Loop *L,
+                                              bool IsSigned, bool ControlsExit,
                                               bool AllowPredicates);
 };
 
