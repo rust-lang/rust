@@ -31,6 +31,21 @@ pub struct Diagnostic {
     pub range: TextRange,
     pub severity: Severity,
     pub fix: Option<Fix>,
+    pub unused: bool,
+}
+
+impl Diagnostic {
+    fn error(range: TextRange, message: String) -> Self {
+        Self { message, range, severity: Severity::Error, fix: None, unused: false }
+    }
+
+    fn hint(range: TextRange, message: String) -> Self {
+        Self { message, range, severity: Severity::WeakWarning, fix: None, unused: false }
+    }
+
+    fn with_fix(self, fix: Option<Fix>) -> Self {
+        Self { fix, ..self }
+    }
 }
 
 #[derive(Debug)]
@@ -71,13 +86,13 @@ pub(crate) fn diagnostics(
     let mut res = Vec::new();
 
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    res.extend(parse.errors().iter().take(128).map(|err| Diagnostic {
-        // name: None,
-        range: err.range(),
-        message: format!("Syntax Error: {}", err),
-        severity: Severity::Error,
-        fix: None,
-    }));
+    res.extend(
+        parse
+            .errors()
+            .iter()
+            .take(128)
+            .map(|err| Diagnostic::error(err.range(), format!("Syntax Error: {}", err))),
+    );
 
     for node in parse.tree().syntax().descendants() {
         check_unnecessary_braces_in_use_statement(&mut res, file_id, &node);
@@ -108,13 +123,8 @@ pub(crate) fn diagnostics(
     let mut sink = sink_builder
         // Diagnostics not handled above get no fix and default treatment.
         .build(|d| {
-            res.borrow_mut().push(Diagnostic {
-                // name: Some(d.name().into()),
-                message: d.message(),
-                range: sema.diagnostics_display_range(d).range,
-                severity: Severity::Error,
-                fix: None,
-            })
+            res.borrow_mut()
+                .push(Diagnostic::error(sema.diagnostics_display_range(d).range, d.message()));
         });
 
     if let Some(m) = sema.to_module_def(file_id) {
@@ -125,22 +135,11 @@ pub(crate) fn diagnostics(
 }
 
 fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
-    Diagnostic {
-        // name: Some(d.name().into()),
-        range: sema.diagnostics_display_range(d).range,
-        message: d.message(),
-        severity: Severity::Error,
-        fix: d.fix(&sema),
-    }
+    Diagnostic::error(sema.diagnostics_display_range(d).range, d.message()).with_fix(d.fix(&sema))
 }
 
 fn warning_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
-    Diagnostic {
-        range: sema.diagnostics_display_range(d).range,
-        message: d.message(),
-        severity: Severity::WeakWarning,
-        fix: d.fix(&sema),
-    }
+    Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message()).with_fix(d.fix(&sema))
 }
 
 fn check_unnecessary_braces_in_use_statement(
@@ -161,17 +160,14 @@ fn check_unnecessary_braces_in_use_statement(
                     edit_builder.finish()
                 });
 
-        acc.push(Diagnostic {
-            // name: None,
-            range: use_range,
-            message: "Unnecessary braces in use statement".to_string(),
-            severity: Severity::WeakWarning,
-            fix: Some(Fix::new(
-                "Remove unnecessary braces",
-                SourceFileEdit { file_id, edit }.into(),
-                use_range,
-            )),
-        });
+        acc.push(
+            Diagnostic::hint(use_range, "Unnecessary braces in use statement".to_string())
+                .with_fix(Some(Fix::new(
+                    "Remove unnecessary braces",
+                    SourceFileEdit { file_id, edit }.into(),
+                    use_range,
+                ))),
+        );
     }
 
     Some(())
@@ -578,6 +574,7 @@ fn test_fn() {
                                 fix_trigger_range: 0..8,
                             },
                         ),
+                        unused: false,
                     },
                 ]
             "#]],
