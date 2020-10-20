@@ -101,13 +101,13 @@ LL |         Some(0
    |              ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:89:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:96:15
    |
 LL |             | true) => {}
    |               ^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:95:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:102:15
    |
 LL |             | true,
    |               ^^^^
