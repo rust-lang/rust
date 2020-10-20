@@ -5,7 +5,7 @@ mod completion_item;
 mod completion_context;
 mod presentation;
 mod patterns;
-mod generated_features;
+mod generated_lint_completions;
 #[cfg(test)]
 mod test_utils;
 

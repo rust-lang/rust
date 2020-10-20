@@ -9,7 +9,7 @@ mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
 mod gen_feature_docs;
-mod gen_features;
+mod gen_lint_completions;
 mod gen_diagnostic_docs;
 
 use std::{
@@ -24,7 +24,7 @@ pub use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
     gen_diagnostic_docs::generate_diagnostic_docs,
     gen_feature_docs::generate_feature_docs,
-    gen_features::generate_features,
+    gen_lint_completions::generate_lint_completions,
     gen_parser_tests::generate_parser_tests,
     gen_syntax::generate_syntax,
 };
@@ -42,7 +42,7 @@ pub struct CodegenCmd {
 impl CodegenCmd {
     pub fn run(self) -> Result<()> {
         if self.features {
-            generate_features(Mode::Overwrite)?;
+            generate_lint_completions(Mode::Overwrite)?;
         }
         generate_syntax(Mode::Overwrite)?;
         generate_parser_tests(Mode::Overwrite)?;

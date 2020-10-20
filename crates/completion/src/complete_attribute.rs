@@ -9,7 +9,7 @@ use syntax::{ast, AstNode, SyntaxKind};
 use crate::{
     completion_context::CompletionContext,
     completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
-    generated_features::FEATURES,
+    generated_lint_completions::{CLIPPY_LINTS, FEATURES},
 };
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -23,14 +23,15 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             complete_derive(acc, ctx, token_tree)
         }
         (Some(path), Some(token_tree)) if path.to_string() == "feature" => {
-            complete_lint(acc, ctx, token_tree, FEATURES)
+            complete_lint(acc, ctx, token_tree, FEATURES);
         }
         (Some(path), Some(token_tree))
             if ["allow", "warn", "deny", "forbid"]
                 .iter()
                 .any(|lint_level| lint_level == &path.to_string()) =>
         {
-            complete_lint(acc, ctx, token_tree, DEFAULT_LINT_COMPLETIONS)
+            complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINT_COMPLETIONS);
+            complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
         }
         (_, Some(_token_tree)) => {}
         _ => complete_attribute_start(acc, ctx, attribute),
@@ -415,130 +416,6 @@ struct Test {}
                 at PartialOrd, PartialEq
             "#]],
         );
-    }
-
-    #[test]
-    fn empty_lint_completion() {
-        check(
-            r#"#[allow(<|>)]"#,
-            expect![[r#"
-                at absolute_paths_not_starting_with_crate fully qualified paths that start with a module name instead of `crate`, `self`, or an extern crate name
-                at ambiguous_associated_items ambiguous associated items
-                at anonymous_parameters detects anonymous parameters
-                at arithmetic_overflow arithmetic operation overflows
-                at array_into_iter  detects calling `into_iter` on arrays
-                at asm_sub_register using only a subset of a register for inline asm inputs
-                at bare_trait_objects suggest using `dyn Trait` for trait objects
-                at bindings_with_variant_name detects pattern bindings with the same name as one of the matched variants
-                at box_pointers     use of owned (Box type) heap memory
-                at cenum_impl_drop_cast a C-like enum implementing Drop is cast
-                at clashing_extern_declarations detects when an extern fn has been declared with the same name but different types
-                at coherence_leak_check distinct impls distinguished only by the leak-check code
-                at conflicting_repr_hints conflicts between `#[repr(..)]` hints that were previously accepted and used in practice
-                at confusable_idents detects visually confusable pairs between identifiers
-                at const_err        constant evaluation detected erroneous expression
-                at dead_code        detect unused, unexported items
-                at deprecated       detects use of deprecated items
-                at deprecated_in_future detects use of items that will be deprecated in a future version
-                at elided_lifetimes_in_paths hidden lifetime parameters in types are deprecated
-                at ellipsis_inclusive_range_patterns `...` range patterns are deprecated
-                at explicit_outlives_requirements outlives requirements can be inferred
-                at exported_private_dependencies public interface leaks type from a private dependency
-                at ill_formed_attribute_input ill-formed attribute inputs that were previously accepted and used in practice
-                at illegal_floating_point_literal_pattern floating-point literals cannot be used in patterns
-                at improper_ctypes  proper use of libc types in foreign modules
-                at improper_ctypes_definitions proper use of libc types in foreign item definitions
-                at incomplete_features incomplete features that may function improperly in some or all cases
-                at incomplete_include trailing content in included file
-                at indirect_structural_match pattern with const indirectly referencing non-structural-match type
-                at inline_no_sanitize detects incompatible use of `#[inline(always)]` and `#[no_sanitize(...)]`
-                at intra_doc_link_resolution_failure failures in resolving intra-doc link targets
-                at invalid_codeblock_attributes codeblock attribute looks a lot like a known one
-                at invalid_type_param_default type parameter default erroneously allowed in invalid location
-                at invalid_value    an invalid value is being created (such as a NULL reference)
-                at irrefutable_let_patterns detects irrefutable patterns in if-let and while-let statements
-                at keyword_idents   detects edition keywords being used as an identifier
-                at late_bound_lifetime_arguments detects generic lifetime arguments in path segments with late bound lifetime parameters
-                at macro_expanded_macro_exports_accessed_by_absolute_paths macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
-                at macro_use_extern_crate the `#[macro_use]` attribute is now deprecated in favor of using macros via the module system
-                at meta_variable_misuse possible meta-variable misuse at macro definition
-                at missing_copy_implementations detects potentially-forgotten implementations of `Copy`
-                at missing_crate_level_docs detects crates with no crate-level documentation
-                at missing_debug_implementations detects missing implementations of Debug
-                at missing_doc_code_examples detects publicly-exported items without code samples in their documentation
-                at missing_docs     detects missing documentation for public members
-                at missing_fragment_specifier detects missing fragment specifiers in unused `macro_rules!` patterns
-                at mixed_script_confusables detects Unicode scripts whose mixed script confusables codepoints are solely used
-                at mutable_borrow_reservation_conflict reservation of a two-phased borrow conflicts with other shared borrows
-                at mutable_transmutes mutating transmuted &mut T from &T may cause undefined behavior
-                at no_mangle_const_items const items will not have their symbols exported
-                at no_mangle_generic_items generic items must be mangled
-                at non_ascii_idents detects non-ASCII identifiers
-                at non_camel_case_types types, variants, traits and type parameters should have camel case names
-                at non_shorthand_field_patterns using `Struct { x: x }` instead of `Struct { x }` in a pattern
-                at non_snake_case   variables, methods, functions, lifetime parameters and modules should have snake case names
-                at non_upper_case_globals static constants should have uppercase identifiers
-                at order_dependent_trait_objects trait-object types were treated as different depending on marker-trait order
-                at overflowing_literals literal out of range for its type
-                at overlapping_patterns detects overlapping patterns
-                at path_statements  path statements with no effect
-                at patterns_in_fns_without_body patterns in functions without body were erroneously allowed
-                at private_doc_tests detects code samples in docs of private items not documented by rustdoc
-                at private_in_public detect private items in public interfaces not caught by the old implementation
-                at proc_macro_derive_resolution_fallback detects proc macro derives using inaccessible names from parent modules
-                at pub_use_of_private_extern_crate detect public re-exports of private extern crates
-                at redundant_semicolons detects unnecessary trailing semicolons
-                at renamed_and_removed_lints lints that have been renamed or removed
-                at safe_packed_borrows safe borrows of fields of packed structs were erroneously allowed
-                at single_use_lifetimes detects lifetime parameters that are only used once
-                at soft_unstable    a feature gate that doesn't break dependent crates
-                at stable_features  stable features found in `#[feature]` directive
-                at trivial_bounds   these bounds don't depend on an type parameters
-                at trivial_casts    detects trivial casts which could be removed
-                at trivial_numeric_casts detects trivial casts of numeric types which could be removed
-                at type_alias_bounds bounds in type aliases are not enforced
-                at tyvar_behind_raw_pointer raw pointer to an inference variable
-                at unaligned_references detects unaligned references to fields of packed structs
-                at uncommon_codepoints detects uncommon Unicode codepoints in identifiers
-                at unconditional_panic operation will cause a panic at runtime
-                at unconditional_recursion functions that cannot return without calling themselves
-                at unknown_crate_types unknown crate type found in `#[crate_type]` directive
-                at unknown_lints    unrecognized lint attribute
-                at unnameable_test_items detects an item that cannot be named being marked as `#[test_case]`
-                at unreachable_code detects unreachable code paths
-                at unreachable_patterns detects unreachable patterns
-                at unreachable_pub  `pub` items not reachable from crate root
-                at unsafe_code      usage of `unsafe` code
-                at unsafe_op_in_unsafe_fn unsafe operations in unsafe functions without an explicit unsafe block are deprecated
-                at unstable_features enabling unstable features (deprecated. do not use)
-                at unstable_name_collisions detects name collision with an existing but unstable method
-                at unused_allocation detects unnecessary allocations that can be eliminated
-                at unused_assignments detect assignments that will never be read
-                at unused_attributes detects attributes that were not used by the compiler
-                at unused_braces    unnecessary braces around an expression
-                at unused_comparisons comparisons made useless by limits of the types involved
-                at unused_crate_dependencies crate dependencies that are never used
-                at unused_doc_comments detects doc comments that aren't used by rustdoc
-                at unused_extern_crates extern crates that are never used
-                at unused_features  unused features found in crate-level `#[feature]` directives
-                at unused_import_braces unnecessary braces around an imported item
-                at unused_imports   imports that are never used
-                at unused_labels    detects labels that are never used
-                at unused_lifetimes detects lifetime parameters that are never used
-                at unused_macros    detects macros that were not used
-                at unused_must_use  unused result of a type flagged as `#[must_use]`
-                at unused_mut       detect mut variables which don't need to be mutable
-                at unused_parens    `if`, `match`, `while` and `return` do not need parentheses
-                at unused_qualifications detects unnecessarily qualified names
-                at unused_results   unused result of an expression in a statement
-                at unused_unsafe    unnecessary use of an `unsafe` block
-                at unused_variables detect variables which are not used in any way
-                at variant_size_differences detects enums with widely varying variant sizes
-                at warnings         mass-change the level for lints which produce warnings
-                at where_clauses_object_safety checks the object safety of where clauses
-                at while_true       suggest using `loop { }` instead of `while true { }`
-        "#]],
-        )
     }
 
     #[test]
