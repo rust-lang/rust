@@ -1,4 +1,5 @@
 thread 'main' panicked at 'Hello from panic: std', $DIR/catch_panic.rs:LL:27
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 Caught panic message (&str): Hello from panic: std
 thread 'main' panicked at 'Hello from panic: 1', $DIR/catch_panic.rs:LL:26
 Caught panic message (String): Hello from panic: 1

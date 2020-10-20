@@ -1,1 +1,2 @@
 thread 'main' panicked at 'attempt to shift left with overflow', $DIR/overflowing-lsh-neg.rs:4:14
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

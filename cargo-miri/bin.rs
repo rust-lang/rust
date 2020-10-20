@@ -296,7 +296,7 @@ fn setup(subcommand: MiriCommand) {
 [dependencies.std]
 default_features = false
 # We support unwinding, so enable that panic runtime.
-features = ["panic_unwind"]
+features = ["panic_unwind", "backtrace"]
 
 [dependencies.test]
 "#,
