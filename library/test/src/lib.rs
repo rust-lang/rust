@@ -473,8 +473,7 @@ pub fn run_test(
             match cfg.spawn(runtest) {
                 Ok(_) => {}
                 Err(err @ io::Error { .. }) if err.kind() == io::ErrorKind::WouldBlock => {
-                    // If spawning a new thread would block, and blocking was
-                    // requested to not occur, just run the test synchronously.
+                    // If we're at the thread limit, just run all tests in a single thread.
                     runtest();
                 }
                 Err(err) => {
