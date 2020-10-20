@@ -187,6 +187,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                 return walked;
             }
         }
+
+        // ZSTs do not need validation unless they're uninhabited
+        if mplace.layout.is_zst() && !mplace.layout.abi.is_uninhabited() {
+            return Ok(());
+        }
+
         self.walk_aggregate(mplace, fields)
     }
 
