@@ -389,9 +389,11 @@ fn check_arms<'p, 'tcx>(
                     hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                 }
             }
-            Useful(unreachable_subpatterns) => {
-                for span in unreachable_subpatterns {
-                    unreachable_pattern(cx.tcx, span, id, None);
+            Useful(unreachables) => {
+                for set in unreachables {
+                    for span in set {
+                        unreachable_pattern(cx.tcx, span, id, None);
+                    }
                 }
             }
             UsefulWithWitness(_) => bug!(),

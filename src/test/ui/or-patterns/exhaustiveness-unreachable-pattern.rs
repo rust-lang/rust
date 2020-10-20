@@ -85,7 +85,7 @@ fn main() {
     match None {
         Some(false) => {}
         None | Some(true
-                | false) => {} // expected unreachable warning here
+                | false) => {} //~ ERROR unreachable
     }
 
     // A subpattern that is unreachable in all branches is overall unreachable.
