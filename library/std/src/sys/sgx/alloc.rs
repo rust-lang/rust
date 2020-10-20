@@ -5,7 +5,7 @@ use crate::fmt::{self, Debug, Formatter};
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::ptr;
-use crate::sys::sgx::abi::mem as sgx_mem;
+use crate::sys::sgx::abi::{mem as sgx_mem, usercalls};
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use super::waitqueue::SpinMutex;
@@ -55,16 +55,22 @@ unsafe impl dlmalloc::Allocator for Sgx {
         ptr::null_mut()
     }
 
-    fn free_part(&self, _ptr: *mut u8, _oldsize: usize, _newsize: usize) -> bool {
-        false
+    fn free_part(&self, ptr: *mut u8, oldsize: usize, newsize: usize) -> bool {
+        assert_eq!(oldsize % Sgx::PAGE_SIZE, 0);
+        assert_eq!(newsize % Sgx::PAGE_SIZE, 0);
+        unsafe { Sgx::allocator().free_part(ptr, oldsize, newsize).is_ok() }
     }
 
-    fn free(&self, _ptr: *mut u8, _size: usize) -> bool {
-        return false;
+    fn free(&self, ptr: *mut u8, size: usize) -> bool {
+        if !sgx_mem::is_unmapped_range(ptr, size) {
+            return false;
+        }
+        assert_eq!(size % Sgx::PAGE_SIZE, 0);
+        unsafe { Sgx::allocator().free(ptr, size).is_ok() }
     }
 
     fn can_release_part(&self, _flags: u32) -> bool {
-        false
+        true
     }
 
     fn allocates_zeros(&self) -> bool {
@@ -138,6 +144,19 @@ impl SGXv2Allocator {
     pub unsafe fn alloc(&mut self, size: usize) -> Option<*mut u8> {
         self.allocator().alloc::<Sgx2Mapper>(size).ok()
     }
+
+    pub unsafe fn free(&mut self, ptr: *mut u8, size: usize) -> Result<(), Error> {
+        self.allocator().free::<Sgx2Mapper>(ptr, size, 0)
+    }
+
+    pub unsafe fn free_part(
+        &mut self,
+        ptr: *mut u8,
+        old_size: usize,
+        new_size: usize,
+    ) -> Result<(), Error> {
+        self.allocator().free::<Sgx2Mapper>(ptr, old_size, new_size)
+    }
 }
 
 struct Sgx2Mapper;
@@ -164,6 +183,28 @@ impl MemoryMapper for Sgx2Mapper {
         Ok(())
     }
 
+    fn unmap_region(base: *const u8, size: usize) -> Result<(), Error> {
+        fn accept_trim(base: *const u8, size: usize) -> Result<(), Error> {
+            let flags = SecinfoFlags::from(PageType::Trim) | SecinfoFlags::MODIFIED;
+            let secinfo = Secinfo::from(flags).into();
+
+            for offset in (0..size as isize).step_by(Sgx::PAGE_SIZE) {
+                let page = unsafe { base.offset(offset) };
+                arch::eaccept(page as _, &secinfo).map_err(|_| Error::UnmapFailed)?;
+            }
+            Ok(())
+        }
+
+        assert_eq!(size % Sgx::PAGE_SIZE, 0);
+        // Signal to OS that pages are no longer used and should be trimmed
+        usercalls::trim(base, size).map_err(|_| Error::UnmapFailed)?;
+        // Accept removing of pages
+        accept_trim(base, size).map_err(|_| Error::UnmapFailed)?;
+        // Let the OS remove the pages
+        usercalls::remove_trimmed(base, size).map_err(|_| Error::UnmapFailed)?;
+        Ok(())
+    }
+
     fn page_size() -> usize {
         Sgx::PAGE_SIZE
     }
@@ -172,15 +213,22 @@ impl MemoryMapper for Sgx2Mapper {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     AlignmentError,
+    FreeGrowsAllocation,
+    SizeNotSupported,
+    DoubleFree,
+    MemoryNotManagedByAllocator,
     MemorySizeNotPowerOfTwo,
     MinBlockSizeLargerThanMemory,
     MinBlockSizeTooSmall,
     MapFailed,
+    UnmapFailed,
     OutOfMemory,
 }
 
 pub trait MemoryMapper {
     fn map_region(base: *const u8, size: usize) -> Result<(), Error>;
+
+    fn unmap_region(base: *const u8, size: usize) -> Result<(), Error>;
 
     fn page_size() -> usize;
 }
@@ -251,6 +299,13 @@ impl<T> SimpleAllocator<T> {
             }
         }
     }
+
+    pub fn free(&mut self, ptr: *mut T) {
+        unsafe {
+            ptr::write(ptr as _, self.free_blocks);
+            self.free_blocks = ptr as _;
+        }
+    }
 }
 
 #[derive(PartialEq)]
@@ -312,8 +367,44 @@ impl Region {
         }
     }
 
+    fn intersect(&self, other: &Region) -> Option<Region> {
+        let start = crate::cmp::max(self.addr, other.addr);
+        let end = crate::cmp::min(self.end(), other.end());
+        if start < end {
+            Some(Region { addr: start, size: end as usize - start as usize })
+        } else {
+            None
+        }
+    }
+
+    fn subtract(&self, other: &Region) -> Option<Region> {
+        if other.size == 0 {
+            return Some(self.to_owned());
+        }
+        if self.addr < other.addr {
+            let start = self.addr;
+            let end = crate::cmp::min(self.end() as usize, other.addr as usize);
+
+            if start as usize != end {
+                return Some(Region { addr: start, size: end - start as usize });
+            }
+        } else {
+            if other.end() < self.end() {
+                return Some(Region {
+                    addr: other.end(),
+                    size: self.end() as usize - other.end() as usize,
+                });
+            }
+        }
+        None
+    }
+
     fn end(&self) -> *mut u8 {
         (self.addr as usize + self.size) as _
+    }
+
+    fn contains(&self, ptr: *mut u8) -> bool {
+        self.addr <= ptr && ptr < self.end()
     }
 }
 
@@ -467,6 +558,87 @@ impl BuddyAllocator {
         let region = unsafe { self.alloc_ex::<M>(self.memory.to_owned(), self.block, size, true)? };
         Ok(region.addr)
     }
+
+    unsafe fn free_ex<M: MemoryMapper>(
+        &mut self,
+        block: *mut Block,
+        memory: &Region,
+        free: &Region,
+    ) -> Result<(), Error> {
+        unsafe {
+            match ptr::read(block) {
+                Block::Allocated => {
+                    if let Some(_alloc) = memory.subtract(free) {
+                        // Split block into two allocated regions and continue freeing recursively
+                        assert_eq!(_alloc.addr, memory.addr);
+                        let left = self.allocator.alloc::<M>(Block::Allocated)?;
+                        let right = self.allocator.alloc::<M>(Block::Allocated)?;
+                        *block = Block::Partitioned(left, right);
+                        self.free_ex::<M>(block, memory, free)
+                    } else {
+                        // Free entire memory block
+                        ptr::write(block, Block::Free);
+                        if M::page_size() < memory.size {
+                            M::unmap_region(memory.addr, memory.size)?;
+                        }
+                        Ok(())
+                    }
+                }
+                Block::Partitioned(block_left, block_right) => {
+                    let (memory_left, memory_right) = memory.split();
+                    if let Some(overlap) = memory_right.intersect(free) {
+                        self.free_ex::<M>(block_right, &memory_right, &overlap)?;
+                    }
+                    if let Some(overlap) = memory_left.intersect(free) {
+                        self.free_ex::<M>(block_left, &memory_left, &overlap)?;
+                    }
+                    if ptr::read(block_left) == Block::Free && ptr::read(block_right) == Block::Free
+                    {
+                        self.allocator.free(block_left);
+                        self.allocator.free(block_right);
+                        ptr::write(block, Block::Free);
+                        if M::page_size() == memory.size {
+                            // The left and right parts combined are exactly one page. At a lower
+                            // level, it couldn't be unmapped as there still may be data on that
+                            // page. Now the entire page is free, unmap it. It also isn't possible
+                            // that the block size is larger than a page as the buddy allocator
+                            // always halfs the available memory. If the block now spans two pages,
+                            // it would already have been unmapped on a lower level
+                            M::unmap_region(memory.addr, memory.size)?;
+                        }
+                    }
+                    Ok(())
+                }
+                Block::Free => Err(Error::DoubleFree),
+            }
+        }
+    }
+
+    pub fn free<M: MemoryMapper>(
+        &mut self,
+        ptr: *mut u8,
+        old_size: usize,
+        new_size: usize,
+    ) -> Result<(), Error> {
+        if !self.memory.contains(ptr) {
+            return Err(Error::MemoryNotManagedByAllocator);
+        }
+        if old_size < new_size {
+            return Err(Error::FreeGrowsAllocation);
+        }
+        assert_eq!(old_size % M::page_size(), 0);
+        if new_size % M::page_size() != 0 {
+            return Err(Error::SizeNotSupported);
+        };
+        if new_size % self.min_block_size != 0 {
+            return Err(Error::SizeNotSupported);
+        };
+        let old_alloc = Region::new(ptr, old_size);
+        let new_alloc = Region::new(ptr, new_size);
+        let free = old_alloc.subtract(&new_alloc).ok_or(Error::SizeNotSupported)?;
+        let memory = self.memory.to_owned();
+        unsafe { self.free_ex::<M>(self.block, &memory, &free) }
+    }
 }
 
 #[cfg(test)]
@@ -577,6 +749,8 @@ mod tests {
             let alloc1 = space.alloc::<Linux>(0x511);
             assert_eq!(Ok(Region::new((memory_base as usize + 0x1000) as _, 0x1000)), alloc0);
             assert_eq!(Ok(Region::new((memory_base as usize + 0x2000) as _, 0x1000)), alloc1);
+            assert_eq!(Ok(()), space.free::<Linux>(alloc1.unwrap().addr, 0x1000, 0));
+            assert_eq!(Ok(()), space.free::<Linux>(alloc0.unwrap().addr, 0x1000, 0));
         }
     }
 
@@ -590,6 +764,102 @@ mod tests {
             let mut space = BuddyAllocator::new(memory_base as _, memory_size, 0x1000).unwrap();
             let r = space.alloc::<Linux>(0x8000).unwrap();
             assert_eq!(format!("{:?}", *space.block), "((((A, F), F), F), A)");
+            assert_eq!(Ok(()), space.free::<Linux>(r.addr, 0x8000, 0x4000));
+            assert_eq!(format!("{:?}", *space.block), "((((A, F), F), F), (A, F))");
+            assert_eq!(Ok(()), space.free::<Linux>(r.addr, 0x4000, 0x1000));
+            assert_eq!(format!("{:?}", *space.block), "((((A, F), F), F), (((A, F), F), F))");
+            assert_eq!(Ok(()), space.free::<Linux>(r.addr, 0x1000, 0));
+            assert_eq!(format!("{:?}", *space.block), "((((A, F), F), F), F)");
+
+            let r0 = space.alloc::<Linux>(0x2000).unwrap();
+            assert_eq!(format!("{:?}", *space.block), "((((A, F), A), F), F)");
+
+            let r1 = space.alloc::<Linux>(0x8000).unwrap();
+            assert_eq!(format!("{:?}", *space.block), "((((A, F), A), F), A)");
+
+            let mut r2 = space.alloc::<Linux>(0x4000).unwrap();
+            assert_eq!(format!("{:?}", *space.block), "((((A, F), A), A), A)");
+
+            let r3 = space.alloc::<Linux>(0x1000).unwrap();
+            assert_eq!(format!("{:?}", *space.block), "((((A, A), A), A), A)");
+            assert_eq!(space.alloc::<Linux>(0x1000), Err(Error::OutOfMemory));
+
+            let new_size = 0x1000;
+            assert_eq!(Ok(()), space.free::<Linux>(r2.addr, r2.size, new_size));
+            r2.size = new_size;
+            assert_eq!(format!("{:?}", *space.block), "((((A, A), A), ((A, F), F)), A)");
+
+            assert!(space.free::<Linux>(r0.addr, r0.size, 0).is_ok());
+            assert_eq!(format!("{:?}", *space.block), "((((A, A), F), ((A, F), F)), A)");
+
+            assert!(space.free::<Linux>(r1.addr, r1.size, 0).is_ok());
+            assert_eq!(format!("{:?}", *space.block), "((((A, A), F), ((A, F), F)), F)");
+
+            assert!(space.free::<Linux>(r2.addr, r2.size, 0).is_ok());
+            assert_eq!(format!("{:?}", *space.block), "((((A, A), F), F), F)");
+
+            assert!(space.free::<Linux>(r3.addr, r3.size, 0).is_ok());
+            assert_eq!(format!("{:?}", *space.block), "((((A, F), F), F), F)");
+        }
+    }
+
+    #[test]
+    pub fn buddy_alloc_bruteforce() {
+        fn mark_allocated(base: *mut u8, size: usize) {
+            for index in 0..size {
+                let ptr = (base as usize + index) as *mut u8;
+                unsafe {
+                    assert_eq!(*ptr, 0);
+                    *ptr = 1;
+                }
+            }
+        }
+
+        fn mark_free(base: *mut u8, size: usize) {
+            for index in 0..size {
+                let ptr = (base as usize + index) as *mut u8;
+                unsafe {
+                    assert_eq!(*ptr, 1);
+                    *ptr = 0;
+                }
+            }
+        }
+
+        use rand::Rng;
+
+        let memory_size = 1 * 1024 * 1024;
+        let memory_base = unsafe {
+            std::alloc::System.alloc_zeroed(
+                std::alloc::Layout::from_size_align(memory_size, memory_size).unwrap(),
+            )
+        };
+        Linux::unmap_region(memory_base, memory_size);
+        let mut space = BuddyAllocator::new(memory_base as _, memory_size, 0x1000).unwrap();
+        let mut rnd = rand::thread_rng();
+        let mut pointers: Vec<(*mut u8, usize)> = Vec::new();
+
+        for _i in 0..1000 {
+            if rnd.gen() {
+                // Allocate
+                let size = rnd.gen::<usize>() % (memory_size / 10);
+                if let Ok(region) = space.alloc::<Linux>(size) {
+                    mark_allocated(region.addr, region.size);
+                    pointers.push((region.addr, region.size));
+                }
+            } else {
+                // Free
+                if 0 < pointers.len() {
+                    let idx = rnd.gen::<usize>() % pointers.len();
+                    let (ptr, size) = pointers.remove(idx);
+                    mark_free(ptr, size);
+                    assert_eq!(Ok(()), space.free::<Linux>(ptr, size, 0));
+                }
+            }
+        }
+
+        while let Some((ptr, size)) = pointers.pop() {
+            mark_free(ptr, size);
+            assert_eq!(Ok(()), space.free::<Linux>(ptr, size, 0));
         }
     }
 
@@ -607,6 +877,72 @@ mod tests {
                     (region as *mut u32) <= ptr && ptr < (region as usize + 0x1000) as *mut u32
                 );
                 ptrs.push(ptr);
+            }
+            for ptr in ptrs.iter() {
+                allocator.free(*ptr);
+            }
+        }
+    }
+
+    #[test]
+    fn bruteforce_simple_alloc() {
+        fn mark_allocated(base: *mut u8, size: usize) {
+            for index in 0..size {
+                let ptr = (base as usize + index) as *mut u8;
+                unsafe {
+                    *ptr = 1;
+                }
+            }
+        }
+
+        fn mark_free(base: *mut u8, size: usize) {
+            for index in 0..size {
+                let ptr = (base as usize + index) as *mut u8;
+                unsafe {
+                    assert_eq!(*ptr, 1);
+                    *ptr = 0;
+                }
+            }
+        }
+
+        use rand::Rng;
+        use std::alloc::GlobalAlloc;
+
+        let memory_size = 20 * 1024 * 1024;
+        let region = unsafe {
+            std::alloc::System.alloc_zeroed(
+                std::alloc::Layout::from_size_align(memory_size, memory_size.next_power_of_two())
+                    .unwrap(),
+            )
+        };
+
+        Linux::unmap_region(region, memory_size);
+        let mut space = SimpleAllocator::<u32>::new(region as _, memory_size).unwrap();
+        let mut rnd = rand::thread_rng();
+        let mut ptrs = Vec::new();
+        let num_runs = 10000;
+        for i in 0..num_runs {
+            let force_free = (9 * num_runs) / 10 < i;
+            if rnd.gen::<usize>() % 100 < 70 && !force_free {
+                // alloc
+                match space.alloc::<Linux>(0) {
+                    Ok(ptr) => {
+                        ptrs.push(ptr);
+                        assert!(ptr < (region as usize + memory_size) as _);
+                        assert!(region <= ptr as _);
+                        mark_allocated(ptr as _, SimpleAllocator::<u32>::block_size());
+                    }
+                    Err(Error::OutOfMemory) => (),
+                    _ => panic!("Unexpected error"),
+                }
+            } else {
+                // free
+                if 0 < ptrs.len() {
+                    let idx = rnd.gen::<usize>() % ptrs.len();
+                    let ptr = ptrs.remove(idx);
+                    mark_free(ptr as _, SimpleAllocator::<u32>::block_size());
+                    space.free(ptr);
+                }
             }
         }
     }

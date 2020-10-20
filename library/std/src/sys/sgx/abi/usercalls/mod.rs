@@ -259,6 +259,24 @@ pub fn alloc(size: usize, alignment: usize) -> IoResult<*mut u8> {
     unsafe { raw::alloc(size, alignment).from_sgx_result() }
 }
 
+/// Usercall `trim`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn trim(region: *const u8, size: usize) -> IoResult<()> {
+    unsafe {
+        raw::trim(region, size).from_sgx_result()?;
+        Ok(())
+    }
+}
+
+/// Usercall `remove_trimmed`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn remove_trimmed(region: *const u8, size: usize) -> IoResult<()> {
+    unsafe {
+        raw::remove_trimmed(region, size).from_sgx_result()?;
+        Ok(())
+    }
+}
+
 #[unstable(feature = "sgx_platform", issue = "56975")]
 #[doc(inline)]
 pub use self::raw::free;
