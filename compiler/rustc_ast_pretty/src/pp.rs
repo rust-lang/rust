@@ -390,7 +390,7 @@ impl Printer {
         self.scan_stack.pop_front().unwrap()
     }
 
-    fn scan_top(&mut self) -> usize {
+    fn scan_top(&self) -> usize {
         *self.scan_stack.front().unwrap()
     }
 
@@ -484,7 +484,7 @@ impl Printer {
         self.pending_indentation += amount;
     }
 
-    fn get_top(&mut self) -> PrintStackElem {
+    fn get_top(&self) -> PrintStackElem {
         *self.print_stack.last().unwrap_or({
             &PrintStackElem { offset: 0, pbreak: PrintStackBreak::Broken(Breaks::Inconsistent) }
         })
