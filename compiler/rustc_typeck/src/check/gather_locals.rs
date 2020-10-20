@@ -129,7 +129,9 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 var_ty
             );
         }
+        let old_within_fn_param = mem::replace(&mut self.within_fn_param, false);
         intravisit::walk_pat(self, p);
+        self.within_fn_param = old_within_fn_param;
     }
 
     // Don't descend into the bodies of nested closures.
