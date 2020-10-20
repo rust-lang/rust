@@ -610,6 +610,9 @@ declare_features! (
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
 
+    /// Allows `pub` on `macro_rules` items.
+    (active, pub_macro_rules, "1.49.0", Some(78855), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

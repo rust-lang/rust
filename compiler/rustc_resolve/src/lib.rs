@@ -11,6 +11,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(format_args_capture)]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]

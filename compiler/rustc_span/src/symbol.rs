@@ -841,6 +841,7 @@ symbols! {
         ptr_guaranteed_eq,
         ptr_guaranteed_ne,
         ptr_offset_from,
+        pub_macro_rules,
         pub_restricted,
         pure,
         pushpop_unsafe,
