@@ -901,6 +901,23 @@ fn process(map: HashMap<String, String>) {}
 }
 
 #[test]
+fn doctest_replace_string_with_char() {
+    check_doc_test(
+        "replace_string_with_char",
+        r#####"
+fn main() {
+    find("{<|>");
+}
+"#####,
+        r#####"
+fn main() {
+    find('{');
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_unwrap_with_match() {
     check_doc_test(
         "replace_unwrap_with_match",
