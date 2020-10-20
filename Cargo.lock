@@ -639,7 +639,6 @@ name = "compiletest"
 version = "0.0.0"
 dependencies = [
  "diff",
- "env_logger 0.7.1",
  "getopts",
  "glob",
  "lazy_static",
@@ -650,6 +649,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "tracing-subscriber",
  "walkdir",
  "winapi 0.3.9",
 ]
