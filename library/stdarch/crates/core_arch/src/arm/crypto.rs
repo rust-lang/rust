@@ -2,35 +2,49 @@ use crate::core_arch::arm::{uint32x4_t, uint8x16_t};
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.aarch64.crypto.aese"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aese")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aese")]
     fn vaeseq_u8_(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t;
-    #[link_name = "llvm.aarch64.crypto.aesd"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aesd")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aesd")]
     fn vaesdq_u8_(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t;
-    #[link_name = "llvm.aarch64.crypto.aesmc"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aesmc")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aesmc")]
     fn vaesmcq_u8_(data: uint8x16_t) -> uint8x16_t;
-    #[link_name = "llvm.aarch64.crypto.aesimc"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.aesimc")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.aesimc")]
     fn vaesimcq_u8_(data: uint8x16_t) -> uint8x16_t;
 
-    #[link_name = "llvm.aarch64.crypto.sha1h"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1h")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1h")]
     fn vsha1h_u32_(hash_e: u32) -> u32;
-    #[link_name = "llvm.aarch64.crypto.sha1su0"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1su0")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1su0")]
     fn vsha1su0q_u32_(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.crypto.sha1su1"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1su1")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1su1")]
     fn vsha1su1q_u32_(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.crypto.sha1c"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1c")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1c")]
     fn vsha1cq_u32_(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.crypto.sha1p"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1p")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1p")]
     fn vsha1pq_u32_(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.crypto.sha1m"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha1m")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha1m")]
     fn vsha1mq_u32_(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t;
 
-    #[link_name = "llvm.aarch64.crypto.sha256h"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256h")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256h")]
     fn vsha256hq_u32_(hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.crypto.sha256h2"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256h2")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256h2")]
     fn vsha256h2q_u32_(hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.crypto.sha256su0"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256su0")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256su0")]
     fn vsha256su0q_u32_(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.crypto.sha256su1"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.crypto.sha256su1")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.sha256su1")]
     fn vsha256su1q_u32_(tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t;
 }
 
@@ -40,6 +54,7 @@ use stdarch_test::assert_instr;
 /// AES single round encryption.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aese))]
 pub unsafe fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     vaeseq_u8_(data, key)
@@ -48,6 +63,7 @@ pub unsafe fn vaeseq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
 /// AES single round decryption.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aesd))]
 pub unsafe fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
     vaesdq_u8_(data, key)
@@ -56,6 +72,7 @@ pub unsafe fn vaesdq_u8(data: uint8x16_t, key: uint8x16_t) -> uint8x16_t {
 /// AES mix columns.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aesmc))]
 pub unsafe fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
     vaesmcq_u8_(data)
@@ -64,6 +81,7 @@ pub unsafe fn vaesmcq_u8(data: uint8x16_t) -> uint8x16_t {
 /// AES inverse mix columns.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(aesimc))]
 pub unsafe fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
     vaesimcq_u8_(data)
@@ -72,6 +90,7 @@ pub unsafe fn vaesimcq_u8(data: uint8x16_t) -> uint8x16_t {
 /// SHA1 fixed rotate.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1h))]
 pub unsafe fn vsha1h_u32(hash_e: u32) -> u32 {
     vsha1h_u32_(hash_e)
@@ -80,6 +99,7 @@ pub unsafe fn vsha1h_u32(hash_e: u32) -> u32 {
 /// SHA1 hash update accelerator, choose.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1c))]
 pub unsafe fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
     vsha1cq_u32_(hash_abcd, hash_e, wk)
@@ -88,6 +108,7 @@ pub unsafe fn vsha1cq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 /// SHA1 hash update accelerator, majority.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1m))]
 pub unsafe fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
     vsha1mq_u32_(hash_abcd, hash_e, wk)
@@ -96,6 +117,7 @@ pub unsafe fn vsha1mq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 /// SHA1 hash update accelerator, parity.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1p))]
 pub unsafe fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) -> uint32x4_t {
     vsha1pq_u32_(hash_abcd, hash_e, wk)
@@ -104,6 +126,7 @@ pub unsafe fn vsha1pq_u32(hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t) ->
 /// SHA1 schedule update accelerator, first part.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1su0))]
 pub unsafe fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t) -> uint32x4_t {
     vsha1su0q_u32_(w0_3, w4_7, w8_11)
@@ -112,6 +135,7 @@ pub unsafe fn vsha1su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_
 /// SHA1 schedule update accelerator, second part.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha1su1))]
 pub unsafe fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t {
     vsha1su1q_u32_(tw0_3, w12_15)
@@ -120,6 +144,7 @@ pub unsafe fn vsha1su1q_u32(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t
 /// SHA256 hash update accelerator.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256h))]
 pub unsafe fn vsha256hq_u32(
     hash_abcd: uint32x4_t,
@@ -132,6 +157,7 @@ pub unsafe fn vsha256hq_u32(
 /// SHA256 hash update accelerator, upper part.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256h2))]
 pub unsafe fn vsha256h2q_u32(
     hash_efgh: uint32x4_t,
@@ -144,6 +170,7 @@ pub unsafe fn vsha256h2q_u32(
 /// SHA256 schedule update accelerator, first part.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256su0))]
 pub unsafe fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t {
     vsha256su0q_u32_(w0_3, w4_7)
@@ -152,6 +179,7 @@ pub unsafe fn vsha256su0q_u32(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t 
 /// SHA256 schedule update accelerator, second part.
 #[inline]
 #[target_feature(enable = "crypto")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(sha256su1))]
 pub unsafe fn vsha256su1q_u32(
     tw0_3: uint32x4_t,
@@ -163,7 +191,7 @@ pub unsafe fn vsha256su1q_u32(
 
 #[cfg(test)]
 mod tests {
-    use crate::core_arch::{aarch64::*, simd::*};
+    use crate::core_arch::{arm::*, simd::*};
     use std::mem;
     use stdarch_test::simd_test;
 
