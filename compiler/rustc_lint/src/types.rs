@@ -145,9 +145,9 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     // We need to preserve the literal's suffix,
                     // as it may determine typing information.
                     let suffix = match lit.node {
-                        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str().to_string(),
-                        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str().to_string(),
-                        LitKind::Int(_, LitIntType::Unsuffixed) => "".to_string(),
+                        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
+                        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
+                        LitKind::Int(_, LitIntType::Unsuffixed) => "",
                         _ => bug!(),
                     };
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
