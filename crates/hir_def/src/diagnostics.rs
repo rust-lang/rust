@@ -102,7 +102,7 @@ impl Diagnostic for InactiveCode {
     }
     fn message(&self) -> String {
         // FIXME: say *why* it is configured out
-        "configured out".to_string()
+        "code is inactive due to #[cfg] directives".to_string()
     }
     fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.node.clone())
