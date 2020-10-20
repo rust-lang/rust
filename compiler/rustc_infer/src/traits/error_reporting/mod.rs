@@ -54,7 +54,7 @@ pub fn report_object_safety_error(
         "the trait `{}` cannot be made into an object",
         trait_str
     );
-    err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
+    err.span_label(span, format!("`{}` cannot be made into an object", trait_str));
 
     let mut reported_violations = FxHashSet::default();
     let mut multi_span = vec![];

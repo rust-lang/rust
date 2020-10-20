@@ -647,7 +647,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
             ObjectSafetyViolation::SupertraitSelf(ref spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
-                    "it uses `Self` as a type parameter in this".into()
+                    "it uses `Self` as a type parameter".into()
                 } else {
                     "it cannot use `Self` as a type parameter in a supertrait or `where`-clause"
                         .into()

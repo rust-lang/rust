@@ -14,7 +14,7 @@ error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/trait-test-2.rs:11:16
    |
 LL |     (box 10 as Box<dyn bar>).dup();
-   |                ^^^^^^^^^^^^ the trait `bar` cannot be made into an object
+   |                ^^^^^^^^^^^^ `bar` cannot be made into an object
    |
    = help: consider moving `dup` to another trait
    = help: consider moving `blah` to another trait
@@ -31,7 +31,7 @@ error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/trait-test-2.rs:11:6
    |
 LL |     (box 10 as Box<dyn bar>).dup();
-   |      ^^^^^^ the trait `bar` cannot be made into an object
+   |      ^^^^^^ `bar` cannot be made into an object
    |
    = help: consider moving `dup` to another trait
    = help: consider moving `blah` to another trait
