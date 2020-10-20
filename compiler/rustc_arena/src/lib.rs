@@ -217,8 +217,12 @@ impl<T> TypedArena<T> {
             let mut chunks = self.chunks.borrow_mut();
             let mut new_cap;
             if let Some(last_chunk) = chunks.last_mut() {
-                let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
-                last_chunk.entries = used_bytes / mem::size_of::<T>();
+                // If a type is `!needs_drop`, we don't need to keep track of how many elements
+                // the chunk stores - the field will be ignored anyway.
+                if mem::needs_drop::<T>() {
+                    let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
+                    last_chunk.entries = used_bytes / mem::size_of::<T>();
+                }
 
                 // If the previous chunk's len is less than HUGE_PAGE
                 // bytes, then this chunk will be least double the previous
