@@ -102,7 +102,29 @@ impl fmt::Display for CrateName {
 
 impl ops::Deref for CrateName {
     type Target = str;
-    fn deref(&self) -> &Self::Target {
+    fn deref(&self) -> &str {
+        &*self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CrateDisplayName(CrateName);
+
+impl From<CrateName> for CrateDisplayName {
+    fn from(inner: CrateName) -> CrateDisplayName {
+        CrateDisplayName(inner)
+    }
+}
+
+impl fmt::Display for CrateDisplayName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl ops::Deref for CrateDisplayName {
+    type Target = str;
+    fn deref(&self) -> &str {
         &*self.0
     }
 }
