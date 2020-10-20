@@ -1,13 +1,8 @@
-error[E0282]: type annotations needed for the closure `fn(Expr<'_, _>) -> Expr<'_, _>`
-  --> $DIR/issue-23046.rs:18:9
+error[E0282]: type annotations needed for `Expr<'_, VAR>`
+  --> $DIR/issue-23046.rs:17:15
    |
-LL |         let_(add(x,x), |y| {
-   |         ^^^^ cannot infer type for type parameter `VAR` declared on the function `let_`
-   |
-help: give this closure an explicit return type without `_` placeholders
-   |
-LL |             let_(add(x, x), |x|-> Expr<'_, _> { x })})};
-   |                                ^^^^^^^^^^^^^^^^   ^
+LL |     let ex = |x| {
+   |               ^ consider giving this closure parameter the explicit type `Expr<'_, VAR>`, where the type parameter `VAR` is specified
 
 error: aborting due to previous error
 

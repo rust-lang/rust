@@ -456,10 +456,7 @@ impl Ipv4Addr {
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_link_local(&self) -> bool {
-        match self.octets() {
-            [169, 254, ..] => true,
-            _ => false,
-        }
+        matches!(self.octets(), [169, 254, ..])
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
@@ -1262,10 +1259,7 @@ impl Ipv6Addr {
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_link_local_strict(&self) -> bool {
-        (self.segments()[0] & 0xffff) == 0xfe80
-            && (self.segments()[1] & 0xffff) == 0
-            && (self.segments()[2] & 0xffff) == 0
-            && (self.segments()[3] & 0xffff) == 0
+        matches!(self.segments(), [0xfe80, 0, 0, 0, ..])
     }
 
     /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).

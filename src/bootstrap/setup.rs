@@ -1,6 +1,7 @@
 use crate::{t, VERSION};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::str::FromStr;
 use std::{
     env, fmt, fs,
@@ -196,10 +197,17 @@ simply delete the `pre-commit` file from .git/hooks."
 
     Ok(if should_install {
         let src = src_path.join("src").join("etc").join("pre-commit.sh");
-        let dst = src_path.join(".git").join("hooks").join("pre-commit");
-        match fs::hard_link(src, dst) {
+        let git = t!(Command::new("git").args(&["rev-parse", "--git-common-dir"]).output().map(
+            |output| {
+                assert!(output.status.success(), "failed to run `git`");
+                PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
+            }
+        ));
+        let dst = git.join("hooks").join("pre-commit");
+        match fs::hard_link(src, &dst) {
             Err(e) => println!(
-                "x.py encountered an error -- do you already have the git hook installed?\n{}",
+                "error: could not create hook {}: do you already have the git hook installed?\n{}",
+                dst.display(),
                 e
             ),
             Ok(_) => println!("Linked `src/etc/pre-commit.sh` to `.git/hooks/pre-commit`"),
