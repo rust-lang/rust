@@ -46,6 +46,10 @@ IMAGE_BASE:
     globvar HEAP_BASE 8
     /*  The heap size in bytes */
     globvar HEAP_SIZE 8
+    /*  The base address (relative to enclave start) of the dynamic memory area */
+    globvar UNMAPPED_BASE 8
+    /*  The dynamic memory size in bytes */
+    globvar UNMAPPED_SIZE 8
     /*  Value of the RELA entry in the dynamic table */
     globvar RELA 8
     /*  Value of the RELACOUNT entry in the dynamic table */

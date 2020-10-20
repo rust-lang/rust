@@ -14,6 +14,8 @@ extern "C" {
     static ENCLAVE_SIZE: usize;
     static HEAP_BASE: u64;
     static HEAP_SIZE: usize;
+    static UNMAPPED_SIZE: u64;
+    static UNMAPPED_BASE: u64;
 }
 
 /// Returns the base memory address of the heap
@@ -88,4 +90,17 @@ pub fn is_user_range(p: *const u8, len: usize) -> bool {
 
     let base = image_base() as usize;
     end < base || start > base + (unsafe { ENCLAVE_SIZE } - 1) // unsafe ok: link-time constant
+}
+
+/// Returns the base memory address of the unmapped memory area. On platforms with SGXv2 features,
+/// this region can be used to dynamically add enclave pages
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn unmapped_base() -> u64 {
+    unsafe { image_base() + UNMAPPED_BASE }
+}
+
+/// Returns the size of the unmapped memory area
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn unmapped_size() -> u64 {
+    unsafe { UNMAPPED_SIZE }
 }

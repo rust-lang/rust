@@ -50,6 +50,8 @@ pub fn target() -> Target {
         "EH_FRM_LEN",
         "TEXT_BASE",
         "TEXT_SIZE",
+        "UNMAPPED_BASE",
+        "UNMAPPED_SIZE",
     ];
     let opts = TargetOptions {
         os: "unknown".into(),
