@@ -125,7 +125,7 @@ where
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub Lrc<Vec<TreeAndSpacing>>);
+pub struct TokenStream(pub(crate) Lrc<Vec<TreeAndSpacing>>);
 
 pub type TreeAndSpacing = (TokenTree, Spacing);
 
@@ -286,12 +286,12 @@ impl TokenStream {
         t1.next().is_none() && t2.next().is_none()
     }
 
-    pub fn map_enumerated<F: FnMut(usize, TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
+    pub fn map_enumerated<F: FnMut(usize, &TokenTree) -> TokenTree>(self, mut f: F) -> TokenStream {
         TokenStream(Lrc::new(
             self.0
                 .iter()
                 .enumerate()
-                .map(|(i, (tree, is_joint))| (f(i, tree.clone()), *is_joint))
+                .map(|(i, (tree, is_joint))| (f(i, tree), *is_joint))
                 .collect(),
         ))
     }
@@ -394,8 +394,8 @@ impl Cursor {
         self.index = index;
     }
 
-    pub fn look_ahead(&self, n: usize) -> Option<TokenTree> {
-        self.stream.0[self.index..].get(n).map(|(tree, _)| tree.clone())
+    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+        self.stream.0[self.index..].get(n).map(|(tree, _)| tree)
     }
 }
 
