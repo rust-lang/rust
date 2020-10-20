@@ -16,6 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{BytePos, Pos};
 use std::mem;
 use tracing::debug;
 
@@ -839,9 +840,10 @@ impl<'a> Parser<'a> {
         }
         use FloatComponent::*;
 
+        let float_str = float.as_str();
         let mut components = Vec::new();
         let mut ident_like = String::new();
-        for c in float.as_str().chars() {
+        for c in float_str.chars() {
             if c == '_' || c.is_ascii_alphanumeric() {
                 ident_like.push(c);
             } else if matches!(c, '.' | '+' | '-') {
@@ -857,8 +859,13 @@ impl<'a> Parser<'a> {
             components.push(IdentLike(ident_like));
         }
 
-        // FIXME: Make the span more precise.
+        // With proc macros the span can refer to anything, the source may be too short,
+        // or too long, or non-ASCII. It only makes sense to break our span into components
+        // if its underlying text is identical to our float literal.
         let span = self.token.span;
+        let can_take_span_apart =
+            || self.span_to_snippet(span).as_deref() == Ok(float_str).as_deref();
+
         match &*components {
             // 1e2
             [IdentLike(i)] => {
@@ -866,21 +873,40 @@ impl<'a> Parser<'a> {
             }
             // 1.
             [IdentLike(i), Punct('.')] => {
+                let (ident_span, dot_span) = if can_take_span_apart() {
+                    let (span, ident_len) = (span.data(), BytePos::from_usize(i.len()));
+                    let ident_span = span.with_hi(span.lo + ident_len);
+                    let dot_span = span.with_lo(span.lo + ident_len);
+                    (ident_span, dot_span)
+                } else {
+                    (span, span)
+                };
                 assert!(suffix.is_none());
                 let symbol = Symbol::intern(&i);
-                self.token = Token::new(token::Ident(symbol, false), span);
-                let next_token = Token::new(token::Dot, span);
+                self.token = Token::new(token::Ident(symbol, false), ident_span);
+                let next_token = Token::new(token::Dot, dot_span);
                 self.parse_tuple_field_access_expr(lo, base, symbol, None, Some(next_token))
             }
             // 1.2 | 1.2e3
             [IdentLike(i1), Punct('.'), IdentLike(i2)] => {
+                let (ident1_span, dot_span, ident2_span) = if can_take_span_apart() {
+                    let (span, ident1_len) = (span.data(), BytePos::from_usize(i1.len()));
+                    let ident1_span = span.with_hi(span.lo + ident1_len);
+                    let dot_span = span
+                        .with_lo(span.lo + ident1_len)
+                        .with_hi(span.lo + ident1_len + BytePos(1));
+                    let ident2_span = self.token.span.with_lo(span.lo + ident1_len + BytePos(1));
+                    (ident1_span, dot_span, ident2_span)
+                } else {
+                    (span, span, span)
+                };
                 let symbol1 = Symbol::intern(&i1);
-                self.token = Token::new(token::Ident(symbol1, false), span);
-                let next_token1 = Token::new(token::Dot, span);
+                self.token = Token::new(token::Ident(symbol1, false), ident1_span);
+                let next_token1 = Token::new(token::Dot, dot_span);
                 let base1 =
                     self.parse_tuple_field_access_expr(lo, base, symbol1, None, Some(next_token1));
                 let symbol2 = Symbol::intern(&i2);
-                let next_token2 = Token::new(token::Ident(symbol2, false), span);
+                let next_token2 = Token::new(token::Ident(symbol2, false), ident2_span);
                 self.bump_with(next_token2); // `.`
                 self.parse_tuple_field_access_expr(lo, base1, symbol2, suffix, None)
             }
