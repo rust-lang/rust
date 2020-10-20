@@ -85,12 +85,6 @@ mod theme;
 mod visit_ast;
 mod visit_lib;
 
-struct Output {
-    krate: clean::Crate,
-    renderinfo: config::RenderInfo,
-    renderopts: config::RenderOptions,
-}
-
 pub fn main() {
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
@@ -521,15 +515,12 @@ fn main_options(options: config::Options) -> MainResult {
 
     krate.version = crate_version;
 
-    let out = Output { krate, renderinfo, renderopts };
-
     if show_coverage {
         // if we ran coverage, bail early, we don't need to also generate docs at this point
         // (also we didn't load in any of the useful passes)
         return Ok(());
     }
 
-    let Output { krate, renderinfo, renderopts } = out;
     info!("going to format");
     let (error_format, edition, debugging_options) = diag_opts;
     let diag = core::new_handler(error_format, None, &debugging_options);
