@@ -465,14 +465,8 @@ impl<T: ?Sized> Box<T> {
         Box::leak(b) as *mut T
     }
 
-    #[unstable(
-        feature = "ptr_internals",
-        issue = "none",
-        reason = "use `Box::leak(b).into()` or `Unique::from(Box::leak(b))` instead"
-    )]
     #[inline]
-    #[doc(hidden)]
-    pub fn into_unique(b: Box<T>) -> Unique<T> {
+    pub(crate) fn into_unique(b: Box<T>) -> Unique<T> {
         // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
         // raw pointer for the type system. Turning it directly into a raw pointer would not be
         // recognized as "releasing" the unique pointer to permit aliased raw accesses,
