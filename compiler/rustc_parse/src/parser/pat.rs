@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
             PatKind::Box(pat)
         } else if self.check_inline_const() {
             // Parse `const pat`
-            PatKind::Lit(self.parse_const_expr(lo.to(self.token.span))?)
+            PatKind::Lit(self.parse_const_block(lo.to(self.token.span))?)
         } else if self.can_be_ident_pat() {
             // Parse `ident @ pat`
             // This can give false positives and parse nullary enums,

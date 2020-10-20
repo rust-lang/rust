@@ -864,7 +864,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses inline const expressions.
-    fn parse_const_expr(&mut self, span: Span) -> PResult<'a, P<Expr>> {
+    fn parse_const_block(&mut self, span: Span) -> PResult<'a, P<Expr>> {
         self.sess.gated_spans.gate(sym::inline_const, span);
         self.eat_keyword(kw::Const);
         let blk = self.parse_block()?;
