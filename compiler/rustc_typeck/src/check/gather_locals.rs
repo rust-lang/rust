@@ -11,9 +11,9 @@ use std::mem;
 pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     parent_id: hir::HirId,
-    // params are special cases of pats, but we want to handle them as
-    // *distinct* cases. so track when we are hitting a pat *within* an fn
-    // param.
+    // parameters are special cases of patterns, but we want to handle them as
+    // *distinct* cases. so track when we are hitting a pattern *within* an fn
+    // parameter.
     outermost_fn_param_pat: bool,
 }
 
