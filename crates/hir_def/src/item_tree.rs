@@ -672,6 +672,24 @@ impl ModItem {
     pub fn downcast<N: ItemTreeNode>(self) -> Option<FileItemTreeId<N>> {
         N::id_from_mod_item(self)
     }
+
+    pub fn ast_id(&self, tree: &ItemTree) -> FileAstId<ast::Item> {
+        match self {
+            ModItem::Import(it) => tree[it.index].ast_id().upcast(),
+            ModItem::ExternCrate(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Function(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Struct(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Union(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Enum(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Const(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Static(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Trait(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Impl(it) => tree[it.index].ast_id().upcast(),
+            ModItem::TypeAlias(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Mod(it) => tree[it.index].ast_id().upcast(),
+            ModItem::MacroCall(it) => tree[it.index].ast_id().upcast(),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

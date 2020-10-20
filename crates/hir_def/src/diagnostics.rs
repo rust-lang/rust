@@ -86,3 +86,28 @@ impl Diagnostic for UnresolvedImport {
         true
     }
 }
+
+// Diagnostic: unconfigured-code
+//
+// This diagnostic is shown for code with inactive `#[cfg]` attributes.
+#[derive(Debug)]
+pub struct InactiveCode {
+    pub file: HirFileId,
+    pub node: SyntaxNodePtr,
+}
+
+impl Diagnostic for InactiveCode {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("inactive-code")
+    }
+    fn message(&self) -> String {
+        // FIXME: say *why* it is configured out
+        "code is inactive due to #[cfg] directives".to_string()
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.node.clone())
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}

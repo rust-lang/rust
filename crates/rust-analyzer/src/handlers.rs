@@ -16,12 +16,12 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams,
-    DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location,
-    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
-    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
-    TextDocumentIdentifier, Url, WorkspaceEdit,
+    CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DiagnosticTag,
+    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
+    HoverContents, Location, Position, PrepareRenameResponse, Range, RenameParams,
+    SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
+    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
@@ -1124,7 +1124,7 @@ pub(crate) fn publish_diagnostics(
             source: Some("rust-analyzer".to_string()),
             message: d.message,
             related_information: None,
-            tags: None,
+            tags: if d.unused { Some(vec![DiagnosticTag::Unnecessary]) } else { None },
         })
         .collect();
     Ok(diagnostics)
