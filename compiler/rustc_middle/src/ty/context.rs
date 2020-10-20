@@ -134,7 +134,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     fn intern_predicate(&self, kind: PredicateKind<'tcx>) -> &'tcx PredicateInner<'tcx> {
         self.predicate
             .intern(kind, |kind| {
-                let flags = super::flags::FlagComputation::for_predicate(&kind);
+                let flags = super::flags::FlagComputation::for_predicate(kind);
 
                 let predicate_struct = PredicateInner {
                     kind,

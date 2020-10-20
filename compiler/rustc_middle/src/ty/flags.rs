@@ -22,7 +22,7 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_predicate(kind: &ty::PredicateKind<'_>) -> FlagComputation {
+    pub fn for_predicate(kind: ty::PredicateKind<'_>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_predicate_kind(kind);
         result
@@ -53,7 +53,14 @@ impl FlagComputation {
 
     /// Adds the flags/depth from a set of types that appear within the current type, but within a
     /// region binder.
-    fn add_bound_computation(&mut self, computation: FlagComputation) {
+    fn bound_computation<T, F>(&mut self, value: ty::Binder<T>, f: F)
+    where
+        F: FnOnce(&mut Self, T),
+    {
+        let mut computation = FlagComputation::new();
+
+        f(&mut computation, value.skip_binder());
+
         self.add_flags(computation.flags);
 
         // The types that contributed to `computation` occurred within
@@ -101,9 +108,7 @@ impl FlagComputation {
             }
 
             &ty::GeneratorWitness(ts) => {
-                let mut computation = FlagComputation::new();
-                computation.add_tys(ts.skip_binder());
-                self.add_bound_computation(computation);
+                self.bound_computation(ts, |flags, ts| flags.add_tys(ts));
             }
 
             &ty::Closure(_, substs) => {
@@ -154,20 +159,21 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::Dynamic(ref obj, r) => {
-                let mut computation = FlagComputation::new();
-                for predicate in obj.skip_binder().iter() {
-                    match predicate {
-                        ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),
-                        ty::ExistentialPredicate::Projection(p) => {
-                            let mut proj_computation = FlagComputation::new();
-                            proj_computation.add_existential_projection(&p);
-                            self.add_bound_computation(proj_computation);
+            &ty::Dynamic(obj, r) => {
+                self.bound_computation(obj, |computation, obj| {
+                    for predicate in obj.iter() {
+                        match predicate {
+                            ty::ExistentialPredicate::Trait(tr) => {
+                                computation.add_substs(tr.substs)
+                            }
+                            ty::ExistentialPredicate::Projection(p) => {
+                                computation.add_existential_projection(&p);
+                            }
+                            ty::ExistentialPredicate::AutoTrait(_) => {}
                         }
-                        ty::ExistentialPredicate::AutoTrait(_) => {}
                     }
-                }
-                self.add_bound_computation(computation);
+                });
+
                 self.add_region(r);
             }
 
@@ -195,22 +201,21 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::FnPtr(f) => {
-                self.add_fn_sig(f);
-            }
+            &ty::FnPtr(fn_sig) => self.bound_computation(fn_sig, |computation, fn_sig| {
+                computation.add_tys(fn_sig.inputs());
+                computation.add_ty(fn_sig.output());
+            }),
         }
     }
 
-    fn add_predicate_kind(&mut self, kind: &ty::PredicateKind<'_>) {
+    fn add_predicate_kind(&mut self, kind: ty::PredicateKind<'_>) {
         match kind {
             ty::PredicateKind::ForAll(binder) => {
-                let mut computation = FlagComputation::new();
-
-                computation.add_predicate_atom(binder.skip_binder());
-
-                self.add_bound_computation(computation);
+                self.bound_computation(binder, |computation, atom| {
+                    computation.add_predicate_atom(atom)
+                });
             }
-            &ty::PredicateKind::Atom(atom) => self.add_predicate_atom(atom),
+            ty::PredicateKind::Atom(atom) => self.add_predicate_atom(atom),
         }
     }
 
@@ -264,15 +269,6 @@ impl FlagComputation {
         for &ty in tys {
             self.add_ty(ty);
         }
-    }
-
-    fn add_fn_sig(&mut self, fn_sig: ty::PolyFnSig<'_>) {
-        let mut computation = FlagComputation::new();
-
-        computation.add_tys(fn_sig.skip_binder().inputs());
-        computation.add_ty(fn_sig.skip_binder().output());
-
-        self.add_bound_computation(computation);
     }
 
     fn add_region(&mut self, r: ty::Region<'_>) {
