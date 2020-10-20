@@ -47,6 +47,7 @@ use rustc_hir::{
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_serialize::opaque;
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Session;
@@ -1335,10 +1336,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn serialize_query_result_cache<E>(self, encoder: &mut E) -> Result<(), E::Error>
-    where
-        E: ty::codec::OpaqueEncoder,
-    {
+    pub fn serialize_query_result_cache(self, encoder: &mut opaque::Encoder) -> Result<(), !> {
         self.queries.on_disk_cache.as_ref().map(|c| c.serialize(self, encoder)).unwrap_or(Ok(()))
     }
 

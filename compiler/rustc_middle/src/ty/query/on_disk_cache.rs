@@ -240,10 +240,11 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'tcx, E>(&self, tcx: TyCtxt<'tcx>, encoder: &mut E) -> Result<(), E::Error>
-    where
-        E: OpaqueEncoder,
-    {
+    pub fn serialize<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        encoder: &mut opaque::Encoder,
+    ) -> Result<(), !> {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
@@ -297,7 +298,7 @@ impl<'sess> OnDiskCache<'sess> {
                 macro_rules! encode_queries {
                     ($($query:ident,)*) => {
                         $(
-                            encode_query_results::<ty::query::queries::$query<'_>, _>(
+                            encode_query_results::<ty::query::queries::$query<'_>>(
                                 tcx,
                                 enc,
                                 qri
@@ -1167,15 +1168,14 @@ impl<'a> Decodable<opaque::Decoder<'a>> for IntEncodedWithFixedSize {
     }
 }
 
-fn encode_query_results<'a, 'tcx, Q, E>(
+fn encode_query_results<'a, 'tcx, Q>(
     tcx: TyCtxt<'tcx>,
-    encoder: &mut CacheEncoder<'a, 'tcx, E>,
+    encoder: &mut CacheEncoder<'a, 'tcx, opaque::Encoder>,
     query_result_index: &mut EncodedQueryResultIndex,
-) -> Result<(), E::Error>
+) -> Result<(), !>
 where
     Q: super::QueryDescription<TyCtxt<'tcx>> + super::QueryAccessors<TyCtxt<'tcx>>,
-    Q::Value: Encodable<CacheEncoder<'a, 'tcx, E>>,
-    E: 'a + OpaqueEncoder,
+    Q::Value: Encodable<CacheEncoder<'a, 'tcx, opaque::Encoder>>,
 {
     let _timer = tcx
         .sess
