@@ -485,6 +485,11 @@ impl ProjectWorkspace {
                 }
             }
         }
+        if crate_graph.patch_cfg_if() {
+            log::debug!("Patched std to depend on cfg-if")
+        } else {
+            log::debug!("Did not patch std to depend on cfg-if")
+        }
         crate_graph
     }
 }
