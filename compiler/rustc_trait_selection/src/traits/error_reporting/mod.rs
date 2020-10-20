@@ -1462,9 +1462,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let bound_predicate = predicate.bound_atom();
         let mut err = match bound_predicate.skip_binder() {
             ty::PredicateAtom::Trait(data, _) => {
-                let self_ty = data.trait_ref.self_ty();
                 let trait_ref = bound_predicate.rebind(data.trait_ref);
-                debug!("self_ty {:?} {:?} trait_ref {:?}", self_ty, self_ty.kind(), trait_ref);
+                debug!("trait_ref {:?}", trait_ref);
 
                 if predicate.references_error() {
                     return;
@@ -1478,6 +1477,17 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // in an ambiguity even when all types are fully
                 // known, since we don't dispatch based on region
                 // relationships.
+
+                // Pick the first substitution that still contains inference variables as the one
+                // we're going to emit an error for. If there are none (see above), fall back to
+                // the substitution for `Self`.
+                let subst = {
+                    let substs = data.trait_ref.substs;
+                    substs
+                        .iter()
+                        .find(|s| s.has_infer_types_or_consts())
+                        .unwrap_or_else(|| substs[0])
+                };
 
                 // This is kind of a hack: it frequently happens that some earlier
                 // error prevents types from being fully inferred, and then we get
@@ -1495,21 +1505,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
                 if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
-                    self.emit_inference_failure_err(
-                        body_id,
-                        span,
-                        self_ty.into(),
-                        ErrorCode::E0282,
-                    )
-                    .emit();
+                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0282).emit();
                     return;
                 }
-                let mut err = self.emit_inference_failure_err(
-                    body_id,
-                    span,
-                    self_ty.into(),
-                    ErrorCode::E0283,
-                );
+                let mut err =
+                    self.emit_inference_failure_err(body_id, span, subst, ErrorCode::E0283);
                 err.note(&format!("cannot satisfy `{}`", predicate));
                 if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
