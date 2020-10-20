@@ -184,8 +184,8 @@ pub(super) fn emit_va_arg(
         "aarch64" if target.options.is_like_windows => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
         }
-        // iOS AArch64
-        "aarch64" if target.target_os == "ios" => {
+        // macOS / iOS AArch64
+        "aarch64" if target.options.is_like_osx => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
