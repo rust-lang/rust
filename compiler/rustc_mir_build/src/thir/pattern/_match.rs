@@ -181,7 +181,6 @@
 //! we ignore all the patterns in the first column of `P` that involve other constructors.
 //! This is where `S(c, P)` comes in:
 //! `U(P, p) := U(S(c, P), S(c, p))`
-//! This special case is handled in `is_useful_specialized`.
 //!
 //! For example, if `P` is:
 //!
@@ -1116,8 +1115,8 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    /// Some constructors (namely IntRange and Slice) actually stand for a set of actual
-    /// constructors (integers and fixed-sized slices). When specializing for these
+    /// Some constructors (namely Wildcard, IntRange and Slice) actually stand for a set of actual
+    /// constructors (like variants, integers or fixed-sized slices). When specializing for these
     /// constructors, we want to be specialising for the actual underlying constructors.
     /// Naively, we would simply return the list of constructors they correspond to. We instead are
     /// more clever: if there are constructors that we know will behave the same wrt the current
@@ -1136,6 +1135,7 @@ impl<'tcx> Constructor<'tcx> {
         debug!("Constructor::split({:#?}, {:#?})", self, pcx.matrix);
 
         match self {
+            Wildcard => Constructor::split_wildcard(pcx),
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
             IntRange(ctor_range)
@@ -1146,6 +1146,30 @@ impl<'tcx> Constructor<'tcx> {
             Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(pcx),
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
+        }
+    }
+
+    /// For wildcards, there are two groups of constructors: there are the constructors actually
+    /// present in the matrix (`head_ctors`), and the constructors not present (`missing_ctors`).
+    /// Two constructors that are not in the matrix will either both be catched (by a wildcard), or
+    /// both not be catched. Therefore we can keep the missing constructors grouped together.
+    fn split_wildcard<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Self; 1]> {
+        // Missing constructors are those that are not matched by any non-wildcard patterns in the
+        // current column. We only fully construct them on-demand, because they're rarely used and
+        // can be big.
+        let missing_ctors = MissingConstructors::new(pcx);
+
+        if missing_ctors.is_empty() {
+            // All the constructors are present in the matrix, so we just go through them all.
+            // We must also split them first.
+            // Since `all_ctors` never contains wildcards, this won't recurse more than once.
+            let (all_ctors, _) = missing_ctors.into_inner();
+            all_ctors.into_iter().flat_map(|ctor| ctor.split(pcx, None)).collect()
+        } else {
+            // Some constructors are missing, thus we can specialize with the wildcard constructor,
+            // which will stand for those constructors that are missing, and behaves like any of
+            // them.
+            smallvec![Wildcard]
         }
     }
 
@@ -1617,8 +1641,8 @@ impl<'tcx> Usefulness<'tcx> {
         match self {
             UsefulWithWitness(witnesses) => {
                 let new_witnesses = if ctor.is_wildcard() {
-                    let missing_ctors = MissingConstructors::new(pcx, is_top_level);
-                    let new_patterns = missing_ctors.report_patterns(pcx);
+                    let missing_ctors = MissingConstructors::new(pcx);
+                    let new_patterns = missing_ctors.report_patterns(pcx, is_top_level);
                     witnesses
                         .into_iter()
                         .flat_map(|witness| {
@@ -2217,16 +2241,15 @@ impl<'tcx> std::cmp::PartialEq for IntRange<'tcx> {
 struct MissingConstructors<'tcx> {
     all_ctors: Vec<Constructor<'tcx>>,
     used_ctors: Vec<Constructor<'tcx>>,
-    is_top_level: bool,
 }
 
 impl<'tcx> MissingConstructors<'tcx> {
-    fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>, is_top_level: bool) -> Self {
+    fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
         let used_ctors: Vec<Constructor<'_>> =
             pcx.matrix.head_ctors(pcx.cx).cloned().filter(|c| !c.is_wildcard()).collect();
         let all_ctors = all_constructors(pcx);
 
-        MissingConstructors { all_ctors, used_ctors, is_top_level }
+        MissingConstructors { all_ctors, used_ctors }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
@@ -2244,7 +2267,11 @@ impl<'tcx> MissingConstructors<'tcx> {
 
     /// List the patterns corresponding to the missing constructors. In some cases, instead of
     /// listing all constructors of a given type, we prefer to simply report a wildcard.
-    fn report_patterns<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Pat<'tcx>; 1]> {
+    fn report_patterns<'p>(
+        &self,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
+        is_top_level: bool,
+    ) -> SmallVec<[Pat<'tcx>; 1]> {
         // There are 2 ways we can report a witness here.
         // Commonly, we can report all the "free"
         // constructors as witnesses, e.g., if we have:
@@ -2272,7 +2299,7 @@ impl<'tcx> MissingConstructors<'tcx> {
         // `used_ctors` is empty.
         // The exception is: if we are at the top-level, for example in an empty match, we
         // sometimes prefer reporting the list of constructors instead of just `_`.
-        let report_when_all_missing = self.is_top_level && !IntRange::is_integral(pcx.ty);
+        let report_when_all_missing = is_top_level && !IntRange::is_integral(pcx.ty);
         if self.used_ctors.is_empty() && !report_when_all_missing {
             // All constructors are unused. Report only a wildcard
             // rather than each individual constructor.
@@ -2407,101 +2434,24 @@ crate fn is_useful<'p, 'tcx>(
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
 
-    let constructor = v.head_ctor(cx);
-    let ret = if !constructor.is_wildcard() {
-        debug!("is_useful - expanding constructor: {:#?}", constructor);
-        constructor
-            .split(pcx, Some(hir_id))
-            .into_iter()
-            .map(|c| {
-                is_useful_specialized(
-                    pcx,
-                    v,
-                    &c,
-                    witness_preference,
-                    hir_id,
-                    is_under_guard,
-                    is_top_level,
-                )
-            })
-            .find(|result| result.is_useful())
-            .unwrap_or(NotUseful)
-    } else {
-        debug!("is_useful - expanding wildcard");
-
-        // `missing_ctors` is the set of constructors from the same type as the
-        // first column of `matrix` that are matched only by wildcard patterns
-        // from the first column.
-        //
-        // Therefore, if there is some pattern that is unmatched by `matrix`,
-        // it will still be unmatched if the first constructor is replaced by
-        // any of the constructors in `missing_ctors`
-
-        // Missing constructors are those that are not matched by any non-wildcard patterns in the
-        // current column. We only fully construct them on-demand, because they're rarely used and
-        // can be big.
-        let missing_ctors = MissingConstructors::new(pcx, is_top_level);
-
-        debug!("is_useful_missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
-
-        if missing_ctors.is_empty() {
-            let (all_ctors, _) = missing_ctors.into_inner();
-            all_ctors
-                .into_iter()
-                .flat_map(|ctor| ctor.split(pcx, None))
-                .map(|c| {
-                    is_useful_specialized(
-                        pcx,
-                        v,
-                        &c,
-                        witness_preference,
-                        hir_id,
-                        is_under_guard,
-                        is_top_level,
-                    )
-                })
-                .find(|result| result.is_useful())
-                .unwrap_or(NotUseful)
-        } else {
-            // Some constructors are missing, thus we can specialize with the wildcard constructor,
-            // which will stand for those constructors that are missing, and behaves like any of
-            // them.
-            is_useful_specialized(
-                pcx,
-                v,
-                constructor,
-                witness_preference,
-                hir_id,
-                is_under_guard,
-                is_top_level,
-            )
-        }
-    };
+    let ret = v
+        .head_ctor(cx)
+        .split(pcx, Some(hir_id))
+        .into_iter()
+        .map(|ctor| {
+            // We cache the result of `Fields::wildcards` because it is used a lot.
+            let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
+            let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
+            // Unwrap is ok: v can always be specialized with its own constructor.
+            let v = v.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns, true).unwrap();
+            let usefulness =
+                is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, is_top_level)
+        })
+        .find(|result| result.is_useful())
+        .unwrap_or(NotUseful);
     debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
     ret
-}
-
-/// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
-/// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
-fn is_useful_specialized<'p, 'tcx>(
-    pcx: PatCtxt<'_, 'p, 'tcx>,
-    v: &PatStack<'p, 'tcx>,
-    ctor: &Constructor<'tcx>,
-    witness_preference: WitnessPreference,
-    hir_id: HirId,
-    is_under_guard: bool,
-    is_top_level: bool,
-) -> Usefulness<'tcx> {
-    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, pcx.ty);
-
-    // We cache the result of `Fields::wildcards` because it is used a lot.
-    let ctor_wild_subpatterns = Fields::wildcards(pcx, ctor);
-    let matrix = pcx.matrix.specialize_constructor(pcx, ctor, &ctor_wild_subpatterns);
-    // Unwrap is ok: v can always be specialized with its own constructor.
-    let v = v.specialize_constructor(pcx, ctor, &ctor_wild_subpatterns, true).unwrap();
-    let usefulness =
-        is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-    usefulness.apply_constructor(pcx, ctor, &ctor_wild_subpatterns, is_top_level)
 }
 
 /// Determines the constructor that the given pattern can be specialized to.
