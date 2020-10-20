@@ -102,16 +102,16 @@ This crate has the following Cargo features:
 - `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
    of compilation time. (enabled by default)
 - `ahash`: Compiles with ahash as default hasher. (enabled by default)
-- `std`: Enables use of features that depend on the standard library.
-   If `ahash` is used this includes using random keys to provide DOS resistance. (disabled by default)
-- `ahash-compile-time-rng`: This is an alternative to `std` which still allows for some degree of DOS-resistance.
-   However, it can result in issues for certain platforms.
-   See details in [issue#124](https://github.com/rust-lang/hashbrown/issues/124). (disabled by default)
-- `nightly`: Enables nightly-only features: `#[may_dangle]`.
+- `ahash-run-time-rng`: Uses randomly generated keys for each hashmap to provide DOS resistance.
+   This requires the standard library. (disabled by default)
+- `ahash-compile-time-rng`: This is an alternative to `ahash-run-time-rng` that works by pre-generating keys at 
+   compile time and embedding them as constants. The avoids the dependency on the standard library but means the 
+   binary will be slightly different each time it is compiled. (disabled by default)
+- `nightly`: Enables nightly-only features including: `#[may_dangle]` and specialization to improve performance hashing 
+   primitive types in aHash (if `ahash` is enabled).
 - `serde`: Enables serde serialization support.
 - `rayon`: Enables rayon parallel iterator support.
 - `raw`: Enables access to the experimental and unsafe `RawTable` API.
-
 
 ## License
 

@@ -9,18 +9,7 @@ use core::mem;
 use core::ops::Index;
 
 /// Default hasher for `HashMap`.
-#[cfg(all(
-    feature = "ahash",
-    any(feature = "std", feature = "ahash-compile-time-rng")
-))]
 pub type DefaultHashBuilder = ahash::RandomState;
-
-/// Default hasher for `HashMap`.
-#[cfg(all(
-    feature = "ahash",
-    not(any(feature = "std", feature = "ahash-compile-time-rng"))
-))]
-pub type DefaultHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
 
 /// Dummy default hasher for `HashMap`.
 #[cfg(not(feature = "ahash"))]
@@ -249,7 +238,7 @@ where
 
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
-    #[cfg(feature = "ahash")]
+    #[cfg(feature = "ahash")] //This enables specialization to improve performance on primitive types
     {
         use ahash::CallHasher;
         let state = hash_builder.build_hasher();
