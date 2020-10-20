@@ -59,7 +59,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             .filter(|variant_pat| is_variant_missing(&mut arms, variant_pat))
             .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
             .collect::<Vec<_>>();
-        if Some(enum_def) == FamousDefs(&ctx.sema, module.krate()).core_option_Option() {
+        if Some(enum_def) == FamousDefs(&ctx.sema, Some(module.krate())).core_option_Option() {
             // Match `Some` variant first.
             mark::hit!(option_order);
             variants.reverse()
