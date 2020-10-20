@@ -65,10 +65,6 @@ note: the `if` expression is missing a block after this condition
    |
 LL |     if true x else {}
    |        ^^^^
-help: you might have meant to write this as part of a block
-   |
-LL |     if true { x } else {}
-   |             +   +
 
 error: this `if` expression is missing a block after the condition
   --> $DIR/bad-if-statements.rs:34:5

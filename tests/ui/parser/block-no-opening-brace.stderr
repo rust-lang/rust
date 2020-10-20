@@ -51,23 +51,27 @@ LL |     async
 LL |         let x = 0;
    |         ^^^ unexpected token
 
-error: expected expression, found keyword `const`
-  --> $DIR/block-no-opening-brace.rs:38:13
+error: expected `{`, found `2`
+  --> $DIR/block-no-opening-brace.rs:38:19
    |
 LL |     let x = const 2;
-   |             ^^^^^ expected expression
-
-error: expected identifier, found keyword `const`
-  --> $DIR/block-no-opening-brace.rs:45:9
+   |                   ^ expected `{`
    |
-LL |         const 2 => {}
-   |         ^^^^^ expected identifier, found keyword
+help: you might have meant to write this as part of a block
+   |
+LL |     let x = const { 2 };
+   |                   +   +
 
-error: expected one of `=>`, `if`, or `|`, found `2`
+error: expected `{`, found `2`
   --> $DIR/block-no-opening-brace.rs:45:15
    |
 LL |         const 2 => {}
-   |               ^ expected one of `=>`, `if`, or `|`
+   |               ^ expected `{`
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |         const { 2 } => {}
+   |               +   +
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 

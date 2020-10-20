@@ -538,15 +538,19 @@ impl<'a> Parser<'a> {
             //
             // the place-inside-a-block suggestion would be more likely wrong than right.
             //
+            // But we don't want to trigger this if we just parsed a pattern,
+            // so this only triggers if the current token is neither `=>` nor `=`.
+            //
             // FIXME(compiler-errors): this should probably parse an arbitrary expr and not
             // just lookahead one token, so we can see if there's a brace after _that_,
             // since we want to protect against:
             //     `if 1 1 + 1 {` being suggested as  `if { 1 } 1 + 1 {`
             //                                            +   +
             Ok(Some(_))
-                if (!self.token.is_keyword(kw::Else)
-                    && self.look_ahead(1, |t| t == &token::OpenBrace))
-                    || do_not_suggest_help => {}
+                if do_not_suggest_help
+                    || (self.token != token::FatArrow
+                        && self.token != token::Eq
+                        && self.look_ahead(1, |t| t == &token::OpenBrace)) => {}
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
             Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
             Ok(Some(stmt)) => {
