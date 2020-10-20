@@ -337,8 +337,8 @@ impl<'a> Parser<'a> {
             let pat = self.parse_pat_with_range_pat(false, None)?;
             self.sess.gated_spans.gate(sym::box_patterns, lo.to(self.prev_token.span));
             PatKind::Box(pat)
-        } else if self.check_inline_const(0) {
-            // Parse `const pat`
+        } else if self.eat_keyword(kw::Const) {
+            // Parse `const { pat }`
             let const_expr = self.parse_const_block(lo.to(self.token.span))?;
 
             if let Some(re) = self.parse_range_end() {

@@ -1,13 +1,8 @@
-error: expected identifier, found keyword `const`
-  --> $DIR/keyword-const-as-identifier.rs:4:9
+error: expected `{`, found `=`
+  --> $DIR/keyword-const-as-identifier.rs:4:15
    |
 LL |     let const = "foo";
-   |         ^^^^^ expected identifier, found keyword
-   |
-help: you can escape reserved keywords to use them as identifiers
-   |
-LL |     let r#const = "foo";
-   |         ^^^^^^^
+   |               ^ expected `{`
 
 error: aborting due to previous error
 

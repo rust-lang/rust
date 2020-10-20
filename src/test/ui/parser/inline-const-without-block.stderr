@@ -1,0 +1,47 @@
+error: expected `{`, found `2`
+  --> $DIR/inline-const-without-block.rs:18:15
+   |
+LL |         const 2 => {}
+   |               ^
+   |               |
+   |               expected `{`
+   |               help: try placing this code inside a block: `{ 2 }`
+
+error: expected `{`, found `1`
+  --> $DIR/inline-const-without-block.rs:25:15
+   |
+LL |         const 1 + 2 * 3 / 4 => {}
+   |               ^------------
+   |               |
+   |               expected `{`
+   |               help: try placing this code inside a block: `{ 1 + 2 * 3 / 4 }`
+
+error: expected `{`, found `one`
+  --> $DIR/inline-const-without-block.rs:32:15
+   |
+LL |         const one() => {}
+   |               ^^^--
+   |               |
+   |               expected `{`
+   |               help: try placing this code inside a block: `{ one() }`
+
+error: expected `{`, found `2`
+  --> $DIR/inline-const-without-block.rs:42:19
+   |
+LL |     let x = const 2;
+   |                   ^
+   |                   |
+   |                   expected `{`
+   |                   help: try placing this code inside a block: `{ 2 }`
+
+error: expected `{`, found `1`
+  --> $DIR/inline-const-without-block.rs:50:19
+   |
+LL |     let y = const 1 + 2 * 3 / 4;
+   |                   ^------------
+   |                   |
+   |                   expected `{`
+   |                   help: try placing this code inside a block: `{ 1 + 2 * 3 / 4 }`
+
+error: aborting due to 5 previous errors
+

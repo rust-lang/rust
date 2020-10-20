@@ -303,9 +303,14 @@ impl<'a> Parser<'a> {
         match self.parse_stmt_without_recovery() {
             // If the next token is an open brace (e.g., `if a b {`), the place-
             // inside-a-block suggestion would be more likely wrong than right.
+            //
+            // But we don't want to trigger this if we just parsed a pattern,
+            // so this only triggers if the current token is neither `=>` nor `=`.
             Ok(Some(_))
-                if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
-                    || do_not_suggest_help => {}
+                if do_not_suggest_help
+                    || (self.token != token::FatArrow
+                        && self.token != token::Eq
+                        && self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))) => {}
             Ok(Some(stmt)) => {
                 let stmt_own_line = self.sess.source_map().is_line_before_span_empty(sp);
                 let stmt_span = if stmt_own_line && self.eat(&token::Semi) {
@@ -319,7 +324,7 @@ impl<'a> Parser<'a> {
                         stmt_span,
                         "try placing this code inside a block",
                         format!("{{ {} }}", snippet),
-                        // Speculative; has been misleading in the past (#46836).
+                        // Speculative; has been misleading in the past (see #46836).
                         Applicability::MaybeIncorrect,
                     );
                 }
