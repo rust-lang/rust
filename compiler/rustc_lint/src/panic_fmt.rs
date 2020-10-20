@@ -3,6 +3,7 @@ use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty;
+use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_span::sym;
 
 declare_lint! {
@@ -52,13 +53,28 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 if cx.tcx.is_diagnostic_item(sym::std_panic_macro, id)
                     || cx.tcx.is_diagnostic_item(sym::core_panic_macro, id)
                 {
-                    let s = sym.as_str();
-                    if !s.contains(&['{', '}'][..]) {
+                    let fmt = sym.as_str();
+                    if !fmt.contains(&['{', '}'][..]) {
                         return;
                     }
-                    let s = s.replace("{{", "").replace("}}", "");
-                    let looks_like_placeholder =
-                        s.find('{').map_or(false, |i| s[i + 1..].contains('}'));
+
+                    let fmt_span = arg.span.source_callsite();
+
+                    let (snippet, style) =
+                        match cx.sess().parse_sess.source_map().span_to_snippet(fmt_span) {
+                            Ok(snippet) => {
+                                // Count the number of `#`s between the `r` and `"`.
+                                let style = snippet.strip_prefix('r').and_then(|s| s.find('"'));
+                                (Some(snippet), style)
+                            }
+                            Err(_) => (None, None),
+                        };
+
+                    let mut fmt_parser =
+                        Parser::new(fmt.as_ref(), style, snippet, false, ParseMode::Format);
+                    let n_arguments =
+                        (&mut fmt_parser).filter(|a| matches!(a, Piece::NextArgument(_))).count();
+
                     // Unwrap another level of macro expansion if this panic!()
                     // was expanded from assert!() or debug_assert!().
                     for &assert in &[sym::assert_macro, sym::debug_assert_macro] {
@@ -70,15 +86,23 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                             expn = parent;
                         }
                     }
-                    if looks_like_placeholder {
-                        cx.struct_span_lint(PANIC_FMT, arg.span.source_callsite(), |lint| {
-                            let mut l = lint.build("panic message contains an unused formatting placeholder");
+
+                    if n_arguments > 0 && fmt_parser.errors.is_empty() {
+                        let arg_spans: Vec<_> = match &fmt_parser.arg_places[..] {
+                            [] => vec![fmt_span],
+                            v => v.iter().map(|span| fmt_span.from_inner(*span)).collect(),
+                        };
+                        cx.struct_span_lint(PANIC_FMT, arg_spans, |lint| {
+                            let mut l = lint.build(match n_arguments {
+                                1 => "panic message contains an unused formatting placeholder",
+                                _ => "panic message contains unused formatting placeholders",
+                            });
                             l.note("this message is not used as a format string when given without arguments, but will be in a future Rust version");
                             if expn.call_site.contains(arg.span) {
                                 l.span_suggestion(
                                     arg.span.shrink_to_hi(),
                                     "add the missing argument(s)",
-                                    ", argument".into(),
+                                    ", ...".into(),
                                     Applicability::HasPlaceholders,
                                 );
                                 l.span_suggestion(
