@@ -38,6 +38,13 @@ pub struct MatchBranchSimplification;
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // FIXME: This optimization can result in unsoundness, because it introduces
+        // additional uses of a place holding the discriminant value without ensuring that
+        // it is valid to do so.
+        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
+            return;
+        }
+
         let param_env = tcx.param_env(body.source.def_id());
         let bbs = body.basic_blocks_mut();
         'outer: for bb_idx in bbs.indices() {
