@@ -510,7 +510,6 @@ fn promoted_mir<'tcx>(
 
     for body in &mut promoted {
         run_post_borrowck_cleanup_passes(tcx, body);
-        run_optimization_passes(tcx, body);
     }
 
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");

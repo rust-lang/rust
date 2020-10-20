@@ -1,4 +1,4 @@
-// MIR for `FOO::promoted[0]` after ConstProp
+// MIR for `FOO::promoted[0]` after SimplifyCfg-elaborate-drops
 
 promoted[0] in FOO: &[&i32; 1] = {
     let mut _0: &[&i32; 1];              // return place in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
