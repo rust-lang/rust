@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use base_db::{CrateId, CrateName, Dependency, Edition};
+use base_db::{CrateDisplayName, CrateId, CrateName, Dependency, Edition};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
@@ -21,6 +21,7 @@ pub struct ProjectJson {
 /// useful in creating the crate graph.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Crate {
+    pub(crate) display_name: Option<CrateDisplayName>,
     pub(crate) root_module: AbsPathBuf,
     pub(crate) edition: Edition,
     pub(crate) deps: Vec<Dependency>,
@@ -68,6 +69,9 @@ impl ProjectJson {
                     };
 
                     Crate {
+                        display_name: crate_data
+                            .display_name
+                            .map(CrateDisplayName::from_canonical_name),
                         root_module,
                         edition: crate_data.edition.into(),
                         deps: crate_data
@@ -114,6 +118,7 @@ pub struct ProjectJsonData {
 
 #[derive(Deserialize)]
 struct CrateData {
+    display_name: Option<String>,
     root_module: PathBuf,
     edition: EditionData,
     deps: Vec<DepData>,

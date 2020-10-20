@@ -287,6 +287,9 @@ interface JsonProject {
 }
 
 interface Crate {
+    /// Optional crate name used for display purposes, without affecting semantics.
+    /// See the `deps` key for semantically-significant crate names.
+    display_name?: string;
     /// Path to the root module of the crate.
     root_module: string;
     /// Edition of the crate.

@@ -335,8 +335,7 @@ impl ProjectWorkspace {
                             crate_graph.add_crate_root(
                                 file_id,
                                 krate.edition,
-                                // FIXME json definitions can store the crate name
-                                None,
+                                krate.display_name.clone(),
                                 cfg_options,
                                 env,
                                 proc_macro.unwrap_or_default(),
