@@ -275,7 +275,7 @@ impl TryEnum {
 /// somewhat similar to the known paths infra inside hir, but it different; We
 /// want to make sure that IDE specific paths don't become interesting inside
 /// the compiler itself as well.
-pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Crate);
+pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Option<Crate>);
 
 #[allow(non_snake_case)]
 impl FamousDefs<'_, '_> {
@@ -362,6 +362,10 @@ pub mod prelude {
 pub use prelude::*;
 "#;
 
+    pub fn core(&self) -> Option<Crate> {
+        self.find_crate("core")
+    }
+
     pub(crate) fn core_convert_From(&self) -> Option<Trait> {
         self.find_trait("core:convert:From")
     }
@@ -399,21 +403,20 @@ pub use prelude::*;
         }
     }
 
+    fn find_crate(&self, name: &str) -> Option<Crate> {
+        let krate = self.1?;
+        let db = self.0.db;
+        let res =
+            krate.dependencies(db).into_iter().find(|dep| dep.name.to_string() == name)?.krate;
+        Some(res)
+    }
+
     fn find_def(&self, path: &str) -> Option<ScopeDef> {
         let db = self.0.db;
         let mut path = path.split(':');
         let trait_ = path.next_back()?;
         let std_crate = path.next()?;
-        let std_crate = if self
-            .1
-            .display_name(db)
-            .map(|name| name.to_string() == std_crate)
-            .unwrap_or(false)
-        {
-            self.1
-        } else {
-            self.1.dependencies(db).into_iter().find(|dep| dep.name.to_string() == std_crate)?.krate
-        };
+        let std_crate = self.find_crate(std_crate)?;
         let mut module = std_crate.root_module(db);
         for segment in path {
             module = module.children(db).find_map(|child| {

@@ -99,6 +99,9 @@ fn get_chaining_hints(
         return None;
     }
 
+    let krate = sema.scope(expr.syntax()).module().map(|it| it.krate());
+    let famous_defs = FamousDefs(&sema, krate);
+
     let mut tokens = expr
         .syntax()
         .siblings_with_tokens(Direction::Next)
@@ -128,7 +131,7 @@ fn get_chaining_hints(
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: InlayKind::ChainingHint,
-            label: hint_iterator(sema, config, &ty).unwrap_or_else(|| {
+            label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
                 ty.display_truncated(sema.db, config.max_length).to_string().into()
             }),
         });
@@ -188,6 +191,9 @@ fn get_bind_pat_hints(
         return None;
     }
 
+    let krate = sema.scope(pat.syntax()).module().map(|it| it.krate());
+    let famous_defs = FamousDefs(&sema, krate);
+
     let ty = sema.type_of_pat(&pat.clone().into())?;
 
     if should_not_display_type_hint(sema, &pat, &ty) {
@@ -196,7 +202,7 @@ fn get_bind_pat_hints(
     acc.push(InlayHint {
         range: pat.syntax().text_range(),
         kind: InlayKind::TypeHint,
-        label: hint_iterator(sema, config, &ty)
+        label: hint_iterator(sema, &famous_defs, config, &ty)
             .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
     });
 
@@ -206,6 +212,7 @@ fn get_bind_pat_hints(
 /// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
 fn hint_iterator(
     sema: &Semantics<RootDatabase>,
+    famous_defs: &FamousDefs,
     config: &InlayHintsConfig,
     ty: &hir::Type,
 ) -> Option<SmolStr> {
@@ -214,11 +221,11 @@ fn hint_iterator(
         .last()
         .and_then(|strukt| strukt.as_adt())?;
     let krate = strukt.krate(db)?;
-    if krate.display_name(db).as_deref() != Some("core") {
+    if krate != famous_defs.core()? {
         return None;
     }
-    let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
-    let iter_mod = FamousDefs(sema, krate).core_iter()?;
+    let iter_trait = famous_defs.core_iter_Iterator()?;
+    let iter_mod = famous_defs.core_iter()?;
     // assert this struct comes from `core::iter`
     iter_mod.visibility_of(db, &strukt.into()).filter(|&vis| vis == hir::Visibility::Public)?;
     if ty.impls_trait(db, iter_trait, &[]) {
@@ -230,7 +237,7 @@ fn hint_iterator(
             const LABEL_START: &str = "impl Iterator<Item = ";
             const LABEL_END: &str = ">";
 
-            let ty_display = hint_iterator(sema, config, &ty)
+            let ty_display = hint_iterator(sema, famous_defs, config, &ty)
                 .map(|assoc_type_impl| assoc_type_impl.to_string())
                 .unwrap_or_else(|| {
                     ty.display_truncated(
