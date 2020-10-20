@@ -6,6 +6,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
+use std::mem;
 
 pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -97,9 +98,9 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.within_fn_param = true;
+        let old_within_fn_param = mem::replace(&mut self.within_fn_param, true);
         intravisit::walk_param(self, param);
-        self.within_fn_param = false;
+        self.within_fn_param = old_within_fn_param;
     }
 
     // Add pattern bindings.
