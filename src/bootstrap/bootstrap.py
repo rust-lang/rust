@@ -14,7 +14,10 @@ import tempfile
 
 from time import time
 
-def support_xz():
+if False:
+    from typing import Any, List, Optional, Dict, IO, TextIO, ContextManager, SupportsInt, Iterator
+
+def support_xz():  # type: () -> bool
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_path = temp_file.name
@@ -24,7 +27,7 @@ def support_xz():
     except tarfile.CompressionError:
         return False
 
-def get(url, path, verbose=False, do_verify=True):
+def get(url, path, verbose=False, do_verify=True):  # type: (str, str, int, bool) -> None
     suffix = '.sha256'
     sha_url = url + suffix
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -56,7 +59,7 @@ def get(url, path, verbose=False, do_verify=True):
         delete_if_present(temp_path, verbose)
 
 
-def delete_if_present(path, verbose):
+def delete_if_present(path, verbose):  # type: (str, int) -> None
     """Remove the given file if present"""
     if os.path.isfile(path):
         if verbose:
@@ -64,7 +67,7 @@ def delete_if_present(path, verbose):
         os.unlink(path)
 
 
-def download(path, url, probably_big, verbose):
+def download(path, url, probably_big, verbose):  # type: (str, str, bool, int) -> None
     for _ in range(0, 4):
         try:
             _download(path, url, probably_big, verbose, True)
@@ -75,6 +78,7 @@ def download(path, url, probably_big, verbose):
 
 
 def _download(path, url, probably_big, verbose, exception):
+    # type: (str, str, bool, int, bool) -> None
     if probably_big or verbose:
         print("downloading {}".format(url))
     # see http://serverfault.com/questions/301128/how-to-download
@@ -98,7 +102,7 @@ def _download(path, url, probably_big, verbose, exception):
             exception=exception)
 
 
-def verify(path, sha_path, verbose):
+def verify(path, sha_path, verbose):  # type: (str, str, int) -> bool
     """Check if the sha256 sum of the given path is valid"""
     if verbose:
         print("verifying", path)
@@ -115,6 +119,7 @@ def verify(path, sha_path, verbose):
 
 
 def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
+    # type: (str, str, str, int, Optional[str]) -> None
     """Unpack the given tarball file"""
     print("extracting", tarball)
     fname = os.path.basename(tarball).replace(tarball_suffix, "")
@@ -139,6 +144,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
 
 
 def run(args, verbose=False, exception=False, **kwargs):
+    # type: (List[str], int, bool, Any) -> None
     """Run a child program in a new process"""
     if verbose:
         print("running: " + ' '.join(args))
@@ -154,7 +160,7 @@ def run(args, verbose=False, exception=False, **kwargs):
         sys.exit(err)
 
 
-def require(cmd, exit=True):
+def require(cmd, exit=True):  # type: (List[str], bool) -> Optional[bytes]
     '''Run a command, returning its output.
     On error,
         If `exit` is `True`, exit the process.
@@ -169,16 +175,16 @@ def require(cmd, exit=True):
         sys.exit(1)
 
 
-def stage0_data(rust_root):
+def stage0_data(rust_root):  # type: (str) -> Dict[str, str]
     """Build a dictionary from stage0.txt"""
     nightlies = os.path.join(rust_root, "src/stage0.txt")
     with open(nightlies, 'r') as nightlies:
         lines = [line.rstrip() for line in nightlies
                  if not line.startswith("#")]
-        return dict([line.split(": ", 1) for line in lines if line])
+        return dict([line.split(": ", 1) for line in lines if line])  # type: ignore
 
 
-def format_build_time(duration):
+def format_build_time(duration):  # type: (SupportsInt) -> str
     """Return a nicer format for build time
 
     >>> format_build_time('300')
@@ -187,7 +193,7 @@ def format_build_time(duration):
     return str(datetime.timedelta(seconds=int(duration)))
 
 
-def default_build_triple():
+def default_build_triple():  # type: () -> str
     """Build triple as in LLVM"""
     default_encoding = sys.getdefaultencoding()
     required = sys.platform != 'win32'
@@ -229,7 +235,7 @@ def default_build_triple():
         # output from that option is too generic for our purposes (it will
         # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
         # must be used instead.
-        cputype = require(['isainfo', '-k']).decode(default_encoding)
+        cputype = require(['isainfo', '-k']).decode(default_encoding)  # type: ignore
     elif ostype.startswith('MINGW'):
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
@@ -330,7 +336,7 @@ def default_build_triple():
 
 
 @contextlib.contextmanager
-def output(filepath):
+def output(filepath):  # type: (str) -> Iterator[IO]
     tmp = filepath + '.tmp'
     with open(tmp, 'w') as f:
         yield f
@@ -344,7 +350,7 @@ def output(filepath):
 
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
-    def __init__(self):
+    def __init__(self):  # type: () -> None
         self.cargo_channel = ''
         self.date = ''
         self._download_url = ''
@@ -361,7 +367,7 @@ class RustBuild(object):
         self.git_version = None
         self.nix_deps_dir = None
 
-    def download_stage0(self):
+    def download_stage0(self):  # type: () -> None
         """Fetch the build system for Rust, written in Rust
 
         This method will build a cache directory, then it will fetch the
@@ -445,12 +451,13 @@ class RustBuild(object):
                 with output(self.llvm_stamp()) as llvm_stamp:
                     llvm_stamp.write(self.date + llvm_sha + str(llvm_assertions))
 
-    def downloading_llvm(self):
+    def downloading_llvm(self):  # type: () -> bool
         opt = self.get_toml('download-ci-llvm', 'llvm')
         return opt == "true" \
             or (opt == "if-available" and self.build == "x86_64-unknown-linux-gnu")
 
     def _download_stage0_helper(self, filename, pattern, tarball_suffix, date=None):
+        # type: (str, str, str, Optional[str]) -> None
         if date is None:
             date = self.date
         cache_dst = os.path.join(self.build_dir, "cache")
@@ -464,7 +471,7 @@ class RustBuild(object):
             get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
-    def _download_ci_llvm(self, llvm_sha, llvm_assertions):
+    def _download_ci_llvm(self, llvm_sha, llvm_assertions):  # type: (str, bool) -> None
         cache_prefix = "llvm-{}-{}".format(llvm_sha, llvm_assertions)
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, cache_prefix)
@@ -483,7 +490,7 @@ class RustBuild(object):
                 match="rust-dev",
                 verbose=self.verbose)
 
-    def fix_bin_or_dylib(self, fname):
+    def fix_bin_or_dylib(self, fname):  # type: (str) -> None
         """Modifies the interpreter section of 'fname' to fix the dynamic linker,
         or the RPATH section, to fix the dynamic library search path
 
@@ -574,7 +581,7 @@ class RustBuild(object):
             print("warning: failed to call patchelf:", reason)
             return
 
-    def rustc_stamp(self):
+    def rustc_stamp(self):  # type: () -> str
         """Return the path for .rustc-stamp
 
         >>> rb = RustBuild()
@@ -584,7 +591,7 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
-    def cargo_stamp(self):
+    def cargo_stamp(self):  # type: () -> str
         """Return the path for .cargo-stamp
 
         >>> rb = RustBuild()
@@ -594,7 +601,7 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.cargo-stamp')
 
-    def rustfmt_stamp(self):
+    def rustfmt_stamp(self):  # type: () -> str
         """Return the path for .rustfmt-stamp
 
         >>> rb = RustBuild()
@@ -604,7 +611,7 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.rustfmt-stamp')
 
-    def llvm_stamp(self):
+    def llvm_stamp(self):  # type: () -> str
         """Return the path for .rustfmt-stamp
 
         >>> rb = RustBuild()
@@ -615,14 +622,14 @@ class RustBuild(object):
         return os.path.join(self.llvm_root(), '.llvm-stamp')
 
 
-    def program_out_of_date(self, stamp_path, extra=""):
+    def program_out_of_date(self, stamp_path, extra=""):  # type: (str, str) -> bool
         """Check if the given program stamp is out of date"""
         if not os.path.exists(stamp_path) or self.clean:
             return True
         with open(stamp_path, 'r') as stamp:
             return (self.date + extra) != stamp.read()
 
-    def bin_root(self):
+    def bin_root(self):  # type: () -> str
         """Return the binary root directory
 
         >>> rb = RustBuild()
@@ -638,7 +645,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, self.build, "stage0")
 
-    def llvm_root(self):
+    def llvm_root(self):  # type: () -> str
         """Return the CI LLVM root directory
 
         >>> rb = RustBuild()
@@ -654,7 +661,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, self.build, "ci-llvm")
 
-    def get_toml(self, key, section=None):
+    def get_toml(self, key, section=None):  # type: (str, Optional[str]) -> Optional[str]
         """Returns the value of the given key in config.toml, otherwise returns None
 
         >>> rb = RustBuild()
@@ -695,21 +702,21 @@ class RustBuild(object):
                     return self.get_string(value) or value.strip()
         return None
 
-    def cargo(self):
+    def cargo(self):  # type: () -> str
         """Return config path for cargo"""
         return self.program_config('cargo')
 
-    def rustc(self):
+    def rustc(self):  # type: () -> str
         """Return config path for rustc"""
         return self.program_config('rustc')
 
-    def rustfmt(self):
+    def rustfmt(self):  # type: () -> Optional[str]
         """Return config path for rustfmt"""
         if not self.rustfmt_channel:
             return None
         return self.program_config('rustfmt')
 
-    def program_config(self, program):
+    def program_config(self, program):  # type: (str) -> str
         """Return config path for the given program
 
         >>> rb = RustBuild()
@@ -729,7 +736,7 @@ class RustBuild(object):
             program, self.exe_suffix()))
 
     @staticmethod
-    def get_string(line):
+    def get_string(line):  # type: (str) -> Optional[str]
         """Return the value between double quotes
 
         >>> RustBuild.get_string('    "devel"   ')
@@ -752,13 +759,13 @@ class RustBuild(object):
         return None
 
     @staticmethod
-    def exe_suffix():
+    def exe_suffix():  # type: () -> str
         """Return a suffix for executables"""
         if sys.platform == 'win32':
             return '.exe'
         return ''
 
-    def bootstrap_binary(self):
+    def bootstrap_binary(self):  # type: () -> str
         """Return the path of the bootstrap binary
 
         >>> rb = RustBuild()
@@ -769,7 +776,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self):
+    def build_bootstrap(self):  # type: () -> None
         """Build bootstrap"""
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
@@ -824,7 +831,7 @@ class RustBuild(object):
             args.append("--frozen")
         run(args, env=env, verbose=self.verbose)
 
-    def build_triple(self):
+    def build_triple(self):  # type: () -> str
         """Build triple as in LLVM"""
         config = self.get_toml('build')
         if config:
@@ -832,6 +839,7 @@ class RustBuild(object):
         return default_build_triple()
 
     def check_submodule(self, module, slow_submodules):
+        # type: (str, bool) -> Optional[subprocess.Popen[bytes]]
         if not slow_submodules:
             checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
                                            cwd=os.path.join(self.rust_root, module),
@@ -841,6 +849,7 @@ class RustBuild(object):
             return None
 
     def update_submodule(self, module, checked_out, recorded_submodules):
+        # type: (str, Optional[subprocess.Popen[bytes]], Dict[str, str]) -> None
         module_path = os.path.join(self.rust_root, module)
 
         if checked_out is not None:
@@ -865,7 +874,7 @@ class RustBuild(object):
         run(["git", "clean", "-qdfx"],
             cwd=module_path, verbose=self.verbose)
 
-    def update_submodules(self):
+    def update_submodules(self):  # type: () -> None
         """Update submodules"""
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false":
@@ -874,7 +883,9 @@ class RustBuild(object):
         default_encoding = sys.getdefaultencoding()
 
         # check the existence and version of 'git' command
-        git_version_str = require(['git', '--version']).split()[2].decode(default_encoding)
+        git_version_str = (
+            require(['git', '--version']).split()[2].decode(default_encoding)  # type: ignore
+        )
         self.git_version = distutils.version.LooseVersion(git_version_str)
 
         slow_submodules = self.get_toml('fast-submodules') == "false"
@@ -910,21 +921,21 @@ class RustBuild(object):
             self.update_submodule(module[0], module[1], recorded_submodules)
         print("Submodules updated in %.2f seconds" % (time() - start_time))
 
-    def set_normal_environment(self):
+    def set_normal_environment(self):  # type: () -> None
         """Set download URL for normal environment"""
         if 'RUSTUP_DIST_SERVER' in os.environ:
             self._download_url = os.environ['RUSTUP_DIST_SERVER']
         else:
             self._download_url = 'https://static.rust-lang.org'
 
-    def set_dev_environment(self):
+    def set_dev_environment(self):  # type: () -> None
         """Set download URL for development environment"""
         if 'RUSTUP_DEV_DIST_SERVER' in os.environ:
             self._download_url = os.environ['RUSTUP_DEV_DIST_SERVER']
         else:
             self._download_url = 'https://dev-static.rust-lang.org'
 
-    def check_vendored_status(self):
+    def check_vendored_status(self):  # type: () -> None
         """Check that vendoring is configured properly"""
         vendor_dir = os.path.join(self.rust_root, 'vendor')
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
@@ -955,7 +966,7 @@ class RustBuild(object):
             if os.path.exists('.cargo'):
                 shutil.rmtree('.cargo')
 
-    def ensure_vendored(self):
+    def ensure_vendored(self):  # type: () -> None
         """Ensure that the vendored sources are available if needed"""
         vendor_dir = os.path.join(self.rust_root, 'vendor')
         # Note that this does not handle updating the vendored dependencies if
@@ -966,7 +977,7 @@ class RustBuild(object):
                 verbose=self.verbose, cwd=self.rust_root)
 
 
-def bootstrap(help_triggered):
+def bootstrap(help_triggered):  # type: (bool) -> None
     """Configure, fetch, build and run the initial bootstrap"""
 
     # If the user is asking for help, let them know that the whole download-and-build
@@ -1063,7 +1074,7 @@ def bootstrap(help_triggered):
     run(args, env=env, verbose=build.verbose)
 
 
-def main():
+def main():  # type: () -> None
     """Entry point for the bootstrap process"""
     start_time = time()
 
@@ -1079,8 +1090,10 @@ def main():
             print("Build completed successfully in {}".format(
                 format_build_time(time() - start_time)))
     except (SystemExit, KeyboardInterrupt) as error:
-        if hasattr(error, 'code') and isinstance(error.code, int):
-            exit_code = error.code
+        if hasattr(error, 'code') and isinstance(error.code, int):  # type: ignore
+            # the `type: ignore` comments are because mypy doesn't understand the
+            # hasattr check
+            exit_code = error.code  # type: ignore
         else:
             exit_code = 1
             print(error)
