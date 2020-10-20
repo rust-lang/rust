@@ -1161,7 +1161,9 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
             if self.tcx.is_trivial_mir(def_id) {
-                record!(self.tables.is_trivial_mir[def_id.to_def_id()] <- true);
+                // We don't store anything if `is_trivial_mir` is `false`
+                // so we can use a unit type here.
+                self.tables.is_trivial_mir.set(def_id.local_def_index, ());
             }
 
             record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
