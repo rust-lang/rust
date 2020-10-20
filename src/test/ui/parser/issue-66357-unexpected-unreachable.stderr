@@ -4,7 +4,7 @@ error: expected one of `,` or `:`, found `(`
 LL | fn f() { |[](* }
    |             ^ expected one of `,` or `:`
 
-error: expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `const`, `mut`, `ref`, `|`, identifier, or path, found `*`
+error: expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
   --> $DIR/issue-66357-unexpected-unreachable.rs:14:14
    |
 LL | fn f() { |[](* }
