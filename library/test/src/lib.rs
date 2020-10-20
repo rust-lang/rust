@@ -470,7 +470,10 @@ pub fn run_test(
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
         if concurrency == Concurrent::Yes && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            cfg.spawn(runtest).unwrap();
+            if cfg.spawn(runtest).is_err() {
+                // If we can't spawn a new thread, just run the test synchronously.
+                runtest();
+            }
         } else {
             runtest();
         }
