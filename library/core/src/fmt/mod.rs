@@ -1110,7 +1110,7 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV
     }
 
     // Extract the correct argument
-
+    debug_assert!(arg.position < args.len());
     // SAFETY: arg and args come from the same Arguments,
     // which guarantees its index is always within bounds.
     let value = unsafe { args.get_unchecked(arg.position) };
@@ -1124,6 +1124,7 @@ unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize
         rt::v1::Count::Is(n) => Some(n),
         rt::v1::Count::Implied => None,
         rt::v1::Count::Param(i) => {
+            debug_assert!(i < args.len());
             // SAFETY: cnt and args come from the same Arguments,
             // which guarantees this index is always within bounds.
             unsafe { args.get_unchecked(i).as_usize() }
