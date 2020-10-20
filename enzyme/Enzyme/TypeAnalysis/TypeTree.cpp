@@ -63,17 +63,7 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
     // of types to ensure bounds are appropriately applied
     if (!FromOpaque && !ToOpaque) {
       uint64_t Fromsize = (DL.getTypeSizeInBits(From) + 7) / 8;
-      if (Fromsize == 0) {
-        llvm::errs() << "Found FromType of size 0 -- " << *From << "\n";
-        assert(0 && "Found FromType of size 0");
-        llvm_unreachable("Found FromType of size 0");
-      }
       uint64_t Tosize = (DL.getTypeSizeInBits(To) + 7) / 8;
-      if (Tosize == 0) {
-        llvm::errs() << "Found ToType of size 0 -- " << *To << "\n";
-        assert(0 && "Found ToType of size 0");
-        llvm_unreachable("Found ToType of size 0");
-      }
 
       // If the sizes are the same, whatever the original one is okay [ since
       // tomemory[ i*sizeof(from) ] indeed the start of an object of type to
@@ -90,6 +80,8 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
         goto add;
       } else {
         // Case where pair.first[0] == -1
+        if (Fromsize == 0 || Tosize == 0)
+          continue;
 
         if (Fromsize < Tosize) {
           if (Tosize % Fromsize == 0) {
