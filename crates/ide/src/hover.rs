@@ -300,7 +300,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
 
 fn render_path(db: &RootDatabase, module: Module, item_name: Option<String>) -> String {
     let crate_name =
-        db.crate_graph()[module.krate().into()].declaration_name.as_ref().map(ToString::to_string);
+        db.crate_graph()[module.krate().into()].display_name.as_ref().map(|it| it.to_string());
     let module_path = module
         .path_to_root(db)
         .into_iter()

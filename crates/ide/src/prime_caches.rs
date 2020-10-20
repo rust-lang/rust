@@ -32,8 +32,7 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
     // Unfortunately rayon prevents panics from propagation out of a `scope`, which breaks
     // cancellation, so we cannot use rayon.
     for (i, krate) in topo.iter().enumerate() {
-        let crate_name =
-            graph[*krate].declaration_name.as_ref().map(ToString::to_string).unwrap_or_default();
+        let crate_name = graph[*krate].display_name.as_deref().unwrap_or_default().to_string();
 
         cb(PrimeCachesProgress::StartedOnCrate {
             on_crate: crate_name,

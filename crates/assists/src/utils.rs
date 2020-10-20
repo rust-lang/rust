@@ -406,7 +406,7 @@ pub use prelude::*;
         let std_crate = path.next()?;
         let std_crate = if self
             .1
-            .declaration_name(db)
+            .display_name(db)
             .map(|name| name.to_string() == std_crate)
             .unwrap_or(false)
         {

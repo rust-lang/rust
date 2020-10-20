@@ -2,7 +2,7 @@
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateId, CrateName, Edition, FileId};
+use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use either::Either;
 use hir_def::find_path::PrefixKind;
 use hir_def::{
@@ -103,8 +103,8 @@ impl Crate {
         db.crate_graph()[self.id].edition
     }
 
-    pub fn declaration_name(self, db: &dyn HirDatabase) -> Option<CrateName> {
-        db.crate_graph()[self.id].declaration_name.clone()
+    pub fn display_name(self, db: &dyn HirDatabase) -> Option<CrateDisplayName> {
+        db.crate_graph()[self.id].display_name.clone()
     }
 
     pub fn query_external_importables(

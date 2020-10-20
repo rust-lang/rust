@@ -13,8 +13,8 @@ pub use crate::{
     cancellation::Canceled,
     change::Change,
     input::{
-        CrateData, CrateGraph, CrateId, CrateName, Dependency, Edition, Env, FileId, ProcMacroId,
-        SourceRoot, SourceRootId,
+        CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, Dependency, Edition, Env,
+        FileId, ProcMacroId, SourceRoot, SourceRootId,
     },
 };
 pub use salsa;

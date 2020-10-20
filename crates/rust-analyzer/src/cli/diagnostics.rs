@@ -36,12 +36,8 @@ pub fn diagnostics(path: &Path, load_output_dirs: bool, with_proc_macro: bool) -
     for module in work {
         let file_id = module.definition_source(db).file_id.original_file(db);
         if !visited_files.contains(&file_id) {
-            let crate_name = module
-                .krate()
-                .declaration_name(db)
-                .as_ref()
-                .map(ToString::to_string)
-                .unwrap_or_else(|| "unknown".to_string());
+            let crate_name =
+                module.krate().display_name(db).as_deref().unwrap_or("unknown").to_string();
             println!("processing crate: {}, module: {}", crate_name, _vfs.file_path(file_id));
             for diagnostic in analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap()
             {

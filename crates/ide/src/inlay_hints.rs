@@ -1,15 +1,14 @@
 use assists::utils::FamousDefs;
+use either::Either;
 use hir::{known, HirDisplay, Semantics};
 use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, ArgListOwner, AstNode},
+    ast::{self, ArgListOwner, AstNode, NameOwner},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
 
 use crate::FileId;
-use ast::NameOwner;
-use either::Either;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -215,7 +214,7 @@ fn hint_iterator(
         .last()
         .and_then(|strukt| strukt.as_adt())?;
     let krate = strukt.krate(db)?;
-    if krate.declaration_name(db).as_deref() != Some("core") {
+    if krate.display_name(db).as_deref() != Some("core") {
         return None;
     }
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
