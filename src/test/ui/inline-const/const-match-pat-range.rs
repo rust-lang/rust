@@ -7,17 +7,17 @@ fn main() {
     let x: u32 = 3;
 
     match x {
+        1 ..= const { N + 1 } => {},
+        _ => {},
+    }
+
+    match x {
         const { N - 1 } ..= 10 => {},
         _ => {},
     }
 
     match x {
         const { N - 1 } ..= const { N + 1 } => {},
-        _ => {},
-    }
-
-    match x {
-        1 ..= const { N + 1 } => {},
         _ => {},
     }
 
@@ -29,5 +29,10 @@ fn main() {
     match x {
         const { N - 1 } .. => {},
         _ => {},
+    }
+
+    match x {
+        ..= const { N + 1 } => {},
+        _ => {}
     }
 }
