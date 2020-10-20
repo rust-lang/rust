@@ -2015,7 +2015,7 @@ vec![
     },
     Lint {
         name: "ref_option_ref",
-        group: "style",
+        group: "pedantic",
         desc: "use `Option<&T>` instead of `&Option<&T>`",
         deprecation: None,
         module: "ref_option_ref",
