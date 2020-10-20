@@ -913,6 +913,7 @@ impl ModCollector<'_, '_> {
         for &item in items {
             let attrs = self.item_tree.attrs(item.into());
             if !self.is_cfg_enabled(attrs) {
+                self.emit_unconfigured_diagnostic(item);
                 continue;
             }
             let module =
@@ -1322,6 +1323,18 @@ impl ModCollector<'_, '_> {
 
     fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
         attrs.is_cfg_enabled(self.def_collector.cfg_options)
+    }
+
+    fn emit_unconfigured_diagnostic(&mut self, item: ModItem) {
+        let ast_id = item.ast_id(self.item_tree);
+        let id_map = self.def_collector.db.ast_id_map(self.file_id);
+        let syntax_ptr = id_map.get(ast_id).syntax_node_ptr();
+
+        let ast_node = InFile::new(self.file_id, syntax_ptr);
+        self.def_collector
+            .def_map
+            .diagnostics
+            .push(DefDiagnostic::unconfigured_code(self.module_id, ast_node));
     }
 }
 

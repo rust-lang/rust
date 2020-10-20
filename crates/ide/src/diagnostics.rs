@@ -10,7 +10,10 @@ mod field_shorthand;
 use std::cell::RefCell;
 
 use base_db::SourceDatabase;
-use hir::{diagnostics::DiagnosticSinkBuilder, Semantics};
+use hir::{
+    diagnostics::{Diagnostic as _, DiagnosticSinkBuilder},
+    Semantics,
+};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -45,6 +48,10 @@ impl Diagnostic {
 
     fn with_fix(self, fix: Option<Fix>) -> Self {
         Self { fix, ..self }
+    }
+
+    fn with_unused(self, unused: bool) -> Self {
+        Self { unused, ..self }
     }
 }
 
@@ -114,6 +121,13 @@ pub(crate) fn diagnostics(
         })
         .on::<hir::diagnostics::IncorrectCase, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema));
+        })
+        .on::<hir::diagnostics::UnconfiguredCode, _>(|d| {
+            // Override severity and mark as unused.
+            res.borrow_mut().push(
+                Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
+                    .with_unused(true),
+            );
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
