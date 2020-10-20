@@ -8,7 +8,7 @@ use crate::html::layout;
 use crate::html::render::{SharedContext, BASIC_KEYWORDS};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileName;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
@@ -100,13 +100,13 @@ impl<'a> SourceCollector<'a> {
         });
         self.scx.ensure_dir(&cur)?;
 
-        let src_fname =
-            String::from(p.file_name().expect("source has no filename").to_string_lossy());
-        let fname = OsString::from(src_fname.clone() + ".html");
+        let src_fname = p.file_name().expect("source has no filename").to_os_string();
+        let mut fname = src_fname.clone();
+        fname.push(".html");
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let title = format!("{} – source", src_fname,);
+        let title = format!("{} - source", src_fname.to_string_lossy());
         let desc = format!("Source of the Rust file `{}`.", filename);
         let page = layout::Page {
             title: &title,
