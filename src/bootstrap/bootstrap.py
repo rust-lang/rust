@@ -435,7 +435,9 @@ class RustBuild(object):
             llvm_sha = subprocess.check_output([
                 "git", "log", "--author=bors", "--format=%H", "-n1",
                 "-m", "--first-parent",
-                "--", "src/llvm-project"
+                "--",
+                "src/llvm-project",
+                "src/bootstrap/download-ci-llvm-stamp",
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
             if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):
