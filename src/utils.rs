@@ -461,6 +461,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::While(..)
         | ast::ExprKind::If(..)
         | ast::ExprKind::Block(..)
+        | ast::ExprKind::ConstBlock(..)
         | ast::ExprKind::Async(..)
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::ForLoop(..)

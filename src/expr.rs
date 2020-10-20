@@ -124,6 +124,9 @@ pub(crate) fn format_expr(
         | ast::ExprKind::Loop(..)
         | ast::ExprKind::While(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
+        ast::ExprKind::ConstBlock(ref anon_const) => {
+            Some(format!("const {}", anon_const.rewrite(context, shape)?))
+        }
         ast::ExprKind::Block(ref block, opt_label) => {
             match expr_type {
                 ExprType::Statement => {
