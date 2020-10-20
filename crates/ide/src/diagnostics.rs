@@ -122,7 +122,7 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::IncorrectCase, _>(|d| {
             res.borrow_mut().push(warning_with_fix(d, &sema));
         })
-        .on::<hir::diagnostics::UnconfiguredCode, _>(|d| {
+        .on::<hir::diagnostics::InactiveCode, _>(|d| {
             // Override severity and mark as unused.
             res.borrow_mut().push(
                 Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
