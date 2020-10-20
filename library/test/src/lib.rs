@@ -470,13 +470,11 @@ pub fn run_test(
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
         if concurrency == Concurrent::Yes && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            match cfg.spawn(runtest) {
-                Ok(_) => {}
-                Err(err @ io::Error { .. }) if err.kind() == io::ErrorKind::WouldBlock => {
+            if let Err(err) = cfg.spawn(runtest) {
+                if err.kind() == io::ErrorKind::WouldBlock {
                     // If we're at the thread limit, just run all tests in a single thread.
                     runtest();
-                }
-                Err(err) => {
+                } else {
                     panic!("spawning a test thread failed: {}", err);
                 }
             }
