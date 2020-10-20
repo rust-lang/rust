@@ -1,5 +1,6 @@
 use crate::cell::UnsafeCell;
 use crate::mem::MaybeUninit;
+use crate::sys::cvt_nz;
 
 pub struct Mutex {
     inner: UnsafeCell<libc::pthread_mutex_t>,
@@ -51,14 +52,11 @@ impl Mutex {
         // PTHREAD_MUTEX_NORMAL which is guaranteed to deadlock if we try to
         // re-lock it from the same thread, thus avoiding undefined behavior.
         let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
-        let r = libc::pthread_mutexattr_init(attr.as_mut_ptr());
-        debug_assert_eq!(r, 0);
-        let r = libc::pthread_mutexattr_settype(attr.as_mut_ptr(), libc::PTHREAD_MUTEX_NORMAL);
-        debug_assert_eq!(r, 0);
-        let r = libc::pthread_mutex_init(self.inner.get(), attr.as_ptr());
-        debug_assert_eq!(r, 0);
-        let r = libc::pthread_mutexattr_destroy(attr.as_mut_ptr());
-        debug_assert_eq!(r, 0);
+        cvt_nz(libc::pthread_mutexattr_init(attr.as_mut_ptr())).unwrap();
+        let attr = PthreadMutexAttr(&mut attr);
+        cvt_nz(libc::pthread_mutexattr_settype(attr.0.as_mut_ptr(), libc::PTHREAD_MUTEX_NORMAL))
+            .unwrap();
+        cvt_nz(libc::pthread_mutex_init(self.inner.get(), attr.0.as_ptr())).unwrap();
     }
     #[inline]
     pub unsafe fn lock(&self) {
@@ -106,15 +104,11 @@ impl ReentrantMutex {
 
     pub unsafe fn init(&self) {
         let mut attr = MaybeUninit::<libc::pthread_mutexattr_t>::uninit();
-        let result = libc::pthread_mutexattr_init(attr.as_mut_ptr());
-        debug_assert_eq!(result, 0);
-        let result =
-            libc::pthread_mutexattr_settype(attr.as_mut_ptr(), libc::PTHREAD_MUTEX_RECURSIVE);
-        debug_assert_eq!(result, 0);
-        let result = libc::pthread_mutex_init(self.inner.get(), attr.as_ptr());
-        debug_assert_eq!(result, 0);
-        let result = libc::pthread_mutexattr_destroy(attr.as_mut_ptr());
-        debug_assert_eq!(result, 0);
+        cvt_nz(libc::pthread_mutexattr_init(attr.as_mut_ptr())).unwrap();
+        let attr = PthreadMutexAttr(&mut attr);
+        cvt_nz(libc::pthread_mutexattr_settype(attr.0.as_mut_ptr(), libc::PTHREAD_MUTEX_RECURSIVE))
+            .unwrap();
+        cvt_nz(libc::pthread_mutex_init(self.inner.get(), attr.0.as_ptr())).unwrap();
     }
 
     pub unsafe fn lock(&self) {
@@ -135,5 +129,16 @@ impl ReentrantMutex {
     pub unsafe fn destroy(&self) {
         let result = libc::pthread_mutex_destroy(self.inner.get());
         debug_assert_eq!(result, 0);
+    }
+}
+
+struct PthreadMutexAttr<'a>(&'a mut MaybeUninit<libc::pthread_mutexattr_t>);
+
+impl Drop for PthreadMutexAttr<'_> {
+    fn drop(&mut self) {
+        unsafe {
+            let result = libc::pthread_mutexattr_destroy(self.0.as_mut_ptr());
+            debug_assert_eq!(result, 0);
+        }
     }
 }
