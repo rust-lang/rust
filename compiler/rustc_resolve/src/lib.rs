@@ -19,7 +19,7 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use rustc_arena::TypedArena;
+use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
@@ -1035,12 +1035,10 @@ pub struct Resolver<'a> {
 pub struct ResolverArenas<'a> {
     modules: TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
-    name_bindings: TypedArena<NameBinding<'a>>,
     imports: TypedArena<Import<'a>>,
     name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
-    macro_rules_bindings: TypedArena<MacroRulesBinding<'a>>,
     ast_paths: TypedArena<ast::Path>,
-    pattern_spans: TypedArena<Span>,
+    dropless: DroplessArena,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1055,7 +1053,7 @@ impl<'a> ResolverArenas<'a> {
         self.local_modules.borrow()
     }
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
-        self.name_bindings.alloc(name_binding)
+        self.dropless.alloc(name_binding)
     }
     fn alloc_import(&'a self, import: Import<'a>) -> &'a Import<'_> {
         self.imports.alloc(import)
@@ -1067,13 +1065,13 @@ impl<'a> ResolverArenas<'a> {
         &'a self,
         binding: MacroRulesBinding<'a>,
     ) -> &'a MacroRulesBinding<'a> {
-        self.macro_rules_bindings.alloc(binding)
+        self.dropless.alloc(binding)
     }
     fn alloc_ast_paths(&'a self, paths: &[ast::Path]) -> &'a [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
     }
     fn alloc_pattern_spans(&'a self, spans: impl Iterator<Item = Span>) -> &'a [Span] {
-        self.pattern_spans.alloc_from_iter(spans)
+        self.dropless.alloc_from_iter(spans)
     }
 }
 
