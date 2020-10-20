@@ -13,7 +13,7 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use base_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
+use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use cfg::CfgOptions;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -408,10 +408,12 @@ impl ProjectWorkspace {
                                 .map(|it| proc_macro_client.by_dylib_path(&it))
                                 .unwrap_or_default();
 
+                            let display_name =
+                                CrateDisplayName::from_canonical_name(cargo[pkg].name.clone());
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
-                                Some(CrateName::normalize_dashes(&cargo[pkg].name)),
+                                Some(display_name),
                                 cfg_options,
                                 env,
                                 proc_macro.clone(),
@@ -556,7 +558,7 @@ fn sysroot_to_crate_graph(
             let crate_id = crate_graph.add_crate_root(
                 file_id,
                 Edition::Edition2018,
-                Some(name),
+                Some(name.into()),
                 cfg_options.clone(),
                 env,
                 proc_macro,

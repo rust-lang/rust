@@ -1,15 +1,14 @@
 use assists::utils::FamousDefs;
+use either::Either;
 use hir::{known, HirDisplay, Semantics};
 use ide_db::RootDatabase;
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, ArgListOwner, AstNode},
+    ast::{self, ArgListOwner, AstNode, NameOwner},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
 
 use crate::FileId;
-use ast::NameOwner;
-use either::Either;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {

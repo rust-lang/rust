@@ -158,7 +158,7 @@ impl ChangeFixture {
                 let crate_id = crate_graph.add_crate_root(
                     file_id,
                     meta.edition,
-                    Some(crate_name.clone()),
+                    Some(crate_name.clone().into()),
                     meta.cfg,
                     meta.env,
                     Default::default(),
@@ -187,7 +187,7 @@ impl ChangeFixture {
             crate_graph.add_crate_root(
                 crate_root,
                 Edition::Edition2018,
-                Some(CrateName::new("test").unwrap()),
+                Some(CrateName::new("test").unwrap().into()),
                 default_cfg,
                 Env::default(),
                 Default::default(),

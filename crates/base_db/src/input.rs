@@ -108,24 +108,37 @@ impl ops::Deref for CrateName {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateDisplayName(CrateName);
+pub struct CrateDisplayName {
+    // The name we use to display various paths (with `_`).
+    crate_name: CrateName,
+    // The name as specified in Cargo.toml (with `-`).
+    canonical_name: String,
+}
 
 impl From<CrateName> for CrateDisplayName {
-    fn from(inner: CrateName) -> CrateDisplayName {
-        CrateDisplayName(inner)
+    fn from(crate_name: CrateName) -> CrateDisplayName {
+        let canonical_name = crate_name.to_string();
+        CrateDisplayName { crate_name, canonical_name }
     }
 }
 
 impl fmt::Display for CrateDisplayName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.crate_name)
     }
 }
 
 impl ops::Deref for CrateDisplayName {
     type Target = str;
     fn deref(&self) -> &str {
-        &*self.0
+        &*self.crate_name
+    }
+}
+
+impl CrateDisplayName {
+    pub fn from_canonical_name(canonical_name: String) -> CrateDisplayName {
+        let crate_name = CrateName::normalize_dashes(&canonical_name);
+        CrateDisplayName { crate_name, canonical_name }
     }
 }
 
@@ -155,7 +168,7 @@ pub struct CrateData {
     ///
     /// For purposes of analysis, crates are anonymous (only names in
     /// `Dependency` matters), this name should only be used for UI.
-    pub display_name: Option<CrateName>,
+    pub display_name: Option<CrateDisplayName>,
     pub cfg_options: CfgOptions,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
@@ -184,7 +197,7 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
-        display_name: Option<CrateName>,
+        display_name: Option<CrateDisplayName>,
         cfg_options: CfgOptions,
         env: Env,
         proc_macro: Vec<(SmolStr, Arc<dyn tt::TokenExpander>)>,
