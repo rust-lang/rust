@@ -225,6 +225,17 @@ automate everything. We will have to register our lint pass manually in the
 store.register_early_pass(|| box foo_functions::FooFunctions);
 ```
 
+As one may expect, there is a corresponding `register_late_pass` method
+available as well. Without a call to one of `register_early_pass` or 
+`register_late_pass`, the lint pass in question will not be run.
+
+One reason that `cargo dev` does not automate this step is that multiple lints 
+can use the same lint pass, so registering the lint pass may already be done
+when adding a new lint. Another reason that this step is not automated is that
+the order that the passes are registered determines the order the passes 
+actually run, which in turn affects the order that any emitted lints are output
+in.
+
 [declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
 [example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
