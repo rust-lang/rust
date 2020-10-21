@@ -116,15 +116,16 @@ impl<'a> Parser<'a> {
             Some(item.into_inner())
         });
 
+        let needs_tokens = super::attr::maybe_needs_tokens(&attrs);
+
         let mut unclosed_delims = vec![];
-        let has_attrs = !attrs.is_empty();
         let parse_item = |this: &mut Self| {
             let item = this.parse_item_common_(attrs, mac_allowed, attrs_allowed, req_name);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         };
 
-        let (mut item, tokens) = if has_attrs {
+        let (mut item, tokens) = if needs_tokens {
             let (item, tokens) = self.collect_tokens(parse_item)?;
             (item, Some(tokens))
         } else {

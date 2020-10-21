@@ -16,8 +16,9 @@
 use crate::token::{self, DelimToken, Token, TokenKind};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
@@ -116,6 +117,77 @@ where
         for sub_tt in self.trees() {
             sub_tt.hash_stable(hcx, hasher);
         }
+    }
+}
+
+// A cloneable callback which produces a `TokenStream`. Each clone
+// of this should produce the same `TokenStream`
+pub trait CreateTokenStream: sync::Send + sync::Sync + FnOnce() -> TokenStream {
+    // Workaround for the fact that `Clone` is not object-safe
+    fn clone_it(&self) -> Box<dyn CreateTokenStream>;
+}
+
+impl<F: 'static + Clone + sync::Send + sync::Sync + FnOnce() -> TokenStream> CreateTokenStream
+    for F
+{
+    fn clone_it(&self) -> Box<dyn CreateTokenStream> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn CreateTokenStream> {
+    fn clone(&self) -> Self {
+        let val: &(dyn CreateTokenStream) = &**self;
+        val.clone_it()
+    }
+}
+
+/// A lazy version of `TokenStream`, which may defer creation
+/// of an actual `TokenStream` until it is needed.
+pub type LazyTokenStream = Lrc<LazyTokenStreamInner>;
+
+#[derive(Clone)]
+pub enum LazyTokenStreamInner {
+    Lazy(Box<dyn CreateTokenStream>),
+    Ready(TokenStream),
+}
+
+impl std::fmt::Debug for LazyTokenStreamInner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LazyTokenStreamInner::Lazy(..) => f.debug_struct("LazyTokenStream::Lazy").finish(),
+            LazyTokenStreamInner::Ready(..) => f.debug_struct("LazyTokenStream::Ready").finish(),
+        }
+    }
+}
+
+impl LazyTokenStreamInner {
+    pub fn into_token_stream(&self) -> TokenStream {
+        match self {
+            // Note that we do not cache this. If this ever becomes a performance
+            // problem, we should investigate wrapping `LazyTokenStreamInner`
+            // in a lock
+            LazyTokenStreamInner::Lazy(cb) => (cb.clone())(),
+            LazyTokenStreamInner::Ready(stream) => stream.clone(),
+        }
+    }
+}
+
+impl<S: Encoder> Encodable<S> for LazyTokenStreamInner {
+    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
+        panic!("Attempted to encode LazyTokenStream");
+    }
+}
+
+impl<D: Decoder> Decodable<D> for LazyTokenStreamInner {
+    fn decode(_d: &mut D) -> Result<Self, D::Error> {
+        panic!("Attempted to decode LazyTokenStream");
+    }
+}
+
+impl<CTX> HashStable<CTX> for LazyTokenStreamInner {
+    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+        panic!("Attempted to compute stable hash for LazyTokenStream");
     }
 }
 

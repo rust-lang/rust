@@ -16,13 +16,15 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{self, DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
+use rustc_ast::tokenstream::{self, DelimSpan, LazyTokenStream, LazyTokenStreamInner, Spacing};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit};
 use rustc_ast::{Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError, PResult};
+use rustc_errors::PResult;
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -85,10 +87,14 @@ pub struct Parser<'a> {
     pub sess: &'a ParseSess,
     /// The current token.
     pub token: Token,
+    /// The spacing for the current token
+    pub token_spacing: Spacing,
     /// The previous token.
     pub prev_token: Token,
     restrictions: Restrictions,
     expected_tokens: Vec<TokenType>,
+    // Important: This must only be advanced from `next_tok`
+    // to ensure that `token_cursor.num_next_calls` is updated properly
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
@@ -120,8 +126,10 @@ impl<'a> Drop for Parser<'a> {
 struct TokenCursor {
     frame: TokenCursorFrame,
     stack: Vec<TokenCursorFrame>,
-    cur_token: Option<TreeAndSpacing>,
-    collecting: Option<Collecting>,
+    desugar_doc_comments: bool,
+    // Counts the number of calls to `next` or `next_desugared`,
+    // depending on whether `desugar_doc_comments` is set.
+    num_next_calls: usize,
 }
 
 #[derive(Clone)]
@@ -133,40 +141,22 @@ struct TokenCursorFrame {
     close_delim: bool,
 }
 
-/// Used to track additional state needed by `collect_tokens`
-#[derive(Clone, Debug)]
-struct Collecting {
-    /// Holds the current tokens captured during the most
-    /// recent call to `collect_tokens`
-    buf: Vec<TreeAndSpacing>,
-    /// The depth of the `TokenCursor` stack at the time
-    /// collection was started. When we encounter a `TokenTree::Delimited`,
-    /// we want to record the `TokenTree::Delimited` itself,
-    /// but *not* any of the inner tokens while we are inside
-    /// the new frame (this would cause us to record duplicate tokens).
-    ///
-    /// This `depth` fields tracks stack depth we are recording tokens.
-    /// Only tokens encountered at this depth will be recorded. See
-    /// `TokenCursor::next` for more details.
-    depth: usize,
-}
-
 impl TokenCursorFrame {
-    fn new(span: DelimSpan, delim: DelimToken, tts: &TokenStream) -> Self {
+    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream) -> Self {
         TokenCursorFrame {
             delim,
             span,
             open_delim: delim == token::NoDelim,
-            tree_cursor: tts.clone().into_trees(),
+            tree_cursor: tts.into_trees(),
             close_delim: delim == token::NoDelim,
         }
     }
 }
 
 impl TokenCursor {
-    fn next(&mut self) -> Token {
+    fn next(&mut self) -> (Token, Spacing) {
         loop {
-            let tree = if !self.frame.open_delim {
+            let (tree, spacing) = if !self.frame.open_delim {
                 self.frame.open_delim = true;
                 TokenTree::open_tt(self.frame.span, self.frame.delim).into()
             } else if let Some(tree) = self.frame.tree_cursor.next_with_spacing() {
@@ -178,40 +168,24 @@ impl TokenCursor {
                 self.frame = frame;
                 continue;
             } else {
-                return Token::new(token::Eof, DUMMY_SP);
+                (TokenTree::Token(Token::new(token::Eof, DUMMY_SP)), Spacing::Alone)
             };
 
-            // Don't set an open delimiter as our current token - we want
-            // to leave it as the full `TokenTree::Delimited` from the previous
-            // iteration of this loop
-            if !matches!(tree.0, TokenTree::Token(Token { kind: TokenKind::OpenDelim(_), .. })) {
-                self.cur_token = Some(tree.clone());
-            }
-
-            if let Some(collecting) = &mut self.collecting {
-                if collecting.depth == self.stack.len() {
-                    debug!(
-                        "TokenCursor::next():  collected {:?} at depth {:?}",
-                        tree,
-                        self.stack.len()
-                    );
-                    collecting.buf.push(tree.clone())
+            match tree {
+                TokenTree::Token(token) => {
+                    return (token, spacing);
                 }
-            }
-
-            match tree.0 {
-                TokenTree::Token(token) => return token,
                 TokenTree::Delimited(sp, delim, tts) => {
-                    let frame = TokenCursorFrame::new(sp, delim, &tts);
+                    let frame = TokenCursorFrame::new(sp, delim, tts);
                     self.stack.push(mem::replace(&mut self.frame, frame));
                 }
             }
         }
     }
 
-    fn next_desugared(&mut self) -> Token {
+    fn next_desugared(&mut self) -> (Token, Spacing) {
         let (data, attr_style, sp) = match self.next() {
-            Token { kind: token::DocComment(_, attr_style, data), span } => {
+            (Token { kind: token::DocComment(_, attr_style, data), span }, _) => {
                 (data, attr_style, span)
             }
             tok => return tok,
@@ -249,7 +223,7 @@ impl TokenCursor {
             TokenCursorFrame::new(
                 delim_span,
                 token::NoDelim,
-                &if attr_style == AttrStyle::Inner {
+                if attr_style == AttrStyle::Inner {
                     [TokenTree::token(token::Pound, sp), TokenTree::token(token::Not, sp), body]
                         .iter()
                         .cloned()
@@ -351,14 +325,15 @@ impl<'a> Parser<'a> {
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
+            token_spacing: Spacing::Alone,
             prev_token: Token::dummy(),
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, &tokens),
+                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens),
                 stack: Vec::new(),
-                cur_token: None,
-                collecting: None,
+                num_next_calls: 0,
+                desugar_doc_comments,
             },
             desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
@@ -375,17 +350,18 @@ impl<'a> Parser<'a> {
         parser
     }
 
-    fn next_tok(&mut self, fallback_span: Span) -> Token {
-        let mut next = if self.desugar_doc_comments {
+    fn next_tok(&mut self, fallback_span: Span) -> (Token, Spacing) {
+        let (mut next, spacing) = if self.desugar_doc_comments {
             self.token_cursor.next_desugared()
         } else {
             self.token_cursor.next()
         };
+        self.token_cursor.num_next_calls += 1;
         if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
             next.span = fallback_span.with_ctxt(next.span.ctxt());
         }
-        next
+        (next, spacing)
     }
 
     pub fn unexpected<T>(&mut self) -> PResult<'a, T> {
@@ -577,7 +553,9 @@ impl<'a> Parser<'a> {
                 let first_span = self.sess.source_map().start_point(self.token.span);
                 let second_span = self.token.span.with_lo(first_span.hi());
                 self.token = Token::new(first, first_span);
-                self.bump_with(Token::new(second, second_span));
+                // Use the spacing of the glued token as the spacing
+                // of the unglued second token.
+                self.bump_with((Token::new(second, second_span), self.token_spacing));
                 true
             }
             _ => {
@@ -809,7 +787,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Advance the parser by one token using provided token as the next one.
-    fn bump_with(&mut self, next_token: Token) {
+    fn bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
         // Bumping after EOF is a bad sign, usually an infinite loop.
         if self.prev_token.kind == TokenKind::Eof {
             let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
@@ -818,6 +796,7 @@ impl<'a> Parser<'a> {
 
         // Update the current and previous tokens.
         self.prev_token = mem::replace(&mut self.token, next_token);
+        self.token_spacing = next_spacing;
 
         // Diagnostics.
         self.expected_tokens.clear();
@@ -988,13 +967,27 @@ impl<'a> Parser<'a> {
     pub(crate) fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
-                let frame = mem::replace(
-                    &mut self.token_cursor.frame,
-                    self.token_cursor.stack.pop().unwrap(),
-                );
-                self.token = Token::new(TokenKind::CloseDelim(frame.delim), frame.span.close);
+                let depth = self.token_cursor.stack.len();
+
+                // We keep advancing the token cursor until we hit
+                // the matching `CloseDelim` token.
+                while !(depth == self.token_cursor.stack.len()
+                    && matches!(self.token.kind, token::CloseDelim(_)))
+                {
+                    // Advance one token at a time, so `TokenCursor::next()`
+                    // can capture these tokens if necessary.
+                    self.bump();
+                }
+                // We are still inside the frame corresponding
+                // to the delimited stream we captured, so grab
+                // the tokens from this frame.
+                let frame = &self.token_cursor.frame;
+                let stream = frame.tree_cursor.stream.clone();
+                let span = frame.span;
+                let delim = frame.delim;
+                // Consume close delimiter
                 self.bump();
-                TokenTree::Delimited(frame.span, frame.delim, frame.tree_cursor.stream)
+                TokenTree::Delimited(span, delim, stream)
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
@@ -1202,79 +1195,45 @@ impl<'a> Parser<'a> {
     pub fn collect_tokens<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
-    ) -> PResult<'a, (R, TokenStream)> {
-        // Record all tokens we parse when parsing this item.
-        let tokens: Vec<TreeAndSpacing> = self.token_cursor.cur_token.clone().into_iter().collect();
-        debug!("collect_tokens: starting with {:?}", tokens);
+    ) -> PResult<'a, (R, LazyTokenStream)> {
+        let start_token = (self.token.clone(), self.token_spacing);
+        let mut cursor_snapshot = self.token_cursor.clone();
 
-        // We need special handling for the case where `collect_tokens` is called
-        // on an opening delimeter (e.g. '('). At this point, we have already pushed
-        // a new frame - however, we want to record the original `TokenTree::Delimited`,
-        // for consistency with the case where we start recording one token earlier.
-        // See `TokenCursor::next` to see how `cur_token` is set up.
-        let prev_depth =
-            if matches!(self.token_cursor.cur_token, Some((TokenTree::Delimited(..), _))) {
-                if self.token_cursor.stack.is_empty() {
-                    // There is nothing below us in the stack that
-                    // the function could consume, so the only thing it can legally
-                    // capture is the entire contents of the current frame.
-                    return Ok((f(self)?, TokenStream::new(tokens)));
-                }
-                // We have already recorded the full `TokenTree::Delimited` when we created
-                // our `tokens` vector at the start of this function. We are now inside
-                // a new frame corresponding to the `TokenTree::Delimited` we already recoreded.
-                // We don't want to record any of the tokens inside this frame, since they
-                // will be duplicates of the tokens nested inside the `TokenTree::Delimited`.
-                // Therefore, we set our recording depth to the *previous* frame. This allows
-                // us to record a sequence like: `(foo).bar()`: the `(foo)` will be recored
-                // as our initial `cur_token`, while the `.bar()` will be recored after we
-                // pop the `(foo)` frame.
-                self.token_cursor.stack.len() - 1
-            } else {
-                self.token_cursor.stack.len()
-            };
-        let prev_collecting =
-            self.token_cursor.collecting.replace(Collecting { buf: tokens, depth: prev_depth });
+        let ret = f(self)?;
 
-        let ret = f(self);
+        let new_calls = self.token_cursor.num_next_calls;
+        let num_calls = new_calls - cursor_snapshot.num_next_calls;
+        let desugar_doc_comments = self.desugar_doc_comments;
 
-        let mut collected_tokens = if let Some(collecting) = self.token_cursor.collecting.take() {
-            collecting.buf
-        } else {
-            let msg = "our vector went away?";
-            debug!("collect_tokens: {}", msg);
-            self.sess.span_diagnostic.delay_span_bug(self.token.span, &msg);
-            // This can happen due to a bad interaction of two unrelated recovery mechanisms
-            // with mismatched delimiters *and* recovery lookahead on the likely typo
-            // `pub ident(` (#62895, different but similar to the case above).
-            return Ok((ret?, TokenStream::default()));
+        // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
+        // and `num_calls`, we can reconstruct the `TokenStream` seen
+        // by the callback. This allows us to avoid producing a `TokenStream`
+        // if it is never needed - for example, a captured `macro_rules!`
+        // argument that is never passed to a proc macro.
+        //
+        // This also makes `Parser` very cheap to clone, since
+        // there is no intermediate collection buffer to clone.
+        let lazy_cb = move || {
+            // The token produced by the final call to `next` or `next_desugared`
+            // was not actually consumed by the callback. The combination
+            // of chaining the initial token and using `take` produces the desired
+            // result - we produce an empty `TokenStream` if no calls were made,
+            // and omit the final token otherwise.
+            let tokens = std::iter::once(start_token)
+                .chain((0..num_calls).map(|_| {
+                    if desugar_doc_comments {
+                        cursor_snapshot.next_desugared()
+                    } else {
+                        cursor_snapshot.next()
+                    }
+                }))
+                .take(num_calls);
+
+            make_token_stream(tokens)
         };
+        let stream = LazyTokenStream::new(LazyTokenStreamInner::Lazy(Box::new(lazy_cb)));
 
-        debug!("collect_tokens: got raw tokens {:?}", collected_tokens);
-
-        // If we're not at EOF our current token wasn't actually consumed by
-        // `f`, but it'll still be in our list that we pulled out. In that case
-        // put it back.
-        let extra_token = if self.token != token::Eof { collected_tokens.pop() } else { None };
-
-        if let Some(mut collecting) = prev_collecting {
-            // If we were previously collecting at the same depth,
-            // then the previous call to `collect_tokens` needs to see
-            // the tokens we just recorded.
-            //
-            // If we were previously recording at an lower `depth`,
-            // then the previous `collect_tokens` call already recorded
-            // this entire frame in the form of a `TokenTree::Delimited`,
-            // so there is nothing else for us to do.
-            if collecting.depth == prev_depth {
-                collecting.buf.extend(collected_tokens.iter().cloned());
-                collecting.buf.extend(extra_token);
-                debug!("collect_tokens: updating previous buf to {:?}", collecting);
-            }
-            self.token_cursor.collecting = Some(collecting)
-        }
-
-        Ok((ret?, TokenStream::new(collected_tokens)))
+        Ok((ret, stream))
     }
 
     /// `::{` or `::*`
@@ -1322,4 +1281,42 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
             e.emit();
         }
     }
+}
+
+/// Converts a flattened iterator of tokens (including open and close delimiter tokens)
+/// into a `TokenStream`, creating a `TokenTree::Delimited` for each matching pair
+/// of open and close delims.
+fn make_token_stream(tokens: impl Iterator<Item = (Token, Spacing)>) -> TokenStream {
+    #[derive(Debug)]
+    struct FrameData {
+        open: Span,
+        inner: Vec<(TokenTree, Spacing)>,
+    }
+    let mut stack = vec![FrameData { open: DUMMY_SP, inner: vec![] }];
+    for (token, spacing) in tokens {
+        match token {
+            Token { kind: TokenKind::OpenDelim(_), span } => {
+                stack.push(FrameData { open: span, inner: vec![] });
+            }
+            Token { kind: TokenKind::CloseDelim(delim), span } => {
+                let frame_data = stack.pop().expect("Token stack was empty!");
+                let dspan = DelimSpan::from_pair(frame_data.open, span);
+                let stream = TokenStream::new(frame_data.inner);
+                let delimited = TokenTree::Delimited(dspan, delim, stream);
+                stack
+                    .last_mut()
+                    .unwrap_or_else(|| panic!("Bottom token frame is missing for tokens!"))
+                    .inner
+                    .push((delimited, Spacing::Alone));
+            }
+            token => stack
+                .last_mut()
+                .expect("Bottom token frame is missing!")
+                .inner
+                .push((TokenTree::Token(token), spacing)),
+        }
+    }
+    let final_buf = stack.pop().expect("Missing final buf!");
+    assert!(stack.is_empty(), "Stack should be empty: final_buf={:?} stack={:?}", final_buf, stack);
+    TokenStream::new(final_buf.inner)
 }
