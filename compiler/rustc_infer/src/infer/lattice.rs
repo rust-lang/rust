@@ -80,7 +80,7 @@ where
         (&ty::Infer(TyVar(..)), _) => {
             let v = infcx.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::LatticeVariable,
-                span: this.cause().span,
+                span: this.cause().def_span(),
             });
             this.relate_bound(v, b, a)?;
             Ok(v)
@@ -88,7 +88,7 @@ where
         (_, &ty::Infer(TyVar(..))) => {
             let v = infcx.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::LatticeVariable,
-                span: this.cause().span,
+                span: this.cause().def_span(),
             });
             this.relate_bound(v, a, b)?;
             Ok(v)

@@ -43,7 +43,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut fuzzy_match_impls = vec![];
 
         self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
-            let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
+            let impl_substs = self.fresh_substs_for_item(obligation.cause.def_span(), def_id);
             let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().subst(tcx, impl_substs);
 
             let impl_self_ty = impl_trait_ref.self_ty();
@@ -159,7 +159,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             flags.push((sym::parent_trait, Some(t)));
         }
 
-        if let Some(k) = obligation.cause.span.desugaring_kind() {
+        if let Some(k) = obligation.cause.def_span().desugaring_kind() {
             flags.push((sym::from_desugaring, None));
             flags.push((sym::from_desugaring, Some(format!("{:?}", k))));
         }

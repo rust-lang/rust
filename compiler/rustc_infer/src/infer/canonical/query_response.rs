@@ -464,12 +464,12 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
-                            None => self.instantiate_canonical_var(cause.span, info, |u| {
+                            None => self.instantiate_canonical_var(cause.def_span(), info, |u| {
                                 universe_map[u.as_usize()]
                             }),
                         }
                     } else {
-                        self.instantiate_canonical_var(cause.span, info, |u| {
+                        self.instantiate_canonical_var(cause.def_span(), info, |u| {
                             universe_map[u.as_usize()]
                         })
                     }
@@ -538,7 +538,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 GenericArgKind::Const(..) => {
                     // Consts cannot outlive one another, so we don't expect to
                     // encounter this branch.
-                    span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
+                    span_bug!(cause.def_span(), "unexpected const outlives {:?}", constraint);
                 }
             }
             .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);

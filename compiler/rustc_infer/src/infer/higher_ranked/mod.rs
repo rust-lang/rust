@@ -28,7 +28,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         // please see the large comment at the end of the file in the (inlined) module
         // `doc`.
 
-        let span = self.trace.cause.span;
+        let span = self.trace.cause.def_span();
 
         self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a

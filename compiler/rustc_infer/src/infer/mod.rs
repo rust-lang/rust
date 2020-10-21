@@ -974,7 +974,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let ty::OutlivesPredicate(r_a, r_b) =
                 self.replace_bound_vars_with_placeholders(&predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
-                RelateRegionParamBound(cause.span)
+                RelateRegionParamBound(cause.def_span())
             });
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
             Ok(())
@@ -1692,7 +1692,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
 
 impl<'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
-        self.cause.span
+        self.cause.def_span()
     }
 
     pub fn types(
@@ -1744,7 +1744,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
     {
         match cause.code {
             traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) => {
-                SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.span)
+                SubregionOrigin::ReferenceOutlivesReferent(ref_type, cause.def_span())
             }
 
             traits::ObligationCauseCode::CompareImplMethodObligation {
@@ -1752,7 +1752,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 impl_item_def_id,
                 trait_item_def_id,
             } => SubregionOrigin::CompareImplMethodObligation {
-                span: cause.span,
+                span: cause.def_span(),
                 item_name,
                 impl_item_def_id,
                 trait_item_def_id,

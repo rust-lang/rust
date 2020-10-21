@@ -132,7 +132,11 @@ impl Inherited<'a, 'tcx> {
     pub(super) fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
         debug!("register_predicate({:?})", obligation);
         if obligation.has_escaping_bound_vars() {
-            span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
+            span_bug!(
+                obligation.cause.def_span(),
+                "escaping bound vars in predicate {:?}",
+                obligation
+            );
         }
         self.fulfillment_cx.borrow_mut().register_predicate_obligation(self, obligation);
     }

@@ -480,7 +480,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.cause.body_id,
                     obligation.recursion_depth + 1,
                     arg,
-                    obligation.cause.span,
+                    obligation.cause.def_span(),
                 ) {
                     Some(mut obligations) => {
                         self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
@@ -547,7 +547,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         def_id,
                         substs,
                         obligation.param_env,
-                        obligation.cause.span,
+                        obligation.cause.def_span(),
                     ) {
                         Ok(()) => Ok(EvaluatedToOk),
                         Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
@@ -566,7 +566,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     def,
                                     substs,
                                     promoted,
-                                    Some(obligation.cause.span),
+                                    Some(obligation.cause.def_span()),
                                 )
                                 .map(|val| ty::Const::from_value(self.tcx(), val, c.ty))
                         } else {
@@ -1157,7 +1157,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Opaque(def_id, substs) => (def_id, substs),
             _ => {
                 span_bug!(
-                    obligation.cause.span,
+                    obligation.cause.def_span(),
                     "match_projection_obligation_against_definition_bounds() called \
                      but self-ty is not a projection: {:?}",
                     placeholder_trait_predicate.trait_ref.self_ty()
@@ -1815,7 +1815,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx().replace_bound_vars_with_placeholders(&obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
-        let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
+        let impl_substs =
+            self.infcx.fresh_substs_for_item(obligation.cause.def_span(), impl_def_id);
 
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
 
@@ -2104,7 +2105,7 @@ impl<'tcx> TraitObligationExt<'tcx> for TraitObligation<'tcx> {
             parent_code: Rc::new(obligation.cause.code.clone()),
         };
         let derived_code = variant(derived_cause);
-        ObligationCause::new(obligation.cause.span, obligation.cause.body_id, derived_code)
+        ObligationCause::new(obligation.cause.def_span(), obligation.cause.body_id, derived_code)
     }
 }
 

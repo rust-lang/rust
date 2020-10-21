@@ -75,7 +75,7 @@ fn type_marked_structural(
     let mut fulfillment_cx = traits::FulfillmentContext::new();
     // require `#[derive(PartialEq)]`
     let structural_peq_def_id =
-        infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));
+        infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.def_span()));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),
@@ -86,7 +86,7 @@ fn type_marked_structural(
     // for now, require `#[derive(Eq)]`. (Doing so is a hack to work around
     // the type `for<'a> fn(&'a ())` failing to implement `Eq` itself.)
     let structural_teq_def_id =
-        infcx.tcx.require_lang_item(LangItem::StructuralTeq, Some(cause.span));
+        infcx.tcx.require_lang_item(LangItem::StructuralTeq, Some(cause.def_span()));
     fulfillment_cx.register_bound(
         infcx,
         ty::ParamEnv::empty(),

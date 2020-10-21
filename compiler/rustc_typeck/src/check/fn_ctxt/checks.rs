@@ -904,7 +904,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Only if the cause is somewhere inside the expression we want try to point at arg.
             // Otherwise, it means that the cause is somewhere else and we should not change
             // anything because we can break the correct span.
-            if !call_sp.contains(error.obligation.cause.span) {
+            if !call_sp.contains(error.obligation.cause.def_span()) {
                 continue;
             }
 
@@ -939,7 +939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
                     // We make sure that only *one* argument matches the obligation failure
                     // and we assign the obligation's span to its expression's.
-                    error.obligation.cause.make_mut().span = args[ref_in].span;
+                    error.obligation.cause.update_def_span(args[ref_in].span);
                     error.points_at_arg_span = true;
                 }
             }
@@ -982,7 +982,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         let ty = AstConv::ast_ty_to_ty(self, hir_ty);
                                         let ty = self.resolve_vars_if_possible(&ty);
                                         if ty == predicate.self_ty() {
-                                            error.obligation.cause.make_mut().span = hir_ty.span;
+                                            error.obligation.cause.update_def_span(hir_ty.span);
                                         }
                                     }
                                 }

@@ -471,7 +471,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
         let param_env = obligation.param_env;
         let body_id = obligation.cause.body_id;
-        let span = obligation.cause.span;
+        let span = obligation.cause.def_span();
         let real_trait_ref = match &obligation.cause.code {
             ObligationCauseCode::ImplDerivedObligation(cause)
             | ObligationCauseCode::DerivedObligation(cause)
@@ -635,7 +635,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // of the argument, so we can provide a suggestion. This is signaled
             // by `points_at_arg`. Otherwise, we give a more general note.
             err.span_suggestion_verbose(
-                obligation.cause.span.shrink_to_hi(),
+                obligation.cause.def_span().shrink_to_hi(),
                 &msg,
                 sugg,
                 Applicability::HasPlaceholders,
@@ -657,7 +657,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         }
 
-        let span = obligation.cause.span;
+        let span = obligation.cause.def_span();
         let param_env = obligation.param_env;
         let trait_ref = trait_ref.skip_binder();
 
@@ -736,7 +736,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
-        let span = obligation.cause.span;
+        let span = obligation.cause.def_span();
 
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             let refs_number =
@@ -800,7 +800,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     ) {
-        let span = obligation.cause.span;
+        let span = obligation.cause.def_span();
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             let refs_number =
                 snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
@@ -1271,7 +1271,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!(
             "maybe_note_obligation_cause_for_async_await: obligation.predicate={:?} \
                 obligation.cause.span={:?}",
-            obligation.predicate, obligation.cause.span
+            obligation.predicate,
+            obligation.cause.def_span()
         );
         let hir = self.tcx.hir();
 

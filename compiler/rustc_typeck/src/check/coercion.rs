@@ -167,7 +167,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // already resolved in some way.
                 let diverging_ty = self.next_diverging_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::AdjustmentType,
-                    span: self.cause.span,
+                    span: self.cause.def_span(),
                 });
                 self.unify_and(&b, &diverging_ty, simple(Adjust::NeverToAny))
             } else {
@@ -262,7 +262,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => return self.unify_and(a, b, identity),
         };
 
-        let span = self.cause.span;
+        let span = self.cause.def_span();
 
         let mut first_error = None;
         let mut r_borrow_var = None;
@@ -495,7 +495,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
                 coerce_mutbls(mutbl_a, mutbl_b)?;
 
-                let coercion = Coercion(self.cause.span);
+                let coercion = Coercion(self.cause.def_span());
                 let r_borrow = self.next_region_var(coercion);
                 let mutbl = match mutbl_b {
                     hir::Mutability::Not => AutoBorrowMutability::Not,
@@ -537,7 +537,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // for the former and let type inference do the rest.
         let origin = TypeVariableOrigin {
             kind: TypeVariableOriginKind::MiscVariable,
-            span: self.cause.span,
+            span: self.cause.def_span(),
         };
         let coerce_target = self.next_ty_var(origin);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
@@ -552,7 +552,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::new(
-            self.cause.span,
+            self.cause.def_span(),
             self.body_id,
             ObligationCauseCode::Coercion { source, target },
         );
@@ -653,7 +653,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             feature_err(
                 &self.tcx.sess.parse_sess,
                 sym::unsized_tuple_coercion,
-                self.cause.span,
+                self.cause.def_span(),
                 "unsized tuple coercion is not stable enough for use and is subject to change",
             )
             .emit();
@@ -732,7 +732,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 let InferOk { value: a_sig, mut obligations } =
-                    self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
+                    self.normalize_associated_types_in_as_infer_ok(self.cause.def_span(), &a_sig);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
                 let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
@@ -1349,11 +1349,11 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     ObligationCauseCode::ReturnNoExpression => {
                         err = struct_span_err!(
                             fcx.tcx.sess,
-                            cause.span,
+                            cause.def_span(),
                             E0069,
                             "`return;` in a function whose return type is not `()`"
                         );
-                        err.span_label(cause.span, "return type is not `()`");
+                        err.span_label(cause.def_span(), "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
                         let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
@@ -1440,7 +1440,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.hir().get_parent_node(id);
         let fn_decl = if let Some((expr, blk_id)) = expression {
             pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
-                &mut err, expr, expected, found, cause.span, blk_id,
+                &mut err,
+                expr,
+                expected,
+                found,
+                cause.def_span(),
+                blk_id,
             );
             let parent = fcx.tcx.hir().get(parent_id);
             if let (Some(match_expr), true, false) = (
@@ -1546,7 +1551,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     ],
                     Applicability::MachineApplicable,
                 );
-                let sugg = vec![sp, cause.span]
+                let sugg = vec![sp, cause.def_span()]
                     .into_iter()
                     .flat_map(|sp| {
                         vec![

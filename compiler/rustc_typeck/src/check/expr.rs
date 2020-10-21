@@ -598,7 +598,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &cause,
                         &mut |mut err| {
                             self.suggest_mismatched_types_on_tail(
-                                &mut err, expr, ty, e_ty, cause.span, target_id,
+                                &mut err,
+                                expr,
+                                ty,
+                                e_ty,
+                                cause.def_span(),
+                                target_id,
                             );
                             if let Some(val) = ty_kind_suggestion(ty) {
                                 let label = destination

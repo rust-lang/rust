@@ -1103,7 +1103,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             super::ImplSource::AutoImpl(..) | super::ImplSource::Builtin(..) => {
                 // These traits have no associated types.
                 selcx.tcx().sess.delay_span_bug(
-                    obligation.cause.span,
+                    obligation.cause.def_span(),
                     &format!("Cannot project an associated type from `{:?}`", impl_source),
                 );
                 return Err(());
@@ -1173,7 +1173,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
         | super::ImplSource::TraitAlias(..) => {
             // we don't create Select candidates with this kind of resolution
             span_bug!(
-                obligation.cause.span,
+                obligation.cause.def_span(),
                 "Cannot project an associated type from `{:?}`",
                 impl_source
             )
@@ -1334,7 +1334,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     let param_env = obligation.param_env;
 
     let (cache_entry, _) = infcx.replace_bound_vars_with_fresh_vars(
-        cause.span,
+        cause.def_span(),
         LateBoundRegionConversionTime::HigherRankedType,
         &poly_cache_entry,
     );
@@ -1369,7 +1369,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
                 obligation, poly_cache_entry, e,
             );
             debug!("confirm_param_env_candidate: {}", msg);
-            let err = infcx.tcx.ty_error_with_message(obligation.cause.span, &msg);
+            let err = infcx.tcx.ty_error_with_message(obligation.cause.def_span(), &msg);
             Progress { ty: err, obligations: vec![] }
         }
     }
@@ -1415,7 +1415,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let ty = tcx.type_of(assoc_ty.item.def_id);
     if substs.len() != tcx.generics_of(assoc_ty.item.def_id).count() {
         let err = tcx.ty_error_with_message(
-            obligation.cause.span,
+            obligation.cause.def_span(),
             "impl item and trait item have different parameter counts",
         );
         Progress { ty: err, obligations: nested }

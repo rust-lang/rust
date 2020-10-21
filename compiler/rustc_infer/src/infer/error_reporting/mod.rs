@@ -623,7 +623,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arms have incompatible types";
-                    err.span_label(cause.span, msg);
+                    err.span_label(cause.def_span(), msg);
                     if let Some(ret_sp) = opt_suggest_box_span {
                         self.suggest_boxing_for_return_impl_trait(
                             err,
@@ -648,7 +648,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             Some(ty) if expected == ty => {
                                 let source_map = self.tcx.sess.source_map();
                                 err.span_suggestion(
-                                    source_map.end_point(cause.span),
+                                    source_map.end_point(cause.def_span()),
                                     "try removing this `?`",
                                     "".to_string(),
                                     Applicability::MachineApplicable,
@@ -665,7 +665,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         _ => last_ty,
                     });
                     let msg = "`match` arms have incompatible types";
-                    err.span_label(cause.span, msg);
+                    err.span_label(cause.def_span(), msg);
                     if prior_arms.len() <= 4 {
                         for sp in prior_arms {
                             err.span_label(*sp, format!("this is found to be of type `{}`", t));
@@ -2116,7 +2116,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         "...",
                     );
                     err.span_note(
-                        sup_trace.cause.span,
+                        sup_trace.cause.def_span(),
                         &format!("...so that the {}", sup_trace.cause.as_requirement_str()),
                     );
 

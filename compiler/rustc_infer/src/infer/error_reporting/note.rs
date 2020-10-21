@@ -26,7 +26,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
                     label_or_note(
-                        trace.cause.span,
+                        trace.cause.def_span(),
                         &format!("...so that the {}", trace.cause.as_requirement_str()),
                     );
 
@@ -37,7 +37,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // *terrible*.
 
                     label_or_note(
-                        trace.cause.span,
+                        trace.cause.def_span(),
                         &format!("...so that {}", trace.cause.as_requirement_str()),
                     );
                 }

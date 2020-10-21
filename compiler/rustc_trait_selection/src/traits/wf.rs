@@ -221,7 +221,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                 if let Some(impl_item_span) =
                     items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
                 {
-                    cause.make_mut().span = impl_item_span;
+                    cause.update_def_span(impl_item_span);
                 }
             }
         }
@@ -236,7 +236,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
                         items.iter().find(|i| i.ident == trait_assoc_item.ident).map(fix_span)
                     })
                 {
-                    cause.make_mut().span = impl_item_span;
+                    cause.update_def_span(impl_item_span);
                 }
             }
         }
@@ -334,7 +334,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // The first subst is the self ty - use the correct span for it.
                     if i == 0 {
                         if let Some(hir::ItemKind::Impl { self_ty, .. }) = item.map(|i| &i.kind) {
-                            new_cause.make_mut().span = self_ty.span;
+                            new_cause.update_def_span(self_ty.span);
                         }
                     }
                     traits::Obligation::with_depth(

@@ -112,7 +112,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         for (index, error) in errors.iter().enumerate() {
             // We want to ignore desugarings here: spans are equivalent even
             // if one is the result of a desugaring and the other is not.
-            let mut span = error.obligation.cause.span;
+            let mut span = error.obligation.cause.def_span();
             let expn_data = span.ctxt().outer_expn_data();
             if let ExpnKind::Desugaring(_) = expn_data.kind {
                 span = expn_data.call_site;
@@ -185,7 +185,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let predicate = self.resolve_vars_if_possible(&obligation.predicate);
         let mut err = struct_span_err!(
             self.tcx.sess,
-            obligation.cause.span,
+            obligation.cause.def_span(),
             E0275,
             "overflow evaluating the requirement `{}`",
             predicate
@@ -229,7 +229,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         points_at_arg: bool,
     ) {
         let tcx = self.tcx;
-        let span = obligation.cause.span;
+        let span = obligation.cause.def_span();
 
         let mut err = match *error {
             SelectionError::Unimplemented => {
@@ -587,7 +587,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             format!("this closure implements `{}`, not `{}`", found_kind, kind),
                         );
                         err.span_label(
-                            obligation.cause.span,
+                            obligation.cause.def_span(),
                             format!("the requirement to implement `{}` derives from here", kind),
                         );
 
@@ -1176,7 +1176,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let ty::PredicateAtom::Projection(data) = bound_predicate.skip_binder() {
                 let mut selcx = SelectionContext::new(self);
                 let (data, _) = self.replace_bound_vars_with_fresh_vars(
-                    obligation.cause.span,
+                    obligation.cause.def_span(),
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     &bound_predicate.rebind(data),
                 );
@@ -1224,12 +1224,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             let msg = format!("type mismatch resolving `{}`", predicate);
-            let error_id = (DiagnosticMessageId::ErrorId(271), Some(obligation.cause.span), msg);
+            let error_id =
+                (DiagnosticMessageId::ErrorId(271), Some(obligation.cause.def_span()), msg);
             let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
             if fresh {
                 let mut diag = struct_span_err!(
                     self.tcx.sess,
-                    obligation.cause.span,
+                    obligation.cause.def_span(),
                     E0271,
                     "type mismatch resolving `{}`",
                     predicate
@@ -1446,7 +1447,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         // coherence violation, so we don't report it here.
 
         let predicate = self.resolve_vars_if_possible(&obligation.predicate);
-        let span = obligation.cause.span;
+        let span = obligation.cause.def_span();
 
         debug!(
             "maybe_report_ambiguity(predicate={:?}, obligation={:?} body_id={:?}, code={:?})",

@@ -700,7 +700,9 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
         // FIXME: This is non-ideal because we don't give a
         // very descriptive origin for this region variable.
-        Ok(self.infcx.next_region_var_in_universe(MiscVariable(self.cause.span), self.for_universe))
+        Ok(self
+            .infcx
+            .next_region_var_in_universe(MiscVariable(self.cause.def_span()), self.for_universe))
     }
 
     fn consts(

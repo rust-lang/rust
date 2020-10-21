@@ -199,7 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
                     self.deduce_sig_from_projection(
-                        Some(obligation.cause.span),
+                        Some(obligation.cause.def_span()),
                         bound_predicate.rebind(proj_predicate),
                     )
                 } else {
@@ -622,7 +622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 obligation.predicate.skip_binders()
             {
                 self.deduce_future_output_from_projection(
-                    obligation.cause.span,
+                    obligation.cause.def_span(),
                     ty::Binder::bind(proj_predicate),
                 )
             } else {

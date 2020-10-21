@@ -99,7 +99,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         cause: &ObligationCause<'tcx>,
     ) {
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
-            infer::RelateParamBound(cause.span, sup_type)
+            infer::RelateParamBound(cause.def_span(), sup_type)
         });
 
         self.register_region_obligation(

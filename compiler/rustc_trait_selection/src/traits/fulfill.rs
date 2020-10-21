@@ -450,7 +450,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.cause.body_id,
                         obligation.recursion_depth + 1,
                         arg,
-                        obligation.cause.span,
+                        obligation.cause.def_span(),
                     ) {
                         None => {
                             pending_obligation.stalled_on =
@@ -493,7 +493,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         def_id,
                         substs,
                         obligation.param_env,
-                        obligation.cause.span,
+                        obligation.cause.def_span(),
                     ) {
                         Ok(()) => ProcessResult::Changed(vec![]),
                         Err(ErrorHandled::TooGeneric) => {
@@ -538,7 +538,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                                 def,
                                 substs,
                                 promoted,
-                                Some(obligation.cause.span),
+                                Some(obligation.cause.def_span()),
                             ) {
                                 Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
                                 Err(ErrorHandled::TooGeneric) => {

@@ -109,7 +109,7 @@ impl Deref for ObligationCause<'tcx> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct ObligationCauseData<'tcx> {
-    pub span: Span,
+    span: Span,
 
     /// The ID of the fn body that triggered this obligation. This is
     /// used for region obligations to determine the precise
@@ -149,19 +149,30 @@ impl<'tcx> ObligationCause<'tcx> {
         Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
     }
 
+    pub fn update_def_span(&mut self, span: Span) {
+        let data =
+            Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)));
+
+        data.span = span;
+    }
+
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
         match self.code {
             ObligationCauseCode::CompareImplMethodObligation { .. }
             | ObligationCauseCode::MainFunctionType
             | ObligationCauseCode::StartFunctionType => {
-                tcx.sess.source_map().guess_head_span(self.span)
+                tcx.sess.source_map().guess_head_span(self.def_span())
             }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_span,
                 ..
             }) => arm_span,
-            _ => self.span,
+            _ => self.def_span(),
         }
+    }
+
+    pub fn def_span(&self) -> Span {
+        self.span
     }
 }
 

@@ -47,7 +47,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     };
                     let mut err = struct_span_err!(
                         tcx.sess,
-                        cause.span,
+                        cause.def_span(),
                         E0772,
                         "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
                          requirement",
@@ -62,7 +62,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     );
                     err.span_label(param.param_ty_span, &format!("this data with {}...", lifetime));
                     err.span_label(
-                        cause.span,
+                        cause.def_span(),
                         &format!(
                             "...is captured and required to live as long as `'static` here \
                              because of an implicit lifetime bound on the {}",
