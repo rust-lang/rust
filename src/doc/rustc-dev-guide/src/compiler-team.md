@@ -82,7 +82,7 @@ offer r+ privileges. This means that you have the right to instruct
 merge a PR
 ([here are some instructions for how to talk to bors][homu-guide]).
 
-[homu-guide]: https://buildbot2.rust-lang.org/homu/
+[homu-guide]: https://bors.rust-lang.org/
 
 The guidelines for reviewers are as follows:
 

@@ -128,7 +128,7 @@ with one another are marked as "always roll up".
 [rust-highfive]: https://github.com/rust-highfive
 [steveklabnik]: https://github.com/steveklabnik
 [@bors]: https://github.com/bors
-[merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
+[merge-queue]: https://bors.rust-lang.org/queue/rust
 
 ### Opening a PR
 
@@ -540,4 +540,4 @@ are:
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: https://www.rustaceans.org/
 [rctd]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
-[cheatsheet]: https://buildbot2.rust-lang.org/homu/
+[cheatsheet]: https://bors.rust-lang.org/

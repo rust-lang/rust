@@ -408,7 +408,7 @@ a PR (there are few other commands, but they are less relevant here). This puts
 the PR in [bors's queue][bors] to be tested and merged. Be patient; this can take a
 while and the queue can sometimes be long. PRs are never merged by hand.
 
-[bors]: https://buildbot2.rust-lang.org/homu/queue/rust
+[bors]: https://bors.rust-lang.org/queue/rust
 
 ### Bug Fixes or "Normal" code changes
 

@@ -132,7 +132,7 @@ only a subset run the full suite of tests (see Rust's [platform tiers]).
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/servo/homu
-[queue]: https://buildbot2.rust-lang.org/homu/queue/rust
+[queue]: https://bors.rust-lang.org/queue/rust
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 
 ## Testing with Docker images
