@@ -13,15 +13,17 @@ LL |     let y = x as dyn MyAdd<i32>;
 error[E0038]: the trait `MyAdd` cannot be made into an object
   --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:14:18
    |
-LL | trait MyAdd<Rhs=Self> { fn add(&self, other: &Rhs) -> Self; }
-   |       -----                                           ---- ...because method `add` references the `Self` type in its return type
-   |       |
-   |       this trait cannot be made into an object...
-...
 LL |     let y = x as dyn MyAdd<i32>;
-   |                  ^^^^^^^^^^^^^^ the trait `MyAdd` cannot be made into an object
+   |                  ^^^^^^^^^^^^^^ `MyAdd` cannot be made into an object
    |
    = help: consider moving `add` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/type-parameter-defaults-referencing-Self-ppaux.rs:6:55
+   |
+LL | trait MyAdd<Rhs=Self> { fn add(&self, other: &Rhs) -> Self; }
+   |       -----                                           ^^^^ ...because method `add` references the `Self` type in its return type
+   |       |
+   |       this trait cannot be made into an object...
 
 error: aborting due to 2 previous errors
 

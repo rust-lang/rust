@@ -529,8 +529,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // Make sure that any constants in the static's type are evaluated.
         let static_ty = self.normalize_erasing_regions(ty::ParamEnv::empty(), self.type_of(def_id));
 
+        // Make sure that accesses to unsafe statics end up using raw pointers.
+        // For thread-locals, this needs to be kept in sync with `Rvalue::ty`.
         if self.is_mutable_static(def_id) {
             self.mk_mut_ptr(static_ty)
+        } else if self.is_foreign_item(def_id) {
+            self.mk_imm_ptr(static_ty)
         } else {
             self.mk_imm_ref(self.lifetimes.re_erased, static_ty)
         }

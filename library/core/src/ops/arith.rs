@@ -302,7 +302,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    message = "cannot multiply `{Rhs}` to `{Self}`",
+    message = "cannot multiply `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} * {Rhs}`"
 )]
 #[doc(alias = "*")]
@@ -826,7 +826,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[lang = "mul_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(
-    message = "cannot multiply-assign `{Rhs}` to `{Self}`",
+    message = "cannot multiply-assign `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} *= {Rhs}`"
 )]
 #[doc(alias = "*")]

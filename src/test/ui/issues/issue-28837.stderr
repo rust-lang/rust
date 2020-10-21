@@ -18,7 +18,7 @@ LL |     a - a;
    |
    = note: an implementation of `std::ops::Sub` might be missing for `A`
 
-error[E0369]: cannot multiply `A` to `A`
+error[E0369]: cannot multiply `A` by `A`
   --> $DIR/issue-28837.rs:10:7
    |
 LL |     a * a;

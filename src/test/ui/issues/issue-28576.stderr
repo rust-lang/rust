@@ -1,16 +1,19 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-28576.rs:7:12
    |
-LL |   pub trait Bar: Foo<Assoc=()> {
-   |             ---  -------------
-   |             |    |   |
-   |             |    |   ...because it uses `Self` as a type parameter in this
-   |             |    ...because it uses `Self` as a type parameter in this
-   |             this trait cannot be made into an object...
-LL |       fn new(&self, b: &
 LL | /            dyn Bar
 LL | |               <Assoc=()>
-   | |________________________^ the trait `Bar` cannot be made into an object
+   | |________________________^ `Bar` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-28576.rs:5:16
+   |
+LL | pub trait Bar: Foo<Assoc=()> {
+   |           ---  ^^^^^^^^^^^^^
+   |           |    |   |
+   |           |    |   ...because it uses `Self` as a type parameter
+   |           |    ...because it uses `Self` as a type parameter
+   |           this trait cannot be made into an object...
 
 error: aborting due to previous error
 

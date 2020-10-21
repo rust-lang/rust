@@ -13,6 +13,7 @@ use crate::mir::interpret::ErrorHandled;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
@@ -646,13 +647,13 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
             ObjectSafetyViolation::SupertraitSelf(ref spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
-                    "it uses `Self` as a type parameter in this".into()
+                    "it uses `Self` as a type parameter".into()
                 } else {
                     "it cannot use `Self` as a type parameter in a supertrait or `where`-clause"
                         .into()
                 }
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(_, _, _), _) => {
                 format!("associated function `{}` has no `self` parameter", name).into()
             }
             ObjectSafetyViolation::Method(
@@ -686,32 +687,65 @@ impl ObjectSafetyViolation {
         }
     }
 
-    pub fn solution(&self) -> Option<(String, Option<(String, Span)>)> {
-        Some(match *self {
-            ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {
-                return None;
+    pub fn solution(&self, err: &mut DiagnosticBuilder<'_>) {
+        match *self {
+            ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {}
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::StaticMethod(sugg, self_span, has_args),
+                _,
+            ) => {
+                err.span_suggestion(
+                    self_span,
+                    &format!(
+                        "consider turning `{}` into a method by giving it a `&self` argument",
+                        name
+                    ),
+                    format!("&self{}", if has_args { ", " } else { "" }),
+                    Applicability::MaybeIncorrect,
+                );
+                match sugg {
+                    Some((sugg, span)) => {
+                        err.span_suggestion(
+                            span,
+                            &format!(
+                                "alternatively, consider constraining `{}` so it does not apply to \
+                                 trait objects",
+                                name
+                            ),
+                            sugg.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    None => {
+                        err.help(&format!(
+                            "consider turning `{}` into a method by giving it a `&self` \
+                             argument or constraining it so it does not apply to trait objects",
+                            name
+                        ));
+                    }
+                }
             }
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod(sugg), _) => (
-                format!(
-                    "consider turning `{}` into a method by giving it a `&self` argument or \
-                     constraining it so it does not apply to trait objects",
-                    name
-                ),
-                sugg.map(|(sugg, sp)| (sugg.to_string(), sp)),
-            ),
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::UndispatchableReceiver,
                 span,
-            ) => (
-                format!("consider changing method `{}`'s `self` parameter to be `&self`", name),
-                Some(("&Self".to_string(), span)),
-            ),
+            ) => {
+                err.span_suggestion(
+                    span,
+                    &format!(
+                        "consider changing method `{}`'s `self` parameter to be `&self`",
+                        name
+                    ),
+                    "&Self".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
             ObjectSafetyViolation::AssocConst(name, _)
             | ObjectSafetyViolation::Method(name, ..) => {
-                (format!("consider moving `{}` to another trait", name), None)
+                err.help(&format!("consider moving `{}` to another trait", name));
             }
-        })
+        }
     }
 
     pub fn spans(&self) -> SmallVec<[Span; 1]> {
@@ -735,7 +769,7 @@ impl ObjectSafetyViolation {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum MethodViolationCode {
     /// e.g., `fn foo()`
-    StaticMethod(Option<(&'static str, Span)>),
+    StaticMethod(Option<(&'static str, Span)>, Span, bool /* has args */),
 
     /// e.g., `fn foo(&self, x: Self)`
     ReferencesSelfInput(usize),

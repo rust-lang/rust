@@ -7,7 +7,7 @@ fn main() {
 
     a - a; //~ ERROR cannot subtract `A` from `A`
 
-    a * a; //~ ERROR cannot multiply `A` to `A`
+    a * a; //~ ERROR cannot multiply `A` by `A`
 
     a / a; //~ ERROR cannot divide `A` by `A`
 

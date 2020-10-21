@@ -1,13 +1,16 @@
 error[E0038]: the trait `Map` cannot be made into an object
   --> $DIR/issue-26056.rs:20:13
    |
+LL |         as &dyn Map<Key=u32,MapValue=u32>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Map` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-26056.rs:9:12
+   |
 LL | trait Map: MapLookup<<Self as Map>::Key> {
-   |       ---  ----------------------------- ...because it uses `Self` as a type parameter in this
+   |       ---  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
-...
-LL |         as &dyn Map<Key=u32,MapValue=u32>;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Map` cannot be made into an object
 
 error: aborting due to previous error
 

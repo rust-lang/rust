@@ -1,25 +1,30 @@
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/issue-38604.rs:14:13
    |
+LL |     let _f: Box<dyn Foo> =
+   |             ^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-38604.rs:2:22
+   |
 LL | trait Foo where u32: Q<Self> {
-   |       ---            ------- ...because it uses `Self` as a type parameter in this
+   |       ---            ^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
-...
-LL |     let _f: Box<dyn Foo> =
-   |             ^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/issue-38604.rs:15:9
    |
+LL |         Box::new(());
+   |         ^^^^^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-38604.rs:2:22
+   |
 LL | trait Foo where u32: Q<Self> {
-   |       ---            ------- ...because it uses `Self` as a type parameter in this
+   |       ---            ^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
-...
-LL |         Box::new(());
-   |         ^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
-   |
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Foo>>` for `Box<()>`
    = note: required by cast to type `Box<dyn Foo>`
 
