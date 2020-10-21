@@ -37,10 +37,10 @@ pub(crate) struct Target {
 }
 
 impl Target {
-    pub(crate) fn from_compressed_tar(builder: &Builder, base_path: &str) -> Self {
+    pub(crate) fn from_compressed_tar(builder: &mut Builder, base_path: &str) -> Self {
         let base_path = builder.input.join(base_path);
-        let gz = Self::tarball_variant(&base_path, "gz");
-        let xz = Self::tarball_variant(&base_path, "xz");
+        let gz = Self::tarball_variant(builder, &base_path, "gz");
+        let xz = Self::tarball_variant(builder, &base_path, "xz");
 
         if gz.is_none() {
             return Self::unavailable();
@@ -59,10 +59,21 @@ impl Target {
         }
     }
 
-    fn tarball_variant(base: &Path, ext: &str) -> Option<PathBuf> {
+    fn tarball_variant(builder: &mut Builder, base: &Path, ext: &str) -> Option<PathBuf> {
         let mut path = base.to_path_buf();
         path.set_extension(ext);
-        if path.is_file() { Some(path) } else { None }
+        if path.is_file() {
+            builder.shipped_files.insert(
+                path.file_name()
+                    .expect("missing filename")
+                    .to_str()
+                    .expect("non-utf-8 filename")
+                    .to_string(),
+            );
+            Some(path)
+        } else {
+            None
+        }
     }
 
     pub(crate) fn unavailable() -> Self {

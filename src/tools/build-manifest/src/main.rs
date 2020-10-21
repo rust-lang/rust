@@ -186,6 +186,7 @@ macro_rules! t {
 
 struct Builder {
     versions: Versions,
+    shipped_files: HashSet<String>,
 
     input: PathBuf,
     output: PathBuf,
@@ -239,6 +240,7 @@ fn main() {
 
     Builder {
         versions: Versions::new(&channel, &input).unwrap(),
+        shipped_files: HashSet::new(),
 
         input,
         output,
@@ -259,15 +261,20 @@ impl Builder {
         }
         let manifest = self.build_manifest();
 
-        self.write_channel_files(self.versions.channel(), &manifest);
-        if self.versions.channel() == "stable" {
+        let channel = self.versions.channel().to_string();
+        self.write_channel_files(&channel, &manifest);
+        if channel == "stable" {
             // channel-rust-1.XX.YY.toml
-            let rust_version = self.versions.rustc_version();
-            self.write_channel_files(rust_version, &manifest);
+            let rust_version = self.versions.rustc_version().to_string();
+            self.write_channel_files(&rust_version, &manifest);
 
             // channel-rust-1.XX.toml
             let major_minor = rust_version.split('.').take(2).collect::<Vec<_>>().join(".");
             self.write_channel_files(&major_minor, &manifest);
+        }
+
+        if let Some(path) = std::env::var_os("BUILD_MANIFEST_SHIPPED_FILES_PATH") {
+            self.write_shipped_files(&Path::new(&path));
         }
     }
 
@@ -623,7 +630,7 @@ impl Builder {
         })
     }
 
-    fn write_channel_files(&self, channel_name: &str, manifest: &Manifest) {
+    fn write_channel_files(&mut self, channel_name: &str, manifest: &Manifest) {
         self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
         self.write(&manifest.date, channel_name, "-date.txt");
         self.write(
@@ -633,13 +640,24 @@ impl Builder {
         );
     }
 
-    fn write(&self, contents: &str, channel_name: &str, suffix: &str) {
-        let dst = self.output.join(format!("channel-rust-{}{}", channel_name, suffix));
+    fn write(&mut self, contents: &str, channel_name: &str, suffix: &str) {
+        let name = format!("channel-rust-{}{}", channel_name, suffix);
+        self.shipped_files.insert(name.clone());
+
+        let dst = self.output.join(name);
         t!(fs::write(&dst, contents));
         if self.legacy {
             self.hash(&dst);
             self.sign(&dst);
         }
+    }
+
+    fn write_shipped_files(&self, path: &Path) {
+        let mut files = self.shipped_files.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        files.sort();
+        let content = format!("{}\n", files.join("\n"));
+
+        t!(std::fs::write(path, content.as_bytes()));
     }
 }
 
