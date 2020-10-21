@@ -87,6 +87,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_rustc_args_required_const(&attr, span, target, item)
             } else if self.tcx.sess.check_name(attr, sym::allow_internal_unstable) {
                 self.check_allow_internal_unstable(&attr, span, target, &attrs)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_allow_const_fn_unstable) {
+                self.check_rustc_allow_const_fn_unstable(&attr, span, target)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -788,6 +790,26 @@ impl CheckAttrVisitor<'tcx> {
             .sess
             .struct_span_err(attr.span, "attribute should be applied to a macro")
             .span_label(*span, "not a macro")
+            .emit();
+        false
+    }
+
+    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
+    fn check_rustc_allow_const_fn_unstable(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
+        if let Target::Fn | Target::Method(_) = target {
+            // FIXME Check that this isn't just a function, but a const fn
+            return true;
+        }
+        self.tcx
+            .sess
+            .struct_span_err(attr.span, "attribute should be applied to `const fn`")
+            .span_label(*span, "not a `const fn`")
             .emit();
         false
     }
