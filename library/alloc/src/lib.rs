@@ -72,6 +72,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![cfg_attr(not(bootstrap), feature(rustc_allow_const_fn_unstable))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(test, feature(new_uninit))]

@@ -150,7 +150,8 @@ impl<T> RawVec<T, Global> {
 impl<T, A: AllocRef> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
-    #[allow_internal_unstable(const_fn)]
+    #[cfg_attr(not(bootstrap), rustc_allow_const_fn_unstable(const_fn))]
+    #[cfg_attr(bootstrap, allow_internal_unstable(const_fn))]
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr: Unique::dangling(), cap: 0, alloc }

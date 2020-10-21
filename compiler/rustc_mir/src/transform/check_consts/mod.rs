@@ -79,7 +79,7 @@ pub fn is_lang_panic_fn(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
 
 pub fn allow_internal_unstable(tcx: TyCtxt<'tcx>, def_id: DefId, feature_gate: Symbol) -> bool {
     let attrs = tcx.get_attrs(def_id);
-    attr::allow_internal_unstable(&tcx.sess, attrs)
+    attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs)
         .map_or(false, |mut features| features.any(|name| name == feature_gate))
 }
 

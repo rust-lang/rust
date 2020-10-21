@@ -805,7 +805,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     }
 
                     // Calling an unstable function *always* requires that the corresponding gate
-                    // be enabled, even if the function has `#[allow_internal_unstable(the_gate)]`.
+                    // be enabled, even if the function has `#[rustc_allow_const_fn_unstable(the_gate)]`.
                     if !tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == gate) {
                         self.check_op(ops::FnCallUnstable(callee, Some(gate)));
                         return;
@@ -965,8 +965,8 @@ fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol
         )
         .span_suggestion(
             attr_span,
-            "otherwise `#[allow_internal_unstable]` can be used to bypass stability checks",
-            format!("#[allow_internal_unstable({})]\n", gate),
+            "otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks",
+            format!("#[rustc_allow_const_fn_unstable({})]\n", gate),
             Applicability::MaybeIncorrect,
         )
         .emit();

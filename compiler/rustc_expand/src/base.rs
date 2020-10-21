@@ -768,8 +768,13 @@ impl SyntaxExtension {
         name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
-        let allow_internal_unstable = attr::allow_internal_unstable(sess, &attrs)
-            .map(|features| features.collect::<Vec<Symbol>>().into());
+        let allow_internal_unstable = {
+            let mut feat_list = Vec::new();
+            attr::allow_internal_unstable(sess, &attrs).map(|features| feat_list.extend(features));
+            attr::rustc_allow_const_fn_unstable(sess, &attrs)
+                .map(|features| feat_list.extend(features));
+            Some(feat_list.into())
+        };
 
         let mut local_inner_macros = false;
         if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
