@@ -1607,6 +1607,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "expect-test",
+ "indexmap",
  "itertools",
  "once_cell",
  "parser",
