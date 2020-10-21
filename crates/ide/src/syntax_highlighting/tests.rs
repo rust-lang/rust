@@ -18,6 +18,17 @@ pub mod marker {
     pub trait Copy {}
 }
 
+pub mod ops {
+    #[lang = "fn_once"]
+    pub trait FnOnce<Args> {}
+
+    #[lang = "fn_mut"]
+    pub trait FnMut<Args>: FnOnce<Args> {}
+
+    #[lang = "fn"]
+    pub trait Fn<Args>: FnMut<Args> {}
+}
+
 
 struct Foo {
     pub x: i32,
@@ -71,6 +82,11 @@ static mut STATIC_MUT: i32 = 0;
 
 fn foo<'a, T>() -> T {
     foo::<'a, i32>()
+}
+
+use ops::Fn;
+fn baz<F: Fn() -> ()>(f: F) {
+    f()
 }
 
 macro_rules! def_fn {
@@ -131,6 +147,9 @@ fn main() {
     copy.quop();
     copy.qux();
     copy.baz(copy);
+
+    let a = |x| x;
+    let bar = Foo::baz;
 }
 
 enum Option<T> {

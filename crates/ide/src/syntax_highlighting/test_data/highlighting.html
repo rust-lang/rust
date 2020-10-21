@@ -44,6 +44,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">Copy</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
+<span class="keyword">pub</span> <span class="keyword">mod</span> <span class="module declaration">ops</span> <span class="punctuation">{</span>
+    <span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">lang</span><span class="attribute"> </span><span class="operator">=</span><span class="attribute"> </span><span class="string_literal">"fn_once"</span><span class="attribute">]</span>
+    <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">FnOnce</span><span class="punctuation">&lt;</span><span class="type_param declaration">Args</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+
+    <span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">lang</span><span class="attribute"> </span><span class="operator">=</span><span class="attribute"> </span><span class="string_literal">"fn_mut"</span><span class="attribute">]</span>
+    <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">FnMut</span><span class="punctuation">&lt;</span><span class="type_param declaration">Args</span><span class="punctuation">&gt;</span><span class="punctuation">:</span> <span class="trait">FnOnce</span><span class="punctuation">&lt;</span><span class="type_param">Args</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+
+    <span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">lang</span><span class="attribute"> </span><span class="operator">=</span><span class="attribute"> </span><span class="string_literal">"fn"</span><span class="attribute">]</span>
+    <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">Fn</span><span class="punctuation">&lt;</span><span class="type_param declaration">Args</span><span class="punctuation">&gt;</span><span class="punctuation">:</span> <span class="trait">FnMut</span><span class="punctuation">&lt;</span><span class="type_param">Args</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+<span class="punctuation">}</span>
+
 
 <span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="punctuation">{</span>
     <span class="keyword">pub</span> <span class="field declaration">x</span><span class="punctuation">:</span> <span class="builtin_type">i32</span><span class="punctuation">,</span>
@@ -97,6 +108,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">fn</span> <span class="function declaration">foo</span><span class="punctuation">&lt;</span><span class="lifetime declaration">'a</span><span class="punctuation">,</span> <span class="type_param declaration">T</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="type_param">T</span> <span class="punctuation">{</span>
     <span class="function">foo</span><span class="operator">::</span><span class="punctuation">&lt;</span><span class="lifetime">'a</span><span class="punctuation">,</span> <span class="builtin_type">i32</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span>
+<span class="punctuation">}</span>
+
+<span class="keyword">use</span> <span class="module">ops</span><span class="operator">::</span><span class="trait">Fn</span><span class="punctuation">;</span>
+<span class="keyword">fn</span> <span class="function declaration">baz</span><span class="punctuation">&lt;</span><span class="type_param declaration">F</span><span class="punctuation">:</span> <span class="trait">Fn</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="value_param declaration callable">f</span><span class="punctuation">:</span> <span class="type_param">F</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+    <span class="value_param callable">f</span><span class="punctuation">(</span><span class="punctuation">)</span>
 <span class="punctuation">}</span>
 
 <span class="macro">macro_rules!</span> <span class="macro declaration">def_fn</span> <span class="punctuation">{</span>
@@ -157,6 +173,9 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="variable mutable">copy</span><span class="punctuation">.</span><span class="function">quop</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
     <span class="variable mutable">copy</span><span class="punctuation">.</span><span class="function mutable">qux</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
     <span class="variable mutable">copy</span><span class="punctuation">.</span><span class="function">baz</span><span class="punctuation">(</span><span class="variable mutable">copy</span><span class="punctuation">)</span><span class="punctuation">;</span>
+
+    <span class="keyword">let</span> <span class="variable declaration callable">a</span> <span class="operator">=</span> <span class="punctuation">|</span><span class="value_param declaration">x</span><span class="punctuation">|</span> <span class="value_param">x</span><span class="punctuation">;</span>
+    <span class="keyword">let</span> <span class="variable declaration callable">bar</span> <span class="operator">=</span> <span class="struct">Foo</span><span class="operator">::</span><span class="function">baz</span><span class="punctuation">;</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">enum</span> <span class="enum declaration">Option</span><span class="punctuation">&lt;</span><span class="type_param declaration">T</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
