@@ -1423,7 +1423,7 @@ where
 
     values.sort();
 
-    for (a, b) in values.iter().zip(values.iter().skip(1)) {
+    for (a, b) in (&values, &values[1..]) {
         match (a, b) {
             (&Kind::Start(_, ra), &Kind::End(_, rb)) => {
                 if ra.node != rb.node {

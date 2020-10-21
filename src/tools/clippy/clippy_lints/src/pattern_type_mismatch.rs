@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         hir_id: HirId,
     ) {
         if let Some(fn_sig) = cx.typeck_results().liberated_fn_sigs().get(hir_id) {
-            for (param, ty) in body.params.iter().zip(fn_sig.inputs().iter()) {
+            for (param, ty) in (body.params, fn_sig.inputs()) {
                 apply_lint(cx, &param.pat, ty, DerefPossible::Impossible);
             }
         }

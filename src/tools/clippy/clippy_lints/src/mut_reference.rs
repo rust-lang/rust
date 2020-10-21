@@ -64,7 +64,7 @@ fn check_arguments<'tcx>(
     match type_definition.kind() {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
-            for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
+            for (argument, parameter) in (arguments, parameters) {
                 match parameter.kind() {
                     ty::Ref(_, _, Mutability::Not)
                     | ty::RawPtr(ty::TypeAndMut {

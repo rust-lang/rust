@@ -89,7 +89,7 @@ impl<'tcx> TriviallyCopyPassByRef {
             _ => vec![],
         };
 
-        for (input, &ty) in decl.inputs.iter().zip(fn_sig.inputs()) {
+        for (input, &ty) in (decl.inputs, fn_sig.inputs()) {
             // All spans generated from a proc-macro invocation are the same...
             match span {
                 Some(s) if s == input.span => return,

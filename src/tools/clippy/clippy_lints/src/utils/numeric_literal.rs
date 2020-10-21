@@ -192,7 +192,7 @@ impl<'a> NumericLiteral<'a> {
             }
         }
 
-        for (c, i) in digits.zip((0..group_size).cycle()) {
+        for (c, i) in (digits, (0..group_size).cycle()) {
             if i == 0 {
                 output.push('_');
             }

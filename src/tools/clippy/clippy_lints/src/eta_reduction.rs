@@ -205,7 +205,7 @@ fn compare_inputs(
     closure_inputs: &mut dyn Iterator<Item = &Param<'_>>,
     call_args: &mut dyn Iterator<Item = &Expr<'_>>,
 ) -> bool {
-    for (closure_input, function_arg) in closure_inputs.zip(call_args) {
+    for (closure_input, function_arg) in (closure_inputs, call_args) {
         if let PatKind::Binding(_, _, ident, _) = closure_input.pat.kind {
             // XXXManishearth Should I be checking the binding mode here?
             if let ExprKind::Path(QPath::Resolved(None, ref p)) = function_arg.kind {
