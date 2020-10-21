@@ -302,14 +302,8 @@ fn ip_properties() {
     check!("1::", global);
     check!("fc00::");
     check!("fdff:ffff::");
-
-    // see [`is_unicast_link_local`]
-    // fe80:ffff:: is *not* unicast_link_local
-    check!("fe80:ffff::", global);
-    // fe80:: *is* unicast_link_local
-    check!("fe80::");
-
-    check!("febf:ffff::", global);
+    check!("fe80:ffff::");
+    check!("febf:ffff::");
     check!("fec0::", global);
     check!("ff01::", multicast);
     check!("ff02::", multicast);
@@ -617,7 +611,7 @@ fn ipv6_properties() {
     check!(
         "fe80:ffff::",
         &[0xfe, 0x80, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        global | unicast_global
+        unicast_link_local
     );
 
     check!("fe80::", &[0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_link_local);
@@ -625,14 +619,10 @@ fn ipv6_properties() {
     check!(
         "febf:ffff::",
         &[0xfe, 0xbf, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        global | unicast_global
+        unicast_link_local
     );
 
-    check!(
-        "febf::",
-        &[0xfe, 0xbf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        global | unicast_global
-    );
+    check!("febf::", &[0xfe, 0xbf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_link_local);
 
     check!(
         "febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
@@ -640,7 +630,7 @@ fn ipv6_properties() {
             0xfe, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff
         ],
-        global | unicast_global
+        unicast_link_local
     );
 
     check!(
@@ -655,7 +645,7 @@ fn ipv6_properties() {
     check!(
         "fe80:0:0:1::",
         &[0xfe, 0x80, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-        global | unicast_global
+        unicast_link_local
     );
 
     check!(
