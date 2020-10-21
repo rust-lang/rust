@@ -208,7 +208,7 @@ pub mod known {
         PartialOrd,
         Eq,
         PartialEq,
-        // Safe primitives
+        // Safe intrinsics
         abort,
         size_of,
         min_align_of,
