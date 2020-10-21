@@ -237,13 +237,14 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
   --> $DIR/incorrect-syntax-suggestions.rs:16:19
    |
 LL |     let _ = await bar()?;
-   |                   ^^^^^^
-   |                   |
-   |                   the `?` operator cannot be applied to type `impl Future`
-   |                   help: consider using `.await` here: `bar().await?`
+   |                   ^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
    = help: the trait `Try` is not implemented for `impl Future`
    = note: required by `into_result`
+help: consider `await`ing on the `Future`
+   |
+LL |     let _ = await bar().await?;
+   |                        ^^^^^^
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/incorrect-syntax-suggestions.rs:63:19

@@ -497,16 +497,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if self.infcx.predicate_may_hold(&obligation) {
                     debug!("suggest_missing_await: obligation held: {:?}", obligation);
-                    if let Ok(code) = self.sess().source_map().span_to_snippet(sp) {
-                        err.span_suggestion(
-                            sp,
-                            "consider using `.await` here",
-                            format!("{}.await", code),
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        debug!("suggest_missing_await: no snippet for {:?}", sp);
-                    }
+                    err.span_suggestion_verbose(
+                        sp.shrink_to_hi(),
+                        "consider `await`ing on the `Future`",
+                        ".await".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 } else {
                     debug!("suggest_missing_await: obligation did not hold: {:?}", obligation)
                 }
