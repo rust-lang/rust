@@ -316,7 +316,16 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
   if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy()) {
     unsigned idxs[] = {0};
     auto diffreti = Builder.CreateExtractValue(diffret, idxs);
-    CI->replaceAllUsesWith(diffreti);
+    if (diffreti->getType() == CI->getType()) {
+      CI->replaceAllUsesWith(diffreti);
+    } else if (diffret->getType() == CI->getType()) {
+      CI->replaceAllUsesWith(diffret);
+    } else {
+      EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                  "Cannot cast return type of gradient ", *diffreti->getType(),
+                  *diffreti, ", to desired type ", *CI->getType());
+      return false;
+    }
   } else {
     CI->replaceAllUsesWith(UndefValue::get(CI->getType()));
   }
