@@ -1,11 +1,20 @@
-use crate::utils::{snippet_opt, span_lint_and_then};
+use crate::utils::{get_inner_attr, meets_msrv, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_ast::ast::{Attribute, Item, ItemKind, StructField, Variant, VariantData, VisibilityKind};
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
+use semver::{Version, VersionReq};
+
+const MANUAL_NON_EXHAUSTIVE_MSRV: Version = Version {
+    major: 1,
+    minor: 40,
+    patch: 0,
+    pre: Vec::new(),
+    build: Vec::new(),
+};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual implementations of the non-exhaustive pattern.
@@ -55,10 +64,26 @@ declare_clippy_lint! {
     "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]"
 }
 
-declare_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
+#[derive(Clone)]
+pub struct ManualNonExhaustive {
+    msrv: Option<VersionReq>,
+}
+
+impl ManualNonExhaustive {
+    #[must_use]
+    pub fn new(msrv: Option<VersionReq>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
 
 impl EarlyLintPass for ManualNonExhaustive {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+        if !meets_msrv(self.msrv.as_ref(), &MANUAL_NON_EXHAUSTIVE_MSRV) {
+            return;
+        }
+
         match &item.kind {
             ItemKind::Enum(def, _) => {
                 check_manual_non_exhaustive_enum(cx, item, &def.variants);
@@ -73,6 +98,8 @@ impl EarlyLintPass for ManualNonExhaustive {
             _ => {},
         }
     }
+
+    extract_msrv_attr!(EarlyContext);
 }
 
 fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants: &[Variant]) {
