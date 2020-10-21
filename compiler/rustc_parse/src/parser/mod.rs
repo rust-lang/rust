@@ -890,6 +890,8 @@ impl<'a> Parser<'a> {
 
     /// Parses inline const expressions. The `const` keyword was already eaten.
     fn parse_const_block(&mut self, span: Span) -> PResult<'a, P<Expr>> {
+        self.sess.gated_spans.gate(sym::inline_const, span);
+
         let blk = self.parse_block()?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
