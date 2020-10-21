@@ -47,15 +47,15 @@ use rustc_span::{Span, Symbol};
 macro_rules! log_capture_analysis {
     ($fcx:expr, $closure_def_id:expr, $fmt:literal) => {
         if $fcx.should_log_capture_analysis($closure_def_id) {
-            print!("For closure={:?}: ", $closure_def_id);
-            println!($fmt);
+            eprint!("For 1 closure={:?}: ", $closure_def_id);
+            eprintln!($fmt);
         }
     };
 
     ($fcx:expr, $closure_def_id:expr, $fmt:literal, $($args:expr),*) => {
         if $fcx.should_log_capture_analysis($closure_def_id) {
-            print!("For closure={:?}: ", $closure_def_id);
-            println!($fmt, $($args),*);
+            eprint!("For 2 closure={:?}: ", $closure_def_id);
+            //eprintln!($fmt, $($args),*);
         }
     };
 }
@@ -92,6 +92,42 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    fn log_new_capture_analysis(
+        &self,
+        closure_def_id: rustc_hir::def_id::DefId,
+        capture_information: &FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>
+    ) {
+        if self.should_log_capture_analysis(closure_def_id) {
+            for (place, capture_info) in capture_information {
+                eprintln!("{:?}", self.tcx.hir().span(capture_info.expr_id.unwrap()));
+
+                let variable_name;
+                match place.base {
+                    PlaceBase::Upvar(upvar_id) => {
+                        variable_name = var_name(self.tcx, upvar_id.var_path.hir_id).to_string();
+                    },
+                    _ => variable_name = String::from("unknown")
+                }
+                eprint!("Capturing {}[", variable_name);
+
+                for item in &place.projections {
+                    eprint!("{:?}", item.kind);
+                }
+            
+                let capture_type;
+                match capture_info.capture_kind {
+                    ty::UpvarCapture::ByValue(value) => {
+                        capture_type = format!("{:?}", value);
+                    },
+                    ty::UpvarCapture::ByRef(borrow) => {
+                        capture_type = format!("{:?}", borrow.kind);
+                    },
+                }
+                eprintln!("] ->  {}", capture_type);
+            }
+        }
+    }
+
     /// Analysis starting point.
     fn analyze_closure(
         &self,
@@ -169,12 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
         .consume_body(body);
 
-        log_capture_analysis!(
-            self,
-            closure_def_id,
-            "capture information: {:#?}",
-            delegate.capture_information
-        );
+        self.log_new_capture_analysis(closure_def_id, &delegate.capture_information);
 
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
