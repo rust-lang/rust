@@ -1848,7 +1848,7 @@ macro_rules! forward_display_to_print {
         $(impl fmt::Display for $ty {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 ty::tls::with(|tcx| {
-                    tcx.lift(self)
+                    tcx.lift(*self)
                         .expect("could not lift for printing")
                         .print(FmtPrinter::new(tcx, f, Namespace::TypeNS))?;
                     Ok(())

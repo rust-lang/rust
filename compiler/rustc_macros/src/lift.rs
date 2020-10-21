@@ -3,6 +3,7 @@ use syn::{self, parse_quote};
 
 pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     s.add_bounds(synstructure::AddBounds::Generics);
+    s.bind_with(|_| synstructure::BindStyle::Move);
 
     let tcx: syn::Lifetime = parse_quote!('tcx);
     let newtcx: syn::GenericParam = parse_quote!('__lifted);
@@ -43,8 +44,8 @@ pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStre
         quote! {
             type Lifted = #lifted;
 
-            fn lift_to_tcx(&self, __tcx: ::rustc_middle::ty::TyCtxt<'__lifted>) -> Option<#lifted> {
-                Some(match *self { #body })
+            fn lift_to_tcx(self, __tcx: ::rustc_middle::ty::TyCtxt<'__lifted>) -> Option<#lifted> {
+                Some(match self { #body })
             }
         },
     )

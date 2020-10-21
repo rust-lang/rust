@@ -157,7 +157,7 @@ impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
 
 impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
     type Lifted = FreeRegionMap<'tcx>;
-    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<FreeRegionMap<'tcx>> {
-        self.relation.maybe_map(|&fr| tcx.lift(&fr)).map(|relation| FreeRegionMap { relation })
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<FreeRegionMap<'tcx>> {
+        self.relation.maybe_map(|&fr| tcx.lift(fr)).map(|relation| FreeRegionMap { relation })
     }
 }

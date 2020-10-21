@@ -2210,7 +2210,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                         let name = ty::tls::with(|tcx| {
                             let mut name = String::new();
-                            let substs = tcx.lift(&substs).expect("could not lift for printing");
+                            let substs = tcx.lift(substs).expect("could not lift for printing");
                             FmtPrinter::new(tcx, &mut name, Namespace::ValueNS)
                                 .print_def_path(variant_def.def_id, substs)?;
                             Ok(name)
@@ -2233,7 +2233,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         if let Some(def_id) = def_id.as_local() {
                             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
-                                let substs = tcx.lift(&substs).unwrap();
+                                let substs = tcx.lift(substs).unwrap();
                                 format!(
                                     "[closure@{}]",
                                     tcx.def_path_str_with_substs(def_id.to_def_id(), substs),
@@ -2527,7 +2527,7 @@ fn pretty_print_const(
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
     ty::tls::with(|tcx| {
-        let literal = tcx.lift(&c).unwrap();
+        let literal = tcx.lift(c).unwrap();
         let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
         cx.print_alloc_ids = true;
         cx.pretty_print_const(literal, print_types)?;

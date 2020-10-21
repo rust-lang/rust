@@ -535,7 +535,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, switch_ty, .. } => ty::tls::with(|tcx| {
                 let param_env = ty::ParamEnv::empty();
-                let switch_ty = tcx.lift(&switch_ty).unwrap();
+                let switch_ty = tcx.lift(switch_ty).unwrap();
                 let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
                 targets
                     .values

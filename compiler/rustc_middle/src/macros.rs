@@ -29,8 +29,8 @@ macro_rules! CloneLiftImpls {
         $(
             impl<$tcx> $crate::ty::Lift<$tcx> for $ty {
                 type Lifted = Self;
-                fn lift_to_tcx(&self, _: $crate::ty::TyCtxt<$tcx>) -> Option<Self> {
-                    Some(Clone::clone(self))
+                fn lift_to_tcx(self, _: $crate::ty::TyCtxt<$tcx>) -> Option<Self> {
+                    Some(self)
                 }
             }
         )+
