@@ -132,8 +132,25 @@ impl<'tcx> ObligationCause<'tcx> {
         ObligationCause { data: Some(Rc::new(ObligationCauseData { span, body_id, code })) }
     }
 
+    pub fn new_from_def_id(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        body_id: hir::HirId,
+        code: ObligationCauseCode<'tcx>,
+    ) -> ObligationCause<'tcx> {
+        ObligationCause::new(tcx.def_span(def_id), body_id, code)
+    }
+
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
         ObligationCause::new(span, body_id, MiscObligation)
+    }
+
+    pub fn misc_from_def_id(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        body_id: hir::HirId,
+    ) -> ObligationCause<'tcx> {
+        ObligationCause::new_from_def_id(tcx, def_id, body_id, MiscObligation)
     }
 
     pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
