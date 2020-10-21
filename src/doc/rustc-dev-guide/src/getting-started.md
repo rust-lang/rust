@@ -383,7 +383,7 @@ automatically assign a reviewer to the PR. The reviewer is the person that will
 approve the PR to be tested and merged. If you want a specific reviewer (e.g. a
 team member you've been working with), you can specifically request them by
 writing `r? @user` (e.g. `r? @eddyb`) in either the original post or a followup
-comment.
+comment (you can see [this comment][r?] for example).
 
 Please note that the reviewers are humans, who for the most part work on `rustc`
 in their free time. This means that they can take some time to respond and review
@@ -399,15 +399,18 @@ The reviewer may request some changes using the GitHub code review interface.
 They may also request special procedures (such as a [crater] run; [see
 below][break]) for some PRs.
 
+[r?]: https://github.com/rust-lang/rust/pull/78133#issuecomment-712692371
 [#t-release/triage]: https://rust-lang.zulipchat.com/#narrow/stream/242269-t-release.2Ftriage
 [break]: #breaking-changes
 
 When the PR is ready to be merged, the reviewer will issue a command to
 `@bors`, the CI bot. Usually, this is `@bors r+` or `@bors r=user` to approve
-a PR (there are few other commands, but they are less relevant here). This puts
-the PR in [bors's queue][bors] to be tested and merged. Be patient; this can take a
-while and the queue can sometimes be long. PRs are never merged by hand.
+a PR (there are few other commands, but they are less relevant here).
+You can see [this comment][r+] for example. This puts the PR in [bors's queue][bors]
+to be tested and merged. Be patient; this can take a while and the queue can
+sometimes be long. PRs are never merged by hand.
 
+[r+]: https://github.com/rust-lang/rust/pull/78133#issuecomment-712726339
 [bors]: https://bors.rust-lang.org/queue/rust
 
 ### Bug Fixes or "Normal" code changes
