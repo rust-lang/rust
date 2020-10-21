@@ -24,9 +24,9 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
         //
-        // Note: this is a subtle algorithm.  For a full explanation,
-        // please see the large comment at the end of the file in the (inlined) module
-        // `doc`.
+        // Note: this is a subtle algorithm.  For a full explanation, please see
+        // the rustc dev guide:
+        // <https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html>
 
         let span = self.trace.cause.span;
 
