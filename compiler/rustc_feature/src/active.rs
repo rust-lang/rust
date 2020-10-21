@@ -210,6 +210,11 @@ declare_features! (
     /// it is not on path for eventual stabilization).
     (active, no_niche, "1.42.0", None, None),
 
+    /// Allows using `#[rustc_allow_const_fn_unstable]`.
+    /// This is an attribute on `const fn` for the same
+    /// purpose as `#[allow_internal_unstable]`.
+    (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
+
     // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
