@@ -152,6 +152,19 @@ cargo miri test
 When using the above instructions, you may encounter a number of confusing compiler
 errors.
 
+### "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+
+You may see this when trying to get Miri to display a backtrace. By default, Miri
+doesn't expose any environment to the program, so running
+`RUST_BACKTRACE=1 cargo miri test` will not do what you expect.
+
+To get a backtrace, you need to disable isolation
+[using `-Zmiri-disable-isolation`](#miri-flags):
+
+```sh
+RUST_BACKTRACE=1 MIRIFLAGS="-Zmiri-disable-isolation" cargo miri test
+```
+
 #### "found possibly newer version of crate `std` which `<dependency>` depends on"
 
 Your build directory may contain artifacts from an earlier build that have/have

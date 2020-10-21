@@ -3,6 +3,7 @@ warning: thread support is experimental. For example, Miri does not detect data 
 Thread 1 starting, will block on mutex
 Thread 1 reported it has started
 thread '<unnamed>' panicked at 'panic in thread 2', $DIR/concurrent-panic.rs:65:13
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 Thread 2 blocking on thread 1
 Thread 2 reported it has started
 Unlocking mutex
