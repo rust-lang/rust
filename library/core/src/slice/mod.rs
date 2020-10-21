@@ -3335,7 +3335,9 @@ impl<T> [T] {
     #[inline]
     #[unstable(feature = "slice_take", issue = "62280")]
     pub fn take_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
-        self.take(..=0).map(|res| &res[0])
+        let (first, rem) = self.split_first()?;
+        *self = rem;
+        Some(first)
     }
 
     /// Returns a mutable reference to the first element of the slice,
@@ -3358,7 +3360,9 @@ impl<T> [T] {
     #[inline]
     #[unstable(feature = "slice_take", issue = "62280")]
     pub fn take_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
-        self.take_mut(..=0).map(|res| &mut res[0])
+        let (first, rem) = mem::take(self).split_first_mut()?;
+        *self = rem;
+        Some(first)
     }
 
     /// Returns a reference to the last element of the slice,
@@ -3380,8 +3384,9 @@ impl<T> [T] {
     #[inline]
     #[unstable(feature = "slice_take", issue = "62280")]
     pub fn take_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
-        let i = self.len().checked_sub(1)?;
-        self.take(i..).map(|res| &res[0])
+        let (last, rem) = self.split_last()?;
+        *self = rem;
+        Some(last)
     }
 
     /// Returns a mutable reference to the last element of the slice,
@@ -3404,8 +3409,9 @@ impl<T> [T] {
     #[inline]
     #[unstable(feature = "slice_take", issue = "62280")]
     pub fn take_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
-        let i = self.len().checked_sub(1)?;
-        self.take_mut(i..).map(|res| &mut res[0])
+        let (last, rem) = mem::take(self).split_last_mut()?;
+        *self = rem;
+        Some(last)
     }
 }
 
