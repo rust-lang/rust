@@ -1,5 +1,5 @@
 error: expected `{`, found `=`
-  --> $DIR/keyword-const-as-identifier.rs:4:15
+  --> $DIR/keyword-const-as-identifier.rs:2:15
    |
 LL |     let const = "foo";
    |               ^ expected `{`
