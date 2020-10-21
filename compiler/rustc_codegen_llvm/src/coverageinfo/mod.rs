@@ -28,7 +28,7 @@ const COVMAP_VAR_ALIGN_BYTES: usize = 8;
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'tcx> {
     // Coverage data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage>>,
+    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
 }
 
 impl<'tcx> CrateCoverageContext<'tcx> {
@@ -36,7 +36,7 @@ impl<'tcx> CrateCoverageContext<'tcx> {
         Self { function_coverage_map: Default::default() }
     }
 
-    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage> {
+    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
         self.function_coverage_map.replace(FxHashMap::default())
     }
 }
@@ -56,6 +56,18 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let mangled_fn_name = CString::new(self.tcx.symbol_name(instance).name)
             .expect("error converting function name to C string");
         unsafe { llvm::LLVMRustCoverageCreatePGOFuncNameVar(llfn, mangled_fn_name.as_ptr()) }
+    }
+
+    fn set_function_source_hash(&mut self, instance: Instance<'tcx>, function_source_hash: u64) {
+        debug!(
+            "ensuring function source hash is set for instance={:?}; function_source_hash={}",
+            instance, function_source_hash,
+        );
+        let mut coverage_map = self.coverage_context().function_coverage_map.borrow_mut();
+        coverage_map
+            .entry(instance)
+            .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
+            .set_function_source_hash(function_source_hash);
     }
 
     fn add_coverage_counter(

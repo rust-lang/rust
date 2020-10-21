@@ -24,6 +24,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 if let Some(code_region) = code_region {
                     bx.add_coverage_counter(self.instance, function_source_hash, id, code_region);
+                } else {
+                    bx.set_function_source_hash(self.instance, function_source_hash);
                 }
                 // Note: Some counters do not have code regions, but may still be referenced from
                 // expressions.

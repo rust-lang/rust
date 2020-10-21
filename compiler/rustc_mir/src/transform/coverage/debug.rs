@@ -7,6 +7,8 @@ use rustc_middle::mir::{BasicBlock, TerminatorKind};
 
 use std::lazy::SyncOnceCell;
 
+pub const NESTED_INDENT: &str = "    ";
+
 const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 
 pub(crate) fn debug_options<'a>() -> &'a DebugOptions {

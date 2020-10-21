@@ -28,25 +28,40 @@ pub struct Expression {
 /// only whitespace or comments). According to LLVM Code Coverage Mapping documentation, "A count
 /// for a gap area is only used as the line execution count if there are no other regions on a
 /// line."
-pub struct FunctionCoverage {
+pub struct FunctionCoverage<'tcx> {
+    instance: Instance<'tcx>,
     source_hash: u64,
     counters: IndexVec<CounterValueReference, Option<CodeRegion>>,
     expressions: IndexVec<InjectedExpressionIndex, Option<Expression>>,
     unreachable_regions: Vec<CodeRegion>,
 }
 
-impl FunctionCoverage {
-    pub fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+impl<'tcx> FunctionCoverage<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
         let coverageinfo = tcx.coverageinfo(instance.def_id());
         debug!(
             "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}",
             instance, coverageinfo
         );
         Self {
+            instance,
             source_hash: 0, // will be set with the first `add_counter()`
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
             unreachable_regions: Vec::new(),
+        }
+    }
+
+    /// Although every function should have at least one `Counter`, the `Counter` isn't required to
+    /// have a `CodeRegion`. (The `CodeRegion` may be associated only with `Expressions`.) This
+    /// method supports the ability to ensure the `function_source_hash` is set from `Counters` that
+    /// do not trigger the call to `add_counter()` because they don't have an associated
+    /// `CodeRegion` to add.
+    pub fn set_function_source_hash(&mut self, source_hash: u64) {
+        if self.source_hash == 0 {
+            self.source_hash = source_hash;
+        } else {
+            debug_assert_eq!(source_hash, self.source_hash);
         }
     }
 
@@ -111,7 +126,11 @@ impl FunctionCoverage {
     pub fn get_expressions_and_counter_regions<'a>(
         &'a self,
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &'a CodeRegion)>) {
-        assert!(self.source_hash != 0);
+        assert!(
+            self.source_hash != 0,
+            "No counters provided the source_hash for function: {:?}",
+            self.instance
+        );
 
         let counter_regions = self.counter_regions();
         let (counter_expressions, expression_regions) = self.expressions_with_regions();

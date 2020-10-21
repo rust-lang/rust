@@ -1,3 +1,5 @@
+use super::Error;
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
@@ -313,16 +315,28 @@ impl BasicCoverageBlockData {
     }
 
     #[inline(always)]
-    pub fn set_counter(&mut self, counter_kind: CoverageKind) -> ExpressionOperandId {
+    pub fn set_counter(
+        &mut self,
+        counter_kind: CoverageKind,
+    ) -> Result<ExpressionOperandId, Error> {
         debug_assert!(
+            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
+            // have an expression (to be injected into an existing `BasicBlock` represented by this
+            // `BasicCoverageBlock`).
             self.edge_from_bcbs.is_none() || counter_kind.is_expression(),
             "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
         );
         let operand = counter_kind.as_operand_id();
-        self.counter_kind
-            .replace(counter_kind)
-            .expect_none("attempt to set a BasicCoverageBlock coverage counter more than once");
-        operand
+        let expect_none = self.counter_kind.replace(counter_kind);
+        if expect_none.is_some() {
+            return Error::from_string(format!(
+                "attempt to set a BasicCoverageBlock coverage counter more than once; \
+                {:?} already had counter {:?}",
+                self,
+                expect_none.unwrap(),
+            ));
+        }
+        Ok(operand)
     }
 
     #[inline(always)]
@@ -340,19 +354,33 @@ impl BasicCoverageBlockData {
         &mut self,
         from_bcb: BasicCoverageBlock,
         counter_kind: CoverageKind,
-    ) -> ExpressionOperandId {
-        debug_assert!(
-            self.counter_kind.as_ref().map_or(true, |c| c.is_expression()),
-            "attempt to add an incoming edge counter from {:?} when the target BCB already has a \
-            `Counter`",
-            from_bcb
-        );
+    ) -> Result<ExpressionOperandId, Error> {
+        if level_enabled!(tracing::Level::DEBUG) {
+            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
+            // have an expression (to be injected into an existing `BasicBlock` represented by this
+            // `BasicCoverageBlock`).
+            if !self.counter_kind.as_ref().map_or(true, |c| c.is_expression()) {
+                return Error::from_string(format!(
+                    "attempt to add an incoming edge counter from {:?} when the target BCB already \
+                    has a `Counter`",
+                    from_bcb
+                ));
+            }
+        }
         let operand = counter_kind.as_operand_id();
-        self.edge_from_bcbs
+        let expect_none = self
+            .edge_from_bcbs
             .get_or_insert_with(|| FxHashMap::default())
-            .insert(from_bcb, counter_kind)
-            .expect_none("attempt to set an edge counter more than once");
-        operand
+            .insert(from_bcb, counter_kind);
+        if expect_none.is_some() {
+            return Error::from_string(format!(
+                "attempt to set an edge counter more than once; from_bcb: \
+                {:?} already had counter {:?}",
+                from_bcb,
+                expect_none.unwrap(),
+            ));
+        }
+        Ok(operand)
     }
 
     #[inline(always)]
@@ -380,6 +408,56 @@ impl BasicCoverageBlockData {
                 .collect::<Vec<_>>()
                 .join(ID_SEPARATOR)
         )
+    }
+}
+
+/// Represents a successor from a branching BasicCoverageBlock (such as the arms of a `SwitchInt`)
+/// as either the successor BCB itself, if it has only one incoming edge, or the successor _plus_
+/// the specific branching BCB, representing the edge between the two. The latter case
+/// distinguishes this incoming edge from other incoming edges to the same `target_bcb`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) struct BcbBranch {
+    pub edge_from_bcb: Option<BasicCoverageBlock>,
+    pub target_bcb: BasicCoverageBlock,
+}
+
+impl BcbBranch {
+    pub fn from_to(
+        from_bcb: BasicCoverageBlock,
+        to_bcb: BasicCoverageBlock,
+        basic_coverage_blocks: &CoverageGraph,
+    ) -> Self {
+        let edge_from_bcb = if basic_coverage_blocks.predecessors[to_bcb].len() > 1 {
+            Some(from_bcb)
+        } else {
+            None
+        };
+        Self { edge_from_bcb, target_bcb: to_bcb }
+    }
+
+    pub fn counter<'a>(
+        &self,
+        basic_coverage_blocks: &'a CoverageGraph,
+    ) -> Option<&'a CoverageKind> {
+        if let Some(from_bcb) = self.edge_from_bcb {
+            basic_coverage_blocks[self.target_bcb].edge_counter_from(from_bcb)
+        } else {
+            basic_coverage_blocks[self.target_bcb].counter()
+        }
+    }
+
+    pub fn is_only_path_to_target(&self) -> bool {
+        self.edge_from_bcb.is_none()
+    }
+}
+
+impl std::fmt::Debug for BcbBranch {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(from_bcb) = self.edge_from_bcb {
+            write!(fmt, "{:?}->{:?}", from_bcb, self.target_bcb)
+        } else {
+            write!(fmt, "{:?}", self.target_bcb)
+        }
     }
 }
 
@@ -437,14 +515,18 @@ impl TraverseCoverageGraphWithLoops {
     }
 
     pub fn next(&mut self) -> Option<BasicCoverageBlock> {
-        // Strip contexts with empty worklists from the top of the stack
-        while self.context_stack.last().map_or(false, |context| context.worklist.is_empty()) {
-            self.context_stack.pop();
-        }
-        // Pop the next bcb off of the current context_stack. If none, all BCBs were visited.
-        while let Some(next_bcb) =
+        debug!(
+            "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
+            self.context_stack.iter().rev().collect::<Vec<_>>()
+        );
+        while let Some(next_bcb) = {
+            // Strip contexts with empty worklists from the top of the stack
+            while self.context_stack.last().map_or(false, |context| context.worklist.is_empty()) {
+                self.context_stack.pop();
+            }
+            // Pop the next bcb off of the current context_stack. If none, all BCBs were visited.
             self.context_stack.last_mut().map_or(None, |context| context.worklist.pop())
-        {
+        } {
             if !self.visited.insert(next_bcb) {
                 debug!("Already visited: {:?}", next_bcb);
                 continue;
@@ -459,8 +541,18 @@ impl TraverseCoverageGraphWithLoops {
             }
             return Some(next_bcb);
         }
-        debug_assert_eq!(self.visited.count(), self.visited.domain_size());
         None
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.visited.count() == self.visited.domain_size()
+    }
+
+    pub fn unvisited(&self) -> Vec<BasicCoverageBlock> {
+        let mut unvisited_set: BitSet<BasicCoverageBlock> =
+            BitSet::new_filled(self.visited.domain_size());
+        unvisited_set.subtract(&self.visited);
+        unvisited_set.iter().collect::<Vec<_>>()
     }
 }
 
