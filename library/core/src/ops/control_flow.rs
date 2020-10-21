@@ -3,6 +3,7 @@ use crate::ops::Try;
 /// Used to make try_fold closures more like normal loops
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[must_use = "this `ControlFlow` may be a `Break` variant, which should be handled"]
 pub enum ControlFlow<C, B> {
     /// Continue in the loop, using the given value for the next iteration
     Continue(C),
@@ -99,7 +100,7 @@ impl<C> ControlFlow<C, ()> {
     /// use std::ops::ControlFlow;
     ///
     /// let mut partial_sum = 0;
-    /// (1..10).chain(20..25).try_for_each(|x| {
+    /// let _ = (1..10).chain(20..25).try_for_each(|x| {
     ///     if partial_sum > 100 { ControlFlow::BREAK }
     ///     else { partial_sum += x; ControlFlow::CONTINUE }
     /// });
