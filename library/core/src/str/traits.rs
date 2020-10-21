@@ -398,39 +398,35 @@ unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if *self.end() == usize::MAX { None } else { (*self.start()..self.end() + 1).get(slice) }
+        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if *self.end() == usize::MAX {
-            None
-        } else {
-            (*self.start()..self.end() + 1).get_mut(slice)
-        }
+        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
     }
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
-        unsafe { (*self.start()..self.end() + 1).get_unchecked(slice) }
+        unsafe { self.into_slice_range().get_unchecked(slice) }
     }
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
-        unsafe { (*self.start()..self.end() + 1).get_unchecked_mut(slice) }
+        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
         if *self.end() == usize::MAX {
             str_index_overflow_fail();
         }
-        (*self.start()..self.end() + 1).index(slice)
+        self.into_slice_range().index(slice)
     }
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
         if *self.end() == usize::MAX {
             str_index_overflow_fail();
         }
-        (*self.start()..self.end() + 1).index_mut(slice)
+        self.into_slice_range().index_mut(slice)
     }
 }
 

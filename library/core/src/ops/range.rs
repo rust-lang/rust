@@ -446,6 +446,20 @@ impl<Idx> RangeInclusive<Idx> {
     }
 }
 
+impl RangeInclusive<usize> {
+    /// Converts to an exclusive `Range` for `SliceIndex` implementations.
+    /// The caller is responsible for dealing with `end == usize::MAX`.
+    #[inline]
+    pub(crate) fn into_slice_range(self) -> Range<usize> {
+        // If we're not exhausted, we want to simply slice `start..end + 1`.
+        // If we are exhausted, then slicing with `end + 1..end + 1` gives us an
+        // empty range that is still subject to bounds-checks for that endpoint.
+        let exclusive_end = self.end + 1;
+        let start = if self.exhausted { exclusive_end } else { self.start };
+        start..exclusive_end
+    }
+}
+
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
