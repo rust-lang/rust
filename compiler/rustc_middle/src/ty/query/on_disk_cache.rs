@@ -176,7 +176,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn serialize<'tcx>(
+    crate fn serialize<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         encoder: &mut opaque::Encoder,
@@ -349,7 +349,7 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     /// Loads a diagnostic emitted during the previous compilation session.
-    pub fn load_diagnostics(
+    crate fn load_diagnostics(
         &self,
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
@@ -365,7 +365,7 @@ impl<'sess> OnDiskCache<'sess> {
     /// the next compilation session.
     #[inline(never)]
     #[cold]
-    pub fn store_diagnostics(
+    crate fn store_diagnostics(
         &self,
         dep_node_index: DepNodeIndex,
         diagnostics: ThinVec<Diagnostic>,
@@ -394,7 +394,7 @@ impl<'sess> OnDiskCache<'sess> {
     /// 1:1 relationship between query-key and `DepNode`.
     #[inline(never)]
     #[cold]
-    pub fn store_diagnostics_for_anon_node(
+    crate fn store_diagnostics_for_anon_node(
         &self,
         dep_node_index: DepNodeIndex,
         diagnostics: ThinVec<Diagnostic>,
@@ -973,7 +973,7 @@ where
 struct IntEncodedWithFixedSize(u64);
 
 impl IntEncodedWithFixedSize {
-    pub const ENCODED_SIZE: usize = 8;
+    const ENCODED_SIZE: usize = 8;
 }
 
 impl Encodable<opaque::Encoder> for IntEncodedWithFixedSize {
