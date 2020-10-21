@@ -1071,7 +1071,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
+            for (arg, piece) in (args.args, args.pieces) {
                 formatter.buf.write_str(*piece)?;
                 (arg.formatter)(arg.value, &mut formatter)?;
                 idx += 1;
@@ -1080,7 +1080,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
+            for (arg, piece) in (fmt, args.pieces) {
                 formatter.buf.write_str(*piece)?;
                 run(&mut formatter, arg, &args.args)?;
                 idx += 1;

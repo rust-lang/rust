@@ -185,7 +185,7 @@ macro_rules! define_bignum {
 
                 let mut sz = cmp::max(self.size, other.size);
                 let mut carry = false;
-                for (a, b) in self.base[..sz].iter_mut().zip(&other.base[..sz]) {
+                for (a, b) in (&mut self.base[..sz], &other.base[..sz]) {
                     let (c, v) = (*a).full_add(*b, carry);
                     *a = v;
                     carry = c;
@@ -223,7 +223,7 @@ macro_rules! define_bignum {
 
                 let sz = cmp::max(self.size, other.size);
                 let mut noborrow = true;
-                for (a, b) in self.base[..sz].iter_mut().zip(&other.base[..sz]) {
+                for (a, b) in (&mut self.base[..sz], &other.base[..sz]) {
                     let (c, v) = (*a).full_add(!*b, noborrow);
                     *a = v;
                     noborrow = c;

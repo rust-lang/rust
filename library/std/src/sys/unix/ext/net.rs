@@ -100,7 +100,7 @@ unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::sockl
             "path must be shorter than SUN_LEN",
         ));
     }
-    for (dst, src) in addr.sun_path.iter_mut().zip(bytes.iter()) {
+    for (dst, src) in (&mut addr.sun_path, bytes) {
         *dst = *src as libc::c_char;
     }
     // null byte for pathname addresses is already there because we zeroed the

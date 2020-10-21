@@ -425,7 +425,7 @@ impl<T, const N: usize> [T; N] {
         let mut dst = MaybeUninit::uninit_array::<N>();
         let mut guard: Guard<U, N> =
             Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
-        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
+        for (src, dst) in (IntoIter::new(self), &mut dst) {
             dst.write(f(src));
             guard.initialized += 1;
         }

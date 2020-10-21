@@ -77,7 +77,7 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
     };
     let mut utf16 = [0u16; MAX_BUFFER_SIZE / 2];
     let mut len_utf16 = 0;
-    for (chr, dest) in utf8.encode_utf16().zip(utf16.iter_mut()) {
+    for (chr, dest) in (utf8.encode_utf16(), &mut utf16) {
         *dest = chr;
         len_utf16 += 1;
     }

@@ -141,7 +141,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
         Number(0),
         Number(0),
     ];
-    for (dst, src) in mparams.iter_mut().zip(params.iter()) {
+    for (dst, src) in (&mut mparams, params) {
         *dst = (*src).clone();
     }
 
