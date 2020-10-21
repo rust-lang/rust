@@ -24,11 +24,16 @@ show_pulls() {
   jq -r '.[] | { title, number, html_url, user: .user.login } | "- " + .title + " [#" + (.number | tostring) + "](" + .html_url + ")"'
 }
 
-echo "Authors:"
-jq -r '{ login: .[].user.login } | "- **@" + .login + "**"' < pulls.json | sort -u
-echo "Changes:"
+echo "### Authors"
+jq -r '{ login: .[].user.login } | "- **@" + .login + "**"' < pulls.json \
+  | sort -u
+echo
+echo "### Changes"
+echo
 show_pulls < pulls.json
-echo "Changes in progress:"
+echo
+echo "### Changes in progress"
+echo
 # If there are more than 30 PRs open at a time, you'll need to set `per_page`.
 # For now this seems unlikely.
 curl "https://api.github.com/repos/rust-lang/rustc-dev-guide/pulls?state=open" | show_pulls
