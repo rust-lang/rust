@@ -48,7 +48,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         references_provider: Some(OneOf::Left(true)),
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
-        workspace_symbol_provider: Some(true),
+        workspace_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(code_action_provider),
         code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(true) }),
         document_formatting_provider: Some(OneOf::Left(true)),
@@ -113,6 +113,7 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
                     CodeActionKind::REFACTOR_INLINE,
                     CodeActionKind::REFACTOR_REWRITE,
                 ]),
+                resolve_provider: None,
                 work_done_progress_options: Default::default(),
             })
         })

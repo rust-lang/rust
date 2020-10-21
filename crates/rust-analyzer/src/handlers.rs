@@ -1121,10 +1121,12 @@ pub(crate) fn publish_diagnostics(
             range: to_proto::range(&line_index, d.range),
             severity: Some(to_proto::diagnostic_severity(d.severity)),
             code: None,
+            code_description: None,
             source: Some("rust-analyzer".to_string()),
             message: d.message,
             related_information: None,
             tags: if d.unused { Some(vec![DiagnosticTag::Unnecessary]) } else { None },
+            data: None,
         })
         .collect();
     Ok(diagnostics)

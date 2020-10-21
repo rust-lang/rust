@@ -248,10 +248,12 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                         range: in_macro_location.range,
                         severity,
                         code: code.clone().map(lsp_types::NumberOrString::String),
+                        code_description: None,
                         source: Some(source.clone()),
                         message: message.clone(),
                         related_information: Some(information_for_additional_diagnostic),
                         tags: if tags.is_empty() { None } else { Some(tags.clone()) },
+                        data: None,
                     };
 
                     Some(MappedRustDiagnostic {
@@ -267,6 +269,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 range: location.range,
                 severity,
                 code: code.clone().map(lsp_types::NumberOrString::String),
+                code_description: None,
                 source: Some(source.clone()),
                 message,
                 related_information: if related_information.is_empty() {
@@ -275,6 +278,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     Some(related_information.clone())
                 },
                 tags: if tags.is_empty() { None } else { Some(tags.clone()) },
+                data: None,
             };
 
             let main_diagnostic =
