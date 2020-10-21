@@ -248,7 +248,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::LlvmInlineAsm(ref ia) => {
-                for (o, output) in ia.inner.outputs.iter().zip(ia.outputs_exprs) {
+                for (o, output) in (&ia.inner.outputs, ia.outputs_exprs) {
                     if o.is_indirect {
                         self.consume_expr(output);
                     } else {

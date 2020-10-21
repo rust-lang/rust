@@ -448,7 +448,7 @@ fn remove_cycle<CTX: QueryContext>(
         spans.rotate_right(1);
 
         // Zip them back together
-        let mut stack: Vec<_> = spans.into_iter().zip(queries).collect();
+        let mut stack: Vec<_> = (spans, queries).into_iter().collect();
 
         // Remove the queries in our cycle from the list of jobs to look at
         for r in &stack {

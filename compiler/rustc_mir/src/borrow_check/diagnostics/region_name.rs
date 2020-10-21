@@ -500,7 +500,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
                 (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
-                    search_stack.extend(elem_tys.iter().map(|k| k.expect_ty()).zip(*elem_hir_tys));
+                    search_stack.extend((elem_tys.iter().map(|k| k.expect_ty()), *elem_hir_tys));
                 }
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
@@ -575,7 +575,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         args: &'hir hir::GenericArgs<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
-        for (kind, hir_arg) in substs.iter().zip(args.args) {
+        for (kind, hir_arg) in (substs, args.args) {
             match (kind.unpack(), hir_arg) {
                 (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.to_region_vid() == needle_fr {

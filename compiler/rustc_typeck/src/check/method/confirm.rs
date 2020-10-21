@@ -451,10 +451,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             // We don't care about regions here.
             .filter_map(|obligation| match obligation.predicate.skip_binders() {
                 ty::PredicateAtom::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
-                    let span = predicates
-                        .predicates
-                        .iter()
-                        .zip(predicates.spans.iter())
+                    let span = (&predicates.predicates, &predicates.spans)
+                        .into_iter()
                         .find_map(
                             |(p, span)| {
                                 if *p == obligation.predicate { Some(*span) } else { None }

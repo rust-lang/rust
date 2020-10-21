@@ -201,9 +201,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             UseTreeKind::Glob => {}
             UseTreeKind::Simple(_, id1, id2) => {
-                for (_, &id) in
-                    self.expect_full_res_from_use(base_id).skip(1).zip([id1, id2].iter())
-                {
+                for (_, &id) in (self.expect_full_res_from_use(base_id).skip(1), &[id1, id2]) {
                     vec.push(id);
                 }
             }
@@ -510,7 +508,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // won't be dealing with macros in the rest of the compiler.
                 // Essentially a single `use` which imports two names is desugared into
                 // two imports.
-                for (res, &new_node_id) in resolutions.zip([id1, id2].iter()) {
+                for (res, &new_node_id) in (resolutions, &[id1, id2]) {
                     let ident = *ident;
                     let mut path = path.clone();
                     for seg in &mut path.segments {

@@ -2331,9 +2331,8 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'
         if substs.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);
-            let template_params: Vec<_> = substs
-                .iter()
-                .zip(names)
+            let template_params: Vec<_> = (substs, names)
+                .into_iter()
                 .filter_map(|(kind, name)| {
                     if let GenericArgKind::Type(ty) = kind.unpack() {
                         let actual_type =

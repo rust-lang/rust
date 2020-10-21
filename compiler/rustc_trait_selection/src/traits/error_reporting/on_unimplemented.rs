@@ -51,11 +51,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let Ok(..) = self.can_eq(param_env, trait_self_ty, impl_self_ty) {
                 self_match_impls.push(def_id);
 
-                if trait_ref
-                    .substs
-                    .types()
-                    .skip(1)
-                    .zip(impl_trait_ref.substs.types().skip(1))
+                if (trait_ref.substs.types().skip(1), impl_trait_ref.substs.types().skip(1))
+                    .into_iter()
                     .all(|(u, v)| self.fuzzy_match_tys(u, v))
                 {
                     fuzzy_match_impls.push(def_id);

@@ -170,7 +170,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             {
                 // Explicit version of iter::order::lt to handle parse errors properly
                 for (dep_v, stab_v) in
-                    dep_since.as_str().split('.').zip(stab_since.as_str().split('.'))
+                    (dep_since.as_str().split('.'), stab_since.as_str().split('.'))
                 {
                     if let (Ok(dep_v), Ok(stab_v)) = (dep_v.parse::<u64>(), stab_v.parse()) {
                         match dep_v.cmp(&stab_v) {

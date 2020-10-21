@@ -926,9 +926,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         let mut better_diag = false;
                         if let PathSource::TupleStruct(_, pattern_spans) = source {
                             if pattern_spans.len() > 0 && fields.len() == pattern_spans.len() {
-                                let non_visible_spans: Vec<Span> = fields
-                                    .iter()
-                                    .zip(pattern_spans.iter())
+                                let non_visible_spans: Vec<Span> = (&fields, pattern_spans)
+                                    .into_iter()
                                     .filter_map(|(vis, span)| {
                                         match self
                                             .r

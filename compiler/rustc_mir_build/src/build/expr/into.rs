@@ -280,9 +280,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that
                     // reads it from the base.
-                    field_names
+                    (field_names, field_types)
                         .into_iter()
-                        .zip(field_types.into_iter())
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
                             None => this.consume_by_copy_or_move(

@@ -313,10 +313,8 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         use crate::ty::subst::GenericArgKind;
 
         CanonicalVarValues {
-            var_values: self
-                .var_values
-                .iter()
-                .zip(0..)
+            var_values: (&self.var_values, 0..)
+                .into_iter()
                 .map(|(kind, i)| match kind.unpack() {
                     GenericArgKind::Type(..) => {
                         tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())).into()

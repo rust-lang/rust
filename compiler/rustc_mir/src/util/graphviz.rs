@@ -170,7 +170,7 @@ fn write_edges<W: Write>(source: BasicBlock, body: &Body<'_>, w: &mut W) -> io::
     let terminator = body[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
-    for (&target, label) in terminator.successors().zip(labels) {
+    for (&target, label) in (terminator.successors(), labels) {
         let src = node(def_id, source);
         let trg = node(def_id, target);
         writeln!(w, r#"    {} -> {} [label="{}"];"#, src, trg, label)?;

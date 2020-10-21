@@ -908,7 +908,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         if has_default {
             let types = substs.types().rev();
-            for ((def_id, has_default), actual) in type_params.zip(types) {
+            for ((def_id, has_default), actual) in (type_params, types) {
                 if !has_default {
                     break;
                 }
@@ -979,7 +979,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let len1 = sig1.inputs().len();
         let len2 = sig2.inputs().len();
         if len1 == len2 {
-            for (i, (l, r)) in sig1.inputs().iter().zip(sig2.inputs().iter()).enumerate() {
+            for (i, (l, r)) in (sig1.inputs(), sig2.inputs()).into_iter().enumerate() {
                 let (x1, x2) = self.cmp(l, r);
                 (values.0).0.extend(x1.0);
                 (values.1).0.extend(x2.0);
@@ -1236,9 +1236,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     const SEPARATOR: &str = "::";
                     let separator_len = SEPARATOR.len();
-                    let split_idx: usize = t1_str
-                        .split(SEPARATOR)
-                        .zip(t2_str.split(SEPARATOR))
+                    let split_idx: usize = (t1_str.split(SEPARATOR), t2_str.split(SEPARATOR))
+                        .into_iter()
                         .take_while(|(mod1_str, mod2_str)| mod1_str == mod2_str)
                         .map(|(mod_str, _)| mod_str.len() + separator_len)
                         .sum();
@@ -1696,7 +1695,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .find_map(|(path, msg)| (&path_str == path).then_some(msg))
                     {
                         let mut show_suggestion = true;
-                        for (exp_ty, found_ty) in exp_substs.types().zip(found_substs.types()) {
+                        for (exp_ty, found_ty) in (exp_substs.types(), found_substs.types()) {
                             match *exp_ty.kind() {
                                 ty::Ref(_, exp_ty, _) => {
                                     match (exp_ty.kind(), found_ty.kind()) {

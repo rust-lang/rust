@@ -110,7 +110,7 @@ impl<I: Idx, T: JoinSemiLattice> JoinSemiLattice for IndexVec<I, T> {
         assert_eq!(self.len(), other.len());
 
         let mut changed = false;
-        for (a, b) in self.iter_mut().zip(other.iter()) {
+        for (a, b) in (self, other) {
             changed |= a.join(b);
         }
         changed
@@ -122,7 +122,7 @@ impl<I: Idx, T: MeetSemiLattice> MeetSemiLattice for IndexVec<I, T> {
         assert_eq!(self.len(), other.len());
 
         let mut changed = false;
-        for (a, b) in self.iter_mut().zip(other.iter()) {
+        for (a, b) in (self, other) {
             changed |= a.meet(b);
         }
         changed

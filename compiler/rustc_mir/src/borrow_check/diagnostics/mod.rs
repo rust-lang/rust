@@ -967,8 +967,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for ((upvar_hir_id, upvar), place) in
-                self.infcx.tcx.upvars_mentioned(def_id)?.iter().zip(places)
+            for ((upvar_hir_id, upvar), place) in (self.infcx.tcx.upvars_mentioned(def_id)?, places)
             {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)

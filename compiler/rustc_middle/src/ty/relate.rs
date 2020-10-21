@@ -548,7 +548,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                             // Both the variant and each field have to be equal.
                             if a_destructured.variant == b_destructured.variant {
                                 for (a_field, b_field) in
-                                    a_destructured.fields.iter().zip(b_destructured.fields.iter())
+                                    (a_destructured.fields, b_destructured.fields)
                                 {
                                     relation.consts(a_field, b_field)?;
                                 }
@@ -624,7 +624,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
 
-        let v = a_v.into_iter().zip(b_v.into_iter()).map(|(ep_a, ep_b)| {
+        let v = (a_v, b_v).into_iter().map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
             match (ep_a, ep_b) {
                 (Trait(a), Trait(b)) => Ok(Trait(relation.relate(a, b)?)),

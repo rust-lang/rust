@@ -207,7 +207,7 @@ pub(super) fn check_meta_variables(
         sess.span_diagnostic.span_bug(span, "length mismatch between LHSes and RHSes")
     }
     let mut valid = true;
-    for (lhs, rhs) in lhses.iter().zip(rhses.iter()) {
+    for (lhs, rhs) in (lhses, rhses) {
         let mut binders = Binders::default();
         check_binders(sess, node_id, lhs, &Stack::Empty, &mut binders, &Stack::Empty, &mut valid);
         check_occurrences(sess, node_id, rhs, &Stack::Empty, &binders, &Stack::Empty, &mut valid);

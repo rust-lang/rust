@@ -409,9 +409,8 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => bug!(),
         };
 
-        let result = item_substs
-            .iter()
-            .zip(impl_substs.iter())
+        let result = (item_substs, impl_substs)
+            .into_iter()
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {

@@ -1047,7 +1047,7 @@ impl<'a> MethodDef<'a> {
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
         // matter.
-        for (arg_expr, pat) in self_args.iter().zip(patterns) {
+        for (arg_expr, pat) in (self_args, patterns) {
             body = cx.expr_match(
                 trait_.span,
                 arg_expr.clone(),
@@ -1364,7 +1364,7 @@ impl<'a> MethodDef<'a> {
             let mut discriminant_test = cx.expr_bool(sp, true);
 
             let mut first_ident = None;
-            for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
+            for (&ident, self_arg) in (&vi_idents, &self_args) {
                 let self_addr = cx.expr_addr_of(sp, self_arg.clone());
                 let variant_value =
                     deriving::call_intrinsic(cx, sp, sym::discriminant_value, vec![self_addr]);
@@ -1584,9 +1584,8 @@ impl<'a> TraitDef<'a> {
         let subpats = self.create_subpatterns(cx, paths, mutbl, use_temporaries);
         let pattern = match *struct_def {
             VariantData::Struct(..) => {
-                let field_pats = subpats
+                let field_pats = (subpats, &ident_exprs)
                     .into_iter()
-                    .zip(&ident_exprs)
                     .map(|(pat, &(sp, ident, ..))| {
                         if ident.is_none() {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");

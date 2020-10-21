@@ -1364,9 +1364,8 @@ impl Builder<'a, 'll, 'tcx> {
             return Cow::Borrowed(args);
         }
 
-        let casted_args: Vec<_> = param_tys
+        let casted_args: Vec<_> = (param_tys, args)
             .into_iter()
-            .zip(args.iter())
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
                 let actual_ty = self.val_ty(actual_val);

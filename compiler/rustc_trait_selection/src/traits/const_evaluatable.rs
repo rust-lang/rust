@@ -573,9 +573,8 @@ pub(super) fn try_unify<'tcx>(
             if a_args.len() == b_args.len() =>
         {
             try_unify(tcx, a.subtree(a_f), b.subtree(b_f))
-                && a_args
-                    .iter()
-                    .zip(b_args)
+                && (a_args, b_args)
+                    .into_iter()
                     .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
         }
         _ => false,

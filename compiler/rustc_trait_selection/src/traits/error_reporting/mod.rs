@@ -161,7 +161,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
-        for (error, suppressed) in errors.iter().zip(is_suppressed) {
+        for (error, suppressed) in (errors, is_suppressed) {
             if !suppressed {
                 self.report_fulfillment_error(error, body_id, fallback_has_occurred);
             }

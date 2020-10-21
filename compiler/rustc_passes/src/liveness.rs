@@ -1455,7 +1455,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
             }
 
             // Output operands must be places
-            for (o, output) in asm.inner.outputs.iter().zip(asm.outputs_exprs) {
+            for (o, output) in (&asm.inner.outputs, asm.outputs_exprs) {
                 if !o.is_indirect {
                     this.check_place(output);
                 }

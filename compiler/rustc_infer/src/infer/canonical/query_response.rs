@@ -418,7 +418,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         // In terms of our example above, we are iterating over pairs like:
         // [(?A, Vec<?0>), ('static, '?1), (?B, ?0)]
-        for (original_value, result_value) in original_values.var_values.iter().zip(result_values) {
+        for (original_value, result_value) in (&original_values.var_values, result_values) {
             match result_value.unpack() {
                 GenericArgKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...

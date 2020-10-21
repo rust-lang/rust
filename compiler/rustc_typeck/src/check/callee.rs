@@ -519,7 +519,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 debug!("attempt_resolution: method_callee={:?}", method_callee);
 
                 for (method_arg_ty, self_arg_ty) in
-                    method_sig.inputs().iter().skip(1).zip(self.fn_sig.inputs())
+                    (method_sig.inputs().iter().skip(1), self.fn_sig.inputs())
                 {
                     fcx.demand_eqtype(self.call_expr.span, &self_arg_ty, &method_arg_ty);
                 }

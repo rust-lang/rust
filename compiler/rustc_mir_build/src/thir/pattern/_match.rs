@@ -2330,10 +2330,9 @@ fn slice_pat_covered_by_const<'tcx>(
         return Ok(false);
     }
 
-    for (ch, pat) in data[..prefix.len()]
-        .iter()
-        .zip(prefix)
-        .chain(data[data.len() - suffix.len()..].iter().zip(suffix))
+    for (ch, pat) in (&data[..prefix.len()], prefix)
+        .into_iter()
+        .chain((&data[data.len() - suffix.len()..], suffix))
     {
         if let box PatKind::Constant { value } = pat.kind {
             let b = value.eval_bits(tcx, param_env, pat.ty);

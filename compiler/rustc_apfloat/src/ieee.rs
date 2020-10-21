@@ -2483,7 +2483,7 @@ mod sig {
     pub(super) fn add(a: &mut [Limb], b: &[Limb], mut c: Limb) -> Limb {
         assert!(c <= 1);
 
-        for (a, &b) in a.iter_mut().zip(b) {
+        for (a, &b) in (a, b) {
             let (r, overflow) = a.overflowing_add(b);
             let (r, overflow2) = r.overflowing_add(c);
             *a = r;
@@ -2497,7 +2497,7 @@ mod sig {
     pub(super) fn sub(a: &mut [Limb], b: &[Limb], mut c: Limb) -> Limb {
         assert!(c <= 1);
 
-        for (a, &b) in a.iter_mut().zip(b) {
+        for (a, &b) in (a, b) {
             let (r, overflow) = a.overflowing_sub(b);
             let (r, overflow2) = r.overflowing_sub(c);
             *a = r;

@@ -1190,7 +1190,7 @@ pub trait PrettyPrinter<'tcx>:
                             CtorKind::Fictive => {
                                 p!(" {{ ");
                                 let mut first = true;
-                                for (field_def, field) in variant_def.fields.iter().zip(fields) {
+                                for (field_def, field) in (&variant_def.fields, fields) {
                                     if !first {
                                         p!(", ");
                                     }

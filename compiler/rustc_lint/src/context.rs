@@ -730,7 +730,7 @@ impl<'tcx> LateContext<'tcx> {
     pub fn match_def_path(&self, def_id: DefId, path: &[Symbol]) -> bool {
         let names = self.get_def_path(def_id);
 
-        names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| a == b)
+        names.len() == path.len() && (names, path).into_iter().all(|(a, &b)| a == b)
     }
 
     /// Gets the absolute path of `def_id` as a vector of `Symbol`.

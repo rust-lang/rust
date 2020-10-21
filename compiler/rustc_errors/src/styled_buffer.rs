@@ -41,11 +41,11 @@ impl StyledBuffer {
         // before we render, replace tabs with spaces
         self.replace_tabs();
 
-        for (row, row_style) in self.text.iter().zip(&self.styles) {
+        for (row, row_style) in (&self.text, &self.styles) {
             let mut current_style = Style::NoStyle;
             let mut current_text = String::new();
 
-            for (&c, &s) in row.iter().zip(row_style) {
+            for (&c, &s) in (row, row_style) {
                 if s != current_style {
                     if !current_text.is_empty() {
                         styled_vec.push(StyledString { text: current_text, style: current_style });

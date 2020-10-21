@@ -434,7 +434,7 @@ impl AutoTraitFinder<'tcx> {
                         return true;
                     }
 
-                    for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                    for (new_region, old_region) in (new_substs.regions(), old_substs.regions()) {
                         match (new_region, old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
                             // same spot, we do nothing.

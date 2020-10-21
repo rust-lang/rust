@@ -69,7 +69,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 self.mutate_place(location, **place, Shallow(None), JustWrite);
             }
             StatementKind::LlvmInlineAsm(asm) => {
-                for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
+                for (o, output) in (&asm.asm.outputs, &*asm.outputs) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
                         // be encoded through MIR place derefs instead.

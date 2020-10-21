@@ -139,7 +139,7 @@ fn place_components_conflict<'tcx>(
 
     // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
     for (i, (borrow_c, &access_c)) in
-        borrow_place.projection.iter().zip(access_place.projection.iter()).enumerate()
+        (borrow_place.projection, access_place.projection).into_iter().enumerate()
     {
         debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
         let borrow_proj_base = &borrow_place.projection[..i];
