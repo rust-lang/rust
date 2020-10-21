@@ -145,9 +145,9 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     // We need to preserve the literal's suffix,
                     // as it may determine typing information.
                     let suffix = match lit.node {
-                        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str().to_string(),
-                        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str().to_string(),
-                        LitKind::Int(_, LitIntType::Unsuffixed) => "".to_string(),
+                        LitKind::Int(_, LitIntType::Signed(s)) => s.name_str(),
+                        LitKind::Int(_, LitIntType::Unsigned(s)) => s.name_str(),
+                        LitKind::Int(_, LitIntType::Unsuffixed) => "",
                         _ => bug!(),
                     };
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
@@ -170,24 +170,25 @@ fn lint_overflowing_range_endpoint<'tcx>(
 // warnings are consistent between 32- and 64-bit platforms.
 fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
     match int_ty {
-        ast::IntTy::Isize => (i64::MIN as i128, i64::MAX as i128),
-        ast::IntTy::I8 => (i8::MIN as i64 as i128, i8::MAX as i128),
-        ast::IntTy::I16 => (i16::MIN as i64 as i128, i16::MAX as i128),
-        ast::IntTy::I32 => (i32::MIN as i64 as i128, i32::MAX as i128),
-        ast::IntTy::I64 => (i64::MIN as i128, i64::MAX as i128),
-        ast::IntTy::I128 => (i128::MIN as i128, i128::MAX),
+        ast::IntTy::Isize => (i64::MIN.into(), i64::MAX.into()),
+        ast::IntTy::I8 => (i8::MIN.into(), i8::MAX.into()),
+        ast::IntTy::I16 => (i16::MIN.into(), i16::MAX.into()),
+        ast::IntTy::I32 => (i32::MIN.into(), i32::MAX.into()),
+        ast::IntTy::I64 => (i64::MIN.into(), i64::MAX.into()),
+        ast::IntTy::I128 => (i128::MIN, i128::MAX),
     }
 }
 
 fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
-    match uint_ty {
-        ast::UintTy::Usize => (u64::MIN as u128, u64::MAX as u128),
-        ast::UintTy::U8 => (u8::MIN as u128, u8::MAX as u128),
-        ast::UintTy::U16 => (u16::MIN as u128, u16::MAX as u128),
-        ast::UintTy::U32 => (u32::MIN as u128, u32::MAX as u128),
-        ast::UintTy::U64 => (u64::MIN as u128, u64::MAX as u128),
-        ast::UintTy::U128 => (u128::MIN, u128::MAX),
-    }
+    let max = match uint_ty {
+        ast::UintTy::Usize => u64::MAX.into(),
+        ast::UintTy::U8 => u8::MAX.into(),
+        ast::UintTy::U16 => u16::MAX.into(),
+        ast::UintTy::U32 => u32::MAX.into(),
+        ast::UintTy::U64 => u64::MAX.into(),
+        ast::UintTy::U128 => u128::MAX,
+    };
+    (0, max)
 }
 
 fn get_bin_hex_repr(cx: &LateContext<'_>, lit: &hir::Lit) -> Option<String> {
