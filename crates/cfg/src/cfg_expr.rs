@@ -6,14 +6,31 @@ use std::slice::Iter as SliceIter;
 
 use tt::SmolStr;
 
+/// A simple configuration value passed in from the outside.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CfgAtom {
+    /// eg. `#[cfg(test)]`
+    Flag(SmolStr),
+    /// eg. `#[cfg(target_os = "linux")]`
+    ///
+    /// Note that a key can have multiple values that are all considered "active" at the same time.
+    /// For example, `#[cfg(target_feature = "sse")]` and `#[cfg(target_feature = "sse2")]`.
+    KeyValue { key: SmolStr, value: SmolStr },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CfgExpr {
     Invalid,
-    Atom(SmolStr),
-    KeyValue { key: SmolStr, value: SmolStr },
+    Atom(CfgAtom),
     All(Vec<CfgExpr>),
     Any(Vec<CfgExpr>),
     Not(Box<CfgExpr>),
+}
+
+impl From<CfgAtom> for CfgExpr {
+    fn from(atom: CfgAtom) -> Self {
+        CfgExpr::Atom(atom)
+    }
 }
 
 impl CfgExpr {
@@ -21,11 +38,10 @@ impl CfgExpr {
         next_cfg_expr(&mut tt.token_trees.iter()).unwrap_or(CfgExpr::Invalid)
     }
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
-    pub fn fold(&self, query: &dyn Fn(&SmolStr, Option<&SmolStr>) -> bool) -> Option<bool> {
+    pub fn fold(&self, query: &dyn Fn(&CfgAtom) -> bool) -> Option<bool> {
         match self {
             CfgExpr::Invalid => None,
-            CfgExpr::Atom(name) => Some(query(name, None)),
-            CfgExpr::KeyValue { key, value } => Some(query(key, Some(value))),
+            CfgExpr::Atom(atom) => Some(query(atom)),
             CfgExpr::All(preds) => {
                 preds.iter().try_fold(true, |s, pred| Some(s && pred.fold(query)?))
             }
@@ -54,7 +70,7 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
                     // FIXME: escape? raw string?
                     let value =
                         SmolStr::new(literal.text.trim_start_matches('"').trim_end_matches('"'));
-                    CfgExpr::KeyValue { key: name, value }
+                    CfgAtom::KeyValue { key: name, value }.into()
                 }
                 _ => return Some(CfgExpr::Invalid),
             }
@@ -70,7 +86,7 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
                 _ => CfgExpr::Invalid,
             }
         }
-        _ => CfgExpr::Atom(name),
+        _ => CfgAtom::Flag(name).into(),
     };
 
     // Eat comma separator
@@ -101,22 +117,22 @@ mod tests {
 
     #[test]
     fn test_cfg_expr_parser() {
-        assert_parse_result("#![cfg(foo)]", CfgExpr::Atom("foo".into()));
-        assert_parse_result("#![cfg(foo,)]", CfgExpr::Atom("foo".into()));
+        assert_parse_result("#![cfg(foo)]", CfgAtom::Flag("foo".into()).into());
+        assert_parse_result("#![cfg(foo,)]", CfgAtom::Flag("foo".into()).into());
         assert_parse_result(
             "#![cfg(not(foo))]",
-            CfgExpr::Not(Box::new(CfgExpr::Atom("foo".into()))),
+            CfgExpr::Not(Box::new(CfgAtom::Flag("foo".into()).into())),
         );
         assert_parse_result("#![cfg(foo(bar))]", CfgExpr::Invalid);
 
         // Only take the first
-        assert_parse_result(r#"#![cfg(foo, bar = "baz")]"#, CfgExpr::Atom("foo".into()));
+        assert_parse_result(r#"#![cfg(foo, bar = "baz")]"#, CfgAtom::Flag("foo".into()).into());
 
         assert_parse_result(
             r#"#![cfg(all(foo, bar = "baz"))]"#,
             CfgExpr::All(vec![
-                CfgExpr::Atom("foo".into()),
-                CfgExpr::KeyValue { key: "bar".into(), value: "baz".into() },
+                CfgAtom::Flag("foo".into()).into(),
+                CfgAtom::KeyValue { key: "bar".into(), value: "baz".into() }.into(),
             ]),
         );
 
@@ -126,7 +142,7 @@ mod tests {
                 CfgExpr::Not(Box::new(CfgExpr::Invalid)),
                 CfgExpr::All(vec![]),
                 CfgExpr::Invalid,
-                CfgExpr::KeyValue { key: "bar".into(), value: "baz".into() },
+                CfgAtom::KeyValue { key: "bar".into(), value: "baz".into() }.into(),
             ]),
         );
     }

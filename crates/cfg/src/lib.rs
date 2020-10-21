@@ -5,7 +5,7 @@ mod cfg_expr;
 use rustc_hash::FxHashSet;
 use tt::SmolStr;
 
-pub use cfg_expr::CfgExpr;
+pub use cfg_expr::{CfgAtom, CfgExpr};
 
 /// Configuration options used for conditional compilition on items with `cfg` attributes.
 /// We have two kind of options in different namespaces: atomic options like `unix`, and
@@ -19,33 +19,25 @@ pub use cfg_expr::CfgExpr;
 /// See: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CfgOptions {
-    atoms: FxHashSet<SmolStr>,
-    key_values: FxHashSet<(SmolStr, SmolStr)>,
+    enabled: FxHashSet<CfgAtom>,
 }
 
 impl CfgOptions {
     pub fn check(&self, cfg: &CfgExpr) -> Option<bool> {
-        cfg.fold(&|key, value| match value {
-            None => self.atoms.contains(key),
-            Some(value) => self.key_values.contains(&(key.clone(), value.clone())),
-        })
+        cfg.fold(&|atom| self.enabled.contains(atom))
     }
 
     pub fn insert_atom(&mut self, key: SmolStr) {
-        self.atoms.insert(key);
+        self.enabled.insert(CfgAtom::Flag(key));
     }
 
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
-        self.key_values.insert((key, value));
+        self.enabled.insert(CfgAtom::KeyValue { key, value });
     }
 
     pub fn append(&mut self, other: &CfgOptions) {
-        for atom in &other.atoms {
-            self.atoms.insert(atom.clone());
-        }
-
-        for (key, value) in &other.key_values {
-            self.key_values.insert((key.clone(), value.clone()));
+        for atom in &other.enabled {
+            self.enabled.insert(atom.clone());
         }
     }
 }

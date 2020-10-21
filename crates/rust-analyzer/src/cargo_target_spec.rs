@@ -1,6 +1,6 @@
 //! See `CargoTargetSpec`
 
-use cfg::CfgExpr;
+use cfg::{CfgAtom, CfgExpr};
 use ide::{FileId, RunnableKind, TestId};
 use project_model::{self, TargetKind};
 use vfs::AbsPathBuf;
@@ -160,7 +160,9 @@ impl CargoTargetSpec {
 /// Fill minimal features needed
 fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
     match cfg_expr {
-        CfgExpr::KeyValue { key, value } if key == "feature" => features.push(value.to_string()),
+        CfgExpr::Atom(CfgAtom::KeyValue { key, value }) if key == "feature" => {
+            features.push(value.to_string())
+        }
         CfgExpr::All(preds) => {
             preds.iter().for_each(|cfg| required_features(cfg, features));
         }
