@@ -333,16 +333,14 @@ CloneTypeFoldableAndLiftImpls! {
 impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
     type Lifted = (A::Lifted, B::Lifted);
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        let (a, b) = self;
-        tcx.lift(a).and_then(|a| tcx.lift(b).map(|b| (a, b)))
+        Some((tcx.lift(self.0)?, tcx.lift(self.1)?))
     }
 }
 
 impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>, C: Lift<'tcx>> Lift<'tcx> for (A, B, C) {
     type Lifted = (A::Lifted, B::Lifted, C::Lifted);
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        let (a, b, c) = self;
-        tcx.lift(a).and_then(|a| tcx.lift(b).and_then(|b| tcx.lift(c).map(|c| (a, b, c))))
+        Some((tcx.lift(self.0)?, tcx.lift(self.1)?, tcx.lift(self.2)?))
     }
 }
 
