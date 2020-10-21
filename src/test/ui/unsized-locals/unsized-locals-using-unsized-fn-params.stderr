@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-locals-using-unsized-fn-params.rs:5:9
+  --> $DIR/unsized-locals-using-unsized-fn-params.rs:7:9
    |
 LL |     let _foo: [u8] = *foo;
    |         ^^^^ doesn't have a size known at compile-time
