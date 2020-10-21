@@ -1118,18 +1118,16 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
-        if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
-            record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
+        record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
 
-            let unused = self.tcx.unused_generic_params(def_id);
-            if !unused.is_empty() {
-                record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
-            }
+        let unused = self.tcx.unused_generic_params(def_id);
+        if !unused.is_empty() {
+            record!(self.tables.unused_generic_params[def_id.to_def_id()] <- unused);
+        }
 
-            let abstract_const = self.tcx.mir_abstract_const(def_id);
-            if let Ok(Some(abstract_const)) = abstract_const {
-                record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
-            }
+        let abstract_const = self.tcx.mir_abstract_const(def_id);
+        if let Ok(Some(abstract_const)) = abstract_const {
+            record!(self.tables.mir_abstract_consts[def_id.to_def_id()] <- abstract_const);
         }
     }
 
@@ -1413,8 +1411,10 @@ impl EncodeContext<'a, 'tcx> {
                 let needs_inline = (generics.requires_monomorphization(tcx)
                     || tcx.codegen_fn_attrs(def_id).requests_inline())
                     && !self.metadata_output_only();
+
+                let is_const_fn = sig.header.constness == hir::Constness::Const;
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
-                needs_inline || sig.header.constness == hir::Constness::Const || always_encode_mir
+                needs_inline || is_const_fn || always_encode_mir
             }
             _ => false,
         };
