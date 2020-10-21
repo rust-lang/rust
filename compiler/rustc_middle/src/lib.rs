@@ -49,6 +49,7 @@
 #![feature(int_error_matching)]
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
+#![feature(control_flow_enum)]
 #![recursion_limit = "512"]
 
 #[macro_use]
