@@ -50,22 +50,6 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate
     }
 }
 
-pub trait OpaqueEncoder: Encoder {
-    fn opaque(&mut self) -> &mut rustc_serialize::opaque::Encoder;
-    fn encoder_position(&self) -> usize;
-}
-
-impl OpaqueEncoder for rustc_serialize::opaque::Encoder {
-    #[inline]
-    fn opaque(&mut self) -> &mut rustc_serialize::opaque::Encoder {
-        self
-    }
-    #[inline]
-    fn encoder_position(&self) -> usize {
-        self.position()
-    }
-}
-
 pub trait TyEncoder<'tcx>: Encoder {
     const CLEAR_CROSS_CRATE: bool;
 
