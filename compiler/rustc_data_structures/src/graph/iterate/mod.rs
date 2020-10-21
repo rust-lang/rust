@@ -1,6 +1,7 @@
 use super::{DirectedGraph, WithNumNodes, WithStartNode, WithSuccessors};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use std::ops::ControlFlow;
 
 #[cfg(test)]
 mod tests;
@@ -85,9 +86,6 @@ where
         Some(n)
     }
 }
-
-/// Allows searches to terminate early with a value.
-pub use std::ops::ControlFlow;
 
 /// The status of a node in the depth-first search.
 ///
