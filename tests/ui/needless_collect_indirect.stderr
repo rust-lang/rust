@@ -48,7 +48,7 @@ LL | |     indirect_contains.contains(&&5);
 help: Check if the original Iterator contains an element instead of collecting then checking
    |
 LL |     
-LL |     sample.iter().any(|x| x == &&5);
+LL |     sample.iter().any(|x| x == &5);
    |
 
 error: aborting due to 4 previous errors
