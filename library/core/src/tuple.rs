@@ -2,6 +2,7 @@
 
 use crate::cmp::Ordering::*;
 use crate::cmp::*;
+use crate::iter::{IntoIterator, Zip};
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
@@ -209,5 +210,41 @@ tuple_impls! {
         (9) -> J
         (10) -> K
         (11) -> L
+    }
+}
+
+/// Converts a pair of `IntoIterator` values into a single iterator of pairs
+///
+/// This works like an implicit [`zip`] in any context that accepts `IntoIterator`
+/// values, like [`chain`], [`flat_map`], and especially `for` loops.
+///
+/// ```
+/// let xs = [1, 2, 3];
+/// let ys = [4, 5, 6];
+/// for (x, y) in (&xs, &ys) {
+///     println!("x:{}, y:{}", x, y);
+/// }
+///
+/// // Nested zips are also possible:
+/// let zs = [7, 8, 9];
+/// for ((x, y), z) in ((&xs, &ys), &zs) {
+///     println!("x:{}, y:{}, z:{}", x, y, z);
+/// }
+/// ```
+///
+/// [`chain`]: Iterator::chain
+/// [`flat_map`]: Iterator::flat_map
+/// [`zip`]: Iterator::zip
+#[stable(feature = "pair_into_iter", since = "1.49.0")]
+impl<A, B> IntoIterator for (A, B)
+where
+    A: IntoIterator,
+    B: IntoIterator,
+{
+    type IntoIter = Zip<A::IntoIter, B::IntoIter>;
+    type Item = (A::Item, B::Item);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter().zip(self.1)
     }
 }
