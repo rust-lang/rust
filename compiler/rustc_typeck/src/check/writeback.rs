@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// The Writeback context. This visitor walks the AST, checking the
+// The Writeback context. This visitor walks the HIR, checking the
 // fn-specific typeck results to find references to types or regions. It
 // resolves those regions to remove inference variables and writes the
 // final result back into the master typeck results in the tcx. Here and
