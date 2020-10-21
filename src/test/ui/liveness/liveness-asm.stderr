@@ -1,0 +1,23 @@
+warning: value assigned to `src` is never read
+  --> $DIR/liveness-asm.rs:13:32
+   |
+LL |     asm!("/*{0}*/", inout(reg) src);
+   |                                ^^^
+   |
+note: the lint level is defined here
+  --> $DIR/liveness-asm.rs:8:9
+   |
+LL | #![warn(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
+   = help: maybe it is overwritten before being read?
+
+warning: value assigned to `src` is never read
+  --> $DIR/liveness-asm.rs:23:39
+   |
+LL |     asm!("/*{0}*/", inout(reg) src => src);
+   |                                       ^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: 2 warnings emitted
+

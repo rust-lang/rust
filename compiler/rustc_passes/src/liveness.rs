@@ -1174,7 +1174,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::InOut { expr, .. } => {
-                            succ = self.write_place(expr, succ, ACC_READ | ACC_WRITE);
+                            succ = self.write_place(expr, succ, ACC_READ | ACC_WRITE | ACC_USE);
                         }
                         hir::InlineAsmOperand::SplitInOut { out_expr, .. } => {
                             if let Some(expr) = out_expr {
