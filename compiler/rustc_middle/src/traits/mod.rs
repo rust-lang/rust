@@ -20,7 +20,9 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -82,14 +84,10 @@ pub enum Reveal {
 ///
 /// We do not want to intern this as there are a lot of obligation causes which
 /// only live for a short period of time.
-#[derive(Clone, PartialEq, Eq, Hash, Lift)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
-    /// `None` for `ObligationCause::dummy`, `Some` otherwise.
-    data: Option<Rc<ObligationCauseData<'tcx>>>,
+    data: Rc<ObligationCauseData<'tcx>>,
 }
-
-const DUMMY_OBLIGATION_CAUSE_DATA: ObligationCauseData<'static> =
-    ObligationCauseData { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation };
 
 // Correctly format `ObligationCause::dummy`.
 impl<'tcx> fmt::Debug for ObligationCause<'tcx> {
@@ -103,13 +101,14 @@ impl Deref for ObligationCause<'tcx> {
 
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
-        self.data.as_deref().unwrap_or(&DUMMY_OBLIGATION_CAUSE_DATA)
+        self.data.deref()
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(Clone)]
 pub struct ObligationCauseData<'tcx> {
-    span: Span,
+    source: Option<(TyCtxt<'tcx>, DefId)>,
+    span: Cell<Option<Span>>,
 
     /// The ID of the fn body that triggered this obligation. This is
     /// used for region obligations to determine the precise
@@ -122,6 +121,55 @@ pub struct ObligationCauseData<'tcx> {
     pub code: ObligationCauseCode<'tcx>,
 }
 
+impl<'tcx> ObligationCauseData<'tcx> {
+    pub fn def_span(&self) -> Span {
+        if self.span.get().is_none() {
+            let (tcx, def_id) = self.source.expect("ObligationCause needs a span or def_id");
+            self.span.set(Some(tcx.def_span(def_id)));
+        }
+        self.span.get().unwrap()
+    }
+}
+
+impl<'tcx> fmt::Debug for ObligationCauseData<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ObligationCauseData")
+            .field("span", &self.def_span())
+            .field("body_id", &self.body_id)
+            .field("code", &self.code)
+            .finish()
+    }
+}
+
+impl<'tcx> Hash for ObligationCauseData<'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        if let Some((_, def_id)) = self.source {
+            def_id.hash(state);
+        } else if let Some(span) = self.span.get() {
+            span.hash(state);
+        }
+        self.body_id.hash(state);
+        self.code.hash(state);
+    }
+}
+
+impl<'tcx> PartialEq for ObligationCauseData<'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        let spans_eq = match (self.source, other.source) {
+            (Some((_, def_id)), Some((_, other_def_id))) => def_id == other_def_id,
+            (None, None) => match (self.span.get(), other.span.get()) {
+                (Some(span), Some(other_span)) => span == other_span,
+                _ => false,
+            },
+            _ => false,
+        };
+
+        spans_eq && self.body_id.eq(&other.body_id) && self.code.eq(&other.code)
+    }
+}
+
+impl<'tcx> Eq for ObligationCauseData<'tcx> {}
+
 impl<'tcx> ObligationCause<'tcx> {
     #[inline]
     pub fn new(
@@ -129,7 +177,14 @@ impl<'tcx> ObligationCause<'tcx> {
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause { data: Some(Rc::new(ObligationCauseData { span, body_id, code })) }
+        ObligationCause {
+            data: Rc::new(ObligationCauseData {
+                span: Cell::new(Some(span)),
+                source: None,
+                body_id,
+                code,
+            }),
+        }
     }
 
     pub fn new_from_def_id(
@@ -159,18 +214,24 @@ impl<'tcx> ObligationCause<'tcx> {
 
     #[inline(always)]
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { data: None }
+        ObligationCause {
+            data: Rc::new(ObligationCauseData {
+                span: Cell::new(Some(DUMMY_SP)),
+                source: None,
+                body_id: hir::CRATE_HIR_ID,
+                code: MiscObligation,
+            }),
+        }
     }
 
     pub fn make_mut(&mut self) -> &mut ObligationCauseData<'tcx> {
-        Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
+        Rc::make_mut(&mut self.data)
     }
 
     pub fn update_def_span(&mut self, span: Span) {
-        let data =
-            Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)));
+        let data = self.make_mut();
 
-        data.span = span;
+        data.span.set(Some(span));
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
@@ -186,10 +247,6 @@ impl<'tcx> ObligationCause<'tcx> {
             }) => arm_span,
             _ => self.def_span(),
         }
-    }
-
-    pub fn def_span(&self) -> Span {
-        self.span
     }
 }
 
