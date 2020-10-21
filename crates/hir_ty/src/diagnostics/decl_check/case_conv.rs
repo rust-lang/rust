@@ -29,7 +29,13 @@ fn detect_case(ident: &str) -> DetectedCase {
 
     if has_uppercase {
         if !has_lowercase {
-            DetectedCase::UpperSnakeCase
+            if has_underscore {
+                DetectedCase::UpperSnakeCase
+            } else {
+                // It has uppercase only and no underscores. Ex: "AABB"
+                // This is a camel cased acronym.
+                DetectedCase::UpperCamelCase
+            }
         } else if !has_underscore {
             if first_lowercase {
                 DetectedCase::LowerCamelCase
@@ -180,6 +186,7 @@ mod tests {
         check(to_camel_case, "Weird_Case", expect![["WeirdCase"]]);
         check(to_camel_case, "name", expect![["Name"]]);
         check(to_camel_case, "A", expect![[""]]);
+        check(to_camel_case, "AABB", expect![[""]]);
     }
 
     #[test]
