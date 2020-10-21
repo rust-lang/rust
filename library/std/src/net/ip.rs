@@ -126,7 +126,7 @@ pub struct Ipv6Addr {
 /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
 /// [section 2 of IETF RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
-#[stable(feature = "ip", since = "1.47.0")]
+#[stable(feature = "ip", since = "1.48.0")]
 #[non_exhaustive]
 #[stable(feature = "ip", since = "1.47.0")]
 pub enum Ipv6MulticastScope {
@@ -134,63 +134,63 @@ pub enum Ipv6MulticastScope {
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     InterfaceLocal,
 
     /// Link-Local scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     LinkLocal,
 
     /// Realm-Local scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     RealmLocal,
 
     /// Admin-Local scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     AdminLocal,
 
     /// Site-Local scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     SiteLocal,
 
     /// Organization-Local scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     OrganizationLocal,
 
     /// Global scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     Global,
 
     /// Reserved scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     Reserved,
 
     /// Un-assigned scope. See [RFC 4291] and [RFC 7346]
     ///
     /// [RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.7
     /// [RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     Unassigned,
 }
 
@@ -261,8 +261,9 @@ impl IpAddr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_global(&self) -> bool {
+    #[stable(feature = "ip", since = "1.48.0")]
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_global(),
             IpAddr::V6(ip) => ip.is_global(),
@@ -315,8 +316,9 @@ impl IpAddr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
-    pub fn is_documentation(&self) -> bool {
+    #[stable(feature = "ip", since = "1.48.0")]
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    pub const fn is_documentation(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_documentation(),
             IpAddr::V6(ip) => ip.is_documentation(),
@@ -619,7 +621,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
@@ -663,7 +665,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
@@ -702,7 +704,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
@@ -732,7 +734,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
@@ -771,7 +773,7 @@ impl Ipv4Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
@@ -1335,7 +1337,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_global(&self) -> bool {
         (match self.multicast_scope() {
@@ -1366,31 +1368,33 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/64`).
+    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
     ///
-    /// A common misconception is to think that "unicast link-local addresses start with
-    /// `fe80::`", but [IETF RFC 4291] actually defines a stricter format for these addresses:
+    /// This method returns [`true`] for addresses in the range reserved by [RFC 4291 section 2.4],
+    /// i.e. addresses with the following format:
     ///
     /// ```no_rust
     /// |   10     |
     /// |  bits    |         54 bits         |          64 bits           |
     /// +----------+-------------------------+----------------------------+
-    /// |1111111010|           0             |       interface ID         |
+    /// |1111111010|     arbitrary value     |       interface ID         |
     /// +----------+-------------------------+----------------------------+
     /// ```
     ///
-    /// This method validates the format defined in the RFC and won't recognize the following
-    /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
+    /// As a result, this method consider addresses such as `fe80:0:0:1::` or `fe81::` to be
+    /// unicast link-local addresses.
     ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(ip)]
+    ///
     /// use std::net::Ipv6Addr;
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
@@ -1400,20 +1404,19 @@ impl Ipv6Addr {
     /// assert!(ip.is_unicast_link_local());
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local());
+    /// assert!(ip.is_unicast_link_local());
     ///
     /// let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
-    /// assert!(!ip.is_unicast_link_local());
+    /// assert!(ip.is_unicast_link_local());
     /// ```
     ///
     /// # See also
     ///
-    /// - [IETF RFC 4291 section 2.5.6]
+    /// - [IETF RFC 4291 section 2.4]
     /// - [RFC 4291 errata 4406] (which has been rejected but provides useful
     ///   insight)
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-    /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
+    /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     ///
     /// # Stability guarantees
@@ -1422,13 +1425,10 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_link_local(&self) -> bool {
-        ((self.segments()[0] & 0xffff) == 0xfe80
-            && (self.segments()[1] & 0xffff) == 0
-            && (self.segments()[2] & 0xffff) == 0
-            && (self.segments()[3] & 0xffff) == 0)
+        (self.segments()[0] & 0xffc0) == 0xfe80
             || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_link_local() } else { false }
     }
 
@@ -1471,7 +1471,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
@@ -1499,7 +1499,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_documentation(&self) -> bool {
         ((self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8))
@@ -1541,7 +1541,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
@@ -1572,7 +1572,7 @@ impl Ipv6Addr {
     /// future, as new RFCs are published.
     ///
     /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         use crate::net::Ipv6MulticastScope::{
@@ -1636,7 +1636,7 @@ impl Ipv6Addr {
     ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
-    #[stable(feature = "ip", since = "1.47.0")]
+    #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
