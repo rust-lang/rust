@@ -1,7 +1,7 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
-use crate::ty::codec::{OpaqueEncoder, RefDecodable, TyDecoder, TyEncoder};
+use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
@@ -936,6 +936,23 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
 }
 
 //- ENCODING -------------------------------------------------------------------
+
+/// This trait is a hack to work around specialization bug #55243.
+trait OpaqueEncoder: Encoder {
+    fn opaque(&mut self) -> &mut opaque::Encoder;
+    fn encoder_position(&self) -> usize;
+}
+
+impl OpaqueEncoder for opaque::Encoder {
+    #[inline]
+    fn opaque(&mut self) -> &mut opaque::Encoder {
+        self
+    }
+    #[inline]
+    fn encoder_position(&self) -> usize {
+        self.position()
+    }
+}
 
 /// An encoder that can write the incr. comp. cache.
 struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
