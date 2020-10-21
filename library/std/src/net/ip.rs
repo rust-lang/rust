@@ -1387,8 +1387,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
-    ///
     /// use std::net::Ipv6Addr;
     ///
     /// let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
