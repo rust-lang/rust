@@ -4,7 +4,7 @@ mod debug;
 mod graph;
 mod spans;
 
-use debug::{debug_options, term_type, NESTED_INDENT};
+use debug::NESTED_INDENT;
 use graph::{
     BasicCoverageBlock, BasicCoverageBlockData, BcbBranch, CoverageGraph,
     TraverseCoverageGraphWithLoops,
@@ -12,18 +12,15 @@ use graph::{
 use spans::{CoverageSpan, CoverageSpans};
 
 use crate::transform::MirPass;
-use crate::util::generic_graphviz::GraphvizWriter;
 use crate::util::pretty;
-use crate::util::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ich::StableHashingContext;
@@ -101,7 +98,6 @@ struct Instrumentor<'a, 'tcx> {
     function_source_hash: Option<u64>,
     next_counter_id: u32,
     num_expressions: u32,
-    debug_expressions_cache: Option<FxHashMap<ExpressionOperandId, CoverageKind>>,
     debug_counters: debug::DebugCounters,
 }
 
@@ -120,7 +116,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             function_source_hash: None,
             next_counter_id: CounterValueReference::START.as_u32(),
             num_expressions: 0,
-            debug_expressions_cache: None,
             debug_counters: debug::DebugCounters::new(),
         }
     }
@@ -163,7 +158,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         debug!("instrumenting {:?}, span: {}", def_id, source_map.span_to_string(body_span));
 
-        let dump_spanview = pretty::dump_enabled(tcx, self.pass_name, def_id);
         let dump_graphviz = tcx.sess.opts.debugging_opts.dump_mir_graphviz;
 
         if dump_graphviz {
@@ -177,17 +171,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             &self.bcb_dominators,
         );
 
-        // When dumping coverage spanview files, create `SpanViewables` from the `coverage_spans`.
-        if dump_spanview {
-            let span_viewables = self.span_viewables(&coverage_spans);
-            let mut file =
-                pretty::create_dump_file(tcx, "html", None, self.pass_name, &0, mir_source)
-                    .expect("Unexpected error creating MIR spanview HTML file");
-            let crate_name = tcx.crate_name(def_id.krate);
-            let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
-            let title = format!("{}.{} - Coverage Spans", crate_name, item_name);
-            spanview::write_document(tcx, def_id, span_viewables, &title, &mut file)
-                .expect("Unexpected IO error dumping coverage spans as HTML");
+        if pretty::dump_enabled(tcx, self.pass_name, def_id) {
+            debug::dump_coverage_spanview(
+                tcx,
+                self.mir_body,
+                &self.basic_coverage_blocks,
+                self.pass_name,
+                &coverage_spans,
+            );
         }
 
         // When debug logging, or generating the coverage graphviz output, initialize the following
@@ -195,29 +186,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut debug_used_expressions = debug::UsedExpressions::new();
         if level_enabled!(tracing::Level::DEBUG) || dump_graphviz {
             debug_used_expressions.enable();
-
-            if debug_options().simplify_expressions {
-                self.debug_expressions_cache.replace(FxHashMap::default());
-            }
-            // CAUTION! The `simplify_expressions` option is only helpful for some debugging
-            // situations and it can change the generated MIR `Coverage` statements (resulting in
-            // differences in behavior when enabled, under `DEBUG`, compared to normal operation and
-            // testing).
-            //
-            // For debugging purposes, it is sometimes helpful to simplify some expression
-            // equations:
-            //
-            //   * `x + (y - x)` becomes just `y`
-            //   * `x + (y + 0)` becomes just x + y.
-            //
-            // Expression dependencies can deeply nested expressions, which can look quite long in
-            // printed debug messages and in graphs produced by `-Zdump-graphviz`. In reality, each
-            // referenced/nested expression is only present because that value is necessary to
-            // compute a counter value for another part of the coverage report. Simplifying
-            // expressions Does not result in less `Coverage` statements, so there is very little,
-            // if any, benefit to binary size or runtime to simplifying expressions, and adds
-            // additional compile-time complexity. Only enable this temporarily, if helpful to parse
-            // the debug output.
         }
 
         // When debugging with BCB graphviz output, initialize additional data structures.
@@ -230,12 +198,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // counters.
         let mut collect_intermediate_expressions =
             Vec::with_capacity(self.basic_coverage_blocks.num_nodes());
-
         let result = self.make_bcb_counters(&coverage_spans, &mut collect_intermediate_expressions);
         if result.is_ok() {
             // If debugging, add any intermediate expressions (which are not associated with any
             // BCB) to the `debug_used_expressions` map.
-
             if debug_used_expressions.is_enabled() {
                 for intermediate_expression in &collect_intermediate_expressions {
                     debug_used_expressions.add_expression_operands(intermediate_expression);
@@ -249,137 +215,36 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 &mut debug_used_expressions,
             );
 
-            // The previous step looped through the `CoverageSpan`s and injected the counter from
-            // the `CoverageSpan`s `BasicCoverageBlock`, removing it from the BCB in the process
-            // (via `take_counter()`).
-            //
-            // Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but
-            // not associated with a `CoverageSpan`, should only exist if the counter is a
-            // `Expression` dependency (one of the expression operands). Collect them, and inject
-            // the additional counters into the MIR, without a reportable coverage span.
-            let mut bcb_counters_without_direct_coverage_spans = Vec::new();
-            for (target_bcb, target_bcb_data) in self.basic_coverage_blocks.iter_enumerated_mut() {
-                if let Some(counter_kind) = target_bcb_data.take_counter() {
-                    bcb_counters_without_direct_coverage_spans.push((
-                        None,
-                        target_bcb,
-                        counter_kind,
-                    ));
-                }
-                if let Some(edge_counters) = target_bcb_data.take_edge_counters() {
-                    for (from_bcb, counter_kind) in edge_counters {
-                        bcb_counters_without_direct_coverage_spans.push((
-                            Some(from_bcb),
-                            target_bcb,
-                            counter_kind,
-                        ));
-                    }
-                }
-            }
+            // Inject other counters created as dependencies of coverage span counters.
+            self.inject_indirect_counters(&mut graphviz_data, &mut debug_used_expressions);
 
-            if debug_used_expressions.is_enabled() {
-                // Validate that every BCB or edge counter not directly associated with a coverage
-                // span is at least indirectly associated (it is a dependency of a BCB counter that
-                // _is_ associated with a coverage span).
-                let mut not_validated = bcb_counters_without_direct_coverage_spans
-                    .iter()
-                    .map(|(_, _, counter_kind)| counter_kind)
-                    .collect::<Vec<_>>();
-                let mut validating_count = 0;
-                while not_validated.len() != validating_count {
-                    let to_validate = not_validated.split_off(0);
-                    validating_count = to_validate.len();
-                    for counter_kind in to_validate {
-                        if debug_used_expressions.expression_is_used(counter_kind) {
-                            debug_used_expressions.add_expression_operands(counter_kind);
-                        } else {
-                            not_validated.push(counter_kind);
-                        }
-                    }
-                }
-            }
-
-            self.inject_indirect_counters(
-                bcb_counters_without_direct_coverage_spans,
-                &mut graphviz_data,
-                &mut debug_used_expressions,
-            );
+            // Intermediate expressions will be injected as the final step, after generating debug
+            // output, if any.
         }
 
         if graphviz_data.is_enabled() {
-            let node_content = |bcb| {
-                self.bcb_to_string_sections(
-                    self.bcb_data(bcb),
-                    graphviz_data.get_bcb_coverage_spans_with_counters(bcb),
-                    graphviz_data.get_bcb_dependency_counters(bcb),
-                    // collect_intermediate_expressions are injected into the mir::START_BLOCK, so
-                    // include them in the first BCB.
-                    if bcb.index() == 0 { Some(&collect_intermediate_expressions) } else { None },
-                )
-            };
-            let edge_labels = |from_bcb| {
-                let from_terminator = self.bcb_terminator(from_bcb);
-                let mut edge_labels = from_terminator.kind.fmt_successor_labels();
-                edge_labels.retain(|label| label.to_string() != "unreachable");
-                let edge_counters = from_terminator
-                    .successors()
-                    .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
-                edge_labels
-                    .iter()
-                    .zip(edge_counters)
-                    .map(|(label, some_counter)| {
-                        if let Some(counter) = some_counter {
-                            format!("{}\n{}", label, self.format_counter(counter))
-                        } else {
-                            label.to_string()
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            };
-            let graphviz_name = format!("Cov_{}_{}", def_id.krate.index(), def_id.index.index());
-            let mut graphviz_writer = GraphvizWriter::new(
+            debug::dump_coverage_graphviz(
+                tcx,
+                self.mir_body,
+                self.pass_name,
                 &self.basic_coverage_blocks,
-                &graphviz_name,
-                node_content,
-                edge_labels,
+                &self.debug_counters,
+                &graphviz_data,
+                &collect_intermediate_expressions,
+                &debug_used_expressions,
             );
-            let unused_expressions = debug_used_expressions.get_unused_expressions();
-            if unused_expressions.len() > 0 {
-                graphviz_writer.set_graph_label(&format!(
-                    "Unused expressions:\n  {}",
-                    unused_expressions
-                        .as_slice()
-                        .iter()
-                        .map(|(counter_kind, edge_from_bcb, target_bcb)| {
-                            if let Some(from_bcb) = edge_from_bcb.as_ref() {
-                                format!(
-                                    "{:?}->{:?}: {}",
-                                    from_bcb,
-                                    target_bcb,
-                                    self.format_counter(&counter_kind),
-                                )
-                            } else {
-                                format!("{:?}: {}", target_bcb, self.format_counter(&counter_kind),)
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n  ")
-                ));
-            }
-            let mut file =
-                pretty::create_dump_file(tcx, "dot", None, self.pass_name, &0, mir_source)
-                    .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
-            graphviz_writer
-                .write_graphviz(tcx, &mut file)
-                .expect("Unexpected error writing BasicCoverageBlock graphviz DOT file");
         }
 
         result.unwrap_or_else(|e: Error| {
             bug!("Error processing: {:?}: {:?}", self.mir_body.source.def_id(), e)
         });
 
-        debug_used_expressions.check_no_unused(&self.debug_counters);
+        // Depending on current `debug_options()`, `alert_on_unused_expressions()` could panic, so
+        // this check is performed as late as possible, to allow other debug output (logs and dump
+        // files), which might be helpful in analyzing unused expressions, to still be generated.
+        debug_used_expressions.alert_on_unused_expressions(&self.debug_counters);
 
+        // Finally, inject the intermediate expressions collected along the way.
         for intermediate_expression in collect_intermediate_expressions {
             self.inject_intermediate_expression(intermediate_expression);
         }
@@ -450,19 +315,43 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         false
     }
 
+    /// `inject_coverage_span_counters()` looped through the `CoverageSpan`s and injected the
+    /// counter from the `CoverageSpan`s `BasicCoverageBlock`, removing it from the BCB in the
+    /// process (via `take_counter()`).
+    ///
+    /// Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but not
+    /// associated with a `CoverageSpan`, should only exist if the counter is a `Expression`
+    /// dependency (one of the expression operands). Collect them, and inject the additional
+    /// counters into the MIR, without a reportable coverage span.
     fn inject_indirect_counters(
         &mut self,
-        bcb_counters_without_direct_coverage_spans: Vec<(
-            Option<BasicCoverageBlock>,
-            BasicCoverageBlock,
-            CoverageKind,
-        )>,
         graphviz_data: &mut debug::GraphvizData,
         debug_used_expressions: &mut debug::UsedExpressions,
     ) {
+        let mut bcb_counters_without_direct_coverage_spans = Vec::new();
+        for (target_bcb, target_bcb_data) in self.basic_coverage_blocks.iter_enumerated_mut() {
+            if let Some(counter_kind) = target_bcb_data.take_counter() {
+                bcb_counters_without_direct_coverage_spans.push((None, target_bcb, counter_kind));
+            }
+            if let Some(edge_counters) = target_bcb_data.take_edge_counters() {
+                for (from_bcb, counter_kind) in edge_counters {
+                    bcb_counters_without_direct_coverage_spans.push((
+                        Some(from_bcb),
+                        target_bcb,
+                        counter_kind,
+                    ));
+                }
+            }
+        }
+
+        // If debug is enabled, validate that every BCB or edge counter not directly associated
+        // with a coverage span is at least indirectly associated (it is a dependency of a BCB
+        // counter that _is_ associated with a coverage span).
+        debug_used_expressions.validate(&bcb_counters_without_direct_coverage_spans);
+
         for (edge_from_bcb, target_bcb, counter_kind) in bcb_counters_without_direct_coverage_spans
         {
-            debug_used_expressions.validate_expression_is_used(
+            debug_used_expressions.add_unused_expression_if_not_found(
                 &counter_kind,
                 edge_from_bcb,
                 target_bcb,
@@ -579,7 +468,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     #[inline]
     fn bcb_branches(&self, from_bcb: BasicCoverageBlock) -> Vec<BcbBranch> {
-        self.basic_coverage_blocks.successors[from_bcb]
+        self.bcb_successors(from_bcb)
             .iter()
             .map(|&to_bcb| BcbBranch::from_to(from_bcb, to_bcb, &self.basic_coverage_blocks))
             .collect::<Vec<_>>()
@@ -595,67 +484,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     #[inline]
     fn bcb_is_dominated_by(&self, node: BasicCoverageBlock, dom: BasicCoverageBlock) -> bool {
         self.bcb_dominators.is_dominated_by(node, dom)
-    }
-
-    fn bcb_to_string_sections(
-        &self,
-        bcb_data: &BasicCoverageBlockData,
-        some_coverage_spans_with_counters: Option<&Vec<(CoverageSpan, CoverageKind)>>,
-        some_dependency_counters: Option<&Vec<CoverageKind>>,
-        some_intermediate_expressions: Option<&Vec<CoverageKind>>,
-    ) -> Vec<String> {
-        let len = bcb_data.basic_blocks.len();
-        let mut sections = Vec::new();
-        if let Some(collect_intermediate_expressions) = some_intermediate_expressions {
-            sections.push(
-                collect_intermediate_expressions
-                    .iter()
-                    .map(|expression| format!("Intermediate {}", self.format_counter(expression)))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            );
-        }
-        if let Some(coverage_spans_with_counters) = some_coverage_spans_with_counters {
-            sections.push(
-                coverage_spans_with_counters
-                    .iter()
-                    .map(|(covspan, counter)| {
-                        format!(
-                            "{} at {}",
-                            self.format_counter(counter),
-                            covspan.format(self.tcx, self.mir_body)
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            );
-        }
-        if let Some(dependency_counters) = some_dependency_counters {
-            sections.push(format!(
-                "Non-coverage counters:\n  {}",
-                dependency_counters
-                    .iter()
-                    .map(|counter| self.format_counter(counter))
-                    .collect::<Vec<_>>()
-                    .join("  \n"),
-            ));
-        }
-        if let Some(counter_kind) = &bcb_data.counter_kind {
-            sections.push(format!("{:?}", counter_kind));
-        }
-        let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
-            .iter()
-            .map(|&bb| format!("{:?}: {}", bb, term_type(&self.mir_body[bb].terminator().kind)))
-            .collect::<Vec<_>>();
-        if non_term_blocks.len() > 0 {
-            sections.push(non_term_blocks.join("\n"));
-        }
-        sections.push(format!(
-            "{:?}: {}",
-            bcb_data.basic_blocks.last().unwrap(),
-            term_type(&bcb_data.terminator(self.mir_body).kind)
-        ));
-        sections
     }
 
     /// Traverse the BCB CFG and add either a `Counter` or `Expression` to ever BCB, to be
@@ -692,12 +520,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut traversal =
             TraverseCoverageGraphWithLoops::new(&self.basic_coverage_blocks, &self.bcb_dominators);
         while let Some(bcb) = traversal.next() {
-            debug!(
-                "{:?} has {} successors:",
-                bcb,
-                self.basic_coverage_blocks.successors[bcb].len()
-            );
-            for &successor in &self.basic_coverage_blocks.successors[bcb] {
+            debug!("{:?} has {} successors:", bcb, self.bcb_successors(bcb).len());
+            for &successor in self.bcb_successors(bcb) {
                 if successor == bcb {
                     debug!(
                         "{:?} has itself as its own successor. (Note, the compiled code will \
@@ -1156,53 +980,16 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     fn make_expression<F>(
         &mut self,
-        mut lhs: ExpressionOperandId,
+        lhs: ExpressionOperandId,
         op: Op,
-        mut rhs: ExpressionOperandId,
+        rhs: ExpressionOperandId,
         block_label_fn: F,
     ) -> CoverageKind
     where
         F: Fn() -> Option<String>,
     {
-        if let Some(expressions_cache) = self.debug_expressions_cache.as_ref() {
-            if let Some(CoverageKind::Expression { lhs: lhs_lhs, op, rhs: lhs_rhs, .. }) =
-                expressions_cache.get(&lhs)
-            {
-                if *lhs_rhs == ExpressionOperandId::ZERO {
-                    lhs = *lhs_lhs;
-                } else if *op == Op::Subtract && *lhs_rhs == rhs {
-                    if let Some(lhs_expression) = expressions_cache.get(lhs_lhs) {
-                        let expression = lhs_expression.clone();
-                        return self.duplicate_expression(expression);
-                    } else {
-                        let counter = *lhs_lhs;
-                        return self.make_identity_counter(counter);
-                    }
-                }
-            }
-
-            if let Some(CoverageKind::Expression { lhs: rhs_lhs, op, rhs: rhs_rhs, .. }) =
-                expressions_cache.get(&rhs)
-            {
-                if *rhs_rhs == ExpressionOperandId::ZERO {
-                    rhs = *rhs_rhs;
-                } else if *op == Op::Subtract && *rhs_rhs == lhs {
-                    if let Some(rhs_expression) = expressions_cache.get(rhs_lhs) {
-                        let expression = rhs_expression.clone();
-                        return self.duplicate_expression(expression);
-                    } else {
-                        let counter = *rhs_lhs;
-                        return self.make_identity_counter(counter);
-                    }
-                }
-            }
-        }
-
         let id = self.next_expression();
         let expression = CoverageKind::Expression { id, lhs, op, rhs };
-        if let Some(expressions_cache) = self.debug_expressions_cache.as_mut() {
-            expressions_cache.insert(id.into(), expression.clone());
-        }
         if self.debug_counters.is_enabled() {
             self.debug_counters.add_counter(&expression, (block_label_fn)());
         }
@@ -1210,45 +997,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     fn make_identity_counter(&mut self, counter_operand: ExpressionOperandId) -> CoverageKind {
-        if let Some(expression) =
-            self.debug_expressions_cache.as_ref().map_or(None, |c| c.get(&counter_operand))
-        {
-            let new_expression = expression.clone();
-            self.duplicate_expression(new_expression)
-        } else {
-            let some_block_label = if self.debug_counters.is_enabled() {
-                self.debug_counters.some_block_label(counter_operand).cloned()
-            } else {
-                None
-            };
-            self.make_expression(counter_operand, Op::Add, ExpressionOperandId::ZERO, || {
-                some_block_label.clone()
-            })
-        }
-    }
-
-    fn duplicate_expression(&mut self, mut expression: CoverageKind) -> CoverageKind {
-        let next_expression_id = if self.debug_expressions_cache.is_some() {
-            Some(self.next_expression())
+        let some_block_label = if self.debug_counters.is_enabled() {
+            self.debug_counters.some_block_label(counter_operand).cloned()
         } else {
             None
         };
-        let expressions_cache = self
-            .debug_expressions_cache
-            .as_mut()
-            .expect("`duplicate_expression()` requires the debug_expressions_cache");
-        match expression {
-            CoverageKind::Expression { ref mut id, .. } => {
-                *id = next_expression_id.expect(
-                    "next_expression_id should be Some if there is a debug_expressions_cache",
-                );
-                expressions_cache.insert(id.into(), expression.clone());
-            }
-            _ => {
-                bug!("make_duplicate_expression called with non-expression type: {:?}", expression)
-            }
-        }
-        expression
+        self.make_expression(counter_operand, Op::Add, ExpressionOperandId::ZERO, || {
+            some_block_label.clone()
+        })
     }
 
     fn inject_statement(
@@ -1285,21 +1041,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             kind: StatementKind::Coverage(box Coverage { kind: expression, code_region: None }),
         };
         data.statements.push(statement);
-    }
-
-    /// Converts the computed `BasicCoverageBlockData`s into `SpanViewable`s.
-    fn span_viewables(&self, coverage_spans: &Vec<CoverageSpan>) -> Vec<SpanViewable> {
-        let tcx = self.tcx;
-        let mut span_viewables = Vec::new();
-        for coverage_span in coverage_spans {
-            let tooltip = coverage_span.format_coverage_statements(tcx, self.mir_body);
-            let CoverageSpan { span, bcb, .. } = coverage_span;
-            let bcb_data = self.bcb_data(*bcb);
-            let id = bcb_data.id();
-            let leader_bb = bcb_data.leader_bb();
-            span_viewables.push(SpanViewable { bb: leader_bb, span: *span, id, tooltip });
-        }
-        span_viewables
     }
 
     #[inline(always)]

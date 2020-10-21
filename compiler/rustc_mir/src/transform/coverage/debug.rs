@@ -1,9 +1,15 @@
-use super::graph::BasicCoverageBlock;
+use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
 
+use crate::util::generic_graphviz::GraphvizWriter;
+use crate::util::pretty;
+use crate::util::spanview::{self, SpanViewable};
+
 use rustc_data_structures::fx::FxHashMap;
+use rustc_index::vec::Idx;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::{BasicBlock, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
+use rustc_middle::ty::TyCtxt;
 
 use std::lazy::SyncOnceCell;
 
@@ -20,14 +26,12 @@ pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
 #[derive(Debug, Clone)]
 pub(crate) struct DebugOptions {
     pub allow_unused_expressions: bool,
-    pub simplify_expressions: bool,
     counter_format: ExpressionFormat,
 }
 
 impl DebugOptions {
     fn new() -> Self {
         let mut allow_unused_expressions = true;
-        let mut simplify_expressions = false;
         let mut counter_format = ExpressionFormat::default();
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
@@ -39,13 +43,6 @@ impl DebugOptions {
                         debug!(
                             "{} env option `allow_unused_expressions` is set to {}",
                             RUSTC_COVERAGE_DEBUG_OPTIONS, allow_unused_expressions
-                        );
-                    }
-                    Some(option) if option == "simplify_expressions" => {
-                        simplify_expressions = bool_option_val(option, setting.next());
-                        debug!(
-                            "{} env option `simplify_expressions` is set to {}",
-                            RUSTC_COVERAGE_DEBUG_OPTIONS, simplify_expressions
                         );
                     }
                     Some(option) if option == "counter_format" => {
@@ -76,7 +73,7 @@ impl DebugOptions {
             }
         }
 
-        Self { allow_unused_expressions, simplify_expressions, counter_format }
+        Self { allow_unused_expressions, counter_format }
     }
 }
 
@@ -405,7 +402,7 @@ impl UsedExpressions {
         }
     }
 
-    pub fn validate_expression_is_used(
+    pub fn add_unused_expression_if_not_found(
         &mut self,
         expression: &CoverageKind,
         edge_from_bcb: Option<BasicCoverageBlock>,
@@ -434,7 +431,38 @@ impl UsedExpressions {
         }
     }
 
-    pub fn check_no_unused(&self, debug_counters: &DebugCounters) {
+    /// If enabled, validate that every BCB or edge counter not directly associated with a coverage
+    /// span is at least indirectly associated (it is a dependency of a BCB counter that _is_
+    /// associated with a coverage span).
+    pub fn validate(
+        &mut self,
+        bcb_counters_without_direct_coverage_spans: &Vec<(
+            Option<BasicCoverageBlock>,
+            BasicCoverageBlock,
+            CoverageKind,
+        )>,
+    ) {
+        if self.is_enabled() {
+            let mut not_validated = bcb_counters_without_direct_coverage_spans
+                .iter()
+                .map(|(_, _, counter_kind)| counter_kind)
+                .collect::<Vec<_>>();
+            let mut validating_count = 0;
+            while not_validated.len() != validating_count {
+                let to_validate = not_validated.split_off(0);
+                validating_count = to_validate.len();
+                for counter_kind in to_validate {
+                    if self.expression_is_used(counter_kind) {
+                        self.add_expression_operands(counter_kind);
+                    } else {
+                        not_validated.push(counter_kind);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn alert_on_unused_expressions(&self, debug_counters: &DebugCounters) {
         if let Some(unused_expressions) = self.some_unused_expressions.as_ref() {
             for (counter_kind, edge_from_bcb, target_bcb) in unused_expressions {
                 let unused_counter_message = if let Some(from_bcb) = edge_from_bcb.as_ref() {
@@ -454,15 +482,7 @@ impl UsedExpressions {
                     )
                 };
 
-                if debug_options().simplify_expressions || debug_options().allow_unused_expressions
-                {
-                    // Note, the debugging option `simplify_expressions`, which initializes the
-                    // `debug_expressions_cache` can cause some counters to become unused, and
-                    // is not a bug.
-                    //
-                    // For example, converting `x + (y - x)` to just `y` removes a dependency
-                    // on `y - x`. If that expression is not a dependency elsewhere, and if it is
-                    // not associated with a `CoverageSpan`, it is now considered `unused`.
+                if debug_options().allow_unused_expressions {
                     debug!("WARNING: {}", unused_counter_message);
                 } else {
                     bug!("{}", unused_counter_message);
@@ -470,6 +490,192 @@ impl UsedExpressions {
             }
         }
     }
+}
+
+pub(crate) fn dump_coverage_spanview(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
+    basic_coverage_blocks: &CoverageGraph,
+    pass_name: &str,
+    coverage_spans: &Vec<CoverageSpan>,
+) {
+    let mir_source = mir_body.source;
+    let def_id = mir_source.def_id();
+
+    let span_viewables = span_viewables(tcx, mir_body, basic_coverage_blocks, &coverage_spans);
+    let mut file = pretty::create_dump_file(tcx, "html", None, pass_name, &0, mir_source)
+        .expect("Unexpected error creating MIR spanview HTML file");
+    let crate_name = tcx.crate_name(def_id.krate);
+    let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
+    let title = format!("{}.{} - Coverage Spans", crate_name, item_name);
+    spanview::write_document(tcx, def_id, span_viewables, &title, &mut file)
+        .expect("Unexpected IO error dumping coverage spans as HTML");
+}
+
+/// Converts the computed `BasicCoverageBlockData`s into `SpanViewable`s.
+fn span_viewables(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
+    basic_coverage_blocks: &CoverageGraph,
+    coverage_spans: &Vec<CoverageSpan>,
+) -> Vec<SpanViewable> {
+    let mut span_viewables = Vec::new();
+    for coverage_span in coverage_spans {
+        let tooltip = coverage_span.format_coverage_statements(tcx, mir_body);
+        let CoverageSpan { span, bcb, .. } = coverage_span;
+        let bcb_data = &basic_coverage_blocks[*bcb];
+        let id = bcb_data.id();
+        let leader_bb = bcb_data.leader_bb();
+        span_viewables.push(SpanViewable { bb: leader_bb, span: *span, id, tooltip });
+    }
+    span_viewables
+}
+
+pub(crate) fn dump_coverage_graphviz(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
+    pass_name: &str,
+    basic_coverage_blocks: &CoverageGraph,
+    debug_counters: &DebugCounters,
+    graphviz_data: &GraphvizData,
+    intermediate_expressions: &Vec<CoverageKind>,
+    debug_used_expressions: &UsedExpressions,
+) {
+    let mir_source = mir_body.source;
+    let def_id = mir_source.def_id();
+    let node_content = |bcb| {
+        bcb_to_string_sections(
+            tcx,
+            mir_body,
+            debug_counters,
+            &basic_coverage_blocks[bcb],
+            graphviz_data.get_bcb_coverage_spans_with_counters(bcb),
+            graphviz_data.get_bcb_dependency_counters(bcb),
+            // intermediate_expressions are injected into the mir::START_BLOCK, so
+            // include them in the first BCB.
+            if bcb.index() == 0 { Some(&intermediate_expressions) } else { None },
+        )
+    };
+    let edge_labels = |from_bcb| {
+        let from_bcb_data = &basic_coverage_blocks[from_bcb];
+        let from_terminator = from_bcb_data.terminator(mir_body);
+        let mut edge_labels = from_terminator.kind.fmt_successor_labels();
+        edge_labels.retain(|label| label.to_string() != "unreachable");
+        let edge_counters = from_terminator
+            .successors()
+            .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
+        edge_labels
+            .iter()
+            .zip(edge_counters)
+            .map(|(label, some_counter)| {
+                if let Some(counter) = some_counter {
+                    format!("{}\n{}", label, debug_counters.format_counter(counter))
+                } else {
+                    label.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+    };
+    let graphviz_name = format!("Cov_{}_{}", def_id.krate.index(), def_id.index.index());
+    let mut graphviz_writer =
+        GraphvizWriter::new(basic_coverage_blocks, &graphviz_name, node_content, edge_labels);
+    let unused_expressions = debug_used_expressions.get_unused_expressions();
+    if unused_expressions.len() > 0 {
+        graphviz_writer.set_graph_label(&format!(
+            "Unused expressions:\n  {}",
+            unused_expressions
+                .as_slice()
+                .iter()
+                .map(|(counter_kind, edge_from_bcb, target_bcb)| {
+                    if let Some(from_bcb) = edge_from_bcb.as_ref() {
+                        format!(
+                            "{:?}->{:?}: {}",
+                            from_bcb,
+                            target_bcb,
+                            debug_counters.format_counter(&counter_kind),
+                        )
+                    } else {
+                        format!(
+                            "{:?}: {}",
+                            target_bcb,
+                            debug_counters.format_counter(&counter_kind),
+                        )
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n  ")
+        ));
+    }
+    let mut file = pretty::create_dump_file(tcx, "dot", None, pass_name, &0, mir_source)
+        .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
+    graphviz_writer
+        .write_graphviz(tcx, &mut file)
+        .expect("Unexpected error writing BasicCoverageBlock graphviz DOT file");
+}
+
+fn bcb_to_string_sections(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
+    debug_counters: &DebugCounters,
+    bcb_data: &BasicCoverageBlockData,
+    some_coverage_spans_with_counters: Option<&Vec<(CoverageSpan, CoverageKind)>>,
+    some_dependency_counters: Option<&Vec<CoverageKind>>,
+    some_intermediate_expressions: Option<&Vec<CoverageKind>>,
+) -> Vec<String> {
+    let len = bcb_data.basic_blocks.len();
+    let mut sections = Vec::new();
+    if let Some(collect_intermediate_expressions) = some_intermediate_expressions {
+        sections.push(
+            collect_intermediate_expressions
+                .iter()
+                .map(|expression| {
+                    format!("Intermediate {}", debug_counters.format_counter(expression))
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
+    }
+    if let Some(coverage_spans_with_counters) = some_coverage_spans_with_counters {
+        sections.push(
+            coverage_spans_with_counters
+                .iter()
+                .map(|(covspan, counter)| {
+                    format!(
+                        "{} at {}",
+                        debug_counters.format_counter(counter),
+                        covspan.format(tcx, mir_body)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
+    }
+    if let Some(dependency_counters) = some_dependency_counters {
+        sections.push(format!(
+            "Non-coverage counters:\n  {}",
+            dependency_counters
+                .iter()
+                .map(|counter| debug_counters.format_counter(counter))
+                .collect::<Vec<_>>()
+                .join("  \n"),
+        ));
+    }
+    if let Some(counter_kind) = &bcb_data.counter_kind {
+        sections.push(format!("{:?}", counter_kind));
+    }
+    let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
+        .iter()
+        .map(|&bb| format!("{:?}: {}", bb, term_type(&mir_body[bb].terminator().kind)))
+        .collect::<Vec<_>>();
+    if non_term_blocks.len() > 0 {
+        sections.push(non_term_blocks.join("\n"));
+    }
+    sections.push(format!(
+        "{:?}: {}",
+        bcb_data.basic_blocks.last().unwrap(),
+        term_type(&bcb_data.terminator(mir_body).kind)
+    ));
+    sections
 }
 
 pub(crate) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
