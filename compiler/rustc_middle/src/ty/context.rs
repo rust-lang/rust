@@ -22,7 +22,7 @@ use crate::ty::{
     ExistentialPredicate, FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntVar,
     IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
     ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
-    TyVid, TypeAndMut,
+    TyVid, TypeAndMut, Visibility,
 };
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
@@ -911,6 +911,9 @@ pub struct GlobalCtxt<'tcx> {
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
 
+    /// Visibilities produced by resolver.
+    pub visibilities: FxHashMap<LocalDefId, Visibility>,
+
     /// Resolutions of `extern crate` items produced by resolver.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
 
@@ -1124,6 +1127,7 @@ impl<'tcx> TyCtxt<'tcx> {
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
+            visibilities: resolutions.visibilities,
             extern_crate_map: resolutions.extern_crate_map,
             trait_map,
             export_map: resolutions.export_map,

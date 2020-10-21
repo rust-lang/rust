@@ -76,6 +76,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         let def_data = match &i.kind {
             ItemKind::Impl { .. } => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
+                // Fake crate root item from expand.
                 return visit::walk_item(self, i);
             }
             ItemKind::Mod(..)

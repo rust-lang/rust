@@ -80,7 +80,6 @@ fn sized_constraint_for_ty<'tcx>(
 fn associated_item_from_trait_item_ref(
     tcx: TyCtxt<'_>,
     parent_def_id: LocalDefId,
-    parent_vis: &hir::Visibility<'_>,
     trait_item_ref: &hir::TraitItemRef,
 ) -> ty::AssocItem {
     let def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
@@ -93,8 +92,7 @@ fn associated_item_from_trait_item_ref(
     ty::AssocItem {
         ident: trait_item_ref.ident,
         kind,
-        // Visibility of trait items is inherited from their traits.
-        vis: ty::Visibility::from_hir(parent_vis, trait_item_ref.id.hir_id, tcx),
+        vis: tcx.visibility(def_id),
         defaultness: trait_item_ref.defaultness,
         def_id: def_id.to_def_id(),
         container: ty::TraitContainer(parent_def_id.to_def_id()),
@@ -117,8 +115,7 @@ fn associated_item_from_impl_item_ref(
     ty::AssocItem {
         ident: impl_item_ref.ident,
         kind,
-        // Visibility of trait impl items doesn't matter.
-        vis: ty::Visibility::from_hir(&impl_item_ref.vis, impl_item_ref.id.hir_id, tcx),
+        vis: tcx.visibility(def_id),
         defaultness: impl_item_ref.defaultness,
         def_id: def_id.to_def_id(),
         container: ty::ImplContainer(parent_def_id.to_def_id()),
@@ -143,12 +140,8 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
 
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
             if let Some(trait_item_ref) = trait_item_refs.iter().find(|i| i.id.hir_id == id) {
-                let assoc_item = associated_item_from_trait_item_ref(
-                    tcx,
-                    parent_def_id,
-                    &parent_item.vis,
-                    trait_item_ref,
-                );
+                let assoc_item =
+                    associated_item_from_trait_item_ref(tcx, parent_def_id, trait_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
                 return assoc_item;
             }

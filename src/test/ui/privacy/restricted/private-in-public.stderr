@@ -2,7 +2,7 @@ error[E0446]: private type `Priv` in public interface
   --> $DIR/private-in-public.rs:8:9
    |
 LL |     struct Priv;
-   |     - `Priv` declared as private
+   |     ------------ `Priv` declared as private
 ...
 LL |         pub(crate) fn g(_: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
@@ -11,7 +11,7 @@ error[E0446]: private type `Priv` in public interface
   --> $DIR/private-in-public.rs:9:9
    |
 LL |     struct Priv;
-   |     - `Priv` declared as private
+   |     ------------ `Priv` declared as private
 ...
 LL |         crate fn h(_: Priv) {}
    |         ^^^^^^^^^^^^^^^^^^^ can't leak private type

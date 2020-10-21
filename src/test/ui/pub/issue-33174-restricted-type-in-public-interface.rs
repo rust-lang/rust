@@ -1,11 +1,11 @@
-#![allow(non_camel_case_types)]  // genus is always capitalized
+#![allow(non_camel_case_types)] // genus is always capitalized
 
 pub(crate) struct Snail;
-//~^ NOTE `Snail` declared as crate-visible
+//~^ NOTE `Snail` declared as private
 
 mod sea {
     pub(super) struct Turtle;
-    //~^ NOTE `Turtle` declared as restricted
+    //~^ NOTE `Turtle` declared as crate-private
 }
 
 struct Tortoise;
@@ -16,11 +16,11 @@ pub struct Shell<T> {
 }
 
 pub type Helix_pomatia = Shell<Snail>;
-//~^ ERROR crate-visible type `Snail` in public interface
-//~| NOTE can't leak crate-visible type
+//~^ ERROR private type `Snail` in public interface
+//~| NOTE can't leak private type
 pub type Dermochelys_coriacea = Shell<sea::Turtle>;
-//~^ ERROR restricted type `Turtle` in public interface
-//~| NOTE can't leak restricted type
+//~^ ERROR crate-private type `Turtle` in public interface
+//~| NOTE can't leak crate-private type
 pub type Testudo_graeca = Shell<Tortoise>;
 //~^ ERROR private type `Tortoise` in public interface
 //~| NOTE can't leak private type

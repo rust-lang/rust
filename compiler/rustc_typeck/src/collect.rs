@@ -851,7 +851,6 @@ fn convert_variant(
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<Ident, Span> = Default::default();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(variant_did.unwrap_or(parent_did));
     let fields = def
         .fields()
         .iter()
@@ -868,11 +867,7 @@ fn convert_variant(
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
 
-            ty::FieldDef {
-                did: fid.to_def_id(),
-                ident: f.ident,
-                vis: ty::Visibility::from_hir(&f.vis, hir_id, tcx),
-            }
+            ty::FieldDef { did: fid.to_def_id(), ident: f.ident, vis: tcx.visibility(fid) }
         })
         .collect();
     let recovered = match def {

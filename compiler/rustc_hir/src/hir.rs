@@ -2381,15 +2381,6 @@ impl VisibilityKind<'_> {
             VisibilityKind::Crate(..) | VisibilityKind::Restricted { .. } => true,
         }
     }
-
-    pub fn descr(&self) -> &'static str {
-        match *self {
-            VisibilityKind::Public => "public",
-            VisibilityKind::Inherited => "private",
-            VisibilityKind::Crate(..) => "crate-visible",
-            VisibilityKind::Restricted { .. } => "restricted",
-        }
-    }
 }
 
 #[derive(Debug, HashStable_Generic)]
