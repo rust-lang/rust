@@ -2,12 +2,12 @@
 //!
 //! See: https://doc.rust-lang.org/reference/conditional-compilation.html#conditional-compilation
 
-use std::slice::Iter as SliceIter;
+use std::{fmt, slice::Iter as SliceIter};
 
 use tt::SmolStr;
 
 /// A simple configuration value passed in from the outside.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum CfgAtom {
     /// eg. `#[cfg(test)]`
     Flag(SmolStr),
@@ -16,6 +16,37 @@ pub enum CfgAtom {
     /// Note that a key can have multiple values that are all considered "active" at the same time.
     /// For example, `#[cfg(target_feature = "sse")]` and `#[cfg(target_feature = "sse2")]`.
     KeyValue { key: SmolStr, value: SmolStr },
+}
+
+impl CfgAtom {
+    /// Returns `true` when the atom comes from the target specification.
+    ///
+    /// If this returns `true`, then changing this atom requires changing the compilation target. If
+    /// it returns `false`, the atom might come from a build script or the build system.
+    pub fn is_target_defined(&self) -> bool {
+        match self {
+            CfgAtom::Flag(flag) => matches!(&**flag, "unix" | "windows"),
+            CfgAtom::KeyValue { key, value: _ } => matches!(
+                &**key,
+                "target_arch"
+                    | "target_os"
+                    | "target_env"
+                    | "target_family"
+                    | "target_endian"
+                    | "target_pointer_width"
+                    | "target_vendor" // NOTE: `target_feature` is left out since it can be configured via `-Ctarget-feature`
+            ),
+        }
+    }
+}
+
+impl fmt::Display for CfgAtom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CfgAtom::Flag(name) => write!(f, "{}", name),
+            CfgAtom::KeyValue { key, value } => write!(f, "{} = \"{}\"", key, value),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

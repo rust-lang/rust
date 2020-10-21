@@ -162,6 +162,7 @@ checksum = "ed67cbde08356238e75fc4656be4749481eeffb09e19f320a25237d5221c985d"
 name = "cfg"
 version = "0.0.0"
 dependencies = [
+ "expect-test",
  "mbe",
  "rustc-hash",
  "syntax",
