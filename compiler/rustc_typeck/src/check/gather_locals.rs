@@ -18,12 +18,8 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
-    pub(super) fn new(
-        fcx: &'a FnCtxt<'a, 'tcx>,
-        parent_id: hir::HirId,
-        outermost_fn_param_pat: bool,
-    ) -> Self {
-        Self { fcx, parent_id, outermost_fn_param_pat }
+    pub(super) fn new(fcx: &'a FnCtxt<'a, 'tcx>, parent_id: hir::HirId) -> Self {
+        Self { fcx, parent_id, outermost_fn_param_pat: false }
     }
 
     fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
