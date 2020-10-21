@@ -437,3 +437,23 @@ fn assoc_item_macros() {
         "#]],
     );
 }
+
+#[test]
+fn safe_intrinsic() {
+    check(
+        r"
+        #![feature(core_intrinsics)]
+
+        fn reverse(input: u32) -> u32 {
+            std::intrinsics::bitreverse(input)
+        }
+    ",
+        expect![[r#"
+            inner attrs: Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("feature"))] }, input: Some(TokenTree(SUBTREE () 0
+              IDENT   core_intrinsics 1)) }]) }
+
+            top-level items:
+            Function { name: Name(Text("reverse")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), has_self_param: false, has_body: true, is_unsafe: false, params: [Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("u32"))] }, generic_args: [None] })], is_varargs: false, ret_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("u32"))] }, generic_args: [None] }), ast_id: FileAstId::<syntax::ast::generated::nodes::Fn>(0) }
+        "#]],
+    );
+}
