@@ -42,45 +42,6 @@ pub(super) struct Ctx {
     forced_visibility: Option<RawVisibilityId>,
 }
 
-/// Returns `true` if the given intrinsic is unsafe to call or not.
-pub fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
-    // Should be kept in sync with https://github.com/rust-lang/rust/blob/c6e4db620a7d2f569f11dcab627430921ea8aacf/compiler/rustc_typeck/src/check/intrinsic.rs#L68
-    *name != known::abort
-        && *name != known::min_align_of
-        && *name != known::needs_drop
-        && *name != known::caller_location
-        && *name != known::size_of_val
-        && *name != known::min_align_of_val
-        && *name != known::add_with_overflow
-        && *name != known::sub_with_overflow
-        && *name != known::mul_with_overflow
-        && *name != known::wrapping_add
-        && *name != known::wrapping_sub
-        && *name != known::wrapping_mul
-        && *name != known::saturating_add
-        && *name != known::saturating_sub
-        && *name != known::rotate_left
-        && *name != known::rotate_right
-        && *name != known::ctpop
-        && *name != known::ctlz
-        && *name != known::cttz
-        && *name != known::bswap
-        && *name != known::bitreverse
-        && *name != known::discriminant_value
-        && *name != known::type_id
-        && *name != known::likely
-        && *name != known::unlikely
-        && *name != known::ptr_guaranteed_eq
-        && *name != known::ptr_guaranteed_ne
-        && *name != known::minnumf32
-        && *name != known::minnumf64
-        && *name != known::maxnumf32
-        && *name != known::rustc_peek
-        && *name != known::maxnumf64
-        && *name != known::type_name
-        && *name != known::variant_count
-}
-
 impl Ctx {
     pub(super) fn new(db: &dyn DefDatabase, hygiene: Hygiene, file: HirFileId) -> Self {
         Self {
@@ -752,4 +713,46 @@ enum GenericsOwner<'a> {
     Trait(&'a ast::Trait),
     TypeAlias,
     Impl,
+}
+
+/// Returns `true` if the given intrinsic is unsafe to call, or false otherwise.
+fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
+    // Should be kept in sync with https://github.com/rust-lang/rust/blob/c6e4db620a7d2f569f11dcab627430921ea8aacf/compiler/rustc_typeck/src/check/intrinsic.rs#L68
+    ![
+        known::abort,
+        known::min_align_of,
+        known::needs_drop,
+        known::caller_location,
+        known::size_of_val,
+        known::min_align_of_val,
+        known::add_with_overflow,
+        known::sub_with_overflow,
+        known::mul_with_overflow,
+        known::wrapping_add,
+        known::wrapping_sub,
+        known::wrapping_mul,
+        known::saturating_add,
+        known::saturating_sub,
+        known::rotate_left,
+        known::rotate_right,
+        known::ctpop,
+        known::ctlz,
+        known::cttz,
+        known::bswap,
+        known::bitreverse,
+        known::discriminant_value,
+        known::type_id,
+        known::likely,
+        known::unlikely,
+        known::ptr_guaranteed_eq,
+        known::ptr_guaranteed_ne,
+        known::minnumf32,
+        known::minnumf64,
+        known::maxnumf32,
+        known::rustc_peek,
+        known::maxnumf64,
+        known::type_name,
+        known::variant_count,
+    ]
+    .contains(&name)
 }
