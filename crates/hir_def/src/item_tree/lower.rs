@@ -3,7 +3,7 @@
 use std::{collections::hash_map::Entry, mem, sync::Arc};
 
 use arena::map::ArenaMap;
-use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
+use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, name::known, HirFileId};
 use smallvec::SmallVec;
 use syntax::{
     ast::{self, ModuleItemOwner},
@@ -555,7 +555,8 @@ impl Ctx {
                     let id: ModItem = match item {
                         ast::ExternItem::Fn(ast) => {
                             let func = self.lower_function(&ast)?;
-                            self.data().functions[func.index].is_unsafe = true;
+                            self.data().functions[func.index].is_unsafe =
+                                is_intrinsic_fn_unsafe(&self.data().functions[func.index].name);
                             func.into()
                         }
                         ast::ExternItem::Static(ast) => {
@@ -712,4 +713,46 @@ enum GenericsOwner<'a> {
     Trait(&'a ast::Trait),
     TypeAlias,
     Impl,
+}
+
+/// Returns `true` if the given intrinsic is unsafe to call, or false otherwise.
+fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
+    // Should be kept in sync with https://github.com/rust-lang/rust/blob/c6e4db620a7d2f569f11dcab627430921ea8aacf/compiler/rustc_typeck/src/check/intrinsic.rs#L68
+    ![
+        known::abort,
+        known::min_align_of,
+        known::needs_drop,
+        known::caller_location,
+        known::size_of_val,
+        known::min_align_of_val,
+        known::add_with_overflow,
+        known::sub_with_overflow,
+        known::mul_with_overflow,
+        known::wrapping_add,
+        known::wrapping_sub,
+        known::wrapping_mul,
+        known::saturating_add,
+        known::saturating_sub,
+        known::rotate_left,
+        known::rotate_right,
+        known::ctpop,
+        known::ctlz,
+        known::cttz,
+        known::bswap,
+        known::bitreverse,
+        known::discriminant_value,
+        known::type_id,
+        known::likely,
+        known::unlikely,
+        known::ptr_guaranteed_eq,
+        known::ptr_guaranteed_ne,
+        known::minnumf32,
+        known::minnumf64,
+        known::maxnumf32,
+        known::rustc_peek,
+        known::maxnumf64,
+        known::type_name,
+        known::variant_count,
+    ]
+    .contains(&name)
 }

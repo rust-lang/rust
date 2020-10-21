@@ -202,4 +202,22 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
+        check_diagnostics(
+            r#"
+extern "rust-intrinsic" {
+    pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
+    pub fn floorf32(x: f32) -> f32; // Unsafe intrinsic
+}
+
+fn main() {
+    let _ = bitreverse(12);
+    let _ = floorf32(12.0);
+          //^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+}
+"#,
+        );
+    }
 }
