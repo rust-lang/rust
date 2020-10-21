@@ -204,6 +204,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if let [] = proj_base {
                 let decl = &self.body.local_decls[place.local];
                 if decl.internal {
+                    // If the projection root is an artifical local that we introduced when
+                    // desugaring `static`, give a more specific error message
+                    // (avoid the general "raw pointer" clause below, that would only be confusing).
                     if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
                         if self.tcx.is_mutable_static(def_id) {
                             self.require_unsafe(
