@@ -1719,7 +1719,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                // When `unsized_fn_params` or `unsized_locals` is not enabled,
+                // When `unsized_fn_params` and `unsized_locals` is not enabled,
                 // this check is done at `check_local`.
                 if self.tcx().features().unsized_locals || self.tcx().features().unsized_fn_params {
                     let span = term.source_info.span;
