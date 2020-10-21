@@ -2477,7 +2477,24 @@ fn specialize_one_pattern<'p, 'tcx>(
 
     if let Opaque = constructor {
         // Only a wildcard pattern can match an opaque constant, unless we're specializing the
-        // value against its own constructor.
+        // value against its own constructor. That happens when we call
+        // `v.specialize_constructor(ctor)` with `ctor` obtained from `pat_constructor(v.head())`.
+        // For example, in the following match, when we are dealing with the third branch, we will
+        // specialize with an `Opaque` ctor. We want to ignore the second branch because opaque
+        // constants should not be inspected, but we don't want to ignore the current (third)
+        // branch, as that would cause us to always conclude that such a branch is unreachable.
+        // ```rust
+        // #[derive(PartialEq)]
+        // struct Foo(i32);
+        // impl Eq for Foo {}
+        // const FOO: Foo = Foo(42);
+        //
+        // match (Foo(0), true) {
+        //     (_, true) => {}
+        //     (FOO, true) => {}
+        //     (FOO, false) => {}
+        // }
+        // ```
         if is_its_own_ctor || pat.is_wildcard() {
             return Some(Fields::empty());
         } else {
