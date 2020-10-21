@@ -67,22 +67,18 @@ impl<'tcx> Bounds<'tcx> {
 
         sized_predicate
             .into_iter()
+            .chain(self.region_bounds.iter().map(|&(region_bound, span)| {
+                let outlives = ty::OutlivesPredicate(param_ty, region_bound);
+                (ty::Binder::bind(outlives).to_predicate(tcx), span)
+            }))
+            .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
+                let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
+                (predicate, span)
+            }))
             .chain(
-                self.region_bounds
+                self.projection_bounds
                     .iter()
-                    .map(|&(region_bound, span)| {
-                        let outlives = ty::OutlivesPredicate(param_ty, region_bound);
-                        (ty::Binder::bind(outlives).to_predicate(tcx), span)
-                    })
-                    .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
-                        let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
-                        (predicate, span)
-                    }))
-                    .chain(
-                        self.projection_bounds
-                            .iter()
-                            .map(|&(projection, span)| (projection.to_predicate(tcx), span)),
-                    ),
+                    .map(|&(projection, span)| (projection.to_predicate(tcx), span)),
             )
             .collect()
     }
