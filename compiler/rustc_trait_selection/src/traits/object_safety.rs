@@ -13,7 +13,7 @@ use super::elaborate_predicates;
 use crate::infer::TyCtxtInferExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
-use rustc_errors::{Applicability, FatalError};
+use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
@@ -21,7 +21,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor, WithConstnes
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{MultiSpan, Span};
 use smallvec::SmallVec;
 
 use std::array;
@@ -100,49 +100,7 @@ fn object_safety_violations_for_trait(
                 span,
             ) = violation
             {
-                // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
-                // It's also hard to get a use site span, so we use the method definition span.
-                tcx.struct_span_lint_hir(
-                    WHERE_CLAUSES_OBJECT_SAFETY,
-                    hir::CRATE_HIR_ID,
-                    *span,
-                    |lint| {
-                        let mut err = lint.build(&format!(
-                            "the trait `{}` cannot be made into an object",
-                            tcx.def_path_str(trait_def_id)
-                        ));
-                        let node = tcx.hir().get_if_local(trait_def_id);
-                        let msg = if let Some(hir::Node::Item(item)) = node {
-                            err.span_label(
-                                item.ident.span,
-                                "this trait cannot be made into an object...",
-                            );
-                            format!("...because {}", violation.error_msg())
-                        } else {
-                            format!(
-                                "the trait cannot be made into an object because {}",
-                                violation.error_msg()
-                            )
-                        };
-                        err.span_label(*span, &msg);
-                        match (node, violation.solution()) {
-                            (Some(_), Some((note, None))) => {
-                                err.help(&note);
-                            }
-                            (Some(_), Some((note, Some((sugg, span))))) => {
-                                err.span_suggestion(
-                                    span,
-                                    &note,
-                                    sugg,
-                                    Applicability::MachineApplicable,
-                                );
-                            }
-                            // Only provide the help if its a local trait, otherwise it's not actionable.
-                            _ => {}
-                        }
-                        err.emit();
-                    },
-                );
+                lint_object_unsafe_trait(tcx, *span, trait_def_id, violation);
                 false
             } else {
                 true
@@ -178,6 +136,51 @@ fn object_safety_violations_for_trait(
     );
 
     violations
+}
+
+/// Lint object-unsafe trait.
+fn lint_object_unsafe_trait(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    trait_def_id: DefId,
+    violation: &ObjectSafetyViolation,
+) {
+    // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
+    // It's also hard to get a use site span, so we use the method definition span.
+    tcx.struct_span_lint_hir(WHERE_CLAUSES_OBJECT_SAFETY, hir::CRATE_HIR_ID, span, |lint| {
+        let mut err = lint.build(&format!(
+            "the trait `{}` cannot be made into an object",
+            tcx.def_path_str(trait_def_id)
+        ));
+        let node = tcx.hir().get_if_local(trait_def_id);
+        let mut spans = MultiSpan::from_span(span);
+        if let Some(hir::Node::Item(item)) = node {
+            spans.push_span_label(
+                item.ident.span,
+                "this trait cannot be made into an object...".into(),
+            );
+            spans.push_span_label(span, format!("...because {}", violation.error_msg()));
+        } else {
+            spans.push_span_label(
+                span,
+                format!(
+                    "the trait cannot be made into an object because {}",
+                    violation.error_msg()
+                ),
+            );
+        };
+        err.span_note(
+            spans,
+            "for a trait to be \"object safe\" it needs to allow building a vtable to allow the \
+             call to be resolvable dynamically; for more information visit \
+             <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
+        );
+        if node.is_some() {
+            // Only provide the help if its a local trait, otherwise it's not
+            violation.solution(&mut err);
+        }
+        err.emit();
+    });
 }
 
 fn sized_trait_bound_spans<'tcx>(
@@ -385,6 +388,8 @@ fn virtual_call_violation_for_method<'tcx>(
     trait_def_id: DefId,
     method: &ty::AssocItem,
 ) -> Option<MethodViolationCode> {
+    let sig = tcx.fn_sig(method.def_id);
+
     // The method's first parameter must be named `self`
     if !method.fn_has_self_parameter {
         // We'll attempt to provide a structured suggestion for `Self: Sized`.
@@ -395,10 +400,20 @@ fn virtual_call_violation_for_method<'tcx>(
                     [.., pred] => (", Self: Sized", pred.span().shrink_to_hi()),
                 },
             );
-        return Some(MethodViolationCode::StaticMethod(sugg));
+        // Get the span pointing at where the `self` receiver should be.
+        let sm = tcx.sess.source_map();
+        let self_span = method.ident.span.to(tcx
+            .hir()
+            .span_if_local(method.def_id)
+            .unwrap_or_else(|| sm.next_point(method.ident.span))
+            .shrink_to_hi());
+        let self_span = sm.span_through_char(self_span, '(').shrink_to_hi();
+        return Some(MethodViolationCode::StaticMethod(
+            sugg,
+            self_span,
+            !sig.inputs().skip_binder().is_empty(),
+        ));
     }
-
-    let sig = tcx.fn_sig(method.def_id);
 
     for (i, input_ty) in sig.skip_binder().inputs()[1..].iter().enumerate() {
         if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {

@@ -1,42 +1,48 @@
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj-box.rs:16:33
    |
+LL |     let t_box: Box<dyn Trait> = Box::new(S);
+   |                                 ^^^^^^^^^^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/wf-convert-unsafe-trait-obj-box.rs:6:14
+   |
 LL | trait Trait: Sized {}
-   |       -----  ----- ...because it requires `Self: Sized`
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-...
-LL |     let t_box: Box<dyn Trait> = Box::new(S);
-   |                                 ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
-   |
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Trait>>` for `Box<S>`
    = note: required by cast to type `Box<dyn Trait>`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj-box.rs:17:15
    |
+LL |     takes_box(Box::new(S));
+   |               ^^^^^^^^^^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/wf-convert-unsafe-trait-obj-box.rs:6:14
+   |
 LL | trait Trait: Sized {}
-   |       -----  ----- ...because it requires `Self: Sized`
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-...
-LL |     takes_box(Box::new(S));
-   |               ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
-   |
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Trait>>` for `Box<S>`
    = note: required by cast to type `Box<(dyn Trait + 'static)>`
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-convert-unsafe-trait-obj-box.rs:15:5
    |
+LL |     Box::new(S) as Box<dyn Trait>;
+   |     ^^^^^^^^^^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/wf-convert-unsafe-trait-obj-box.rs:6:14
+   |
 LL | trait Trait: Sized {}
-   |       -----  ----- ...because it requires `Self: Sized`
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-...
-LL |     Box::new(S) as Box<dyn Trait>;
-   |     ^^^^^^^^^^^ the trait `Trait` cannot be made into an object
-   |
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn Trait>>` for `Box<S>`
    = note: required by cast to type `Box<dyn Trait>`
 

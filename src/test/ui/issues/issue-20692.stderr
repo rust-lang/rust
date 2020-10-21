@@ -1,27 +1,32 @@
 error[E0038]: the trait `Array` cannot be made into an object
   --> $DIR/issue-20692.rs:7:5
    |
+LL |     &dyn Array;
+   |     ^^^^^^^^^^ `Array` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-20692.rs:1:14
+   |
 LL | trait Array: Sized + Copy {}
-   |       -----  -----   ---- ...because it requires `Self: Sized`
+   |       -----  ^^^^^   ^^^^ ...because it requires `Self: Sized`
    |       |      |
    |       |      ...because it requires `Self: Sized`
    |       this trait cannot be made into an object...
-...
-LL |     &dyn Array;
-   |     ^^^^^^^^^^ the trait `Array` cannot be made into an object
 
 error[E0038]: the trait `Array` cannot be made into an object
   --> $DIR/issue-20692.rs:4:13
    |
+LL |     let _ = x
+   |             ^ `Array` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-20692.rs:1:14
+   |
 LL | trait Array: Sized + Copy {}
-   |       -----  -----   ---- ...because it requires `Self: Sized`
+   |       -----  ^^^^^   ^^^^ ...because it requires `Self: Sized`
    |       |      |
    |       |      ...because it requires `Self: Sized`
    |       this trait cannot be made into an object...
-...
-LL |     let _ = x
-   |             ^ the trait `Array` cannot be made into an object
-   |
    = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Array>` for `&T`
    = note: required by cast to type `&dyn Array`
 

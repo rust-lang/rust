@@ -1,14 +1,16 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-sized-2.rs:16:5
    |
+LL |     t
+   |     ^ `Bar` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-safety-sized-2.rs:9:18
+   |
 LL | trait Bar
    |       --- this trait cannot be made into an object...
 LL |     where Self : Sized
-   |                  ----- ...because it requires `Self: Sized`
-...
-LL |     t
-   |     ^ the trait `Bar` cannot be made into an object
-   |
+   |                  ^^^^^ ...because it requires `Self: Sized`
    = note: required because of the requirements on the impl of `CoerceUnsized<&dyn Bar>` for `&T`
    = note: required by cast to type `&dyn Bar`
 
