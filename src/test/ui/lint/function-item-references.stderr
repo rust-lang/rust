@@ -1,173 +1,173 @@
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:40:18
+  --> $DIR/function-item-references.rs:40:18
    |
 LL |     Pointer::fmt(&zst_ref, f)
    |                  ^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/function-references.rs:3:9
+  --> $DIR/function-item-references.rs:3:9
    |
 LL | #![warn(function_item_references)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:77:22
+  --> $DIR/function-item-references.rs:77:22
    |
 LL |     println!("{:p}", &foo);
    |                      ^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:79:20
+  --> $DIR/function-item-references.rs:79:20
    |
 LL |     print!("{:p}", &foo);
    |                    ^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:81:21
+  --> $DIR/function-item-references.rs:81:21
    |
 LL |     format!("{:p}", &foo);
    |                     ^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:84:22
+  --> $DIR/function-item-references.rs:84:22
    |
 LL |     println!("{:p}", &foo as *const _);
    |                      ^^^^^^^^^^^^^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:86:22
+  --> $DIR/function-item-references.rs:86:22
    |
 LL |     println!("{:p}", zst_ref);
    |                      ^^^^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:88:22
+  --> $DIR/function-item-references.rs:88:22
    |
 LL |     println!("{:p}", cast_zst_ptr);
    |                      ^^^^^^^^^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:90:22
+  --> $DIR/function-item-references.rs:90:22
    |
 LL |     println!("{:p}", coerced_zst_ptr);
    |                      ^^^^^^^^^^^^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:93:22
+  --> $DIR/function-item-references.rs:93:22
    |
 LL |     println!("{:p}", &fn_item);
    |                      ^^^^^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:95:22
+  --> $DIR/function-item-references.rs:95:22
    |
 LL |     println!("{:p}", indirect_ref);
    |                      ^^^^^^^^^^^^
 
 warning: cast `nop` with `as fn()` to obtain a function pointer
-  --> $DIR/function-references.rs:98:22
+  --> $DIR/function-item-references.rs:98:22
    |
 LL |     println!("{:p}", &nop);
    |                      ^^^^
 
 warning: cast `bar` with `as fn(_) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:100:22
+  --> $DIR/function-item-references.rs:100:22
    |
 LL |     println!("{:p}", &bar);
    |                      ^^^^
 
 warning: cast `baz` with `as fn(_, _) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:102:22
+  --> $DIR/function-item-references.rs:102:22
    |
 LL |     println!("{:p}", &baz);
    |                      ^^^^
 
 warning: cast `unsafe_fn` with `as unsafe fn()` to obtain a function pointer
-  --> $DIR/function-references.rs:104:22
+  --> $DIR/function-item-references.rs:104:22
    |
 LL |     println!("{:p}", &unsafe_fn);
    |                      ^^^^^^^^^^
 
 warning: cast `c_fn` with `as extern "C" fn()` to obtain a function pointer
-  --> $DIR/function-references.rs:106:22
+  --> $DIR/function-item-references.rs:106:22
    |
 LL |     println!("{:p}", &c_fn);
    |                      ^^^^^
 
 warning: cast `unsafe_c_fn` with `as unsafe extern "C" fn()` to obtain a function pointer
-  --> $DIR/function-references.rs:108:22
+  --> $DIR/function-item-references.rs:108:22
    |
 LL |     println!("{:p}", &unsafe_c_fn);
    |                      ^^^^^^^^^^^^
 
 warning: cast `variadic` with `as unsafe extern "C" fn(_, ...)` to obtain a function pointer
-  --> $DIR/function-references.rs:110:22
+  --> $DIR/function-item-references.rs:110:22
    |
 LL |     println!("{:p}", &variadic);
    |                      ^^^^^^^^^
 
 warning: cast `var` with `as fn(_) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:112:22
+  --> $DIR/function-item-references.rs:112:22
    |
 LL |     println!("{:p}", &std::env::var::<String>);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: cast `nop` with `as fn()` to obtain a function pointer
-  --> $DIR/function-references.rs:115:32
+  --> $DIR/function-item-references.rs:115:32
    |
 LL |     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
    |                                ^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:115:38
+  --> $DIR/function-item-references.rs:115:38
    |
 LL |     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
    |                                      ^^^^
 
 warning: cast `bar` with `as fn(_) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:115:44
+  --> $DIR/function-item-references.rs:115:44
    |
 LL |     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
    |                                            ^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:130:41
+  --> $DIR/function-item-references.rs:130:41
    |
 LL |         std::mem::transmute::<_, usize>(&foo);
    |                                         ^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:132:50
+  --> $DIR/function-item-references.rs:132:50
    |
 LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
    |                                                  ^^^^^^^^^^^^
 
 warning: cast `bar` with `as fn(_) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:132:50
+  --> $DIR/function-item-references.rs:132:50
    |
 LL |         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
    |                                                  ^^^^^^^^^^^^
 
 warning: cast `bar` with `as fn(_) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:142:15
+  --> $DIR/function-item-references.rs:142:15
    |
 LL |     print_ptr(&bar);
    |               ^^^^
 
 warning: cast `bar` with `as fn(_) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:144:24
+  --> $DIR/function-item-references.rs:144:24
    |
 LL |     bound_by_ptr_trait(&bar);
    |                        ^^^^
 
 warning: cast `bar` with `as fn(_) -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:146:30
+  --> $DIR/function-item-references.rs:146:30
    |
 LL |     bound_by_ptr_trait_tuple((&foo, &bar));
    |                              ^^^^^^^^^^^^
 
 warning: cast `foo` with `as fn() -> _` to obtain a function pointer
-  --> $DIR/function-references.rs:146:30
+  --> $DIR/function-item-references.rs:146:30
    |
 LL |     bound_by_ptr_trait_tuple((&foo, &bar));
    |                              ^^^^^^^^^^^^
