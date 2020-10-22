@@ -85,7 +85,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                     let found_value_idx_option = targets
                         .iter()
                         .enumerate()
-                        .find(|(_, x)| const_value == x.0)
+                        .find(|(_, (value,_))| const_value == *value)
                         .map(|(idx, _)| idx);
 
                     let target_to_use_in_goto =
