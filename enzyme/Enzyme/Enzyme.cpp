@@ -219,6 +219,12 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
     if (ty == DIFFE_TYPE::DUP_ARG || ty == DIFFE_TYPE::DUP_NONEED) {
       ++i;
 
+      if (i >= CI->getNumArgOperands()) {
+        EmitFailure("MissingArgShadow", CI->getDebugLoc(), CI,
+                    "__enzyme_autodiff missing argument shadow at index ", i,
+                    ", need shadow of type ", *PTy, " to shadow primal argument ", *args.back(), " at call ", *CI);
+        return false;
+      }
       Value *res = CI->getArgOperand(i);
       if (PTy != res->getType()) {
         if (auto ptr = dyn_cast<PointerType>(res->getType())) {
