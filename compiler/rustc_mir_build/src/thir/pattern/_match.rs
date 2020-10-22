@@ -620,21 +620,17 @@ struct Slice {
 }
 
 impl Slice {
-    /// Returns what patterns this constructor covers: either fixed-length patterns or
-    /// variable-length patterns.
-    fn kind(self) -> SliceKind {
-        match self {
-            Slice { array_len: Some(len), kind: VarLen(prefix, suffix) }
-                if prefix + suffix == len =>
-            {
-                FixedLen(len)
-            }
-            _ => self.kind,
-        }
+    fn new(array_len: Option<u64>, kind: SliceKind) -> Self {
+        let kind = match (array_len, kind) {
+            // If the middle `..` is empty, we effectively have a fixed-length pattern.
+            (Some(len), VarLen(prefix, suffix)) if prefix + suffix >= len => FixedLen(len),
+            _ => kind,
+        };
+        Slice { array_len, kind }
     }
 
     fn arity(self) -> u64 {
-        self.kind().arity()
+        self.kind.arity()
     }
 
     /// The exhaustiveness-checking paper does not include any details on
@@ -701,10 +697,8 @@ impl Slice {
     /// witness of length ≥2 (say, `[false, false, true]`) can be
     /// turned to a witness from any other length ≥2.
     fn split<'p, 'tcx>(self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-        let (array_len, self_prefix, self_suffix) = match self {
-            Slice { array_len, kind: VarLen(self_prefix, self_suffix) } => {
-                (array_len, self_prefix, self_suffix)
-            }
+        let (self_prefix, self_suffix) = match self.kind {
+            VarLen(self_prefix, self_suffix) => (self_prefix, self_suffix),
             _ => return smallvec![Slice(self)],
         };
 
@@ -716,7 +710,7 @@ impl Slice {
 
         for ctor in head_ctors {
             if let Slice(slice) = ctor {
-                match slice.kind() {
+                match slice.kind {
                     FixedLen(len) => {
                         max_fixed_len = cmp::max(max_fixed_len, len);
                     }
@@ -725,6 +719,8 @@ impl Slice {
                         max_suffix_len = cmp::max(max_suffix_len, suffix);
                     }
                 }
+            } else {
+                bug!("unexpected ctor for slice type: {:?}", ctor);
             }
         }
 
@@ -738,27 +734,19 @@ impl Slice {
             max_prefix_len = max_fixed_len + 1 - max_suffix_len;
         }
 
-        match array_len {
-            Some(len) => {
-                let kind = if max_prefix_len + max_suffix_len < len {
-                    VarLen(max_prefix_len, max_suffix_len)
-                } else {
-                    FixedLen(len)
-                };
-                smallvec![Slice(Slice { array_len, kind })]
-            }
+        let final_slice = VarLen(max_prefix_len, max_suffix_len);
+        let final_slice = Slice::new(self.array_len, final_slice);
+        match self.array_len {
+            Some(_) => smallvec![Slice(final_slice)],
             None => {
-                // `ctor` originally covered the range `(self_prefix +
-                // self_suffix..infinity)`. We now split it into two: lengths smaller than
-                // `max_prefix_len + max_suffix_len` are treated independently as
-                // fixed-lengths slices, and lengths above are captured by a final VarLen
-                // constructor.
-                let smaller_lengths =
-                    (self_prefix + self_suffix..max_prefix_len + max_suffix_len).map(FixedLen);
-                let final_slice = VarLen(max_prefix_len, max_suffix_len);
+                // `self` originally covered the range `(self.arity()..infinity)`. We split that
+                // range into two: lengths smaller than `final_slice.arity()` are treated
+                // independently as fixed-lengths slices, and lengths above are captured by
+                // `final_slice`.
+                let smaller_lengths = (self.arity()..final_slice.arity()).map(FixedLen);
                 smaller_lengths
+                    .map(|kind| Slice::new(self.array_len, kind))
                     .chain(Some(final_slice))
-                    .map(|kind| Slice { array_len, kind })
                     .map(Slice)
                     .collect()
             }
@@ -767,7 +755,7 @@ impl Slice {
 
     /// See `Constructor::is_covered_by`
     fn is_covered_by(self, other: Self) -> bool {
-        other.kind().covers_length(self.arity())
+        other.kind.covers_length(self.arity())
     }
 }
 
@@ -934,7 +922,6 @@ impl<'tcx> Constructor<'tcx> {
                     None => false,
                 }
             }
-
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
             // We are trying to inspect an opaque constant. Thus we skip the row.
@@ -1029,7 +1016,7 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, pcx.ty),
                 _ => PatKind::Wild,
             },
-            Slice(slice) => match slice.kind() {
+            Slice(slice) => match slice.kind {
                 FixedLen(_) => {
                     PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
                 }
@@ -1533,13 +1520,13 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
-                vec![Slice(Slice { array_len: Some(len), kind: VarLen(0, 0) })]
+                vec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
             }
         }
         // Treat arrays of a constant but unknown length like slices.
         ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
             let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-            vec![Slice(Slice { array_len: None, kind })]
+            vec![Slice(Slice::new(None, kind))]
         }
         ty::Adt(def, substs) if def.is_enum() => {
             // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
@@ -2224,7 +2211,7 @@ fn pat_constructor<'p, 'tcx>(
             let suffix = suffix.len() as u64;
             let kind =
                 if slice.is_some() { VarLen(prefix, suffix) } else { FixedLen(prefix + suffix) };
-            Slice(Slice { array_len, kind })
+            Slice(Slice::new(array_len, kind))
         }
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
