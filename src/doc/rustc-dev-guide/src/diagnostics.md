@@ -591,6 +591,21 @@ If you need a combination of options that's not supported by the
 - Later, change lint to error.
 - Eventually, remove lint.
 
+### Renaming or removing a lint
+
+A lint can be renamed or removed, which will trigger a warning if a user tries
+to use the old lint name. To declare a rename/remove, add a line with
+[`store.register_renamed`] or [`store.register_removed`] to the code of the
+[`register_builtins`] function.
+
+```rust,ignore
+store.register_renamed("single_use_lifetime", "single_use_lifetimes");
+```
+
+[`store.register_renamed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_renamed
+[`store.register_removed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_removed
+[`register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
+
 ### Lint Groups
 
 Lints can be turned on in groups. These groups are declared in the
