@@ -330,14 +330,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
         // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
         // fixedpoint where there are no more unused locals.
-        loop {
-            let mut remove_statements = RemoveStatements::new(&mut used_locals, tcx);
-            remove_statements.visit_body(body);
-
-            if !remove_statements.modified {
-                break;
-            }
-        }
+        remove_unused_definitions(&mut used_locals, body);
 
         // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
         let map = make_local_map(&mut body.local_decls, &used_locals);
@@ -487,44 +480,40 @@ impl Visitor<'_> for UsedLocals {
     }
 }
 
-struct RemoveStatements<'a, 'tcx> {
+/// Removes unused definitions. Updates the used locals to reflect the changes made.
+fn remove_unused_definitions<'a, 'tcx>(
     used_locals: &'a mut UsedLocals,
-    tcx: TyCtxt<'tcx>,
-    modified: bool,
-}
+    body: &mut Body<'tcx>,
+) {
+    // The use counts are updated as we remove the statements. A local might become unused
+    // during the retain operation, leading to a temporary inconsistency (storage statements or
+    // definitions referencing the local might remain). For correctness it is crucial that this
+    // computation reaches a fixed point.
 
-impl<'a, 'tcx> RemoveStatements<'a, 'tcx> {
-    fn new(used_locals: &'a mut UsedLocals, tcx: TyCtxt<'tcx>) -> Self {
-        Self { used_locals, tcx, modified: false }
-    }
-}
+    let mut modified = true;
+    while modified {
+        modified = false;
 
-impl<'a, 'tcx> MutVisitor<'tcx> for RemoveStatements<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
+        for data in body.basic_blocks_mut() {
+            // Remove unnecessary StorageLive and StorageDead annotations.
+            data.statements.retain(|statement| {
+                let keep = match &statement.kind {
+                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                        used_locals.is_used(*local)
+                    }
+                    StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
+                    _ => true,
+                };
 
-    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
-        // Remove unnecessary StorageLive and StorageDead annotations.
-        data.statements.retain(|statement| {
-            let keep = match &statement.kind {
-                StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                    self.used_locals.is_used(*local)
+                if !keep {
+                    trace!("removing statement {:?}", statement);
+                    modified = true;
+                    used_locals.statement_removed(statement);
                 }
-                StatementKind::Assign(box (place, _)) => self.used_locals.is_used(place.local),
-                _ => true,
-            };
 
-            if !keep {
-                trace!("removing statement {:?}", statement);
-                self.modified = true;
-                self.used_locals.statement_removed(statement);
-            }
-
-            keep
-        });
-
-        self.super_basic_block_data(block, data);
+                keep
+            });
+        }
     }
 }
 
