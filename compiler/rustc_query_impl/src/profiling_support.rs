@@ -275,6 +275,9 @@ fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             let query_name = profiler.get_or_alloc_cached_string(query_name);
             let event_id = event_id_builder.from_label(query_name).to_string_id();
 
+            // FIXME(eddyb) make this O(1) by using a pre-cached query name `EventId`,
+            // instead of passing the `DepNodeIndex` to `finish_with_query_invocation_id`,
+            // when recording the event in the first place.
             let mut query_invocation_ids = Vec::new();
             query_cache.iter(&mut |_, _, i| {
                 query_invocation_ids.push(i.into());

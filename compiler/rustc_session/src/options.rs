@@ -1473,6 +1473,12 @@ options! {
         for example: `-Z self-profile-events=default,query-keys`
         all options: none, all, default, generic-activity, query-provider, query-cache-hit
                      query-blocked, incr-cache-load, incr-result-hashing, query-keys, function-args, args, llvm, artifact-sizes"),
+    self_profile_counter: String = ("wall-time".to_string(), parse_string, [UNTRACKED],
+        "counter used by the self profiler (default: `wall-time`), one of:
+        `wall-time` (monotonic clock, i.e. `std::time::Instant`)
+        `instructions:u` (retired instructions, userspace-only)
+        `instructions-minus-irqs:u` (subtracting hardware interrupt counts for extra accuracy)"
+    ),
     share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make the current crate share its generic instantiations"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
