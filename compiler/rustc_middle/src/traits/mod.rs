@@ -344,7 +344,7 @@ static_assert_size!(ObligationCauseCode<'_>, 32);
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_span: Span,
     pub scrut_span: Span,
-    pub semi_span: Option<Span>,
+    pub semi_span: Option<(Span, bool)>,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
     pub last_ty: Ty<'tcx>,
@@ -357,7 +357,7 @@ pub struct IfExpressionCause {
     pub then: Span,
     pub else_sp: Span,
     pub outer: Option<Span>,
-    pub semicolon: Option<Span>,
+    pub semicolon: Option<(Span, bool)>,
     pub opt_suggest_box_span: Option<Span>,
 }
 

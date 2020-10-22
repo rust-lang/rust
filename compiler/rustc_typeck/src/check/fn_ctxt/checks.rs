@@ -758,13 +758,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
-        if let Some(span_semi) = self.could_remove_semicolon(blk, expected_ty) {
-            err.span_suggestion(
-                span_semi,
-                "consider removing this semicolon",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
+            if boxed {
+                err.span_suggestion_verbose(
+                    span_semi,
+                    "consider removing this semicolon and boxing the expression",
+                    String::new(),
+                    Applicability::HasPlaceholders,
+                );
+            } else {
+                err.span_suggestion_short(
+                    span_semi,
+                    "consider removing this semicolon",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
 

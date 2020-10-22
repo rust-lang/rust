@@ -521,7 +521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         block: &'tcx hir::Block<'tcx>,
         expected_ty: Option<Ty<'tcx>>,
-    ) -> (Span, Option<Span>) {
+    ) -> (Span, Option<(Span, bool)>) {
         if let Some(expr) = &block.expr {
             (expr.span, None)
         } else if let Some(stmt) = block.stmts.last() {
