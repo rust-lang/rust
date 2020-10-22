@@ -525,14 +525,16 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 if !is_allowed {
                     if let BorrowKind::Mut { .. } = kind {
-                        self.check_op(ops::MutBorrow);
+                        self.check_op(ops::MutBorrow(hir::BorrowKind::Ref));
                     } else {
                         self.check_op(ops::CellBorrow);
                     }
                 }
             }
 
-            Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
+            Rvalue::AddressOf(Mutability::Mut, _) => {
+                self.check_op(ops::MutBorrow(hir::BorrowKind::Raw))
+            }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
             | Rvalue::AddressOf(Mutability::Not, ref place) => {

@@ -1,31 +1,22 @@
-error[E0658]: `&raw mut` is not allowed in constants
+error[E0764]: raw mutable references are not allowed in constants
   --> $DIR/const-address-of-mut.rs:3:32
    |
 LL | const A: () = { let mut x = 2; &raw mut x; };
-   |                                ^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   |                                ^^^^^^^^^^ `&raw mut` is only allowed in `const fn`
 
-error[E0658]: `&raw mut` is not allowed in statics
+error[E0764]: raw mutable references are not allowed in statics
   --> $DIR/const-address-of-mut.rs:5:33
    |
 LL | static B: () = { let mut x = 2; &raw mut x; };
-   |                                 ^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   |                                 ^^^^^^^^^^ `&raw mut` is only allowed in `const fn`
 
-error[E0658]: `&raw mut` is not allowed in statics
+error[E0764]: raw mutable references are not allowed in statics
   --> $DIR/const-address-of-mut.rs:7:37
    |
 LL | static mut C: () = { let mut x = 2; &raw mut x; };
-   |                                     ^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   |                                     ^^^^^^^^^^ `&raw mut` is only allowed in `const fn`
 
-error[E0658]: `&raw mut` is not allowed in constant functions
+error[E0658]: raw mutable references are not allowed in constant functions
   --> $DIR/const-address-of-mut.rs:11:13
    |
 LL |     let y = &raw mut x;
@@ -36,4 +27,5 @@ LL |     let y = &raw mut x;
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0658, E0764.
+For more information about an error, try `rustc --explain E0658`.

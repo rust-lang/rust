@@ -71,12 +71,14 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
 
         let func_ty = func.ty(body, tcx);
         if let ty::FnDef(callee, substs) = *func_ty.kind() {
-            let (callee, call_substs) =
-                if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, callee, substs) {
-                    (instance.def_id(), instance.substs)
-                } else {
-                    (callee, substs)
-                };
+            let normalized_substs = tcx.normalize_erasing_regions(param_env, substs);
+            let (callee, call_substs) = if let Ok(Some(instance)) =
+                Instance::resolve(tcx, param_env, callee, normalized_substs)
+            {
+                (instance.def_id(), instance.substs)
+            } else {
+                (callee, normalized_substs)
+            };
 
             // FIXME(#57965): Make this work across function boundaries
 
