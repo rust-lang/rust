@@ -319,7 +319,7 @@ fn park_timeout() {
     // Normally, waiting in park/park_timeout may spuriously wake up early, but we
     // know Miri's timed synchronization primitives do not do that.
 
-    assert!((200..500).contains(&start.elapsed().as_millis()));
+    assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn park_unpark() {
@@ -337,7 +337,7 @@ fn park_unpark() {
     // Normally, waiting in park/park_timeout may spuriously wake up early, but we
     // know Miri's timed synchronization primitives do not do that.
 
-    assert!((200..500).contains(&start.elapsed().as_millis()));
+    assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn main() {
