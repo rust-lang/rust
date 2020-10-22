@@ -189,7 +189,7 @@ impl DepGraph {
     ///   `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
-    pub fn with_task<K: DepKindExt, Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_task<Ctxt: DepContext, A, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -217,7 +217,7 @@ impl DepGraph {
         )
     }
 
-    fn with_task_impl<K: DepKindExt, Ctxt: DepContext<DepKind = K>, A, R>(
+    fn with_task_impl<K: DepKindExt, Ctxt: DepContext, A, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -325,7 +325,7 @@ impl DepGraph {
 
     /// Executes something within an "eval-always" task which is a task
     /// that runs whenever anything changes.
-    pub fn with_eval_always_task<K: DepKindExt, Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_eval_always_task<Ctxt: DepContext, A, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -491,7 +491,7 @@ impl DepGraph {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green_and_read<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green_and_read<Ctxt: DepContext>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode,
@@ -503,7 +503,7 @@ impl DepGraph {
         })
     }
 
-    pub fn try_mark_green<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green<Ctxt: DepContext>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode,
@@ -531,7 +531,7 @@ impl DepGraph {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    fn try_mark_previous_green<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
+    fn try_mark_previous_green<Ctxt: DepContext>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData,
@@ -731,7 +731,7 @@ impl DepGraph {
     /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
-    fn emit_diagnostics<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
+    fn emit_diagnostics<Ctxt: DepContext>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData,
@@ -796,7 +796,7 @@ impl DepGraph {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
+    pub fn exec_cache_promotions<Ctxt: DepContext>(&self, tcx: Ctxt) {
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();

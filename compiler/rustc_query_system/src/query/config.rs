@@ -25,7 +25,7 @@ pub trait QueryConfig<CTX> {
 
 pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub anon: bool,
-    pub dep_kind: CTX::DepKind,
+    pub dep_kind: DepKind,
     pub eval_always: bool,
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
@@ -73,7 +73,7 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
 pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
-    const DEP_KIND: CTX::DepKind;
+    const DEP_KIND: DepKind;
 
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 

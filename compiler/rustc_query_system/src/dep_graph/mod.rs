@@ -18,7 +18,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 
 pub trait DepContext: Copy {
-    type DepKind: self::DepKindExt;
     type StableHashingContext;
 
     /// Create a hashing context for hashing new results.

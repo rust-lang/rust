@@ -98,9 +98,9 @@ impl<CTX: QueryContext, C: QueryCache> QueryState<CTX, C> {
 
     pub fn try_collect_active_jobs(
         &self,
-        kind: CTX::DepKind,
+        kind: DepKind,
         make_query: fn(C::Key) -> CTX::Query,
-        jobs: &mut FxHashMap<QueryJobId<CTX::DepKind>, QueryJobInfo<CTX>>,
+        jobs: &mut FxHashMap<QueryJobId<DepKind>, QueryJobInfo<CTX>>,
     ) -> Option<()>
     where
         C::Key: Clone,
@@ -153,7 +153,7 @@ where
 {
     state: &'tcx QueryState<CTX, C>,
     key: C::Key,
-    id: QueryJobId<CTX::DepKind>,
+    id: QueryJobId<DepKind>,
 }
 
 impl<'tcx, CTX: QueryContext, C> JobOwner<'tcx, CTX, C>

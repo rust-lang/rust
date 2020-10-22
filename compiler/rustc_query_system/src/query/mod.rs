@@ -36,18 +36,18 @@ pub trait QueryContext: DepContext {
     fn dep_graph(&self) -> &DepGraph;
 
     /// Get the query information from the TLS context.
-    fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
+    fn current_query_job(&self) -> Option<QueryJobId<DepKind>>;
 
     fn try_collect_active_jobs(
         &self,
-    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>>;
+    ) -> Option<FxHashMap<QueryJobId<DepKind>, QueryJobInfo<Self>>>;
 
     /// Executes a job by changing the `ImplicitCtxt` to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
     fn start_query<R>(
         &self,
-        token: QueryJobId<Self::DepKind>,
+        token: QueryJobId<DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce(Self) -> R,
     ) -> R;

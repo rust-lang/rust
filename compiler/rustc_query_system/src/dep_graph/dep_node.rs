@@ -65,10 +65,9 @@ impl DepNode {
         DepNode { kind, hash: Fingerprint::ZERO }
     }
 
-    pub fn construct<K, Ctxt, Key>(tcx: Ctxt, kind: DepKind, arg: &Key) -> DepNode
+    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: DepKind, arg: &Key) -> DepNode
     where
-        K: DepKindExt,
-        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Ctxt: crate::query::QueryContext,
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);
