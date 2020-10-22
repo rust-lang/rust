@@ -415,7 +415,7 @@ impl CStore {
 
         let span = data.get_span(id.index, sess);
 
-        let attrs: Vec<_> = data.get_item_attrs(id.index, sess).collect();
+        let attrs = data.get_item_attrs(id.index, sess).collect();
 
         let ident = data.item_ident(id.index, sess);
 
