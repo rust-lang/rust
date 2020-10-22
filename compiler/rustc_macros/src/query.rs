@@ -561,7 +561,14 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             }
         }
 
-        #query_description_stream
+        macro_rules! query_description_stream {
+            // capture all needed `use` statements.
+            ($($uses:tt)*) => {
+                $($uses)*
+
+                #query_description_stream
+            }
+        }
 
         macro_rules! rustc_dep_node_try_load_from_on_disk_cache {
             ($dep_node:expr, $tcx:expr) => {
