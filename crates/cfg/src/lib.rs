@@ -137,7 +137,7 @@ impl fmt::Display for InactiveReason {
             for (i, atom) in self.disabled.iter().enumerate() {
                 let sep = match i {
                     0 => "",
-                    _ if i == self.enabled.len() - 1 => " and ",
+                    _ if i == self.disabled.len() - 1 => " and ",
                     _ => ", ",
                 };
                 f.write_str(sep)?;

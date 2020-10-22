@@ -458,6 +458,7 @@ mod test {
             &opts,
             expect![["test and test2 are enabled"]],
         );
+        check_why_inactive("#![cfg(all(a, b))]", &opts, expect![["a and b are disabled"]]);
         check_why_inactive(
             "#![cfg(all(not(test), a))]",
             &opts,
