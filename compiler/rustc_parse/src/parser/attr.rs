@@ -29,9 +29,9 @@ impl<'a> Parser<'a> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         loop {
-            let (attr, tokens) = self.collect_tokens(|this| {
-                debug!("parse_outer_attributes: self.token={:?}", this.token);
-                if this.check(&token::Pound) {
+            debug!("parse_outer_attributes: self.token={:?}", self.token);
+            let (attr, tokens) = if self.check(&token::Pound) {
+                self.collect_tokens(|this| {
                     let inner_error_reason = if just_parsed_doc_comment {
                         "an inner attribute is not permitted following an outer doc comment"
                     } else if !attrs.is_empty() {
@@ -47,7 +47,9 @@ impl<'a> Parser<'a> {
                     let attr = this.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
                     just_parsed_doc_comment = false;
                     Ok(Some(attr))
-                } else if let token::DocComment(comment_kind, attr_style, data) = this.token.kind {
+                })?
+            } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
+                self.collect_tokens(|this| {
                     let attr =
                         attr::mk_doc_comment(comment_kind, attr_style, data, this.token.span);
                     if attr.style != ast::AttrStyle::Outer {
@@ -67,10 +69,11 @@ impl<'a> Parser<'a> {
                     this.bump();
                     just_parsed_doc_comment = true;
                     Ok(Some(attr))
-                } else {
-                    Ok(None)
-                }
-            })?;
+                })?
+            } else {
+                (None, None)
+            };
+
             if let Some(mut attr) = attr {
                 attr.tokens = tokens;
                 attrs.push(attr);
@@ -192,26 +195,29 @@ impl<'a> Parser<'a> {
     crate fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
-            let (attr, tokens) = self.collect_tokens(|this| {
-                // Only try to parse if it is an inner attribute (has `!`).
-                if this.check(&token::Pound) && this.look_ahead(1, |t| t == &token::Not) {
-                    let attr = this.parse_attribute(true)?;
-                    assert_eq!(attr.style, ast::AttrStyle::Inner);
-                    Ok(Some(attr))
-                } else if let token::DocComment(comment_kind, attr_style, data) = this.token.kind {
-                    // We need to get the position of this token before we bump.
-                    let attr =
-                        attr::mk_doc_comment(comment_kind, attr_style, data, this.token.span);
-                    if attr.style == ast::AttrStyle::Inner {
-                        this.bump();
+            // Only try to parse if it is an inner attribute (has `!`).
+            let (attr, tokens) =
+                if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
+                    self.collect_tokens(|this| {
+                        let attr = this.parse_attribute(true)?;
+                        assert_eq!(attr.style, ast::AttrStyle::Inner);
                         Ok(Some(attr))
-                    } else {
-                        Ok(None)
-                    }
+                    })?
+                } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
+                    self.collect_tokens(|this| {
+                        // We need to get the position of this token before we bump.
+                        let attr =
+                            attr::mk_doc_comment(comment_kind, attr_style, data, this.token.span);
+                        if attr.style == ast::AttrStyle::Inner {
+                            this.bump();
+                            Ok(Some(attr))
+                        } else {
+                            Ok(None)
+                        }
+                    })?
                 } else {
-                    Ok(None)
-                }
-            })?;
+                    (None, None)
+                };
             if let Some(mut attr) = attr {
                 attr.tokens = tokens;
                 attrs.push(attr);
