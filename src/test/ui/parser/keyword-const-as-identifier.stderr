@@ -4,5 +4,15 @@ error: expected `{`, found `=`
 LL |     let const = "foo";
    |               ^ expected `{`
 
-error: aborting due to previous error
+error[E0658]: inline-const is experimental
+  --> $DIR/keyword-const-as-identifier.rs:2:9
+   |
+LL |     let const = "foo";
+   |         ^^^^^
+   |
+   = note: see issue #76001 <https://github.com/rust-lang/rust/issues/76001> for more information
+   = help: add `#![feature(inline_const)]` to the crate attributes to enable
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
