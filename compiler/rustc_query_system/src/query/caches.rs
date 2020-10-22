@@ -1,12 +1,12 @@
 use crate::dep_graph::DepNodeIndex;
 use crate::query::plumbing::{QueryLookup, QueryState};
-use crate::query::QueryContext;
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 
@@ -24,16 +24,16 @@ pub trait QueryStorage: Default {
 }
 
 pub trait QueryCache: QueryStorage {
-    type Key: Hash;
+    type Key: Hash + Eq + Clone + Debug;
     type Sharded: Default;
 
     /// Checks if the query is already computed and in the cache.
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
+    fn lookup<D, Q, R, OnHit, OnMiss>(
         &self,
-        state: &QueryState<CTX, Self>,
+        state: &QueryState<D, Q, Self>,
         key: Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
@@ -41,7 +41,7 @@ pub trait QueryCache: QueryStorage {
     ) -> R
     where
         OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R,
-        OnMiss: FnOnce(Self::Key, QueryLookup<'_, CTX, Self::Key, Self::Sharded>) -> R;
+        OnMiss: FnOnce(Self::Key, QueryLookup<'_, D, Q, Self::Key, Self::Sharded>) -> R;
 
     fn complete(
         &self,
@@ -86,21 +86,25 @@ impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V: Clone> QueryCache for DefaultCache<K, V> {
+impl<K, V> QueryCache for DefaultCache<K, V>
+where
+    K: Eq + Hash + Clone + Debug,
+    V: Clone,
+{
     type Key = K;
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
+    fn lookup<D, Q, R, OnHit, OnMiss>(
         &self,
-        state: &QueryState<CTX, Self>,
+        state: &QueryState<D, Q, Self>,
         key: K,
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'_, D, Q, K, Self::Sharded>) -> R,
     {
         let mut lookup = state.get_lookup(&key);
         let lock = &mut *lookup.lock;
@@ -164,21 +168,24 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
     }
 }
 
-impl<'tcx, K: Eq + Hash, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V> {
+impl<'tcx, K, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V>
+where
+    K: Eq + Hash + Clone + Debug,
+{
     type Key = K;
     type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<CTX: QueryContext, R, OnHit, OnMiss>(
+    fn lookup<D, Q, R, OnHit, OnMiss>(
         &self,
-        state: &QueryState<CTX, Self>,
+        state: &QueryState<D, Q, Self>,
         key: K,
         on_hit: OnHit,
         on_miss: OnMiss,
     ) -> R
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'_, CTX, K, Self::Sharded>) -> R,
+        OnMiss: FnOnce(K, QueryLookup<'_, D, Q, K, Self::Sharded>) -> R,
     {
         let mut lookup = state.get_lookup(&key);
         let lock = &mut *lookup.lock;

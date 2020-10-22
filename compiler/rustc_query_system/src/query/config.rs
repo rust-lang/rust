@@ -12,9 +12,7 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-// The parameter `CTX` is required in librustc_middle:
-// implementations may need to access the `'tcx` lifetime in `CTX = TyCtxt<'tcx>`.
-pub trait QueryConfig<CTX> {
+pub trait QueryConfig {
     const NAME: &'static str;
     const CATEGORY: ProfileCategory;
 
@@ -70,7 +68,7 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
     }
 }
 
-pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
+pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
     const ANON: bool;
     const EVAL_ALWAYS: bool;
     const DEP_KIND: CTX::DepKind;
@@ -78,7 +76,7 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX, Self::Cache>;
+    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX::DepKind, CTX::Query, Self::Cache>;
 
     fn to_dep_node(tcx: CTX, key: &Self::Key) -> DepNode<CTX::DepKind>
     where
