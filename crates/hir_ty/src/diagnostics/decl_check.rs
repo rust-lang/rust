@@ -708,11 +708,23 @@ fn foo() {
     }
 
     #[test]
-    fn incorrect_struct_name() {
+    fn incorrect_struct_names() {
         check_diagnostics(
             r#"
 struct non_camel_case_name {}
     // ^^^^^^^^^^^^^^^^^^^ Structure `non_camel_case_name` should have CamelCase name, e.g. `NonCamelCaseName`
+
+struct SCREAMING_CASE {}
+    // ^^^^^^^^^^^^^^ Structure `SCREAMING_CASE` should have CamelCase name, e.g. `ScreamingCase`
+"#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostic_for_camel_cased_acronyms_in_struct_name() {
+        check_diagnostics(
+            r#"
+struct AABB {}
 "#,
         );
     }
@@ -728,11 +740,23 @@ struct SomeStruct { SomeField: u8 }
     }
 
     #[test]
-    fn incorrect_enum_name() {
+    fn incorrect_enum_names() {
         check_diagnostics(
             r#"
 enum some_enum { Val(u8) }
   // ^^^^^^^^^ Enum `some_enum` should have CamelCase name, e.g. `SomeEnum`
+
+enum SOME_ENUM
+  // ^^^^^^^^^ Enum `SOME_ENUM` should have CamelCase name, e.g. `SomeEnum`
+"#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostic_for_camel_cased_acronyms_in_enum_name() {
+        check_diagnostics(
+            r#"
+enum AABB {}
 "#,
         );
     }
