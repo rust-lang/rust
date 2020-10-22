@@ -963,6 +963,11 @@ pub fn set_print(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutp
 }
 
 pub(crate) fn clone_io() -> (Option<Box<dyn LocalOutput>>, Option<Box<dyn LocalOutput>>) {
+    // Don't waste time when LOCAL_{STDOUT,STDERR} are definitely None.
+    if !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        return (None, None);
+    }
+
     LOCAL_STDOUT.with(|stdout| {
         LOCAL_STDERR.with(|stderr| {
             (
