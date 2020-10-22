@@ -11,7 +11,11 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
 
     /// Returns true if the function source hash was added to the coverage map; false if
     /// `-Z instrument-coverage` is not enabled (a coverage map is not being generated).
-    fn set_function_source_hash(&mut self, instance: Instance<'tcx>, function_source_hash: u64) -> bool;
+    fn set_function_source_hash(
+        &mut self,
+        instance: Instance<'tcx>,
+        function_source_hash: u64,
+    ) -> bool;
 
     /// Returns true if the counter was added to the coverage map; false if `-Z instrument-coverage`
     /// is not enabled (a coverage map is not being generated).
@@ -19,7 +23,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         &mut self,
         instance: Instance<'tcx>,
         function_source_hash: u64,
-        id: CounterValueReference,
+        index: CounterValueReference,
         region: CodeRegion,
     ) -> bool;
 
@@ -33,7 +37,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         op: Op,
         rhs: ExpressionOperandId,
         region: Option<CodeRegion>,
-    );
+    ) -> bool;
 
     /// Returns true if the region was added to the coverage map; false if `-Z instrument-coverage`
     /// is not enabled (a coverage map is not being generated).

@@ -21,10 +21,10 @@
               "percent": 94.73684210526315
             },
             "regions": {
-              "count": 18,
-              "covered": 15,
+              "count": 17,
+              "covered": 14,
               "notcovered": 3,
-              "percent": 83.33333333333334
+              "percent": 82.35294117647058
             }
           }
         }
@@ -46,10 +46,10 @@
           "percent": 94.73684210526315
         },
         "regions": {
-          "count": 18,
-          "covered": 15,
+          "count": 17,
+          "covered": 14,
           "notcovered": 3,
-          "percent": 83.33333333333334
+          "percent": 82.35294117647058
         }
       }
     }

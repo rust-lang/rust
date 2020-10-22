@@ -2,18 +2,18 @@ Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/
 Counter in file 0 7:9 -> 9:26, #1
 Counter in file 0 10:8 -> 10:15, (#1 + 0)
 Counter in file 0 10:16 -> 12:6, #2
-Counter in file 0 12:6 -> 12:7, #3
-Counter in file 0 15:9 -> 15:10, #4
-Counter in file 0 17:9 -> 17:13, #5
-Counter in file 0 22:13 -> 22:22, (#4 + 0)
-Counter in file 0 24:13 -> 24:14, #6
-Counter in file 0 26:17 -> 28:18, (#4 + 0)
-Counter in file 0 28:18 -> 28:19, #7
-Counter in file 0 30:13 -> 37:14, (#6 + 0)
-Counter in file 0 40:13 -> 40:15, #8
-Counter in file 0 42:6 -> 42:7, #9
-Counter in file 0 42:6 -> 42:7, #10
-Counter in file 0 43:1 -> 43:2, #11
+Counter in file 0 12:6 -> 12:7, (#1 - #2)
+Counter in file 0 15:9 -> 15:10, (((#2 + (#1 - #2)) + (#3 + #4)) - #5)
+Counter in file 0 17:9 -> 17:13, ((#2 + (#1 - #2)) + (#3 + #4))
+Counter in file 0 22:13 -> 22:22, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) + 0)
+Counter in file 0 24:13 -> 24:14, #3
+Counter in file 0 26:17 -> 28:18, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) + 0)
+Counter in file 0 28:18 -> 28:19, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) - #3)
+Counter in file 0 30:13 -> 37:14, (#3 + 0)
+Counter in file 0 40:13 -> 40:15, #4
+Counter in file 0 42:6 -> 42:7, (#2 + (#1 - #2))
+Counter in file 0 42:6 -> 42:7, (#3 + #4)
+Counter in file 0 43:1 -> 43:2, #5
 Emitting segments for file: ../coverage/simple_match.rs
 Combined regions:
   7:9 -> 9:26 (count=1)

@@ -13,6 +13,8 @@ use rustc_middle::ty::TyCtxt;
 
 use std::lazy::SyncOnceCell;
 
+pub const NESTED_INDENT: &str = "    ";
+
 const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 
 pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
@@ -24,20 +26,29 @@ pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
 /// Parses and maintains coverage-specific debug options captured from the environment variable
 /// "RUSTC_COVERAGE_DEBUG_OPTIONS", if set. Options can be set on the command line by, for example:
 ///
-///     $ RUSTC_COVERAGE_DEBUG_OPTIONS=counter-format=block cargo build
+///     $ RUSTC_COVERAGE_DEBUG_OPTIONS=counter-format=block,allow_unused_expressions=n cargo build
 #[derive(Debug, Clone)]
 pub(crate) struct DebugOptions {
+    pub allow_unused_expressions: bool,
     counter_format: ExpressionFormat,
 }
 
 impl DebugOptions {
     fn new() -> Self {
+        let mut allow_unused_expressions = true;
         let mut counter_format = ExpressionFormat::default();
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
             for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(",") {
                 let mut setting = setting_str.splitn(2, "=");
                 match setting.next() {
+                    Some(option) if option == "allow_unused_expressions" => {
+                        allow_unused_expressions = bool_option_val(option, setting.next());
+                        debug!(
+                            "{} env option `allow_unused_expressions` is set to {}",
+                            RUSTC_COVERAGE_DEBUG_OPTIONS, allow_unused_expressions
+                        );
+                    }
                     Some(option) if option == "counter_format" => {
                         if let Some(strval) = setting.next() {
                             counter_format = counter_format_option_val(strval);
@@ -66,7 +77,26 @@ impl DebugOptions {
             }
         }
 
-        Self { counter_format }
+        Self { allow_unused_expressions, counter_format }
+    }
+}
+
+fn bool_option_val(option: &str, some_strval: Option<&str>) -> bool {
+    if let Some(val) = some_strval {
+        if vec!["yes", "y", "on", "true"].contains(&val) {
+            true
+        } else if vec!["no", "n", "off", "false"].contains(&val) {
+            false
+        } else {
+            bug!(
+                "Unsupported value `{}` for option `{}` in environment variable {}",
+                option,
+                val,
+                RUSTC_COVERAGE_DEBUG_OPTIONS
+            )
+        }
+    } else {
+        true
     }
 }
 
@@ -145,6 +175,14 @@ impl DebugCounters {
                     "attempt to add the same counter_kind to DebugCounters more than once",
                 );
         }
+    }
+
+    pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
+        self.some_counters.as_ref().map_or(None, |counters| {
+            counters
+                .get(&operand)
+                .map_or(None, |debug_counter| debug_counter.some_block_label.as_ref())
+        })
     }
 
     pub fn format_counter(&self, counter_kind: &CoverageKind) -> String {
@@ -242,16 +280,22 @@ impl DebugCounter {
 pub(crate) struct GraphvizData {
     some_bcb_to_coverage_spans_with_counters:
         Option<FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, CoverageKind)>>>,
+    some_bcb_to_dependency_counters: Option<FxHashMap<BasicCoverageBlock, Vec<CoverageKind>>>,
     some_edge_to_counter: Option<FxHashMap<(BasicCoverageBlock, BasicBlock), CoverageKind>>,
 }
 
 impl GraphvizData {
     pub fn new() -> Self {
-        Self { some_bcb_to_coverage_spans_with_counters: None, some_edge_to_counter: None }
+        Self {
+            some_bcb_to_coverage_spans_with_counters: None,
+            some_bcb_to_dependency_counters: None,
+            some_edge_to_counter: None,
+        }
     }
 
     pub fn enable(&mut self) {
         self.some_bcb_to_coverage_spans_with_counters = Some(FxHashMap::default());
+        self.some_bcb_to_dependency_counters = Some(FxHashMap::default());
         self.some_edge_to_counter = Some(FxHashMap::default());
     }
 
@@ -285,6 +329,187 @@ impl GraphvizData {
             bcb_to_coverage_spans_with_counters.get(&bcb)
         } else {
             None
+        }
+    }
+
+    pub fn add_bcb_dependency_counter(
+        &mut self,
+        bcb: BasicCoverageBlock,
+        counter_kind: &CoverageKind,
+    ) {
+        if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_mut() {
+            bcb_to_dependency_counters
+                .entry(bcb)
+                .or_insert_with(|| Vec::new())
+                .push(counter_kind.clone());
+        }
+    }
+
+    pub fn get_bcb_dependency_counters(
+        &self,
+        bcb: BasicCoverageBlock,
+    ) -> Option<&Vec<CoverageKind>> {
+        if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_ref() {
+            bcb_to_dependency_counters.get(&bcb)
+        } else {
+            None
+        }
+    }
+
+    pub fn set_edge_counter(
+        &mut self,
+        from_bcb: BasicCoverageBlock,
+        to_bb: BasicBlock,
+        counter_kind: &CoverageKind,
+    ) {
+        if let Some(edge_to_counter) = self.some_edge_to_counter.as_mut() {
+            edge_to_counter.insert((from_bcb, to_bb), counter_kind.clone()).expect_none(
+                "invalid attempt to insert more than one edge counter for the same edge",
+            );
+        }
+    }
+
+    pub fn get_edge_counter(
+        &self,
+        from_bcb: BasicCoverageBlock,
+        to_bb: BasicBlock,
+    ) -> Option<&CoverageKind> {
+        if let Some(edge_to_counter) = self.some_edge_to_counter.as_ref() {
+            edge_to_counter.get(&(from_bcb, to_bb))
+        } else {
+            None
+        }
+    }
+}
+
+/// If enabled, this struct captures additional data used to track whether expressions were used,
+/// directly or indirectly, to compute the coverage counts for all `CoverageSpan`s, and any that are
+/// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
+/// and/or a `CoverageGraph` graphviz output).
+pub(crate) struct UsedExpressions {
+    some_used_expression_operands:
+        Option<FxHashMap<ExpressionOperandId, Vec<InjectedExpressionId>>>,
+    some_unused_expressions:
+        Option<Vec<(CoverageKind, Option<BasicCoverageBlock>, BasicCoverageBlock)>>,
+}
+
+impl UsedExpressions {
+    pub fn new() -> Self {
+        Self { some_used_expression_operands: None, some_unused_expressions: None }
+    }
+
+    pub fn enable(&mut self) {
+        self.some_used_expression_operands = Some(FxHashMap::default());
+        self.some_unused_expressions = Some(Vec::new());
+    }
+
+    pub fn is_enabled(&mut self) -> bool {
+        self.some_used_expression_operands.is_some()
+    }
+
+    pub fn add_expression_operands(&mut self, expression: &CoverageKind) {
+        if let Some(used_expression_operands) = self.some_used_expression_operands.as_mut() {
+            if let CoverageKind::Expression { id, lhs, rhs, .. } = *expression {
+                used_expression_operands.entry(lhs).or_insert_with(|| Vec::new()).push(id);
+                used_expression_operands.entry(rhs).or_insert_with(|| Vec::new()).push(id);
+            }
+        }
+    }
+
+    pub fn expression_is_used(&mut self, expression: &CoverageKind) -> bool {
+        if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
+            used_expression_operands.contains_key(&expression.as_operand_id())
+        } else {
+            false
+        }
+    }
+
+    pub fn add_unused_expression_if_not_found(
+        &mut self,
+        expression: &CoverageKind,
+        edge_from_bcb: Option<BasicCoverageBlock>,
+        target_bcb: BasicCoverageBlock,
+    ) {
+        if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
+            if !used_expression_operands.contains_key(&expression.as_operand_id()) {
+                self.some_unused_expressions.as_mut().unwrap().push((
+                    expression.clone(),
+                    edge_from_bcb,
+                    target_bcb,
+                ));
+            }
+        }
+    }
+
+    /// Return the list of unused counters (if any) as a tuple with the counter (`CoverageKind`),
+    /// optional `from_bcb` (if it was an edge counter), and `target_bcb`.
+    pub fn get_unused_expressions(
+        &self,
+    ) -> Vec<(CoverageKind, Option<BasicCoverageBlock>, BasicCoverageBlock)> {
+        if let Some(unused_expressions) = self.some_unused_expressions.as_ref() {
+            unused_expressions.clone()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// If enabled, validate that every BCB or edge counter not directly associated with a coverage
+    /// span is at least indirectly associated (it is a dependency of a BCB counter that _is_
+    /// associated with a coverage span).
+    pub fn validate(
+        &mut self,
+        bcb_counters_without_direct_coverage_spans: &Vec<(
+            Option<BasicCoverageBlock>,
+            BasicCoverageBlock,
+            CoverageKind,
+        )>,
+    ) {
+        if self.is_enabled() {
+            let mut not_validated = bcb_counters_without_direct_coverage_spans
+                .iter()
+                .map(|(_, _, counter_kind)| counter_kind)
+                .collect::<Vec<_>>();
+            let mut validating_count = 0;
+            while not_validated.len() != validating_count {
+                let to_validate = not_validated.split_off(0);
+                validating_count = to_validate.len();
+                for counter_kind in to_validate {
+                    if self.expression_is_used(counter_kind) {
+                        self.add_expression_operands(counter_kind);
+                    } else {
+                        not_validated.push(counter_kind);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn alert_on_unused_expressions(&self, debug_counters: &DebugCounters) {
+        if let Some(unused_expressions) = self.some_unused_expressions.as_ref() {
+            for (counter_kind, edge_from_bcb, target_bcb) in unused_expressions {
+                let unused_counter_message = if let Some(from_bcb) = edge_from_bcb.as_ref() {
+                    format!(
+                        "non-coverage edge counter found without a dependent expression, in \
+                        {:?}->{:?}; counter={}",
+                        from_bcb,
+                        target_bcb,
+                        debug_counters.format_counter(&counter_kind),
+                    )
+                } else {
+                    format!(
+                        "non-coverage counter found without a dependent expression, in {:?}; \
+                        counter={}",
+                        target_bcb,
+                        debug_counters.format_counter(&counter_kind),
+                    )
+                };
+
+                if debug_options().allow_unused_expressions {
+                    debug!("WARNING: {}", unused_counter_message);
+                } else {
+                    bug!("{}", unused_counter_message);
+                }
+            }
         }
     }
 }
@@ -337,6 +562,8 @@ pub(crate) fn dump_coverage_graphviz(
     basic_coverage_blocks: &CoverageGraph,
     debug_counters: &DebugCounters,
     graphviz_data: &GraphvizData,
+    intermediate_expressions: &Vec<CoverageKind>,
+    debug_used_expressions: &UsedExpressions,
 ) {
     let mir_source = mir_body.source;
     let def_id = mir_source.def_id();
@@ -347,21 +574,62 @@ pub(crate) fn dump_coverage_graphviz(
             debug_counters,
             &basic_coverage_blocks[bcb],
             graphviz_data.get_bcb_coverage_spans_with_counters(bcb),
+            graphviz_data.get_bcb_dependency_counters(bcb),
+            // intermediate_expressions are injected into the mir::START_BLOCK, so
+            // include them in the first BCB.
+            if bcb.index() == 0 { Some(&intermediate_expressions) } else { None },
         )
     };
     let edge_labels = |from_bcb| {
         let from_bcb_data = &basic_coverage_blocks[from_bcb];
         let from_terminator = from_bcb_data.terminator(mir_body);
-        from_terminator
-            .kind
-            .fmt_successor_labels()
+        let mut edge_labels = from_terminator.kind.fmt_successor_labels();
+        edge_labels.retain(|label| label.to_string() != "unreachable");
+        let edge_counters = from_terminator
+            .successors()
+            .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
+        edge_labels
             .iter()
-            .map(|label| label.to_string())
+            .zip(edge_counters)
+            .map(|(label, some_counter)| {
+                if let Some(counter) = some_counter {
+                    format!("{}\n{}", label, debug_counters.format_counter(counter))
+                } else {
+                    label.to_string()
+                }
+            })
             .collect::<Vec<_>>()
     };
     let graphviz_name = format!("Cov_{}_{}", def_id.krate.index(), def_id.index.index());
-    let graphviz_writer =
+    let mut graphviz_writer =
         GraphvizWriter::new(basic_coverage_blocks, &graphviz_name, node_content, edge_labels);
+    let unused_expressions = debug_used_expressions.get_unused_expressions();
+    if unused_expressions.len() > 0 {
+        graphviz_writer.set_graph_label(&format!(
+            "Unused expressions:\n  {}",
+            unused_expressions
+                .as_slice()
+                .iter()
+                .map(|(counter_kind, edge_from_bcb, target_bcb)| {
+                    if let Some(from_bcb) = edge_from_bcb.as_ref() {
+                        format!(
+                            "{:?}->{:?}: {}",
+                            from_bcb,
+                            target_bcb,
+                            debug_counters.format_counter(&counter_kind),
+                        )
+                    } else {
+                        format!(
+                            "{:?}: {}",
+                            target_bcb,
+                            debug_counters.format_counter(&counter_kind),
+                        )
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n  ")
+        ));
+    }
     let mut file = pretty::create_dump_file(tcx, "dot", None, pass_name, &0, mir_source)
         .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
     graphviz_writer
@@ -375,9 +643,22 @@ fn bcb_to_string_sections(
     debug_counters: &DebugCounters,
     bcb_data: &BasicCoverageBlockData,
     some_coverage_spans_with_counters: Option<&Vec<(CoverageSpan, CoverageKind)>>,
+    some_dependency_counters: Option<&Vec<CoverageKind>>,
+    some_intermediate_expressions: Option<&Vec<CoverageKind>>,
 ) -> Vec<String> {
     let len = bcb_data.basic_blocks.len();
     let mut sections = Vec::new();
+    if let Some(collect_intermediate_expressions) = some_intermediate_expressions {
+        sections.push(
+            collect_intermediate_expressions
+                .iter()
+                .map(|expression| {
+                    format!("Intermediate {}", debug_counters.format_counter(expression))
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
+    }
     if let Some(coverage_spans_with_counters) = some_coverage_spans_with_counters {
         sections.push(
             coverage_spans_with_counters
@@ -392,6 +673,19 @@ fn bcb_to_string_sections(
                 .collect::<Vec<_>>()
                 .join("\n"),
         );
+    }
+    if let Some(dependency_counters) = some_dependency_counters {
+        sections.push(format!(
+            "Non-coverage counters:\n  {}",
+            dependency_counters
+                .iter()
+                .map(|counter| debug_counters.format_counter(counter))
+                .collect::<Vec<_>>()
+                .join("  \n"),
+        ));
+    }
+    if let Some(counter_kind) = &bcb_data.counter_kind {
+        sections.push(format!("{:?}", counter_kind));
     }
     let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
         .iter()

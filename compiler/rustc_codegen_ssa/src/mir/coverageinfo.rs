@@ -24,10 +24,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let fn_name = bx.create_pgo_func_name_var(self.instance);
                     let hash = bx.const_u64(function_source_hash);
                     let num_counters = bx.const_u32(coverageinfo.num_counters);
-                    let id = bx.const_u32(u32::from(id));
+                    let index = bx.const_u32(u32::from(id));
                     debug!(
                         "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
-                        fn_name, hash, num_counters, id,
+                        fn_name, hash, num_counters, index,
                     );
                     bx.instrprof_increment(fn_name, hash, num_counters, index);
                 }

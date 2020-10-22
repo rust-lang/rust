@@ -6,7 +6,7 @@ mod graph;
 mod spans;
 
 use counters::CoverageCounters;
-use graph::CoverageGraph;
+use graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use spans::{CoverageSpan, CoverageSpans};
 
 use crate::transform::MirPass;
@@ -21,10 +21,25 @@ use rustc_middle::hir;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::{self, BasicBlock, Coverage, Statement, StatementKind};
+use rustc_middle::mir::{
+    self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
+    TerminatorKind,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
+
+/// A simple error message wrapper for `coverage::Error`s.
+#[derive(Debug)]
+pub(crate) struct Error {
+    message: String,
+}
+
+impl Error {
+    pub fn from_string<T>(message: String) -> Result<T, Error> {
+        Err(Self { message })
+    }
+}
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
@@ -104,11 +119,16 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug!("instrumenting {:?}, span: {}", def_id, source_map.span_to_string(body_span));
 
         let mut graphviz_data = debug::GraphvizData::new();
+        let mut debug_used_expressions = debug::UsedExpressions::new();
 
         let dump_graphviz = tcx.sess.opts.debugging_opts.dump_mir_graphviz;
         if dump_graphviz {
             graphviz_data.enable();
             self.coverage_counters.enable_debug();
+        }
+
+        if dump_graphviz || level_enabled!(tracing::Level::DEBUG) {
+            debug_used_expressions.enable();
         }
 
         ////////////////////////////////////////////////////
@@ -129,7 +149,53 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             );
         }
 
-        self.inject_coverage_span_counters(coverage_spans, &mut graphviz_data);
+        ////////////////////////////////////////////////////
+        // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
+        // every `CoverageSpan` has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
+        // and all `Expression` dependencies (operands) are also generated, for any other
+        // `BasicCoverageBlock`s not already associated with a `CoverageSpan`.
+        //
+        // Intermediate expressions (used to compute other `Expression` values), which have no
+        // direct associate to any `BasicCoverageBlock`, are returned in the method `Result`.
+        let intermediate_expressions_or_error = self
+            .coverage_counters
+            .make_bcb_counters(&mut self.basic_coverage_blocks, &coverage_spans);
+
+        let (result, intermediate_expressions) = match intermediate_expressions_or_error {
+            Ok(intermediate_expressions) => {
+                // If debugging, add any intermediate expressions (which are not associated with any
+                // BCB) to the `debug_used_expressions` map.
+                if debug_used_expressions.is_enabled() {
+                    for intermediate_expression in &intermediate_expressions {
+                        debug_used_expressions.add_expression_operands(intermediate_expression);
+                    }
+                }
+
+                ////////////////////////////////////////////////////
+                // Remove the counter or edge counter from of each `CoverageSpan`s associated
+                // `BasicCoverageBlock`, and inject a `Coverage` statement into the MIR.
+                self.inject_coverage_span_counters(
+                    coverage_spans,
+                    &mut graphviz_data,
+                    &mut debug_used_expressions,
+                );
+
+                ////////////////////////////////////////////////////
+                // For any remaining `BasicCoverageBlock` counters (that were not associated with
+                // any `CoverageSpan`), inject `Coverage` statements (_without_ code region `Span`s)
+                // to ensure `BasicCoverageBlock` counters that other `Expression`s may depend on
+                // are in fact counted, even though they don't directly contribute to counting
+                // their own independent code region's coverage.
+                self.inject_indirect_counters(&mut graphviz_data, &mut debug_used_expressions);
+
+                // Intermediate expressions will be injected as the final step, after generating
+                // debug output, if any.
+                ////////////////////////////////////////////////////
+
+                (Ok(()), intermediate_expressions)
+            }
+            Err(e) => (Err(e), Vec::new()),
+        };
 
         if graphviz_data.is_enabled() {
             // Even if there was an error, a partial CoverageGraph can still generate a useful
@@ -141,19 +207,40 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 &self.basic_coverage_blocks,
                 &self.coverage_counters.debug_counters,
                 &graphviz_data,
+                &intermediate_expressions,
+                &debug_used_expressions,
             );
+        }
+
+        if let Err(e) = result {
+            bug!("Error processing: {:?}: {:?}", self.mir_body.source.def_id(), e)
+        };
+
+        // Depending on current `debug_options()`, `alert_on_unused_expressions()` could panic, so
+        // this check is performed as late as possible, to allow other debug output (logs and dump
+        // files), which might be helpful in analyzing unused expressions, to still be generated.
+        debug_used_expressions.alert_on_unused_expressions(&self.coverage_counters.debug_counters);
+
+        ////////////////////////////////////////////////////
+        // Finally, inject the intermediate expressions collected along the way.
+        for intermediate_expression in intermediate_expressions {
+            inject_intermediate_expression(self.mir_body, intermediate_expression);
         }
     }
 
     /// Inject a counter for each `CoverageSpan`. There can be multiple `CoverageSpan`s for a given
-    /// BCB, but only one actual counter needs to be incremented per BCB. `bcb_counters` maps each
+    /// BCB, but only one actual counter needs to be incremented per BCB. `bb_counters` maps each
     /// `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s for a BCB that already has
     /// a `Counter` will inject an `Expression` instead, and compute its value by adding `ZERO` to
     /// the BCB `Counter` value.
+    ///
+    /// If debugging, add every BCB `Expression` associated with a `CoverageSpan`s to the
+    /// `used_expression_operands` map.
     fn inject_coverage_span_counters(
         &mut self,
         coverage_spans: Vec<CoverageSpan>,
         graphviz_data: &mut debug::GraphvizData,
+        debug_used_expressions: &mut debug::UsedExpressions,
     ) {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
@@ -165,40 +252,194 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         for covspan in coverage_spans {
             let bcb = covspan.bcb;
             let span = covspan.span;
-            if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
-                let expression = self.coverage_counters.make_expression(
-                    counter_operand,
-                    Op::Add,
-                    ExpressionOperandId::ZERO,
-                    || Some(format!("{:?}", bcb)),
-                );
-                debug!(
-                    "Injecting counter expression {:?} at: {:?}:\n{}\n==========",
-                    expression,
-                    span,
-                    source_map.span_to_snippet(span).expect("Error getting source for span"),
-                );
-                graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &expression);
-                let bb = self.basic_coverage_blocks[bcb].leader_bb();
-                let code_region = make_code_region(file_name, &source_file, span, body_span);
-                inject_statement(self.mir_body, expression, bb, Some(code_region));
+            let counter_kind = if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
+                self.coverage_counters.make_identity_counter(counter_operand)
+            } else if let Some(counter_kind) = self.bcb_data_mut(bcb).take_counter() {
+                bcb_counters[bcb] = Some(counter_kind.as_operand_id());
+                debug_used_expressions.add_expression_operands(&counter_kind);
+                counter_kind
             } else {
-                let counter = self.coverage_counters.make_counter(|| Some(format!("{:?}", bcb)));
-                debug!(
-                    "Injecting counter {:?} at: {:?}:\n{}\n==========",
-                    counter,
-                    span,
-                    source_map.span_to_snippet(span).expect("Error getting source for span"),
-                );
-                let counter_operand = counter.as_operand_id();
-                bcb_counters[bcb] = Some(counter_operand);
-                graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter);
-                let bb = self.basic_coverage_blocks[bcb].leader_bb();
-                let code_region = make_code_region(file_name, &source_file, span, body_span);
-                inject_statement(self.mir_body, counter, bb, Some(code_region));
+                bug!("Every BasicCoverageBlock should have a Counter or Expression");
+            };
+            graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
+            let some_code_region = if self.is_code_region_redundant(bcb, span, body_span) {
+                None
+            } else {
+                Some(make_code_region(file_name, &source_file, span, body_span))
+            };
+            inject_statement(self.mir_body, counter_kind, self.bcb_last_bb(bcb), some_code_region);
+        }
+    }
+
+    /// Returns true if the type of `BasicCoverageBlock` (specifically, it's `BasicBlock`s
+    /// `TerminatorKind`) with the given `Span` (relative to the `body_span`) is known to produce
+    /// a redundant coverage count.
+    ///
+    /// There is at least one case for this, and if it's not handled, the last line in a function
+    /// will be double-counted.
+    ///
+    /// If this method returns `true`, the counter (which other `Expressions` may depend on) is
+    /// still injected, but without an associated code region.
+    fn is_code_region_redundant(
+        &self,
+        bcb: BasicCoverageBlock,
+        span: Span,
+        body_span: Span,
+    ) -> bool {
+        if span.hi() == body_span.hi() {
+            // All functions execute a `Return`-terminated `BasicBlock`, regardless of how the
+            // function returns; but only some functions also _can_ return after a `Goto` block
+            // that ends on the closing brace of the function (with the `Return`). When this
+            // happens, the last character is counted 2 (or possibly more) times, when we know
+            // the function returned only once (of course). By giving all `Goto` terminators at
+            // the end of a function a `non-reportable` code region, they are still counted
+            // if appropriate, but they don't increment the line counter, as long as their is
+            // also a `Return` on that last line.
+            if let TerminatorKind::Goto { .. } = self.bcb_terminator(bcb).kind {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// `inject_coverage_span_counters()` looped through the `CoverageSpan`s and injected the
+    /// counter from the `CoverageSpan`s `BasicCoverageBlock`, removing it from the BCB in the
+    /// process (via `take_counter()`).
+    ///
+    /// Any other counter associated with a `BasicCoverageBlock`, or its incoming edge, but not
+    /// associated with a `CoverageSpan`, should only exist if the counter is a `Expression`
+    /// dependency (one of the expression operands). Collect them, and inject the additional
+    /// counters into the MIR, without a reportable coverage span.
+    fn inject_indirect_counters(
+        &mut self,
+        graphviz_data: &mut debug::GraphvizData,
+        debug_used_expressions: &mut debug::UsedExpressions,
+    ) {
+        let mut bcb_counters_without_direct_coverage_spans = Vec::new();
+        for (target_bcb, target_bcb_data) in self.basic_coverage_blocks.iter_enumerated_mut() {
+            if let Some(counter_kind) = target_bcb_data.take_counter() {
+                bcb_counters_without_direct_coverage_spans.push((None, target_bcb, counter_kind));
+            }
+            if let Some(edge_counters) = target_bcb_data.take_edge_counters() {
+                for (from_bcb, counter_kind) in edge_counters {
+                    bcb_counters_without_direct_coverage_spans.push((
+                        Some(from_bcb),
+                        target_bcb,
+                        counter_kind,
+                    ));
+                }
+            }
+        }
+
+        // If debug is enabled, validate that every BCB or edge counter not directly associated
+        // with a coverage span is at least indirectly associated (it is a dependency of a BCB
+        // counter that _is_ associated with a coverage span).
+        debug_used_expressions.validate(&bcb_counters_without_direct_coverage_spans);
+
+        for (edge_from_bcb, target_bcb, counter_kind) in bcb_counters_without_direct_coverage_spans
+        {
+            debug_used_expressions.add_unused_expression_if_not_found(
+                &counter_kind,
+                edge_from_bcb,
+                target_bcb,
+            );
+
+            match counter_kind {
+                CoverageKind::Counter { .. } => {
+                    let inject_to_bb = if let Some(from_bcb) = edge_from_bcb {
+                        // The MIR edge starts `from_bb` (the outgoing / last BasicBlock in
+                        // `from_bcb`) and ends at `to_bb` (the incoming / first BasicBlock in the
+                        // `target_bcb`; also called the `leader_bb`).
+                        let from_bb = self.bcb_last_bb(from_bcb);
+                        let to_bb = self.bcb_leader_bb(target_bcb);
+
+                        let new_bb = inject_edge_counter_basic_block(self.mir_body, from_bb, to_bb);
+                        graphviz_data.set_edge_counter(from_bcb, new_bb, &counter_kind);
+                        debug!(
+                            "Edge {:?} (last {:?}) -> {:?} (leader {:?}) requires a new MIR \
+                            BasicBlock {:?}, for unclaimed edge counter {}",
+                            edge_from_bcb,
+                            from_bb,
+                            target_bcb,
+                            to_bb,
+                            new_bb,
+                            self.format_counter(&counter_kind),
+                        );
+                        new_bb
+                    } else {
+                        let target_bb = self.bcb_last_bb(target_bcb);
+                        graphviz_data.add_bcb_dependency_counter(target_bcb, &counter_kind);
+                        debug!(
+                            "{:?} ({:?}) gets a new Coverage statement for unclaimed counter {}",
+                            target_bcb,
+                            target_bb,
+                            self.format_counter(&counter_kind),
+                        );
+                        target_bb
+                    };
+
+                    inject_statement(self.mir_body, counter_kind, inject_to_bb, None);
+                }
+                CoverageKind::Expression { .. } => {
+                    inject_intermediate_expression(self.mir_body, counter_kind)
+                }
+                _ => bug!("CoverageKind should be a counter"),
             }
         }
     }
+
+    #[inline]
+    fn bcb_leader_bb(&self, bcb: BasicCoverageBlock) -> BasicBlock {
+        self.bcb_data(bcb).leader_bb()
+    }
+
+    #[inline]
+    fn bcb_last_bb(&self, bcb: BasicCoverageBlock) -> BasicBlock {
+        self.bcb_data(bcb).last_bb()
+    }
+
+    #[inline]
+    fn bcb_terminator(&self, bcb: BasicCoverageBlock) -> &Terminator<'tcx> {
+        self.bcb_data(bcb).terminator(self.mir_body)
+    }
+
+    #[inline]
+    fn bcb_data(&self, bcb: BasicCoverageBlock) -> &BasicCoverageBlockData {
+        &self.basic_coverage_blocks[bcb]
+    }
+
+    #[inline]
+    fn bcb_data_mut(&mut self, bcb: BasicCoverageBlock) -> &mut BasicCoverageBlockData {
+        &mut self.basic_coverage_blocks[bcb]
+    }
+
+    #[inline]
+    fn format_counter(&self, counter_kind: &CoverageKind) -> String {
+        self.coverage_counters.debug_counters.format_counter(counter_kind)
+    }
+}
+
+fn inject_edge_counter_basic_block(
+    mir_body: &mut mir::Body<'tcx>,
+    from_bb: BasicBlock,
+    to_bb: BasicBlock,
+) -> BasicBlock {
+    let span = mir_body[from_bb].terminator().source_info.span.shrink_to_hi();
+    let new_bb = mir_body.basic_blocks_mut().push(BasicBlockData {
+        statements: vec![], // counter will be injected here
+        terminator: Some(Terminator {
+            source_info: SourceInfo::outermost(span),
+            kind: TerminatorKind::Goto { target: to_bb },
+        }),
+        is_cleanup: false,
+    });
+    let edge_ref = mir_body[from_bb]
+        .terminator_mut()
+        .successors_mut()
+        .find(|successor| **successor == to_bb)
+        .expect("from_bb should have a successor for to_bb");
+    *edge_ref = new_bb;
+    new_bb
 }
 
 fn inject_statement(
@@ -219,6 +460,20 @@ fn inject_statement(
             kind: counter_kind,
             code_region: some_code_region,
         }),
+    };
+    data.statements.push(statement);
+}
+
+// Non-code expressions are injected into the coverage map, without generating executable code.
+fn inject_intermediate_expression(mir_body: &mut mir::Body<'tcx>, expression: CoverageKind) {
+    debug_assert!(if let CoverageKind::Expression { .. } = expression { true } else { false });
+    debug!("  injecting non-code expression {:?}", expression);
+    let inject_in_bb = mir::START_BLOCK;
+    let data = &mut mir_body[inject_in_bb];
+    let source_info = data.terminator().source_info;
+    let statement = Statement {
+        source_info,
+        kind: StatementKind::Coverage(box Coverage { kind: expression, code_region: None }),
     };
     data.statements.push(statement);
 }
