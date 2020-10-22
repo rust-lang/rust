@@ -16,6 +16,13 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error: aborting due to previous error; 1 warning emitted
+For closure=DefId(0:8 ~ path_with_array_access[317d]::main::{closure#0}): Using new-style capture analysis
+error: Capturing node2[Deref,(1, 0)] -> ImmBorrow
+  --> $DIR/path-with-array-access.rs:22:13
+   |
+LL |             node2.neighbours[0].unwrap().neighbours[0].unwrap().neighbours[0].unwrap().id
+   |             ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.

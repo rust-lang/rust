@@ -39,7 +39,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
-use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId};
+use rustc_middle::hir::place::{Place, PlaceBase, ProjectionKind, PlaceWithHirId};
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::sym;
 use rustc_span::{Span, Symbol};
@@ -47,15 +47,14 @@ use rustc_span::{Span, Symbol};
 macro_rules! log_capture_analysis {
     ($fcx:expr, $closure_def_id:expr, $fmt:literal) => {
         if $fcx.should_log_capture_analysis($closure_def_id) {
-            eprint!("For 1 closure={:?}: ", $closure_def_id);
+            eprint!("For closure={:?}: ", $closure_def_id);
             eprintln!($fmt);
         }
     };
 
     ($fcx:expr, $closure_def_id:expr, $fmt:literal, $($args:expr),*) => {
         if $fcx.should_log_capture_analysis($closure_def_id) {
-            eprint!("For 2 closure={:?}: ", $closure_def_id);
-            //eprintln!($fmt, $($args),*);
+            eprint!("For closure={:?}: ", $closure_def_id);
         }
     };
 }
@@ -99,31 +98,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if self.should_log_capture_analysis(closure_def_id) {
             for (place, capture_info) in capture_information {
-                eprintln!("{:?}", self.tcx.hir().span(capture_info.expr_id.unwrap()));
+                let variable_name = match place.base {
+                    PlaceBase::Upvar(upvar_id) => var_name(self.tcx, upvar_id.var_path.hir_id).to_string(),
+                    _ => String::from("unknown"),
+                };
 
-                let variable_name;
-                match place.base {
-                    PlaceBase::Upvar(upvar_id) => {
-                        variable_name = var_name(self.tcx, upvar_id.var_path.hir_id).to_string();
-                    },
-                    _ => variable_name = String::from("unknown")
-                }
-                eprint!("Capturing {}[", variable_name);
-
-                for item in &place.projections {
-                    eprint!("{:?}", item.kind);
+                let mut projections_str = String::new();
+                for (i, item) in place.projections.iter().enumerate() {
+                    let proj = match item.kind {
+                        ProjectionKind::Field(a, b) => format!("({:?}, {:?})", a, b),
+                        ProjectionKind::Deref => String::from("Deref"),
+                        ProjectionKind::Index => String::from("Index"),
+                        ProjectionKind::Subslice => String::from("Subslice"),
+                    };
+                    if i != 0 {
+                        projections_str.push_str(",");
+                    }
+                    projections_str.push_str(proj.as_str());
                 }
             
-                let capture_type;
-                match capture_info.capture_kind {
-                    ty::UpvarCapture::ByValue(value) => {
-                        capture_type = format!("{:?}", value);
-                    },
-                    ty::UpvarCapture::ByRef(borrow) => {
-                        capture_type = format!("{:?}", borrow.kind);
-                    },
-                }
-                eprintln!("] ->  {}", capture_type);
+                let capture_kind_str = match capture_info.capture_kind {
+                    ty::UpvarCapture::ByValue(value) => format!("{:?}", value),
+                    ty::UpvarCapture::ByRef(borrow) => format!("{:?}", borrow.kind),
+                };
+
+                self.tcx.sess.span_err(self.tcx.hir().span(capture_info.expr_id.unwrap()), &format!("Capturing {}[{}] -> {}", variable_name, projections_str, capture_kind_str));
             }
         }
     }

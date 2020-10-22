@@ -16,6 +16,13 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error: aborting due to previous error; 1 warning emitted
+For closure=DefId(0:4 ~ arrays_completely_captured[317d]::main::{closure#0}): Using new-style capture analysis
+error: Capturing m[] -> MutBorrow
+  --> $DIR/arrays-completely-captured.rs:12:9
+   |
+LL |         m[0] += 10;
+   |         ^
+
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.

@@ -25,6 +25,32 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error: aborting due to 2 previous errors; 1 warning emitted
+For closure=DefId(0:8 ~ nested_closure[317d]::main::{closure#0}::{closure#0}): Using new-style capture analysis
+error: Capturing p[(1, 0)] -> MutBorrow
+  --> $DIR/nested-closure.rs:25:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+
+error: Capturing incr[] -> ImmBorrow
+  --> $DIR/nested-closure.rs:25:19
+   |
+LL |         || p.y += incr;
+   |                   ^^^^
+
+For closure=DefId(0:7 ~ nested_closure[317d]::main::{closure#0}): Using new-style capture analysis
+error: Capturing p[(0, 0)] -> ImmBorrow
+  --> $DIR/nested-closure.rs:22:24
+   |
+LL |         println!("{}", p.x);
+   |                        ^^^
+
+error: Capturing p[(1, 0)] -> MutBorrow
+  --> $DIR/nested-closure.rs:25:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+
+error: aborting due to 6 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.
