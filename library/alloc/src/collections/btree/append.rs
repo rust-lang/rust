@@ -89,20 +89,15 @@ impl<K, V> Root<K, V> {
         let mut cur_node = self.node_as_mut();
         while let Internal(internal) = cur_node.force() {
             // Check if right-most child is underfull.
-            let mut last_edge = internal.last_edge();
-            let right_child_len = last_edge.reborrow().descend().len();
+            let mut last_kv = internal.last_kv().consider_for_balancing();
+            let right_child_len = last_kv.right_child_len();
             if right_child_len < MIN_LEN {
                 // We need to steal.
-                let mut last_kv = match last_edge.left_kv() {
-                    Ok(left) => left,
-                    Err(_) => unreachable!(),
-                };
                 last_kv.bulk_steal_left(MIN_LEN - right_child_len);
-                last_edge = last_kv.right_edge();
             }
 
             // Go further down.
-            cur_node = last_edge.descend();
+            cur_node = last_kv.into_right_child();
         }
     }
 }

@@ -498,6 +498,12 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
+    /// Unsafely asserts to the compiler the static information that this node is a `Leaf`.
+    unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
+        debug_assert!(self.height == 0);
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
+    }
+
     /// Unsafely asserts to the compiler the static information that this node is an `Internal`.
     unsafe fn cast_to_internal_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         debug_assert!(self.height > 0);
@@ -922,6 +928,14 @@ impl<BorrowType, K, V, NodeType, HandleType>
 }
 
 impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
+    /// Unsafely asserts to the compiler the static information that the handle's node is a `Leaf`.
+    pub unsafe fn cast_to_leaf_unchecked(
+        self,
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, HandleType> {
+        let node = unsafe { self.node.cast_to_leaf_unchecked() };
+        Handle { node, idx: self.idx, _marker: PhantomData }
+    }
+
     /// Temporarily takes out another, mutable handle on the same location. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
@@ -961,9 +975,9 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
     }
 }
 
-enum InsertionPlace {
-    Left(usize),
-    Right(usize),
+pub enum LeftOrRight<T> {
+    Left(T),
+    Right(T),
 }
 
 /// Given an edge index where we want to insert into a node filled to capacity,
@@ -971,14 +985,14 @@ enum InsertionPlace {
 /// The goal of the split point is for its key and value to end up in a parent node;
 /// the keys, values and edges to the left of the split point become the left child;
 /// the keys, values and edges to the right of the split point become the right child.
-fn splitpoint(edge_idx: usize) -> (usize, InsertionPlace) {
+fn splitpoint(edge_idx: usize) -> (usize, LeftOrRight<usize>) {
     debug_assert!(edge_idx <= CAPACITY);
     // Rust issue #74834 tries to explain these symmetric rules.
     match edge_idx {
-        0..EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER - 1, InsertionPlace::Left(edge_idx)),
-        EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER, InsertionPlace::Left(edge_idx)),
-        EDGE_IDX_RIGHT_OF_CENTER => (KV_IDX_CENTER, InsertionPlace::Right(0)),
-        _ => (KV_IDX_CENTER + 1, InsertionPlace::Right(edge_idx - (KV_IDX_CENTER + 1 + 1))),
+        0..EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER - 1, LeftOrRight::Left(edge_idx)),
+        EDGE_IDX_LEFT_OF_CENTER => (KV_IDX_CENTER, LeftOrRight::Left(edge_idx)),
+        EDGE_IDX_RIGHT_OF_CENTER => (KV_IDX_CENTER, LeftOrRight::Right(0)),
+        _ => (KV_IDX_CENTER + 1, LeftOrRight::Right(edge_idx - (KV_IDX_CENTER + 1 + 1))),
     }
 }
 
@@ -1016,10 +1030,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
             let mut insertion_edge = match insertion {
-                InsertionPlace::Left(insert_idx) => unsafe {
+                LeftOrRight::Left(insert_idx) => unsafe {
                     Handle::new_edge(left.reborrow_mut(), insert_idx)
                 },
-                InsertionPlace::Right(insert_idx) => unsafe {
+                LeftOrRight::Right(insert_idx) => unsafe {
                     Handle::new_edge(right.leaf_node_as_mut(), insert_idx)
                 },
             };
@@ -1080,10 +1094,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let (mut left, k, v, mut right) = middle.split();
             let mut insertion_edge = match insertion {
-                InsertionPlace::Left(insert_idx) => unsafe {
+                LeftOrRight::Left(insert_idx) => unsafe {
                     Handle::new_edge(left.reborrow_mut(), insert_idx)
                 },
-                InsertionPlace::Right(insert_idx) => unsafe {
+                LeftOrRight::Right(insert_idx) => unsafe {
                     Handle::new_edge(right.internal_node_as_mut(), insert_idx)
                 },
             };
@@ -1250,18 +1264,6 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     }
 }
 
-impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
-    /// Returns `true` if it is valid to call `.merge()`, i.e., whether there is enough room in
-    /// a node to hold the combination of the nodes to the left and right of this handle along
-    /// with the key/value pair at this handle.
-    pub fn can_merge(&self) -> bool {
-        (self.reborrow().left_edge().descend().len()
-            + self.reborrow().right_edge().descend().len()
-            + 1)
-            <= CAPACITY
-    }
-}
-
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
     /// Splits the underlying node into three parts:
     ///
@@ -1290,28 +1292,118 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             (self.node, k, v, right)
         }
     }
+}
 
-    /// Combines the node immediately to the left of this handle, the key/value pair pointed
-    /// to by this handle, and the node immediately to the right of this handle into one new
-    /// child of the underlying node, returning an edge referencing that new child.
-    ///
-    /// Panics unless this edge `.can_merge()`.
-    pub fn merge(
-        mut self,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
+/// Represents a session for evaluating and performing a balancing operation
+/// around an internal key/value pair.
+pub struct BalancingContext<'a, K, V> {
+    parent: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV>,
+    left_child: NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
+    right_child: NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
+}
+
+impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::KV> {
+    pub fn consider_for_balancing(self) -> BalancingContext<'a, K, V> {
         let self1 = unsafe { ptr::read(&self) };
         let self2 = unsafe { ptr::read(&self) };
-        let mut left_node = self1.left_edge().descend();
+        BalancingContext {
+            parent: self,
+            left_child: self1.left_edge().descend(),
+            right_child: self2.right_edge().descend(),
+        }
+    }
+}
+
+impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+    /// Chooses a balancing context involving the node as a child, thus between
+    /// the KV immediately to the left or to the right in the parent node.
+    /// Returns an `Err` if there is no parent.
+    ///
+    /// This method optimizes for a node that has fewer elements than its left
+    /// and right siblings, if they exist, by preferring the left parent KV.
+    /// Merging with the left sibling is faster, since we only need to move
+    /// the node's N elements, instead of shifting them to the right and moving
+    /// more than N elements in front. Stealing from the left sibling is also
+    /// typically faster, since we only need to shift the node's N elements to
+    /// the right, instead of shifting at least N of the sibling's elements to
+    /// the left.
+    pub fn choose_parent_kv(self) -> Result<LeftOrRight<BalancingContext<'a, K, V>>, Self> {
+        match unsafe { ptr::read(&self) }.ascend() {
+            Ok(parent) => match parent.left_kv() {
+                Ok(left_parent_kv) => Ok(LeftOrRight::Left(BalancingContext {
+                    parent: unsafe { ptr::read(&left_parent_kv) },
+                    left_child: left_parent_kv.left_edge().descend(),
+                    right_child: self,
+                })),
+                Err(parent) => match parent.right_kv() {
+                    Ok(right_parent_kv) => Ok(LeftOrRight::Right(BalancingContext {
+                        parent: unsafe { ptr::read(&right_parent_kv) },
+                        left_child: self,
+                        right_child: right_parent_kv.right_edge().descend(),
+                    })),
+                    Err(_) => unreachable!("empty non-root node"),
+                },
+            },
+            Err(root) => Err(root),
+        }
+    }
+}
+
+impl<'a, K, V> BalancingContext<'a, K, V> {
+    pub fn left_child_len(&self) -> usize {
+        self.left_child.len()
+    }
+
+    pub fn right_child_len(&self) -> usize {
+        self.right_child.len()
+    }
+
+    pub fn into_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+        self.left_child
+    }
+
+    pub fn into_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+        self.right_child
+    }
+
+    /// Returns `true` if it is valid to call `.merge()` in the balancing context,
+    /// i.e., whether there is enough room in a node to hold the combination of
+    /// both adjacent child nodes, along with the key/value pair in the parent.
+    pub fn can_merge(&self) -> bool {
+        self.left_child.len() + 1 + self.right_child.len() <= CAPACITY
+    }
+}
+
+impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
+    /// Merges the parent's key/value pair and both adjacent child nodes into
+    /// the left node and returns an edge handle in that expanded left node.
+    /// If `track_edge_idx` is given some value, the returned edge corresponds
+    /// to where the edge in that child node ended up,
+    ///
+    /// Panics unless we `.can_merge()`.
+    pub fn merge(
+        mut self,
+        track_edge_idx: Option<LeftOrRight<usize>>,
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+        let mut left_node = self.left_child;
         let left_len = left_node.len();
-        let right_node = self2.right_edge().descend();
+        let right_node = self.right_child;
         let right_len = right_node.len();
 
         assert!(left_len + right_len < CAPACITY);
+        assert!(match track_edge_idx {
+            None => true,
+            Some(LeftOrRight::Left(idx)) => idx <= left_len,
+            Some(LeftOrRight::Right(idx)) => idx <= right_len,
+        });
 
         unsafe {
             *left_node.reborrow_mut().into_len_mut() += right_len as u16 + 1;
 
-            let parent_key = slice_remove(self.node.reborrow_mut().into_key_area_slice(), self.idx);
+            let parent_key = slice_remove(
+                self.parent.node.reborrow_mut().into_key_area_slice(),
+                self.parent.idx,
+            );
             left_node.reborrow_mut().into_key_area_mut_at(left_len).write(parent_key);
             ptr::copy_nonoverlapping(
                 right_node.reborrow().key_area().as_ptr(),
@@ -1319,7 +1411,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 right_len,
             );
 
-            let parent_val = slice_remove(self.node.reborrow_mut().into_val_area_slice(), self.idx);
+            let parent_val = slice_remove(
+                self.parent.node.reborrow_mut().into_val_area_slice(),
+                self.parent.idx,
+            );
             left_node.reborrow_mut().into_val_area_mut_at(left_len).write(parent_val);
             ptr::copy_nonoverlapping(
                 right_node.reborrow().val_area().as_ptr(),
@@ -1327,15 +1422,18 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 right_len,
             );
 
-            slice_remove(&mut self.node.reborrow_mut().into_edge_area_slice(), self.idx + 1);
-            let self_len = self.node.len();
-            self.node.correct_childrens_parent_links(self.idx + 1..self_len);
-            *self.node.reborrow_mut().into_len_mut() -= 1;
+            slice_remove(
+                &mut self.parent.node.reborrow_mut().into_edge_area_slice(),
+                self.parent.idx + 1,
+            );
+            let parent_old_len = self.parent.node.len();
+            self.parent.node.correct_childrens_parent_links(self.parent.idx + 1..parent_old_len);
+            *self.parent.node.reborrow_mut().into_len_mut() -= 1;
 
-            if self.node.height > 1 {
+            if self.parent.node.height > 1 {
                 // SAFETY: the height of the nodes being merged is one below the height
                 // of the node of this edge, thus above zero, so they are internal.
-                let mut left_node = left_node.cast_to_internal_unchecked();
+                let mut left_node = left_node.reborrow_mut().cast_to_internal_unchecked();
                 let right_node = right_node.cast_to_internal_unchecked();
                 ptr::copy_nonoverlapping(
                     right_node.reborrow().edge_area().as_ptr(),
@@ -1350,50 +1448,67 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
             }
 
-            Handle::new_edge(self.node, self.idx)
+            let new_idx = match track_edge_idx {
+                None => 0,
+                Some(LeftOrRight::Left(idx)) => idx,
+                Some(LeftOrRight::Right(idx)) => left_len + 1 + idx,
+            };
+            Handle::new_edge(left_node, new_idx)
         }
     }
 
-    /// This removes a key/value pair from the left child and places it in the key/value storage
-    /// pointed to by this handle while pushing the old key/value pair of this handle into the right
-    /// child.
-    pub fn steal_left(&mut self) {
+    /// Removes a key/value pair from the left child and places it in the key/value storage
+    /// of the parent, while pushing the old parent key/value pair into the right child.
+    /// Returns a handle to the edge in the right child corresponding to where the original
+    /// edge specified by `track_right_edge_idx` ended up.
+    pub fn steal_left(
+        mut self,
+        track_right_edge_idx: usize,
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
         unsafe {
-            let (k, v, edge) = self.reborrow_mut().left_edge().descend().pop();
+            let (k, v, edge) = self.left_child.pop();
 
-            let k = mem::replace(self.kv_mut().0, k);
-            let v = mem::replace(self.kv_mut().1, v);
+            let k = mem::replace(self.parent.kv_mut().0, k);
+            let v = mem::replace(self.parent.kv_mut().1, v);
 
-            match self.reborrow_mut().right_edge().descend().force() {
+            match self.right_child.reborrow_mut().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push_front(k, v),
                 ForceResult::Internal(mut internal) => internal.push_front(k, v, edge.unwrap()),
             }
+
+            Handle::new_edge(self.right_child, 1 + track_right_edge_idx)
         }
     }
 
-    /// This removes a key/value pair from the right child and places it in the key/value storage
-    /// pointed to by this handle while pushing the old key/value pair of this handle into the left
-    /// child.
-    pub fn steal_right(&mut self) {
+    /// Removes a key/value pair from the right child and places it in the key/value storage
+    /// of the parent, while pushing the old parent key/value pair onto the left child.
+    /// Returns a handle to the edge in the left child specified by `track_left_edge_idx`,
+    /// which didn't move.
+    pub fn steal_right(
+        mut self,
+        track_left_edge_idx: usize,
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
         unsafe {
-            let (k, v, edge) = self.reborrow_mut().right_edge().descend().pop_front();
+            let (k, v, edge) = self.right_child.pop_front();
 
-            let k = mem::replace(self.kv_mut().0, k);
-            let v = mem::replace(self.kv_mut().1, v);
+            let k = mem::replace(self.parent.kv_mut().0, k);
+            let v = mem::replace(self.parent.kv_mut().1, v);
 
-            match self.reborrow_mut().left_edge().descend().force() {
+            match self.left_child.reborrow_mut().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push(k, v),
                 ForceResult::Internal(mut internal) => internal.push(k, v, edge.unwrap()),
             }
+
+            Handle::new_edge(self.left_child, track_left_edge_idx)
         }
     }
 
     /// This does stealing similar to `steal_left` but steals multiple elements at once.
     pub fn bulk_steal_left(&mut self, count: usize) {
         unsafe {
-            let mut left_node = ptr::read(self).left_edge().descend();
+            let left_node = &mut self.left_child;
             let left_len = left_node.len();
-            let mut right_node = ptr::read(self).right_edge().descend();
+            let right_node = &mut self.right_child;
             let right_len = right_node.len();
 
             // Make sure that we may steal safely.
@@ -1407,7 +1522,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
                 let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
                 let parent_kv = {
-                    let kv = self.kv_mut();
+                    let kv = self.parent.kv_mut();
                     (kv.0 as *mut K, kv.1 as *mut V)
                 };
 
@@ -1428,7 +1543,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             *left_node.reborrow_mut().into_len_mut() -= count as u16;
             *right_node.reborrow_mut().into_len_mut() += count as u16;
 
-            match (left_node.force(), right_node.force()) {
+            match (left_node.reborrow_mut().force(), right_node.reborrow_mut().force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(mut right)) => {
                     // Make room for stolen edges.
                     let left = left.reborrow();
@@ -1447,9 +1562,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// The symmetric clone of `bulk_steal_left`.
     pub fn bulk_steal_right(&mut self, count: usize) {
         unsafe {
-            let mut left_node = ptr::read(self).left_edge().descend();
+            let left_node = &mut self.left_child;
             let left_len = left_node.len();
-            let mut right_node = ptr::read(self).right_edge().descend();
+            let right_node = &mut self.right_child;
             let right_len = right_node.len();
 
             // Make sure that we may steal safely.
@@ -1463,7 +1578,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
                 let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
                 let parent_kv = {
-                    let kv = self.kv_mut();
+                    let kv = self.parent.kv_mut();
                     (kv.0 as *mut K, kv.1 as *mut V)
                 };
 
@@ -1484,7 +1599,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             *left_node.reborrow_mut().into_len_mut() += count as u16;
             *right_node.reborrow_mut().into_len_mut() -= count as u16;
 
-            match (left_node.force(), right_node.force()) {
+            match (left_node.reborrow_mut().force(), right_node.reborrow_mut().force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(mut right)) => {
                     move_edges(right.reborrow(), 0, left, left_len + 1, count);
 
