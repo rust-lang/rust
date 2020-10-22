@@ -273,7 +273,7 @@ impl IntRange {
         let mut borders: Vec<_> = row_borders.chain(self_borders).collect();
         borders.sort_unstable();
 
-        self.lint_overlapping_patterns(pcx, hir_id, overlaps);
+        self.lint_overlapping_range_endpoints(pcx, hir_id, overlaps);
 
         // We're going to iterate through every adjacent pair of borders, making sure that
         // each represents an interval of nonnegative length, and convert each such
@@ -296,7 +296,7 @@ impl IntRange {
             .collect()
     }
 
-    fn lint_overlapping_patterns(
+    fn lint_overlapping_range_endpoints(
         &self,
         pcx: PatCtxt<'_, '_, '_>,
         hir_id: Option<HirId>,
@@ -304,22 +304,23 @@ impl IntRange {
     ) {
         if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
             pcx.cx.tcx.struct_span_lint_hir(
-                lint::builtin::OVERLAPPING_PATTERNS,
+                lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,
                 pcx.span,
                 |lint| {
-                    let mut err = lint.build("multiple patterns covering the same range");
-                    err.span_label(pcx.span, "overlapping patterns");
+                    let mut err = lint.build("multiple patterns overlap on their endpoints");
+                    err.span_label(pcx.span, "overlapping range endpoints");
                     for (int_range, span) in overlaps {
                         // Use the real type for user display of the ranges:
                         err.span_label(
                             span,
                             &format!(
                                 "this range overlaps on `{}`",
-                                int_range.to_pat(pcx.cx.tcx, pcx.ty),
+                                int_range.to_pat(pcx.cx.tcx, pcx.ty)
                             ),
                         );
                     }
+                    // FIXME: add note
                     err.emit();
                 },
             );
