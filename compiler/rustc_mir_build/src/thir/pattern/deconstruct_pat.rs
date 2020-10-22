@@ -161,7 +161,7 @@ impl IntRange {
         // 2       --------   // 2 -------
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
-        lo == other_hi || hi == other_lo
+        (lo == other_hi || hi == other_lo) && !self.is_singleton() && !other.is_singleton()
     }
 
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {

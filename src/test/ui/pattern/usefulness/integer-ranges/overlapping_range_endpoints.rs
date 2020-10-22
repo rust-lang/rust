@@ -29,9 +29,9 @@ fn main() {
     m!(0u8, 20..=30, 25);
     m!(0u8, 20..=30, 30);
     m!(0u8, 20.. 30, 29);
-    m!(0u8, 20, 20..=30); //~ ERROR multiple patterns overlap on their endpoints
+    m!(0u8, 20, 20..=30);
     m!(0u8, 25, 20..=30);
-    m!(0u8, 30, 20..=30); //~ ERROR multiple patterns overlap on their endpoints
+    m!(0u8, 30, 20..=30);
 
     match 0u8 {
         0..=10 => {}

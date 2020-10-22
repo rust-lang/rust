@@ -45,22 +45,6 @@ LL |     m!(0u8, 20..=30, 19..=20);
    |             this range overlaps on `20_u8`
 
 error: multiple patterns overlap on their endpoints
-  --> $DIR/overlapping_range_endpoints.rs:32:17
-   |
-LL |     m!(0u8, 20, 20..=30);
-   |             --  ^^^^^^^ overlapping range endpoints
-   |             |
-   |             this range overlaps on `20_u8`
-
-error: multiple patterns overlap on their endpoints
-  --> $DIR/overlapping_range_endpoints.rs:34:17
-   |
-LL |     m!(0u8, 30, 20..=30);
-   |             --  ^^^^^^^ overlapping range endpoints
-   |             |
-   |             this range overlaps on `30_u8`
-
-error: multiple patterns overlap on their endpoints
   --> $DIR/overlapping_range_endpoints.rs:39:9
    |
 LL |         0..=10 => {}
@@ -86,5 +70,5 @@ LL |         Some(0..=10) => {}
 LL |         Some(10..20) => {}
    |              ^^^^^^ overlapping range endpoints
 
-error: aborting due to 10 previous errors
+error: aborting due to 8 previous errors
 
