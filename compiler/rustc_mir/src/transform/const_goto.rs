@@ -65,6 +65,10 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                             // We found a constant being assigned to `place`.
                             // Now check that the target of this Goto switches on this place.
                             let target_bb = &self.body.basic_blocks()[target];
+                            // FIXME(simonvandel): We are conservative here when we don't allow 
+                            // any statements in the target basic block.
+                            // This could probably be relaxed to allow `StorageDead`s which could be 
+                            // copied to the predecessor of this block.
                             if !target_bb.statements.is_empty() {
                                 None?
                             }
