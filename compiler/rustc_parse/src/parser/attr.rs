@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
                 }
             })?;
             if let Some(mut attr) = attr {
-                attr.tokens = Some(tokens);
+                attr.tokens = tokens;
                 attrs.push(attr);
             } else {
                 break;
@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
             };
             if capture_tokens {
                 let (mut item, tokens) = self.collect_tokens(do_parse)?;
-                item.tokens = Some(tokens);
+                item.tokens = tokens;
                 item
             } else {
                 do_parse(self)?
@@ -213,7 +213,7 @@ impl<'a> Parser<'a> {
                 }
             })?;
             if let Some(mut attr) = attr {
-                attr.tokens = Some(tokens);
+                attr.tokens = tokens;
                 attrs.push(attr);
             } else {
                 break;

@@ -1116,7 +1116,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         if needs_tokens {
             let (mut expr, tokens) = self.collect_tokens(f)?;
-            expr.tokens = Some(tokens);
+            expr.tokens = tokens;
             Ok(expr)
         } else {
             f(self)
