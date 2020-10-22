@@ -309,18 +309,18 @@ impl IntRange {
                 pcx.span,
                 |lint| {
                     let mut err = lint.build("multiple patterns overlap on their endpoints");
-                    err.span_label(pcx.span, "overlapping range endpoints");
+                    err.span_label(pcx.span, "... with this range");
                     for (int_range, span) in overlaps {
                         // Use the real type for user display of the ranges:
                         err.span_label(
                             span,
                             &format!(
-                                "this range overlaps on `{}`",
+                                "this range overlaps on `{}`...",
                                 int_range.to_pat(pcx.cx.tcx, pcx.ty)
                             ),
                         );
                     }
-                    // FIXME: add note
+                    err.note("this is likely to be a mistake");
                     err.emit();
                 },
             );
