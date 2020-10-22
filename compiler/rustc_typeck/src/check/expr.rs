@@ -630,7 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If we encountered a `break`, then (no surprise) it may be possible to break from the
             // loop... unless the value being returned from the loop diverges itself, e.g.
             // `break return 5` or `break loop {}`.
-            ctxt.may_break |= !e_ty.is_never();
+            ctxt.may_break |= !self.diverges.get().is_always();
 
             // the type of a `break` is always `!`, since it diverges
             tcx.types.never

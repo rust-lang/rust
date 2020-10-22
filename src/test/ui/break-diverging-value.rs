@@ -12,9 +12,8 @@ fn loop_break_break() -> i32 { //~ ERROR mismatched types
     let loop_value = loop { break break };
 }
 
-fn loop_break_return_2() -> i32 { //~ ERROR mismatched types
-    let loop_value = loop { break { return; () } };
-    //~^ ERROR `return;` in a function whose return type is not `()`
+fn loop_break_return_2() -> i32 {
+    let loop_value = loop { break { return 0; () } }; // ok
 }
 
 enum Void {}
