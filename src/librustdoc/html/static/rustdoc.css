@@ -1568,6 +1568,41 @@ h4 > .notable-traits {
 	#titles, #titles > div {
 		height: 73px;
 	}
+
+	#main > table:not(.table-display) td {
+		word-break: break-word;
+		min-width: 10%;
+	}
+
+	.search-container > div {
+		display: block;
+		width: calc(100% - 37px);
+	}
+
+	#crate-search {
+		width: 100%;
+		border-radius: 4px;
+		border: 0;
+	}
+
+	#crate-search + .search-input {
+		width: calc(100% + 71px);
+		margin-left: -36px;
+	}
+
+	#theme-picker, #settings-menu {
+		padding: 5px;
+		width: 31px;
+		height: 31px;
+	}
+
+	#theme-picker {
+		margin-top: -2px;
+	}
+
+	#settings-menu {
+		top: 7px;
+	}
 }
 
 h3.notable {
