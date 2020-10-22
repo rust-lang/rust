@@ -526,7 +526,7 @@ impl TraverseCoverageGraphWithLoops {
         Self { backedges, context_stack, visited }
     }
 
-    pub fn next(&mut self) -> Option<BasicCoverageBlock> {
+    pub fn next(&mut self, basic_coverage_blocks: &CoverageGraph) -> Option<BasicCoverageBlock> {
         debug!(
             "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
             self.context_stack.iter().rev().collect::<Vec<_>>()
@@ -551,9 +551,79 @@ impl TraverseCoverageGraphWithLoops {
                     worklist: Vec::new(),
                 });
             }
+            self.extend_worklist(basic_coverage_blocks, next_bcb);
             return Some(next_bcb);
         }
         None
+    }
+
+    pub fn extend_worklist(
+        &mut self,
+        basic_coverage_blocks: &CoverageGraph,
+        bcb: BasicCoverageBlock,
+    ) {
+        let successors = &basic_coverage_blocks.successors[bcb];
+        debug!("{:?} has {} successors:", bcb, successors.len());
+        for &successor in successors {
+            if successor == bcb {
+                debug!(
+                    "{:?} has itself as its own successor. (Note, the compiled code will \
+                    generate an infinite loop.)",
+                    bcb
+                );
+                // Don't re-add this successor to the worklist. We are already processing it.
+                break;
+            }
+            for context in self.context_stack.iter_mut().rev() {
+                // Add successors of the current BCB to the appropriate context. Successors that
+                // stay within a loop are added to the BCBs context worklist. Successors that
+                // exit the loop (they are not dominated by the loop header) must be reachable
+                // from other BCBs outside the loop, and they will be added to a different
+                // worklist.
+                //
+                // Branching blocks (with more than one successor) must be processed before
+                // blocks with only one successor, to prevent unnecessarily complicating
+                // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
+                // branching block would have given an `Expression` (or vice versa).
+                let (some_successor_to_add, some_loop_header) =
+                    if let Some((_, loop_header)) = context.loop_backedges {
+                        if basic_coverage_blocks.is_dominated_by(successor, loop_header) {
+                            (Some(successor), Some(loop_header))
+                        } else {
+                            (None, None)
+                        }
+                    } else {
+                        (Some(successor), None)
+                    };
+                if let Some(successor_to_add) = some_successor_to_add {
+                    if basic_coverage_blocks.successors[successor_to_add].len() > 1 {
+                        debug!(
+                            "{:?} successor is branching. Prioritize it at the beginning of \
+                            the {}",
+                            successor_to_add,
+                            if let Some(loop_header) = some_loop_header {
+                                format!("worklist for the loop headed by {:?}", loop_header)
+                            } else {
+                                String::from("non-loop worklist")
+                            },
+                        );
+                        context.worklist.insert(0, successor_to_add);
+                    } else {
+                        debug!(
+                            "{:?} successor is non-branching. Defer it to the end of the {}",
+                            successor_to_add,
+                            if let Some(loop_header) = some_loop_header {
+                                format!("worklist for the loop headed by {:?}", loop_header)
+                            } else {
+                                String::from("non-loop worklist")
+                            },
+                        );
+                        context.worklist.push(successor_to_add);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     pub fn is_complete(&self) -> bool {
