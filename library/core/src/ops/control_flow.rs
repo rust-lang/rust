@@ -32,6 +32,20 @@ impl<C, B> Try for ControlFlow<C, B> {
 }
 
 impl<C, B> ControlFlow<C, B> {
+    /// Returns `true` if this is a `Break` variant.
+    #[inline]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    pub fn is_break(&self) -> bool {
+        matches!(*self, ControlFlow::Break(_))
+    }
+
+    /// Returns `true` if this is a `Continue` variant.
+    #[inline]
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    pub fn is_continue(&self) -> bool {
+        matches!(*self, ControlFlow::Continue(_))
+    }
+
     /// Converts the `ControlFlow` into an `Option` which is `Some` if the
     /// `ControlFlow` was `Break` and `None` otherwise.
     #[inline]
