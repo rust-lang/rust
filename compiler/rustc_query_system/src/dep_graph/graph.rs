@@ -21,11 +21,11 @@ use super::debug::EdgeFilter;
 use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepContext, DepKindExt, DepNode, WorkProductId};
+use super::{DepContext, DepKind, DepKindExt, DepNode, WorkProductId};
 
 #[derive(Clone)]
-pub struct DepGraph<K: DepKindExt> {
-    data: Option<Lrc<DepGraphData<K>>>,
+pub struct DepGraph {
+    data: Option<Lrc<DepGraphData>>,
 
     /// This field is used for assigning DepNodeIndices when running in
     /// non-incremental mode. Even in non-incremental mode we make sure that
@@ -64,16 +64,16 @@ impl DepNodeColor {
     }
 }
 
-struct DepGraphData<K: DepKindExt> {
+struct DepGraphData {
     /// The new encoding of the dependency graph, optimized for red/green
     /// tracking. The `current` field is the dependency graph of only the
     /// current compilation session: We don't merge the previous dep-graph into
     /// current one anymore.
-    current: CurrentDepGraph<K>,
+    current: CurrentDepGraph,
 
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    previous: PreviousDepGraph<K>,
+    previous: PreviousDepGraph,
 
     colors: DepNodeColorMap,
 
@@ -102,11 +102,11 @@ where
     Some(stable_hasher.finish())
 }
 
-impl<K: DepKindExt> DepGraph<K> {
+impl DepGraph {
     pub fn new(
-        prev_graph: PreviousDepGraph<K>,
+        prev_graph: PreviousDepGraph,
         prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
-    ) -> DepGraph<K> {
+    ) -> DepGraph {
         let prev_graph_node_count = prev_graph.node_count();
 
         DepGraph {
@@ -123,7 +123,7 @@ impl<K: DepKindExt> DepGraph<K> {
         }
     }
 
-    pub fn new_disabled() -> DepGraph<K> {
+    pub fn new_disabled() -> DepGraph {
         DepGraph { data: None, virtual_dep_node_index: Lrc::new(AtomicU32::new(0)) }
     }
 
@@ -133,7 +133,7 @@ impl<K: DepKindExt> DepGraph<K> {
         self.data.is_some()
     }
 
-    pub fn query(&self) -> DepGraphQuery<K> {
+    pub fn query(&self) -> DepGraphQuery {
         let data = self.data.as_ref().unwrap().current.data.lock();
         let nodes: Vec<_> = data.iter().map(|n| n.node).collect();
         let mut edges = Vec::new();
@@ -147,7 +147,7 @@ impl<K: DepKindExt> DepGraph<K> {
         DepGraphQuery::new(&nodes[..], &edges[..])
     }
 
-    pub fn assert_ignored(&self) {
+    pub fn assert_ignored<K: DepKindExt>(&self) {
         if let Some(..) = self.data {
             K::read_deps(|task_deps| {
                 assert!(task_deps.is_none(), "expected no task dependency tracking");
@@ -155,7 +155,7 @@ impl<K: DepKindExt> DepGraph<K> {
         }
     }
 
-    pub fn with_ignore<OP, R>(&self, op: OP) -> R
+    pub fn with_ignore<OP, R, K: DepKindExt>(&self, op: OP) -> R
     where
         OP: FnOnce() -> R,
     {
@@ -189,7 +189,7 @@ impl<K: DepKindExt> DepGraph<K> {
     ///   `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
-    pub fn with_task<Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_task<K: DepKindExt, Ctxt: DepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -217,19 +217,19 @@ impl<K: DepKindExt> DepGraph<K> {
         )
     }
 
-    fn with_task_impl<Ctxt: DepContext<DepKind = K>, A, R>(
+    fn with_task_impl<K: DepKindExt, Ctxt: DepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
         arg: A,
         no_tcx: bool,
         task: fn(Ctxt, A) -> R,
-        create_task: fn(DepNode) -> Option<TaskDeps<K>>,
+        create_task: fn(DepNode) -> Option<TaskDeps>,
         finish_task_and_alloc_depnode: fn(
-            &CurrentDepGraph<K>,
+            &CurrentDepGraph,
             DepNode,
             Fingerprint,
-            Option<TaskDeps<K>>,
+            Option<TaskDeps>,
         ) -> DepNodeIndex,
         hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
@@ -306,7 +306,7 @@ impl<K: DepKindExt> DepGraph<K> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<OP, R>(&self, dep_kind: K, op: OP) -> (R, DepNodeIndex)
+    pub fn with_anon_task<OP, R, K: DepKindExt>(&self, dep_kind: K, op: OP) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
     {
@@ -325,7 +325,7 @@ impl<K: DepKindExt> DepGraph<K> {
 
     /// Executes something within an "eval-always" task which is a task
     /// that runs whenever anything changes.
-    pub fn with_eval_always_task<Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_eval_always_task<K: DepKindExt, Ctxt: DepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -445,7 +445,7 @@ impl<K: DepKindExt> DepGraph<K> {
         }
     }
 
-    pub fn serialize(&self) -> SerializedDepGraph<K> {
+    pub fn serialize(&self) -> SerializedDepGraph {
         let data = self.data.as_ref().unwrap().current.data.lock();
 
         let fingerprints: IndexVec<SerializedDepNodeIndex, _> =
@@ -491,7 +491,7 @@ impl<K: DepKindExt> DepGraph<K> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green_and_read<Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green_and_read<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode,
@@ -503,7 +503,7 @@ impl<K: DepKindExt> DepGraph<K> {
         })
     }
 
-    pub fn try_mark_green<Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode,
@@ -531,10 +531,10 @@ impl<K: DepKindExt> DepGraph<K> {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    fn try_mark_previous_green<Ctxt: DepContext<DepKind = K>>(
+    fn try_mark_previous_green<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
-        data: &DepGraphData<K>,
+        data: &DepGraphData,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode,
     ) -> Option<DepNodeIndex> {
@@ -731,10 +731,10 @@ impl<K: DepKindExt> DepGraph<K> {
     /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
-    fn emit_diagnostics<Ctxt: DepContext<DepKind = K>>(
+    fn emit_diagnostics<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
-        data: &DepGraphData<K>,
+        data: &DepGraphData,
         dep_node_index: DepNodeIndex,
         prev_dep_node_index: SerializedDepNodeIndex,
         diagnostics: Vec<Diagnostic>,
@@ -796,7 +796,7 @@ impl<K: DepKindExt> DepGraph<K> {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
+    pub fn exec_cache_promotions<K: DepKindExt, Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();
@@ -860,7 +860,7 @@ pub struct WorkProduct {
 }
 
 #[derive(Clone)]
-struct DepNodeData<K> {
+struct DepNodeData {
     node: DepNode,
     edges: EdgesVec,
     fingerprint: Fingerprint,
@@ -881,8 +881,8 @@ struct DepNodeData<K> {
 /// The only operation that must manipulate both locks is adding new nodes, in which case
 /// we first acquire the `node_to_node_index` lock and then, once a new node is to be inserted,
 /// acquire the lock on `data.`
-pub(super) struct CurrentDepGraph<K> {
-    data: Lock<IndexVec<DepNodeIndex, DepNodeData<K>>>,
+pub(super) struct CurrentDepGraph {
+    data: Lock<IndexVec<DepNodeIndex, DepNodeData>>,
     node_to_node_index: Sharded<FxHashMap<DepNode, DepNodeIndex>>,
 
     /// Used to trap when a specific edge is added to the graph.
@@ -909,8 +909,8 @@ pub(super) struct CurrentDepGraph<K> {
     total_duplicate_read_count: AtomicU64,
 }
 
-impl<K: DepKindExt> CurrentDepGraph<K> {
-    fn new(prev_graph_node_count: usize) -> CurrentDepGraph<K> {
+impl CurrentDepGraph {
+    fn new(prev_graph_node_count: usize) -> CurrentDepGraph {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -954,13 +954,13 @@ impl<K: DepKindExt> CurrentDepGraph<K> {
     fn complete_task(
         &self,
         node: DepNode,
-        task_deps: TaskDeps<K>,
+        task_deps: TaskDeps,
         fingerprint: Fingerprint,
     ) -> DepNodeIndex {
         self.alloc_node(node, task_deps.reads, fingerprint)
     }
 
-    fn complete_anon_task(&self, kind: K, task_deps: TaskDeps<K>) -> DepNodeIndex {
+    fn complete_anon_task(&self, kind: DepKind, task_deps: TaskDeps) -> DepNodeIndex {
         debug_assert!(!kind.is_eval_always());
 
         let mut hasher = StableHasher::new();
@@ -1015,9 +1015,9 @@ impl<K: DepKindExt> CurrentDepGraph<K> {
     }
 }
 
-impl<K: DepKindExt> DepGraphData<K> {
+impl DepGraphData {
     #[inline(never)]
-    fn read_index(&self, source: DepNodeIndex) {
+    fn read_index<K: DepKindExt>(&self, source: DepNodeIndex) {
         K::read_deps(|task_deps| {
             if let Some(task_deps) = task_deps {
                 let mut task_deps = task_deps.lock();
@@ -1065,7 +1065,7 @@ impl<K: DepKindExt> DepGraphData<K> {
 const TASK_DEPS_READS_CAP: usize = 8;
 type EdgesVec = SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>;
 
-pub struct TaskDeps<K> {
+pub struct TaskDeps {
     #[cfg(debug_assertions)]
     node: Option<DepNode>,
     reads: EdgesVec,
@@ -1073,7 +1073,7 @@ pub struct TaskDeps<K> {
     phantom_data: PhantomData<DepNode>,
 }
 
-impl<K> Default for TaskDeps<K> {
+impl Default for TaskDeps {
     fn default() -> Self {
         Self {
             #[cfg(debug_assertions)]

@@ -17,11 +17,11 @@ pub use rustc_query_system::dep_graph::{
 
 pub use dep_node::{label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
 
-pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
-pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
-pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
-pub type PreviousDepGraph = rustc_query_system::dep_graph::PreviousDepGraph<DepKind>;
-pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
+pub type DepGraph = rustc_query_system::dep_graph::DepGraph;
+pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps;
+pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery;
+pub type PreviousDepGraph = rustc_query_system::dep_graph::PreviousDepGraph;
+pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph;
 
 /*
 impl rustc_query_system::dep_graph::DepKind for DepKind {

@@ -1,15 +1,15 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
 
-use super::{DepKindExt, DepNode};
+use super::{DepNode};
 
-pub struct DepGraphQuery<K> {
+pub struct DepGraphQuery {
     pub graph: Graph<DepNode, ()>,
     pub indices: FxHashMap<DepNode, NodeIndex>,
 }
 
-impl<K: DepKindExt> DepGraphQuery<K> {
-    pub fn new(nodes: &[DepNode], edges: &[(DepNode, DepNode)]) -> DepGraphQuery<K> {
+impl DepGraphQuery {
+    pub fn new(nodes: &[DepNode], edges: &[(DepNode, DepNode)]) -> DepGraphQuery {
         let mut graph = Graph::with_capacity(nodes.len(), edges.len());
         let mut indices = FxHashMap::default();
         for node in nodes {

@@ -1,22 +1,22 @@
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepKindExt, DepNode};
+use super::{DepNode};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Debug, Encodable, Decodable)]
-pub struct PreviousDepGraph<K: DepKindExt> {
-    data: SerializedDepGraph<K>,
+pub struct PreviousDepGraph {
+    data: SerializedDepGraph,
     index: FxHashMap<DepNode, SerializedDepNodeIndex>,
 }
 
-impl<K: DepKindExt> Default for PreviousDepGraph<K> {
+impl Default for PreviousDepGraph {
     fn default() -> Self {
         PreviousDepGraph { data: Default::default(), index: Default::default() }
     }
 }
 
-impl<K: DepKindExt> PreviousDepGraph<K> {
-    pub fn new(data: SerializedDepGraph<K>) -> PreviousDepGraph<K> {
+impl PreviousDepGraph {
+    pub fn new(data: SerializedDepGraph) -> PreviousDepGraph {
         let index: FxHashMap<_, _> =
             data.nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
         PreviousDepGraph { data, index }

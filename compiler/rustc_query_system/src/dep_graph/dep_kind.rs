@@ -141,14 +141,14 @@ pub trait DepKindExt: Copy + fmt::Debug + Eq + Ord + Hash {
     fn debug_node(node: &DepNode, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps<Self>>>, op: OP) -> R
+    fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps>>, op: OP) -> R
         where
             OP: FnOnce() -> R;
 
     /// Access dependencies from current implicit context.
     fn read_deps<OP>(op: OP)
         where
-            OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
+            OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>);
 
     fn can_reconstruct_query_key(&self) -> bool;
 }

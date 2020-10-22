@@ -33,7 +33,7 @@ pub trait QueryContext: DepContext {
     fn def_path_str(&self, def_id: DefId) -> String;
 
     /// Access the DepGraph.
-    fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
+    fn dep_graph(&self) -> &DepGraph;
 
     /// Get the query information from the TLS context.
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
