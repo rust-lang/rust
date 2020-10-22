@@ -24,7 +24,7 @@ impl CargoTargetSpec {
         snap: &GlobalStateSnapshot,
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
-        cfgs: &[CfgExpr],
+        cfg: &Option<CfgExpr>,
     ) -> Result<(Vec<String>, Vec<String>)> {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
@@ -87,7 +87,7 @@ impl CargoTargetSpec {
             args.push("--all-features".to_string());
         } else {
             let mut features = Vec::new();
-            for cfg in cfgs {
+            if let Some(cfg) = cfg.as_ref() {
                 required_features(cfg, &mut features);
             }
             for feature in &snap.config.cargo.features {

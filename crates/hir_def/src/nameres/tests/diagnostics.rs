@@ -129,3 +129,25 @@ fn unresolved_module() {
         ",
     );
 }
+
+#[test]
+fn inactive_item() {
+    // Additional tests in `cfg` crate. This only tests disabled cfgs.
+
+    check_diagnostics(
+        r#"
+        //- /lib.rs
+          #[cfg(no)] pub fn f() {}
+        //^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+
+          #[cfg(no)] #[cfg(no2)] mod m;
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no and no2 are disabled
+
+          #[cfg(all(not(a), b))] enum E {}
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: b is disabled
+
+          #[cfg(feature = "std")] use std;
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: feature = "std" is disabled
+        "#,
+    );
+}
