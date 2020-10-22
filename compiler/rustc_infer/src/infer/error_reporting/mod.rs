@@ -54,6 +54,7 @@ use crate::infer::OriginalQueryValues;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+    StatementAsExpression,
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -689,7 +690,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer_error_span, msg);
                     if let Some((sp, boxed)) = semi_span {
-                        if boxed {
+                        if matches!(boxed, StatementAsExpression::NeedsBoxing) {
                             err.span_suggestion_verbose(
                                 sp,
                                 "consider removing this semicolon and boxing the expression",
@@ -727,7 +728,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
                 if let Some((sp, boxed)) = semicolon {
-                    if boxed {
+                    if matches!(boxed, StatementAsExpression::NeedsBoxing) {
                         err.span_suggestion_verbose(
                             sp,
                             "consider removing this semicolon and boxing the expression",
