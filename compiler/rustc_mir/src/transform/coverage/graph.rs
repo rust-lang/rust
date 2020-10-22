@@ -1,7 +1,11 @@
+use super::Error;
+
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
-use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes};
+use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, BasicBlockData, Terminator, TerminatorKind};
 
 use std::ops::{Index, IndexMut};
@@ -184,6 +188,13 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
+    pub fn iter_enumerated_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (BasicCoverageBlock, &mut BasicCoverageBlockData)> {
+        self.bcbs.iter_enumerated_mut()
+    }
+
+    #[inline(always)]
     pub fn bcb_from_bb(&self, bb: BasicBlock) -> Option<BasicCoverageBlock> {
         if bb.index() < self.bb_to_bcb.len() { self.bb_to_bcb[bb] } else { None }
     }
@@ -293,12 +304,14 @@ rustc_index::newtype_index! {
 #[derive(Debug, Clone)]
 pub(crate) struct BasicCoverageBlockData {
     pub basic_blocks: Vec<BasicBlock>,
+    pub counter_kind: Option<CoverageKind>,
+    edge_from_bcbs: Option<FxHashMap<BasicCoverageBlock, CoverageKind>>,
 }
 
 impl BasicCoverageBlockData {
     pub fn from(basic_blocks: Vec<BasicBlock>) -> Self {
         assert!(basic_blocks.len() > 0);
-        Self { basic_blocks }
+        Self { basic_blocks, counter_kind: None, edge_from_bcbs: None }
     }
 
     #[inline(always)]
@@ -316,6 +329,91 @@ impl BasicCoverageBlockData {
         &mir_body[self.last_bb()].terminator()
     }
 
+    #[inline(always)]
+    pub fn set_counter(
+        &mut self,
+        counter_kind: CoverageKind,
+    ) -> Result<ExpressionOperandId, Error> {
+        debug_assert!(
+            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
+            // have an expression (to be injected into an existing `BasicBlock` represented by this
+            // `BasicCoverageBlock`).
+            self.edge_from_bcbs.is_none() || counter_kind.is_expression(),
+            "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
+        );
+        let operand = counter_kind.as_operand_id();
+        let expect_none = self.counter_kind.replace(counter_kind);
+        if expect_none.is_some() {
+            return Error::from_string(format!(
+                "attempt to set a BasicCoverageBlock coverage counter more than once; \
+                {:?} already had counter {:?}",
+                self,
+                expect_none.unwrap(),
+            ));
+        }
+        Ok(operand)
+    }
+
+    #[inline(always)]
+    pub fn counter(&self) -> Option<&CoverageKind> {
+        self.counter_kind.as_ref()
+    }
+
+    #[inline(always)]
+    pub fn take_counter(&mut self) -> Option<CoverageKind> {
+        self.counter_kind.take()
+    }
+
+    #[inline(always)]
+    pub fn set_edge_counter_from(
+        &mut self,
+        from_bcb: BasicCoverageBlock,
+        counter_kind: CoverageKind,
+    ) -> Result<ExpressionOperandId, Error> {
+        if level_enabled!(tracing::Level::DEBUG) {
+            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
+            // have an expression (to be injected into an existing `BasicBlock` represented by this
+            // `BasicCoverageBlock`).
+            if !self.counter_kind.as_ref().map_or(true, |c| c.is_expression()) {
+                return Error::from_string(format!(
+                    "attempt to add an incoming edge counter from {:?} when the target BCB already \
+                    has a `Counter`",
+                    from_bcb
+                ));
+            }
+        }
+        let operand = counter_kind.as_operand_id();
+        let expect_none = self
+            .edge_from_bcbs
+            .get_or_insert_with(|| FxHashMap::default())
+            .insert(from_bcb, counter_kind);
+        if expect_none.is_some() {
+            return Error::from_string(format!(
+                "attempt to set an edge counter more than once; from_bcb: \
+                {:?} already had counter {:?}",
+                from_bcb,
+                expect_none.unwrap(),
+            ));
+        }
+        Ok(operand)
+    }
+
+    #[inline(always)]
+    pub fn edge_counter_from(&self, from_bcb: BasicCoverageBlock) -> Option<&CoverageKind> {
+        if let Some(edge_from_bcbs) = &self.edge_from_bcbs {
+            edge_from_bcbs.get(&from_bcb)
+        } else {
+            None
+        }
+    }
+
+    #[inline(always)]
+    pub fn take_edge_counters(
+        &mut self,
+    ) -> Option<impl Iterator<Item = (BasicCoverageBlock, CoverageKind)>> {
+        self.edge_from_bcbs.take().map_or(None, |m| Some(m.into_iter()))
+    }
+
     pub fn id(&self) -> String {
         format!(
             "@{}",
@@ -325,6 +423,56 @@ impl BasicCoverageBlockData {
                 .collect::<Vec<_>>()
                 .join(ID_SEPARATOR)
         )
+    }
+}
+
+/// Represents a successor from a branching BasicCoverageBlock (such as the arms of a `SwitchInt`)
+/// as either the successor BCB itself, if it has only one incoming edge, or the successor _plus_
+/// the specific branching BCB, representing the edge between the two. The latter case
+/// distinguishes this incoming edge from other incoming edges to the same `target_bcb`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) struct BcbBranch {
+    pub edge_from_bcb: Option<BasicCoverageBlock>,
+    pub target_bcb: BasicCoverageBlock,
+}
+
+impl BcbBranch {
+    pub fn from_to(
+        from_bcb: BasicCoverageBlock,
+        to_bcb: BasicCoverageBlock,
+        basic_coverage_blocks: &CoverageGraph,
+    ) -> Self {
+        let edge_from_bcb = if basic_coverage_blocks.predecessors[to_bcb].len() > 1 {
+            Some(from_bcb)
+        } else {
+            None
+        };
+        Self { edge_from_bcb, target_bcb: to_bcb }
+    }
+
+    pub fn counter<'a>(
+        &self,
+        basic_coverage_blocks: &'a CoverageGraph,
+    ) -> Option<&'a CoverageKind> {
+        if let Some(from_bcb) = self.edge_from_bcb {
+            basic_coverage_blocks[self.target_bcb].edge_counter_from(from_bcb)
+        } else {
+            basic_coverage_blocks[self.target_bcb].counter()
+        }
+    }
+
+    pub fn is_only_path_to_target(&self) -> bool {
+        self.edge_from_bcb.is_none()
+    }
+}
+
+impl std::fmt::Debug for BcbBranch {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(from_bcb) = self.edge_from_bcb {
+            write!(fmt, "{:?}->{:?}", from_bcb, self.target_bcb)
+        } else {
+            write!(fmt, "{:?}", self.target_bcb)
+        }
     }
 }
 
@@ -342,6 +490,175 @@ fn bcb_filtered_successors<'a, 'tcx>(
         _ => successors.next().into_iter().chain(&[]),
     }
     .filter(move |&&successor| body[successor].terminator().kind != TerminatorKind::Unreachable)
+}
+
+/// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
+/// CoverageGraph outside all loops. This supports traversing the BCB CFG in a way that
+/// ensures a loop is completely traversed before processing Blocks after the end of the loop.
+#[derive(Debug)]
+pub(crate) struct TraversalContext {
+    /// From one or more backedges returning to a loop header.
+    pub loop_backedges: Option<(Vec<BasicCoverageBlock>, BasicCoverageBlock)>,
+
+    /// worklist, to be traversed, of CoverageGraph in the loop with the given loop
+    /// backedges, such that the loop is the inner inner-most loop containing these
+    /// CoverageGraph
+    pub worklist: Vec<BasicCoverageBlock>,
+}
+
+pub(crate) struct TraverseCoverageGraphWithLoops {
+    pub backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
+    pub context_stack: Vec<TraversalContext>,
+    visited: BitSet<BasicCoverageBlock>,
+}
+
+impl TraverseCoverageGraphWithLoops {
+    pub fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
+        let start_bcb = basic_coverage_blocks.start_node();
+        let backedges = find_loop_backedges(basic_coverage_blocks);
+        let mut context_stack = Vec::new();
+        context_stack.push(TraversalContext { loop_backedges: None, worklist: vec![start_bcb] });
+        // `context_stack` starts with a `TraversalContext` for the main function context (beginning
+        // with the `start` BasicCoverageBlock of the function). New worklists are pushed to the top
+        // of the stack as loops are entered, and popped off of the stack when a loop's worklist is
+        // exhausted.
+        let visited = BitSet::new_empty(basic_coverage_blocks.num_nodes());
+        Self { backedges, context_stack, visited }
+    }
+
+    pub fn next(&mut self, basic_coverage_blocks: &CoverageGraph) -> Option<BasicCoverageBlock> {
+        debug!(
+            "TraverseCoverageGraphWithLoops::next - context_stack: {:?}",
+            self.context_stack.iter().rev().collect::<Vec<_>>()
+        );
+        while let Some(next_bcb) = {
+            // Strip contexts with empty worklists from the top of the stack
+            while self.context_stack.last().map_or(false, |context| context.worklist.is_empty()) {
+                self.context_stack.pop();
+            }
+            // Pop the next bcb off of the current context_stack. If none, all BCBs were visited.
+            self.context_stack.last_mut().map_or(None, |context| context.worklist.pop())
+        } {
+            if !self.visited.insert(next_bcb) {
+                debug!("Already visited: {:?}", next_bcb);
+                continue;
+            }
+            debug!("Visiting {:?}", next_bcb);
+            if self.backedges[next_bcb].len() > 0 {
+                debug!("{:?} is a loop header! Start a new TraversalContext...", next_bcb);
+                self.context_stack.push(TraversalContext {
+                    loop_backedges: Some((self.backedges[next_bcb].clone(), next_bcb)),
+                    worklist: Vec::new(),
+                });
+            }
+            self.extend_worklist(basic_coverage_blocks, next_bcb);
+            return Some(next_bcb);
+        }
+        None
+    }
+
+    pub fn extend_worklist(
+        &mut self,
+        basic_coverage_blocks: &CoverageGraph,
+        bcb: BasicCoverageBlock,
+    ) {
+        let successors = &basic_coverage_blocks.successors[bcb];
+        debug!("{:?} has {} successors:", bcb, successors.len());
+        for &successor in successors {
+            if successor == bcb {
+                debug!(
+                    "{:?} has itself as its own successor. (Note, the compiled code will \
+                    generate an infinite loop.)",
+                    bcb
+                );
+                // Don't re-add this successor to the worklist. We are already processing it.
+                break;
+            }
+            for context in self.context_stack.iter_mut().rev() {
+                // Add successors of the current BCB to the appropriate context. Successors that
+                // stay within a loop are added to the BCBs context worklist. Successors that
+                // exit the loop (they are not dominated by the loop header) must be reachable
+                // from other BCBs outside the loop, and they will be added to a different
+                // worklist.
+                //
+                // Branching blocks (with more than one successor) must be processed before
+                // blocks with only one successor, to prevent unnecessarily complicating
+                // `Expression`s by creating a Counter in a `BasicCoverageBlock` that the
+                // branching block would have given an `Expression` (or vice versa).
+                let (some_successor_to_add, some_loop_header) =
+                    if let Some((_, loop_header)) = context.loop_backedges {
+                        if basic_coverage_blocks.is_dominated_by(successor, loop_header) {
+                            (Some(successor), Some(loop_header))
+                        } else {
+                            (None, None)
+                        }
+                    } else {
+                        (Some(successor), None)
+                    };
+                if let Some(successor_to_add) = some_successor_to_add {
+                    if basic_coverage_blocks.successors[successor_to_add].len() > 1 {
+                        debug!(
+                            "{:?} successor is branching. Prioritize it at the beginning of \
+                            the {}",
+                            successor_to_add,
+                            if let Some(loop_header) = some_loop_header {
+                                format!("worklist for the loop headed by {:?}", loop_header)
+                            } else {
+                                String::from("non-loop worklist")
+                            },
+                        );
+                        context.worklist.insert(0, successor_to_add);
+                    } else {
+                        debug!(
+                            "{:?} successor is non-branching. Defer it to the end of the {}",
+                            successor_to_add,
+                            if let Some(loop_header) = some_loop_header {
+                                format!("worklist for the loop headed by {:?}", loop_header)
+                            } else {
+                                String::from("non-loop worklist")
+                            },
+                        );
+                        context.worklist.push(successor_to_add);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.visited.count() == self.visited.domain_size()
+    }
+
+    pub fn unvisited(&self) -> Vec<BasicCoverageBlock> {
+        let mut unvisited_set: BitSet<BasicCoverageBlock> =
+            BitSet::new_filled(self.visited.domain_size());
+        unvisited_set.subtract(&self.visited);
+        unvisited_set.iter().collect::<Vec<_>>()
+    }
+}
+
+fn find_loop_backedges(
+    basic_coverage_blocks: &CoverageGraph,
+) -> IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>> {
+    let num_bcbs = basic_coverage_blocks.num_nodes();
+    let mut backedges = IndexVec::from_elem_n(Vec::<BasicCoverageBlock>::new(), num_bcbs);
+
+    // Identify loops by their backedges
+    for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
+        for &successor in &basic_coverage_blocks.successors[bcb] {
+            if basic_coverage_blocks.is_dominated_by(bcb, successor) {
+                let loop_header = successor;
+                let backedge_from_bcb = bcb;
+                debug!(
+                    "Found BCB backedge: {:?} -> loop_header: {:?}",
+                    backedge_from_bcb, loop_header
+                );
+                backedges[loop_header].push(backedge_from_bcb);
+            }
+        }
+    }
+    backedges
 }
 
 pub struct ShortCircuitPreorder<

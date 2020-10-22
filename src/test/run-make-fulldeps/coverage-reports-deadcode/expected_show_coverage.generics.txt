@@ -57,7 +57,7 @@
    35|       |    let _ = Firework { strength: 1000 };
    36|       |
    37|       |    Ok(())
-   38|      2|}
+   38|      1|}
    39|       |
    40|       |// Expected program output:
    41|       |//   Exiting with error...

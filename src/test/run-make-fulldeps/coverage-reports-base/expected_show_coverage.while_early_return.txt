@@ -33,7 +33,7 @@
    33|       |        ;
    34|       |    }
    35|      0|    Ok(())
-   36|      2|}
+   36|      1|}
    37|       |
    38|       |// ISSUE(77553): Originally, this test had `Err(1)` on line 22 (instead of `Ok(())`) and
    39|       |// `std::process::exit(2)` on line 26 (instead of `Err(1)`); and this worked as expected on Linux

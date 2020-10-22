@@ -4,7 +4,7 @@ Counter in file 0 17:24 -> 19:6, #1
 Counter in file 0 23:9 -> 28:28, #1
 Counter in file 0 30:8 -> 30:12, (#1 + 0)
 Counter in file 0 31:9 -> 32:22, #2
-Counter in file 0 38:1 -> 38:2, #4
+Counter in file 0 38:1 -> 38:2, (#2 + 0)
 Counter in file 0 10:49 -> 12:6, #1
 Counter in file 0 10:49 -> 12:6, #1
 Emitting segments for file: ../coverage/generics.rs

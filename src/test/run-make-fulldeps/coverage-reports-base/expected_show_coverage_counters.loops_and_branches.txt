@@ -1,12 +1,12 @@
 Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-cov show --debug --Xdemangler=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/stage0-tools-bin/rust-demangler --show-line-counts-or-regions --instr-profile=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/loops_and_branches.profdata /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/loops_and_branches 
 Counter in file 0 10:12 -> 10:16, #1
 Counter in file 0 11:16 -> 11:21, #2
-Counter in file 0 14:14 -> 14:15, #6
-Counter in file 0 15:13 -> 15:31, #7
-Counter in file 0 15:31 -> 15:32, #8
-Counter in file 0 17:10 -> 17:11, #10
-Counter in file 0 18:9 -> 18:15, #11
-Counter in file 0 19:5 -> 19:6, #12
+Counter in file 0 14:14 -> 14:15, (#2 - #5)
+Counter in file 0 15:13 -> 15:31, (0 + (#2 - #5))
+Counter in file 0 15:31 -> 15:32, #4
+Counter in file 0 17:10 -> 17:11, #3
+Counter in file 0 18:9 -> 18:15, (#3 + 0)
+Counter in file 0 19:5 -> 19:6, (#4 + (#3 + 0))
 Counter in file 0 22:11 -> 25:2, #1
 Emitting segments for file: ../coverage/loops_and_branches.rs
 Combined regions:
