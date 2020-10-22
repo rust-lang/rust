@@ -22,6 +22,8 @@ fn main() {
     1 as u32;
     0x10 as i32;
     0b10 as usize;
+    0o73 as u16;
+    1_000_000_000 as u32;
 
     1.0 as f64;
     0.5 as f32;

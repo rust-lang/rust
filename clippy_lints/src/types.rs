@@ -3,7 +3,6 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::fmt::Display;
 
 use if_chain::if_chain;
 use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
@@ -12,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt, StmtKind,
+    ImplItemKind, Item, ItemKind, Lifetime, Lit, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt, StmtKind,
     TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -1225,7 +1224,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for casts to the same type.
+    /// **What it does:** Checks for casts to the same type, casts of int literals to integer types
+    /// and casts of float literals to float types.
     ///
     /// **Why is this bad?** It's just unnecessary.
     ///
@@ -1234,6 +1234,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let _ = 2i32 as i32;
+    /// let _ = 0.5 as f32;
     /// ```
     pub UNNECESSARY_CAST,
     complexity,
@@ -1599,7 +1600,9 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         if let ExprKind::Cast(ref ex, _) = expr.kind {
             let (cast_from, cast_to) = (cx.typeck_results().expr_ty(ex), cx.typeck_results().expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
-            if let ExprKind::Lit(ref lit) = ex.kind {
+            if let Some(lit) = get_numeric_literal(ex) {
+                let literal_str = snippet_opt(cx, lit.span).unwrap_or_default();
+
                 if_chain! {
                     if let LitKind::Int(n, _) = lit.node;
                     if let Some(src) = snippet_opt(cx, lit.span);
@@ -1609,25 +1612,19 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     let to_nbits = fp_ty_mantissa_nbits(cast_to);
                     if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
                     then {
-                        show_unnecessary_cast(cx, expr, n , cast_from, cast_to);
+                        show_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
                         return;
                     }
                 }
 
                 match lit.node {
-                    LitKind::Int(num, LitIntType::Unsuffixed) if cast_to.is_integral() => {
-                        show_unnecessary_cast(cx, expr, num, cast_from, cast_to);
-                        return;
+                    LitKind::Int(_, LitIntType::Unsuffixed) if cast_to.is_integral() => {
+                        show_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
                     },
-                    LitKind::Float(num, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
-                        show_unnecessary_cast(cx, expr, num, cast_from, cast_to);
-                        return;
+                    LitKind::Float(_, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
+                        show_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
                     },
-                    _ => (),
-                };
-
-                match lit.node {
-                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
+                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => (),
                     _ => {
                         if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
                             span_lint(
@@ -1652,13 +1649,21 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
     }
 }
 
-fn show_unnecessary_cast<Num: Display>(
-    cx: &LateContext<'_>,
-    expr: &Expr<'_>,
-    num: Num,
-    cast_from: Ty<'_>,
-    cast_to: Ty<'_>,
-) {
+fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
+    match expr.kind {
+        ExprKind::Lit(ref lit) => Some(lit),
+        ExprKind::Unary(UnOp::UnNeg, e) => {
+            if let ExprKind::Lit(ref lit) = e.kind {
+                Some(lit)
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
+fn show_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &str, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let literal_kind_name = if cast_from.is_integral() { "integer" } else { "float" };
     span_lint_and_sugg(
         cx,
@@ -1666,7 +1671,7 @@ fn show_unnecessary_cast<Num: Display>(
         expr.span,
         &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
         "try",
-        format!("{}_{}", num, cast_to),
+        format!("{}_{}", literal_str, cast_to),
         Applicability::MachineApplicable,
     );
 }
