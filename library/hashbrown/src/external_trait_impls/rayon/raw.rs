@@ -73,7 +73,7 @@ impl<T: Send, A: AllocRef + Clone> ParallelIterator for RawIntoParIter<T, A> {
         C: UnindexedConsumer<Self::Item>,
     {
         let iter = unsafe { self.table.iter().iter };
-        let _guard = guard(self.table.into_alloc(), |alloc| {
+        let _guard = guard(self.table.into_allocation(), |alloc| {
             if let Some((ptr, layout)) = *alloc {
                 unsafe {
                     dealloc(ptr.as_ptr(), layout);

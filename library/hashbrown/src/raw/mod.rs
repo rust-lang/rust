@@ -1182,20 +1182,20 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
     pub unsafe fn into_iter_from(self, iter: RawIter<T>) -> RawIntoIter<T, A> {
         debug_assert_eq!(iter.len(), self.len());
 
-        let allocator = self.alloc.clone();
-        let alloc = self.into_alloc();
+        let alloc = self.alloc.clone();
+        let allocation = self.into_allocation();
         RawIntoIter {
             iter,
-            alloc,
+            allocation,
             marker: PhantomData,
-            allocator,
+            alloc,
         }
     }
 
     /// Converts the table into a raw allocation. The contents of the table
     /// should be dropped using a `RawIter` before freeing the allocation.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub(crate) fn into_alloc(self) -> Option<(NonNull<u8>, Layout)> {
+    pub(crate) fn into_allocation(self) -> Option<(NonNull<u8>, Layout)> {
         let alloc = if self.is_empty_singleton() {
             None
         } else {
@@ -1765,9 +1765,9 @@ impl<T> FusedIterator for RawIter<T> {}
 /// Iterator which consumes a table and returns elements.
 pub struct RawIntoIter<T, A: AllocRef + Clone> {
     iter: RawIter<T>,
-    alloc: Option<(NonNull<u8>, Layout)>,
+    allocation: Option<(NonNull<u8>, Layout)>,
     marker: PhantomData<T>,
-    allocator: A,
+    alloc: A,
 }
 
 impl<T, A: AllocRef + Clone> RawIntoIter<T, A> {
@@ -1793,8 +1793,8 @@ unsafe impl<#[may_dangle] T, A: AllocRef + Clone> Drop for RawIntoIter<T, A> {
             }
 
             // Free the table
-            if let Some((ptr, layout)) = self.alloc {
-                self.allocator.dealloc(ptr, layout);
+            if let Some((ptr, layout)) = self.allocation {
+                self.alloc.dealloc(ptr, layout);
             }
         }
     }
@@ -1812,8 +1812,8 @@ impl<T, A: AllocRef + Clone> Drop for RawIntoIter<T, A> {
             }
 
             // Free the table
-            if let Some((ptr, layout)) = self.alloc {
-                self.allocator
+            if let Some((ptr, layout)) = self.allocation {
+                self.alloc
                     .dealloc(NonNull::new_unchecked(ptr.as_ptr()), layout);
             }
         }
