@@ -775,17 +775,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
-                if {
-                    // This optimization applies for types that can hold arbitrary bytes (such as
-                    // integer and floating point types) or for structs or tuples with no fields.
-                    // FIXME(wesleywiser) This logic could be extended further to arbitrary structs
-                    // or tuples made up of integer/floating point types or inhabited ZSTs with no
-                    // padding.
-                    match tys.kind() {
-                        ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
-                        _ => false,
-                    }
-                } =>
+                // This optimization applies for types that can hold arbitrary bytes (such as
+                // integer and floating point types) or for structs or tuples with no fields.
+                // FIXME(wesleywiser) This logic could be extended further to arbitrary structs
+                // or tuples made up of integer/floating point types or inhabited ZSTs with no
+                // padding.
+                if matches!(tys.kind(), ty::Int(..) | ty::Uint(..) | ty::Float(..))
+                =>
             {
                 // Optimized handling for arrays of integer/float type.
 
@@ -853,7 +849,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             // of an array and not all of them, because there's only a single value of a specific
             // ZST type, so either validation fails for all elements or none.
             ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(tys)?.is_zst() => {
-                // Validate just the first element
+                // Validate just the first element (if any).
                 self.walk_aggregate(op, fields.take(1))?
             }
             _ => {
