@@ -52,21 +52,20 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
 
 impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        let _:Option<_> = try {
+        let _: Option<_> = try {
             let target = terminator.kind.as_goto()?;
             // We only apply this optimization if the last statement is a const assignment
-            let last_statement =
-                self.body.basic_blocks()[location.block].statements.last()?;
+            let last_statement = self.body.basic_blocks()[location.block].statements.last()?;
 
-            if let Some(box (place, Rvalue::Use(op))) = last_statement.kind.as_assign(){
+            if let Some(box (place, Rvalue::Use(op))) = last_statement.kind.as_assign() {
                 let _const = op.constant()?;
                 // We found a constant being assigned to `place`.
                 // Now check that the target of this Goto switches on this place.
                 let target_bb = &self.body.basic_blocks()[target];
-                
-                // FIXME(simonvandel): We are conservative here when we don't allow 
+
+                // FIXME(simonvandel): We are conservative here when we don't allow
                 // any statements in the target basic block.
-                // This could probably be relaxed to allow `StorageDead`s which could be 
+                // This could probably be relaxed to allow `StorageDead`s which could be
                 // copied to the predecessor of this block.
                 if !target_bb.statements.is_empty() {
                     None?
@@ -77,15 +76,12 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                 if discr.place() == Some(*place) {
                     // We now know that the Switch matches on the const place, and it is statementless
                     // Now find which value in the Switch matches the const value.
-                    let const_value = _const.literal.try_eval_bits(
-                        self.tcx,
-                        self.param_env,
-                        switch_ty,
-                    )?;
+                    let const_value =
+                        _const.literal.try_eval_bits(self.tcx, self.param_env, switch_ty)?;
                     let found_value_idx_option = targets
                         .iter()
                         .enumerate()
-                        .find(|(_, (value,_))| const_value == *value)
+                        .find(|(_, (value, _))| const_value == *value)
                         .map(|(idx, _)| idx);
 
                     let target_to_use_in_goto =
