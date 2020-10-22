@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner};
+use syntax::ast::{self, AstNode, AttrsOwner, GenericParamsOwner, NameOwner};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -27,6 +27,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()
     let nominal = ctx.find_node_at_offset::<ast::AdtDef>()?;
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
+
     acc.add(
         AssistId("generate_impl", AssistKind::Generate),
         format!("Generate impl for `{}`", name),
@@ -35,7 +36,15 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()
             let type_params = nominal.generic_param_list();
             let start_offset = nominal.syntax().text_range().end();
             let mut buf = String::new();
-            buf.push_str("\n\nimpl");
+            buf.push_str("\n\n");
+            nominal
+                .attrs()
+                .filter(|attr| {
+                    attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false)
+                })
+                .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
+
+            buf.push_str("impl");
             if let Some(type_params) = &type_params {
                 format_to!(buf, "{}", type_params.syntax());
             }
@@ -90,6 +99,35 @@ mod tests {
             generate_impl,
             "struct Foo<'a, T: Foo<'a>> {<|>}",
             "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n    $0\n}",
+        );
+        check_assist(
+            generate_impl,
+            r#"
+            #[cfg(feature = "foo")]
+            struct Foo<'a, T: Foo<'a>> {<|>}"#,
+            r#"
+            #[cfg(feature = "foo")]
+            struct Foo<'a, T: Foo<'a>> {}
+
+            #[cfg(feature = "foo")]
+            impl<'a, T: Foo<'a>> Foo<'a, T> {
+                $0
+            }"#,
+        );
+
+        check_assist(
+            generate_impl,
+            r#"
+            #[cfg(not(feature = "foo"))]
+            struct Foo<'a, T: Foo<'a>> {<|>}"#,
+            r#"
+            #[cfg(not(feature = "foo"))]
+            struct Foo<'a, T: Foo<'a>> {}
+
+            #[cfg(not(feature = "foo"))]
+            impl<'a, T: Foo<'a>> Foo<'a, T> {
+                $0
+            }"#,
         );
     }
 
