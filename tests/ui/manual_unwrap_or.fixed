@@ -1,5 +1,6 @@
 // run-rustfix
 #![allow(dead_code)]
+#![allow(unused_variables)]
 
 fn option_unwrap_or() {
     // int case
@@ -67,44 +68,58 @@ fn option_unwrap_or() {
 
 fn result_unwrap_or() {
     // int case
+    Ok::<i32, &str>(1).unwrap_or(42);
+
+    // int case, suggestion must surround with parenthesis
     (Ok(1) as Result<i32, &str>).unwrap_or(42);
 
     // int case reversed
-    (Ok(1) as Result<i32, &str>).unwrap_or(42);
+    Ok::<i32, &str>(1).unwrap_or(42);
 
     // richer none expr
-    (Ok(1) as Result<i32, &str>).unwrap_or(1 + 42);
+    Ok::<i32, &str>(1).unwrap_or(1 + 42);
 
     // multiline case
     #[rustfmt::skip]
-    (Ok(1) as Result<i32, &str>).unwrap_or({
+    Ok::<i32, &str>(1).unwrap_or({
         42 + 42
             + 42 + 42 + 42
             + 42 + 42 + 42
     });
 
     // string case
-    (Ok("Bob") as Result<&str, &str>).unwrap_or("Alice");
+    Ok::<&str, &str>("Bob").unwrap_or("Alice");
 
     // don't lint
-    match Ok(1) as Result<i32, &str> {
+    match Ok::<i32, &str>(1) {
         Ok(i) => i + 2,
         Err(_) => 42,
     };
-    match Ok(1) as Result<i32, &str> {
+    match Ok::<i32, &str>(1) {
         Ok(i) => i,
         Err(_) => return,
     };
     for j in 0..4 {
-        match Ok(j) as Result<i32, &str> {
+        match Ok::<i32, &str>(j) {
             Ok(i) => i,
             Err(_) => continue,
         };
-        match Ok(j) as Result<i32, &str> {
+        match Ok::<i32, &str>(j) {
             Ok(i) => i,
             Err(_) => break,
         };
     }
+
+    // don't lint, Err value is used
+    match Ok::<&str, &str>("Alice") {
+        Ok(s) => s,
+        Err(s) => s,
+    };
+    // could lint, but unused_variables takes care of it
+    match Ok::<&str, &str>("Alice") {
+        Ok(s) => s,
+        Err(s) => "Bob",
+    };
 }
 
 fn main() {}

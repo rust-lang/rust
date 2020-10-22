@@ -1,5 +1,5 @@
 error: this pattern reimplements `Option::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:6:5
+  --> $DIR/manual_unwrap_or.rs:7:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
@@ -10,7 +10,7 @@ LL | |     };
    = note: `-D clippy::manual-unwrap-or` implied by `-D warnings`
 
 error: this pattern reimplements `Option::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:12:5
+  --> $DIR/manual_unwrap_or.rs:13:5
    |
 LL | /     match Some(1) {
 LL | |         None => 42,
@@ -19,7 +19,7 @@ LL | |     };
    | |_____^ help: replace with: `Some(1).unwrap_or(42)`
 
 error: this pattern reimplements `Option::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:18:5
+  --> $DIR/manual_unwrap_or.rs:19:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
@@ -28,7 +28,7 @@ LL | |     };
    | |_____^ help: replace with: `Some(1).unwrap_or(1 + 42)`
 
 error: this pattern reimplements `Option::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:25:5
+  --> $DIR/manual_unwrap_or.rs:26:5
    |
 LL | /     match Some(1) {
 LL | |         Some(i) => i,
@@ -49,7 +49,7 @@ LL |     });
    |
 
 error: this pattern reimplements `Option::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:35:5
+  --> $DIR/manual_unwrap_or.rs:36:5
    |
 LL | /     match Some("Bob") {
 LL | |         Some(i) => i,
@@ -58,7 +58,16 @@ LL | |     };
    | |_____^ help: replace with: `Some("Bob").unwrap_or("Alice")`
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:85:5
+  --> $DIR/manual_unwrap_or.rs:86:5
+   |
+LL | /     match Ok::<i32, &str>(1) {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 42,
+LL | |     };
+   | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:92:5
    |
 LL | /     match Ok(1) as Result<i32, &str> {
 LL | |         Ok(i) => i,
@@ -67,27 +76,27 @@ LL | |     };
    | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(42)`
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:91:5
+  --> $DIR/manual_unwrap_or.rs:98:5
    |
-LL | /     match Ok(1) as Result<i32, &str> {
+LL | /     match Ok::<i32, &str>(1) {
 LL | |         Err(_) => 42,
 LL | |         Ok(i) => i,
 LL | |     };
-   | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(42)`
-
-error: this pattern reimplements `Result::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:97:5
-   |
-LL | /     match Ok(1) as Result<i32, &str> {
-LL | |         Ok(i) => i,
-LL | |         Err(_) => 1 + 42,
-LL | |     };
-   | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(1 + 42)`
+   | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(42)`
 
 error: this pattern reimplements `Result::unwrap_or`
   --> $DIR/manual_unwrap_or.rs:104:5
    |
-LL | /     match Ok(1) as Result<i32, &str> {
+LL | /     match Ok::<i32, &str>(1) {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 1 + 42,
+LL | |     };
+   | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(1 + 42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:111:5
+   |
+LL | /     match Ok::<i32, &str>(1) {
 LL | |         Ok(i) => i,
 LL | |         Err(_) => {
 LL | |             42 + 42
@@ -98,7 +107,7 @@ LL | |     };
    |
 help: replace with
    |
-LL |     (Ok(1) as Result<i32, &str>).unwrap_or({
+LL |     Ok::<i32, &str>(1).unwrap_or({
 LL |         42 + 42
 LL |             + 42 + 42 + 42
 LL |             + 42 + 42 + 42
@@ -106,13 +115,13 @@ LL |     });
    |
 
 error: this pattern reimplements `Result::unwrap_or`
-  --> $DIR/manual_unwrap_or.rs:114:5
+  --> $DIR/manual_unwrap_or.rs:121:5
    |
-LL | /     match Ok("Bob") as Result<&str, &str> {
+LL | /     match Ok::<&str, &str>("Bob") {
 LL | |         Ok(i) => i,
 LL | |         Err(_) => "Alice",
 LL | |     };
-   | |_____^ help: replace with: `(Ok("Bob") as Result<&str, &str>).unwrap_or("Alice")`
+   | |_____^ help: replace with: `Ok::<&str, &str>("Bob").unwrap_or("Alice")`
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 

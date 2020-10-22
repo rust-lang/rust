@@ -1,5 +1,6 @@
 // run-rustfix
 #![allow(dead_code)]
+#![allow(unused_variables)]
 
 fn option_unwrap_or() {
     // int case
@@ -82,26 +83,32 @@ fn option_unwrap_or() {
 
 fn result_unwrap_or() {
     // int case
+    match Ok::<i32, &str>(1) {
+        Ok(i) => i,
+        Err(_) => 42,
+    };
+
+    // int case, suggestion must surround with parenthesis
     match Ok(1) as Result<i32, &str> {
         Ok(i) => i,
         Err(_) => 42,
     };
 
     // int case reversed
-    match Ok(1) as Result<i32, &str> {
+    match Ok::<i32, &str>(1) {
         Err(_) => 42,
         Ok(i) => i,
     };
 
     // richer none expr
-    match Ok(1) as Result<i32, &str> {
+    match Ok::<i32, &str>(1) {
         Ok(i) => i,
         Err(_) => 1 + 42,
     };
 
     // multiline case
     #[rustfmt::skip]
-    match Ok(1) as Result<i32, &str> {
+    match Ok::<i32, &str>(1) {
         Ok(i) => i,
         Err(_) => {
             42 + 42
@@ -111,30 +118,41 @@ fn result_unwrap_or() {
     };
 
     // string case
-    match Ok("Bob") as Result<&str, &str> {
+    match Ok::<&str, &str>("Bob") {
         Ok(i) => i,
         Err(_) => "Alice",
     };
 
     // don't lint
-    match Ok(1) as Result<i32, &str> {
+    match Ok::<i32, &str>(1) {
         Ok(i) => i + 2,
         Err(_) => 42,
     };
-    match Ok(1) as Result<i32, &str> {
+    match Ok::<i32, &str>(1) {
         Ok(i) => i,
         Err(_) => return,
     };
     for j in 0..4 {
-        match Ok(j) as Result<i32, &str> {
+        match Ok::<i32, &str>(j) {
             Ok(i) => i,
             Err(_) => continue,
         };
-        match Ok(j) as Result<i32, &str> {
+        match Ok::<i32, &str>(j) {
             Ok(i) => i,
             Err(_) => break,
         };
     }
+
+    // don't lint, Err value is used
+    match Ok::<&str, &str>("Alice") {
+        Ok(s) => s,
+        Err(s) => s,
+    };
+    // could lint, but unused_variables takes care of it
+    match Ok::<&str, &str>("Alice") {
+        Ok(s) => s,
+        Err(s) => "Bob",
+    };
 }
 
 fn main() {}
