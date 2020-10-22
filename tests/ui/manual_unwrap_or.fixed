@@ -70,6 +70,10 @@ fn result_unwrap_or() {
     // int case
     Ok::<i32, &str>(1).unwrap_or(42);
 
+    // int case, scrutinee is a binding
+    let a = Ok::<i32, &str>(1);
+    a.unwrap_or(42);
+
     // int case, suggestion must surround with parenthesis
     (Ok(1) as Result<i32, &str>).unwrap_or(42);
 

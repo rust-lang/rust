@@ -88,6 +88,13 @@ fn result_unwrap_or() {
         Err(_) => 42,
     };
 
+    // int case, scrutinee is a binding
+    let a = Ok::<i32, &str>(1);
+    match a {
+        Ok(i) => i,
+        Err(_) => 42,
+    };
+
     // int case, suggestion must surround with parenthesis
     match Ok(1) as Result<i32, &str> {
         Ok(i) => i,
