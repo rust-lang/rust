@@ -378,7 +378,11 @@ fn is_enum_name_similar_to_param_name(
 fn get_string_representation(expr: &ast::Expr) -> Option<String> {
     match expr {
         ast::Expr::MethodCallExpr(method_call_expr) => {
-            Some(method_call_expr.name_ref()?.to_string())
+            let name_ref = method_call_expr.name_ref()?;
+            match name_ref.text().as_str() {
+                "clone" => method_call_expr.receiver().map(|rec| rec.to_string()),
+                name_ref => Some(name_ref.to_owned()),
+            }
         }
         ast::Expr::RefExpr(ref_expr) => get_string_representation(&ref_expr.expr()?),
         _ => Some(expr.to_string()),
@@ -1204,6 +1208,29 @@ fn main() {
       some_iter.push(iter::repeat(2).take(2));
     let iter_of_iters = some_iter.take(2);
       //^^^^^^^^^^^^^ impl Iterator<Item = impl Iterator<Item = i32>>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn hide_param_hints_for_clones() {
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
+            r#"
+fn foo(bar: i32, baz: String, qux: f32) {}
+
+fn main() {
+    let bar = 3;
+    let baz = &"baz";
+    let fez = 1.0;
+    foo(bar.clone(), baz.clone(), fez.clone());
+                                //^^^^^^^^^^^ qux
 }
 "#,
         );
