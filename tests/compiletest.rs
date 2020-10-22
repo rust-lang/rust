@@ -24,10 +24,10 @@ fn run_tests(mode: &str, path: &str, target: &str) {
     } else {
         flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     }
-    if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
+    if let Ok(sysroot) = env::var("MIRI_SYSROOT") {
         flags.push(format!("--sysroot {}", sysroot));
     }
-    if let Ok(extra_flags) = std::env::var("MIRIFLAGS") {
+    if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         flags.push(extra_flags);
     }
 
@@ -80,14 +80,16 @@ fn get_host() -> String {
 }
 
 fn get_target() -> String {
-    std::env::var("MIRI_TEST_TARGET").unwrap_or_else(|_| get_host())
+    env::var("MIRI_TEST_TARGET").unwrap_or_else(|_| get_host())
 }
 
 fn test_runner(_tests: &[&()]) {
     // Add a test env var to do environment communication tests.
-    std::env::set_var("MIRI_ENV_VAR_TEST", "0");
+    env::set_var("MIRI_ENV_VAR_TEST", "0");
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
-    std::env::set_var("MIRI_TEMP", std::env::temp_dir());
+    env::set_var("MIRI_TEMP", env::temp_dir());
+    // Panic tests expect backtraces to be printed.
+    env::set_var("RUST_BACKTRACE", "1");
 
     let target = get_target();
     miri_pass("tests/run-pass", &target);
