@@ -1,7 +1,7 @@
 error: variable does not need to be mutable
   --> $DIR/unused-mut-issue-50343.rs:7:33
    |
-LL |     vec![(42, 22)].iter().map(|(mut x, _y)| ()).count();
+LL |     vec![(42, 22)].iter().map(|(mut x, _y)| ()).for_each(drop);
    |                                 ----^
    |                                 |
    |                                 help: remove this `mut`
