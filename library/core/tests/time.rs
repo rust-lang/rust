@@ -108,26 +108,24 @@ fn sub() {
 
 #[test]
 fn checked_sub() {
-    let zero = Duration::zero();
-    assert_eq!(Duration::NANOSECOND.checked_sub(zero), Some(Duration::NANOSECOND));
+    assert_eq!(Duration::NANOSECOND.checked_sub(Duration::ZERO), Some(Duration::NANOSECOND));
     assert_eq!(
         Duration::SECOND.checked_sub(Duration::NANOSECOND),
         Some(Duration::new(0, 999_999_999))
     );
-    assert_eq!(zero.checked_sub(Duration::NANOSECOND), None);
-    assert_eq!(zero.checked_sub(Duration::SECOND), None);
+    assert_eq!(Duration::ZERO.checked_sub(Duration::NANOSECOND), None);
+    assert_eq!(Duration::ZERO.checked_sub(Duration::SECOND), None);
 }
 
 #[test]
 fn saturating_sub() {
-    let zero = Duration::new(0, 0);
-    assert_eq!(Duration::NANOSECOND.saturating_sub(zero), Duration::NANOSECOND);
+    assert_eq!(Duration::NANOSECOND.saturating_sub(Duration::ZERO), Duration::NANOSECOND);
     assert_eq!(
         Duration::SECOND.saturating_sub(Duration::NANOSECOND),
         Duration::new(0, 999_999_999)
     );
-    assert_eq!(zero.saturating_sub(Duration::NANOSECOND), Duration::MIN);
-    assert_eq!(zero.saturating_sub(Duration::SECOND), Duration::MIN);
+    assert_eq!(Duration::ZERO.saturating_sub(Duration::NANOSECOND), Duration::MIN);
+    assert_eq!(Duration::ZERO.saturating_sub(Duration::SECOND), Duration::MIN);
 }
 
 #[test]
@@ -339,10 +337,7 @@ fn duration_const() {
     const SUB_SEC_NANOS: u32 = DURATION.subsec_nanos();
     assert_eq!(SUB_SEC_NANOS, 123_456_789);
 
-    const ZERO: Duration = Duration::zero();
-    assert_eq!(ZERO, Duration::new(0, 0));
-
-    const IS_ZERO: bool = ZERO.is_zero();
+    const IS_ZERO: bool = Duration::ZERO.is_zero();
     assert!(IS_ZERO);
 
     const SECONDS: u64 = Duration::SECOND.as_secs();
@@ -386,7 +381,7 @@ fn duration_const() {
     const CHECKED_ADD: Option<Duration> = MAX.checked_add(Duration::SECOND);
     assert_eq!(CHECKED_ADD, None);
 
-    const CHECKED_SUB: Option<Duration> = ZERO.checked_sub(Duration::SECOND);
+    const CHECKED_SUB: Option<Duration> = (Duration::ZERO).checked_sub(Duration::SECOND);
     assert_eq!(CHECKED_SUB, None);
 
     const CHECKED_MUL: Option<Duration> = Duration::SECOND.checked_mul(1);
@@ -416,8 +411,8 @@ fn duration_const() {
     const SATURATING_ADD: Duration = MAX.saturating_add(Duration::SECOND);
     assert_eq!(SATURATING_ADD, MAX);
 
-    const SATURATING_SUB: Duration = ZERO.saturating_sub(Duration::SECOND);
-    assert_eq!(SATURATING_SUB, ZERO);
+    const SATURATING_SUB: Duration = (Duration::ZERO).saturating_sub(Duration::SECOND);
+    assert_eq!(SATURATING_SUB, Duration::ZERO);
 
     const SATURATING_MUL: Duration = MAX.saturating_mul(2);
     assert_eq!(SATURATING_MUL, MAX);

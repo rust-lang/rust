@@ -75,14 +75,14 @@ fn instant_checked_duration_since_nopanic() {
     let later = now + Duration::SECOND;
     assert_eq!(earlier.checked_duration_since(now), None);
     assert_eq!(later.checked_duration_since(now), Some(Duration::SECOND));
-    assert_eq!(now.checked_duration_since(now), Some(Duration::zero()));
+    assert_eq!(now.checked_duration_since(now), Some(Duration::ZERO));
 }
 
 #[test]
 fn instant_saturating_duration_since_nopanic() {
     let a = Instant::now();
     let ret = (a - Duration::SECOND).saturating_duration_since(a);
-    assert_eq!(ret, Duration::zero());
+    assert_eq!(ret, Duration::ZERO);
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn system_time_math() {
     let a = SystemTime::now();
     let b = SystemTime::now();
     match b.duration_since(a) {
-        Ok(dur) if dur == Duration::zero() => {
+        Ok(Duration::ZERO) => {
             assert_almost_eq!(a, b);
         }
         Ok(dur) => {

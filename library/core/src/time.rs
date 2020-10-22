@@ -108,6 +108,21 @@ impl Duration {
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const NANOSECOND: Duration = Duration::from_nanos(1);
 
+    /// A duration of zero time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_zero)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::ZERO;
+    /// assert!(duration.is_zero());
+    /// assert_eq!(duration.as_nanos(), 0);
+    /// ```
+    #[unstable(feature = "duration_zero", issue = "73544")]
+    pub const ZERO: Duration = Duration::from_nanos(0);
+
     /// The minimum duration.
     ///
     /// # Examples
@@ -164,24 +179,6 @@ impl Duration {
         };
         let nanos = nanos % NANOS_PER_SEC;
         Duration { secs, nanos }
-    }
-
-    /// Creates a new `Duration` that spans no time.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(duration_zero)]
-    /// use std::time::Duration;
-    ///
-    /// let duration = Duration::zero();
-    /// assert!(duration.is_zero());
-    /// assert_eq!(duration.as_nanos(), 0);
-    /// ```
-    #[unstable(feature = "duration_zero", issue = "73544")]
-    #[inline]
-    pub const fn zero() -> Duration {
-        Duration { secs: 0, nanos: 0 }
     }
 
     /// Creates a new `Duration` from the specified number of whole seconds.
@@ -277,7 +274,7 @@ impl Duration {
     /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
-    /// assert!(Duration::zero().is_zero());
+    /// assert!(Duration::ZERO.is_zero());
     /// assert!(Duration::new(0, 0).is_zero());
     /// assert!(Duration::from_nanos(0).is_zero());
     /// assert!(Duration::from_secs(0).is_zero());
