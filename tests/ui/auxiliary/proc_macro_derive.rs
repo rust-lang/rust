@@ -3,6 +3,7 @@
 
 #![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_quote)]
+#![allow(incomplete_features)]
 
 extern crate proc_macro;
 
