@@ -25,6 +25,9 @@
             },
             "patterns": [
                 {
+                    "include": "#block-comments"
+                },
+                {
                     "include": "#comments"
                 },
                 {
@@ -185,6 +188,9 @@
             },
             "patterns": [
                 {
+                    "include": "#block-comments"
+                },
+                {
                     "include": "#comments"
                 },
                 {
@@ -212,6 +218,9 @@
             },
             "patterns": [
                 {
+                    "include": "#block-comments"
+                },
+                {
                     "include": "#comments"
                 },
                 {
@@ -230,6 +239,9 @@
                     "include": "#lvariables"
                 }
             ]
+        },
+        {
+            "include": "#block-comments"
         },
         {
             "include": "#comments"
@@ -277,23 +289,22 @@
                 {
                     "comment": "documentation comments",
                     "name": "comment.line.documentation.rust",
-                    "match": "^\\s*///.*",
-                    "patterns": [
-                        {
-                            "include": "#comments"
-                        }
-                    ]
+                    "match": "^\\s*///.*"
                 },
                 {
                     "comment": "line comments",
                     "name": "comment.line.double-slash.rust",
-                    "match": "\\s*//.*",
-                    "patterns": [
-                        {
-                            "include": "#comments"
-                        }
-                    ]
+                    "match": "\\s*//.*"
                 },
+                {
+                    "comment": "inferred types, wildcard patterns, ignored params",
+                    "name": "comment.char.underscore.rust",
+                    "match": "\\b_\\w*\\b[^!(]"
+                }
+            ]
+        },
+        "block-comments": {
+            "patterns": [
                 {
                     "comment": "block comments",
                     "name": "comment.block.rust",
@@ -301,7 +312,7 @@
                     "end": "\\*/",
                     "patterns": [
                         {
-                            "include": "#comments"
+                            "include": "#block-comments"
                         }
                     ]
                 },
@@ -312,14 +323,9 @@
                     "end": "\\*/",
                     "patterns": [
                         {
-                            "include": "#comments"
+                            "include": "#block-comments"
                         }
                     ]
-                },
-                {
-                    "comment": "inferred types, wildcard patterns, ignored params",
-                    "name": "comment.char.underscore.rust",
-                    "match": "\\b_\\w*\\b"
                 }
             ]
         },
@@ -451,6 +457,9 @@
                     },
                     "patterns": [
                         {
+                            "include": "#block-comments"
+                        },
+                        {
                             "include": "#comments"
                         },
                         {
@@ -516,6 +525,9 @@
                         }
                     },
                     "patterns": [
+                        {
+                            "include": "#block-comments"
+                        },
                         {
                             "include": "#comments"
                         },
@@ -797,6 +809,9 @@
                         }
                     },
                     "patterns": [
+                        {
+                            "include": "#block-comments"
+                        },
                         {
                             "include": "#comments"
                         },

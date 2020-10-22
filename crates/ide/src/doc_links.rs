@@ -132,7 +132,8 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
     let import_map = db.import_map(krate.into());
     let base = once(krate.display_name(db)?.to_string())
         .chain(import_map.path_of(ns)?.segments.iter().map(|name| name.to_string()))
-        .join("/");
+        .join("/")
+        + "/";
 
     let filename = get_symbol_filename(db, &target_def);
     let fragment = match definition {
@@ -152,9 +153,16 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         _ => None,
     };
 
-    get_doc_url(db, &krate)
-        .and_then(|url| url.join(&base).ok())
-        .and_then(|url| filename.as_deref().and_then(|f| url.join(f).ok()))
+    get_doc_url(db, &krate)?
+        .join(&base)
+        .ok()
+        .and_then(|mut url| {
+            if !matches!(definition, Definition::ModuleDef(ModuleDef::Module(..))) {
+                url.path_segments_mut().ok()?.pop();
+            };
+            Some(url)
+        })
+        .and_then(|url| url.join(filename.as_deref()?).ok())
         .and_then(
             |url| if let Some(fragment) = fragment { url.join(&fragment).ok() } else { Some(url) },
         )
@@ -520,6 +528,18 @@ pub struct Foo {
 "#,
             expect![[r##"https://docs.rs/test/*/test/struct.Foo.html#structfield.field"##]],
         );
+    }
+
+    #[test]
+    fn test_module() {
+        check(
+            r#"
+pub mod foo {
+    pub mod ba<|>r {}
+}
+        "#,
+            expect![[r#"https://docs.rs/test/*/test/foo/bar/index.html"#]],
+        )
     }
 
     // FIXME: ImportMap will return re-export paths instead of public module
