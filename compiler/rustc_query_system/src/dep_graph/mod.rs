@@ -1,11 +1,13 @@
 pub mod debug;
 mod dep_node;
+mod dep_kind;
 mod graph;
 mod prev;
 mod query;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
+pub use dep_kind::DepKindEnum;
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;

@@ -86,21 +86,8 @@ macro_rules! is_anon_attr {
     };
 }
 
-macro_rules! is_eval_always_attr {
-    (eval_always) => {
-        true
-    };
-    ($attr:ident) => {
-        false
-    };
-}
-
 macro_rules! contains_anon_attr {
     ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_anon_attr!($attr) | )* false});
-}
-
-macro_rules! contains_eval_always_attr {
-    ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
 macro_rules! define_dep_nodes {
@@ -110,15 +97,15 @@ macro_rules! define_dep_nodes {
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-        #[allow(non_camel_case_types)]
-        pub enum DepKind {
-            $($variant),*
+        pub use rustc_query_system::dep_graph::DepKindEnum as DepKind;
+
+        trait DepKindExt {
+            fn can_reconstruct_query_key<$tcx>(&self) -> bool;
         }
 
-        impl DepKind {
-            #[allow(unreachable_code)]
-            pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
+        impl DepKindExt for DepKind {
+            #[allow(unreachable_code, unused_lifetimes)]
+            fn can_reconstruct_query_key<$tcx>(&self) -> bool {
                 match *self {
                     $(
                         DepKind :: $variant => {
@@ -133,39 +120,6 @@ macro_rules! define_dep_nodes {
                             })*
 
                             true
-                        }
-                    )*
-                }
-            }
-
-            pub fn is_anon(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => { contains_anon_attr!($($attrs)*) }
-                    )*
-                }
-            }
-
-            pub fn is_eval_always(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => { contains_eval_always_attr!($($attrs)*) }
-                    )*
-                }
-            }
-
-            #[allow(unreachable_code)]
-            pub fn has_params(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => {
-                            // tuple args
-                            $({
-                                erase!($tuple_arg_ty);
-                                return true;
-                            })*
-
-                            false
                         }
                     )*
                 }
@@ -191,7 +145,7 @@ macro_rules! define_dep_nodes {
             )*
         }
 
-        pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
+        pub type DepNode = rustc_query_system::dep_graph::DepNode<rustc_query_system::dep_graph::DepKindEnum>;
 
         pub trait DepNodeExt: Sized {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
