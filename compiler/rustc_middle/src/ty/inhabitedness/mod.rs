@@ -201,13 +201,13 @@ impl<'tcx> TyS<'tcx> {
             ),
 
             Array(ty, len) => match len.try_eval_usize(tcx, param_env) {
+                Some(0) | None => DefIdForest::empty(),
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
-                Some(n) if n != 0 => ty.uninhabited_from(tcx, param_env),
-                _ => DefIdForest::empty(),
+                Some(1..) => ty.uninhabited_from(tcx, param_env),
             },
 
-            // References to uninitialised memory is valid for any type, including
+            // References to uninitialised memory are valid for any type, including
             // uninhabited types, in unsafe code, so we treat all references as
             // inhabited.
             // The precise semantics of inhabitedness with respect to references is currently
