@@ -263,6 +263,7 @@ language_item_table! {
     // is required to define it somewhere. Additionally, there are restrictions on crates that use
     // a weak lang item, but do not have it defined.
     Panic,                   sym::panic,               panic_fn,                   Target::Fn;
+    PanicStr,                sym::panic_str,           panic_str,                  Target::Fn;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn;
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct;
