@@ -1202,7 +1202,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if !builder.config.dry_run && suite == "run-make-fulldeps" {
+            if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
                 cmd.arg("--cc")
                     .arg(builder.cc(target))
                     .arg("--cxx")
