@@ -188,11 +188,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             } else {
-                let (arm_span, semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
+                let (arm_span, mut semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind
+                {
                     self.find_block_span(blk, prior_arm_ty)
                 } else {
                     (arm.body.span, None)
                 };
+                if semi_span.is_none() && i > 0 {
+                    if let hir::ExprKind::Block(blk, _) = &arms[i - 1].body.kind {
+                        let (_, semi_span_prev) = self.find_block_span(blk, Some(arm_ty));
+                        semi_span = semi_span_prev;
+                    }
+                }
                 let (span, code) = match i {
                     // The reason for the first arm to fail is not that the match arms diverge,
                     // but rather that there's a prior obligation that doesn't hold.

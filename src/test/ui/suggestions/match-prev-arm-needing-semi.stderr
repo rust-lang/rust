@@ -1,0 +1,53 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-prev-arm-needing-semi.rs:24:18
+   |
+LL |   async fn async_dummy() {}
+   |                          - the `Output` of this `async fn`'s found opaque type
+...
+LL |       let _ = match true {
+   |  _____________-
+LL | |         true => {
+LL | |             async_dummy();
+   | |             -------------- this is found to be of type `()`
+LL | |
+LL | |         }
+LL | |         false => async_dummy(),
+   | |                  ^^^^^^^^^^^^^ expected `()`, found opaque type
+...  |
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note:     expected type `()`
+           found opaque type `impl Future`
+help: consider removing this semicolon
+   |
+LL |             async_dummy()
+   |                         --
+help: consider `await`ing on the `Future`
+   |
+LL |         false => async_dummy().await,
+   |                               ^^^^^^
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-prev-arm-needing-semi.rs:11:18
+   |
+LL |       let _ = match true {
+   |  _____________-
+LL | |         true => {
+LL | |             dummy();
+   | |             --------
+   | |             |      |
+   | |             |      help: consider removing this semicolon
+   | |             this is found to be of type `()`
+LL | |
+LL | |         }
+LL | |         false => dummy(),
+   | |                  ^^^^^^^ expected `()`, found `i32`
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
