@@ -34,13 +34,13 @@ impl QueryContext for TyCtxt<'tcx> {
         &self.dep_graph
     }
 
-    fn current_query_job(&self) -> Option<QueryJobId<DepKind>> {
+    fn current_query_job(&self) -> Option<QueryJobId> {
         tls::with_related_context(*self, |icx| icx.query)
     }
 
     fn try_collect_active_jobs(
         &self,
-    ) -> Option<FxHashMap<QueryJobId<DepKind>, QueryJobInfo<Self>>> {
+    ) -> Option<FxHashMap<QueryJobId, QueryJobInfo<Self>>> {
         self.queries.try_collect_active_jobs()
     }
 
@@ -50,7 +50,7 @@ impl QueryContext for TyCtxt<'tcx> {
     #[inline(always)]
     fn start_query<R>(
         &self,
-        token: QueryJobId<DepKind>,
+        token: QueryJobId,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce(Self) -> R,
     ) -> R {

@@ -1643,7 +1643,7 @@ pub mod tls {
 
         /// The current query job, if any. This is updated by `JobOwner::start` in
         /// `ty::query::plumbing` when executing a query.
-        pub query: Option<query::QueryJobId<DepKind>>,
+        pub query: Option<query::QueryJobId>,
 
         /// Where to store diagnostics for the current query job, if any.
         /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
