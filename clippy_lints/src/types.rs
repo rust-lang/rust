@@ -1601,7 +1601,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             let (cast_from, cast_to) = (cx.typeck_results().expr_ty(ex), cx.typeck_results().expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
             if let Some(lit) = get_numeric_literal(ex) {
-                let literal_str = snippet_opt(cx, lit.span).unwrap_or_default();
+                let literal_str = snippet_opt(cx, ex.span).unwrap_or_default();
 
                 if_chain! {
                     if let LitKind::Int(n, _) = lit.node;
