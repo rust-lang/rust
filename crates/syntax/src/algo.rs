@@ -9,6 +9,7 @@ use std::{
 use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
+use test_utils::mark;
 use text_edit::TextEditBuilder;
 
 use crate::{
@@ -110,6 +111,7 @@ pub enum InsertPosition<T> {
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>;
 
+#[derive(Debug)]
 pub struct TreeDiff {
     replacements: FxHashMap<SyntaxElement, SyntaxElement>,
     deletions: Vec<SyntaxElement>,
@@ -149,8 +151,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
     };
     let (from, to) = (from.clone().into(), to.clone().into());
 
-    // FIXME: this is both horrible inefficient and gives larger than
-    // necessary diff. I bet there's a cool algorithm to diff trees properly.
+    // FIXME: this is horrible inefficient. I bet there's a cool algorithm to diff trees properly.
     if !syntax_element_eq(&from, &to) {
         go(&mut diff, from, to);
     }
@@ -172,6 +173,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
         let (lhs, rhs) = match lhs.as_node().zip(rhs.as_node()) {
             Some((lhs, rhs)) => (lhs, rhs),
             _ => {
+                mark::hit!(diff_node_token_replace);
                 diff.replacements.insert(lhs, rhs);
                 return;
             }
@@ -186,16 +188,19 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                 (None, None) => break,
                 (None, Some(element)) => match last_lhs.clone() {
                     Some(prev) => {
+                        mark::hit!(diff_insert);
                         diff.insertions.entry(prev).or_insert_with(Vec::new).push(element);
                     }
                     // first iteration, this means we got no anchor element to insert after
                     // therefor replace the parent node instead
                     None => {
+                        mark::hit!(diff_replace_parent);
                         diff.replacements.insert(lhs.clone().into(), rhs.clone().into());
                         break;
                     }
                 },
                 (Some(element), None) => {
+                    mark::hit!(diff_delete);
                     diff.deletions.push(element);
                 }
                 (Some(ref lhs_ele), Some(ref rhs_ele)) if syntax_element_eq(lhs_ele, rhs_ele) => {}
@@ -443,5 +448,324 @@ fn to_green_element(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, row
     match element {
         NodeOrToken::Node(it) => it.green().clone().into(),
         NodeOrToken::Token(it) => it.green().clone().into(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use expect_test::{expect, Expect};
+    use itertools::Itertools;
+    use parser::SyntaxKind;
+    use test_utils::mark;
+    use text_edit::TextEdit;
+
+    use crate::{AstNode, SyntaxElement};
+
+    #[test]
+    fn replace_node_token() {
+        mark::check!(diff_node_token_replace);
+        check_diff(
+            r#"use node;"#,
+            r#"ident"#,
+            expect![[r#"
+                insertions:
+
+
+
+                replacements:
+
+                Line 0: Token(USE_KW@0..3 "use") -> ident
+
+                deletions:
+
+                Line 1: " "
+                Line 1: node
+                Line 1: ;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn insert() {
+        mark::check!(diff_insert);
+        check_diff(
+            r#"use foo;"#,
+            r#"use foo;
+use bar;"#,
+            expect![[r#"
+                insertions:
+
+                Line 0: Node(USE@0..8)
+                -> "\n"
+                -> use bar;
+
+                replacements:
+
+
+
+                deletions:
+
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn replace_parent() {
+        mark::check!(diff_replace_parent);
+        check_diff(
+            r#""#,
+            r#"use foo::bar;"#,
+            expect![[r#"
+                insertions:
+
+
+
+                replacements:
+
+                Line 0: Node(SOURCE_FILE@0..0) -> use foo::bar;
+
+                deletions:
+
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn delete() {
+        mark::check!(diff_delete);
+        check_diff(
+            r#"use foo;
+            use bar;"#,
+            r#"use foo;"#,
+            expect![[r#"
+                insertions:
+
+
+
+                replacements:
+
+
+
+                deletions:
+
+                Line 1: "\n            "
+                Line 2: use bar;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn insert_use() {
+        check_diff(
+            r#"
+use expect_test::{expect, Expect};
+
+use crate::AstNode;
+"#,
+            r#"
+use expect_test::{expect, Expect};
+use text_edit::TextEdit;
+
+use crate::AstNode;
+"#,
+            expect![[r#"
+                insertions:
+
+                Line 4: Token(WHITESPACE@56..57 "\n")
+                -> use crate::AstNode;
+                -> "\n"
+
+                replacements:
+
+                Line 2: Token(WHITESPACE@35..37 "\n\n") -> "\n"
+                Line 4: Token(CRATE_KW@41..46 "crate") -> text_edit
+                Line 4: Token(IDENT@48..55 "AstNode") -> TextEdit
+                Line 4: Token(WHITESPACE@56..57 "\n") -> "\n\n"
+
+                deletions:
+
+
+            "#]],
+        )
+    }
+
+    #[test]
+    fn remove_use() {
+        check_diff(
+            r#"
+use expect_test::{expect, Expect};
+use text_edit::TextEdit;
+
+use crate::AstNode;
+"#,
+            r#"
+use expect_test::{expect, Expect};
+
+use crate::AstNode;
+"#,
+            expect![[r#"
+                insertions:
+
+
+
+                replacements:
+
+                Line 2: Token(WHITESPACE@35..36 "\n") -> "\n\n"
+                Line 3: Node(NAME_REF@40..49) -> crate
+                Line 3: Token(IDENT@51..59 "TextEdit") -> AstNode
+                Line 3: Token(WHITESPACE@60..62 "\n\n") -> "\n"
+
+                deletions:
+
+                Line 4: use crate::AstNode;
+                Line 5: "\n"
+            "#]],
+        )
+    }
+
+    #[test]
+    fn merge_use() {
+        check_diff(
+            r#"
+use std::{
+    fmt,
+    hash::BuildHasherDefault,
+    ops::{self, RangeInclusive},
+};
+"#,
+            r#"
+use std::fmt;
+use std::hash::BuildHasherDefault;
+use std::ops::{self, RangeInclusive};
+"#,
+            expect![[r#"
+                insertions:
+
+                Line 2: Node(PATH_SEGMENT@5..8)
+                -> ::
+                -> fmt
+                Line 6: Token(WHITESPACE@86..87 "\n")
+                -> use std::hash::BuildHasherDefault;
+                -> "\n"
+                -> use std::ops::{self, RangeInclusive};
+                -> "\n"
+
+                replacements:
+
+                Line 2: Token(IDENT@5..8 "std") -> std
+
+                deletions:
+
+                Line 2: ::
+                Line 2: {
+                    fmt,
+                    hash::BuildHasherDefault,
+                    ops::{self, RangeInclusive},
+                }
+            "#]],
+        )
+    }
+
+    #[test]
+    fn early_return_assist() {
+        check_diff(
+            r#"
+fn main() {
+    if let Ok(x) = Err(92) {
+        foo(x);
+    }
+}
+            "#,
+            r#"
+fn main() {
+    let x = match Err(92) {
+        Ok(it) => it,
+        _ => return,
+    };
+    foo(x);
+}
+            "#,
+            expect![[r#"
+                insertions:
+
+                Line 3: Node(BLOCK_EXPR@40..63)
+                -> " "
+                -> match Err(92) {
+                        Ok(it) => it,
+                        _ => return,
+                    }
+                -> ;
+                Line 5: Token(R_CURLY@64..65 "}")
+                -> "\n"
+                -> }
+
+                replacements:
+
+                Line 3: Token(IF_KW@17..19 "if") -> let
+                Line 3: Token(LET_KW@20..23 "let") -> x
+                Line 3: Node(BLOCK_EXPR@40..63) -> =
+                Line 5: Token(WHITESPACE@63..64 "\n") -> "\n    "
+                Line 5: Token(R_CURLY@64..65 "}") -> foo(x);
+
+                deletions:
+
+                Line 3: " "
+                Line 3: Ok(x)
+                Line 3: " "
+                Line 3: =
+                Line 3: " "
+                Line 3: Err(92)
+            "#]],
+        )
+    }
+
+    fn check_diff(from: &str, to: &str, expected_diff: Expect) {
+        let from_node = crate::SourceFile::parse(from).tree().syntax().clone();
+        let to_node = crate::SourceFile::parse(to).tree().syntax().clone();
+        let diff = super::diff(&from_node, &to_node);
+
+        let line_number =
+            |syn: &SyntaxElement| from[..syn.text_range().start().into()].lines().count();
+
+        let fmt_syntax = |syn: &SyntaxElement| match syn.kind() {
+            SyntaxKind::WHITESPACE => format!("{:?}", syn.to_string()),
+            _ => format!("{}", syn),
+        };
+
+        let insertions = diff.insertions.iter().format_with("\n", |(k, v), f| {
+            f(&format!(
+                "Line {}: {:?}\n-> {}",
+                line_number(k),
+                k,
+                v.iter().format_with("\n-> ", |v, f| f(&fmt_syntax(v)))
+            ))
+        });
+
+        let replacements = diff
+            .replacements
+            .iter()
+            .sorted_by_key(|(syntax, _)| syntax.text_range().start())
+            .format_with("\n", |(k, v), f| {
+                f(&format!("Line {}: {:?} -> {}", line_number(k), k, fmt_syntax(v)))
+            });
+
+        let deletions = diff
+            .deletions
+            .iter()
+            .format_with("\n", |v, f| f(&format!("Line {}: {}", line_number(v), &fmt_syntax(v))));
+
+        let actual = format!(
+            "insertions:\n\n{}\n\nreplacements:\n\n{}\n\ndeletions:\n\n{}\n",
+            insertions, replacements, deletions
+        );
+        expected_diff.assert_eq(&actual);
+
+        let mut from = from.to_owned();
+        let mut text_edit = TextEdit::builder();
+        diff.into_text_edit(&mut text_edit);
+        text_edit.finish().apply(&mut from);
+        assert_eq!(&*from, to, "diff did not turn `from` to `to`");
     }
 }
