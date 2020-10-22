@@ -7,7 +7,7 @@ if [ $# != 2 ]; then
   echo "usage: $0 <since> <number-of-prs-merged>"
   if [ $# = 1 ] ; then
     echo "help: you can find the number of PRs merged at" \
-      "https://github.com/rust-lang/rustc-dev-guide/pulls?q=is%3Apr+is%3Aclosed+updated%3A%3E$1"
+         "https://github.com/rust-lang/rustc-dev-guide/pulls?q=is%3Apr+is%3Amerged+updated%3A%3E$1"
   fi
   exit 1
 fi
