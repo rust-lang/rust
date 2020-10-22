@@ -12,11 +12,17 @@ use std::ops::{Index, IndexMut};
 
 const ID_SEPARATOR: &str = ",";
 
+/// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
+/// nodes are `BasicCoverageBlock`s, which encompass one or more MIR `BasicBlock`s, plus a
+/// `CoverageKind` counter (to be added by `CoverageCounters::make_bcb_counters`), and an optional
+/// set of additional counters--if needed--to count incoming edges, if there are more than one.
+/// (These "edge counters" are eventually converted into new MIR `BasicBlock`s.)
 pub(crate) struct CoverageGraph {
     bcbs: IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     pub successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     pub predecessors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
+    dominators: Option<Dominators<BasicCoverageBlock>>,
 }
 
 impl CoverageGraph {
@@ -55,7 +61,11 @@ impl CoverageGraph {
             }
         }
 
-        Self { bcbs, bb_to_bcb, successors, predecessors }
+        let mut basic_coverage_blocks =
+            Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
+        let dominators = dominators::dominators(&basic_coverage_blocks);
+        basic_coverage_blocks.dominators = Some(dominators);
+        basic_coverage_blocks
     }
 
     fn compute_basic_coverage_blocks(
@@ -190,8 +200,13 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
-    pub fn compute_bcb_dominators(&self) -> Dominators<BasicCoverageBlock> {
-        dominators::dominators(self)
+    pub fn is_dominated_by(&self, node: BasicCoverageBlock, dom: BasicCoverageBlock) -> bool {
+        self.dominators.as_ref().unwrap().is_dominated_by(node, dom)
+    }
+
+    #[inline(always)]
+    pub fn dominators(&self) -> &Dominators<BasicCoverageBlock> {
+        self.dominators.as_ref().unwrap()
     }
 }
 
@@ -498,12 +513,9 @@ pub(crate) struct TraverseCoverageGraphWithLoops {
 }
 
 impl TraverseCoverageGraphWithLoops {
-    pub fn new(
-        basic_coverage_blocks: &CoverageGraph,
-        dominators: &Dominators<BasicCoverageBlock>,
-    ) -> Self {
+    pub fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
         let start_bcb = basic_coverage_blocks.start_node();
-        let backedges = find_loop_backedges(basic_coverage_blocks, dominators);
+        let backedges = find_loop_backedges(basic_coverage_blocks);
         let mut context_stack = Vec::new();
         context_stack.push(TraversalContext { loop_backedges: None, worklist: vec![start_bcb] });
         // `context_stack` starts with a `TraversalContext` for the main function context (beginning
@@ -558,7 +570,6 @@ impl TraverseCoverageGraphWithLoops {
 
 fn find_loop_backedges(
     basic_coverage_blocks: &CoverageGraph,
-    dominators: &Dominators<BasicCoverageBlock>,
 ) -> IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>> {
     let num_bcbs = basic_coverage_blocks.num_nodes();
     let mut backedges = IndexVec::from_elem_n(Vec::<BasicCoverageBlock>::new(), num_bcbs);
@@ -566,7 +577,7 @@ fn find_loop_backedges(
     // Identify loops by their backedges
     for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
         for &successor in &basic_coverage_blocks.successors[bcb] {
-            if dominators.is_dominated_by(bcb, successor) {
+            if basic_coverage_blocks.is_dominated_by(bcb, successor) {
                 let loop_header = successor;
                 let backedge_from_bcb = bcb;
                 debug!(

@@ -23,6 +23,10 @@ pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
     &DEBUG_OPTIONS.get_or_init(|| DebugOptions::new())
 }
 
+/// Parses and maintains coverage-specific debug options captured from the environment variable
+/// "RUSTC_COVERAGE_DEBUG_OPTIONS", if set. Options can be set on the command line by, for example:
+///
+///     $ RUSTC_COVERAGE_DEBUG_OPTIONS=counter-format=block,allow_unused_expressions=n cargo build
 #[derive(Debug, Clone)]
 pub(crate) struct DebugOptions {
     pub allow_unused_expressions: bool,
@@ -127,18 +131,17 @@ impl Default for ExpressionFormat {
     }
 }
 
-#[derive(Debug)]
-struct DebugCounter {
-    counter_kind: CoverageKind,
-    some_block_label: Option<String>,
-}
-
-impl DebugCounter {
-    fn new(counter_kind: CoverageKind, some_block_label: Option<String>) -> Self {
-        Self { counter_kind, some_block_label }
-    }
-}
-
+/// If enabled, this struct maintains a map from `CoverageKind` IDs (as `ExpressionOperandId`) to
+/// the `CoverageKind` data and optional label (normally, the counter's associated
+/// `BasicCoverageBlock` format string, if any).
+///
+/// Use `format_counter` to convert one of these `CoverageKind` counters to a debug output string,
+/// as directed by the `DebugOptions`. This allows the format of counter labels in logs and dump
+/// files (including the `CoverageGraph` graphviz file) to be changed at runtime, via environment
+/// variable.
+///
+/// `DebugCounters` supports a recursive rendering of `Expression` counters, so they can be
+/// presented as nested expressions such as `(bcb3 - (bcb0 + bcb1))`.
 pub(crate) struct DebugCounters {
     some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
 }
@@ -259,6 +262,21 @@ impl DebugCounters {
     }
 }
 
+/// A non-public support class to `DebugCounters`.
+#[derive(Debug)]
+struct DebugCounter {
+    counter_kind: CoverageKind,
+    some_block_label: Option<String>,
+}
+
+impl DebugCounter {
+    fn new(counter_kind: CoverageKind, some_block_label: Option<String>) -> Self {
+        Self { counter_kind, some_block_label }
+    }
+}
+
+/// If enabled, this data structure captures additional debugging information used when generating
+/// a Graphviz (.dot file) representation of the `CoverageGraph`, for debugging purposes.
 pub(crate) struct GraphvizData {
     some_bcb_to_coverage_spans_with_counters:
         Option<FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, CoverageKind)>>>,
@@ -364,6 +382,10 @@ impl GraphvizData {
     }
 }
 
+/// If enabled, this struct captures additional data used to track whether expressions were used,
+/// directly or indirectly, to compute the coverage counts for all `CoverageSpan`s, and any that are
+/// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
+/// and/or a `CoverageGraph` graphviz output).
 pub(crate) struct UsedExpressions {
     some_used_expression_operands:
         Option<FxHashMap<ExpressionOperandId, Vec<InjectedExpressionId>>>,
@@ -492,6 +514,7 @@ impl UsedExpressions {
     }
 }
 
+/// Generates the MIR pass `CoverageSpan`-specific spanview dump file.
 pub(crate) fn dump_coverage_spanview(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
@@ -531,6 +554,7 @@ fn span_viewables(
     span_viewables
 }
 
+/// Generates the MIR pass coverage-specific graphviz dump file.
 pub(crate) fn dump_coverage_graphviz(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
@@ -678,6 +702,8 @@ fn bcb_to_string_sections(
     sections
 }
 
+/// Returns a simple string representation of a `TerminatorKind` variant, indenpendent of any
+/// values it might hold.
 pub(crate) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
     match kind {
         TerminatorKind::Goto { .. } => "Goto",

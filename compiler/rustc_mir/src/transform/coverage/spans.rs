@@ -3,7 +3,6 @@ use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 
 use crate::util::spanview::source_range_no_file;
 
-use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{
@@ -179,9 +178,6 @@ pub struct CoverageSpans<'a, 'tcx> {
     /// The BasicCoverageBlock Control Flow Graph (BCB CFG).
     basic_coverage_blocks: &'a CoverageGraph,
 
-    /// The BCB CFG's dominators tree, used to compute the dominance relationships, if any.
-    bcb_dominators: &'a Dominators<BasicCoverageBlock>,
-
     /// The initial set of `CoverageSpan`s, sorted by `Span` (`lo` and `hi`) and by relative
     /// dominance between the `BasicCoverageBlock`s of equal `Span`s.
     sorted_spans_iter: Option<std::vec::IntoIter<CoverageSpan>>,
@@ -222,13 +218,11 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         mir_body: &'a mir::Body<'tcx>,
         body_span: Span,
         basic_coverage_blocks: &'a CoverageGraph,
-        bcb_dominators: &'a Dominators<BasicCoverageBlock>,
     ) -> Vec<CoverageSpan> {
         let mut coverage_spans = CoverageSpans {
             mir_body,
             body_span,
             basic_coverage_blocks,
-            bcb_dominators,
             sorted_spans_iter: None,
             refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
             some_curr: None,
@@ -293,7 +287,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                         // dominators always come after the dominated equal spans). When later
                         // comparing two spans in order, the first will either dominate the second,
                         // or they will have no dominator relationship.
-                        self.bcb_dominators.rank_partial_cmp(b.bcb, a.bcb)
+                        self.basic_coverage_blocks.dominators().rank_partial_cmp(b.bcb, a.bcb)
                     }
                 } else {
                     // Sort hi() in reverse order so shorter spans are attempted after longer spans.
@@ -649,7 +643,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 
     fn span_bcb_is_dominated_by(&self, covspan: &CoverageSpan, dom_covspan: &CoverageSpan) -> bool {
-        self.bcb_dominators.is_dominated_by(covspan.bcb, dom_covspan.bcb)
+        self.basic_coverage_blocks.is_dominated_by(covspan.bcb, dom_covspan.bcb)
     }
 }
 
