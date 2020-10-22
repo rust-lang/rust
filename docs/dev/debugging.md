@@ -53,7 +53,7 @@ To apply changes to an already running debug process, press <kbd>Ctrl+Shift+P</k
 
 - A list of running processes should appear. Select the `rust-analyzer` from this repo.
 
-- Navigate to `crates/rust-analyzer/src/main_loop.rs` and add a breakpoint to the `on_task` function.
+- Navigate to `crates/rust-analyzer/src/main_loop.rs` and add a breakpoint to the `on_request` function.
 
 - Go back to the `[Extension Development Host]` instance and hover over a Rust variable and your breakpoint should hit.
 
