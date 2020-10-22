@@ -176,17 +176,17 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
     type Error = (&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>);
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
-        let (val, span) = match (value1.val, value2.val) {
+        let (val, origin) = match (value1.val, value2.val) {
             (ConstVariableValue::Known { .. }, ConstVariableValue::Known { .. }) => {
                 bug!("equating two const variables, both of which have known values")
             }
 
             // If one side is known, prefer that one.
             (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => {
-                (value1.val, value1.origin.span)
+                (value1.val, value1.origin)
             }
             (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => {
-                (value2.val, value2.origin.span)
+                (value2.val, value2.origin)
             }
 
             // If both sides are *unknown*, it hardly matters, does it?
@@ -200,17 +200,11 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
                 // universe is the minimum of the two universes, because that is
                 // the one which contains the fewest names in scope.
                 let universe = cmp::min(universe1, universe2);
-                (ConstVariableValue::Unknown { universe }, value1.origin.span)
+                (ConstVariableValue::Unknown { universe }, value1.origin)
             }
         };
 
-        Ok(ConstVarValue {
-            origin: ConstVariableOrigin {
-                kind: ConstVariableOriginKind::ConstInference,
-                span: span,
-            },
-            val,
-        })
+        Ok(ConstVarValue { origin, val })
     }
 }
 
