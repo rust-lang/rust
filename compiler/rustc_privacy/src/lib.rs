@@ -1086,7 +1086,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
                 adjustments.iter().try_for_each(|adjustment| self.visit(adjustment.target))?;
             }
         };
-        result == ControlFlow::BREAK
+        result.is_break()
     }
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
@@ -1128,14 +1128,14 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         self.span = hir_ty.span;
         if let Some(typeck_results) = self.maybe_typeck_results {
             // Types in bodies.
-            if self.visit(typeck_results.node_type(hir_ty.hir_id)) == ControlFlow::BREAK {
+            if self.visit(typeck_results.node_type(hir_ty.hir_id)).is_break() {
                 return;
             }
         } else {
             // Types in signatures.
             // FIXME: This is very ineffective. Ideally each HIR type should be converted
             // into a semantic type only once and the result should be cached somehow.
-            if self.visit(rustc_typeck::hir_ty_to_ty(self.tcx, hir_ty)) == ControlFlow::BREAK {
+            if self.visit(rustc_typeck::hir_ty_to_ty(self.tcx, hir_ty)).is_break() {
                 return;
             }
         }
@@ -1157,16 +1157,17 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
             );
 
             for (trait_predicate, _, _) in bounds.trait_bounds {
-                if self.visit_trait(trait_predicate.skip_binder()) == ControlFlow::BREAK {
+                if self.visit_trait(trait_predicate.skip_binder()).is_break() {
                     return;
                 }
             }
 
             for (poly_predicate, _) in bounds.projection_bounds {
                 let tcx = self.tcx;
-                if self.visit(poly_predicate.skip_binder().ty) == ControlFlow::BREAK
-                    || self.visit_trait(poly_predicate.skip_binder().projection_ty.trait_ref(tcx))
-                        == ControlFlow::BREAK
+                if self.visit(poly_predicate.skip_binder().ty).is_break()
+                    || self
+                        .visit_trait(poly_predicate.skip_binder().projection_ty.trait_ref(tcx))
+                        .is_break()
                 {
                     return;
                 }
@@ -1193,7 +1194,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 // Method calls have to be checked specially.
                 self.span = span;
                 if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    if self.visit(self.tcx.type_of(def_id)) == ControlFlow::BREAK {
+                    if self.visit(self.tcx.type_of(def_id)).is_break() {
                         return;
                     }
                 } else {

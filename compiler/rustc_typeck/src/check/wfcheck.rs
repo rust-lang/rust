@@ -819,7 +819,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 }
             }
             let mut param_count = CountParams::default();
-            let has_region = pred.visit_with(&mut param_count) == ControlFlow::BREAK;
+            let has_region = pred.visit_with(&mut param_count).is_break();
             let substituted_pred = pred.subst(fcx.tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.

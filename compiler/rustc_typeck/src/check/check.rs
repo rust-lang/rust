@@ -452,7 +452,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<(), ()> {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
-            if t != self.opaque_identity_ty && t.super_visit_with(self) == ControlFlow::BREAK {
+            if t != self.opaque_identity_ty && t.super_visit_with(self).is_break() {
                 self.ty = Some(t);
                 return ControlFlow::BREAK;
             }
@@ -499,7 +499,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         let prohibit_opaque = tcx
             .explicit_item_bounds(def_id)
             .iter()
-            .any(|(predicate, _)| predicate.visit_with(&mut visitor) == ControlFlow::BREAK);
+            .any(|(predicate, _)| predicate.visit_with(&mut visitor).is_break());
         debug!(
             "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
             prohibit_opaque, visitor

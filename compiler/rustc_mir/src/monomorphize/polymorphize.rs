@@ -139,7 +139,7 @@ fn mark_used_by_predicates<'tcx>(
             // predicate is used.
             let any_param_used = {
                 let mut vis = HasUsedGenericParams { unused_parameters };
-                predicate.visit_with(&mut vis) == ControlFlow::BREAK
+                predicate.visit_with(&mut vis).is_break()
             };
 
             if any_param_used {

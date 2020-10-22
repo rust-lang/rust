@@ -59,8 +59,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     /// If `binder` is `ty::INNERMOST`, this indicates whether
     /// there are any late-bound regions that appear free.
     fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder })
-            == ControlFlow::Break(())
+        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
     }
 
     /// Returns `true` if this `self` has any regions that escape `binder` (and
@@ -74,7 +73,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        self.visit_with(&mut HasTypeFlagsVisitor { flags }) == ControlFlow::Break(())
+        self.visit_with(&mut HasTypeFlagsVisitor { flags }).is_break()
     }
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
@@ -368,8 +367,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        value.visit_with(&mut RegionVisitor { outer_index: ty::INNERMOST, callback })
-            == ControlFlow::BREAK
+        value.visit_with(&mut RegionVisitor { outer_index: ty::INNERMOST, callback }).is_break()
     }
 }
 
@@ -685,7 +683,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let mut collector = LateBoundRegionsCollector::new(just_constraint);
         let result = value.as_ref().skip_binder().visit_with(&mut collector);
-        assert!(result == ControlFlow::Continue(())); // should never have stopped early
+        assert!(result.is_continue()); // should never have stopped early
         collector.regions
     }
 

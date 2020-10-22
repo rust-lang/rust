@@ -109,7 +109,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 args.visit_with(visitor)
             }
             Assert { ref cond, ref msg, .. } => {
-                if cond.visit_with(visitor) == ControlFlow::BREAK {
+                if cond.visit_with(visitor).is_break() {
                     use AssertKind::*;
                     match msg {
                         BoundsCheck { ref len, ref index } => {

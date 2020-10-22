@@ -248,7 +248,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             let ty = self.tcx().normalize_erasing_regions(ty::ParamEnv::empty(), field_ty);
             debug!("structural-match ADT: field_ty={:?}, ty={:?}", field_ty, ty);
 
-            if ty.visit_with(self) == ControlFlow::BREAK {
+            if ty.visit_with(self).is_break() {
                 // found an ADT without structural-match; halt visiting!
                 assert!(self.found.is_some());
                 return ControlFlow::BREAK;

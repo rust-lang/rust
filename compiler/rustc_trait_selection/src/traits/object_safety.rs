@@ -869,8 +869,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
         }
     }
 
-    value.visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
-        == ControlFlow::BREAK
+    value
+        .visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
+        .is_break()
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
