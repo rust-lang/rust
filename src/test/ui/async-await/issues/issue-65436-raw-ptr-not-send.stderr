@@ -18,6 +18,11 @@ note: `std::ptr::null()` is later dropped here
    |
 LL |         bar(Foo(std::ptr::null())).await;
    |                                         ^
+note: this has type `*const u8` which is not `Send`
+  --> $DIR/issue-65436-raw-ptr-not-send.rs:14:17
+   |
+LL |         bar(Foo(std::ptr::null())).await;
+   |                 ^^^^^^^^^^^^^^^^
 help: consider moving this into a `let` binding to create a shorter lived borrow
   --> $DIR/issue-65436-raw-ptr-not-send.rs:14:13
    |

@@ -1630,6 +1630,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             ),
                         );
                         err.span_note(scope_span, &format!("{} is later dropped here", snippet));
+                        err.span_note(
+                            interior_span,
+                            &format!("this has type `{}` which {}", target_ty, trait_explanation),
+                        );
                     } else {
                         span.push_span_label(
                             yield_span,
