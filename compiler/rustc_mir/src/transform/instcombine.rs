@@ -119,11 +119,6 @@ impl OptimizationFinder<'b, 'tcx> {
     }
 
     fn find_deref_of_address(&mut self, rvalue: &Rvalue<'tcx>, location: Location) -> Option<()> {
-        // FIXME(#78192): This optimization can result in unsoundness.
-        if !self.tcx.sess.opts.debugging_opts.unsound_mir_opts {
-            return None;
-        }
-
         // Look for the sequence
         //
         // _2 = &_1;
@@ -136,6 +131,8 @@ impl OptimizationFinder<'b, 'tcx> {
                 PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
                 _ => None,
             }?;
+
+            let mut dead_locals_seen = vec![];
 
             let stmt_index = location.statement_index;
             // Look behind for statement that assigns the local from a address of operator.
@@ -160,6 +157,11 @@ impl OptimizationFinder<'b, 'tcx> {
                                 BorrowKind::Shared,
                                 place_taken_address_of,
                             ) => {
+                                // Make sure that the place has not been marked dead
+                                if dead_locals_seen.contains(&place_taken_address_of.local) {
+                                    return None;
+                                }
+
                                 self.optimizations
                                     .unneeded_deref
                                     .insert(location, *place_taken_address_of);
@@ -178,13 +180,19 @@ impl OptimizationFinder<'b, 'tcx> {
                     // Inline asm can do anything, so bail out of the optimization.
                     rustc_middle::mir::StatementKind::LlvmInlineAsm(_) => return None,
 
+                    // Remember `StorageDead`s, as the local being marked dead could be the
+                    // place RHS we are looking for, in which case we need to abort to avoid UB
+                    // using an uninitialized place
+                    rustc_middle::mir::StatementKind::StorageDead(dead) => {
+                        dead_locals_seen.push(*dead)
+                    }
+
                     // Check that `local_being_deref` is not being used in a mutating way which can cause misoptimization.
                     rustc_middle::mir::StatementKind::Assign(box (_, _))
                     | rustc_middle::mir::StatementKind::Coverage(_)
                     | rustc_middle::mir::StatementKind::Nop
                     | rustc_middle::mir::StatementKind::FakeRead(_, _)
                     | rustc_middle::mir::StatementKind::StorageLive(_)
-                    | rustc_middle::mir::StatementKind::StorageDead(_)
                     | rustc_middle::mir::StatementKind::Retag(_, _)
                     | rustc_middle::mir::StatementKind::AscribeUserType(_, _)
                     | rustc_middle::mir::StatementKind::SetDiscriminant { .. } => {
