@@ -527,6 +527,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     });
 
     TokenStream::from(quote! {
+        #[macro_export]
         macro_rules! rustc_query_append {
             ([$($macro:tt)*][$($other:tt)*]) => {
                 $($macro)* {
@@ -537,6 +538,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 }
             }
         }
+        #[macro_export]
         macro_rules! rustc_dep_node_append {
             ([$($macro:tt)*][$($other:tt)*]) => {
                 $($macro)*(
@@ -546,6 +548,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 );
             }
         }
+        #[macro_export]
         macro_rules! rustc_dep_node_force {
             ([$dep_node:expr, $tcx:expr] $($other:tt)*) => {
                 match $dep_node.kind {
@@ -555,12 +558,14 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 }
             }
         }
+        #[macro_export]
         macro_rules! rustc_cached_queries {
             ($($macro:tt)*) => {
                 $($macro)*(#cached_queries);
             }
         }
 
+        #[macro_export]
         macro_rules! query_description_stream {
             // capture all needed `use` statements.
             ($($uses:tt)*) => {
@@ -570,6 +575,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             }
         }
 
+        #[macro_export]
         macro_rules! rustc_dep_node_try_load_from_on_disk_cache {
             ($dep_node:expr, $tcx:expr) => {
                 match $dep_node.kind {

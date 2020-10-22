@@ -140,4 +140,4 @@ macro_rules! print_stats {
     }
 }
 
-rustc_query_append! { [print_stats!][<'tcx>] }
+rustc_query_system::rustc_query_append! { [print_stats!][<'tcx>] }

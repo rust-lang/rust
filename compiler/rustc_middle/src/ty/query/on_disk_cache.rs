@@ -237,7 +237,7 @@ impl<'sess> OnDiskCache<'sess> {
                     }
                 }
 
-                rustc_cached_queries!(encode_queries!);
+                rustc_query_system::rustc_cached_queries!(encode_queries!);
 
                 Ok(())
             })?;

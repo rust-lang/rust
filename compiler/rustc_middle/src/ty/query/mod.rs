@@ -102,7 +102,7 @@ pub use self::profiling_support::{IntoSelfProfilingString, QueryKeyStringBuilder
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 
-rustc_query_append! { [define_queries!][<'tcx>] }
+rustc_query_system::rustc_query_append! { [define_queries!][<'tcx>] }
 
 /// The red/green evaluation system will try to mark a specific DepNode in the
 /// dependency graph as green by recursively trying to mark the dependencies of
@@ -169,7 +169,7 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
         return false;
     }
 
-    rustc_dep_node_force!([dep_node, tcx]
+    rustc_query_system::rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
         DepKind::CrateMetadata |
@@ -188,7 +188,7 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 }
 
 pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
-    rustc_dep_node_try_load_from_on_disk_cache!(dep_node, tcx)
+    rustc_query_system::rustc_dep_node_try_load_from_on_disk_cache!(dep_node, tcx)
 }
 
 mod sealed {

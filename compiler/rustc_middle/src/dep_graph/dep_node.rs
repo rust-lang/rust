@@ -292,7 +292,7 @@ macro_rules! define_dep_nodes {
     );
 }
 
-rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
+rustc_query_system::rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,
 
