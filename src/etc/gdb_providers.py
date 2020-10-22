@@ -219,7 +219,7 @@ def children_of_node(node_ptr, height):
     keys = leaf["keys"]
     vals = leaf["vals"]
     edges = cast_to_internal(node_ptr)["edges"] if height > 0 else None
-    length = int(leaf["len"])
+    length = leaf["len"]
 
     for i in xrange(0, length + 1):
         if height > 0:
