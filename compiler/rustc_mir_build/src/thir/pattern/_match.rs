@@ -137,8 +137,8 @@
 //!                 S(c, (r_1, p_2, .., p_n))
 //!                 S(c, (r_2, p_2, .., p_n))
 //!
-//! 2. We can pop a wildcard off the top of the stack. This is called `D(p)`, where `p` is
-//!    a pattern-stack.
+//! 2. We can pop a wildcard off the top of the stack. This is called `S(_, p)`, where `p` is
+//!    a pattern-stack. Note: the paper calls this `D(p)`.
 //!    This is used when we know there are missing constructor cases, but there might be
 //!    existing wildcard patterns, so to check the usefulness of the matrix, we have to check
 //!    all its *other* components.
@@ -150,8 +150,8 @@
 //!                 p_2, .., p_n
 //!         2.3. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
 //!           stack.
-//!                 D((r_1, p_2, .., p_n))
-//!                 D((r_2, p_2, .., p_n))
+//!                 S(_, (r_1, p_2, .., p_n))
+//!                 S(_, (r_2, p_2, .., p_n))
 //!
 //! Note that the OR-patterns are not always used directly in Rust, but are used to derive the
 //! exhaustive integer matching rules, so they're written here for posterity.
@@ -205,7 +205,7 @@
 //! That's almost correct, but only works if there were no wildcards in those first
 //! components. So we need to check that `p` is useful with respect to the rows that
 //! start with a wildcard, if there are any. This is where `D` comes in:
-//! `U(P, p) := U(D(P), D(p))`
+//! `U(P, p) := U(S(_, P), S(_, p))`
 //!
 //! For example, if `P` is:
 //!
@@ -358,10 +358,6 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         PatStack(vec)
     }
 
-    fn from_slice(s: &[&'p Pat<'tcx>]) -> Self {
-        PatStack(SmallVec::from_slice(s))
-    }
-
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -372,10 +368,6 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
 
     fn head(&self) -> &'p Pat<'tcx> {
         self.0[0]
-    }
-
-    fn to_tail(&self) -> Self {
-        PatStack::from_slice(&self.0[1..])
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
@@ -401,11 +393,6 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         }
     }
 
-    /// This computes `D(self)`. See top of the file for explanations.
-    fn specialize_wildcard(&self) -> Option<Self> {
-        if self.head().is_wildcard() { Some(self.to_tail()) } else { None }
-    }
-
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     ///
     /// This is the main specialization step. It expands the pattern
@@ -427,15 +414,13 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         is_my_head_ctor: bool,
     ) -> Option<PatStack<'p, 'tcx>> {
         // We return `None` if `ctor` is not covered by `self.head()`. If `ctor` is known to be
-        // derived from `self.head()`, or if `self.head()` is a wildcard, then we don't need to
-        // check; otherwise, we compute the constructor of `self.head()` and check for constructor
-        // inclusion.
+        // derived from `self.head()`, then we don't need to check; otherwise, we compute the
+        // constructor of `self.head()` and check for constructor inclusion.
         // Note that this shortcut is also necessary for correctness: a pattern should always be
         // specializable with its own constructor, even in cases where we refuse to inspect values like
         // opaque constants.
-        if !self.head().is_wildcard() && !is_my_head_ctor {
-            // `unwrap` is safe because `pat` is not a wildcard.
-            let head_ctor = pat_constructor(cx.tcx, cx.param_env, self.head()).unwrap();
+        if !is_my_head_ctor {
+            let head_ctor = pat_constructor(cx.tcx, cx.param_env, self.head());
             if !ctor.is_covered_by(cx, &head_ctor, self.head().ty) {
                 return None;
             }
@@ -480,8 +465,8 @@ enum SpecializationCache {
     /// so it is possible to precompute the result of `Matrix::specialize_constructor` at a
     /// lower computational complexity.
     /// `lookup` is responsible for holding the precomputed result of
-    /// `Matrix::specialize_constructor`, while `wilds` is used for two purposes: the first one is
-    /// the precomputed result of `Matrix::specialize_wildcard`, and the second is to be used as a
+    /// specialization, while `wilds` is used for two purposes: the first one is
+    /// the precomputed result of specialization with a wildcard, and the second is to be used as a
     /// fallback for `Matrix::specialize_constructor` when it tries to apply a constructor that
     /// has not been seen in the `Matrix`. See `update_cache` for further explanations.
     Variants { lookup: FxHashMap<DefId, SmallVec<[usize; 1]>>, wilds: SmallVec<[usize; 1]> },
@@ -553,9 +538,9 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                             v.push(idx);
                         }
                         // Per rule 2.1 and 2.2 in the top-level comments, only wildcard patterns
-                        // are included in the result of `specialize_wildcard`.
+                        // are included in the result of specialization with a wildcard.
                         // What we do here is to track the wildcards we have seen; so in addition to
-                        // acting as the precomputed result of `specialize_wildcard`, `wilds` also
+                        // acting as the precomputed result of specialization with a wildcard, `wilds` also
                         // serves as the default value of `specialize_constructor` for constructors
                         // that are not in `lookup`.
                         wilds.push(idx);
@@ -585,30 +570,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.patterns.iter().map(|r| r.head())
     }
 
-    /// This computes `D(self)`. See top of the file for explanations.
-    fn specialize_wildcard(&self) -> Self {
-        match &self.cache {
-            SpecializationCache::Variants { wilds, .. } => {
-                let result =
-                    wilds.iter().filter_map(|&i| self.patterns[i].specialize_wildcard()).collect();
-                // When debug assertions are enabled, check the results against the "slow path"
-                // result.
-                debug_assert_eq!(
-                    result,
-                    Self {
-                        patterns: self.patterns.clone(),
-                        cache: SpecializationCache::Incompatible
-                    }
-                    .specialize_wildcard()
-                );
-                result
-            }
-            SpecializationCache::Incompatible => {
-                self.patterns.iter().filter_map(|r| r.specialize_wildcard()).collect()
-            }
-        }
-    }
-
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
@@ -618,24 +579,30 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     ) -> Matrix<'p, 'tcx> {
         match &self.cache {
             SpecializationCache::Variants { lookup, wilds } => {
-                let result: Self = if let Constructor::Variant(id) = constructor {
+                let cached = if let Constructor::Variant(id) = constructor {
                     lookup
                         .get(id)
                         // Default to `wilds` for absent keys. See `update_cache` for an explanation.
                         .unwrap_or(&wilds)
-                        .iter()
-                        .filter_map(|&i| {
-                            self.patterns[i].specialize_constructor(
-                                cx,
-                                constructor,
-                                ctor_wild_subpatterns,
-                                false,
-                            )
-                        })
-                        .collect()
+                } else if let Wildcard = constructor {
+                    &wilds
                 } else {
-                    unreachable!()
+                    bug!(
+                        "unexpected constructor encountered while dealing with matrix cache: {:?}",
+                        constructor
+                    );
                 };
+                let result: Self = cached
+                    .iter()
+                    .filter_map(|&i| {
+                        self.patterns[i].specialize_constructor(
+                            cx,
+                            constructor,
+                            ctor_wild_subpatterns,
+                            false,
+                        )
+                    })
+                    .collect();
                 // When debug assertions are enabled, check the results against the "slow path"
                 // result.
                 debug_assert_eq!(
@@ -939,8 +906,10 @@ impl Slice {
             _ => return smallvec![Slice(self)],
         };
 
-        let head_ctors =
-            matrix.heads().filter_map(|pat| pat_constructor(cx.tcx, cx.param_env, pat));
+        let head_ctors = matrix
+            .heads()
+            .map(|p| pat_constructor(cx.tcx, cx.param_env, p))
+            .filter(|c| !c.is_wildcard());
 
         let mut max_prefix_len = self_prefix;
         let mut max_suffix_len = self_suffix;
@@ -1026,9 +995,18 @@ enum Constructor<'tcx> {
     Opaque,
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
     NonExhaustive,
+    /// Wildcard pattern.
+    Wildcard,
 }
 
 impl<'tcx> Constructor<'tcx> {
+    fn is_wildcard(&self) -> bool {
+        match self {
+            Wildcard => true,
+            _ => false,
+        }
+    }
+
     fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match *self {
             Variant(id) => adt.variant_index_with_id(id),
@@ -1120,7 +1098,8 @@ impl<'tcx> Constructor<'tcx> {
             }
             // This constructor is never covered by anything else
             NonExhaustive => vec![NonExhaustive],
-            Opaque => bug!("unexpected opaque ctor {:?} found in all_ctors", self),
+            Opaque => bug!("found unexpected opaque ctor in all_ctors"),
+            Wildcard => bug!("found unexpected wildcard ctor in all_ctors"),
         }
     }
 
@@ -1173,6 +1152,11 @@ impl<'tcx> Constructor<'tcx> {
         ty: Ty<'tcx>,
     ) -> bool {
         match (self, other) {
+            // Wildcards cover anything
+            (_, Wildcard) => true,
+            // Wildcards are only covered by wildcards
+            (Wildcard, _) => false,
+
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
@@ -1302,7 +1286,8 @@ impl<'tcx> Constructor<'tcx> {
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(cx.tcx),
             NonExhaustive => PatKind::Wild,
-            Opaque => bug!("we should not try to apply an opaque constructor {:?}", self),
+            Opaque => bug!("we should not try to apply an opaque constructor"),
+            Wildcard => bug!("we should not try to apply a wildcard constructor"),
         };
 
         Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
@@ -1454,7 +1439,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque => Fields::empty(),
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Wildcard => {
+                Fields::empty()
+            }
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -2011,19 +1998,7 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         // This MUST be kept in sync with `pat_constructor`.
         match *pat.kind {
-            PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
-            PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
-
-            PatKind::Binding { .. }
-            | PatKind::Wild
-            | PatKind::Leaf { .. }
-            | PatKind::Deref { .. }
-            | PatKind::Variant { .. }
-            | PatKind::Array { .. }
-            | PatKind::Slice { .. } => None,
-
             PatKind::Constant { value } => Self::from_const(tcx, param_env, value, pat.span),
-
             PatKind::Range(PatRange { lo, hi, end }) => {
                 let ty = lo.ty;
                 Self::from_range(
@@ -2035,6 +2010,7 @@ impl<'tcx> IntRange<'tcx> {
                     pat.span,
                 )
             }
+            _ => None,
         }
     }
 
@@ -2436,7 +2412,8 @@ crate fn is_useful<'p, 'tcx>(
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    let ret = if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
+    let constructor = pat_constructor(cx.tcx, cx.param_env, v.head());
+    let ret = if !constructor.is_wildcard() {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
         constructor
             .split(cx, pcx, matrix, Some(hir_id))
@@ -2458,8 +2435,11 @@ crate fn is_useful<'p, 'tcx>(
     } else {
         debug!("is_useful - expanding wildcard");
 
-        let used_ctors: Vec<Constructor<'_>> =
-            matrix.heads().filter_map(|p| pat_constructor(cx.tcx, cx.param_env, p)).collect();
+        let used_ctors: Vec<Constructor<'_>> = matrix
+            .heads()
+            .map(|p| pat_constructor(cx.tcx, cx.param_env, p))
+            .filter(|c| !c.is_wildcard())
+            .collect();
         debug!("is_useful_used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
@@ -2501,8 +2481,11 @@ crate fn is_useful<'p, 'tcx>(
                 .find(|result| result.is_useful())
                 .unwrap_or(NotUseful)
         } else {
-            let matrix = matrix.specialize_wildcard();
-            let v = v.to_tail();
+            let ctor_wild_subpatterns = Fields::empty();
+            let matrix = matrix.specialize_constructor(cx, &constructor, &ctor_wild_subpatterns);
+            // Unwrap is ok: v can always be specialized with its own constructor.
+            let v =
+                v.specialize_constructor(cx, &constructor, &ctor_wild_subpatterns, true).unwrap();
             let usefulness =
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
 
@@ -2584,26 +2567,26 @@ fn pat_constructor<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     pat: &Pat<'tcx>,
-) -> Option<Constructor<'tcx>> {
+) -> Constructor<'tcx> {
     // This MUST be kept in sync with `IntRange::from_pat`.
     match *pat.kind {
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
-        PatKind::Binding { .. } | PatKind::Wild => None,
-        PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(Single),
+        PatKind::Binding { .. } | PatKind::Wild => Wildcard,
+        PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
         PatKind::Variant { adt_def, variant_index, .. } => {
-            Some(Variant(adt_def.variants[variant_index].def_id))
+            Variant(adt_def.variants[variant_index].def_id)
         }
         PatKind::Constant { value } => {
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
-                Some(IntRange(int_range))
+                IntRange(int_range)
             } else {
                 match value.ty.kind() {
-                    ty::Float(_) => Some(FloatRange(value, value, RangeEnd::Included)),
-                    ty::Ref(_, t, _) if t.is_str() => Some(Str(value)),
+                    ty::Float(_) => FloatRange(value, value, RangeEnd::Included),
+                    ty::Ref(_, t, _) if t.is_str() => Str(value),
                     // All constants that can be structurally matched have already been expanded
                     // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
                     // opaque.
-                    _ => Some(Opaque),
+                    _ => Opaque,
                 }
             }
         }
@@ -2617,9 +2600,9 @@ fn pat_constructor<'tcx>(
                 &end,
                 pat.span,
             ) {
-                Some(IntRange(int_range))
+                IntRange(int_range)
             } else {
-                Some(FloatRange(lo, hi, end))
+                FloatRange(lo, hi, end)
             }
         }
         PatKind::Array { ref prefix, ref slice, ref suffix }
@@ -2633,7 +2616,7 @@ fn pat_constructor<'tcx>(
             let suffix = suffix.len() as u64;
             let kind =
                 if slice.is_some() { VarLen(prefix, suffix) } else { FixedLen(prefix + suffix) };
-            Some(Slice(Slice { array_len, kind }))
+            Slice(Slice { array_len, kind })
         }
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
