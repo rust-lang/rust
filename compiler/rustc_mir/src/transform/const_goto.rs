@@ -73,37 +73,33 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                         }
 
                         let target_bb_terminator = target_bb.terminator();
-                        match &target_bb_terminator.kind {
-                            TerminatorKind::SwitchInt { discr, switch_ty, targets }
-                                if discr.place() == Some(*place) =>
-                            {
-                                // We now know that the Switch matches on the const place, and it is statementless
-                                // Now find which value in the Switch matches the const value.
-                                let const_value = _const.literal.try_eval_bits(
-                                    self.tcx,
-                                    self.param_env,
-                                    switch_ty,
-                                )?;
-                                let found_value_idx_option = targets
-                                    .iter()
-                                    .enumerate()
-                                    .find(|(_, x)| const_value == x.0)
-                                    .map(|(idx, _)| idx);
+                        let (discr, switch_ty, targets) = target_bb_terminator.kind.as_switch()?;
+                        if discr.place() == Some(*place) {
+                            // We now know that the Switch matches on the const place, and it is statementless
+                            // Now find which value in the Switch matches the const value.
+                            let const_value = _const.literal.try_eval_bits(
+                                self.tcx,
+                                self.param_env,
+                                switch_ty,
+                            )?;
+                            let found_value_idx_option = targets
+                                .iter()
+                                .enumerate()
+                                .find(|(_, x)| const_value == x.0)
+                                .map(|(idx, _)| idx);
 
-                                let target_to_use_in_goto =
-                                    if let Some(found_value_idx) = found_value_idx_option {
-                                        targets.iter().nth(found_value_idx).unwrap().1
-                                    } else {
-                                        // If we did not find the const value in values, it must be the otherwise case
-                                        targets.otherwise()
-                                    };
+                            let target_to_use_in_goto =
+                                if let Some(found_value_idx) = found_value_idx_option {
+                                    targets.iter().nth(found_value_idx).unwrap().1
+                                } else {
+                                    // If we did not find the const value in values, it must be the otherwise case
+                                    targets.otherwise()
+                                };
 
-                                self.optimizations.push(OptimizationToApply {
-                                    bb_with_goto: location.block,
-                                    target_to_use_in_goto,
-                                });
-                            }
-                            _ => {}
+                            self.optimizations.push(OptimizationToApply {
+                                bb_with_goto: location.block,
+                                target_to_use_in_goto,
+                            });
                         }
                     }
                 }
