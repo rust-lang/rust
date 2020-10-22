@@ -1504,6 +1504,13 @@ impl<'tcx> StatementKind<'tcx> {
             _ => None,
         }
     }
+
+    pub fn as_assign(&self) -> Option<&Box<(Place<'tcx>, Rvalue<'tcx>)>> {
+        match self {
+            StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
 }
 
 /// Describes what kind of retag is to be performed.
