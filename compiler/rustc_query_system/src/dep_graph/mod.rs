@@ -1,28 +1,24 @@
 pub mod debug;
 mod dep_node;
-mod dep_kind;
+pub mod dep_kind;
 mod graph;
 mod prev;
 mod query;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
-pub use dep_kind::DepKindEnum;
+pub use dep_kind::DepKindExt;
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 
-use std::fmt;
-use std::hash::Hash;
-
 pub trait DepContext: Copy {
-    type DepKind: self::DepKind;
+    type DepKind: self::DepKindExt;
     type StableHashingContext;
 
     /// Create a hashing context for hashing new results.
@@ -58,30 +54,4 @@ pub trait DepContext: Copy {
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
-}
-
-/// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
-    const NULL: Self;
-
-    /// Return whether this kind always require evaluation.
-    fn is_eval_always(&self) -> bool;
-
-    /// Return whether this kind requires additional parameters to be executed.
-    fn has_params(&self) -> bool;
-
-    /// Implementation of `std::fmt::Debug` for `DepNode`.
-    fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
-
-    /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps<Self>>>, op: OP) -> R
-    where
-        OP: FnOnce() -> R;
-
-    /// Access dependencies from current implicit context.
-    fn read_deps<OP>(op: OP)
-    where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
-
-    fn can_reconstruct_query_key(&self) -> bool;
 }
