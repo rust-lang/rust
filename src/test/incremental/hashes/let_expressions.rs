@@ -86,7 +86,7 @@ pub fn change_mutability_of_slot() {
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,typeck,optimized_mir")]
+    except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_slot() {
     let _x: u64 = 0;
@@ -166,7 +166,7 @@ pub fn change_mutability_of_binding_in_pattern() {
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2",
-    except="hir_owner_nodes,typeck,optimized_mir")]
+    except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_binding_in_pattern() {
     let (mut _a, _b) = (99u8, 'q');
