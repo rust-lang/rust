@@ -18,5 +18,5 @@ impl<'a> Iterator for Thing<'a> {
 impl<'a> FusedIterator for Thing<'a> {}
 
 fn main() {
-    Thing("test").fuse().filter(|_| true).count();
+    Thing("test").fuse().filter(|_| true).for_each(drop);
 }

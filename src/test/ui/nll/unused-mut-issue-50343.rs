@@ -4,6 +4,6 @@
 #![allow(unused_variables)] // for rustfix
 
 fn main() {
-    vec![(42, 22)].iter().map(|(mut x, _y)| ()).count();
+    vec![(42, 22)].iter().map(|(mut x, _y)| ()).for_each(drop);
     //~^ ERROR: variable does not need to be mutable
 }

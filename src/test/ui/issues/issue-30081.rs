@@ -11,5 +11,5 @@ fn main() {
     instrs.into_iter()
         .map(|(_, instr)| instr)
         .map(|instr| match *instr { _other => {} })
-        .last();
+        .for_each(drop);
 }
