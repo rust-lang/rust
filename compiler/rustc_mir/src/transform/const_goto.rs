@@ -52,7 +52,7 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
 
 impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        let mut bailer = || {
+        let _:Option<_> = try {
             match terminator.kind {
                 TerminatorKind::Goto { target } => {
                     // We only apply this optimization if the last statement is a const assignment
@@ -66,7 +66,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                             // Now check that the target of this Goto switches on this place.
                             let target_bb = &self.body.basic_blocks()[target];
                             if !target_bb.statements.is_empty() {
-                                return None;
+                                None?
                             }
 
                             let target_bb_terminator = target_bb.terminator();
@@ -108,9 +108,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                 }
                 _ => {}
             }
-            return Some(());
+            Some(())
         };
-        let _ = bailer();
 
         self.super_terminator(terminator, location);
     }
