@@ -30,6 +30,6 @@ fn main() {
 
     1.0 as u16;
 
-    -1 as i32;
-    -1.0 as f32;
+    let _ = -1 as i32;
+    let _ = -1.0 as f32;
 }
