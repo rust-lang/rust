@@ -7,11 +7,11 @@ LL |     match buf {
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&[u8; 4]`
 
-error[E0004]: non-exhaustive patterns: `&[]`, `&[_]`, `&[_, _]` and 2 more not covered
+error[E0004]: non-exhaustive patterns: `&[0_u8..=64_u8, _, _, _]` and `&[66_u8..=u8::MAX, _, _, _]` not covered
   --> $DIR/match-byte-array-patterns-2.rs:10:11
    |
 LL |     match buf {
-   |           ^^^ patterns `&[]`, `&[_]`, `&[_, _]` and 2 more not covered
+   |           ^^^ patterns `&[0_u8..=64_u8, _, _, _]` and `&[66_u8..=u8::MAX, _, _, _]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&[u8]`
