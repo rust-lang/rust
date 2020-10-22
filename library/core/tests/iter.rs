@@ -556,7 +556,7 @@ fn test_zip_map_rev_sideffectful() {
 
     {
         let mut it = xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1));
-        (&mut it).take(5).count();
+        (&mut it).take(5).for_each(drop);
         it.next_back();
     }
     assert_eq!(&xs, &[1, 1, 1, 1, 1, 1]);
@@ -571,7 +571,7 @@ fn test_zip_nested_sideffectful() {
     {
         // test that it has the side effect nested inside enumerate
         let it = xs.iter_mut().map(|x| *x = 1).enumerate().zip(&ys);
-        it.count();
+        it.for_each(drop);
     }
     assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
 }

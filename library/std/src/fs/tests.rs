@@ -534,7 +534,7 @@ fn concurrent_recursive_mkdir() {
         }
 
         // No `Display` on result of `join()`
-        join.drain(..).map(|join| join.join().unwrap()).count();
+        join.drain(..).map(|join| join.join().unwrap()).for_each(drop);
     }
 }
 
