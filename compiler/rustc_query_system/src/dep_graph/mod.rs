@@ -7,7 +7,7 @@ mod query;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
-pub use dep_kind::DepKindExt;
+pub use dep_kind::{DepKindExt, DepKind};
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;
@@ -28,7 +28,7 @@ pub trait DepContext: Copy {
     fn debug_dep_node(&self) -> bool;
 
     /// Try to force a dep node to execute and see if it's green.
-    fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
+    fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool;
 
     /// Return whether the current session is tainted by errors.
     fn has_errors_or_delayed_span_bugs(&self) -> bool;
@@ -37,7 +37,7 @@ pub trait DepContext: Copy {
     fn diagnostic(&self) -> &rustc_errors::Handler;
 
     /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
+    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode);
 
     /// Load diagnostics associated to the node in the previous session.
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;

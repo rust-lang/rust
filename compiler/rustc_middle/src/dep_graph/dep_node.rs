@@ -97,14 +97,14 @@ macro_rules! define_dep_nodes {
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
-        pub use rustc_query_system::dep_graph::DepKindEnum as DepKind;
+        pub use rustc_query_system::dep_graph::dep_kind::DepKind;
 
         trait DepKindExt {
             fn can_reconstruct_query_key<$tcx>(&self) -> bool;
         }
 
         impl DepKindExt for DepKind {
-            #[allow(unreachable_code, unused_lifetimes)]
+            #[allow(unreachable_code)]
             fn can_reconstruct_query_key<$tcx>(&self) -> bool {
                 match *self {
                     $(
@@ -115,7 +115,7 @@ macro_rules! define_dep_nodes {
 
                             // tuple args
                             $({
-                                return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
+                                return <$tuple_arg_ty as DepNodeParams<TyCtxt<$tcx>>>
                                     ::can_reconstruct_query_key();
                             })*
 
@@ -145,7 +145,7 @@ macro_rules! define_dep_nodes {
             )*
         }
 
-        pub type DepNode = rustc_query_system::dep_graph::DepNode<rustc_query_system::dep_graph::DepKindEnum>;
+        pub type DepNode = rustc_query_system::dep_graph::DepNode<rustc_query_system::dep_graph::dep_kind::DepKind>;
 
         pub trait DepNodeExt: Sized {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
@@ -246,6 +246,7 @@ macro_rules! define_dep_nodes {
     );
 }
 
+#[allow(unused_lifetimes)]
 rustc_query_system::rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
     // We use this for most things when incr. comp. is turned off.
     [] Null,

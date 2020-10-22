@@ -1,21 +1,21 @@
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepKind, DepNode};
+use super::{DepKindExt, DepNode};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Debug, Encodable, Decodable)]
-pub struct PreviousDepGraph<K: DepKind> {
+pub struct PreviousDepGraph<K: DepKindExt> {
     data: SerializedDepGraph<K>,
-    index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
+    index: FxHashMap<DepNode, SerializedDepNodeIndex>,
 }
 
-impl<K: DepKind> Default for PreviousDepGraph<K> {
+impl<K: DepKindExt> Default for PreviousDepGraph<K> {
     fn default() -> Self {
         PreviousDepGraph { data: Default::default(), index: Default::default() }
     }
 }
 
-impl<K: DepKind> PreviousDepGraph<K> {
+impl<K: DepKindExt> PreviousDepGraph<K> {
     pub fn new(data: SerializedDepGraph<K>) -> PreviousDepGraph<K> {
         let index: FxHashMap<_, _> =
             data.nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
@@ -31,22 +31,22 @@ impl<K: DepKind> PreviousDepGraph<K> {
     }
 
     #[inline]
-    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode<K> {
+    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode {
         self.data.nodes[dep_node_index]
     }
 
     #[inline]
-    pub fn node_to_index(&self, dep_node: &DepNode<K>) -> SerializedDepNodeIndex {
+    pub fn node_to_index(&self, dep_node: &DepNode) -> SerializedDepNodeIndex {
         self.index[dep_node]
     }
 
     #[inline]
-    pub fn node_to_index_opt(&self, dep_node: &DepNode<K>) -> Option<SerializedDepNodeIndex> {
+    pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
         self.index.get(dep_node).cloned()
     }
 
     #[inline]
-    pub fn fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
+    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
         self.index.get(dep_node).map(|&node_index| self.data.fingerprints[node_index])
     }
 

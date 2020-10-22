@@ -2,7 +2,7 @@ use crate::ich::StableHashingContext;
 use crate::ty::query::try_load_from_on_disk_cache;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::Lock;
+//use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::LocalDefId;
@@ -23,16 +23,8 @@ pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
 pub type PreviousDepGraph = rustc_query_system::dep_graph::PreviousDepGraph<DepKind>;
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
 
+/*
 impl rustc_query_system::dep_graph::DepKind for DepKind {
-    const NULL: Self = DepKind::Null;
-
-    fn is_eval_always(&self) -> bool {
-        DepKind::is_eval_always(self)
-    }
-
-    fn has_params(&self) -> bool {
-        DepKind::has_params(self)
-    }
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", node.kind)?;
@@ -81,11 +73,8 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             op(icx.task_deps)
         })
     }
-
-    fn can_reconstruct_query_key(&self) -> bool {
-        DepKind::can_reconstruct_query_key(self)
-    }
 }
+*/
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;

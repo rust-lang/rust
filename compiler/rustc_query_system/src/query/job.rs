@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepContext, DepKind};
+use crate::dep_graph::{DepContext, DepKindExt};
 use crate::query::plumbing::CycleError;
 use crate::query::QueryContext;
 
@@ -50,7 +50,7 @@ pub struct QueryJobId<K> {
     pub kind: K,
 }
 
-impl<K: DepKind> QueryJobId<K> {
+impl<K: DepKindExt> QueryJobId<K> {
     pub fn new(job: QueryShardJobId, shard: usize, kind: K) -> Self {
         QueryJobId { job, shard: u16::try_from(shard).unwrap(), kind }
     }

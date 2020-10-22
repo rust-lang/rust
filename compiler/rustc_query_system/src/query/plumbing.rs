@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepKind, DepNode};
+use crate::dep_graph::{DepKindExt, DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
@@ -472,7 +472,7 @@ fn load_from_disk_and_cache_in_memory<CTX, K, V>(
     key: K,
     prev_dep_node_index: SerializedDepNodeIndex,
     dep_node_index: DepNodeIndex,
-    dep_node: &DepNode<CTX::DepKind>,
+    dep_node: &DepNode,
     query: &QueryVtable<CTX, K, V>,
 ) -> V
 where
@@ -531,7 +531,7 @@ where
 fn incremental_verify_ich<CTX, K, V>(
     tcx: CTX,
     result: &V,
-    dep_node: &DepNode<CTX::DepKind>,
+    dep_node: &DepNode,
     dep_node_index: DepNodeIndex,
     query: &QueryVtable<CTX, K, V>,
 ) where
@@ -560,7 +560,7 @@ fn force_query_with_job<C, CTX>(
     tcx: CTX,
     key: C::Key,
     job: JobOwner<'_, CTX, C>,
-    dep_node: DepNode<CTX::DepKind>,
+    dep_node: DepNode,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) -> (C::Stored, DepNodeIndex)
 where
@@ -604,7 +604,7 @@ where
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     if unlikely!(!diagnostics.is_empty()) {
-        if dep_node.kind != DepKind::NULL {
+        if dep_node.kind != DepKindExt::NULL {
             tcx.store_diagnostics(dep_node_index, diagnostics);
         }
     }
@@ -690,7 +690,7 @@ fn force_query_impl<CTX, C>(
     state: &QueryState<CTX, C>,
     key: C::Key,
     span: Span,
-    dep_node: DepNode<CTX::DepKind>,
+    dep_node: DepNode,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) where
     C: QueryCache,
@@ -742,7 +742,7 @@ where
 }
 
 #[inline(always)]
-pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
+pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode)
 where
     Q: QueryDescription<CTX>,
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,

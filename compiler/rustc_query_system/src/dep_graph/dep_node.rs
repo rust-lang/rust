@@ -42,7 +42,7 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 
-use super::{DepContext, DepKind};
+use super::{DepContext, DepKindExt, DepKind};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -51,23 +51,23 @@ use std::fmt;
 use std::hash::Hash;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
-pub struct DepNode<K> {
-    pub kind: K,
+pub struct DepNode {
+    pub kind: DepKind,
     pub hash: Fingerprint,
 }
 
-impl<K: DepKind> DepNode<K> {
+impl DepNode {
     /// Creates a new, parameterless DepNode. This method will assert
     /// that the DepNode corresponding to the given DepKind actually
     /// does not require any parameters.
-    pub fn new_no_params(kind: K) -> DepNode<K> {
+    pub fn new_no_params(kind: DepKind) -> DepNode {
         debug_assert!(!kind.has_params());
         DepNode { kind, hash: Fingerprint::ZERO }
     }
 
-    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
+    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: DepKind, arg: &Key) -> DepNode
     where
-        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Ctxt: crate::query::QueryContext<DepKind = DepKind>,
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);
@@ -84,9 +84,10 @@ impl<K: DepKind> DepNode<K> {
     }
 }
 
-impl<K: DepKind> fmt::Debug for DepNode<K> {
+//TODO still very hairy...
+impl fmt::Debug for DepNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        K::debug_node(self, f)
+        DepKind::debug_node(self, f)
     }
 }
 
@@ -111,7 +112,7 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     /// `can_reconstruct_query_key()` is `true`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
-    fn recover(tcx: Ctxt, dep_node: &DepNode<Ctxt::DepKind>) -> Option<Self>;
+    fn recover(tcx: Ctxt, dep_node: &DepNode) -> Option<Self>;
 }
 
 impl<Ctxt: DepContext, T> DepNodeParams<Ctxt> for T
@@ -136,7 +137,7 @@ where
         format!("{:?}", *self)
     }
 
-    default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
+    default fn recover(_: Ctxt, _: &DepNode) -> Option<Self> {
         None
     }
 }

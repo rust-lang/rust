@@ -100,7 +100,7 @@ rustc_dep_node_append!([define_dep_kind_enum!][ <'tcx>
 impl DepKind {
     pub const NULL: Self = DepKind::Null;
 
-    pub fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    pub fn debug_node(node: &DepNode, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", node.kind)?;
 
         if !node.kind.has_params() && !node.kind.is_anon() {
@@ -138,7 +138,7 @@ pub trait DepKindExt: Copy + fmt::Debug + Eq + Ord + Hash {
     fn has_params(&self) -> bool;
 
     /// Implementation of `std::fmt::Debug` for `DepNode`.
-    fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn debug_node(node: &DepNode, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// Execute the operation with provided dependencies.
     fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps<Self>>>, op: OP) -> R

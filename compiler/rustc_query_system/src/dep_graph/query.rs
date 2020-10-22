@@ -1,15 +1,15 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
 
-use super::{DepKind, DepNode};
+use super::{DepKindExt, DepNode};
 
 pub struct DepGraphQuery<K> {
-    pub graph: Graph<DepNode<K>, ()>,
-    pub indices: FxHashMap<DepNode<K>, NodeIndex>,
+    pub graph: Graph<DepNode, ()>,
+    pub indices: FxHashMap<DepNode, NodeIndex>,
 }
 
-impl<K: DepKind> DepGraphQuery<K> {
-    pub fn new(nodes: &[DepNode<K>], edges: &[(DepNode<K>, DepNode<K>)]) -> DepGraphQuery<K> {
+impl<K: DepKindExt> DepGraphQuery<K> {
+    pub fn new(nodes: &[DepNode], edges: &[(DepNode, DepNode)]) -> DepGraphQuery<K> {
         let mut graph = Graph::with_capacity(nodes.len(), edges.len());
         let mut indices = FxHashMap::default();
         for node in nodes {
@@ -25,15 +25,15 @@ impl<K: DepKind> DepGraphQuery<K> {
         DepGraphQuery { graph, indices }
     }
 
-    pub fn contains_node(&self, node: &DepNode<K>) -> bool {
+    pub fn contains_node(&self, node: &DepNode) -> bool {
         self.indices.contains_key(&node)
     }
 
-    pub fn nodes(&self) -> Vec<&DepNode<K>> {
+    pub fn nodes(&self) -> Vec<&DepNode> {
         self.graph.all_nodes().iter().map(|n| &n.data).collect()
     }
 
-    pub fn edges(&self) -> Vec<(&DepNode<K>, &DepNode<K>)> {
+    pub fn edges(&self) -> Vec<(&DepNode, &DepNode)> {
         self.graph
             .all_edges()
             .iter()
@@ -42,7 +42,7 @@ impl<K: DepKind> DepGraphQuery<K> {
             .collect()
     }
 
-    fn reachable_nodes(&self, node: &DepNode<K>, direction: Direction) -> Vec<&DepNode<K>> {
+    fn reachable_nodes(&self, node: &DepNode, direction: Direction) -> Vec<&DepNode> {
         if let Some(&index) = self.indices.get(node) {
             self.graph.depth_traverse(index, direction).map(|s| self.graph.node_data(s)).collect()
         } else {
@@ -51,7 +51,7 @@ impl<K: DepKind> DepGraphQuery<K> {
     }
 
     /// All nodes that can reach `node`.
-    pub fn transitive_predecessors(&self, node: &DepNode<K>) -> Vec<&DepNode<K>> {
+    pub fn transitive_predecessors(&self, node: &DepNode) -> Vec<&DepNode> {
         self.reachable_nodes(node, INCOMING)
     }
 }
