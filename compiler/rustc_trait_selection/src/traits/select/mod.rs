@@ -518,12 +518,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             result
                         }
                         Ok(Ok(None)) => Ok(EvaluatedToAmbig),
-                        // EvaluatedToRecur might also be acceptable here, but use
-                        // Unknown for now because it means that we won't dismiss a
-                        // selection candidate solely because it has a projection
-                        // cycle. This is closest to the previous behavior of
-                        // immediately erroring.
-                        Ok(Err(project::InProgress)) => Ok(EvaluatedToUnknown),
+                        Ok(Err(project::InProgress)) => Ok(EvaluatedToRecur),
                         Err(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -1179,7 +1174,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if let ty::PredicateAtom::Trait(pred, _) = bound_predicate.skip_binder() {
                     let bound = bound_predicate.rebind(pred.trait_ref);
                     if self.infcx.probe(|_| {
-                        match self.match_projection(
+                        match self.match_normalize_trait_ref(
                             obligation,
                             bound,
                             placeholder_trait_predicate.trait_ref,
@@ -1207,7 +1202,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Equates the trait in `obligation` with trait bound. If the two traits
     /// can be equated and the normalized trait bound doesn't contain inference
     /// variables or placeholders, the normalized bound is returned.
-    fn match_projection(
+    fn match_normalize_trait_ref(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         trait_bound: ty::PolyTraitRef<'tcx>,
@@ -1357,10 +1352,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..)
-                | ObjectCandidate
+                | ObjectCandidate(_)
                 | ProjectionCandidate(_),
             ) => !is_global(cand),
-            (ObjectCandidate | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
+            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
                 is_global(cand)
@@ -1381,20 +1376,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 is_global(cand) && other.evaluation.must_apply_modulo_regions()
             }
 
-            (ProjectionCandidate(i), ProjectionCandidate(j)) => {
-                // Arbitrarily pick the first candidate for backwards
+            (ProjectionCandidate(i), ProjectionCandidate(j))
+            | (ObjectCandidate(i), ObjectCandidate(j)) => {
+                // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
-                i > j && !needs_infer
+                i < j && !needs_infer
             }
-            (ObjectCandidate, ObjectCandidate) => bug!("Duplicate object candidate"),
-            (ObjectCandidate, ProjectionCandidate(_))
-            | (ProjectionCandidate(_), ObjectCandidate) => {
+            (ObjectCandidate(_), ProjectionCandidate(_))
+            | (ProjectionCandidate(_), ObjectCandidate(_)) => {
                 bug!("Have both object and projection candidate")
             }
 
             // Arbitrarily give projection and object candidates priority.
             (
-                ObjectCandidate | ProjectionCandidate(_),
+                ObjectCandidate(_) | ProjectionCandidate(_),
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
@@ -1414,7 +1409,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
-                ObjectCandidate | ProjectionCandidate(_),
+                ObjectCandidate(_) | ProjectionCandidate(_),
             ) => false,
 
             (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
@@ -1890,9 +1885,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Normalize `where_clause_trait_ref` and try to match it against
     /// `obligation`. If successful, return any predicates that
-    /// result from the normalization. Normalization is necessary
-    /// because where-clauses are stored in the parameter environment
-    /// unnormalized.
+    /// result from the normalization.
     fn match_where_clause_trait_ref(
         &mut self,
         obligation: &TraitObligation<'tcx>,
