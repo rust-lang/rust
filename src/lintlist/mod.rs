@@ -1,15 +1,16 @@
-//! This file is managed by `cargo dev update_lints`. Do not edit.
+//! This file is managed by `cargo dev update_lints`. Do not edit or format this file.
 
-use lazy_static::lazy_static;
+use std::lazy::SyncLazy;
 
 pub mod lint;
 pub use lint::Level;
 pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
-lazy_static! {
+#[rustfmt::skip]
+pub static ALL_LINTS: SyncLazy<Vec<Lint>> = SyncLazy::new(|| {
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub static ref ALL_LINTS: Vec<Lint> = vec![
+vec![
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1180,6 +1181,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "swap",
     },
     Lint {
+        name: "manual_unwrap_or",
+        group: "complexity",
+        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or`",
+        deprecation: None,
+        module: "manual_unwrap_or",
+    },
+    Lint {
         name: "many_single_char_names",
         group: "style",
         desc: "too many single character bindings",
@@ -1845,6 +1853,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "ptr",
     },
     Lint {
+        name: "ptr_eq",
+        group: "style",
+        desc: "use `std::ptr::eq` when comparing raw pointers",
+        deprecation: None,
+        module: "ptr_eq",
+    },
+    Lint {
         name: "ptr_offset_with_cast",
         group: "complexity",
         desc: "unneeded pointer offset cast",
@@ -1997,6 +2012,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "using `result.map(f)`, where `f` is a function or closure that returns `()`",
         deprecation: None,
         module: "map_unit_fn",
+    },
+    Lint {
+        name: "result_unit_err",
+        group: "style",
+        desc: "public function returning `Result` with an `Err` type of `()`",
+        deprecation: None,
+        module: "functions",
     },
     Lint {
         name: "reversed_empty_ranges",
@@ -2817,6 +2839,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         deprecation: None,
         module: "methods",
     },
-];
+]
 // end lint list, do not remove this comment, it’s used in `update_lints`
-}
+});

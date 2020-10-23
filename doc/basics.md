@@ -46,7 +46,7 @@ this toolchain, you can just use the `setup-toolchain.sh` script or use
 `rustup-toolchain-install-master`:
 
 ```bash
-sh setup-toolchain.sh
+bash setup-toolchain.sh
 # OR
 cargo install rustup-toolchain-install-master
 # For better IDE integration also add `-c rustfmt -c rust-src` (optional)

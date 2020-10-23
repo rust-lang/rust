@@ -17,7 +17,7 @@ keywords = ["clippy", "lint", "plugin"]
 edition = "2018"
 
 [dependencies]
-cargo_metadata = "0.11.1"
+cargo_metadata = "0.12"
 if_chain = "1.0.0"
 itertools = "0.9"
 pulldown-cmark = { version = "0.8", default-features = false }
@@ -27,7 +27,7 @@ serde = { version = "1.0", features = ["derive"] }
 smallvec = { version = "1", features = ["union"] }
 toml = "0.5.3"
 unicode-normalization = "0.1"
-semver = "0.10.0"
+semver = "0.11"
 # NOTE: cargo requires serde feat in its url dep
 # see <https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864>
 url = { version =  "2.1.0", features = ["serde"] }
