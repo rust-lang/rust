@@ -19,7 +19,6 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
 use rustc_target::abi::{AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
 use tracing::debug;
 
@@ -110,7 +109,7 @@ fn check_and_apply_linkage(
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
     sym: &str,
-    span: Span,
+    span_def_id: DefId,
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
     if let Some(linkage) = attrs.linkage {
@@ -125,7 +124,7 @@ fn check_and_apply_linkage(
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
             cx.sess().span_fatal(
-                span,
+                cx.tcx.def_span(span_def_id),
                 "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
             )
         };
@@ -143,7 +142,10 @@ fn check_and_apply_linkage(
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(&sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
-                cx.sess().span_fatal(span, &format!("symbol `{}` is already defined", &sym))
+                cx.sess().span_fatal(
+                    cx.tcx.def_span(span_def_id),
+                    &format!("symbol `{}` is already defined", &sym),
+                )
             });
             llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
             llvm::LLVMSetInitializer(g2, g1);
@@ -210,21 +212,21 @@ impl CodegenCx<'ll, 'tcx> {
 
         debug!("get_static: sym={} instance={:?}", sym, instance);
 
-        let g = if let Some(def_id) = def_id.as_local() {
-            let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+        let g = if let Some(local_def_id) = def_id.as_local() {
+            let id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
             let llty = self.layout_of(ty).llvm_type(self);
             // FIXME: refactor this to work without accessing the HIR
             let (g, attrs) = match self.tcx.hir().get(id) {
-                Node::Item(&hir::Item { attrs, span, kind: hir::ItemKind::Static(..), .. }) => {
+                Node::Item(&hir::Item { attrs, kind: hir::ItemKind::Static(..), .. }) => {
                     if let Some(g) = self.get_declared_value(sym) {
                         if self.val_ty(g) != self.type_ptr_to(llty) {
-                            span_bug!(span, "Conflicting types for static");
+                            span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
                         }
                     }
 
                     let g = self.declare_global(sym, llty);
 
-                    if !self.tcx.is_reachable_non_generic(def_id) {
+                    if !self.tcx.is_reachable_non_generic(local_def_id) {
                         unsafe {
                             llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                         }
@@ -235,12 +237,11 @@ impl CodegenCx<'ll, 'tcx> {
 
                 Node::ForeignItem(&hir::ForeignItem {
                     ref attrs,
-                    span,
                     kind: hir::ForeignItemKind::Static(..),
                     ..
                 }) => {
-                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), &**attrs)
+                    let fn_attrs = self.tcx.codegen_fn_attrs(local_def_id);
+                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, def_id), &**attrs)
                 }
 
                 item => bug!("get_static: expected static, found {:?}", item),
@@ -260,8 +261,7 @@ impl CodegenCx<'ll, 'tcx> {
             debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
 
             let attrs = self.tcx.codegen_fn_attrs(def_id);
-            let span = self.tcx.def_span(def_id);
-            let g = check_and_apply_linkage(&self, &attrs, ty, sym, span);
+            let g = check_and_apply_linkage(&self, &attrs, ty, sym, def_id);
 
             // Thread-local statics in some other crate need to *always* be linked
             // against in a thread-local fashion, so we need to be sure to apply the
