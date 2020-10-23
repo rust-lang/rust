@@ -49,9 +49,10 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
                 }
                 TerminatorKind::Assert {
                     target, cond: Operand::Constant(ref c), expected, ..
-                } if (c.literal.try_eval_bool(tcx, param_env) == Some(true)) == expected => {
-                    TerminatorKind::Goto { target }
-                }
+                } => match c.literal.try_eval_bool(tcx, param_env) {
+                    Some(v) if v == expected => TerminatorKind::Goto { target },
+                    _ => continue,
+                },
                 TerminatorKind::FalseEdge { real_target, .. } => {
                     TerminatorKind::Goto { target: real_target }
                 }
