@@ -222,7 +222,9 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
       if (i >= CI->getNumArgOperands()) {
         EmitFailure("MissingArgShadow", CI->getDebugLoc(), CI,
                     "__enzyme_autodiff missing argument shadow at index ", i,
-                    ", need shadow of type ", *PTy, " to shadow primal argument ", *args.back(), " at call ", *CI);
+                    ", need shadow of type ", *PTy,
+                    " to shadow primal argument ", *args.back(), " at call ",
+                    *CI);
         return false;
       }
       Value *res = CI->getArgOperand(i);
