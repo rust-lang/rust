@@ -372,7 +372,7 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
     unsafe { oom_impl(layout) }
 }
 
-#[cfg(not(any(test, bootstrap)))]
+#[cfg(not(any(target_os = "hermit", test, bootstrap)))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
