@@ -2955,24 +2955,11 @@ impl<T> Iterator for IntoIter<T> {
         unsafe {
             if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
         }
+    }
+
     #[inline]
     fn last(mut self) -> Option<T> {
-        unsafe {
-            if self.ptr as *const _ == self.end {
-                None
-            } else {
-                if mem::size_of::<T>() == 0 {
-                    // Immediately marches to end of the iterator.
-                    self.ptr = self.end;
-                    // Make up a value of this ZST.
-                    Some(mem::zeroed())
-                } else {
-                    // Immediately marches to end of the iterator.
-                    self.ptr = self.end;
-                    Some(ptr::read(self.ptr.offset(-1)))
-                }
-            }
-        }
+        self.next_back()
     }
 }
 
