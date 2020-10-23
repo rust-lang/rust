@@ -88,7 +88,7 @@ impl CheckAttrVisitor<'tcx> {
             } else if self.tcx.sess.check_name(attr, sym::allow_internal_unstable) {
                 self.check_allow_internal_unstable(&attr, span, target, &attrs)
             } else if self.tcx.sess.check_name(attr, sym::rustc_allow_const_fn_unstable) {
-                self.check_rustc_allow_const_fn_unstable(&attr, span, target)
+                self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -798,13 +798,15 @@ impl CheckAttrVisitor<'tcx> {
     /// (Allows proc_macro functions)
     fn check_rustc_allow_const_fn_unstable(
         &self,
+        hir_id: HirId,
         attr: &Attribute,
         span: &Span,
         target: Target,
     ) -> bool {
         if let Target::Fn | Target::Method(_) = target {
-            // FIXME Check that this isn't just a function, but a const fn
-            return true;
+            if self.tcx.is_const_fn_raw(self.tcx.hir().local_def_id(hir_id)) {
+                return true;
+            }
         }
         self.tcx
             .sess
