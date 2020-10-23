@@ -14,10 +14,8 @@ Counter in file 0 17:21 -> 17:33, #10
 Counter in file 0 19:21 -> 21:14, #11
 Counter in file 0 21:14 -> 21:15, #12
 Counter in file 0 22:10 -> 22:11, #13
-Counter in file 0 22:10 -> 22:11, (#3 + 0)
 Counter in file 0 23:9 -> 23:23, #14
 Counter in file 0 24:6 -> 24:7, #15
-Counter in file 0 24:6 -> 24:7, (#1 + 0)
 Counter in file 0 25:1 -> 25:2, #16
 Emitting segments for file: ../coverage/nested_loops.rs
 Combined regions:
@@ -35,9 +33,9 @@ Combined regions:
   17:21 -> 17:33 (count=1)
   19:21 -> 21:14 (count=0)
   21:14 -> 21:15 (count=2)
-  22:10 -> 22:11 (count=3)
+  22:10 -> 22:11 (count=2)
   23:9 -> 23:23 (count=0)
-  24:6 -> 24:7 (count=1)
+  24:6 -> 24:7 (count=0)
   25:1 -> 25:2 (count=1)
 Segment at 2:9 (count = 1), RegionEntry
 Segment at 3:27 (count = 0), Skipped
@@ -66,11 +64,11 @@ Segment at 17:33 (count = 0), Skipped
 Segment at 19:21 (count = 0), RegionEntry
 Segment at 21:14 (count = 2), RegionEntry
 Segment at 21:15 (count = 0), Skipped
-Segment at 22:10 (count = 3), RegionEntry
+Segment at 22:10 (count = 2), RegionEntry
 Segment at 22:11 (count = 0), Skipped
 Segment at 23:9 (count = 0), RegionEntry
 Segment at 23:23 (count = 0), Skipped
-Segment at 24:6 (count = 1), RegionEntry
+Segment at 24:6 (count = 0), RegionEntry
 Segment at 24:7 (count = 0), Skipped
 Segment at 25:1 (count = 1), RegionEntry
 Segment at 25:2 (count = 0), Skipped

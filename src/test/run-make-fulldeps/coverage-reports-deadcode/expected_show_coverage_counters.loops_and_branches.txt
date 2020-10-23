@@ -7,7 +7,6 @@ Counter in file 0 15:31 -> 15:32, #8
 Counter in file 0 17:10 -> 17:11, #10
 Counter in file 0 18:9 -> 18:15, #11
 Counter in file 0 19:5 -> 19:6, #12
-Counter in file 0 19:5 -> 19:6, (#8 + 0)
 Counter in file 0 22:11 -> 25:2, #1
 Emitting segments for file: ../coverage/loops_and_branches.rs
 Combined regions:
