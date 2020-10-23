@@ -1,7 +1,6 @@
-use crate::utils::{is_direct_expn_of, span_lint};
-use if_chain::if_chain;
+use crate::utils::{higher, is_direct_expn_of, span_lint};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability, StmtKind, UnOp};
+use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
@@ -39,66 +38,23 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         for dmn in &DEBUG_MACRO_NAMES {
             if is_direct_expn_of(e.span, dmn).is_some() {
-                if let Some(span) = extract_call(cx, e) {
-                    span_lint(
-                        cx,
-                        DEBUG_ASSERT_WITH_MUT_CALL,
-                        span,
-                        &format!("do not call a function with mutable arguments inside of `{}!`", dmn),
-                    );
-                }
-            }
-        }
-    }
-}
-
-//HACK(hellow554): remove this when #4694 is implemented
-fn extract_call<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<Span> {
-    if_chain! {
-        if let ExprKind::Block(ref block, _) = e.kind;
-        if block.stmts.len() == 1;
-        if let StmtKind::Semi(ref matchexpr) = block.stmts[0].kind;
-        then {
-            // debug_assert
-            if_chain! {
-                if let ExprKind::Match(ref ifclause, _, _) = matchexpr.kind;
-                if let ExprKind::DropTemps(ref droptmp) = ifclause.kind;
-                if let ExprKind::Unary(UnOp::UnNot, ref condition) = droptmp.kind;
-                then {
-                    let mut visitor = MutArgVisitor::new(cx);
-                    visitor.visit_expr(condition);
-                    return visitor.expr_span();
-                }
-            }
-
-            // debug_assert_{eq,ne}
-            if_chain! {
-                if let ExprKind::Block(ref matchblock, _) = matchexpr.kind;
-                if let Some(ref matchheader) = matchblock.expr;
-                if let ExprKind::Match(ref headerexpr, _, _) = matchheader.kind;
-                if let ExprKind::Tup(ref conditions) = headerexpr.kind;
-                if conditions.len() == 2;
-                then {
-                    if let ExprKind::AddrOf(BorrowKind::Ref, _, ref lhs) = conditions[0].kind {
+                if let Some(macro_args) = higher::extract_assert_macro_args(e) {
+                    for arg in macro_args {
                         let mut visitor = MutArgVisitor::new(cx);
-                        visitor.visit_expr(lhs);
+                        visitor.visit_expr(arg);
                         if let Some(span) = visitor.expr_span() {
-                            return Some(span);
-                        }
-                    }
-                    if let ExprKind::AddrOf(BorrowKind::Ref, _, ref rhs) = conditions[1].kind {
-                        let mut visitor = MutArgVisitor::new(cx);
-                        visitor.visit_expr(rhs);
-                        if let Some(span) = visitor.expr_span() {
-                            return Some(span);
+                            span_lint(
+                                cx,
+                                DEBUG_ASSERT_WITH_MUT_CALL,
+                                span,
+                                &format!("do not call a function with mutable arguments inside of `{}!`", dmn),
+                            );
                         }
                     }
                 }
             }
         }
     }
-
-    None
 }
 
 struct MutArgVisitor<'a, 'tcx> {

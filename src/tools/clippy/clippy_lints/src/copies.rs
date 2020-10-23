@@ -1,4 +1,4 @@
-use crate::utils::{eq_expr_value, SpanlessEq, SpanlessHash};
+use crate::utils::{eq_expr_value, in_macro, SpanlessEq, SpanlessHash};
 use crate::utils::{get_parent_expr, higher, if_sequence, snippet, span_lint_and_note, span_lint_and_then};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Arm, Block, Expr, ExprKind, MatchSource, Pat, PatKind};
@@ -220,6 +220,10 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
     };
 
     let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool {
+        // Do not lint if any expr originates from a macro
+        if in_macro(lhs.span) || in_macro(rhs.span) {
+            return false;
+        }
         // Do not spawn warning if `IFS_SAME_COND` already produced it.
         if eq_expr_value(cx, lhs, rhs) {
             return false;

@@ -45,11 +45,13 @@ Similarly in [`TypeckResults`][TypeckResults] methods, you have the [`pat_ty()`]
 to retrieve a type from a pattern.
 
 Two noticeable items here:
-- `cx` is the lint context [`LateContext`][LateContext].
-  The two most useful data structures in this context are `tcx` and `tables`,
-  allowing us to jump to type definitions and other compilation stages such as HIR.
-- `tables` is [`TypeckResults`][TypeckResults] and is created by type checking step,
-  it includes useful information such as types of expressions, ways to resolve methods and so on.
+- `cx` is the lint context [`LateContext`][LateContext]. The two most useful
+  data structures in this context are `tcx` and the `TypeckResults` returned by
+  `LateContext::typeck_results`, allowing us to jump to type definitions and
+  other compilation stages such as HIR.
+- `typeck_results`'s return value is [`TypeckResults`][TypeckResults] and is
+  created by type checking step, it includes useful information such as types
+  of expressions, ways to resolve methods and so on.
 
 # Checking if an expr is calling a specific method
 
