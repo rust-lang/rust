@@ -2595,7 +2595,25 @@ fn fn_can_unwind(
                 C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
                     unwind
                 }
-                _ => false,
+                Cdecl
+                | Fastcall
+                | Vectorcall
+                | Aapcs
+                | Win64
+                | SysV64
+                | PtxKernel
+                | Msp430Interrupt
+                | X86Interrupt
+                | AmdGpuKernel
+                | EfiApi
+                | AvrInterrupt
+                | AvrNonBlockingInterrupt
+                | CCmseNonSecureCall
+                | RustIntrinsic
+                | PlatformIntrinsic
+                | Unadjusted => false,
+                // In the `if` above, we checked for functions with the Rust calling convention.
+                Rust | RustCall => unreachable!(),
             }
         }
     }
