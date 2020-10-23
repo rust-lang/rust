@@ -191,13 +191,13 @@ impl<'a> Location<'a> {
     /// ```
     /// use core::panic::Location;
     ///
-    /// /// Returns the [`Location`] at which it is called.
+    /// // Returns the [`Location`] at which it is called.
     /// #[track_caller]
     /// fn get_caller_location() -> &'static Location<'static> {
     ///     Location::caller()
     /// }
     ///
-    /// /// Returns a [`Location`] from within this function's definition.
+    /// // Returns a [`Location`] from within this function's definition.
     /// fn get_just_one_location() -> &'static Location<'static> {
     ///     get_caller_location()
     /// }

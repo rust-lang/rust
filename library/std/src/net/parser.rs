@@ -141,11 +141,11 @@ impl<'a> Parser<'a> {
 
     /// Read an IPV6 Address
     fn read_ipv6_addr(&mut self) -> Option<Ipv6Addr> {
-        /// Read a chunk of an ipv6 address into `groups`. Returns the number
-        /// of groups read, along with a bool indicating if an embedded
-        /// trailing ipv4 address was read. Specifically, read a series of
-        /// colon-separated ipv6 groups (0x0000 - 0xFFFF), with an optional
-        /// trailing embedded ipv4 address.
+        // Read a chunk of an ipv6 address into `groups`. Returns the number
+        // of groups read, along with a bool indicating if an embedded
+        // trailing ipv4 address was read. Specifically, read a series of
+        // colon-separated ipv6 groups (0x0000 - 0xFFFF), with an optional
+        // trailing embedded ipv4 address.
         fn read_groups(p: &mut Parser<'_>, groups: &mut [u16]) -> (usize, bool) {
             let limit = groups.len();
 

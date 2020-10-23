@@ -49,9 +49,9 @@ impl<T: LambdaL> ScopedCell<T> {
         replacement: <T as ApplyL<'a>>::Out,
         f: impl for<'b, 'c> FnOnce(RefMutL<'b, 'c, T>) -> R,
     ) -> R {
-        /// Wrapper that ensures that the cell always gets filled
-        /// (with the original state, optionally changed by `f`),
-        /// even if `f` had panicked.
+        // Wrapper that ensures that the cell always gets filled
+        // (with the original state, optionally changed by `f`),
+        // even if `f` had panicked.
         struct PutBackOnDrop<'a, T: LambdaL> {
             cell: &'a ScopedCell<T>,
             value: Option<<T as ApplyL<'static>>::Out>,

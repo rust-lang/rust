@@ -1800,7 +1800,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// ```
 /// use std::ptr;
 ///
-/// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
+/// // Moves all the elements of `src` into `dst`, leaving `src` empty.
 /// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
 ///     let src_len = src.len();
 ///     let dst_len = dst.len();
@@ -1907,6 +1907,7 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// /// * `ptr` must be valid for reads of `elts` contiguous elements of type `T`.
 /// /// * Those elements must not be used after calling this function unless `T: Copy`.
 /// # #[allow(dead_code)]
+/// # #[allow(unused_doc_comments)]
 /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
 ///     let mut dst = Vec::with_capacity(elts);
 ///

@@ -12,7 +12,7 @@ impl<'a> Parser<'a> {
     /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
     /// token. Be conservative (return true) if not sure.
     pub fn nonterminal_may_begin_with(kind: NonterminalKind, token: &Token) -> bool {
-        /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
+        // Checks whether the non-terminal may contain a single (non-keyword) identifier.
         fn may_be_ident(nt: &token::Nonterminal) -> bool {
             match *nt {
                 token::NtItem(_) | token::NtBlock(_) | token::NtVis(_) | token::NtLifetime(_) => {

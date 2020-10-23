@@ -94,7 +94,7 @@ pub struct ImmTy<'tcx, Tag = ()> {
 
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        /// Helper function for printing a scalar to a FmtPrinter
+        // Helper function for printing a scalar to a FmtPrinter
         fn p<'a, 'tcx, F: std::fmt::Write, Tag>(
             cx: FmtPrinter<'a, 'tcx, F>,
             s: ScalarMaybeUninit<Tag>,
