@@ -6,6 +6,8 @@ pub struct Mutex {
     inner: *const c_void,
 }
 
+pub type MovableMutex = Box<Mutex>;
+
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 

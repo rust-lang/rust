@@ -1,10 +1,12 @@
-use crate::ffi::OsStr;
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::iter::Empty;
+use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::{unsupported, Void};
-use crate::sys_common::process::CommandEnv;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
 
@@ -13,8 +15,11 @@ pub use crate::ffi::OsString as EnvKey;
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Command {
+    program: OsString,
     env: CommandEnv,
 }
+
+pub type CommandArgs<'a> = Empty<&'a OsStr>;
 
 // passed back to std::process with the pipes connected to the child, if any
 // were requested
@@ -31,8 +36,8 @@ pub enum Stdio {
 }
 
 impl Command {
-    pub fn new(_program: &OsStr) -> Command {
-        Command { env: Default::default() }
+    pub fn new(program: &OsStr) -> Command {
+        Command { program: program.into(), env: Default::default() }
     }
 
     pub fn arg(&mut self, _arg: &OsStr) {}
@@ -48,6 +53,22 @@ impl Command {
     pub fn stdout(&mut self, _stdout: Stdio) {}
 
     pub fn stderr(&mut self, _stderr: Stdio) {}
+
+    pub fn get_args(&self) -> CommandArgs<'_> {
+        Default::default()
+    }
+
+    pub fn get_current_dir(&self) -> Option<&Path> {
+        None
+    }
+
+    pub fn get_program(&self) -> &OsStr {
+        &self.program
+    }
+
+    pub fn get_envs(&self) -> CommandEnvs<'_> {
+        self.env.iter()
+    }
 
     pub fn spawn(
         &mut self,
