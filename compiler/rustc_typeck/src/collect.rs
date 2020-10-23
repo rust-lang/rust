@@ -40,7 +40,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::config::SanitizerSet;
 use rustc_session::lint;
@@ -2785,6 +2785,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             None => ia,
         }
     });
+
+    // #73631: closures inherit `#[target_feature]` annotations
+    if tcx.features().target_feature_11 && tcx.is_closure(id) {
+        let owner_id = tcx.parent(id).expect("closure should have a parent");
+        codegen_fn_attrs
+            .target_features
+            .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied())
+    }
 
     // If a function uses #[target_feature] it can't be inlined into general
     // purpose functions as they wouldn't have the right target features
