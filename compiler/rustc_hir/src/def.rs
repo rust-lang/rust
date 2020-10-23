@@ -206,8 +206,10 @@ pub enum Res<Id = hir::HirId> {
     /// ```rust
     /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] {} }
     /// ```
+    /// We do however allow `Self` in repeat expression even if it is generic to not break code
+    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint.
     ///
-    /// FIXME(lazy_normalization_consts): Remove this bodge once this feature is stable.
+    /// FIXME(lazy_normalization_consts): Remove this bodge once that feature is stable.
     SelfTy(Option<DefId> /* trait */, Option<(DefId, bool)> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 

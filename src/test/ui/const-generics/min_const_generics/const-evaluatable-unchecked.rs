@@ -1,4 +1,5 @@
 // check-pass
+#![feature(min_const_generics)]
 #![allow(dead_code)]
 
 fn foo<T>() {
@@ -13,7 +14,19 @@ impl<T> Foo<T> {
     const ASSOC: usize = 4;
 
     fn test() {
-        [0; Self::ASSOC];
+        let _ = [0; Self::ASSOC];
+        //~^ WARN cannot use constants which depend on generic parameters in types
+        //~| WARN this was previously accepted by the compiler but is being phased out
+    }
+}
+
+struct Bar<const N: usize>;
+
+impl<const N: usize> Bar<N> {
+    const ASSOC: usize = 4;
+
+    fn test() {
+        let _ = [0; Self::ASSOC];
         //~^ WARN cannot use constants which depend on generic parameters in types
         //~| WARN this was previously accepted by the compiler but is being phased out
     }
