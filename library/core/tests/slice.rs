@@ -1341,6 +1341,14 @@ mod slice_index {
             message: "out of range";
         }
 
+        in mod rangeinclusive_len {
+            data: [0, 1, 2, 3, 4, 5];
+
+            good: data[0..=5] == [0, 1, 2, 3, 4, 5];
+            bad: data[0..=6];
+            message: "out of range";
+        }
+
         in mod range_len_len {
             data: [0, 1, 2, 3, 4, 5];
 
@@ -1354,6 +1362,28 @@ mod slice_index {
 
             good: data[6..=5] == [];
             bad: data[7..=6];
+            message: "out of range";
+        }
+    }
+
+    panic_cases! {
+        in mod rangeinclusive_exhausted {
+            data: [0, 1, 2, 3, 4, 5];
+
+            good: data[0..=5] == [0, 1, 2, 3, 4, 5];
+            good: data[{
+                let mut iter = 0..=5;
+                iter.by_ref().count(); // exhaust it
+                iter
+            }] == [];
+
+            // 0..=6 is out of range before exhaustion, so it
+            // stands to reason that it still would be after.
+            bad: data[{
+                let mut iter = 0..=6;
+                iter.by_ref().count(); // exhaust it
+                iter
+            }];
             message: "out of range";
         }
     }
