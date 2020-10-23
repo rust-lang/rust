@@ -39,6 +39,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ) if **sub_r == RegionKind::ReStatic => {
                 // This is for an implicit `'static` requirement coming from `impl dyn Trait {}`.
                 if let ObligationCauseCode::UnifyReceiver(ctxt) = &cause.code {
+                    // This may have a closure and it would cause ICE
+                    // through `find_param_with_region` (#78262).
+                    let anon_reg_sup = tcx.is_suitable_region(sup_r)?;
+                    let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
+                    if fn_returns.is_empty() {
+                        return None;
+                    }
+
                     let param = self.find_param_with_region(sup_r, sub_r)?;
                     let lifetime = if sup_r.has_name() {
                         format!("lifetime `{}`", sup_r)
