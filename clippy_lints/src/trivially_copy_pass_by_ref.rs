@@ -12,7 +12,6 @@ use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
 use rustc_target::abi::LayoutOf;
-use rustc_target::spec::Target;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::Target;
 
