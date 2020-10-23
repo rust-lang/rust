@@ -738,11 +738,11 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
     /// Returns a reference to the underlying allocator.
     ///
     /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::alloc(&b)` instead of `b.alloc()`. This
+    /// to call it as `Box::alloc_ref(&b)` instead of `b.alloc_ref()`. This
     /// is so that there is no conflict with a method on the inner type.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn alloc(b: &Self) -> &A {
+    pub fn alloc_ref(b: &Self) -> &A {
         &b.1
     }
 
