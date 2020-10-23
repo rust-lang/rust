@@ -1,13 +1,12 @@
 //! Diagnostics produced by `hir_def`.
 
 use std::any::Any;
-use std::fmt::Write;
+use stdx::format_to;
 
 use cfg::{CfgExpr, CfgOptions, DnfExpr};
 use hir_expand::diagnostics::{Diagnostic, DiagnosticCode};
-use syntax::{ast, AstPtr, SyntaxNodePtr};
-
 use hir_expand::{HirFileId, InFile};
+use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 // Diagnostic: unresolved-module
 //
@@ -109,7 +108,7 @@ impl Diagnostic for InactiveCode {
         let mut buf = "code is inactive due to #[cfg] directives".to_string();
 
         if let Some(inactive) = inactive {
-            write!(buf, ": {}", inactive).unwrap();
+            format_to!(buf, ": {}", inactive);
         }
 
         buf
