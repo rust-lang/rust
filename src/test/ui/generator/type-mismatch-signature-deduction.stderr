@@ -6,6 +6,11 @@ LL |         5
    |
    = note: expected type `std::result::Result<{integer}, _>`
               found type `{integer}`
+note: return type inferred to be `std::result::Result<{integer}, _>` here
+  --> $DIR/type-mismatch-signature-deduction.rs:8:20
+   |
+LL |             return Ok(6);
+   |                    ^^^^^
 
 error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:6:5: 14:6] as Generator>::Return == i32`
   --> $DIR/type-mismatch-signature-deduction.rs:5:13
