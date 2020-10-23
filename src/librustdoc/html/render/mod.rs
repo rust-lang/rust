@@ -2384,7 +2384,7 @@ fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static
     render_attributes(w, it, false);
     write!(
         w,
-        "{vis}static {mutability} {name}: {typ}</pre>",
+        "{vis}static {mutability}{name}: {typ}</pre>",
         vis = it.visibility.print_with_space(),
         mutability = s.mutability.print_with_space(),
         name = it.name.as_ref().unwrap(),
