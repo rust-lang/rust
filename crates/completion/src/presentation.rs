@@ -304,9 +304,14 @@ impl Completions {
     ) {
         let is_deprecated = is_deprecated(variant, ctx.db);
         let name = local_name.unwrap_or_else(|| variant.name(ctx.db).to_string());
-        let qualified_name = match &path {
-            Some(it) => it.to_string(),
-            None => name.to_string(),
+        let (qualified_name, short_qualified_name) = match &path {
+            Some(path) => {
+                let full = path.to_string();
+                let short =
+                    path.segments[path.segments.len().saturating_sub(2)..].iter().join("::");
+                (full, short)
+            }
+            None => (name.to_string(), name.to_string()),
         };
         let detail_types = variant
             .fields(ctx.db)
@@ -335,14 +340,12 @@ impl Completions {
         .set_deprecated(is_deprecated)
         .detail(detail);
 
-        if path.is_some() {
-            res = res.lookup_by(name);
-        }
-
         if variant_kind == StructKind::Tuple {
             mark::hit!(inserts_parens_for_tuple_enums);
             let params = Params::Anonymous(variant.fields(ctx.db).len());
-            res = res.add_call_parens(ctx, qualified_name, params)
+            res = res.add_call_parens(ctx, short_qualified_name, params)
+        } else if path.is_some() {
+            res = res.lookup_by(short_qualified_name);
         }
 
         res.add_to(self);
@@ -604,6 +607,57 @@ fn main() { Foo::Fo<|> }
                 ]
             "#]],
         );
+    }
+
+    #[test]
+    fn lookup_enums_by_two_qualifiers() {
+        check(
+            r#"
+mod m {
+    pub enum Spam { Foo, Bar(i32) }
+}
+fn main() { let _: m::Spam = S<|> }
+"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "Spam::Bar(…)",
+                        source_range: 75..76,
+                        delete: 75..76,
+                        insert: "Spam::Bar($0)",
+                        kind: EnumVariant,
+                        lookup: "Spam::Bar",
+                        detail: "(i32)",
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "m",
+                        source_range: 75..76,
+                        delete: 75..76,
+                        insert: "m",
+                        kind: Module,
+                    },
+                    CompletionItem {
+                        label: "m::Spam::Foo",
+                        source_range: 75..76,
+                        delete: 75..76,
+                        insert: "m::Spam::Foo",
+                        kind: EnumVariant,
+                        lookup: "Spam::Foo",
+                        detail: "()",
+                    },
+                    CompletionItem {
+                        label: "main()",
+                        source_range: 75..76,
+                        delete: 75..76,
+                        insert: "main()$0",
+                        kind: Function,
+                        lookup: "main",
+                        detail: "fn main()",
+                    },
+                ]
+            "#]],
+        )
     }
 
     #[test]
