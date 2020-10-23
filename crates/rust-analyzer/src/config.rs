@@ -47,6 +47,7 @@ pub struct Config {
     pub call_info_full: bool,
     pub lens: LensConfig,
     pub hover: HoverConfig,
+    pub semantic_tokens_refresh: bool,
 
     pub with_sysroot: bool,
     pub linked_projects: Vec<LinkedProject>,
@@ -193,6 +194,7 @@ impl Config {
             call_info_full: true,
             lens: LensConfig::default(),
             hover: HoverConfig::default(),
+            semantic_tokens_refresh: false,
             linked_projects: Vec::new(),
             root_path,
         }
@@ -401,6 +403,14 @@ impl Config {
             self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
             self.client_caps.hover_actions = get_bool("hoverActions");
             self.client_caps.status_notification = get_bool("statusNotification");
+        }
+
+        if let Some(workspace_caps) = caps.workspace.as_ref() {
+            if let Some(refresh_support) =
+                workspace_caps.semantic_tokens.as_ref().and_then(|it| it.refresh_support)
+            {
+                self.semantic_tokens_refresh = refresh_support;
+            }
         }
     }
 }
