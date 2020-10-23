@@ -95,7 +95,7 @@ impl Diagnostic for UnresolvedImport {
     }
 }
 
-// Diagnostic: unconfigured-code
+// Diagnostic: inactive-code
 //
 // This diagnostic is shown for code with inactive `#[cfg]` attributes.
 #[derive(Debug, Clone, Eq, PartialEq)]

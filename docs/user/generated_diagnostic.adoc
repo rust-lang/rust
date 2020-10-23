@@ -5,6 +5,12 @@
 This diagnostic is triggered if `break` keyword is used outside of a loop.
 
 
+=== inactive-code
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L98[diagnostics.rs]
+
+This diagnostic is shown for code with inactive `#[cfg]` attributes.
+
+
 === incorrect-ident-case
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_ty/src/diagnostics.rs#L319[diagnostics.rs]
 
@@ -79,12 +85,6 @@ This diagnostic is triggered if operation marked as `unsafe` is used outside of 
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_ty/src/diagnostics.rs#L39[diagnostics.rs]
 
 This diagnostic is triggered if created structure does not have field provided in record.
-
-
-=== unconfigured-code
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L98[diagnostics.rs]
-
-This diagnostic is shown for code with inactive `#[cfg]` attributes.
 
 
 === unresolved-extern-crate
