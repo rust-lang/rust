@@ -568,6 +568,8 @@ impl<T> Option<T> {
 
     /// Inserts `value` into the option then returns a mutable reference to it.
     ///
+    /// If the option already contains a value, the old value is dropped.
+    ///
     /// # Example
     ///
     /// ```
