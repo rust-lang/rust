@@ -14,6 +14,7 @@ use syntax::{
     },
     InsertPosition, SyntaxElement, SyntaxNode,
 };
+use test_utils::mark;
 
 #[derive(Debug)]
 pub enum ImportScope {
@@ -109,6 +110,12 @@ pub(crate) fn insert_use(
     // so look for the place we have to insert to
     let (insert_position, add_blank) = find_insert_position(scope, path);
 
+    let indent = if let ident_level @ 1..=usize::MAX = scope.indent_level().0 as usize {
+        Some(make::tokens::whitespace(&" ".repeat(4 * ident_level)).into())
+    } else {
+        None
+    };
+
     let to_insert: Vec<SyntaxElement> = {
         let mut buf = Vec::new();
 
@@ -120,9 +127,13 @@ pub(crate) fn insert_use(
             _ => (),
         }
 
-        if let ident_level @ 1..=usize::MAX = scope.indent_level().0 as usize {
-            buf.push(make::tokens::whitespace(&" ".repeat(4 * ident_level)).into());
+        if add_blank.has_before() {
+            if let Some(indent) = indent.clone() {
+                mark::hit!(insert_use_indent_before);
+                buf.push(indent);
+            }
         }
+
         buf.push(use_item.syntax().clone().into());
 
         match add_blank {
@@ -131,6 +142,16 @@ pub(crate) fn insert_use(
             }
             AddBlankLine::AfterTwice => buf.push(make::tokens::blank_line().into()),
             _ => (),
+        }
+
+        // only add indentation *after* our stuff if there's another node directly after it
+        if add_blank.has_after() && matches!(insert_position, InsertPosition::Before(_)) {
+            if let Some(indent) = indent {
+                mark::hit!(insert_use_indent_after);
+                buf.push(indent);
+            }
+        } else if add_blank.has_after() && matches!(insert_position, InsertPosition::After(_)) {
+            mark::hit!(insert_use_no_indent_after);
         }
 
         buf
@@ -470,6 +491,15 @@ enum AddBlankLine {
     AfterTwice,
 }
 
+impl AddBlankLine {
+    fn has_before(&self) -> bool {
+        matches!(self, AddBlankLine::Before | AddBlankLine::BeforeTwice | AddBlankLine::Around)
+    }
+    fn has_after(&self) -> bool {
+        matches!(self, AddBlankLine::After | AddBlankLine::AfterTwice | AddBlankLine::Around)
+    }
+}
+
 fn find_insert_position(
     scope: &ImportScope,
     insert_path: ast::Path,
@@ -562,6 +592,21 @@ use std::bar::G;",
     }
 
     #[test]
+    fn insert_start_indent() {
+        mark::check!(insert_use_indent_after);
+        check_none(
+            "std::bar::AA",
+            r"
+    use std::bar::B;
+    use std::bar::D;",
+            r"
+    use std::bar::AA;
+    use std::bar::B;
+    use std::bar::D;",
+        )
+    }
+
+    #[test]
     fn insert_middle() {
         check_none(
             "std::bar::EE",
@@ -580,6 +625,24 @@ use std::bar::G;",
     }
 
     #[test]
+    fn insert_middle_indent() {
+        check_none(
+            "std::bar::EE",
+            r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::F;
+    use std::bar::G;",
+            r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::EE;
+    use std::bar::F;
+    use std::bar::G;",
+        )
+    }
+
+    #[test]
     fn insert_end() {
         check_none(
             "std::bar::ZZ",
@@ -594,6 +657,25 @@ use std::bar::D;
 use std::bar::F;
 use std::bar::G;
 use std::bar::ZZ;",
+        )
+    }
+
+    #[test]
+    fn insert_end_indent() {
+        mark::check!(insert_use_indent_before);
+        check_none(
+            "std::bar::ZZ",
+            r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::F;
+    use std::bar::G;",
+            r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::F;
+    use std::bar::G;
+    use std::bar::ZZ;",
         )
     }
 
@@ -620,18 +702,18 @@ use std::bar::G;",
         check_none(
             "foo::bar::GG",
             r"
-use std::bar::A;
-use std::bar::D;
+    use std::bar::A;
+    use std::bar::D;
 
-use foo::bar::F;
-use foo::bar::H;",
+    use foo::bar::F;
+    use foo::bar::H;",
             r"
-use std::bar::A;
-use std::bar::D;
+    use std::bar::A;
+    use std::bar::D;
 
-use foo::bar::F;
-use foo::bar::GG;
-use foo::bar::H;",
+    use foo::bar::F;
+    use foo::bar::GG;
+    use foo::bar::H;",
         )
     }
 
@@ -640,22 +722,22 @@ use foo::bar::H;",
         check_none(
             "foo::bar::GG",
             r"
-use foo::bar::A;
-use foo::bar::D;
+    use foo::bar::A;
+    use foo::bar::D;
 
-use std;
+    use std;
 
-use foo::bar::F;
-use foo::bar::H;",
+    use foo::bar::F;
+    use foo::bar::H;",
             r"
-use foo::bar::A;
-use foo::bar::D;
-use foo::bar::GG;
+    use foo::bar::A;
+    use foo::bar::D;
+    use foo::bar::GG;
 
-use std;
+    use std;
 
-use foo::bar::F;
-use foo::bar::H;",
+    use foo::bar::F;
+    use foo::bar::H;",
         )
     }
 
@@ -664,13 +746,13 @@ use foo::bar::H;",
         check_none(
             "std::fmt",
             r"
-use foo::bar::A;
-use foo::bar::D;",
+    use foo::bar::A;
+    use foo::bar::D;",
             r"
-use std::fmt;
+    use std::fmt;
 
-use foo::bar::A;
-use foo::bar::D;",
+    use foo::bar::A;
+    use foo::bar::D;",
         )
     }
 
@@ -710,6 +792,20 @@ fn main() {}",
             r"use foo::bar;
 
 ",
+        )
+    }
+
+    #[test]
+    fn insert_empty_module() {
+        mark::check!(insert_use_no_indent_after);
+        check(
+            "foo::bar",
+            "mod x {}",
+            r"{
+    use foo::bar;
+}",
+            None,
+            true,
         )
     }
 
@@ -991,11 +1087,13 @@ use foo::bar::baz::Qux;",
         ra_fixture_before: &str,
         ra_fixture_after: &str,
         mb: Option<MergeBehaviour>,
+        module: bool,
     ) {
-        let file = super::ImportScope::from(
-            ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone(),
-        )
-        .unwrap();
+        let mut syntax = ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone();
+        if module {
+            syntax = syntax.descendants().find_map(ast::Module::cast).unwrap().syntax().clone();
+        }
+        let file = super::ImportScope::from(syntax).unwrap();
         let path = ast::SourceFile::parse(&format!("use {};", path))
             .tree()
             .syntax()
@@ -1008,15 +1106,15 @@ use foo::bar::baz::Qux;",
     }
 
     fn check_full(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-        check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehaviour::Full))
+        check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehaviour::Full), false)
     }
 
     fn check_last(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-        check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehaviour::Last))
+        check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehaviour::Last), false)
     }
 
     fn check_none(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-        check(path, ra_fixture_before, ra_fixture_after, None)
+        check(path, ra_fixture_before, ra_fixture_after, None, false)
     }
 
     fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehaviour) {
