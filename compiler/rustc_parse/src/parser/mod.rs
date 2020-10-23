@@ -522,9 +522,9 @@ impl<'a> Parser<'a> {
         self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
     }
 
-    fn check_inline_const(&mut self) -> bool {
-        self.check_keyword(kw::Const)
-            && self.look_ahead(1, |t| match t.kind {
+    fn check_inline_const(&self, dist: usize) -> bool {
+        self.is_keyword_ahead(dist, &[kw::Const])
+            && self.look_ahead(dist + 1, |t| match t.kind {
                 token::Interpolated(ref nt) => matches!(**nt, token::NtBlock(..)),
                 token::OpenDelim(DelimToken::Brace) => true,
                 _ => false,
@@ -864,7 +864,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses inline const expressions.
-    fn parse_const_expr(&mut self, span: Span) -> PResult<'a, P<Expr>> {
+    fn parse_const_block(&mut self, span: Span) -> PResult<'a, P<Expr>> {
         self.sess.gated_spans.gate(sym::inline_const, span);
         self.eat_keyword(kw::Const);
         let blk = self.parse_block()?;

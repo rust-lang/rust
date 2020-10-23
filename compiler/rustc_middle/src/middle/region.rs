@@ -292,20 +292,20 @@ pub struct ScopeTree {
     ///
     /// Then:
     ///
-    ///     1. From the ordering guarantee of HIR visitors (see
-    ///     `rustc_hir::intravisit`), `D` does not dominate `U`.
+    ///   1. From the ordering guarantee of HIR visitors (see
+    ///   `rustc_hir::intravisit`), `D` does not dominate `U`.
     ///
-    ///     2. Therefore, `D` is *potentially* storage-dead at `U` (because
-    ///     we might visit `U` without ever getting to `D`).
+    ///   2. Therefore, `D` is *potentially* storage-dead at `U` (because
+    ///   we might visit `U` without ever getting to `D`).
     ///
-    ///     3. However, we guarantee that at each HIR point, each
-    ///     binding/temporary is always either always storage-live
-    ///     or always storage-dead. This is what is being guaranteed
-    ///     by `terminating_scopes` including all blocks where the
-    ///     count of executions is not guaranteed.
+    ///   3. However, we guarantee that at each HIR point, each
+    ///   binding/temporary is always either always storage-live
+    ///   or always storage-dead. This is what is being guaranteed
+    ///   by `terminating_scopes` including all blocks where the
+    ///   count of executions is not guaranteed.
     ///
-    ///     4. By `2.` and `3.`, `D` is *statically* storage-dead at `U`,
-    ///     QED.
+    ///   4. By `2.` and `3.`, `D` is *statically* storage-dead at `U`,
+    ///   QED.
     ///
     /// This property ought to not on (3) in an essential way -- it
     /// is probably still correct even if we have "unrestricted" terminating

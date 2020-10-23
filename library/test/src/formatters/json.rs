@@ -39,9 +39,12 @@ impl<T: Write> JsonFormatter<T> {
         stdout: Option<Cow<'_, str>>,
         extra: Option<&str>,
     ) -> io::Result<()> {
+        // A doc test's name includes a filename which must be escaped for correct json.
         self.write_message(&*format!(
             r#"{{ "type": "{}", "name": "{}", "event": "{}""#,
-            ty, name, evt
+            ty,
+            EscapedString(name),
+            evt
         ))?;
         if let Some(exec_time) = exec_time {
             self.write_message(&*format!(r#", "exec_time": "{}""#, exec_time))?;
@@ -67,7 +70,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
         self.writeln_message(&*format!(
             r#"{{ "type": "test", "event": "started", "name": "{}" }}"#,
-            desc.name
+            EscapedString(desc.name.as_slice())
         ))
     }
 
@@ -140,7 +143,10 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                      \"name\": \"{}\", \
                      \"median\": {}, \
                      \"deviation\": {}{} }}",
-                    desc.name, median, deviation, mbps
+                    EscapedString(desc.name.as_slice()),
+                    median,
+                    deviation,
+                    mbps
                 );
 
                 self.writeln_message(&*line)
@@ -151,7 +157,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
         self.writeln_message(&*format!(
             r#"{{ "type": "test", "event": "timeout", "name": "{}" }}"#,
-            desc.name
+            EscapedString(desc.name.as_slice())
         ))
     }
 

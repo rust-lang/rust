@@ -485,3 +485,49 @@ nzint_impl_try_from_int! { i32, NonZeroI32, #[stable(feature = "nzint_try_from_i
 nzint_impl_try_from_int! { i64, NonZeroI64, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
 nzint_impl_try_from_int! { i128, NonZeroI128, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
 nzint_impl_try_from_int! { isize, NonZeroIsize, #[stable(feature = "nzint_try_from_int_conv", since = "1.46.0")] }
+
+macro_rules! nzint_impl_try_from_nzint {
+    ($From:ty => $To:ty, $doc: expr) => {
+        #[stable(feature = "nzint_try_from_nzint_conv", since = "1.49.0")]
+        #[doc = $doc]
+        impl TryFrom<$From> for $To {
+            type Error = TryFromIntError;
+
+            #[inline]
+            fn try_from(value: $From) -> Result<Self, Self::Error> {
+                TryFrom::try_from(value.get()).map(|v| {
+                    // SAFETY: $From is a NonZero type, so v is not zero.
+                    unsafe { Self::new_unchecked(v) }
+                })
+            }
+        }
+    };
+    ($To:ty: $($From: ty),*) => {$(
+        nzint_impl_try_from_nzint!(
+            $From => $To,
+            concat!(
+                "Attempts to convert `",
+                stringify!($From),
+                "` to `",
+                stringify!($To),
+                "`.",
+            )
+        );
+    )*};
+}
+
+// Non-zero int -> non-zero unsigned int
+nzint_impl_try_from_nzint! { NonZeroU8: NonZeroI8, NonZeroU16, NonZeroI16, NonZeroU32, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroU16: NonZeroI8, NonZeroI16, NonZeroU32, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroU32: NonZeroI8, NonZeroI16, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroU64: NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroU128: NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroUsize: NonZeroI8, NonZeroI16, NonZeroU32, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroIsize }
+
+// Non-zero int -> non-zero signed int
+nzint_impl_try_from_nzint! { NonZeroI8: NonZeroU8, NonZeroU16, NonZeroI16, NonZeroU32, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroI16: NonZeroU16, NonZeroU32, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroI32: NonZeroU32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroI64: NonZeroU64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroI128: NonZeroU128, NonZeroUsize, NonZeroIsize }
+nzint_impl_try_from_nzint! { NonZeroIsize: NonZeroU16, NonZeroU32, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize }

@@ -619,6 +619,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 scrut_hir_id,
                 opt_suggest_box_span,
                 arm_span,
+                scrut_span,
                 ..
             }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
@@ -664,18 +665,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         Some(ty::error::ExpectedFound { expected, .. }) => expected,
                         _ => last_ty,
                     });
-                    let msg = "`match` arms have incompatible types";
-                    err.span_label(cause.span, msg);
+                    let source_map = self.tcx.sess.source_map();
+                    let mut any_multiline_arm = source_map.is_multiline(arm_span);
                     if prior_arms.len() <= 4 {
                         for sp in prior_arms {
+                            any_multiline_arm |= source_map.is_multiline(*sp);
                             err.span_label(*sp, format!("this is found to be of type `{}`", t));
                         }
                     } else if let Some(sp) = prior_arms.last() {
+                        any_multiline_arm |= source_map.is_multiline(*sp);
                         err.span_label(
                             *sp,
                             format!("this and all prior arms are found to be of type `{}`", t),
                         );
                     }
+                    let outer_error_span = if any_multiline_arm {
+                        // Cover just `match` and the scrutinee expression, not
+                        // the entire match body, to reduce diagram noise.
+                        cause.span.shrink_to_lo().to(scrut_span)
+                    } else {
+                        cause.span
+                    };
+                    let msg = "`match` arms have incompatible types";
+                    err.span_label(outer_error_span, msg);
                     if let Some(sp) = semi_span {
                         err.span_suggestion_short(
                             sp,

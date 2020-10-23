@@ -259,7 +259,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// Ensures that the buffer contains at least enough space to hold `len +
     /// additional` elements. If it doesn't already have enough capacity, will
     /// reallocate enough space plus comfortable slack space to get amortized
-    /// `O(1)` behavior. Will limit this behavior if it would needlessly cause
+    /// *O*(1) behavior. Will limit this behavior if it would needlessly cause
     /// itself to panic.
     ///
     /// If `len` exceeds `self.capacity()`, this may fail to actually allocate

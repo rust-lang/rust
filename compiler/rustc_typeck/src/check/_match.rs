@@ -201,6 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expr.span,
                         ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                             arm_span,
+                            scrut_span: scrut.span,
                             semi_span,
                             source: match_src,
                             prior_arms: other_arms.clone(),

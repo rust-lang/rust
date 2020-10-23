@@ -1,8 +1,8 @@
-//! A UTF-8 encoded, growable string.
+//! A UTF-8–encoded, growable string.
 //!
-//! This module contains the [`String`] type, a trait for converting
-//! [`ToString`]s, and several error types that may result from working with
-//! [`String`]s.
+//! This module contains the [`String`] type, the [`ToString`] trait for
+//! converting to strings, and several error types that may result from
+//! working with [`String`]s.
 //!
 //! # Examples
 //!
@@ -57,7 +57,7 @@ use crate::collections::TryReserveError;
 use crate::str::{self, from_boxed_utf8_unchecked, Chars, FromStr, Utf8Error};
 use crate::vec::Vec;
 
-/// A UTF-8 encoded, growable string.
+/// A UTF-8–encoded, growable string.
 ///
 /// The `String` type is the most common string type that has ownership over the
 /// contents of the string. It has a close relationship with its borrowed
@@ -565,7 +565,7 @@ impl String {
         Cow::Owned(res)
     }
 
-    /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
+    /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
     /// # Examples
@@ -599,7 +599,7 @@ impl String {
         Ok(ret)
     }
 
-    /// Decode a UTF-16 encoded slice `v` into a `String`, replacing
+    /// Decode a UTF-16–encoded slice `v` into a `String`, replacing
     /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
     ///
     /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
@@ -2191,8 +2191,9 @@ pub trait ToString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
     // A common guideline is to not inline generic functions. However,
-    // remove `#[inline]` from this method causes non-negligible regression.
-    // See <https://github.com/rust-lang/rust/pull/74852> as last attempt try to remove it.
+    // removing `#[inline]` from this method causes non-negligible regressions.
+    // See <https://github.com/rust-lang/rust/pull/74852>, the last attempt
+    // to try to remove it.
     #[inline]
     default fn to_string(&self) -> String {
         use fmt::Write;

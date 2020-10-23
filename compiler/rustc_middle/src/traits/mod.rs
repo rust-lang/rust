@@ -343,6 +343,7 @@ static_assert_size!(ObligationCauseCode<'_>, 32);
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_span: Span,
+    pub scrut_span: Span,
     pub semi_span: Option<Span>,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
