@@ -11,7 +11,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:11:9
    |
 LL |     |x| String::from("x".as_ref());
-   |         ^^^^^^^^^^^^ cannot infer type for struct `String`
+   |         ^^^^^^^^^^^^ cannot infer type for reference `&_`
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
@@ -20,11 +20,13 @@ error[E0283]: type annotations needed for `&T`
   --> $DIR/issue-72690.rs:15:17
    |
 LL |     let _ = "x".as_ref();
-   |         -       ^^^^^^ cannot infer type for type parameter `T` declared on the trait `AsRef`
-   |         |
-   |         consider giving this pattern the explicit type `&T`, where the type parameter `T` is specified
+   |                 ^^^^^^ cannot infer type for type parameter `T` declared on the trait `AsRef`
    |
    = note: cannot satisfy `str: AsRef<_>`
+help: consider giving this binding the explicit type `&T`, where the type parameter `T` is specified
+   |
+LL |     let _: str = "x".as_ref();
+   |          ^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:19:5
@@ -61,10 +63,6 @@ LL |     String::from("x".as_ref());
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
-help: consider giving this binding the explicit type `String`
-   |
-LL |     let _: String = String::from("x");
-   |          ^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:47:5
@@ -74,10 +72,6 @@ LL |     String::from("x".as_ref());
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
-help: consider giving this binding the explicit type `String`
-   |
-LL |     let _: String = String::from("x");
-   |          ^^^^^^^^
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:55:5
@@ -87,10 +81,6 @@ LL |     String::from("x".as_ref());
    |
    = note: cannot satisfy `String: From<&_>`
    = note: required by `from`
-help: consider giving this binding the explicit type `String`
-   |
-LL |     let _: String = String::from("x");
-   |          ^^^^^^^^
 
 error: aborting due to 9 previous errors
 

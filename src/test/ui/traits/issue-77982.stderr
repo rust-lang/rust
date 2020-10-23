@@ -23,21 +23,27 @@ error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:35:16
    |
 LL |     let _ = ().foo();
-   |         -      ^^^ cannot infer type for type parameter `T` declared on the trait `Foo`
-   |         |
-   |         consider giving this pattern the explicit type `Box<T>`, where the type parameter `T` is specified
+   |                ^^^ cannot infer type for type parameter `T` declared on the trait `Foo`
    |
    = note: cannot satisfy `(): Foo<'_, _>`
+help: consider giving this binding the explicit type `Box<T>`, where the type parameter `T` is specified
+   |
+LL |     let _: () = ().foo();
+   |          ^^^^
 
 error[E0283]: type annotations needed for `Box<T>`
   --> $DIR/issue-77982.rs:39:19
    |
 LL |     let _ = (&()).bar();
-   |         -         ^^^ cannot infer type for type parameter `T` declared on the trait `Bar`
-   |         |
-   |         consider giving this pattern the explicit type `Box<T>`, where the type parameter `T` is specified
+   |                   ^^^ cannot infer type for type parameter `T` declared on the trait `Bar`
    |
    = note: cannot satisfy `&(): Bar<'_, _>`
+help: consider giving this binding the explicit type `Box<T>`, where the type parameter `T` is specified
+   |
+LL |     let _: &'a () = (&()).bar();
+   |          ^^^^^^^^
+LL |     let _: &'a () = (&()).bar();
+   |          ^^^^^^^^
 
 error: aborting due to 4 previous errors
 

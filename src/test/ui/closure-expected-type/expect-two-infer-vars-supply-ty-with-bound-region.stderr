@@ -3,6 +3,11 @@ error[E0282]: type annotations needed
    |
 LL |     with_closure(|x: u32, y| {});
    |                           ^ consider giving this closure parameter a type
+   |
+help: consider specifying the type arguments in the function call
+   |
+LL |     with_closure::<F, A, B>(|x: u32, y| {});
+   |                 ^^^^^^^^^^^
 
 error: aborting due to previous error
 
