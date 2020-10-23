@@ -347,6 +347,10 @@ impl Backtrace {
             Inner::Captured(_) => BacktraceStatus::Captured,
         }
     }
+
+    /// Returns an iterator over the backtrace frames.
+    #[unstable(feature = "backtrace_frames")]
+    pub fn frames(&self) -> &[BacktraceFrame];
 }
 
 impl fmt::Display for Backtrace {
