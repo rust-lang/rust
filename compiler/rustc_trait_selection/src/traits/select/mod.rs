@@ -1951,19 +1951,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 &predicate.subst(tcx, substs),
                 &mut obligations,
             );
-            if predicate.references_error() {
-                self.tcx().sess.delay_span_bug(
-                    cause.span,
-                    &format!("impl_or_trait_obligation with errors: {:?}", predicate),
-                );
-            } else {
-                obligations.push(Obligation {
-                    cause: cause.clone(),
-                    recursion_depth,
-                    param_env,
-                    predicate,
-                });
-            }
+            obligations.push(Obligation {
+                cause: cause.clone(),
+                recursion_depth,
+                param_env,
+                predicate,
+            });
         }
 
         // We are performing deduplication here to avoid exponential blowups
