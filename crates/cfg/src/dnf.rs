@@ -17,6 +17,15 @@ pub struct DnfExpr {
     conjunctions: Vec<Conjunction>,
 }
 
+struct Conjunction {
+    literals: Vec<Literal>,
+}
+
+struct Literal {
+    negate: bool,
+    var: Option<CfgAtom>, // None = Invalid
+}
+
 impl DnfExpr {
     pub fn new(expr: CfgExpr) -> Self {
         let builder = Builder { expr: DnfExpr { conjunctions: Vec::new() } };
@@ -133,10 +142,6 @@ impl fmt::Display for DnfExpr {
     }
 }
 
-struct Conjunction {
-    literals: Vec<Literal>,
-}
-
 impl Conjunction {
     fn new(parts: Vec<CfgExpr>) -> Self {
         let mut literals = Vec::new();
@@ -175,11 +180,6 @@ impl fmt::Display for Conjunction {
 
         Ok(())
     }
-}
-
-struct Literal {
-    negate: bool,
-    var: Option<CfgAtom>, // None = Invalid
 }
 
 impl Literal {
