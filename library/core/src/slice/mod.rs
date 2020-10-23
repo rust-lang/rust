@@ -2373,11 +2373,21 @@ impl<T> [T] {
                 let ptr_read = ptr.add(next_read);
                 let prev_ptr_write = ptr.add(next_write - 1);
                 if !same_bucket(&mut *ptr_read, &mut *prev_ptr_write) {
-                    if next_read != next_write {
-                        let ptr_write = prev_ptr_write.offset(1);
-                        mem::swap(&mut *ptr_read, &mut *ptr_write);
-                    }
                     next_write += 1;
+                    next_read += 1;
+                    // Avoid checking next_write != next_read once it is not in the same bucket,
+                    // always swap memory if it is not in the same bucket.
+                    while next_read < len {
+                        let ptr_read = ptr.add(next_read);
+                        let prev_ptr_write = ptr.add(next_write - 1);
+                        if !same_bucket(&mut *ptr_read, &mut *prev_ptr_write) {
+                            let ptr_write = prev_ptr_write.offset(1);
+                            mem::swap(&mut *ptr_read, &mut *ptr_write); 
+                            next_write += 1; 
+                        }
+                        next_read += 1;
+                    }
+                    return self.split_at_mut(next_write)
                 }
                 next_read += 1;
             }
