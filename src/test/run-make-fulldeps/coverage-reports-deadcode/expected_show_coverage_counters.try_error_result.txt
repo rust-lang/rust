@@ -10,21 +10,18 @@ Counter in file 0 31:42 -> 31:43, #8
 Counter in file 0 32:10 -> 32:11, #9
 Counter in file 0 32:10 -> 32:11, #10
 Counter in file 0 33:6 -> 33:7, #11
-Counter in file 0 33:6 -> 33:7, (#1 + 0)
 Counter in file 0 34:5 -> 34:11, #12
 Counter in file 0 35:1 -> 35:2, #13
 Counter in file 0 35:1 -> 35:2, #14
 Counter in file 0 5:8 -> 5:20, #1
 Counter in file 0 6:9 -> 6:16, #2
 Counter in file 0 8:9 -> 8:15, #3
-Counter in file 0 9:6 -> 9:7, (#2 + 0)
 Counter in file 0 10:1 -> 10:2, #4
 Emitting segments for file: ../coverage/try_error_result.rs
 Combined regions:
   5:8 -> 5:20 (count=6)
   6:9 -> 6:16 (count=1)
   8:9 -> 8:15 (count=5)
-  9:6 -> 9:7 (count=1)
   10:1 -> 10:2 (count=6)
   13:9 -> 14:23 (count=1)
   17:9 -> 17:10 (count=6)
@@ -35,7 +32,7 @@ Combined regions:
   31:13 -> 31:42 (count=5)
   31:42 -> 31:43 (count=0)
   32:10 -> 32:11 (count=5)
-  33:6 -> 33:7 (count=6)
+  33:6 -> 33:7 (count=5)
   34:5 -> 34:11 (count=0)
   35:1 -> 35:2 (count=2)
 Segment at 5:8 (count = 6), RegionEntry
@@ -44,8 +41,6 @@ Segment at 6:9 (count = 1), RegionEntry
 Segment at 6:16 (count = 0), Skipped
 Segment at 8:9 (count = 5), RegionEntry
 Segment at 8:15 (count = 0), Skipped
-Segment at 9:6 (count = 1), RegionEntry
-Segment at 9:7 (count = 0), Skipped
 Segment at 10:1 (count = 6), RegionEntry
 Segment at 10:2 (count = 0), Skipped
 Segment at 13:9 (count = 1), RegionEntry
@@ -64,7 +59,7 @@ Segment at 31:42 (count = 0), RegionEntry
 Segment at 31:43 (count = 0), Skipped
 Segment at 32:10 (count = 5), RegionEntry
 Segment at 32:11 (count = 0), Skipped
-Segment at 33:6 (count = 6), RegionEntry
+Segment at 33:6 (count = 5), RegionEntry
 Segment at 33:7 (count = 0), Skipped
 Segment at 34:5 (count = 0), RegionEntry
 Segment at 34:11 (count = 0), Skipped

@@ -5,7 +5,6 @@ Counter in file 0 23:9 -> 28:28, #1
 Counter in file 0 30:8 -> 30:12, (#1 + 0)
 Counter in file 0 31:9 -> 32:22, #2
 Counter in file 0 38:1 -> 38:2, #4
-Counter in file 0 38:1 -> 38:2, (#2 + 0)
 Counter in file 0 10:49 -> 12:6, #1
 Counter in file 0 10:49 -> 12:6, #1
 Emitting segments for file: ../coverage/generics.rs
@@ -15,7 +14,7 @@ Combined regions:
   23:9 -> 28:28 (count=1)
   30:8 -> 30:12 (count=1)
   31:9 -> 32:22 (count=1)
-  38:1 -> 38:2 (count=2)
+  38:1 -> 38:2 (count=1)
 Segment at 10:49 (count = 3), RegionEntry
 Segment at 12:6 (count = 0), Skipped
 Segment at 17:24 (count = 2), RegionEntry
@@ -26,7 +25,7 @@ Segment at 30:8 (count = 1), RegionEntry
 Segment at 30:12 (count = 0), Skipped
 Segment at 31:9 (count = 1), RegionEntry
 Segment at 32:22 (count = 0), Skipped
-Segment at 38:1 (count = 2), RegionEntry
+Segment at 38:1 (count = 1), RegionEntry
 Segment at 38:2 (count = 0), Skipped
 Emitting segments for function: _RNvMCs4fqI2P2rA04_8genericsINtB2_8FireworkdE12set_strengthB2_
 Combined regions:

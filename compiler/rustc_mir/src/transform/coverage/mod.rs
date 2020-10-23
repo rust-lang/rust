@@ -6,13 +6,14 @@ mod graph;
 mod spans;
 
 use counters::CoverageCounters;
-use graph::BasicCoverageBlocks;
+use graph::CoverageGraph;
 use spans::{CoverageSpan, CoverageSpans};
 
 use crate::transform::MirPass;
 use crate::util::pretty;
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
@@ -73,7 +74,7 @@ struct Instrumentor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
     body_span: Span,
-    basic_coverage_blocks: BasicCoverageBlocks,
+    basic_coverage_blocks: CoverageGraph,
     coverage_counters: CoverageCounters,
 }
 
@@ -82,7 +83,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let hir_body = hir_body(tcx, mir_body.source.def_id());
         let body_span = hir_body.value.span;
         let function_source_hash = hash_mir_source(tcx, hir_body);
-        let basic_coverage_blocks = BasicCoverageBlocks::from_mir(mir_body);
+        let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
         Self {
             pass_name,
             tcx,
@@ -103,7 +104,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug!("instrumenting {:?}, span: {}", def_id, source_map.span_to_string(body_span));
 
         ////////////////////////////////////////////////////
-        // Compute `CoverageSpan`s from the `BasicCoverageBlocks`.
+        // Compute `CoverageSpan`s from the `CoverageGraph`.
         let coverage_spans = CoverageSpans::generate_coverage_spans(
             &self.mir_body,
             body_span,
@@ -135,9 +136,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let source_file = source_map.lookup_source_file(body_span.lo());
         let file_name = Symbol::intern(&source_file.name.to_string());
 
-        let mut bb_counters = IndexVec::from_elem_n(None, self.mir_body.basic_blocks().len());
-        for CoverageSpan { span, bcb_leader_bb: bb, .. } in coverage_spans {
-            if let Some(&counter_operand) = bb_counters[bb].as_ref() {
+        let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
+        for covspan in coverage_spans {
+            let bcb = covspan.bcb;
+            let span = covspan.span;
+            if let Some(&counter_operand) = bcb_counters[bcb].as_ref() {
                 let expression = self.coverage_counters.make_expression(
                     counter_operand,
                     Op::Add,
@@ -149,6 +152,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     span,
                     source_map.span_to_snippet(span).expect("Error getting source for span"),
                 );
+                let bb = self.basic_coverage_blocks[bcb].leader_bb();
                 let code_region = make_code_region(file_name, &source_file, span, body_span);
                 inject_statement(self.mir_body, expression, bb, Some(code_region));
             } else {
@@ -160,7 +164,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     source_map.span_to_snippet(span).expect("Error getting source for span"),
                 );
                 let counter_operand = counter.as_operand_id();
-                bb_counters[bb] = Some(counter_operand);
+                bcb_counters[bcb] = Some(counter_operand);
+                let bb = self.basic_coverage_blocks[bcb].leader_bb();
                 let code_region = make_code_region(file_name, &source_file, span, body_span);
                 inject_statement(self.mir_body, counter, bb, Some(code_region));
             }

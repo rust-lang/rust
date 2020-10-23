@@ -29,14 +29,12 @@ Counter in file 0 38:6 -> 38:7, #22
 Counter in file 0 41:9 -> 41:16, #23
 Counter in file 0 42:5 -> 45:6, #24
 Counter in file 0 47:5 -> 50:6, #25
-Counter in file 0 50:6 -> 50:7, (#24 + 0)
 Counter in file 0 52:8 -> 52:16, #26
 Counter in file 0 52:17 -> 54:6, #27
 Counter in file 0 54:6 -> 54:7, #28
 Counter in file 0 56:8 -> 56:15, #29
 Counter in file 0 56:16 -> 58:6, #30
 Counter in file 0 58:12 -> 60:6, #31
-Counter in file 0 60:6 -> 60:7, (#30 + 0)
 Counter in file 0 61:1 -> 61:2, #32
 Emitting segments for file: ../coverage/lazy_boolean.rs
 Combined regions:
@@ -66,14 +64,12 @@ Combined regions:
   41:9 -> 41:16 (count=1)
   42:5 -> 45:6 (count=1)
   47:5 -> 50:6 (count=0)
-  50:6 -> 50:7 (count=1)
   52:8 -> 52:16 (count=1)
   52:17 -> 54:6 (count=0)
   54:6 -> 54:7 (count=1)
   56:8 -> 56:15 (count=1)
   56:16 -> 58:6 (count=1)
   58:12 -> 60:6 (count=0)
-  60:6 -> 60:7 (count=1)
   61:1 -> 61:2 (count=1)
 Segment at 7:9 (count = 1), RegionEntry
 Segment at 9:42 (count = 0), Skipped
@@ -120,8 +116,7 @@ Segment at 41:16 (count = 0), Skipped
 Segment at 42:5 (count = 1), RegionEntry
 Segment at 45:6 (count = 0), Skipped
 Segment at 47:5 (count = 0), RegionEntry
-Segment at 50:6 (count = 1), RegionEntry
-Segment at 50:7 (count = 0), Skipped
+Segment at 50:6 (count = 0), Skipped
 Segment at 52:8 (count = 1), RegionEntry
 Segment at 52:16 (count = 0), Skipped
 Segment at 52:17 (count = 0), RegionEntry
@@ -132,7 +127,6 @@ Segment at 56:15 (count = 0), Skipped
 Segment at 56:16 (count = 1), RegionEntry
 Segment at 58:6 (count = 0), Skipped
 Segment at 58:12 (count = 0), RegionEntry
-Segment at 60:6 (count = 1), RegionEntry
-Segment at 60:7 (count = 0), Skipped
+Segment at 60:6 (count = 0), Skipped
 Segment at 61:1 (count = 1), RegionEntry
 Segment at 61:2 (count = 0), Skipped

@@ -1,9 +1,8 @@
 use super::debug::term_type;
-use super::graph::{BasicCoverageBlock, BasicCoverageBlocks};
+use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 
 use crate::util::spanview::source_range_no_file;
 
-use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{
@@ -69,7 +68,7 @@ impl CoverageStatement {
 #[derive(Debug, Clone)]
 pub(crate) struct CoverageSpan {
     pub span: Span,
-    pub bcb_leader_bb: BasicBlock,
+    pub bcb: BasicCoverageBlock,
     pub coverage_statements: Vec<CoverageStatement>,
     pub is_closure: bool,
 }
@@ -78,7 +77,7 @@ impl CoverageSpan {
     pub fn for_statement(
         statement: &Statement<'tcx>,
         span: Span,
-        bcb: &BasicCoverageBlock,
+        bcb: BasicCoverageBlock,
         bb: BasicBlock,
         stmt_index: usize,
     ) -> Self {
@@ -92,16 +91,16 @@ impl CoverageSpan {
 
         Self {
             span,
-            bcb_leader_bb: bcb.leader_bb(),
+            bcb,
             coverage_statements: vec![CoverageStatement::Statement(bb, span, stmt_index)],
             is_closure,
         }
     }
 
-    pub fn for_terminator(span: Span, bcb: &BasicCoverageBlock, bb: BasicBlock) -> Self {
+    pub fn for_terminator(span: Span, bcb: BasicCoverageBlock, bb: BasicBlock) -> Self {
         Self {
             span,
-            bcb_leader_bb: bcb.leader_bb(),
+            bcb,
             coverage_statements: vec![CoverageStatement::Terminator(bb, span)],
             is_closure: false,
         }
@@ -132,7 +131,7 @@ impl CoverageSpan {
 
     #[inline]
     pub fn is_in_same_bcb(&self, other: &Self) -> bool {
-        self.bcb_leader_bb == other.bcb_leader_bb
+        self.bcb == other.bcb
     }
 
     pub fn format_coverage_statements(
@@ -164,15 +163,12 @@ pub struct CoverageSpans<'a, 'tcx> {
     /// The MIR, used to look up `BasicBlockData`.
     mir_body: &'a mir::Body<'tcx>,
 
-    /// A snapshot of the MIR CFG dominators before injecting any coverage statements.
-    dominators: Dominators<BasicBlock>,
-
     /// A `Span` covering the function body of the MIR (typically from left curly brace to right
     /// curly brace).
     body_span: Span,
 
     /// The BasicCoverageBlock Control Flow Graph (BCB CFG).
-    basic_coverage_blocks: &'a BasicCoverageBlocks,
+    basic_coverage_blocks: &'a CoverageGraph,
 
     /// The initial set of `CoverageSpan`s, sorted by `Span` (`lo` and `hi`) and by relative
     /// dominance between the `BasicCoverageBlock`s of equal `Span`s.
@@ -213,12 +209,10 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     pub(crate) fn generate_coverage_spans(
         mir_body: &'a mir::Body<'tcx>,
         body_span: Span,
-        basic_coverage_blocks: &'a BasicCoverageBlocks,
+        basic_coverage_blocks: &'a CoverageGraph,
     ) -> Vec<CoverageSpan> {
-        let dominators = mir_body.dominators();
         let mut coverage_spans = CoverageSpans {
             mir_body,
-            dominators,
             body_span,
             basic_coverage_blocks,
             sorted_spans_iter: None,
@@ -246,7 +240,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// The basic steps are:
     ///
     /// 1. Extract an initial set of spans from the `Statement`s and `Terminator`s of each
-    ///    `BasicCoverageBlock`.
+    ///    `BasicCoverageBlockData`.
     /// 2. Sort the spans by span.lo() (starting position). Spans that start at the same position
     ///    are sorted with longer spans before shorter spans; and equal spans are sorted
     ///    (deterministically) based on "dominator" relationship (if any).
@@ -263,8 +257,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// to be).
     fn mir_to_initial_sorted_coverage_spans(&self) -> Vec<CoverageSpan> {
         let mut initial_spans = Vec::<CoverageSpan>::with_capacity(self.mir_body.num_nodes() * 2);
-        for bcb in self.basic_coverage_blocks.iter() {
-            for coverage_span in self.bcb_to_initial_coverage_spans(bcb) {
+        for (bcb, bcb_data) in self.basic_coverage_blocks.iter_enumerated() {
+            for coverage_span in self.bcb_to_initial_coverage_spans(bcb, bcb_data) {
                 initial_spans.push(coverage_span);
             }
         }
@@ -285,7 +279,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                         // dominators always come after the dominated equal spans). When later
                         // comparing two spans in order, the first will either dominate the second,
                         // or they will have no dominator relationship.
-                        self.dominators.rank_partial_cmp(b.bcb_leader_bb, a.bcb_leader_bb)
+                        self.basic_coverage_blocks.dominators().rank_partial_cmp(b.bcb, a.bcb)
                     }
                 } else {
                     // Sort hi() in reverse order so shorter spans are attempted after longer spans.
@@ -357,13 +351,13 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         let mut has_coverage = BitSet::new_empty(basic_coverage_blocks.num_nodes());
         for covspan in &refined_spans {
             if !covspan.span.is_empty() {
-                has_coverage.insert(covspan.bcb_leader_bb);
+                has_coverage.insert(covspan.bcb);
             }
         }
         refined_spans.retain(|covspan| {
             !(covspan.span.is_empty()
-                && is_goto(&mir_body[covspan.bcb_leader_bb].terminator().kind)
-                && has_coverage.contains(covspan.bcb_leader_bb))
+                && is_goto(&basic_coverage_blocks[covspan.bcb].terminator(mir_body).kind)
+                && has_coverage.contains(covspan.bcb))
         });
 
         // Remove `CoverageSpan`s derived from closures, originally added to ensure the coverage
@@ -374,12 +368,17 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 
     // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
-    // the `BasicBlock`(s) in the given `BasicCoverageBlock`. One `CoverageSpan` is generated
+    // the `BasicBlock`(s) in the given `BasicCoverageBlockData`. One `CoverageSpan` is generated
     // for each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
     // merge some `CoverageSpan`s, at which point a `CoverageSpan` may represent multiple
     // `Statement`s and/or `Terminator`s.)
-    fn bcb_to_initial_coverage_spans(&self, bcb: &BasicCoverageBlock) -> Vec<CoverageSpan> {
-        bcb.blocks
+    fn bcb_to_initial_coverage_spans(
+        &self,
+        bcb: BasicCoverageBlock,
+        bcb_data: &'a BasicCoverageBlockData,
+    ) -> Vec<CoverageSpan> {
+        bcb_data
+            .basic_blocks
             .iter()
             .map(|bbref| {
                 let bb = *bbref;
@@ -636,7 +635,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 
     fn span_bcb_is_dominated_by(&self, covspan: &CoverageSpan, dom_covspan: &CoverageSpan) -> bool {
-        self.dominators.is_dominated_by(covspan.bcb_leader_bb, dom_covspan.bcb_leader_bb)
+        self.basic_coverage_blocks.is_dominated_by(covspan.bcb, dom_covspan.bcb)
     }
 }
 

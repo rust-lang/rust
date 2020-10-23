@@ -2,8 +2,7 @@ Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/
 Counter in file 0 4:39 -> 4:49, #1
 Counter in file 0 4:39 -> 4:49, #2
 Counter in file 0 4:39 -> 4:49, #3
-Counter in file 0 4:39 -> 4:49, #4
-Counter in file 0 4:48 -> 4:49, #5
+Counter in file 0 4:48 -> 4:49, #4
 Counter in file 0 8:5 -> 8:17, #1
 Counter in file 0 21:11 -> 26:2, #1
 Counter in file 0 4:39 -> 4:40, #1
@@ -20,8 +19,7 @@ Counter in file 0 4:32 -> 4:33, #5
 Counter in file 0 4:51 -> 4:54, #1
 Counter in file 0 4:51 -> 4:54, #2
 Counter in file 0 4:51 -> 4:54, #3
-Counter in file 0 4:51 -> 4:54, #4
-Counter in file 0 4:53 -> 4:54, #5
+Counter in file 0 4:53 -> 4:54, #4
 Counter in file 0 13:9 -> 18:6, #1
 Counter in file 0 7:5 -> 7:6, #1
 Counter in file 0 4:39 -> 4:40, #1

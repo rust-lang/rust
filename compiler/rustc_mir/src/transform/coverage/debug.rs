@@ -1,4 +1,4 @@
-use super::graph::BasicCoverageBlocks;
+use super::graph::CoverageGraph;
 use super::spans::CoverageSpan;
 
 use crate::util::pretty;
@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 pub(crate) fn dump_coverage_spanview(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
-    basic_coverage_blocks: &BasicCoverageBlocks,
+    basic_coverage_blocks: &CoverageGraph,
     pass_name: &str,
     coverage_spans: &Vec<CoverageSpan>,
 ) {
@@ -28,20 +28,20 @@ pub(crate) fn dump_coverage_spanview(
         .expect("Unexpected IO error dumping coverage spans as HTML");
 }
 
-/// Converts the computed `BasicCoverageBlock`s into `SpanViewable`s.
+/// Converts the computed `BasicCoverageBlockData`s into `SpanViewable`s.
 fn span_viewables(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
-    basic_coverage_blocks: &BasicCoverageBlocks,
+    basic_coverage_blocks: &CoverageGraph,
     coverage_spans: &Vec<CoverageSpan>,
 ) -> Vec<SpanViewable> {
     let mut span_viewables = Vec::new();
     for coverage_span in coverage_spans {
         let tooltip = coverage_span.format_coverage_statements(tcx, mir_body);
-        let CoverageSpan { span, bcb_leader_bb: bb, .. } = coverage_span;
-        let bcb = &basic_coverage_blocks[*bb];
-        let id = bcb.id();
-        let leader_bb = bcb.leader_bb();
+        let CoverageSpan { span, bcb, .. } = coverage_span;
+        let bcb_data = &basic_coverage_blocks[*bcb];
+        let id = bcb_data.id();
+        let leader_bb = bcb_data.leader_bb();
         span_viewables.push(SpanViewable { bb: leader_bb, span: *span, id, tooltip });
     }
     span_viewables
