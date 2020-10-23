@@ -356,7 +356,7 @@ macro_rules! define_queries {
         impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
-            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
+            const DEP_KIND: dep_graph::DepKind = &dep_graph::dep_kind::$name;
 
             type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
 

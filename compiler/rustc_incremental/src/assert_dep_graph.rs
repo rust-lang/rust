@@ -41,7 +41,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::dep_graph::debug::{DepNodeFilter, EdgeFilter};
-use rustc_middle::dep_graph::{DepGraphQuery, DepKind, DepNode, DepNodeExt};
+use rustc_middle::dep_graph::{dep_kind, DepGraphQuery, DepNode, DepNodeExt};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
@@ -120,7 +120,7 @@ impl IfThisChanged<'tcx> {
             if self.tcx.sess.check_name(attr, sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
-                    None => DepNode::from_def_path_hash(def_path_hash, DepKind::hir_owner),
+                    None => DepNode::from_def_path_hash(def_path_hash, &dep_kind::hir_owner),
                     Some(n) => match DepNode::from_label_string(&n.as_str(), def_path_hash) {
                         Ok(n) => n,
                         Err(()) => {

@@ -31,7 +31,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::dep_graph::{dep_kind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -972,7 +972,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         OP: FnOnce(&mut Self) -> R,
     {
         let (result, dep_node) =
-            self.tcx().dep_graph.with_anon_task(DepKind::TraitSelect, || op(self));
+            self.tcx().dep_graph.with_anon_task(&dep_kind::TraitSelect, || op(self));
         self.tcx().dep_graph.read_index(dep_node);
         (result, dep_node)
     }

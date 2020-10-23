@@ -1,4 +1,4 @@
-use crate::dep_graph::{self, DepKind, DepNode, DepNodeParams};
+use crate::dep_graph::{self, dep_kind, DepNode};
 use crate::hir::exports::Export;
 use crate::hir::map;
 use crate::infer::canonical::{self, Canonical};
@@ -160,97 +160,15 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     // hit the cache instead of having to go through `force_from_dep_node`.
     // This assertion makes sure, we actually keep applying the solution above.
     debug_assert!(
-        dep_node.kind != DepKind::codegen_unit,
+        dep_node.kind != &dep_kind::codegen_unit,
         "calling force_from_dep_node() on DepKind::codegen_unit"
     );
 
-    macro_rules! force_from_dep_node {
-        ($($(#[$attr:meta])* [$($modifiers:tt)*] $name:ident($K:ty),)*) => {
-            use rustc_middle::dep_graph::dep_kind;
-
-            $(impl dep_kind::$name {
-                fn force_from_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
-                    if !self.can_reconstruct_query_key() {
-                        return false;
-                    }
-
-                    debug_assert!(<$K as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key());
-
-                    if let Some(key) = <$K as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node) {
-                        force_query::<queries::$name<'_>, _>(
-                            tcx,
-                            key,
-                            DUMMY_SP,
-                            *dep_node
-                        );
-                        return true;
-                    }
-
-                    false
-                }
-            })*
-
-            match dep_node.kind {
-                // These are inputs that are expected to be pre-allocated and that
-                // should therefore always be red or green already.
-                DepKind::CrateMetadata |
-
-                // These are anonymous nodes.
-                DepKind::TraitSelect |
-
-                // We don't have enough information to reconstruct the query key of
-                // these.
-                DepKind::CompileCodegenUnit |
-
-                // Forcing this makes no sense.
-                DepKind::Null => {
-                    if !dep_node.kind.can_reconstruct_query_key() {
-                        return false;
-                    }
-
-                    bug!("force_from_dep_node: encountered {:?}", dep_node)
-                }
-
-                $(DepKind::$name => dep_kind::$name.force_from_dep_node(tcx, dep_node)),*
-            }
-        }
-    }
-
-    rustc_dep_node_append! { [force_from_dep_node!][] }
-
-    false
+    dep_node.kind.force_from_dep_node(tcx, dep_node)
 }
 
 pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
-    macro_rules! try_load_from_on_disk_cache {
-        ($($name:ident,)*) => {
-            use rustc_middle::dep_graph::dep_kind;
-
-            $(impl dep_kind::$name {
-                fn try_load_from_on_disk_cache<'tcx>(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
-                    if <query_keys::$name<'tcx> as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
-                        debug_assert!(tcx.dep_graph
-                                         .node_color(dep_node)
-                                         .map(|c| c.is_green())
-                                         .unwrap_or(false));
-
-                        let key = <query_keys::$name<'tcx> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node).unwrap();
-                        if queries::$name::cache_on_disk(tcx, &key, None) {
-                            let _ = tcx.$name(key);
-                        }
-                    }
-                }
-            })*
-
-            match dep_node.kind {
-                $(DepKind::$name => dep_kind::$name.try_load_from_on_disk_cache(tcx, dep_node),)*
-
-                _ => (),
-            }
-        }
-    }
-
-    rustc_cached_queries!(try_load_from_on_disk_cache!);
+    dep_node.kind.try_load_from_on_disk_cache(tcx, dep_node)
 }
 
 mod sealed {

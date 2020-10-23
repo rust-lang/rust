@@ -65,10 +65,27 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::Symbol;
 use std::hash::Hash;
 
 pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
+
+pub trait DepKindTrait: std::fmt::Debug + Sync {
+    fn index(&self) -> DepKindIndex;
+
+    fn can_reconstruct_query_key(&self) -> bool;
+
+    fn is_anon(&self) -> bool;
+
+    fn is_eval_always(&self) -> bool;
+
+    fn has_params(&self) -> bool;
+
+    fn force_from_dep_node(&self, tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool;
+
+    fn try_load_from_on_disk_cache(&self, tcx: TyCtxt<'_>, dep_node: &DepNode);
+}
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
 // is repeated (i.e., which sub-expression of the macro we are in) but don't need
@@ -103,6 +120,113 @@ macro_rules! contains_eval_always_attr {
     ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
+macro_rules! define_dep_kinds {
+    (<$tcx:tt>
+    $(
+        [$($attrs:tt)*]
+        $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
+      ,)*
+    ) => (
+        $(impl DepKindTrait for dep_kind::$variant {
+            #[inline]
+            fn index(&self) -> DepKindIndex {
+                DepKindIndex::$variant
+            }
+
+            #[inline]
+            #[allow(unreachable_code)]
+            #[allow(unused_lifetimes)] // inside `tuple_arg_ty`
+            fn can_reconstruct_query_key<$tcx>(&self) -> bool {
+                if contains_anon_attr!($($attrs)*) {
+                    return false;
+                }
+
+                // tuple args
+                $({
+                    return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
+                        ::can_reconstruct_query_key();
+                })*
+
+                true
+            }
+
+            #[inline]
+            fn is_anon(&self) -> bool {
+                contains_anon_attr!($($attrs)*)
+            }
+
+            #[inline]
+            fn is_eval_always(&self) -> bool {
+                contains_eval_always_attr!($($attrs)*)
+            }
+
+            #[inline]
+            #[allow(unreachable_code)]
+            fn has_params(&self) -> bool {
+                // tuple args
+                $({
+                    erase!($tuple_arg_ty);
+                    return true;
+                })*
+
+                false
+            }
+
+            #[inline]
+            fn force_from_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
+                use rustc_query_system::query::force_query;
+                use rustc_middle::ty::query::queries;
+                #[allow(unused_parens)]
+                #[allow(unused_lifetimes)]
+                type Key<$tcx> = ($($tuple_arg_ty),*);
+
+                if !self.can_reconstruct_query_key() {
+                    return false;
+                }
+
+                debug_assert!(<Key<'_> as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key());
+
+                if let Some(key) = <Key<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node) {
+                    force_query::<queries::$variant<'_>, _>(
+                        tcx,
+                        key,
+                        rustc_span::DUMMY_SP,
+                        *dep_node
+                    );
+                    return true;
+                }
+
+                false
+            }
+
+            #[inline]
+            fn try_load_from_on_disk_cache<'tcx>(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
+                use rustc_query_system::query::QueryDescription;
+                use rustc_middle::ty::query::queries;
+                #[allow(unused_parens)]
+                #[allow(unused_lifetimes)]
+                type Key<$tcx> = ($($tuple_arg_ty),*);
+
+                if !<Key<'_> as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
+                    return;
+                }
+
+                debug_assert!(tcx.dep_graph
+                                 .node_color(dep_node)
+                                 .map(|c| c.is_green())
+                                 .unwrap_or(false));
+
+                let key = <Key<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node).unwrap();
+                if queries::$variant::cache_on_disk(tcx, &key, None) {
+                    let _ = tcx.$variant(key);
+                }
+            }
+        })*
+    )
+}
+
+rustc_dep_node_append!([define_dep_kinds!][ <'tcx> ]);
+
 macro_rules! define_dep_nodes {
     (<$tcx:tt>
     $(
@@ -111,86 +235,20 @@ macro_rules! define_dep_nodes {
       ,)*
     ) => (
         pub mod dep_kind {
-            use super::*;
-
             $(
                 #[allow(non_camel_case_types)]
+                #[derive(Debug)]
                 pub struct $variant;
-
-                impl $variant {
-                    #[inline]
-                    #[allow(unreachable_code)]
-                    #[allow(unused_lifetimes)] // inside `tuple_arg_ty`
-                    pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
-                        if contains_anon_attr!($($attrs)*) {
-                            return false;
-                        }
-
-                        // tuple args
-                        $({
-                            return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
-                                ::can_reconstruct_query_key();
-                        })*
-
-                        true
-                    }
-
-                    #[inline]
-                    pub fn is_anon(&self) -> bool {
-                        contains_anon_attr!($($attrs)*)
-                    }
-
-                    #[inline]
-                    pub fn is_eval_always(&self) -> bool {
-                        contains_eval_always_attr!($($attrs)*)
-                    }
-
-                    #[inline]
-                    #[allow(unreachable_code)]
-                    pub fn has_params(&self) -> bool {
-                        // tuple args
-                        $({
-                            erase!($tuple_arg_ty);
-                            return true;
-                        })*
-
-                        false
-                    }
-                }
             )*
         }
 
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
-        pub enum DepKind {
+        pub enum DepKindIndex {
             $($variant),*
         }
 
-        impl DepKind {
-            pub fn can_reconstruct_query_key(&self) -> bool {
-                match *self {
-                    $(DepKind::$variant => dep_kind::$variant.can_reconstruct_query_key()),*
-                }
-            }
-
-            pub fn is_anon(&self) -> bool {
-                match *self {
-                    $(DepKind::$variant => dep_kind::$variant.is_anon()),*
-                }
-            }
-
-            pub fn is_eval_always(&self) -> bool {
-                match *self {
-                    $(DepKind::$variant => dep_kind::$variant.is_eval_always()),*
-                }
-            }
-
-            pub fn has_params(&self) -> bool {
-                match *self {
-                    $(DepKind::$variant => dep_kind::$variant.has_params()),*
-                }
-            }
-        }
+        pub static DEP_KINDS: &[DepKind] = &[ $(&dep_kind::$variant),* ];
 
         pub struct DepConstructor;
 
@@ -203,10 +261,10 @@ macro_rules! define_dep_nodes {
                     // tuple args
                     $({
                         erase!($tuple_arg_ty);
-                        return DepNode::construct(_tcx, DepKind::$variant, &arg)
+                        return DepNode::construct(_tcx, &dep_kind::$variant, &arg)
                     })*
 
-                    return DepNode::construct(_tcx, DepKind::$variant, &())
+                    return DepNode::construct(_tcx, &dep_kind::$variant, &())
                 }
             )*
         }
@@ -272,21 +330,19 @@ macro_rules! define_dep_nodes {
 
             /// Used in testing
             fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<DepNode, ()> {
-                let kind = match label {
-                    $(
-                        stringify!($variant) => DepKind::$variant,
-                    )*
-                    _ => return Err(()),
-                };
+                match label {
+                    $(stringify!($variant) => {
+                        let kind = &dep_kind::$variant;
 
-                if !kind.can_reconstruct_query_key() {
-                    return Err(());
-                }
-
-                if kind.has_params() {
-                    Ok(DepNode::from_def_path_hash(def_path_hash, kind))
-                } else {
-                    Ok(DepNode::new_no_params(kind))
+                        if !kind.can_reconstruct_query_key() {
+                            Err(())
+                        } else if kind.has_params() {
+                            Ok(DepNode::from_def_path_hash(def_path_hash, kind))
+                        } else {
+                            Ok(DepNode::new_no_params(kind))
+                        }
+                    })*
+                    _ => Err(()),
                 }
             }
 
@@ -323,6 +379,192 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     [] CompileCodegenUnit(Symbol),
 ]);
+
+impl DepKindTrait for dep_kind::Null {
+    #[inline]
+    fn index(&self) -> DepKindIndex {
+        DepKindIndex::Null
+    }
+
+    #[inline]
+    fn can_reconstruct_query_key(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn is_anon(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn is_eval_always(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn has_params(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn force_from_dep_node(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) -> bool {
+        // Forcing this makes no sense.
+        bug!("force_from_dep_node: encountered {:?}", _dep_node);
+    }
+
+    #[inline]
+    fn try_load_from_on_disk_cache<'tcx>(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) {}
+}
+
+impl DepKindTrait for dep_kind::CrateMetadata {
+    #[inline]
+    fn index(&self) -> DepKindIndex {
+        DepKindIndex::CrateMetadata
+    }
+
+    #[inline]
+    fn can_reconstruct_query_key(&self) -> bool {
+        <CrateNum as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key()
+    }
+
+    #[inline]
+    fn is_anon(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn is_eval_always(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn has_params(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn force_from_dep_node(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) -> bool {
+        // These are inputs that are expected to be pre-allocated and that
+        // should therefore always be red or green already.
+        if !self.can_reconstruct_query_key() {
+            return false;
+        }
+
+        bug!("force_from_dep_node: encountered {:?}", _dep_node);
+    }
+
+    #[inline]
+    fn try_load_from_on_disk_cache<'tcx>(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) {}
+}
+
+impl DepKindTrait for dep_kind::TraitSelect {
+    #[inline]
+    fn index(&self) -> DepKindIndex {
+        DepKindIndex::TraitSelect
+    }
+
+    #[inline]
+    fn can_reconstruct_query_key(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn is_anon(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn is_eval_always(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn has_params(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn force_from_dep_node(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) -> bool {
+        // These are anonymous nodes.
+        if !self.can_reconstruct_query_key() {
+            return false;
+        }
+
+        bug!("force_from_dep_node: encountered {:?}", _dep_node);
+    }
+
+    #[inline]
+    fn try_load_from_on_disk_cache<'tcx>(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) {}
+}
+
+impl DepKindTrait for dep_kind::CompileCodegenUnit {
+    #[inline]
+    fn index(&self) -> DepKindIndex {
+        DepKindIndex::CompileCodegenUnit
+    }
+
+    #[inline]
+    fn can_reconstruct_query_key(&self) -> bool {
+        <Symbol as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key()
+    }
+
+    #[inline]
+    fn is_anon(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    fn is_eval_always(&self) -> bool {
+        false
+    }
+
+    #[inline]
+    #[allow(unreachable_code)]
+    fn has_params(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn force_from_dep_node(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) -> bool {
+        // We don't have enough information to reconstruct the query key of these.
+        if !self.can_reconstruct_query_key() {
+            return false;
+        }
+
+        bug!("force_from_dep_node: encountered {:?}", _dep_node);
+    }
+
+    #[inline]
+    fn try_load_from_on_disk_cache<'tcx>(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) {}
+}
+
+pub type DepKind = &'static dyn DepKindTrait;
+
+impl PartialEq for &dyn DepKindTrait {
+    fn eq(&self, other: &Self) -> bool {
+        self.index() == other.index()
+    }
+}
+impl Eq for &dyn DepKindTrait {}
+
+impl Hash for &dyn DepKindTrait {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        self.index().hash(hasher)
+    }
+}
+
+impl<E: Encoder> Encodable<E> for &dyn DepKindTrait {
+    fn encode(&self, enc: &mut E) -> Result<(), E::Error> {
+        self.index().encode(enc)
+    }
+}
+
+impl<D: Decoder> Decodable<D> for &dyn DepKindTrait {
+    fn decode(dec: &mut D) -> Result<Self, D::Error> {
+        let idx = DepKindIndex::decode(dec)?;
+        Ok(DEP_KINDS[idx as usize])
+    }
+}
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
     #[inline]

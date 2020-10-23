@@ -9,13 +9,14 @@ use rustc_hir::def_id::LocalDefId;
 
 mod dep_node;
 
-pub(crate) use rustc_query_system::dep_graph::DepNodeParams;
 pub use rustc_query_system::dep_graph::{
     debug, hash_result, DepContext, DepNodeColor, DepNodeIndex, SerializedDepNodeIndex,
     WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{dep_kind, label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
+pub use dep_node::{
+    dep_kind, label_strs, DepConstructor, DepKind, DepKindIndex, DepKindTrait, DepNode, DepNodeExt,
+};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
@@ -24,14 +25,14 @@ pub type PreviousDepGraph = rustc_query_system::dep_graph::PreviousDepGraph<DepK
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
 
 impl rustc_query_system::dep_graph::DepKind for DepKind {
-    const NULL: Self = DepKind::Null;
+    const NULL: Self = &dep_kind::Null;
 
     fn is_eval_always(&self) -> bool {
-        DepKind::is_eval_always(self)
+        DepKindTrait::is_eval_always(*self)
     }
 
     fn has_params(&self) -> bool {
-        DepKind::has_params(self)
+        DepKindTrait::has_params(*self)
     }
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -83,7 +84,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
     }
 
     fn can_reconstruct_query_key(&self) -> bool {
-        DepKind::can_reconstruct_query_key(self)
+        DepKindTrait::can_reconstruct_query_key(*self)
     }
 }
 
@@ -104,14 +105,18 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     }
 
     fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
+        let index = dep_node.kind.index();
+
         // FIXME: This match is just a workaround for incremental bugs and should
         // be removed. https://github.com/rust-lang/rust/issues/62649 is one such
         // bug that must be fixed before removing this.
-        match dep_node.kind {
-            DepKind::hir_owner | DepKind::hir_owner_nodes | DepKind::CrateMetadata => {
+        match index {
+            DepKindIndex::hir_owner
+            | DepKindIndex::hir_owner_nodes
+            | DepKindIndex::CrateMetadata => {
                 if let Some(def_id) = dep_node.extract_def_id(*self) {
                     if def_id_corresponds_to_hir_dep_node(*self, def_id.expect_local()) {
-                        if dep_node.kind == DepKind::CrateMetadata {
+                        if index == DepKindIndex::CrateMetadata {
                             // The `DefPath` has corresponding node,
                             // and that node should have been marked
                             // either red or green in `data.colors`.

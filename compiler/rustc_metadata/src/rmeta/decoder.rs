@@ -1598,7 +1598,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
             let def_path_hash = self.def_path_hash(CRATE_DEF_INDEX);
             let dep_node =
-                DepNode::from_def_path_hash(def_path_hash, dep_graph::DepKind::CrateMetadata);
+                DepNode::from_def_path_hash(def_path_hash, &dep_graph::dep_kind::CrateMetadata);
 
             dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
             assert!(dep_node_index != DepNodeIndex::INVALID);
