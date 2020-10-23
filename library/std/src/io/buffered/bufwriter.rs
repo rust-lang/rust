@@ -115,9 +115,9 @@ impl<W: Write> BufWriter<W> {
     /// `write`), any 0-length writes from `inner` must be reported as i/o
     /// errors from this method.
     pub(super) fn flush_buf(&mut self) -> io::Result<()> {
-        /// Helper struct to ensure the buffer is updated after all the writes
-        /// are complete. It tracks the number of written bytes and drains them
-        /// all from the front of the buffer when dropped.
+        // Helper struct to ensure the buffer is updated after all the writes
+        // are complete. It tracks the number of written bytes and drains them
+        // all from the front of the buffer when dropped.
         struct BufGuard<'a> {
             buffer: &'a mut Vec<u8>,
             written: usize,

@@ -1601,7 +1601,7 @@ impl fmt::Display for Ipv6Addr {
                     longest
                 };
 
-                /// Write a colon-separated part of the address
+                // Write a colon-separated part of the address
                 #[inline]
                 fn fmt_subslice(f: &mut fmt::Formatter<'_>, chunk: &[u16]) -> fmt::Result {
                     if let Some(first) = chunk.first() {

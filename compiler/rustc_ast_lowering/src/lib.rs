@@ -419,11 +419,11 @@ impl Visitor<'_> for ImplTraitTypeIdVisitor<'_> {
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_crate(mut self, c: &Crate) -> hir::Crate<'hir> {
-        /// Full-crate AST visitor that inserts into a fresh
-        /// `LoweringContext` any information that may be
-        /// needed from arbitrary locations in the crate,
-        /// e.g., the number of lifetime generic parameters
-        /// declared for every type and trait definition.
+        // Full-crate AST visitor that inserts into a fresh
+        // `LoweringContext` any information that may be
+        // needed from arbitrary locations in the crate,
+        // e.g., the number of lifetime generic parameters
+        // declared for every type and trait definition.
         struct MiscCollector<'tcx, 'lowering, 'hir> {
             lctx: &'tcx mut LoweringContext<'lowering, 'hir>,
             hir_id_owner: Option<NodeId>,

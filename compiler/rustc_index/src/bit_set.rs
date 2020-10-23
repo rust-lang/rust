@@ -900,7 +900,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
 
 impl<R: Idx, C: Idx> fmt::Debug for BitMatrix<R, C> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        /// Forces its contents to print in regular mode instead of alternate mode.
+        // Forces its contents to print in regular mode instead of alternate mode.
         struct OneLinePrinter<T>(T);
         impl<T: fmt::Debug> fmt::Debug for OneLinePrinter<T> {
             fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {

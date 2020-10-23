@@ -987,16 +987,16 @@ impl<'a> Sum<&'a Duration> for Duration {
 #[stable(feature = "duration_debug_impl", since = "1.27.0")]
 impl fmt::Debug for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        /// Formats a floating point number in decimal notation.
-        ///
-        /// The number is given as the `integer_part` and a fractional part.
-        /// The value of the fractional part is `fractional_part / divisor`. So
-        /// `integer_part` = 3, `fractional_part` = 12 and `divisor` = 100
-        /// represents the number `3.012`. Trailing zeros are omitted.
-        ///
-        /// `divisor` must not be above 100_000_000. It also should be a power
-        /// of 10, everything else doesn't make sense. `fractional_part` has
-        /// to be less than `10 * divisor`!
+        // Formats a floating point number in decimal notation.
+        //
+        // The number is given as the `integer_part` and a fractional part.
+        // The value of the fractional part is `fractional_part / divisor`. So
+        // `integer_part` = 3, `fractional_part` = 12 and `divisor` = 100
+        // represents the number `3.012`. Trailing zeros are omitted.
+        //
+        // `divisor` must not be above 100_000_000. It also should be a power
+        // of 10, everything else doesn't make sense. `fractional_part` has
+        // to be less than `10 * divisor`!
         fn fmt_decimal(
             f: &mut fmt::Formatter<'_>,
             mut integer_part: u64,

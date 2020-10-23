@@ -1993,7 +1993,7 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 
 /// Compare two strings treating multi-digit numbers as single units (i.e. natural sort order).
 pub fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
-    /// Takes a non-numeric and a numeric part from the given &str.
+    // Takes a non-numeric and a numeric part from the given &str.
     fn take_parts<'a>(s: &mut &'a str) -> (&'a str, &'a str) {
         let i = s.find(|c: char| c.is_ascii_digit());
         let (a, b) = s.split_at(i.unwrap_or(s.len()));

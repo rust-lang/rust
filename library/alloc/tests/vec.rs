@@ -1541,8 +1541,8 @@ fn test_try_reserve_exact() {
 
 #[test]
 fn test_stable_pointers() {
-    /// Pull an element from the iterator, then drop it.
-    /// Useful to cover both the `next` and `drop` paths of an iterator.
+    // Pull an element from the iterator, then drop it.
+    // Useful to cover both the `next` and `drop` paths of an iterator.
     fn next_then_drop<I: Iterator>(mut i: I) {
         i.next().unwrap();
         drop(i);

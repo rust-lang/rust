@@ -106,8 +106,8 @@ fn get_arm_identity_info<'a, 'tcx>(
         matches!(stmt.kind, StatementKind::StorageLive(_) | StatementKind::StorageDead(_))
     }
 
-    /// Eats consecutive Statements which match `test`, performing the specified `action` for each.
-    /// The iterator `stmt_iter` is not advanced if none were matched.
+    // Eats consecutive Statements which match `test`, performing the specified `action` for each.
+    // The iterator `stmt_iter` is not advanced if none were matched.
     fn try_eat<'a, 'tcx>(
         stmt_iter: &mut StmtIter<'a, 'tcx>,
         test: impl Fn(&'a Statement<'tcx>) -> bool,
@@ -120,8 +120,8 @@ fn get_arm_identity_info<'a, 'tcx>(
         }
     }
 
-    /// Eats consecutive `StorageLive` and `StorageDead` Statements.
-    /// The iterator `stmt_iter` is not advanced if none were found.
+    // Eats consecutive `StorageLive` and `StorageDead` Statements.
+    // The iterator `stmt_iter` is not advanced if none were found.
     fn try_eat_storage_stmts<'a, 'tcx>(
         stmt_iter: &mut StmtIter<'a, 'tcx>,
         storage_live_stmts: &mut Vec<(usize, Local)>,
@@ -145,7 +145,7 @@ fn get_arm_identity_info<'a, 'tcx>(
         }
     }
 
-    /// Eats consecutive `Assign` Statements.
+    // Eats consecutive `Assign` Statements.
     // The iterator `stmt_iter` is not advanced if none were found.
     fn try_eat_assign_tmp_stmts<'a, 'tcx>(
         stmt_iter: &mut StmtIter<'a, 'tcx>,

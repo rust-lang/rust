@@ -1658,8 +1658,8 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
 
         use self::ast::{PatKind, RangeSyntax::DotDotDot};
 
-        /// If `pat` is a `...` pattern, return the start and end of the range, as well as the span
-        /// corresponding to the ellipsis.
+        // If `pat` is a `...` pattern, return the start and end of the range, as well as the span
+        // corresponding to the ellipsis.
         fn matches_ellipsis_pat(pat: &ast::Pat) -> Option<(Option<&Expr>, &Expr, Span)> {
             match &pat.kind {
                 PatKind::Range(
@@ -2348,11 +2348,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             Uninit,
         };
 
-        /// Information about why a type cannot be initialized this way.
-        /// Contains an error message and optionally a span to point at.
+        // Information about why a type cannot be initialized this way.
+        // Contains an error message and optionally a span to point at.
         type InitError = (String, Option<Span>);
 
-        /// Test if this constant is all-0.
+        // Test if this constant is all-0.
         fn is_zero(expr: &hir::Expr<'_>) -> bool {
             use hir::ExprKind::*;
             use rustc_ast::LitKind::*;
@@ -2369,7 +2369,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             }
         }
 
-        /// Determine if this expression is a "dangerous initialization".
+        // Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<InitKind> {
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.kind {
                 // Find calls to `mem::{uninitialized,zeroed}` methods.
@@ -2409,16 +2409,16 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             None
         }
 
-        /// Test if this enum has several actually "existing" variants.
-        /// Zero-sized uninhabited variants do not always have a tag assigned and thus do not "exist".
+        // Test if this enum has several actually "existing" variants.
+        // Zero-sized uninhabited variants do not always have a tag assigned and thus do not "exist".
         fn is_multi_variant(adt: &ty::AdtDef) -> bool {
             // As an approximation, we only count dataless variants. Those are definitely inhabited.
             let existing_variants = adt.variants.iter().filter(|v| v.fields.is_empty()).count();
             existing_variants > 1
         }
 
-        /// Return `Some` only if we are sure this type does *not*
-        /// allow zero initialization.
+        // Return `Some` only if we are sure this type does *not*
+        // allow zero initialization.
         fn ty_find_init_error<'tcx>(
             tcx: TyCtxt<'tcx>,
             ty: Ty<'tcx>,

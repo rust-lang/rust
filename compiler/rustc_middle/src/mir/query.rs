@@ -167,7 +167,7 @@ pub struct GeneratorLayout<'tcx> {
 
 impl Debug for GeneratorLayout<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        /// Prints an iterator of (key, value) tuples as a map.
+        // Prints an iterator of (key, value) tuples as a map.
         struct MapPrinter<'a, K, V>(Cell<Option<Box<dyn Iterator<Item = (K, V)> + 'a>>>);
         impl<'a, K, V> MapPrinter<'a, K, V> {
             fn new(iter: impl Iterator<Item = (K, V)> + 'a) -> Self {
@@ -180,7 +180,7 @@ impl Debug for GeneratorLayout<'_> {
             }
         }
 
-        /// Prints the generator variant name.
+        // Prints the generator variant name.
         struct GenVariantPrinter(VariantIdx);
         impl From<VariantIdx> for GenVariantPrinter {
             fn from(idx: VariantIdx) -> Self {
@@ -198,7 +198,7 @@ impl Debug for GeneratorLayout<'_> {
             }
         }
 
-        /// Forces its contents to print in regular mode instead of alternate mode.
+        // Forces its contents to print in regular mode instead of alternate mode.
         struct OneLinePrinter<T>(T);
         impl<T: Debug> Debug for OneLinePrinter<T> {
             fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {

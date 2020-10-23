@@ -2260,9 +2260,9 @@ fn split_grouped_constructors<'p, 'tcx>(
                     continue;
                 }
 
-                /// Represents a border between 2 integers. Because the intervals spanning borders
-                /// must be able to cover every integer, we need to be able to represent
-                /// 2^128 + 1 such borders.
+                // Represents a border between 2 integers. Because the intervals spanning borders
+                // must be able to cover every integer, we need to be able to represent
+                // 2^128 + 1 such borders.
                 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
                 enum Border {
                     JustBefore(u128),

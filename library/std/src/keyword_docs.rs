@@ -1945,11 +1945,11 @@ mod type_keyword {}
 ///
 /// ```rust
 /// # #![allow(dead_code)]
-/// /// Dereference the given pointer.
-/// ///
-/// /// # Safety
-/// ///
-/// /// `ptr` must be aligned and must not be dangling.
+/// // Dereference the given pointer.
+/// //
+/// // # Safety
+/// //
+/// // `ptr` must be aligned and must not be dangling.
 /// unsafe fn deref_unchecked(ptr: *const i32) -> i32 {
 ///     *ptr
 /// }
@@ -1967,8 +1967,8 @@ mod type_keyword {}
 /// this behaviour in the standard library.
 ///
 /// ```rust
-/// /// Implementors of this trait must guarantee an element is always
-/// /// accessible with index 3.
+/// // Implementors of this trait must guarantee an element is always
+/// // accessible with index 3.
 /// unsafe trait ThreeIndexable<T> {
 ///     /// Returns a reference to the element with index 3 in `&self`.
 ///     fn three(&self) -> &T;

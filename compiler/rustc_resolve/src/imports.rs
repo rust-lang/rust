@@ -730,7 +730,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         errors: Vec<(String, UnresolvedImportError)>,
         span: Option<MultiSpan>,
     ) {
-        /// Upper limit on the number of `span_label` messages.
+        // Upper limit on the number of `span_label` messages.
         const MAX_LABEL_COUNT: usize = 10;
 
         let (span, msg) = if errors.is_empty() {

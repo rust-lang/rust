@@ -3144,8 +3144,8 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> Drop for Drain<'_, T> {
     fn drop(&mut self) {
-        /// Continues dropping the remaining elements in the `Drain`, then moves back the
-        /// un-`Drain`ed elements to restore the original `Vec`.
+        // Continues dropping the remaining elements in the `Drain`, then moves back the
+        // un-`Drain`ed elements to restore the original `Vec`.
         struct DropGuard<'r, 'a, T>(&'r mut Drain<'a, T>);
 
         impl<'r, 'a, T> Drop for DropGuard<'r, 'a, T> {

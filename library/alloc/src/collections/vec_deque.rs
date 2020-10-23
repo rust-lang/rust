@@ -154,8 +154,8 @@ impl<T: Clone> Clone for VecDeque<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T> Drop for VecDeque<T> {
     fn drop(&mut self) {
-        /// Runs the destructor for all items in the slice when it gets dropped (normally or
-        /// during unwinding).
+        // Runs the destructor for all items in the slice when it gets dropped (normally or
+        // during unwinding).
         struct Dropper<'a, T>(&'a mut [T]);
 
         impl<'a, T> Drop for Dropper<'a, T> {
@@ -901,8 +901,8 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
     pub fn truncate(&mut self, len: usize) {
-        /// Runs the destructor for all items in the slice when it gets dropped (normally or
-        /// during unwinding).
+        // Runs the destructor for all items in the slice when it gets dropped (normally or
+        // during unwinding).
         struct Dropper<'a, T>(&'a mut [T]);
 
         impl<'a, T> Drop for Dropper<'a, T> {

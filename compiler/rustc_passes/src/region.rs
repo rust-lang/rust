@@ -509,17 +509,17 @@ fn resolve_local<'tcx>(
         visitor.visit_pat(pat);
     }
 
-    /// Returns `true` if `pat` match the `P&` non-terminal.
-    ///
-    /// ```text
-    ///     P& = ref X
-    ///        | StructName { ..., P&, ... }
-    ///        | VariantName(..., P&, ...)
-    ///        | [ ..., P&, ... ]
-    ///        | ( ..., P&, ... )
-    ///        | ... "|" P& "|" ...
-    ///        | box P&
-    /// ```
+    // Returns `true` if `pat` match the `P&` non-terminal.
+    //
+    // ```text
+    //     P& = ref X
+    //        | StructName { ..., P&, ... }
+    //        | VariantName(..., P&, ...)
+    //        | [ ..., P&, ... ]
+    //        | ( ..., P&, ... )
+    //        | ... "|" P& "|" ...
+    //        | box P&
+    // ```
     fn is_binding_pat(pat: &hir::Pat<'_>) -> bool {
         // Note that the code below looks for *explicit* refs only, that is, it won't
         // know about *implicit* refs as introduced in #42640.
@@ -576,18 +576,18 @@ fn resolve_local<'tcx>(
         }
     }
 
-    /// If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
-    ///
-    /// ```text
-    ///     E& = & ET
-    ///        | StructName { ..., f: E&, ... }
-    ///        | [ ..., E&, ... ]
-    ///        | ( ..., E&, ... )
-    ///        | {...; E&}
-    ///        | box E&
-    ///        | E& as ...
-    ///        | ( E& )
-    /// ```
+    // If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
+    //
+    // ```text
+    //     E& = & ET
+    //        | StructName { ..., f: E&, ... }
+    //        | [ ..., E&, ... ]
+    //        | ( ..., E&, ... )
+    //        | {...; E&}
+    //        | box E&
+    //        | E& as ...
+    //        | ( E& )
+    // ```
     fn record_rvalue_scope_if_borrow_expr<'tcx>(
         visitor: &mut RegionResolutionVisitor<'tcx>,
         expr: &hir::Expr<'_>,
@@ -620,23 +620,23 @@ fn resolve_local<'tcx>(
         }
     }
 
-    /// Applied to an expression `expr` if `expr` -- or something owned or partially owned by
-    /// `expr` -- is going to be indirectly referenced by a variable in a let statement. In that
-    /// case, the "temporary lifetime" or `expr` is extended to be the block enclosing the `let`
-    /// statement.
-    ///
-    /// More formally, if `expr` matches the grammar `ET`, record the rvalue scope of the matching
-    /// `<rvalue>` as `blk_id`:
-    ///
-    /// ```text
-    ///     ET = *ET
-    ///        | ET[...]
-    ///        | ET.f
-    ///        | (ET)
-    ///        | <rvalue>
-    /// ```
-    ///
-    /// Note: ET is intended to match "rvalues or places based on rvalues".
+    // Applied to an expression `expr` if `expr` -- or something owned or partially owned by
+    // `expr` -- is going to be indirectly referenced by a variable in a let statement. In that
+    // case, the "temporary lifetime" or `expr` is extended to be the block enclosing the `let`
+    // statement.
+    //
+    // More formally, if `expr` matches the grammar `ET`, record the rvalue scope of the matching
+    // `<rvalue>` as `blk_id`:
+    //
+    // ```text
+    //     ET = *ET
+    //        | ET[...]
+    //        | ET.f
+    //        | (ET)
+    //        | <rvalue>
+    // ```
+    //
+    // Note: ET is intended to match "rvalues or places based on rvalues".
     fn record_rvalue_scope<'tcx>(
         visitor: &mut RegionResolutionVisitor<'tcx>,
         expr: &hir::Expr<'_>,

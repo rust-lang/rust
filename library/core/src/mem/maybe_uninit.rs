@@ -302,7 +302,7 @@ impl<T> MaybeUninit<T> {
     ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
     /// }
     ///
-    /// /// Returns a (possibly smaller) slice of data that was actually read
+    /// // Returns a (possibly smaller) slice of data that was actually read
     /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
     ///     unsafe {
     ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());

@@ -26,7 +26,7 @@ pub struct Comment {
 /// Makes a doc string more presentable to users.
 /// Used by rustdoc and perhaps other tools, but not by rustc.
 pub fn beautify_doc_string(data: Symbol) -> String {
-    /// remove whitespace-only lines from the start/end of lines
+    // remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: Vec<String>) -> Vec<String> {
         let mut i = 0;
         let mut j = lines.len();
@@ -50,7 +50,7 @@ pub fn beautify_doc_string(data: Symbol) -> String {
         lines[i..j].to_vec()
     }
 
-    /// remove a "[ \t]*\*" block from each line, if possible
+    // remove a "[ \t]*\*" block from each line, if possible
     fn horizontal_trim(lines: Vec<String>) -> Vec<String> {
         let mut i = usize::MAX;
         let mut can_trim = true;

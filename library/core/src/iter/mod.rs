@@ -80,7 +80,7 @@
 //! ```
 //! // First, the struct:
 //!
-//! /// An iterator which counts from one to five
+//! // An iterator which counts from one to five
 //! struct Counter {
 //!     count: usize,
 //! }
