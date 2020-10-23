@@ -562,10 +562,6 @@ impl<T> Option<T> {
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////
-    // Setting a new value
-    /////////////////////////////////////////////////////////////////////////
-
     /// Inserts `value` into the option then returns a mutable reference to it.
     ///
     /// If the option already contains a value, the old value is dropped.
