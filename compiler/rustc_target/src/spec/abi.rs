@@ -100,7 +100,7 @@ impl Abi {
         // N.B., this ordering MUST match the AbiDatas array above.
         // (This is ensured by the test indices_are_correct().)
         use Abi::*;
-        match self {
+        let i = match self {
             // Cross-platform ABIs
             Rust => 0,
             C { unwind: false } => 1,
@@ -130,7 +130,18 @@ impl Abi {
             RustCall => 23,
             PlatformIntrinsic => 24,
             Unadjusted => 25,
-        }
+        };
+        debug_assert!(
+            AbiDatas
+                .iter()
+                .enumerate()
+                .find(|(_, AbiData { abi, .. })| *abi == self)
+                .map(|(index, _)| index)
+                .expect("abi variant has associated data")
+                == i,
+            "Abi index did not match `AbiDatas` ordering"
+        );
+        i
     }
 
     #[inline]
