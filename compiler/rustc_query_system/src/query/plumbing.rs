@@ -248,13 +248,8 @@ where
                 return TryGetJob::Cycle(value);
             }
 
-            let cached = try_get_cached(
-                tcx,
-                state,
-                (*key).clone(),
-                |value, index| (value.clone(), index),
-                |_, _| panic!("value must be in cache after waiting"),
-            );
+            let cached = try_get_cached(tcx, state, key, |value, index| (value.clone(), index))
+                .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
 
             if let Some(prof_timer) = _query_blocked_prof_timer.take() {
                 prof_timer.finish_with_query_invocation_id(cached.1.into());
@@ -356,35 +351,28 @@ where
 /// It returns the shard index and a lock guard to the shard,
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
-fn try_get_cached<CTX, C, R, OnHit, OnMiss>(
+fn try_get_cached<'a, CTX, C, R, OnHit>(
     tcx: CTX,
-    state: &QueryState<CTX::DepKind, CTX::Query, C>,
-    key: C::Key,
+    state: &'a QueryState<CTX::DepKind, CTX::Query, C>,
+    key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,
-    on_miss: OnMiss,
-) -> R
+) -> Result<R, QueryLookup<'a, CTX::DepKind, CTX::Query, C::Key, C::Sharded>>
 where
     C: QueryCache,
     CTX: QueryContext,
     OnHit: FnOnce(&C::Stored, DepNodeIndex) -> R,
-    OnMiss: FnOnce(C::Key, QueryLookup<'_, CTX::DepKind, CTX::Query, C::Key, C::Sharded>) -> R,
 {
-    state.cache.lookup(
-        state,
-        key,
-        |value, index| {
-            if unlikely!(tcx.profiler().enabled()) {
-                tcx.profiler().query_cache_hit(index.into());
-            }
-            #[cfg(debug_assertions)]
-            {
-                state.cache_hits.fetch_add(1, Ordering::Relaxed);
-            }
-            on_hit(value, index)
-        },
-        on_miss,
-    )
+    state.cache.lookup(state, &key, |value, index| {
+        if unlikely!(tcx.profiler().enabled()) {
+            tcx.profiler().query_cache_hit(index.into());
+        }
+        #[cfg(debug_assertions)]
+        {
+            state.cache_hits.fetch_add(1, Ordering::Relaxed);
+        }
+        on_hit(value, index)
+    })
 }
 
 fn try_execute_query<CTX, C>(
@@ -626,16 +614,14 @@ where
     C: QueryCache,
     C::Key: crate::dep_graph::DepNodeParams<CTX>,
 {
-    try_get_cached(
-        tcx,
-        state,
-        key,
-        |value, index| {
-            tcx.dep_graph().read_index(index);
-            value.clone()
-        },
-        |key, lookup| try_execute_query(tcx, state, span, key, lookup, query),
-    )
+    let cached = try_get_cached(tcx, state, &key, |value, index| {
+        tcx.dep_graph().read_index(index);
+        value.clone()
+    });
+    match cached {
+        Ok(value) => value,
+        Err(lookup) => try_execute_query(tcx, state, span, key, lookup, query),
+    }
 }
 
 /// Ensure that either this query has all green inputs or been executed.
@@ -694,25 +680,24 @@ fn force_query_impl<CTX, C>(
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
 
-    try_get_cached(
-        tcx,
-        state,
-        key,
-        |_, _| {
-            // Cache hit, do nothing
-        },
-        |key, lookup| {
-            let job = match JobOwner::<'_, CTX::DepKind, CTX::Query, C>::try_start(
-                tcx, state, span, &key, lookup, query,
-            ) {
-                TryGetJob::NotYetStarted(job) => job,
-                TryGetJob::Cycle(_) => return,
-                #[cfg(parallel_compiler)]
-                TryGetJob::JobCompleted(_) => return,
-            };
-            force_query_with_job(tcx, key, job, dep_node, query);
-        },
-    );
+    let cached = try_get_cached(tcx, state, &key, |_, _| {
+        // Cache hit, do nothing
+    });
+
+    let lookup = match cached {
+        Ok(()) => return,
+        Err(lookup) => lookup,
+    };
+
+    let job = match JobOwner::<'_, CTX::DepKind, CTX::Query, C>::try_start(
+        tcx, state, span, &key, lookup, query,
+    ) {
+        TryGetJob::NotYetStarted(job) => job,
+        TryGetJob::Cycle(_) => return,
+        #[cfg(parallel_compiler)]
+        TryGetJob::JobCompleted(_) => return,
+    };
+    force_query_with_job(tcx, key, job, dep_node, query);
 }
 
 pub enum QueryMode {

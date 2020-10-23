@@ -31,17 +31,15 @@ pub trait QueryCache: QueryStorage {
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<D, Q, R, OnHit, OnMiss>(
+    fn lookup<'s, D, Q, R, OnHit>(
         &self,
-        state: &QueryState<D, Q, Self>,
-        key: Self::Key,
+        state: &'s QueryState<D, Q, Self>,
+        key: &Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
-        on_miss: OnMiss,
-    ) -> R
+    ) -> Result<R, QueryLookup<'s, D, Q, Self::Key, Self::Sharded>>
     where
-        OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R,
-        OnMiss: FnOnce(Self::Key, QueryLookup<'_, D, Q, Self::Key, Self::Sharded>) -> R;
+        OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
 
     fn complete(
         &self,
@@ -95,23 +93,24 @@ where
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<D, Q, R, OnHit, OnMiss>(
+    fn lookup<'s, D, Q, R, OnHit>(
         &self,
-        state: &QueryState<D, Q, Self>,
-        key: K,
+        state: &'s QueryState<D, Q, Self>,
+        key: &K,
         on_hit: OnHit,
-        on_miss: OnMiss,
-    ) -> R
+    ) -> Result<R, QueryLookup<'s, D, Q, K, Self::Sharded>>
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'_, D, Q, K, Self::Sharded>) -> R,
     {
-        let mut lookup = state.get_lookup(&key);
-        let lock = &mut *lookup.lock;
+        let lookup = state.get_lookup(key);
+        let result = lookup.lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
-        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
-
-        if let Some((_, value)) = result { on_hit(&value.0, value.1) } else { on_miss(key, lookup) }
+        if let Some((_, value)) = result {
+            let hit_result = on_hit(&value.0, value.1);
+            Ok(hit_result)
+        } else {
+            Err(lookup)
+        }
     }
 
     #[inline]
@@ -177,26 +176,23 @@ where
     type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<D, Q, R, OnHit, OnMiss>(
+    fn lookup<'s, D, Q, R, OnHit>(
         &self,
-        state: &QueryState<D, Q, Self>,
-        key: K,
+        state: &'s QueryState<D, Q, Self>,
+        key: &K,
         on_hit: OnHit,
-        on_miss: OnMiss,
-    ) -> R
+    ) -> Result<R, QueryLookup<'s, D, Q, K, Self::Sharded>>
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'_, D, Q, K, Self::Sharded>) -> R,
     {
-        let mut lookup = state.get_lookup(&key);
-        let lock = &mut *lookup.lock;
-
-        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
+        let lookup = state.get_lookup(key);
+        let result = lookup.lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
-            on_hit(&&value.0, value.1)
+            let hit_result = on_hit(&&value.0, value.1);
+            Ok(hit_result)
         } else {
-            on_miss(key, lookup)
+            Err(lookup)
         }
     }
 
