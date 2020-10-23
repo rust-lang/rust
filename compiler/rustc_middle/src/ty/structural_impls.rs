@@ -1040,16 +1040,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     }
 }
 
-pub(super) trait PredicateVisitor<'tcx>: TypeVisitor<'tcx> {
-    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool;
-}
-
-impl<T: TypeVisitor<'tcx>> PredicateVisitor<'tcx> for T {
-    default fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
-        predicate.super_visit_with(self)
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         fold_list(*self, folder, |tcx, v| tcx.intern_predicates(v))
