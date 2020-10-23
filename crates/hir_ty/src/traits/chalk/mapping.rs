@@ -4,8 +4,8 @@
 //! conversions.
 
 use chalk_ir::{
-    cast::Cast, fold::shift::Shift, interner::HasInterner, PlaceholderIndex, Scalar, TypeName,
-    UniverseIndex,
+    cast::Cast, fold::shift::Shift, interner::HasInterner, LifetimeData, PlaceholderIndex, Scalar,
+    TypeName, UniverseIndex,
 };
 use chalk_solve::rust_ir;
 
@@ -76,7 +76,7 @@ impl ToChalk for Ty {
                 );
                 let bounded_ty = chalk_ir::DynTy {
                     bounds: make_binders(where_clauses, 1),
-                    lifetime: FAKE_PLACEHOLDER.to_lifetime(&Interner),
+                    lifetime: LifetimeData::Static.intern(&Interner),
                 };
                 chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
             }
@@ -161,9 +161,6 @@ impl ToChalk for Ty {
     }
 }
 
-const FAKE_PLACEHOLDER: PlaceholderIndex =
-    PlaceholderIndex { ui: UniverseIndex::ROOT, idx: usize::MAX };
-
 /// We currently don't model lifetimes, but Chalk does. So, we have to insert a
 /// fake lifetime here, because Chalks built-in logic may expect it to be there.
 fn ref_to_chalk(
@@ -172,7 +169,7 @@ fn ref_to_chalk(
     subst: Substs,
 ) -> chalk_ir::Ty<Interner> {
     let arg = subst[0].clone().to_chalk(db);
-    let lifetime = FAKE_PLACEHOLDER.to_lifetime(&Interner);
+    let lifetime = LifetimeData::Static.intern(&Interner);
     chalk_ir::ApplicationTy {
         name: TypeName::Ref(mutability.to_chalk(db)),
         substitution: chalk_ir::Substitution::from_iter(
@@ -205,7 +202,11 @@ fn array_to_chalk(db: &dyn HirDatabase, subst: Substs) -> chalk_ir::Ty<Interner>
         substitution: chalk_ir::Substitution::empty(&Interner),
     }
     .intern(&Interner);
-    let const_ = FAKE_PLACEHOLDER.to_const(&Interner, usize_ty);
+    let const_ = chalk_ir::ConstData {
+        ty: usize_ty,
+        value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: () }),
+    }
+    .intern(&Interner);
     chalk_ir::ApplicationTy {
         name: TypeName::Array,
         substitution: chalk_ir::Substitution::from_iter(
