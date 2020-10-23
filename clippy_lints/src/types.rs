@@ -1236,6 +1236,13 @@ declare_clippy_lint! {
     /// let _ = 2i32 as i32;
     /// let _ = 0.5 as f32;
     /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// let _ = 2_i32;
+    /// let _ = 0.5_f32;
+    /// ```
     pub UNNECESSARY_CAST,
     complexity,
     "cast to the same type, e.g., `x as i32` where `x: i32`"
@@ -1612,7 +1619,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     let to_nbits = fp_ty_mantissa_nbits(cast_to);
                     if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
                     then {
-                        show_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                        let literal_str = if is_unary_neg(ex) { format!("-{}", num_lit.integer) } else { num_lit.integer.into() };
+                        show_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
                         return;
                     }
                 }
@@ -1624,7 +1632,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     LitKind::Float(_, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
                         show_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
                     },
-                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => (),
+                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
                     _ => {
                         if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
                             span_lint(
@@ -1647,6 +1655,10 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
         }
     }
+}
+
+fn is_unary_neg(expr: &Expr<'_>) -> bool {
+    matches!(expr.kind, ExprKind::Unary(UnOp::UnNeg, _))
 }
 
 fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
