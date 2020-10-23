@@ -573,7 +573,23 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, abi: Abi) -> bo
                 // Rust and `rust-call` functions are allowed to unwind, and should not abort.
                 Rust | RustCall => false,
                 // Other ABI's should abort.
-                _ => true,
+                Cdecl
+                | Fastcall
+                | Vectorcall
+                | Aapcs
+                | Win64
+                | SysV64
+                | PtxKernel
+                | Msp430Interrupt
+                | X86Interrupt
+                | AmdGpuKernel
+                | EfiApi
+                | AvrInterrupt
+                | AvrNonBlockingInterrupt
+                | CCmseNonSecureCall
+                | RustIntrinsic
+                | PlatformIntrinsic
+                | Unadjusted => true,
             }
         }
     }
