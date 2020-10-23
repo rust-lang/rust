@@ -73,10 +73,9 @@ pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
     let link = tmpdir.join("some_hopefully_unique_link_name");
 
     match symlink_file(r"nonexisting_target", link) {
-        Ok(_) => true,
         // ERROR_PRIVILEGE_NOT_HELD = 1314
         Err(ref err) if err.raw_os_error() == Some(1314) => false,
-        Err(_) => true,
+        Ok(_) | Err(_) => true,
     }
 }
 
