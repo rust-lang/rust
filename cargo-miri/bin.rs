@@ -241,7 +241,7 @@ fn setup(subcommand: MiriCommand) {
             show_error(format!("xargo is too old; please upgrade to the latest version"))
         }
         let mut cmd = cargo();
-        cmd.args(&["install", "xargo", "-f"]);
+        cmd.args(&["install", "xargo"]);
         ask_to_run(cmd, ask_user, "install a recent enough xargo");
     }
 
