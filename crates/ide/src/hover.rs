@@ -638,6 +638,33 @@ fn main() { }
     }
 
     #[test]
+    fn hover_shows_fn_doc_attr_raw_string() {
+        check(
+            r##"
+#[doc = r#"Raw string doc attr"#]
+pub fn foo<|>(_: &Path) {}
+
+fn main() { }
+"##,
+            expect![[r##"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub fn foo(_: &Path)
+                ```
+
+                ---
+
+                Raw string doc attr
+            "##]],
+        );
+    }
+
+    #[test]
     fn hover_shows_struct_field_info() {
         // Hovering over the field when instantiating
         check(

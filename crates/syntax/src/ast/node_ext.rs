@@ -7,7 +7,7 @@ use itertools::Itertools;
 use parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, AstNode, NameOwner, SyntaxNode},
+    ast::{self, support, token_ext::HasStringValue, AstNode, AstToken, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -53,8 +53,16 @@ impl ast::Attr {
     pub fn as_simple_key_value(&self) -> Option<(SmolStr, SmolStr)> {
         let lit = self.literal()?;
         let key = self.simple_name()?;
-        // FIXME: escape? raw string?
-        let value = lit.syntax().first_token()?.text().trim_matches('"').into();
+        let value_token = lit.syntax().first_token()?;
+
+        let value: SmolStr = if let Some(s) = ast::String::cast(value_token.clone()) {
+            s.value()?.into()
+        } else if let Some(s) = ast::RawString::cast(value_token) {
+            s.value()?.into()
+        } else {
+            return None;
+        };
+
         Some((key, value))
     }
 
