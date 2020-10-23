@@ -32,6 +32,9 @@ threadpool = "1.7.1"
 rayon = "1.5"
 mimalloc = { version = "0.1.19", default-features = false, optional = true }
 lsp-server = "0.4.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
+tracing-tree = { version = "0.1.4" }
 
 stdx = { path = "../stdx", version = "0.0.0" }
 flycheck = { path = "../flycheck", version = "0.0.0" }

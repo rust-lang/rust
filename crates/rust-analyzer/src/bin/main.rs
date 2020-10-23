@@ -68,8 +68,30 @@ fn setup_logging(log_file: Option<PathBuf>) -> Result<()> {
     let filter = env::var("RA_LOG").ok();
     logger::Logger::new(log_file, filter.as_deref()).install();
 
+    tracing_setup::setup_tracing()?;
+
     profile::init();
     Ok(())
+}
+
+mod tracing_setup {
+    use tracing::subscriber;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::Registry;
+    use tracing_tree::HierarchicalLayer;
+
+    pub fn setup_tracing() -> super::Result<()> {
+        let filter = EnvFilter::from_env("CHALK_DEBUG");
+        let layer = HierarchicalLayer::default()
+            .with_indent_lines(true)
+            .with_ansi(false)
+            .with_indent_amount(2)
+            .with_writer(std::io::stderr);
+        let subscriber = Registry::default().with(filter).with(layer);
+        subscriber::set_global_default(subscriber)?;
+        Ok(())
+    }
 }
 
 fn run_server() -> Result<()> {
