@@ -929,6 +929,10 @@
             {
                 "id": "consuming",
                 "description": "Style for non-Copy lvalues consumed by method/function call"
+            },
+            {
+                "id": "callable",
+                "description": "Style for variables/parameters that can be used in call expressions"
             }
         ],
         "semanticTokenScopes": [
