@@ -446,6 +446,20 @@ impl<Idx> RangeInclusive<Idx> {
     }
 }
 
+impl RangeInclusive<usize> {
+    /// Converts to an exclusive `Range` for `SliceIndex` implementations.
+    /// The caller is responsible for dealing with `end == usize::MAX`.
+    #[inline]
+    pub(crate) fn into_slice_range(self) -> Range<usize> {
+        // If we're not exhausted, we want to simply slice `start..end + 1`.
+        // If we are exhausted, then slicing with `end + 1..end + 1` gives us an
+        // empty range that is still subject to bounds-checks for that endpoint.
+        let exclusive_end = self.end + 1;
+        let start = if self.exhausted { exclusive_end } else { self.start };
+        start..exclusive_end
+    }
+}
+
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -478,6 +492,16 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!(0.0..=1.0).contains(&f32::NAN));
     /// assert!(!(0.0..=f32::NAN).contains(&0.0));
     /// assert!(!(f32::NAN..=1.0).contains(&1.0));
+    /// ```
+    ///
+    /// This method always returns `false` after iteration has finished:
+    ///
+    /// ```
+    /// let mut r = 3..=5;
+    /// assert!(r.contains(&3) && r.contains(&5));
+    /// for _ in r.by_ref() {}
+    /// // Precise field values are unspecified here
+    /// assert!(!r.contains(&3) && !r.contains(&5));
     /// ```
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
@@ -881,7 +905,13 @@ impl<T> RangeBounds<T> for RangeInclusive<T> {
         Included(&self.start)
     }
     fn end_bound(&self) -> Bound<&T> {
-        Included(&self.end)
+        if self.exhausted {
+            // When the iterator is exhausted, we usually have start == end,
+            // but we want the range to appear empty, containing nothing.
+            Excluded(&self.end)
+        } else {
+            Included(&self.end)
+        }
     }
 }
 
