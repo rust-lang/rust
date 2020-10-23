@@ -292,7 +292,11 @@ impl Validator<'mir, 'tcx> {
 
             Status::Unstable(gate) if self.tcx.features().enabled(gate) => {
                 let unstable_in_stable = self.ccx.is_const_stable_const_fn()
-                    && !super::allow_internal_unstable(self.tcx, self.def_id().to_def_id(), gate);
+                    && !super::rustc_allow_const_fn_unstable(
+                        self.tcx,
+                        self.def_id().to_def_id(),
+                        gate,
+                    );
                 if unstable_in_stable {
                     emit_unstable_in_stable_error(self.ccx, span, gate);
                 }
@@ -819,7 +823,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                     // Otherwise, we are something const-stable calling a const-unstable fn.
 
-                    if super::allow_internal_unstable(tcx, caller, gate) {
+                    if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
                         return;
                     }
 
