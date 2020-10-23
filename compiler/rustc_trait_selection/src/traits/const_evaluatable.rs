@@ -227,7 +227,12 @@ struct AbstractConstBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     /// The current WIP node tree.
-    nodes: IndexVec<NodeId, Node<'tcx>>,
+    ///
+    /// We require all nodes to be used in the final abstract const,
+    /// so we store this here. Note that we also consider nodes as used
+    /// if they are mentioned in an assert, so some used nodes are never
+    /// actually reachable by walking the [`AbstractConst`].
+    nodes: IndexVec<NodeId, (Node<'tcx>, bool)>,
     locals: IndexVec<mir::Local, NodeId>,
     /// We only allow field accesses if they access
     /// the result of a checked operation.
@@ -274,6 +279,27 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         Ok(Some(builder))
     }
 
+    fn add_node(&mut self, n: Node<'tcx>) -> NodeId {
+        // Mark used nodes.
+        match n {
+            Node::Leaf(_) => (),
+            Node::Binop(_, lhs, rhs) => {
+                self.nodes[lhs].1 = true;
+                self.nodes[rhs].1 = true;
+            }
+            Node::UnaryOp(_, input) => {
+                self.nodes[input].1 = true;
+            }
+            Node::FunctionCall(func, nodes) => {
+                self.nodes[func].1 = true;
+                nodes.iter().for_each(|&n| self.nodes[n].1 = true);
+            }
+        }
+
+        // Nodes start as unused.
+        self.nodes.push((n, false))
+    }
+
     fn place_to_local(
         &mut self,
         span: Span,
@@ -311,7 +337,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let local = self.place_to_local(span, p)?;
                 Ok(self.locals[local])
             }
-            mir::Operand::Constant(ct) => Ok(self.nodes.push(Node::Leaf(ct.literal))),
+            mir::Operand::Constant(ct) => Ok(self.add_node(Node::Leaf(ct.literal))),
         }
     }
 
@@ -348,7 +374,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
                         let lhs = self.operand_to_node(stmt.source_info.span, lhs)?;
                         let rhs = self.operand_to_node(stmt.source_info.span, rhs)?;
-                        self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
+                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
                         if op.is_checkable() {
                             bug!("unexpected unchecked checkable binary operation");
                         } else {
@@ -358,13 +384,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
                         let lhs = self.operand_to_node(stmt.source_info.span, lhs)?;
                         let rhs = self.operand_to_node(stmt.source_info.span, rhs)?;
-                        self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
+                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs));
                         self.checked_op_locals.insert(local);
                         Ok(())
                     }
                     Rvalue::UnaryOp(op, ref operand) if Self::check_unop(op) => {
                         let operand = self.operand_to_node(stmt.source_info.span, operand)?;
-                        self.locals[local] = self.nodes.push(Node::UnaryOp(op, operand));
+                        self.locals[local] = self.add_node(Node::UnaryOp(op, operand));
                         Ok(())
                     }
                     _ => self.error(Some(stmt.source_info.span), "unsupported rvalue")?,
@@ -415,13 +441,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                         .map(|arg| self.operand_to_node(terminator.source_info.span, arg))
                         .collect::<Result<Vec<NodeId>, _>>()?,
                 );
-                self.locals[local] = self.nodes.push(Node::FunctionCall(func, args));
+                self.locals[local] = self.add_node(Node::FunctionCall(func, args));
                 Ok(Some(target))
             }
-            // We only allow asserts for checked operations.
-            //
-            // These asserts seem to all have the form `!_local.0` so
-            // we only allow exactly that.
             TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
                 let p = match cond {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
@@ -430,7 +452,15 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
                 const ONE_FIELD: mir::Field = mir::Field::from_usize(1);
                 debug!("proj: {:?}", p.projection);
-                if let &[mir::ProjectionElem::Field(ONE_FIELD, _)] = p.projection.as_ref() {
+                if let Some(p) = p.as_local() {
+                    debug_assert!(!self.checked_op_locals.contains(p));
+                    // Mark locals directly used in asserts as used.
+                    //
+                    // This is needed because division does not use `CheckedBinop` but instead
+                    // adds an explicit assert for `divisor != 0`.
+                    self.nodes[self.locals[p]].1 = true;
+                    return Ok(Some(target));
+                } else if let &[mir::ProjectionElem::Field(ONE_FIELD, _)] = p.projection.as_ref() {
                     // Only allow asserts checking the result of a checked operation.
                     if self.checked_op_locals.contains(p.local) {
                         return Ok(Some(target));
@@ -457,7 +487,16 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             if let Some(next) = self.build_terminator(block.terminator())? {
                 block = &self.body.basic_blocks()[next];
             } else {
-                return Ok(self.tcx.arena.alloc_from_iter(self.nodes));
+                assert_eq!(self.locals[mir::Local::from_usize(0)], self.nodes.last().unwrap());
+                self.nodes[self.locals[mir::Local::from_usize(0)]].1 = true;
+                if !self.nodes.iter().all(|n| n.1) {
+                    self.error(None, "unused node")?;
+                }
+
+                return Ok(self
+                    .tcx
+                    .arena
+                    .alloc_from_iter(self.nodes.into_iter().map(|(n, _used)| n)));
             }
         }
     }
