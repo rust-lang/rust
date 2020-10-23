@@ -1,6 +1,9 @@
 //! Defines `Body`: a lowered representation of bodies of functions, statics and
 //! consts.
 mod lower;
+mod diagnostics;
+#[cfg(test)]
+mod tests;
 pub mod scope;
 
 use std::{mem, ops::Index, sync::Arc};
@@ -10,7 +13,10 @@ use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use either::Either;
-use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
+use hir_expand::{
+    ast_id_map::AstIdMap, diagnostics::DiagnosticSink, hygiene::Hygiene, AstId, HirFileId, InFile,
+    MacroDefId,
+};
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 use test_utils::mark;
@@ -150,8 +156,12 @@ impl Expander {
         InFile { file_id: self.current_file_id, value }
     }
 
-    pub(crate) fn is_cfg_enabled(&self, owner: &dyn ast::AttrsOwner) -> bool {
-        self.cfg_expander.is_cfg_enabled(owner)
+    pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
+        self.cfg_expander.parse_attrs(owner)
+    }
+
+    pub(crate) fn cfg_options(&self) -> &CfgOptions {
+        &self.cfg_expander.cfg_options
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
@@ -219,6 +229,10 @@ pub struct BodySourceMap {
     pat_map_back: ArenaMap<PatId, Result<PatSource, SyntheticSyntax>>,
     field_map: FxHashMap<(ExprId, usize), InFile<AstPtr<ast::RecordExprField>>>,
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
+
+    /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
+    /// the source map (since they're just as volatile).
+    diagnostics: Vec<diagnostics::BodyDiagnostic>,
 }
 
 #[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
@@ -318,45 +332,10 @@ impl BodySourceMap {
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> InFile<AstPtr<ast::RecordExprField>> {
         self.field_map[&(expr, field)].clone()
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use base_db::{fixture::WithFixture, SourceDatabase};
-    use test_utils::mark;
-
-    use crate::ModuleDefId;
-
-    use super::*;
-
-    fn lower(ra_fixture: &str) -> Arc<Body> {
-        let (db, file_id) = crate::test_db::TestDB::with_single_file(ra_fixture);
-
-        let krate = db.crate_graph().iter().next().unwrap();
-        let def_map = db.crate_def_map(krate);
-        let module = def_map.modules_for_file(file_id).next().unwrap();
-        let module = &def_map[module];
-        let fn_def = match module.scope.declarations().next().unwrap() {
-            ModuleDefId::FunctionId(it) => it,
-            _ => panic!(),
-        };
-
-        db.body(fn_def.into())
-    }
-
-    #[test]
-    fn your_stack_belongs_to_me() {
-        mark::check!(your_stack_belongs_to_me);
-        lower(
-            "
-macro_rules! n_nuple {
-    ($e:tt) => ();
-    ($($rest:tt)*) => {{
-        (n_nuple!($($rest)*)None,)
-    }};
-}
-fn main() { n_nuple!(1,2,3); }
-",
-        );
+    pub(crate) fn add_diagnostics(&self, _db: &dyn DefDatabase, sink: &mut DiagnosticSink<'_>) {
+        for diag in &self.diagnostics {
+            diag.add_to(sink);
+        }
     }
 }

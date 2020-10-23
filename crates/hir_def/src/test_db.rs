@@ -12,10 +12,10 @@ use hir_expand::diagnostics::Diagnostic;
 use hir_expand::diagnostics::DiagnosticSinkBuilder;
 use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
-use syntax::TextRange;
+use syntax::{TextRange, TextSize};
 use test_utils::extract_annotations;
 
-use crate::db::DefDatabase;
+use crate::{db::DefDatabase, ModuleDefId};
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
@@ -135,9 +135,47 @@ impl TestDB {
             let crate_def_map = self.crate_def_map(krate);
 
             let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
-            for (module_id, _) in crate_def_map.modules.iter() {
+            for (module_id, module) in crate_def_map.modules.iter() {
                 crate_def_map.add_diagnostics(self, module_id, &mut sink);
+
+                for decl in module.scope.declarations() {
+                    if let ModuleDefId::FunctionId(it) = decl {
+                        let source_map = self.body_with_source_map(it.into()).1;
+                        source_map.add_diagnostics(self, &mut sink);
+                    }
+                }
             }
         }
+    }
+
+    pub fn check_diagnostics(&self) {
+        let db: &TestDB = self;
+        let annotations = db.extract_annotations();
+        assert!(!annotations.is_empty());
+
+        let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
+        db.diagnostics(|d| {
+            let src = d.display_source();
+            let root = db.parse_or_expand(src.file_id).unwrap();
+            // FIXME: macros...
+            let file_id = src.file_id.original_file(db);
+            let range = src.value.to_node(&root).text_range();
+            let message = d.message().to_owned();
+            actual.entry(file_id).or_default().push((range, message));
+        });
+
+        for (file_id, diags) in actual.iter_mut() {
+            diags.sort_by_key(|it| it.0.start());
+            let text = db.file_text(*file_id);
+            // For multiline spans, place them on line start
+            for (range, content) in diags {
+                if text[*range].contains('\n') {
+                    *range = TextRange::new(range.start(), range.start() + TextSize::from(1));
+                    *content = format!("... {}", content);
+                }
+            }
+        }
+
+        assert_eq!(annotations, actual);
     }
 }

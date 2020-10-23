@@ -16,7 +16,7 @@ use syntax::{
         self, ArgListOwner, ArrayExprKind, AstChildren, LiteralKind, LoopBodyOwner, NameOwner,
         SlicePatComponents,
     },
-    AstNode, AstPtr,
+    AstNode, AstPtr, SyntaxNodePtr,
 };
 use test_utils::mark;
 
@@ -25,6 +25,7 @@ use crate::{
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
+    diagnostics::InactiveCode,
     expr::{
         dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal,
         LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
@@ -37,7 +38,7 @@ use crate::{
     StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
-use super::{ExprSource, PatSource};
+use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
 
 pub(crate) struct LowerCtx {
     hygiene: Hygiene,
@@ -176,7 +177,7 @@ impl ExprCollector<'_> {
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = AstPtr::new(&expr);
-        if !self.expander.is_cfg_enabled(&expr) {
+        if self.check_cfg(&expr).is_none() {
             return self.missing_expr();
         }
 
@@ -354,13 +355,15 @@ impl ExprCollector<'_> {
                 let arms = if let Some(match_arm_list) = e.match_arm_list() {
                     match_arm_list
                         .arms()
-                        .map(|arm| MatchArm {
-                            pat: self.collect_pat_opt(arm.pat()),
-                            expr: self.collect_expr_opt(arm.expr()),
-                            guard: arm
-                                .guard()
-                                .and_then(|guard| guard.expr())
-                                .map(|e| self.collect_expr(e)),
+                        .filter_map(|arm| {
+                            self.check_cfg(&arm).map(|()| MatchArm {
+                                pat: self.collect_pat_opt(arm.pat()),
+                                expr: self.collect_expr_opt(arm.expr()),
+                                guard: arm
+                                    .guard()
+                                    .and_then(|guard| guard.expr())
+                                    .map(|e| self.collect_expr(e)),
+                            })
                         })
                         .collect()
                 } else {
@@ -406,9 +409,8 @@ impl ExprCollector<'_> {
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
-                            if !self.expander.is_cfg_enabled(&field) {
-                                return None;
-                            }
+                            self.check_cfg(&field)?;
+
                             let name = field.field_name()?.as_name();
 
                             Some(RecordLitField {
@@ -620,15 +622,23 @@ impl ExprCollector<'_> {
             .filter_map(|s| {
                 let stmt = match s {
                     ast::Stmt::LetStmt(stmt) => {
+                        self.check_cfg(&stmt)?;
+
                         let pat = self.collect_pat_opt(stmt.pat());
                         let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
                         let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                         Statement::Let { pat, type_ref, initializer }
                     }
                     ast::Stmt::ExprStmt(stmt) => {
+                        self.check_cfg(&stmt)?;
+
                         Statement::Expr(self.collect_expr_opt(stmt.expr()))
                     }
-                    ast::Stmt::Item(_) => return None,
+                    ast::Stmt::Item(item) => {
+                        self.check_cfg(&item)?;
+
+                        return None;
+                    }
                 };
                 Some(stmt)
             })
@@ -871,6 +881,28 @@ impl ExprCollector<'_> {
             .collect();
 
         (args, ellipsis)
+    }
+
+    /// Returns `None` (and emits diagnostics) when `owner` if `#[cfg]`d out, and `Some(())` when
+    /// not.
+    fn check_cfg(&mut self, owner: &dyn ast::AttrsOwner) -> Option<()> {
+        match self.expander.parse_attrs(owner).cfg() {
+            Some(cfg) => {
+                if self.expander.cfg_options().check(&cfg) != Some(false) {
+                    return Some(());
+                }
+
+                self.source_map.diagnostics.push(BodyDiagnostic::InactiveCode(InactiveCode {
+                    file: self.expander.current_file_id,
+                    node: SyntaxNodePtr::new(owner.syntax()),
+                    cfg,
+                    opts: self.expander.cfg_options().clone(),
+                }));
+
+                None
+            }
+            None => Some(()),
+        }
     }
 }
 

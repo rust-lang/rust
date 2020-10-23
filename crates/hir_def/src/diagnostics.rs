@@ -4,9 +4,16 @@ use std::any::Any;
 use stdx::format_to;
 
 use cfg::{CfgExpr, CfgOptions, DnfExpr};
-use hir_expand::diagnostics::{Diagnostic, DiagnosticCode};
+use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
+
+use crate::{db::DefDatabase, DefWithBodyId};
+
+pub fn validate_body(db: &dyn DefDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
+    let source_map = db.body_with_source_map(owner).1;
+    source_map.add_diagnostics(db, sink);
+}
 
 // Diagnostic: unresolved-module
 //
@@ -88,10 +95,10 @@ impl Diagnostic for UnresolvedImport {
     }
 }
 
-// Diagnostic: unconfigured-code
+// Diagnostic: inactive-code
 //
 // This diagnostic is shown for code with inactive `#[cfg]` attributes.
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct InactiveCode {
     pub file: HirFileId,
     pub node: SyntaxNodePtr,
