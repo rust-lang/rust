@@ -346,7 +346,7 @@ mod else_keyword {}
 /// When data follows along with a variant, such as with rust's built-in [`Option`] type, the data
 /// is added as the type describes, for example `Option::Some(123)`. The same follows with
 /// struct-like variants, with things looking like `ComplexEnum::LotsOfThings { usual_struct_stuff:
-/// true, blah: "hello!".to_string(), }`. Empty Enums are similar to () in that they cannot be
+/// true, blah: "hello!".to_string(), }`. Empty Enums are similar to [`!`] in that they cannot be
 /// instantiated at all, and are used mainly to mess with the type system in interesting ways.
 ///
 /// For more information, take a look at the [Rust Book] or the [Reference]
@@ -354,6 +354,7 @@ mod else_keyword {}
 /// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
 /// [Reference]: ../reference/items/enumerations.html
+/// [`!`]: primitive.never.html
 mod enum_keyword {}
 
 #[doc(keyword = "extern")]
