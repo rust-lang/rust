@@ -2,6 +2,8 @@
 
 mod cfg_expr;
 mod dnf;
+#[cfg(test)]
+mod tests;
 
 use std::fmt;
 
