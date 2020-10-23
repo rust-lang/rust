@@ -381,6 +381,16 @@ impl<T, A: AllocRef> RawVec<T, A> {
         self.cap = Self::capacity_from_bytes(ptr.len());
     }
 
+    // Associated consts are currently the only way to guarantee that we
+    // give a single constant to llvm, so while a bit ugly, this
+    // does guarantee that we emit less llvm-ir.
+    const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
+        8
+    } else if mem::size_of::<T>() <= 1024 {
+        4
+    } else {
+        1
+    };
     // This method is usually instantiated many times. So we want it to be as
     // small as possible, to improve compile times. But we also want as much of
     // its contents to be statically computable as possible, to make the
@@ -411,15 +421,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // - 4 if elements are moderate-sized (<= 1 KiB).
         // - 1 otherwise, to avoid wasting too much space for very short Vecs.
         // Note that `min_non_zero_cap` is computed statically.
-        let elem_size = mem::size_of::<T>();
-        let min_non_zero_cap = if elem_size == 1 {
-            8
-        } else if elem_size <= 1024 {
-            4
-        } else {
-            1
-        };
-        let cap = cmp::max(min_non_zero_cap, cap);
+        let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
         let new_layout = Layout::array::<T>(cap);
 
