@@ -38,6 +38,15 @@ fn foo() {
     {
 
     }
+
+    /// foo //~ ERROR unused doc comment
+    struct Foo {}
+
+    /// bar //~ ERROR unused doc comment
+    struct Bar {};
+
+    /// my_fn //~ ERROR unused_doc_comment
+    fn my_fn() {}
 }
 
 fn main() {

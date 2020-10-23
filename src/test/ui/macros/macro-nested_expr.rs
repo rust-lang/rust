@@ -6,6 +6,7 @@
 
 pub macro m($inner_str:expr) {
     #[doc = $inner_str]
+    #[allow(unused_doc_comments)]
     struct S;
 }
 

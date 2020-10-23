@@ -90,5 +90,29 @@ LL | |
 LL | |     }
    | |_____- rustdoc does not generate documentation for expressions
 
-error: aborting due to 10 previous errors
+error: unused doc comment
+  --> $DIR/useless-comment.rs:42:5
+   |
+LL |     /// foo
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     struct Foo {}
+   |     ------------- rustdoc does not generate documentation for inner items
+
+error: unused doc comment
+  --> $DIR/useless-comment.rs:45:5
+   |
+LL |     /// bar
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     struct Bar {};
+   |     -------------- rustdoc does not generate documentation for inner items
+
+error: unused doc comment
+  --> $DIR/useless-comment.rs:48:5
+   |
+LL |     /// my_fn
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn my_fn() {}
+   |     ------------- rustdoc does not generate documentation for inner items
+
+error: aborting due to 13 previous errors
 

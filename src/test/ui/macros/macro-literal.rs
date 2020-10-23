@@ -67,6 +67,7 @@ macro_rules! match_produced_attr {
     ($lit: literal) => {
         // Struct with doc comment passed via $literal
         #[doc = $lit]
+        #[allow(unused_doc_comments)]
         struct LiteralProduced;
     };
     ($expr: expr) => {
