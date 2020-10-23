@@ -21,6 +21,87 @@ pub enum Cause {
     ExistentialRegionBound, // relating an existential region bound
 }
 
+pub trait DynTypeRelation<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx>;
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+
+    fn tag(&self) -> &'static str;
+
+    fn a_is_expected(&self) -> bool;
+
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>>;
+
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>>;
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>;
+
+    fn relate_substs(
+        &mut self,
+        variances: Option<&[ty::Variance]>,
+        a_subst: SubstsRef<'tcx>,
+        b_subst: SubstsRef<'tcx>,
+    ) -> RelateResult<'tcx, SubstsRef<'tcx>>;
+}
+
+impl<'tcx, T: TypeRelation<'tcx>> DynTypeRelation<'tcx> for T {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        TypeRelation::tcx(self)
+    }
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        TypeRelation::param_env(self)
+    }
+
+    /// Returns a static string we can use for printouts.
+    fn tag(&self) -> &'static str {
+        TypeRelation::tag(self)
+    }
+
+    /// Returns `true` if the value `a` is the "expected" type in the
+    /// relation. Just affects error messages.
+    fn a_is_expected(&self) -> bool {
+        TypeRelation::a_is_expected(self)
+    }
+
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        TypeRelation::tys(self, a, b)
+    }
+
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        TypeRelation::regions(self, a, b)
+    }
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        TypeRelation::consts(self, a, b)
+    }
+
+    fn relate_substs(
+        &mut self,
+        variances: Option<&[ty::Variance]>,
+        a_subst: SubstsRef<'tcx>,
+        b_subst: SubstsRef<'tcx>,
+    ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
+        TypeRelation::relate_substs(self, variances, a_subst, b_subst)
+    }
+}
+
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
@@ -45,6 +126,22 @@ pub trait TypeRelation<'tcx>: Sized {
         Relate::relate(self, a, b)
     }
 
+    fn relate_substs(
+        &mut self,
+        variances: Option<&[ty::Variance]>,
+        a_subst: SubstsRef<'tcx>,
+        b_subst: SubstsRef<'tcx>,
+    ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
+        let tcx = self.tcx();
+
+        let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
+            let variance = variances.map_or(ty::Invariant, |v| v[i]);
+            self.relate_with_variance(variance, a, b)
+        });
+
+        Ok(tcx.mk_substs(params)?)
+    }
+
     /// Relate the two substitutions for the given item. The default
     /// is to look up the variance for the item and proceed
     /// accordingly.
@@ -60,7 +157,7 @@ pub trait TypeRelation<'tcx>: Sized {
         );
 
         let opt_variances = self.tcx().variances_of(item_def_id);
-        relate_substs(self, Some(opt_variances), a_subst, b_subst)
+        self.relate_substs(Some(opt_variances), a_subst, b_subst)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -130,22 +227,6 @@ impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
             Ok(ty::TypeAndMut { ty, mutbl })
         }
     }
-}
-
-pub fn relate_substs<R: TypeRelation<'tcx>>(
-    relation: &mut R,
-    variances: Option<&[ty::Variance]>,
-    a_subst: SubstsRef<'tcx>,
-    b_subst: SubstsRef<'tcx>,
-) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-    let tcx = relation.tcx();
-
-    let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
-        let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        relation.relate_with_variance(variance, a, b)
-    });
-
-    Ok(tcx.mk_substs(params)?)
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
@@ -266,7 +347,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let substs = relate_substs(relation, None, a.substs, b.substs)?;
+            let substs = relation.relate_substs(None, a.substs, b.substs)?;
             Ok(ty::TraitRef { def_id: a.def_id, substs })
         }
     }
@@ -282,7 +363,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
-            let substs = relate_substs(relation, None, a.substs, b.substs)?;
+            let substs = relation.relate_substs(None, a.substs, b.substs)?;
             Ok(ty::ExistentialTraitRef { def_id: a.def_id, substs })
         }
     }
@@ -468,7 +549,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
         (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
             if a_def_id == b_def_id =>
         {
-            let substs = relate_substs(relation, None, a_substs, b_substs)?;
+            let substs = relation.relate_substs(None, a_substs, b_substs)?;
             Ok(tcx.mk_opaque(a_def_id, substs))
         }
 
@@ -479,8 +560,8 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
 /// The main "const relation" routine. Note that this does not handle
 /// inference artifacts, so you should filter those out before calling
 /// it.
-pub fn super_relate_consts<R: TypeRelation<'tcx>>(
-    relation: &mut R,
+pub fn super_relate_consts<'tcx>(
+    relation: &mut dyn DynTypeRelation<'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
 ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
@@ -594,8 +675,9 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             ty::ConstKind::Unevaluated(a_def, a_substs, a_promoted),
             ty::ConstKind::Unevaluated(b_def, b_substs, b_promoted),
         ) if a_def == b_def && a_promoted == b_promoted => {
-            let substs =
-                relation.relate_with_variance(ty::Variance::Invariant, a_substs, b_substs)?;
+            // Relate substs uses `ty::Inveriant` if it no variances are supplied,
+            // which is what we want here.
+            let substs = relation.relate_substs(None, a_substs, b_substs)?;
             Ok(ty::ConstKind::Unevaluated(a_def, substs, a_promoted))
         }
         _ => Err(TypeError::ConstMismatch(expected_found(relation, a, b))),
@@ -643,7 +725,7 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
         a: ty::ClosureSubsts<'tcx>,
         b: ty::ClosureSubsts<'tcx>,
     ) -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>> {
-        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        let substs = relation.relate_substs(None, a.substs, b.substs)?;
         Ok(ty::ClosureSubsts { substs })
     }
 }
@@ -654,7 +736,7 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorSubsts<'tcx> {
         a: ty::GeneratorSubsts<'tcx>,
         b: ty::GeneratorSubsts<'tcx>,
     ) -> RelateResult<'tcx, ty::GeneratorSubsts<'tcx>> {
-        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        let substs = relation.relate_substs(None, a.substs, b.substs)?;
         Ok(ty::GeneratorSubsts { substs })
     }
 }
@@ -665,7 +747,7 @@ impl<'tcx> Relate<'tcx> for SubstsRef<'tcx> {
         a: SubstsRef<'tcx>,
         b: SubstsRef<'tcx>,
     ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-        relate_substs(relation, None, a, b)
+        relation.relate_substs(None, a, b)
     }
 }
 
@@ -756,7 +838,7 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
 
 pub fn expected_found<R, T>(relation: &mut R, a: T, b: T) -> ExpectedFound<T>
 where
-    R: TypeRelation<'tcx>,
+    R: ?Sized + DynTypeRelation<'tcx>,
 {
     expected_found_bool(relation.a_is_expected(), a, b)
 }

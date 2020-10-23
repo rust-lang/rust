@@ -52,8 +52,7 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         // variance requires computing types which can require
         // performing trait matching (which then performs equality
         // unification).
-
-        relate::relate_substs(self, None, a_subst, b_subst)
+        self.relate_substs(None, a_subst, b_subst)
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
