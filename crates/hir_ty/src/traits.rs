@@ -5,6 +5,7 @@ use base_db::CrateId;
 use chalk_ir::cast::Cast;
 use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 use hir_def::{lang_item::LangItemTarget, TraitId};
+use stdx::panic_context;
 
 use crate::{db::HirDatabase, DebruijnIndex, Substs};
 
@@ -168,14 +169,23 @@ fn solve(
     };
 
     let mut solve = || {
-        if is_chalk_print() {
-            let logging_db = LoggingRustIrDatabase::new(context);
-            let solution = solver.solve_limited(&logging_db, goal, &should_continue);
-            log::debug!("chalk program:\n{}", logging_db);
+        let _ctx = if is_chalk_debug() || is_chalk_print() {
+            Some(panic_context::enter(format!("solving {:?}", goal)))
+        } else {
+            None
+        };
+        let solution = if is_chalk_print() {
+            let logging_db =
+                LoggingRustIrDatabaseLoggingOnDrop(LoggingRustIrDatabase::new(context));
+            let solution = solver.solve_limited(&logging_db.0, goal, &should_continue);
             solution
         } else {
             solver.solve_limited(&context, goal, &should_continue)
-        }
+        };
+
+        log::debug!("solve({:?}) => {:?}", goal, solution);
+
+        solution
     };
 
     // don't set the TLS for Chalk unless Chalk debugging is active, to make
@@ -183,9 +193,15 @@ fn solve(
     let solution =
         if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
 
-    log::debug!("solve({:?}) => {:?}", goal, solution);
-
     solution
+}
+
+struct LoggingRustIrDatabaseLoggingOnDrop<'a>(LoggingRustIrDatabase<Interner, ChalkContext<'a>>);
+
+impl<'a> Drop for LoggingRustIrDatabaseLoggingOnDrop<'a> {
+    fn drop(&mut self) {
+        eprintln!("chalk program:\n{}", self.0);
+    }
 }
 
 fn is_chalk_debug() -> bool {
