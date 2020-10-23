@@ -164,12 +164,32 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
         "calling force_from_dep_node() on DepKind::codegen_unit"
     );
 
-    if !dep_node.kind.can_reconstruct_query_key() {
-        return false;
-    }
-
     macro_rules! force_from_dep_node {
         ($($(#[$attr:meta])* [$($modifiers:tt)*] $name:ident($K:ty),)*) => {
+            use rustc_middle::dep_graph::dep_kind;
+
+            $(impl dep_kind::$name {
+                fn force_from_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool {
+                    if !self.can_reconstruct_query_key() {
+                        return false;
+                    }
+
+                    debug_assert!(<$K as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key());
+
+                    if let Some(key) = <$K as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node) {
+                        force_query::<queries::$name<'_>, _>(
+                            tcx,
+                            key,
+                            DUMMY_SP,
+                            *dep_node
+                        );
+                        return true;
+                    }
+
+                    false
+                }
+            })*
+
             match dep_node.kind {
                 // These are inputs that are expected to be pre-allocated and that
                 // should therefore always be red or green already.
@@ -184,22 +204,14 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 
                 // Forcing this makes no sense.
                 DepKind::Null => {
+                    if !dep_node.kind.can_reconstruct_query_key() {
+                        return false;
+                    }
+
                     bug!("force_from_dep_node: encountered {:?}", dep_node)
                 }
 
-                $(DepKind::$name => {
-                    debug_assert!(<$K as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key());
-
-                    if let Some(key) = <$K as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node) {
-                        force_query::<queries::$name<'_>, _>(
-                            tcx,
-                            key,
-                            DUMMY_SP,
-                            *dep_node
-                        );
-                        return true;
-                    }
-                })*
+                $(DepKind::$name => dep_kind::$name.force_from_dep_node(tcx, dep_node)),*
             }
         }
     }
@@ -212,8 +224,10 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
     macro_rules! try_load_from_on_disk_cache {
         ($($name:ident,)*) => {
-            match dep_node.kind {
-                $(DepKind::$name => {
+            use rustc_middle::dep_graph::dep_kind;
+
+            $(impl dep_kind::$name {
+                fn try_load_from_on_disk_cache<'tcx>(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
                     if <query_keys::$name<'tcx> as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
                         debug_assert!(tcx.dep_graph
                                          .node_color(dep_node)
@@ -225,7 +239,11 @@ pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &De
                             let _ = tcx.$name(key);
                         }
                     }
-                })*
+                }
+            })*
+
+            match dep_node.kind {
+                $(DepKind::$name => dep_kind::$name.try_load_from_on_disk_cache(tcx, dep_node),)*
 
                 _ => (),
             }

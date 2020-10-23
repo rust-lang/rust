@@ -15,7 +15,7 @@ pub use rustc_query_system::dep_graph::{
     WorkProduct, WorkProductId,
 };
 
-pub use dep_node::{label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
+pub use dep_node::{dep_kind, label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
