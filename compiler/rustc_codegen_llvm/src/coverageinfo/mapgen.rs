@@ -26,7 +26,10 @@ use tracing::debug;
 /// undocumented details in Clang's implementation (that may or may not be important) were also
 /// replicated for Rust's Coverage Map.
 pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
-    let function_coverage_map = cx.coverage_context().take_function_coverage_map();
+    if cx.coverage_context().is_none() {
+        return;
+    }
+    let function_coverage_map = cx.coverage_context().unwrap().take_function_coverage_map();
     if function_coverage_map.is_empty() {
         // This module has no functions with coverage instrumentation
         return;
