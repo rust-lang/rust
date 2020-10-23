@@ -103,6 +103,14 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
         debug!("instrumenting {:?}, span: {}", def_id, source_map.span_to_string(body_span));
 
+        let mut graphviz_data = debug::GraphvizData::new();
+
+        let dump_graphviz = tcx.sess.opts.debugging_opts.dump_mir_graphviz;
+        if dump_graphviz {
+            graphviz_data.enable();
+            self.coverage_counters.enable_debug();
+        }
+
         ////////////////////////////////////////////////////
         // Compute `CoverageSpan`s from the `CoverageGraph`.
         let coverage_spans = CoverageSpans::generate_coverage_spans(
@@ -121,7 +129,20 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             );
         }
 
-        self.inject_coverage_span_counters(coverage_spans);
+        self.inject_coverage_span_counters(coverage_spans, &mut graphviz_data);
+
+        if graphviz_data.is_enabled() {
+            // Even if there was an error, a partial CoverageGraph can still generate a useful
+            // graphviz output.
+            debug::dump_coverage_graphviz(
+                tcx,
+                self.mir_body,
+                self.pass_name,
+                &self.basic_coverage_blocks,
+                &self.coverage_counters.debug_counters,
+                &graphviz_data,
+            );
+        }
     }
 
     /// Inject a counter for each `CoverageSpan`. There can be multiple `CoverageSpan`s for a given
@@ -129,7 +150,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     /// `bcb` to its `Counter`, when injected. Subsequent `CoverageSpan`s for a BCB that already has
     /// a `Counter` will inject an `Expression` instead, and compute its value by adding `ZERO` to
     /// the BCB `Counter` value.
-    fn inject_coverage_span_counters(&mut self, coverage_spans: Vec<CoverageSpan>) {
+    fn inject_coverage_span_counters(
+        &mut self,
+        coverage_spans: Vec<CoverageSpan>,
+        graphviz_data: &mut debug::GraphvizData,
+    ) {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
@@ -145,6 +170,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     counter_operand,
                     Op::Add,
                     ExpressionOperandId::ZERO,
+                    || Some(format!("{:?}", bcb)),
                 );
                 debug!(
                     "Injecting counter expression {:?} at: {:?}:\n{}\n==========",
@@ -152,11 +178,12 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                     span,
                     source_map.span_to_snippet(span).expect("Error getting source for span"),
                 );
+                graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &expression);
                 let bb = self.basic_coverage_blocks[bcb].leader_bb();
                 let code_region = make_code_region(file_name, &source_file, span, body_span);
                 inject_statement(self.mir_body, expression, bb, Some(code_region));
             } else {
-                let counter = self.coverage_counters.make_counter();
+                let counter = self.coverage_counters.make_counter(|| Some(format!("{:?}", bcb)));
                 debug!(
                     "Injecting counter {:?} at: {:?}:\n{}\n==========",
                     counter,
@@ -165,6 +192,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 );
                 let counter_operand = counter.as_operand_id();
                 bcb_counters[bcb] = Some(counter_operand);
+                graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter);
                 let bb = self.basic_coverage_blocks[bcb].leader_bb();
                 let code_region = make_code_region(file_name, &source_file, span, body_span);
                 inject_statement(self.mir_body, counter, bb, Some(code_region));

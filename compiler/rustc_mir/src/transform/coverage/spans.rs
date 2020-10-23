@@ -134,6 +134,14 @@ impl CoverageSpan {
         self.bcb == other.bcb
     }
 
+    pub fn format(&self, tcx: TyCtxt<'tcx>, mir_body: &'a mir::Body<'tcx>) -> String {
+        format!(
+            "{}\n    {}",
+            source_range_no_file(tcx, &self.span),
+            self.format_coverage_statements(tcx, mir_body).replace("\n", "\n    "),
+        )
+    }
+
     pub fn format_coverage_statements(
         &self,
         tcx: TyCtxt<'tcx>,

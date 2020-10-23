@@ -7,6 +7,7 @@ pub mod storage;
 mod alignment;
 pub mod collect_writes;
 mod find_self_call;
+pub(crate) mod generic_graphviz;
 mod graphviz;
 pub(crate) mod pretty;
 pub(crate) mod spanview;
