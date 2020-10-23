@@ -688,12 +688,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer_error_span, msg);
                     if let Some((sp, boxed)) = semi_span {
-                        if matches!(boxed, StatementAsExpression::NeedsBoxing) {
-                            err.span_suggestion_verbose(
-                                sp,
-                                "consider removing this semicolon and boxing the expression",
-                                String::new(),
+                        if let (StatementAsExpression::NeedsBoxing, [.., prior_arm]) =
+                            (boxed, &prior_arms[..])
+                        {
+                            err.multipart_suggestion(
+                                "consider removing this semicolon and boxing the expressions",
+                                vec![
+                                    (prior_arm.shrink_to_lo(), "Box::new(".to_string()),
+                                    (prior_arm.shrink_to_hi(), ")".to_string()),
+                                    (arm_span.shrink_to_lo(), "Box::new(".to_string()),
+                                    (arm_span.shrink_to_hi(), ")".to_string()),
+                                    (sp, String::new()),
+                                ],
                                 Applicability::HasPlaceholders,
+                            );
+                        } else if matches!(boxed, StatementAsExpression::NeedsBoxing) {
+                            err.span_suggestion_short(
+                                sp,
+                                "consider removing this semicolon and boxing the expressions",
+                                String::new(),
+                                Applicability::MachineApplicable,
                             );
                         } else {
                             err.span_suggestion_short(
@@ -727,11 +741,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 if let Some((sp, boxed)) = semicolon {
                     if matches!(boxed, StatementAsExpression::NeedsBoxing) {
-                        err.span_suggestion_verbose(
-                            sp,
+                        err.multipart_suggestion(
                             "consider removing this semicolon and boxing the expression",
-                            String::new(),
-                            Applicability::HasPlaceholders,
+                            vec![
+                                (then.shrink_to_lo(), "Box::new(".to_string()),
+                                (then.shrink_to_hi(), ")".to_string()),
+                                (else_sp.shrink_to_lo(), "Box::new(".to_string()),
+                                (else_sp.shrink_to_hi(), ")".to_string()),
+                                (sp, String::new()),
+                            ],
+                            Applicability::MachineApplicable,
                         );
                     } else {
                         err.span_suggestion_short(
