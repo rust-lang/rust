@@ -146,7 +146,8 @@ fn _assert_send_sync() {
     _assert::<Backtrace>();
 }
 
-struct BacktraceFrame {
+#[unstable(feature = "backtrace_frames")]
+pub struct BacktraceFrame {
     frame: RawFrame,
     symbols: Vec<BacktraceSymbol>,
 }
