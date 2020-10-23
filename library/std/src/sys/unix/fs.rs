@@ -1068,11 +1068,11 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     let src = cstr(src)?;
     let dst = cstr(dst)?;
     cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "vxworks", target_os = "redox"))] {
-            // VxWorks and Redox lack `linkat`, so use `link` instead. POSIX
-            // leaves it implementation-defined whether `link` follows symlinks,
-            // so rely on the `symlink_hard_link` test in
-            // library/std/src/fs/tests.rs to check the behavior.
+        if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android"))] {
+            // VxWorks, Redox, and old versions of Android lack `linkat`, so use
+            // `link` instead. POSIX leaves it implementation-defined whether
+            // `link` follows symlinks, so rely on the `symlink_hard_link` test
+            // in library/std/src/fs/tests.rs to check the behavior.
             cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })?;
         } else {
             // Use `linkat` with `AT_FDCWD` instead of `link` as `linkat` gives
