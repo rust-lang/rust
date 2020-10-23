@@ -1,11 +1,17 @@
 //! cfg defines conditional compiling options, `cfg` attibute parser and evaluator
 
 mod cfg_expr;
+mod dnf;
+#[cfg(test)]
+mod tests;
+
+use std::fmt;
 
 use rustc_hash::FxHashSet;
 use tt::SmolStr;
 
-pub use cfg_expr::CfgExpr;
+pub use cfg_expr::{CfgAtom, CfgExpr};
+pub use dnf::DnfExpr;
 
 /// Configuration options used for conditional compilition on items with `cfg` attributes.
 /// We have two kind of options in different namespaces: atomic options like `unix`, and
@@ -19,33 +25,131 @@ pub use cfg_expr::CfgExpr;
 /// See: https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CfgOptions {
-    atoms: FxHashSet<SmolStr>,
-    key_values: FxHashSet<(SmolStr, SmolStr)>,
+    enabled: FxHashSet<CfgAtom>,
 }
 
 impl CfgOptions {
     pub fn check(&self, cfg: &CfgExpr) -> Option<bool> {
-        cfg.fold(&|key, value| match value {
-            None => self.atoms.contains(key),
-            Some(value) => self.key_values.contains(&(key.clone(), value.clone())),
-        })
+        cfg.fold(&|atom| self.enabled.contains(atom))
     }
 
     pub fn insert_atom(&mut self, key: SmolStr) {
-        self.atoms.insert(key);
+        self.enabled.insert(CfgAtom::Flag(key));
     }
 
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
-        self.key_values.insert((key, value));
+        self.enabled.insert(CfgAtom::KeyValue { key, value });
     }
 
     pub fn append(&mut self, other: &CfgOptions) {
-        for atom in &other.atoms {
-            self.atoms.insert(atom.clone());
+        for atom in &other.enabled {
+            self.enabled.insert(atom.clone());
+        }
+    }
+
+    pub fn apply_diff(&mut self, diff: CfgDiff) {
+        for atom in diff.enable {
+            self.enabled.insert(atom);
         }
 
-        for (key, value) in &other.key_values {
-            self.key_values.insert((key.clone(), value.clone()));
+        for atom in diff.disable {
+            self.enabled.remove(&atom);
         }
+    }
+}
+
+pub struct CfgDiff {
+    // Invariants: No duplicates, no atom that's both in `enable` and `disable`.
+    enable: Vec<CfgAtom>,
+    disable: Vec<CfgAtom>,
+}
+
+impl CfgDiff {
+    /// Returns the total number of atoms changed by this diff.
+    pub fn len(&self) -> usize {
+        self.enable.len() + self.disable.len()
+    }
+}
+
+impl fmt::Display for CfgDiff {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.enable.is_empty() {
+            f.write_str("enable ")?;
+            for (i, atom) in self.enable.iter().enumerate() {
+                let sep = match i {
+                    0 => "",
+                    _ if i == self.enable.len() - 1 => " and ",
+                    _ => ", ",
+                };
+                f.write_str(sep)?;
+
+                write!(f, "{}", atom)?;
+            }
+
+            if !self.disable.is_empty() {
+                f.write_str("; ")?;
+            }
+        }
+
+        if !self.disable.is_empty() {
+            f.write_str("disable ")?;
+            for (i, atom) in self.disable.iter().enumerate() {
+                let sep = match i {
+                    0 => "",
+                    _ if i == self.enable.len() - 1 => " and ",
+                    _ => ", ",
+                };
+                f.write_str(sep)?;
+
+                write!(f, "{}", atom)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub struct InactiveReason {
+    enabled: Vec<CfgAtom>,
+    disabled: Vec<CfgAtom>,
+}
+
+impl fmt::Display for InactiveReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.enabled.is_empty() {
+            for (i, atom) in self.enabled.iter().enumerate() {
+                let sep = match i {
+                    0 => "",
+                    _ if i == self.enabled.len() - 1 => " and ",
+                    _ => ", ",
+                };
+                f.write_str(sep)?;
+
+                write!(f, "{}", atom)?;
+            }
+            let is_are = if self.enabled.len() == 1 { "is" } else { "are" };
+            write!(f, " {} enabled", is_are)?;
+
+            if !self.disabled.is_empty() {
+                f.write_str(" and ")?;
+            }
+        }
+
+        if !self.disabled.is_empty() {
+            for (i, atom) in self.disabled.iter().enumerate() {
+                let sep = match i {
+                    0 => "",
+                    _ if i == self.disabled.len() - 1 => " and ",
+                    _ => ", ",
+                };
+                f.write_str(sep)?;
+
+                write!(f, "{}", atom)?;
+            }
+            let is_are = if self.disabled.len() == 1 { "is" } else { "are" };
+            write!(f, " {} disabled", is_are)?;
+        }
+
+        Ok(())
     }
 }

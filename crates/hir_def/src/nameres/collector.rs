@@ -6,7 +6,7 @@
 use std::iter;
 
 use base_db::{CrateId, FileId, ProcMacroId};
-use cfg::CfgOptions;
+use cfg::{CfgExpr, CfgOptions};
 use hir_expand::InFile;
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -900,7 +900,8 @@ impl ModCollector<'_, '_> {
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            if self.is_cfg_enabled(self.item_tree.attrs((*item).into())) {
+            let attrs = self.item_tree.attrs((*item).into());
+            if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
                 if let ModItem::ExternCrate(id) = item {
                     let import = self.item_tree[*id].clone();
                     if import.is_macro_use {
@@ -912,9 +913,11 @@ impl ModCollector<'_, '_> {
 
         for &item in items {
             let attrs = self.item_tree.attrs(item.into());
-            if !self.is_cfg_enabled(attrs) {
-                self.emit_unconfigured_diagnostic(item);
-                continue;
+            if let Some(cfg) = attrs.cfg() {
+                if !self.is_cfg_enabled(&cfg) {
+                    self.emit_unconfigured_diagnostic(item, &cfg);
+                    continue;
+                }
             }
             let module =
                 ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
@@ -1321,20 +1324,22 @@ impl ModCollector<'_, '_> {
         }
     }
 
-    fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
-        attrs.is_cfg_enabled(self.def_collector.cfg_options)
+    fn is_cfg_enabled(&self, cfg: &CfgExpr) -> bool {
+        self.def_collector.cfg_options.check(cfg) != Some(false)
     }
 
-    fn emit_unconfigured_diagnostic(&mut self, item: ModItem) {
+    fn emit_unconfigured_diagnostic(&mut self, item: ModItem, cfg: &CfgExpr) {
         let ast_id = item.ast_id(self.item_tree);
         let id_map = self.def_collector.db.ast_id_map(self.file_id);
         let syntax_ptr = id_map.get(ast_id).syntax_node_ptr();
 
         let ast_node = InFile::new(self.file_id, syntax_ptr);
-        self.def_collector
-            .def_map
-            .diagnostics
-            .push(DefDiagnostic::unconfigured_code(self.module_id, ast_node));
+        self.def_collector.def_map.diagnostics.push(DefDiagnostic::unconfigured_code(
+            self.module_id,
+            ast_node,
+            cfg.clone(),
+            self.def_collector.cfg_options.clone(),
+        ));
     }
 }
 

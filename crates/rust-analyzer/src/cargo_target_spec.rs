@@ -1,6 +1,6 @@
 //! See `CargoTargetSpec`
 
-use cfg::CfgExpr;
+use cfg::{CfgAtom, CfgExpr};
 use ide::{FileId, RunnableKind, TestId};
 use project_model::{self, TargetKind};
 use vfs::AbsPathBuf;
@@ -24,7 +24,7 @@ impl CargoTargetSpec {
         snap: &GlobalStateSnapshot,
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
-        cfgs: &[CfgExpr],
+        cfg: &Option<CfgExpr>,
     ) -> Result<(Vec<String>, Vec<String>)> {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
@@ -87,7 +87,7 @@ impl CargoTargetSpec {
             args.push("--all-features".to_string());
         } else {
             let mut features = Vec::new();
-            for cfg in cfgs {
+            if let Some(cfg) = cfg.as_ref() {
                 required_features(cfg, &mut features);
             }
             for feature in &snap.config.cargo.features {
@@ -160,7 +160,9 @@ impl CargoTargetSpec {
 /// Fill minimal features needed
 fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
     match cfg_expr {
-        CfgExpr::KeyValue { key, value } if key == "feature" => features.push(value.to_string()),
+        CfgExpr::Atom(CfgAtom::KeyValue { key, value }) if key == "feature" => {
+            features.push(value.to_string())
+        }
         CfgExpr::All(preds) => {
             preds.iter().for_each(|cfg| required_features(cfg, features));
         }

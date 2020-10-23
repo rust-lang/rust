@@ -283,6 +283,7 @@ pub enum ModuleSource {
 }
 
 mod diagnostics {
+    use cfg::{CfgExpr, CfgOptions};
     use hir_expand::diagnostics::DiagnosticSink;
     use hir_expand::hygiene::Hygiene;
     use hir_expand::InFile;
@@ -299,7 +300,7 @@ mod diagnostics {
 
         UnresolvedImport { ast: AstId<ast::Use>, index: usize },
 
-        UnconfiguredCode { ast: InFile<SyntaxNodePtr> },
+        UnconfiguredCode { ast: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
     }
 
     #[derive(Debug, PartialEq, Eq)]
@@ -341,8 +342,10 @@ mod diagnostics {
         pub(super) fn unconfigured_code(
             container: LocalModuleId,
             ast: InFile<SyntaxNodePtr>,
+            cfg: CfgExpr,
+            opts: CfgOptions,
         ) -> Self {
-            Self { in_module: container, kind: DiagnosticKind::UnconfiguredCode { ast } }
+            Self { in_module: container, kind: DiagnosticKind::UnconfiguredCode { ast, cfg, opts } }
         }
 
         pub(super) fn add_to(
@@ -395,8 +398,13 @@ mod diagnostics {
                     }
                 }
 
-                DiagnosticKind::UnconfiguredCode { ast } => {
-                    sink.push(InactiveCode { file: ast.file_id, node: ast.value.clone() });
+                DiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
+                    sink.push(InactiveCode {
+                        file: ast.file_id,
+                        node: ast.value.clone(),
+                        cfg: cfg.clone(),
+                        opts: opts.clone(),
+                    });
                 }
             }
         }

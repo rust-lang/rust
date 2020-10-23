@@ -15,7 +15,7 @@ use crate::{display::ToNav, FileId, NavigationTarget};
 pub struct Runnable {
     pub nav: NavigationTarget,
     pub kind: RunnableKind,
-    pub cfg_exprs: Vec<CfgExpr>,
+    pub cfg: Option<CfgExpr>,
 }
 
 #[derive(Debug, Clone)]
@@ -168,7 +168,7 @@ fn runnable_fn(
     };
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
-    let cfg_exprs = attrs.cfg().collect();
+    let cfg = attrs.cfg();
 
     let nav = if let RunnableKind::DocTest { .. } = kind {
         NavigationTarget::from_doc_commented(
@@ -179,7 +179,7 @@ fn runnable_fn(
     } else {
         NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &fn_def))
     };
-    Some(Runnable { nav, kind, cfg_exprs })
+    Some(Runnable { nav, kind, cfg })
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -255,9 +255,9 @@ fn runnable_mod(
         .join("::");
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &module));
-    let cfg_exprs = attrs.cfg().collect();
+    let cfg = attrs.cfg();
     let nav = module_def.to_nav(sema.db);
-    Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg_exprs })
+    Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })
 }
 
 // We could create runnables for modules with number_of_test_submodules > 0,
@@ -348,7 +348,7 @@ fn bench() {}
                             docs: None,
                         },
                         kind: Bin,
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -373,7 +373,7 @@ fn bench() {}
                                 ignore: false,
                             },
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -398,7 +398,7 @@ fn bench() {}
                                 ignore: true,
                             },
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -420,7 +420,7 @@ fn bench() {}
                                 "bench",
                             ),
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                 ]
             "#]],
@@ -507,7 +507,7 @@ fn should_have_no_runnable_6() {}
                             docs: None,
                         },
                         kind: Bin,
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -527,7 +527,7 @@ fn should_have_no_runnable_6() {}
                                 "should_have_runnable",
                             ),
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -547,7 +547,7 @@ fn should_have_no_runnable_6() {}
                                 "should_have_runnable_1",
                             ),
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -567,7 +567,7 @@ fn should_have_no_runnable_6() {}
                                 "should_have_runnable_2",
                             ),
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                 ]
             "#]],
@@ -609,7 +609,7 @@ impl Data {
                             docs: None,
                         },
                         kind: Bin,
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -629,7 +629,7 @@ impl Data {
                                 "Data::foo",
                             ),
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                 ]
             "#]],
@@ -668,7 +668,7 @@ mod test_mod {
                         kind: TestMod {
                             path: "test_mod",
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -693,7 +693,7 @@ mod test_mod {
                                 ignore: false,
                             },
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                 ]
             "#]],
@@ -748,7 +748,7 @@ mod root_tests {
                         kind: TestMod {
                             path: "root_tests::nested_tests_0",
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -768,7 +768,7 @@ mod root_tests {
                         kind: TestMod {
                             path: "root_tests::nested_tests_0::nested_tests_1",
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -793,7 +793,7 @@ mod root_tests {
                                 ignore: false,
                             },
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -818,7 +818,7 @@ mod root_tests {
                                 ignore: false,
                             },
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -838,7 +838,7 @@ mod root_tests {
                         kind: TestMod {
                             path: "root_tests::nested_tests_0::nested_tests_2",
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                     Runnable {
                         nav: NavigationTarget {
@@ -863,7 +863,7 @@ mod root_tests {
                                 ignore: false,
                             },
                         },
-                        cfg_exprs: [],
+                        cfg: None,
                     },
                 ]
             "#]],
@@ -906,12 +906,14 @@ fn test_foo1() {}
                                 ignore: false,
                             },
                         },
-                        cfg_exprs: [
-                            KeyValue {
-                                key: "feature",
-                                value: "foo",
-                            },
-                        ],
+                        cfg: Some(
+                            Atom(
+                                KeyValue {
+                                    key: "feature",
+                                    value: "foo",
+                                },
+                            ),
+                        ),
                     },
                 ]
             "#]],
@@ -954,20 +956,24 @@ fn test_foo1() {}
                                 ignore: false,
                             },
                         },
-                        cfg_exprs: [
+                        cfg: Some(
                             All(
                                 [
-                                    KeyValue {
-                                        key: "feature",
-                                        value: "foo",
-                                    },
-                                    KeyValue {
-                                        key: "feature",
-                                        value: "bar",
-                                    },
+                                    Atom(
+                                        KeyValue {
+                                            key: "feature",
+                                            value: "foo",
+                                        },
+                                    ),
+                                    Atom(
+                                        KeyValue {
+                                            key: "feature",
+                                            value: "bar",
+                                        },
+                                    ),
                                 ],
                             ),
-                        ],
+                        ),
                     },
                 ]
             "#]],

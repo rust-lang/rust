@@ -762,7 +762,7 @@ pub(crate) fn runnable(
     let workspace_root = spec.as_ref().map(|it| it.workspace_root.clone());
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
-        CargoTargetSpec::runnable_args(snap, spec, &runnable.kind, &runnable.cfg_exprs)?;
+        CargoTargetSpec::runnable_args(snap, spec, &runnable.kind, &runnable.cfg)?;
     let label = runnable.label(target);
     let location = location_link(snap, None, runnable.nav)?;
 

@@ -1,11 +1,12 @@
 //! Diagnostics produced by `hir_def`.
 
 use std::any::Any;
+use stdx::format_to;
 
+use cfg::{CfgExpr, CfgOptions, DnfExpr};
 use hir_expand::diagnostics::{Diagnostic, DiagnosticCode};
-use syntax::{ast, AstPtr, SyntaxNodePtr};
-
 use hir_expand::{HirFileId, InFile};
+use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 // Diagnostic: unresolved-module
 //
@@ -94,6 +95,8 @@ impl Diagnostic for UnresolvedImport {
 pub struct InactiveCode {
     pub file: HirFileId,
     pub node: SyntaxNodePtr,
+    pub cfg: CfgExpr,
+    pub opts: CfgOptions,
 }
 
 impl Diagnostic for InactiveCode {
@@ -101,8 +104,14 @@ impl Diagnostic for InactiveCode {
         DiagnosticCode("inactive-code")
     }
     fn message(&self) -> String {
-        // FIXME: say *why* it is configured out
-        "code is inactive due to #[cfg] directives".to_string()
+        let inactive = DnfExpr::new(self.cfg.clone()).why_inactive(&self.opts);
+        let mut buf = "code is inactive due to #[cfg] directives".to_string();
+
+        if let Some(inactive) = inactive {
+            format_to!(buf, ": {}", inactive);
+        }
+
+        buf
     }
     fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.node.clone())

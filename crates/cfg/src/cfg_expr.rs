@@ -2,18 +2,66 @@
 //!
 //! See: https://doc.rust-lang.org/reference/conditional-compilation.html#conditional-compilation
 
-use std::slice::Iter as SliceIter;
+use std::{fmt, slice::Iter as SliceIter};
 
 use tt::SmolStr;
+
+/// A simple configuration value passed in from the outside.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum CfgAtom {
+    /// eg. `#[cfg(test)]`
+    Flag(SmolStr),
+    /// eg. `#[cfg(target_os = "linux")]`
+    ///
+    /// Note that a key can have multiple values that are all considered "active" at the same time.
+    /// For example, `#[cfg(target_feature = "sse")]` and `#[cfg(target_feature = "sse2")]`.
+    KeyValue { key: SmolStr, value: SmolStr },
+}
+
+impl CfgAtom {
+    /// Returns `true` when the atom comes from the target specification.
+    ///
+    /// If this returns `true`, then changing this atom requires changing the compilation target. If
+    /// it returns `false`, the atom might come from a build script or the build system.
+    pub fn is_target_defined(&self) -> bool {
+        match self {
+            CfgAtom::Flag(flag) => matches!(&**flag, "unix" | "windows"),
+            CfgAtom::KeyValue { key, value: _ } => matches!(
+                &**key,
+                "target_arch"
+                    | "target_os"
+                    | "target_env"
+                    | "target_family"
+                    | "target_endian"
+                    | "target_pointer_width"
+                    | "target_vendor" // NOTE: `target_feature` is left out since it can be configured via `-Ctarget-feature`
+            ),
+        }
+    }
+}
+
+impl fmt::Display for CfgAtom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CfgAtom::Flag(name) => write!(f, "{}", name),
+            CfgAtom::KeyValue { key, value } => write!(f, "{} = {:?}", key, value),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CfgExpr {
     Invalid,
-    Atom(SmolStr),
-    KeyValue { key: SmolStr, value: SmolStr },
+    Atom(CfgAtom),
     All(Vec<CfgExpr>),
     Any(Vec<CfgExpr>),
     Not(Box<CfgExpr>),
+}
+
+impl From<CfgAtom> for CfgExpr {
+    fn from(atom: CfgAtom) -> Self {
+        CfgExpr::Atom(atom)
+    }
 }
 
 impl CfgExpr {
@@ -21,11 +69,10 @@ impl CfgExpr {
         next_cfg_expr(&mut tt.token_trees.iter()).unwrap_or(CfgExpr::Invalid)
     }
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
-    pub fn fold(&self, query: &dyn Fn(&SmolStr, Option<&SmolStr>) -> bool) -> Option<bool> {
+    pub fn fold(&self, query: &dyn Fn(&CfgAtom) -> bool) -> Option<bool> {
         match self {
             CfgExpr::Invalid => None,
-            CfgExpr::Atom(name) => Some(query(name, None)),
-            CfgExpr::KeyValue { key, value } => Some(query(key, Some(value))),
+            CfgExpr::Atom(atom) => Some(query(atom)),
             CfgExpr::All(preds) => {
                 preds.iter().try_fold(true, |s, pred| Some(s && pred.fold(query)?))
             }
@@ -54,7 +101,7 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
                     // FIXME: escape? raw string?
                     let value =
                         SmolStr::new(literal.text.trim_start_matches('"').trim_end_matches('"'));
-                    CfgExpr::KeyValue { key: name, value }
+                    CfgAtom::KeyValue { key: name, value }.into()
                 }
                 _ => return Some(CfgExpr::Invalid),
             }
@@ -70,7 +117,7 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
                 _ => CfgExpr::Invalid,
             }
         }
-        _ => CfgExpr::Atom(name),
+        _ => CfgAtom::Flag(name).into(),
     };
 
     // Eat comma separator
@@ -80,54 +127,4 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
         }
     }
     Some(ret)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use mbe::ast_to_token_tree;
-    use syntax::ast::{self, AstNode};
-
-    fn assert_parse_result(input: &str, expected: CfgExpr) {
-        let (tt, _) = {
-            let source_file = ast::SourceFile::parse(input).ok().unwrap();
-            let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            ast_to_token_tree(&tt).unwrap()
-        };
-        let cfg = CfgExpr::parse(&tt);
-        assert_eq!(cfg, expected);
-    }
-
-    #[test]
-    fn test_cfg_expr_parser() {
-        assert_parse_result("#![cfg(foo)]", CfgExpr::Atom("foo".into()));
-        assert_parse_result("#![cfg(foo,)]", CfgExpr::Atom("foo".into()));
-        assert_parse_result(
-            "#![cfg(not(foo))]",
-            CfgExpr::Not(Box::new(CfgExpr::Atom("foo".into()))),
-        );
-        assert_parse_result("#![cfg(foo(bar))]", CfgExpr::Invalid);
-
-        // Only take the first
-        assert_parse_result(r#"#![cfg(foo, bar = "baz")]"#, CfgExpr::Atom("foo".into()));
-
-        assert_parse_result(
-            r#"#![cfg(all(foo, bar = "baz"))]"#,
-            CfgExpr::All(vec![
-                CfgExpr::Atom("foo".into()),
-                CfgExpr::KeyValue { key: "bar".into(), value: "baz".into() },
-            ]),
-        );
-
-        assert_parse_result(
-            r#"#![cfg(any(not(), all(), , bar = "baz",))]"#,
-            CfgExpr::Any(vec![
-                CfgExpr::Not(Box::new(CfgExpr::Invalid)),
-                CfgExpr::All(vec![]),
-                CfgExpr::Invalid,
-                CfgExpr::KeyValue { key: "bar".into(), value: "baz".into() },
-            ]),
-        );
-    }
 }

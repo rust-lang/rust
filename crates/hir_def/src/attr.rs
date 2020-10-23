@@ -125,12 +125,20 @@ impl Attrs {
         AttrQuery { attrs: self, key }
     }
 
-    pub fn cfg(&self) -> impl Iterator<Item = CfgExpr> + '_ {
+    pub fn cfg(&self) -> Option<CfgExpr> {
         // FIXME: handle cfg_attr :-)
-        self.by_key("cfg").tt_values().map(CfgExpr::parse)
+        let mut cfgs = self.by_key("cfg").tt_values().map(CfgExpr::parse).collect::<Vec<_>>();
+        match cfgs.len() {
+            0 => None,
+            1 => Some(cfgs.pop().unwrap()),
+            _ => Some(CfgExpr::All(cfgs)),
+        }
     }
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
-        self.cfg().all(|cfg| cfg_options.check(&cfg) != Some(false))
+        match self.cfg() {
+            None => true,
+            Some(cfg) => cfg_options.check(&cfg) != Some(false),
+        }
     }
 }
 

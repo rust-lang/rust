@@ -2128,7 +2128,7 @@ fn foo_<|>test() {}
                                     ignore: false,
                                 },
                             },
-                            cfg_exprs: [],
+                            cfg: None,
                         },
                     ),
                 ]
@@ -2166,7 +2166,7 @@ mod tests<|> {
                             kind: TestMod {
                                 path: "tests",
                             },
-                            cfg_exprs: [],
+                            cfg: None,
                         },
                     ),
                 ]
