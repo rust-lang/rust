@@ -936,8 +936,24 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
 void TypeAnalyzer::visitPHINode(PHINode &phi) {
   if (direction & UP) {
+    TypeTree upVal = getAnalysis(&phi);
+    // only propagate anything's up if there is one
+    // incoming value
+    bool multipleValues = false;
+    Value* value = nullptr;
     for (auto &op : phi.incoming_values()) {
-      updateAnalysis(op, getAnalysis(&phi), &phi);
+      if (value == nullptr) {
+        value = op;
+      } else if (value != op) {
+        multipleValues = true;
+        break;
+      }
+    }
+    if (multipleValues) {
+      upVal = upVal.PurgeAnything();
+    }
+    for (auto &op : phi.incoming_values()) {
+      updateAnalysis(op, upVal, &phi);
     }
   }
 
@@ -961,11 +977,11 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
 
     if (auto bo = dyn_cast<BinaryOperator>(todo)) {
       if (bo->getOpcode() == BinaryOperator::Add) {
-        if (isa<ConstantInt>(bo->getOperand(0))) {
+        if (isa<Constant>(bo->getOperand(0))) {
           bos.push_back(bo);
           todo = bo->getOperand(1);
         }
-        if (isa<ConstantInt>(bo->getOperand(1))) {
+        if (isa<Constant>(bo->getOperand(1))) {
           bos.push_back(bo);
           todo = bo->getOperand(0);
         }
@@ -1002,7 +1018,7 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
           TypeTree otherData = getAnalysis(UniqueValues[1 - i]);
           // If we are adding/muling to a constant to derive this, we can assume
           // it to be an integer rather than Anything
-          if (isa<ConstantInt>(UniqueValues[1 - i])) {
+          if (isa<Constant>(UniqueValues[1 - i])) {
             otherData = TypeTree(BaseType::Integer).Only(-1);
           }
           if (BO->getOperand(0) == &phi) {
@@ -1021,7 +1037,7 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
           TypeTree otherData = getAnalysis(UniqueValues[1 - i]);
           // If we are subtracting from a constant to derive this, we can assume
           // it to be an integer rather than Anything
-          if (isa<ConstantInt>(UniqueValues[1 - i])) {
+          if (isa<Constant>(UniqueValues[1 - i])) {
             otherData = TypeTree(BaseType::Integer).Only(-1);
           }
           if (BO->getOperand(0) == &phi) {
@@ -1034,6 +1050,10 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     }
     if (set) {
       PhiTypes &= newData;
+      // TODO consider the or of anything (see selectinst)
+      // however, this cannot be done yet for risk of turning
+      // phi's that add floats into anything
+      //PhiTypes |= newData.JustAnything();
     } else {
       set = true;
       PhiTypes = newData;
@@ -1050,10 +1070,10 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     PhiTypes = TypeTree(BaseType::Integer).Only(-1);
   }
   for (BinaryOperator *bo : bos) {
-    TypeTree vd1 = isa<ConstantInt>(bo->getOperand(0))
+    TypeTree vd1 = isa<Constant>(bo->getOperand(0))
                        ? getAnalysis(bo->getOperand(0)).Data0()
                        : PhiTypes.Data0();
-    TypeTree vd2 = isa<ConstantInt>(bo->getOperand(1))
+    TypeTree vd2 = isa<Constant>(bo->getOperand(1))
                        ? getAnalysis(bo->getOperand(1)).Data0()
                        : PhiTypes.Data0();
     vd1.binopIn(vd2, bo->getOpcode());
@@ -1190,58 +1210,170 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
 
 void TypeAnalyzer::visitSelectInst(SelectInst &I) {
   if (direction & UP)
-    updateAnalysis(I.getTrueValue(), getAnalysis(&I), &I);
+    updateAnalysis(I.getTrueValue(), getAnalysis(&I).PurgeAnything(), &I);
   if (direction & UP)
-    updateAnalysis(I.getFalseValue(), getAnalysis(&I), &I);
+    updateAnalysis(I.getFalseValue(), getAnalysis(&I).PurgeAnything(), &I);
 
   if (direction & DOWN) {
-    updateAnalysis(&I, getAnalysis(I.getTrueValue()).PurgeAnything(), &I);
-    updateAnalysis(&I, getAnalysis(I.getFalseValue()).PurgeAnything(), &I);
-
+    // If getTrueValue and getFalseValue are the same type (per the and)
+    // it is safe to assume the result is as well
     TypeTree vd = getAnalysis(I.getTrueValue());
     vd &= getAnalysis(I.getFalseValue());
+
+    // A regular and operation, however is not sufficient. One of the operands
+    // could be anything whereas the other is concrete, resulting in the concrete
+    // type (e.g. select true, anything(0), integer(i64)) This is not correct as
+    // the result of the select could always be anything (e.g. if it is a pointer).
+    // As a result, explicitly or in any anything values
+    // TODO this should be propagated elsewhere as well (specifically returns, phi)
+    vd |=  getAnalysis(I.getTrueValue()).JustAnything();
+    vd |=  getAnalysis(I.getFalseValue()).JustAnything();
     updateAnalysis(&I, vd, &I);
   }
 }
 
 void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
-  if (direction & UP)
-    updateAnalysis(I.getIndexOperand(), BaseType::Integer, &I);
-  if (direction & UP)
-    updateAnalysis(I.getVectorOperand(), getAnalysis(&I), &I);
-  if (direction & DOWN)
-    updateAnalysis(&I, getAnalysis(I.getVectorOperand()), &I);
+  updateAnalysis(I.getIndexOperand(), BaseType::Integer, &I);
+
+
+  auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
+  VectorType* vecType = cast<VectorType>(I.getVectorOperand()->getType());
+
+  size_t size = (dl.getTypeSizeInBits(vecType->getElementType()) + 7)/ 8;
+
+  if (auto CI = dyn_cast<ConstantInt>(I.getIndexOperand())) {
+    size_t off = CI->getZExtValue() * size;
+
+    if (direction & DOWN)
+      updateAnalysis(&I,
+                    getAnalysis(I.getVectorOperand())
+                        .ShiftIndices(dl, off, size, /*addOffset*/ 0)
+                        .CanonicalizeValue(size, dl),
+                    &I);
+
+    if (direction & UP)
+      updateAnalysis(I.getVectorOperand(),
+                    getAnalysis(&I).ShiftIndices(dl, 0, size, off), &I);
+
+  } else {
+    if (direction & DOWN) {
+      TypeTree vecAnalysis = getAnalysis(I.getVectorOperand());
+      // TODO merge of anythings (see selectinst)
+      TypeTree res = vecAnalysis.Lookup(size, dl);
+      updateAnalysis(&I, res.Only(-1), &I);
+    }
+    if (direction & UP) {
+      // propagated upward to unknown location, no analysis
+      // can be updated
+    }
+  }
 }
 
 void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
   updateAnalysis(I.getOperand(2), BaseType::Integer, &I);
 
-  // if we are inserting into undef/etc the anything should not be propagated
-  auto res = getAnalysis(I.getOperand(0)).PurgeAnything();
+  auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
+  VectorType* vecType = cast<VectorType>(I.getOperand(0)->getType());
+  size_t numElems = vecType->getNumElements();
+  size_t size = (dl.getTypeSizeInBits(vecType->getElementType()) + 7)/ 8;
+  size_t vecSize = (dl.getTypeSizeInBits(vecType) + 7) / 8;
 
-  res |= getAnalysis(I.getOperand(1));
-  // res |= getAnalysis(I.getOperand(1)).Only(idx);
-  res |= getAnalysis(&I);
+  if (auto CI = dyn_cast<ConstantInt>(I.getOperand(2))) {
+    size_t off = CI->getZExtValue() * size;
 
-  if (direction & UP)
-    updateAnalysis(I.getOperand(0), res, &I);
-  if (direction & DOWN)
-    updateAnalysis(&I, res, &I);
-  if (direction & UP)
-    updateAnalysis(I.getOperand(1), res, &I);
+    if (direction & UP)
+      updateAnalysis(I.getOperand(0),
+                    getAnalysis(&I).Clear(off, off + size, vecSize), &I);
+
+    if (direction & UP)
+      updateAnalysis(I.getOperand(1),
+                    getAnalysis(&I)
+                        .ShiftIndices(dl, off, size, 0)
+                        .CanonicalizeValue(size, dl), &I);
+
+    if (direction & DOWN) {
+      auto new_res =
+        getAnalysis(I.getOperand(0)).Clear(off, off + size, vecSize);
+      auto shifted = getAnalysis(I.getOperand(1))
+                        .ShiftIndices(dl, 0, size, off);
+      new_res |= shifted;
+      updateAnalysis(&I, new_res.CanonicalizeValue(vecSize, dl), &I);
+    }
+  } else {
+    if (direction & DOWN) {
+      auto new_res = getAnalysis(I.getOperand(0));
+      auto inserted = getAnalysis(I.getOperand(1));
+      // TODO merge of anythings (see selectinst)
+      for(size_t i=0; i<numElems; ++i)
+        new_res &= inserted.ShiftIndices(dl, 0, size, size * i);
+      updateAnalysis(&I, new_res.CanonicalizeValue(vecSize, dl), &I);
+    }
+  }
 }
 
 void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
-  if (direction & UP)
-    updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
-  if (direction & UP)
-    updateAnalysis(I.getOperand(1), getAnalysis(&I), &I);
+  // See selectinst type propagation rule for a description
+  // of the ncessity and correctness of this rule.
+  VectorType* resType = cast<VectorType>(I.getType());
 
-  TypeTree vd = getAnalysis(I.getOperand(0));
-  vd &= getAnalysis(I.getOperand(1));
+  auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
 
-  if (direction & DOWN)
-    updateAnalysis(&I, vd, &I);
+  size_t lhs = 0;
+  size_t rhs = 1;
+  size_t maskIdx = 2;
+
+
+  size_t numFirst = cast<VectorType>(I.getOperand(lhs)->getType())->getNumElements();
+  size_t size = (dl.getTypeSizeInBits(resType->getElementType()) + 7)/ 8;
+  size_t resSize = (dl.getTypeSizeInBits(resType) + 7)/ 8;
+
+  auto mask = I.getShuffleMask();
+
+  assert(mask.size() == cast<VectorType>(I.getOperand(maskIdx)->getType())->getNumElements());
+  assert(isa<IntegerType>(cast<VectorType>(I.getOperand(maskIdx)->getType())->getElementType()));
+
+
+  TypeTree result;//  = getAnalysis(&I);
+  for(size_t i=0; i < mask.size(); ++i) {
+    #if LLVM_VERSION_MAJOR > 10
+    if (mask[i] == ShuffleVectorInst::UndefMaskElem)
+    #else
+    if (mask[i] == -1)
+    #endif
+    {
+      if (direction & DOWN) {
+        result |= TypeTree(BaseType::Anything).Only(-1).ShiftIndices(dl, 0, size, size * i);
+
+        //llvm::errs() << "Uadding idx i: " << i << " - " <<  TypeTree(BaseType::Anything).Only(-1).ShiftIndices(dl, 0, size, size * i).str() << " BECOMES " << result.str() << "\n";
+      }
+    } else {
+      if ((size_t)mask[i] < numFirst) {
+        if (direction & UP) {
+          updateAnalysis(I.getOperand(lhs),
+                         getAnalysis(&I).ShiftIndices(dl, size * i, size, size * mask[i]), &I);
+        }
+        if (direction & DOWN) {
+          result |= getAnalysis(I.getOperand(lhs)).ShiftIndices(dl, size * mask[i], size, size * i);
+          //llvm::errs() << "adding idx i: " << i << " - " << getAnalysis(I.getOperand(lhs)).ShiftIndices(dl, size * mask[i], size, size * i).str() << " BECOMES " << result.str() << "\n";
+        }
+      } else {
+        if (direction & UP) {
+          updateAnalysis(I.getOperand(rhs),
+                         getAnalysis(&I).ShiftIndices(dl, size * i, size, size * (mask[i] - numFirst)), &I);
+        }
+        if (direction & DOWN) {
+          result |= getAnalysis(I.getOperand(rhs)).ShiftIndices(dl, size * (mask[i] - numFirst), size, size * i);
+        }
+      }
+    }
+  }
+
+  if (direction & DOWN) {
+    //llvm::errs() << "\n\ndownres: " << result.str() << " resSize: " << resSize << "\n";
+    result = result.CanonicalizeValue(resSize, dl);
+    //llvm::errs() << "canonicalized: " << result.str() << "\n\n\n";
+    updateAnalysis(&I, result, &I);
+  }
 }
 
 void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
@@ -2035,6 +2167,10 @@ TypeTree TypeAnalyzer::getReturnAnalysis() {
             continue;
           }
           vd &= getAnalysis(rv);
+          // TODO insert the selectinst anything propagation here
+          // however this needs to be done simultaneously with preventing
+          // anything from propagating up through the return value (if there
+          // are multiple possible returns)
         }
       }
     }
