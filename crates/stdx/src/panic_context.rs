@@ -4,7 +4,7 @@
 
 use std::{cell::RefCell, panic, sync::Once};
 
-pub fn enter(context: String) -> impl Drop {
+pub fn enter(context: String) -> PanicContext {
     static ONCE: Once = Once::new();
     ONCE.call_once(PanicContext::init);
 
@@ -13,7 +13,7 @@ pub fn enter(context: String) -> impl Drop {
 }
 
 #[must_use]
-struct PanicContext {
+pub struct PanicContext {
     _priv: (),
 }
 
