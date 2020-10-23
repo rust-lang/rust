@@ -110,6 +110,56 @@ macro_rules! define_dep_nodes {
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
+        pub mod dep_kind {
+            use super::*;
+
+            $(
+                #[allow(non_camel_case_types)]
+                pub struct $variant;
+
+                impl $variant {
+                    #[inline]
+                    #[allow(unreachable_code)]
+                    #[allow(unused_lifetimes)] // inside `tuple_arg_ty`
+                    pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
+                        if contains_anon_attr!($($attrs)*) {
+                            return false;
+                        }
+
+                        // tuple args
+                        $({
+                            return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
+                                ::can_reconstruct_query_key();
+                        })*
+
+                        true
+                    }
+
+                    #[inline]
+                    pub fn is_anon(&self) -> bool {
+                        contains_anon_attr!($($attrs)*)
+                    }
+
+                    #[inline]
+                    pub fn is_eval_always(&self) -> bool {
+                        contains_eval_always_attr!($($attrs)*)
+                    }
+
+                    #[inline]
+                    #[allow(unreachable_code)]
+                    pub fn has_params(&self) -> bool {
+                        // tuple args
+                        $({
+                            erase!($tuple_arg_ty);
+                            return true;
+                        })*
+
+                        false
+                    }
+                }
+            )*
+        }
+
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKind {
@@ -117,57 +167,27 @@ macro_rules! define_dep_nodes {
         }
 
         impl DepKind {
-            #[allow(unreachable_code)]
-            pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
+            pub fn can_reconstruct_query_key(&self) -> bool {
                 match *self {
-                    $(
-                        DepKind :: $variant => {
-                            if contains_anon_attr!($($attrs)*) {
-                                return false;
-                            }
-
-                            // tuple args
-                            $({
-                                return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
-                                    ::can_reconstruct_query_key();
-                            })*
-
-                            true
-                        }
-                    )*
+                    $(DepKind::$variant => dep_kind::$variant.can_reconstruct_query_key()),*
                 }
             }
 
             pub fn is_anon(&self) -> bool {
                 match *self {
-                    $(
-                        DepKind :: $variant => { contains_anon_attr!($($attrs)*) }
-                    )*
+                    $(DepKind::$variant => dep_kind::$variant.is_anon()),*
                 }
             }
 
             pub fn is_eval_always(&self) -> bool {
                 match *self {
-                    $(
-                        DepKind :: $variant => { contains_eval_always_attr!($($attrs)*) }
-                    )*
+                    $(DepKind::$variant => dep_kind::$variant.is_eval_always()),*
                 }
             }
 
-            #[allow(unreachable_code)]
             pub fn has_params(&self) -> bool {
                 match *self {
-                    $(
-                        DepKind :: $variant => {
-                            // tuple args
-                            $({
-                                erase!($tuple_arg_ty);
-                                return true;
-                            })*
-
-                            false
-                        }
-                    )*
+                    $(DepKind::$variant => dep_kind::$variant.has_params()),*
                 }
             }
         }
