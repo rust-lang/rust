@@ -5,22 +5,20 @@ use crate::utils::{is_type_diagnostic_item, paths, span_lint_and_sugg};
 use if_chain::if_chain;
 
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:**
-    /// Lints usage of  `if let Some(v) = ... { y } else { x }` which is more
+    /// Lints usage of `if let Some(v) = ... { y } else { x }` which is more
     /// idiomatically done with `Option::map_or` (if the else bit is a pure
     /// expression) or `Option::map_or_else` (if the else bit is an impure
-    /// expresion).
+    /// expression).
     ///
     /// **Why is this bad?**
     /// Using the dedicated functions of the Option type is clearer and
-    /// more concise than an if let expression.
+    /// more concise than an `if let` expression.
     ///
     /// **Known problems:**
     /// This lint uses a deliberately conservative metric for checking
@@ -82,53 +80,6 @@ struct OptionIfLetElseOccurence {
     some_expr: String,
     none_expr: String,
     wrap_braces: bool,
-}
-
-struct ReturnBreakContinueMacroVisitor {
-    seen_return_break_continue: bool,
-}
-
-impl ReturnBreakContinueMacroVisitor {
-    fn new() -> ReturnBreakContinueMacroVisitor {
-        ReturnBreakContinueMacroVisitor {
-            seen_return_break_continue: false,
-        }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
-    type Map = Map<'tcx>;
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if self.seen_return_break_continue {
-            // No need to look farther if we've already seen one of them
-            return;
-        }
-        match &ex.kind {
-            ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => {
-                self.seen_return_break_continue = true;
-            },
-            // Something special could be done here to handle while or for loop
-            // desugaring, as this will detect a break if there's a while loop
-            // or a for loop inside the expression.
-            _ => {
-                if utils::in_macro(ex.span) {
-                    self.seen_return_break_continue = true;
-                } else {
-                    rustc_hir::intravisit::walk_expr(self, ex);
-                }
-            },
-        }
-    }
-}
-
-fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
-    let mut recursive_visitor = ReturnBreakContinueMacroVisitor::new();
-    recursive_visitor.visit_expr(expression);
-    recursive_visitor.seen_return_break_continue
 }
 
 /// Extracts the body of a given arm. If the arm contains only an expression,
@@ -208,8 +159,8 @@ fn detect_option_if_let_else<'tcx>(
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
         if utils::match_qpath(struct_qpath, &paths::OPTION_SOME);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
-        if !contains_return_break_continue_macro(arms[0].body);
-        if !contains_return_break_continue_macro(arms[1].body);
+        if !utils::usage::contains_return_break_continue_macro(arms[0].body);
+        if !utils::usage::contains_return_break_continue_macro(arms[1].body);
         then {
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_arm(&arms[0])?;

@@ -14,6 +14,7 @@ use rustc_span::Span;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::Target;
 use rustc_target::spec::abi::Abi;
+use rustc_target::spec::Target;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions taking arguments by reference, where

@@ -12,12 +12,12 @@ your PR is merged.
 If you added a new lint, here's a checklist for things that will be
 checked during review or continuous integration.
 
-- [ ] Followed [lint naming conventions][lint_naming]
-- [ ] Added passing UI tests (including committed `.stderr` file)
-- [ ] `cargo test` passes locally
-- [ ] Executed `cargo dev update_lints`
-- [ ] Added lint documentation
-- [ ] Run `cargo dev fmt`
+- \[ ] Followed [lint naming conventions][lint_naming]
+- \[ ] Added passing UI tests (including committed `.stderr` file)
+- \[ ] `cargo test` passes locally
+- \[ ] Executed `cargo dev update_lints`
+- \[ ] Added lint documentation
+- \[ ] Run `cargo dev fmt`
 
 [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
 

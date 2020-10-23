@@ -316,8 +316,8 @@ If you have @bors permissions, you can find an overview of the available
 commands [here][homu_instructions].
 
 [triage]: https://forge.rust-lang.org/release/triage-procedure.html
-[l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash%20%3Aboom%3A
-[l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug%20%3Abeetle%3A
+[l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash
+[l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug
 [homu]: https://github.com/rust-lang/homu
 [homu_instructions]: https://buildbot2.rust-lang.org/homu/
 [homu_queue]: https://buildbot2.rust-lang.org/homu/queue/clippy
