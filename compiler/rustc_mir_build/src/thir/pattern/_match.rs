@@ -78,20 +78,26 @@
 //! new pattern `p`.
 //!
 //! For example, say we have the following:
+//!
 //! ```
-//!     // x: (Option<bool>, Result<()>)
-//!     match x {
-//!         (Some(true), _) => {}
-//!         (None, Err(())) => {}
-//!         (None, Err(_)) => {}
-//!     }
+//! // x: (Option<bool>, Result<()>)
+//! match x {
+//!     (Some(true), _) => {}
+//!     (None, Err(())) => {}
+//!     (None, Err(_)) => {}
+//! }
 //! ```
+//!
 //! Here, the matrix `P` starts as:
+//!
+//! ```
 //! [
 //!     [(Some(true), _)],
 //!     [(None, Err(()))],
 //!     [(None, Err(_))],
 //! ]
+//! ```
+//!
 //! We can tell it's not exhaustive, because `U(P, _)` is true (we're not covering
 //! `[(Some(false), _)]`, for instance). In addition, row 3 is not useful, because
 //! all the values it covers are already covered by row 2.
@@ -178,10 +184,14 @@
 //! This special case is handled in `is_useful_specialized`.
 //!
 //! For example, if `P` is:
+//!
+//! ```
 //! [
-//! [Some(true), _],
-//! [None, 0],
+//!     [Some(true), _],
+//!     [None, 0],
 //! ]
+//! ```
+//!
 //! and `p` is [Some(false), 0], then we don't care about row 2 since we know `p` only
 //! matches values that row 2 doesn't. For row 1 however, we need to dig into the
 //! arguments of `Some` to know whether some new value is covered. So we compute
@@ -198,10 +208,14 @@
 //! `U(P, p) := U(D(P), D(p))`
 //!
 //! For example, if `P` is:
+//!
+//! ```
 //! [
 //!     [_, true, _],
 //!     [None, false, 1],
 //! ]
+//! ```
+//!
 //! and `p` is [_, false, _], the `Some` constructor doesn't appear in `P`. So if we
 //! only had row 2, we'd know that `p` is useful. However row 1 starts with a
 //! wildcard, so we need to check whether `U([[true, _]], [false, 1])`.
@@ -215,10 +229,14 @@
 //! `U(P, p) := ∃(k ϵ constructors) U(S(k, P), S(k, p))`
 //!
 //! For example, if `P` is:
+//!
+//! ```
 //! [
 //!     [Some(true), _],
 //!     [None, false],
 //! ]
+//! ```
+//!
 //! and `p` is [_, false], both `None` and `Some` constructors appear in the first
 //! components of `P`. We will therefore try popping both constructors in turn: we
 //! compute `U([[true, _]], [_, false])` for the `Some` constructor, and `U([[false]],
@@ -1496,6 +1514,7 @@ struct PatCtxt<'tcx> {
 /// multiple patterns.
 ///
 /// For example, if we are constructing a witness for the match against
+///
 /// ```
 /// struct Pair(Option<(u32, u32)>, bool);
 ///
@@ -1619,12 +1638,14 @@ fn all_constructors<'a, 'tcx>(
             // actually match against them all themselves. So we always return only the fictitious
             // constructor.
             // E.g., in an example like:
+            //
             // ```
             //     let err: io::ErrorKind = ...;
             //     match err {
             //         io::ErrorKind::NotFound => {},
             //     }
             // ```
+            //
             // we don't want to show every possible IO error, but instead have only `_` as the
             // witness.
             let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
@@ -2017,6 +2038,7 @@ crate fn is_useful<'p, 'tcx>(
         let mut unreachable_branches = Vec::new();
         // Subpatterns that are unreachable from all branches. E.g. in the following case, the last
         // `true` is unreachable only from one branch, so it is overall reachable.
+        //
         // ```
         // match (true, true) {
         //     (true, true) => {}
@@ -2161,10 +2183,12 @@ crate fn is_useful<'p, 'tcx>(
             // to do this and instead report a single `_` witness:
             // if the user didn't actually specify a constructor
             // in this arm, e.g., in
+            //
             // ```
             //     let x: (Direction, Direction, bool) = ...;
             //     let (_, _, false) = x;
             // ```
+            //
             // we don't want to show all 16 possible witnesses
             // `(<direction-1>, <direction-2>, true)` - we are
             // satisfied with `(_, _, true)`. In this case,
