@@ -781,6 +781,7 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
+        hir_def::diagnostics::validate_body(db.upcast(), self.id.into(), sink);
         hir_ty::diagnostics::validate_module_item(db, self.id.into(), sink);
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink);
     }

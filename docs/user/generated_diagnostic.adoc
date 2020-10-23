@@ -82,24 +82,24 @@ This diagnostic is triggered if created structure does not have field provided i
 
 
 === unconfigured-code
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L90[diagnostics.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L98[diagnostics.rs]
 
 This diagnostic is shown for code with inactive `#[cfg]` attributes.
 
 
 === unresolved-extern-crate
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L35[diagnostics.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L43[diagnostics.rs]
 
 This diagnostic is triggered if rust-analyzer is unable to discover referred extern crate.
 
 
 === unresolved-import
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L59[diagnostics.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L67[diagnostics.rs]
 
 This diagnostic is triggered if rust-analyzer is unable to discover imported module.
 
 
 === unresolved-module
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L10[diagnostics.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L18[diagnostics.rs]
 
 This diagnostic is triggered if rust-analyzer is unable to discover referred module.
