@@ -53,6 +53,10 @@ LL |         Tuple(_) => {}
    |
    = note: expected opaque type `impl Future`
                    found struct `Tuple`
+help: consider `await`ing on the `Future`
+   |
+LL |     match tuple().await {
+   |                  ^^^^^^
 
 error: aborting due to 6 previous errors
 

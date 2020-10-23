@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:13:14
+  --> $DIR/suggest-missing-await.rs:12:14
    |
 LL | async fn make_u32() -> u32 {
    |                        --- the `Output` of this `async fn`'s found opaque type
@@ -15,7 +15,7 @@ LL |     take_u32(x.await)
    |               ^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:23:5
+  --> $DIR/suggest-missing-await.rs:22:5
    |
 LL | async fn dummy() {}
    |                  - the `Output` of this `async fn`'s found opaque type
@@ -25,14 +25,14 @@ LL |     dummy()
    |
    = note: expected unit type `()`
             found opaque type `impl Future`
-help: try adding a semicolon
-   |
-LL |     dummy();
-   |            ^
 help: consider `await`ing on the `Future`
    |
 LL |     dummy().await
    |            ^^^^^^
+help: try adding a semicolon
+   |
+LL |     dummy();
+   |            ^
 
 error: aborting due to 2 previous errors
 

@@ -46,6 +46,7 @@ async fn async_extra_semicolon_different() {
 async fn async_different_futures() {
     let _ = match true { //~ NOTE `match` arms have incompatible types
         true => async_dummy(), //~ NOTE this is found to be
+        //~| HELP consider `await`ing on both `Future`s
         false => async_dummy2(), //~ ERROR `match` arms have incompatible types
         //~^ NOTE expected opaque type, found a different opaque type
         //~| NOTE expected type `impl Future`

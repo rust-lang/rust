@@ -1,5 +1,4 @@
 // edition:2018
-// run-rustfix
 
 fn take_u32(_x: u32) {}
 

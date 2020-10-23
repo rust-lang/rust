@@ -20,14 +20,14 @@ LL | |     };
    |
    = note:     expected type `()`
            found opaque type `impl Future`
-help: consider removing this semicolon and boxing the expression
-   |
-LL |             async_dummy()
-   |                         --
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy().await,
    |                               ^^^^^^
+help: consider removing this semicolon and boxing the expression
+   |
+LL |             async_dummy()
+   |                         --
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:39:18
@@ -51,17 +51,17 @@ LL | |     };
    |
    = note:     expected type `()`
            found opaque type `impl Future`
-help: consider removing this semicolon and boxing the expression
-   |
-LL |             async_dummy()
-   |                         --
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy2().await,
    |                                ^^^^^^
+help: consider removing this semicolon and boxing the expression
+   |
+LL |             async_dummy()
+   |                         --
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:49:18
+  --> $DIR/match-prev-arm-needing-semi.rs:50:18
    |
 LL |   async fn async_dummy2() {}
    |                           - the `Output` of this `async fn`'s found opaque type
@@ -81,6 +81,11 @@ LL | |     };
    = note:     expected type `impl Future` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:16:24>)
            found opaque type `impl Future` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:17:25>)
    = note: distinct uses of `impl Trait` result in different opaque types
+help: consider `await`ing on both `Future`s
+   |
+LL |         true => async_dummy().await,
+LL |         false => async_dummy2().await,
+   |
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:11:18
