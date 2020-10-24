@@ -50,7 +50,7 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        unsafe { self.locked.compare_exchange(0, 1, SeqCst, SeqCst).is_ok() }
+        self.locked.compare_exchange(0, 1, SeqCst, SeqCst).is_ok()
     }
 
     #[inline]
@@ -86,7 +86,7 @@ unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
     pub const unsafe fn uninitialized() -> ReentrantMutex {
-        unsafe { ReentrantMutex { owner: AtomicU32::new(0), recursions: UnsafeCell::new(0) } }
+        ReentrantMutex { owner: AtomicU32::new(0), recursions: UnsafeCell::new(0) }
     }
 
     pub unsafe fn init(&self) {
