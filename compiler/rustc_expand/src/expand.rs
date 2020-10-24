@@ -47,6 +47,7 @@ macro_rules! ast_fragments {
     ) => {
         /// A fragment of AST that can be produced by a single macro expansion.
         /// Can also serve as an input and intermediate result for macro expansion operations.
+        #[derive(Debug)]
         pub enum AstFragment {
             OptExpr(Option<P<ast::Expr>>),
             $($Kind($AstTy),)*
@@ -88,7 +89,7 @@ macro_rules! ast_fragments {
                         macro _repeating($flat_map_ast_elt) {}
                         placeholder(AstFragmentKind::$Kind, *id, None).$make_ast()
                     })),)?)*
-                    _ => panic!("unexpected AST fragment kind")
+                    _ => panic!("unexpected AST fragment kind: {:?}", self)
                 }
             }
 
@@ -483,12 +484,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 InvocationRes::DeriveContainer(_exts) => {
                     // FIXME: Consider using the derive resolutions (`_exts`) immediately,
                     // instead of enqueuing the derives to be resolved again later.
-                    let (derives, item) = match invoc.kind {
+                    let (mut derives, item) = match invoc.kind {
                         InvocationKind::DeriveContainer { derives, item } => (derives, item),
                         _ => unreachable!(),
                     };
                     if !item.derive_allowed() {
-                        self.error_derive_forbidden_on_non_adt(&derives, &item);
+                        self.error_derive_forbidden_on_non_adt(&mut derives, &item);
                     }
 
                     let mut item = self.fully_configure(item);
@@ -539,7 +540,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         fragment_with_placeholders
     }
 
-    fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
+    fn error_derive_forbidden_on_non_adt(&self, derives: &mut Vec<Path>, item: &Annotatable) {
         let attr = self.cx.sess.find_by_name(item.attrs(), sym::derive);
         let span = attr.map_or(item.span(), |attr| attr.span);
         let mut err = struct_span_err!(
@@ -560,6 +561,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             );
         }
         err.emit();
+        *derives = Vec::new();
     }
 
     fn resolve_imports(&mut self) {
@@ -1097,22 +1099,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         (attr, traits, after_derive)
     }
 
-    /// Alternative to `classify_item()` that ignores `#[derive]` so invocations fallthrough
-    /// to the unused-attributes lint (making it an error on statements and expressions
-    /// is a breaking change)
-    fn classify_nonitem(
-        &mut self,
-        nonitem: &mut impl HasAttrs,
-    ) -> (Option<ast::Attribute>, /* after_derive */ bool) {
-        let (mut attr, mut after_derive) = (None, false);
-
-        nonitem.visit_attrs(|mut attrs| {
-            attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
-        });
-
-        (attr, after_derive)
-    }
-
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
@@ -1154,19 +1140,20 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         visit_clobber(expr.deref_mut(), |mut expr| {
             self.cfg.configure_expr_kind(&mut expr.kind);
 
-            // ignore derives so they remain unused
-            let (attr, after_derive) = self.classify_nonitem(&mut expr);
+            let (attr, derives, after_derive) = self.classify_item(&mut expr);
 
-            if let Some(ref attr_value) = attr {
-                // Collect the invoc regardless of whether or not attributes are permitted here
-                // expansion will eat the attribute so it won't error later.
-                self.cfg.maybe_emit_expr_attr_err(attr_value);
+            if attr.is_some() || !derives.is_empty() {
+                if let Some(attr) = &attr {
+                    // Collect the invoc regardless of whether or not attributes are permitted here
+                    // expansion will eat the attribute so it won't error later.
+                    self.cfg.maybe_emit_expr_attr_err(&attr);
+                }
 
                 // AstFragmentKind::Expr requires the macro to emit an expression.
                 return self
                     .collect_attr(
                         attr,
-                        vec![],
+                        derives,
                         Annotatable::Expr(P(expr)),
                         AstFragmentKind::Expr,
                         after_derive,
@@ -1304,16 +1291,17 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         expr.filter_map(|mut expr| {
             self.cfg.configure_expr_kind(&mut expr.kind);
 
-            // Ignore derives so they remain unused.
-            let (attr, after_derive) = self.classify_nonitem(&mut expr);
+            let (attr, derives, after_derive) = self.classify_item(&mut expr);
 
-            if let Some(ref attr_value) = attr {
-                self.cfg.maybe_emit_expr_attr_err(attr_value);
+            if attr.is_some() || !derives.is_empty() {
+                if let Some(attr) = &attr {
+                    self.cfg.maybe_emit_expr_attr_err(attr);
+                }
 
                 return self
                     .collect_attr(
                         attr,
-                        vec![],
+                        derives,
                         Annotatable::Expr(P(expr)),
                         AstFragmentKind::OptExpr,
                         after_derive,
@@ -1361,9 +1349,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 (None, vec![], false)
             } else {
                 // ignore derives on non-item statements so it falls through
-                // to the unused-attributes lint
-                let (attr, after_derive) = self.classify_nonitem(&mut stmt);
-                (attr, vec![], after_derive)
+                self.classify_item(&mut stmt)
             };
 
             if attr.is_some() || !derives.is_empty() {

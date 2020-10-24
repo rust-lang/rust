@@ -28,30 +28,6 @@ LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: cannot determine resolution for the derive macro `Eq`
-  --> $DIR/issue-43927-non-ADT-derive.rs:3:29
-   |
-LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
-   |                             ^^
-   |
-   = note: import resolution is stuck, try simplifying macro imports
-
-error: cannot determine resolution for the derive macro `PartialEq`
-  --> $DIR/issue-43927-non-ADT-derive.rs:3:18
-   |
-LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
-   |                  ^^^^^^^^^
-   |
-   = note: import resolution is stuck, try simplifying macro imports
-
-error: cannot determine resolution for the derive macro `Debug`
-  --> $DIR/issue-43927-non-ADT-derive.rs:3:11
-   |
-LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
-   |           ^^^^^
-   |
-   = note: import resolution is stuck, try simplifying macro imports
-
-error: aborting due to 7 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0774`.
