@@ -121,7 +121,10 @@ where
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
     if let Err(errors) = fulfill_cx.select_all_or_error(infcx) {
-        bug!("Encountered errors `{:?}` resolving bounds after type-checking", errors);
+        infcx.tcx.sess.delay_span_bug(
+            rustc_span::DUMMY_SP,
+            &format!("Encountered errors `{:?}` resolving bounds after type-checking", errors),
+        );
     }
 
     let result = infcx.resolve_vars_if_possible(result);
