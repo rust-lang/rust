@@ -59,7 +59,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             .replace_bound_vars_with_fresh_vars(
                                 body.span,
                                 LateBoundRegionConversionTime::FnCall,
-                                &poly_sig,
+                                poly_sig,
                             )
                             .0,
                     )

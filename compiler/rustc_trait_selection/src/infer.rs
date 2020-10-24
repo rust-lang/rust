@@ -28,7 +28,7 @@ pub trait InferCtxtExt<'tcx> {
         span: Span,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: T,
     ) -> InferOk<'tcx, T>
     where
         T: TypeFoldable<'tcx>;
@@ -41,7 +41,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
     ) -> bool {
-        let ty = self.resolve_vars_if_possible(&ty);
+        let ty = self.resolve_vars_if_possible(ty);
 
         if !(param_env, ty).needs_infer() {
             return ty.is_copy_modulo_regions(self.tcx.at(span), param_env);
@@ -63,7 +63,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         span: Span,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: T,
     ) -> InferOk<'tcx, T>
     where
         T: TypeFoldable<'tcx>,
@@ -173,7 +173,7 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
         debug!("add_implied_bounds()");
 
         for &ty in fn_sig_tys {
-            let ty = infcx.resolve_vars_if_possible(&ty);
+            let ty = infcx.resolve_vars_if_possible(ty);
             debug!("add_implied_bounds: ty = {}", ty);
             let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
             self.add_outlives_bounds(Some(infcx), implied_bounds)

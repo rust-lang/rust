@@ -103,7 +103,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     };
 
     let Normalized { value: mut header, obligations } =
-        traits::normalize(selcx, param_env, ObligationCause::dummy(), &header);
+        traits::normalize(selcx, param_env, ObligationCause::dummy(), header);
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header
@@ -162,7 +162,8 @@ fn overlap_within_probe(
     let opt_failing_obligation = a_impl_header
         .predicates
         .iter()
-        .chain(&b_impl_header.predicates)
+        .copied()
+        .chain(b_impl_header.predicates)
         .map(|p| infcx.resolve_vars_if_possible(p))
         .map(|p| Obligation {
             cause: ObligationCause::dummy(),
@@ -188,7 +189,7 @@ fn overlap_within_probe(
         }
     }
 
-    let impl_header = selcx.infcx().resolve_vars_if_possible(&a_impl_header);
+    let impl_header = selcx.infcx().resolve_vars_if_possible(a_impl_header);
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
 

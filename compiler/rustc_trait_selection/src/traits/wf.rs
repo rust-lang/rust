@@ -269,7 +269,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 param_env,
                 cause.clone(),
                 self.recursion_depth,
-                &obligation.predicate,
+                obligation.predicate,
                 &mut obligations,
             );
             obligation.predicate = normalized_predicate;

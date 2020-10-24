@@ -86,7 +86,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
             let (predicate, binders, _named_regions) = collect_bound_vars(
                 interner,
                 interner.tcx,
-                &predicate.bound_atom_with_opt_escaping(interner.tcx),
+                predicate.bound_atom_with_opt_escaping(interner.tcx),
             );
             let consequence = match predicate {
                 ty::PredicateAtom::TypeWellFormedFromEnv(ty) => {
@@ -141,7 +141,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
         let (predicate, binders, _named_regions) = collect_bound_vars(
             interner,
             interner.tcx,
-            &self.bound_atom_with_opt_escaping(interner.tcx),
+            self.bound_atom_with_opt_escaping(interner.tcx),
         );
 
         let value = match predicate {
@@ -293,7 +293,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             }
             ty::FnPtr(sig) => {
                 let (inputs_and_outputs, binders, _named_regions) =
-                    collect_bound_vars(interner, interner.tcx, &sig.inputs_and_output());
+                    collect_bound_vars(interner, interner.tcx, sig.inputs_and_output());
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: binders.len(interner),
                     sig: sig.lower_into(interner),
@@ -578,7 +578,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
         let (predicate, binders, _named_regions) = collect_bound_vars(
             interner,
             interner.tcx,
-            &self.bound_atom_with_opt_escaping(interner.tcx),
+            self.bound_atom_with_opt_escaping(interner.tcx),
         );
         let value = match predicate {
             ty::PredicateAtom::Trait(predicate, _) => {
@@ -627,10 +627,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         // Binders<&[Binders<WhereClause<I>>]>
         // This means that any variables that are escaping `self` need to be
         // shifted in by one so that they are still escaping.
-        let shifted_predicates = ty::fold::shift_vars(interner.tcx, &self, 1);
+        let shifted_predicates = ty::fold::shift_vars(interner.tcx, self, 1);
 
         let (predicates, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, &shifted_predicates);
+            collect_bound_vars(interner, interner.tcx, shifted_predicates);
         let self_ty = interner.tcx.mk_ty(ty::Bound(
             // This is going to be wrapped in a binder
             ty::DebruijnIndex::from_usize(1),
@@ -707,7 +707,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
         let (predicate, binders, _named_regions) = collect_bound_vars(
             interner,
             interner.tcx,
-            &self.bound_atom_with_opt_escaping(interner.tcx),
+            self.bound_atom_with_opt_escaping(interner.tcx),
         );
         match predicate {
             ty::PredicateAtom::Trait(predicate, _) => Some(chalk_ir::Binders::new(
@@ -808,10 +808,10 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
 /// It's important to note that because of prior substitution, we may have
 /// late-bound regions, even outside of fn contexts, since this is the best way
 /// to prep types for chalk lowering.
-crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
+crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
     interner: &RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
-    ty: &'a Binder<T>,
+    ty: Binder<T>,
 ) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
     let mut bound_vars_collector = BoundVarsCollector::new();
     ty.as_ref().skip_binder().visit_with(&mut bound_vars_collector);
@@ -824,7 +824,7 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
         .collect();
 
     let mut bound_var_substitutor = NamedBoundVarSubstitutor::new(tcx, &named_parameters);
-    let new_ty = ty.as_ref().skip_binder().fold_with(&mut bound_var_substitutor);
+    let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor);
 
     for var in named_parameters.values() {
         parameters.insert(*var, chalk_ir::VariableKind::Lifetime);
@@ -833,7 +833,7 @@ crate fn collect_bound_vars<'a, 'tcx, T: TypeFoldable<'tcx>>(
     (0..parameters.len()).for_each(|i| {
         parameters
             .get(&(i as u32))
-            .or_else(|| bug!("Skipped bound var index: ty={:?}, parameters={:?}", ty, parameters));
+            .or_else(|| bug!("Skipped bound var index: parameters={:?}", parameters));
     });
 
     let binders =
@@ -941,7 +941,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: Binder<T>) -> Binder<T> {
         self.binder_index.shift_in(1);
         let result = t.super_fold_with(self);
         self.binder_index.shift_out(1);
@@ -1001,7 +1001,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: Binder<T>) -> Binder<T> {
         self.binder_index.shift_in(1);
         let result = t.super_fold_with(self);
         self.binder_index.shift_out(1);

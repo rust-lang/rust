@@ -124,7 +124,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span)
     }
 
-    fn resolve_vars_if_possible<T>(&self, value: &T) -> T
+    fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -142,7 +142,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<Ty<'tcx>> {
         match ty {
             Some(ty) => {
-                let ty = self.resolve_vars_if_possible(&ty);
+                let ty = self.resolve_vars_if_possible(ty);
                 if ty.references_error() || ty.is_ty_var() {
                     debug!("resolve_type_vars_or_error: error from {:?}", ty);
                     Err(())
@@ -274,7 +274,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         F: FnOnce() -> McResult<PlaceWithHirId<'tcx>>,
     {
         debug!("cat_expr_adjusted_with({:?}): {:?}", adjustment, expr);
-        let target = self.resolve_vars_if_possible(&adjustment.target);
+        let target = self.resolve_vars_if_possible(adjustment.target);
         match adjustment.kind {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.

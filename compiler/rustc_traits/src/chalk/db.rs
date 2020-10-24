@@ -227,7 +227,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let (inputs_and_output, iobinders, _) = crate::chalk::lowering::collect_bound_vars(
             &self.interner,
             self.interner.tcx,
-            &sig.inputs_and_output().subst(self.interner.tcx, bound_vars),
+            sig.inputs_and_output().subst(self.interner.tcx, bound_vars),
         );
 
         let argument_types = inputs_and_output[..inputs_and_output.len() - 1]
@@ -461,7 +461,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::OpaqueTyDatum<RustInterner<'tcx>>> {
         let bound_vars = ty::fold::shift_vars(
             self.interner.tcx,
-            &bound_vars_for_item(self.interner.tcx, opaque_ty_id.0),
+            bound_vars_for_item(self.interner.tcx, opaque_ty_id.0),
             1,
         );
         let where_clauses = self.where_clauses_for(opaque_ty_id.0, bound_vars);

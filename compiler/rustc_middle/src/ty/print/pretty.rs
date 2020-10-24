@@ -1750,7 +1750,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         define_scoped_cx!(self);
 
         let mut region_index = self.region_index;
-        let new_value = self.tcx.replace_late_bound_regions(value, |br| {
+        let new_value = self.tcx.replace_late_bound_regions(value.clone(), |br| {
             let _ = start_or_continue(&mut self, "for<", ", ");
             let br = match br {
                 ty::BrNamed(_, name) => {

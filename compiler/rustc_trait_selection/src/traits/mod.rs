@@ -223,7 +223,7 @@ fn do_normalize_predicates<'tcx>(
         // we move over to lazy normalization *anyway*.
         let fulfill_cx = FulfillmentContext::new_ignoring_regions();
         let predicates =
-            match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, &predicates) {
+            match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
                 Ok(predicates) => predicates,
                 Err(errors) => {
                     infcx.report_fulfillment_errors(&errors, None, false);
@@ -243,7 +243,7 @@ fn do_normalize_predicates<'tcx>(
             RegionckMode::default(),
         );
 
-        let predicates = match infcx.fully_resolve(&predicates) {
+        let predicates = match infcx.fully_resolve(predicates) {
             Ok(predicates) => predicates,
             Err(fixup_err) => {
                 // If we encounter a fixup error, it means that some type
@@ -384,7 +384,7 @@ pub fn fully_normalize<'a, 'tcx, T>(
     mut fulfill_cx: FulfillmentContext<'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    value: &T,
+    value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>>
 where
     T: TypeFoldable<'tcx>,
@@ -404,7 +404,7 @@ where
     debug!("fully_normalize: select_all_or_error start");
     fulfill_cx.select_all_or_error(infcx)?;
     debug!("fully_normalize: select_all_or_error complete");
-    let resolved_value = infcx.resolve_vars_if_possible(&normalized_value);
+    let resolved_value = infcx.resolve_vars_if_possible(normalized_value);
     debug!("fully_normalize: resolved_value={:?}", resolved_value);
     Ok(resolved_value)
 }
@@ -424,7 +424,7 @@ pub fn impossible_predicates<'tcx>(
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();
         let Normalized { value: predicates, obligations } =
-            normalize(&mut selcx, param_env, cause.clone(), &predicates);
+            normalize(&mut selcx, param_env, cause.clone(), predicates);
         for obligation in obligations {
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
@@ -435,7 +435,7 @@ pub fn impossible_predicates<'tcx>(
 
         fulfill_cx.select_all_or_error(&infcx).is_err()
     });
-    debug!("impossible_predicates(predicates={:?}) = {:?}", predicates, result);
+    debug!("impossible_predicates = {:?}", result);
     result
 }
 
@@ -494,7 +494,7 @@ fn vtable_methods<'tcx>(
             // erase them if they appear, so that we get the type
             // at some particular call site.
             let substs =
-                tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &substs);
+                tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), substs);
 
             // It's possible that the method relies on where-clauses that
             // do not hold for this particular set of type parameters.

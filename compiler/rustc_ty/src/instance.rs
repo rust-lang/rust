@@ -51,7 +51,7 @@ fn inner_resolve_instance<'tcx>(
         resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
     } else {
         let ty = tcx.type_of(def.def_id_for_type_of());
-        let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
+        let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, ty);
 
         let def = match *item_type.kind() {
             ty::FnDef(..)
@@ -146,7 +146,7 @@ fn resolve_associated_item<'tcx>(
                     substs,
                     leaf_def.defining_node,
                 );
-                infcx.tcx.erase_regions(&substs)
+                infcx.tcx.erase_regions(substs)
             });
 
             // Since this is a trait item, we need to see if the item is either a trait default item
@@ -172,7 +172,7 @@ fn resolve_associated_item<'tcx>(
                 return Ok(None);
             }
 
-            let substs = tcx.erase_regions(&substs);
+            let substs = tcx.erase_regions(substs);
 
             // Check if we just resolved an associated `const` declaration from
             // a `trait` to an associated `const` definition in an `impl`, where
@@ -192,7 +192,7 @@ fn resolve_associated_item<'tcx>(
                 && leaf_def.item.def_id.is_local()
             {
                 let normalized_type_of = |def_id, substs| {
-                    tcx.subst_and_normalize_erasing_regions(substs, param_env, &tcx.type_of(def_id))
+                    tcx.subst_and_normalize_erasing_regions(substs, param_env, tcx.type_of(def_id))
                 };
 
                 let original_ty = normalized_type_of(trait_item.def_id, rcvr_substs);
@@ -264,7 +264,7 @@ fn resolve_associated_item<'tcx>(
                     assert_eq!(name, sym::clone_from);
 
                     // Use the default `fn clone_from` from `trait Clone`.
-                    let substs = tcx.erase_regions(&rcvr_substs);
+                    let substs = tcx.erase_regions(rcvr_substs);
                     Some(ty::Instance::new(def_id, substs))
                 }
             } else {

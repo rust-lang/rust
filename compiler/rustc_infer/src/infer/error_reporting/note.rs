@@ -24,7 +24,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         match *origin {
             infer::Subtype(ref trace) => {
-                if let Some((expected, found)) = self.values_str(&trace.values) {
+                if let Some((expected, found)) = self.values_str(trace.values) {
                     label_or_note(
                         trace.cause.span,
                         &format!("...so that the {}", trace.cause.as_requirement_str()),

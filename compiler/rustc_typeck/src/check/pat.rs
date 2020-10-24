@@ -459,7 +459,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Now that we know the types can be unified we find the unified type
         // and use it to type the entire expression.
-        let common_type = self.resolve_vars_if_possible(&lhs_ty.or(rhs_ty).unwrap_or(expected));
+        let common_type = self.resolve_vars_if_possible(lhs_ty.or(rhs_ty).unwrap_or(expected));
 
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let demand_eqtype = |x, y| {

@@ -51,7 +51,7 @@ pub(super) fn mangle(
 
     // Erase regions because they may not be deterministic when hashed
     // and should not matter anyhow.
-    let instance_ty = tcx.erase_regions(&instance_ty);
+    let instance_ty = tcx.erase_regions(instance_ty);
 
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 

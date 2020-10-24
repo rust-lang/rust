@@ -55,12 +55,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let owner_id = hir.body_owner(body_id);
         let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
         let poly_fn_sig = self.tcx().fn_sig(id);
-        let fn_sig = self.tcx().liberate_late_bound_regions(id, &poly_fn_sig);
+        let fn_sig = self.tcx().liberate_late_bound_regions(id, poly_fn_sig);
         body.params.iter().enumerate().find_map(|(index, param)| {
             // May return None; sometimes the tables are not yet populated.
             let ty = fn_sig.inputs()[index];
             let mut found_anon_region = false;
-            let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
+            let new_param_ty = self.tcx().fold_regions(ty, &mut false, |r, _| {
                 if *r == *anon_region {
                     found_anon_region = true;
                     replace_region

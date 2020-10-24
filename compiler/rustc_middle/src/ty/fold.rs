@@ -44,8 +44,8 @@ use std::ops::ControlFlow;
 ///
 /// To implement this conveniently, use the derive macro located in librustc_macros.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self;
+    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         self.super_fold_with(folder)
     }
 
@@ -158,8 +158,8 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 }
 
 impl TypeFoldable<'tcx> for hir::Constness {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
-        *self
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Self {
+        self
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
         ControlFlow::CONTINUE
@@ -174,7 +174,7 @@ impl TypeFoldable<'tcx> for hir::Constness {
 pub trait TypeFolder<'tcx>: Sized {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
-    fn fold_binder<T>(&mut self, t: &Binder<T>) -> Binder<T>
+    fn fold_binder<T>(&mut self, t: Binder<T>) -> Binder<T>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -266,7 +266,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// and skipped.
     pub fn fold_regions<T>(
         self,
-        value: &T,
+        value: T,
         skipped_regions: &mut bool,
         mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
     ) -> T
@@ -406,7 +406,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -466,7 +466,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -549,7 +549,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// contain escaping bound types.
     pub fn replace_late_bound_regions<T, F>(
         self,
-        value: &Binder<T>,
+        value: Binder<T>,
         fld_r: F,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
@@ -561,7 +561,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let fld_c = |bound_ct, ty| {
             self.mk_const(ty::Const { val: ty::ConstKind::Bound(ty::INNERMOST, bound_ct), ty })
         };
-        self.replace_escaping_bound_vars(value.as_ref().skip_binder(), fld_r, fld_t, fld_c)
+        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
@@ -569,7 +569,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// closure replaces escaping bound consts.
     pub fn replace_escaping_bound_vars<T, F, G, H>(
         self,
-        value: &T,
+        value: T,
         mut fld_r: F,
         mut fld_t: G,
         mut fld_c: H,
@@ -609,7 +609,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// types.
     pub fn replace_bound_vars<T, F, G, H>(
         self,
-        value: &Binder<T>,
+        value: Binder<T>,
         fld_r: F,
         fld_t: G,
         fld_c: H,
@@ -620,16 +620,12 @@ impl<'tcx> TyCtxt<'tcx> {
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        self.replace_escaping_bound_vars(value.as_ref().skip_binder(), fld_r, fld_t, fld_c)
+        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces any late-bound regions bound in `value` with
     /// free variants attached to `all_outlive_scope`.
-    pub fn liberate_late_bound_regions<T>(
-        self,
-        all_outlive_scope: DefId,
-        value: &ty::Binder<T>,
-    ) -> T
+    pub fn liberate_late_bound_regions<T>(self, all_outlive_scope: DefId, value: ty::Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -683,7 +679,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Replaces any late-bound regions bound in `value` with `'erased`. Useful in codegen but also
     /// method lookup and a few other places where precise region relationships are not required.
-    pub fn erase_late_bound_regions<T>(self, value: &Binder<T>) -> T
+    pub fn erase_late_bound_regions<T>(self, value: Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -698,7 +694,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `FnSig`s or `TraitRef`s which are equivalent up to region naming will become
     /// structurally identical. For example, `for<'a, 'b> fn(&'a isize, &'b isize)` and
     /// `for<'a, 'b> fn(&'b isize, &'a isize)` will become identical after anonymization.
-    pub fn anonymize_late_bound_regions<T>(self, sig: &Binder<T>) -> Binder<T>
+    pub fn anonymize_late_bound_regions<T>(self, sig: Binder<T>) -> Binder<T>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -740,7 +736,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: ty::Binder<T>) -> ty::Binder<T> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -804,7 +800,7 @@ pub fn shift_region<'tcx>(
     }
 }
 
-pub fn shift_vars<'tcx, T>(tcx: TyCtxt<'tcx>, value: &T, amount: u32) -> T
+pub fn shift_vars<'tcx, T>(tcx: TyCtxt<'tcx>, value: T, amount: u32) -> T
 where
     T: TypeFoldable<'tcx>,
 {

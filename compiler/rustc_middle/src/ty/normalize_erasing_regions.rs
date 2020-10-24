@@ -30,7 +30,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Erase first before we do the real query -- this keeps the
         // cache from being too polluted.
-        let value = self.erase_regions(&value);
+        let value = self.erase_regions(value);
         if !value.has_projections() {
             value
         } else {
@@ -49,7 +49,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn normalize_erasing_late_bound_regions<T>(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        value: &ty::Binder<T>,
+        value: ty::Binder<T>,
     ) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -65,7 +65,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_substs: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: T,
     ) -> T
     where
         T: TypeFoldable<'tcx>,

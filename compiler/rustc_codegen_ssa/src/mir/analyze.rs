@@ -24,7 +24,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     analyzer.visit_body(&mir);
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
-        let ty = fx.monomorphize(&decl.ty);
+        let ty = fx.monomorphize(decl.ty);
         debug!("local {:?} has type `{}`", local, ty);
         let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
         if fx.cx.is_backend_immediate(layout) {
@@ -121,10 +121,10 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             if is_consume {
                 let base_ty =
                     mir::Place::ty_from(place_ref.local, proj_base, self.fx.mir, cx.tcx());
-                let base_ty = self.fx.monomorphize(&base_ty);
+                let base_ty = self.fx.monomorphize(base_ty);
 
                 // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx(), self.fx.monomorphize(&elem)).ty;
+                let elem_ty = base_ty.projection_ty(cx.tcx(), self.fx.monomorphize(elem)).ty;
                 let span = self.fx.mir.local_decls[place_ref.local].source_info.span;
                 if cx.spanned_layout_of(elem_ty, span).is_zst() {
                     return;
@@ -313,7 +313,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
                 let ty = self.fx.mir.local_decls[local].ty;
-                let ty = self.fx.monomorphize(&ty);
+                let ty = self.fx.monomorphize(ty);
 
                 // Only need the place if we're actually dropping it.
                 if self.fx.cx.type_needs_drop(ty) {

@@ -131,7 +131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         id,
                         self.body_id,
                         self.param_env,
-                        &ty,
+                        ty,
                         arm.body.span,
                     );
                     let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();

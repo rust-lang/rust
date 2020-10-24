@@ -53,10 +53,10 @@ macro_rules! CloneTypeFoldableImpls {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
                 fn super_fold_with<F: $crate::ty::fold::TypeFolder<$tcx>>(
-                    &self,
+                    self,
                     _: &mut F
                 ) -> $ty {
-                    Clone::clone(self)
+                    self
                 }
 
                 fn super_visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
@@ -96,7 +96,7 @@ macro_rules! EnumTypeFoldableImpl {
             $(where $($wc)*)*
         {
             fn super_fold_with<V: $crate::ty::fold::TypeFolder<$tcx>>(
-                &self,
+                self,
                 folder: &mut V,
             ) -> Self {
                 EnumTypeFoldableImpl!(@FoldVariants(self, folder) input($($variants)*) output())

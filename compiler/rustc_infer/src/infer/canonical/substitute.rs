@@ -28,7 +28,7 @@ pub(super) trait CanonicalExt<'tcx, V> {
         &self,
         tcx: TyCtxt<'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
-        projection_fn: impl FnOnce(&V) -> &T,
+        projection_fn: impl FnOnce(&V) -> T,
     ) -> T
     where
         T: TypeFoldable<'tcx>;
@@ -39,14 +39,14 @@ impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
     where
         V: TypeFoldable<'tcx>,
     {
-        self.substitute_projected(tcx, var_values, |value| value)
+        self.substitute_projected(tcx, var_values, |value| value.clone())
     }
 
     fn substitute_projected<T>(
         &self,
         tcx: TyCtxt<'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
-        projection_fn: impl FnOnce(&V) -> &T,
+        projection_fn: impl FnOnce(&V) -> T,
     ) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -60,16 +60,16 @@ impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
 /// Substitute the values from `var_values` into `value`. `var_values`
 /// must be values for the set of canonical variables that appear in
 /// `value`.
-pub(super) fn substitute_value<'a, 'tcx, T>(
+pub(super) fn substitute_value<'tcx, T>(
     tcx: TyCtxt<'tcx>,
     var_values: &CanonicalVarValues<'tcx>,
-    value: &'a T,
+    value: T,
 ) -> T
 where
     T: TypeFoldable<'tcx>,
 {
     if var_values.var_values.is_empty() {
-        value.clone()
+        value
     } else {
         let fld_r =
             |br: ty::BoundRegion| match var_values.var_values[br.assert_bound_var()].unpack() {

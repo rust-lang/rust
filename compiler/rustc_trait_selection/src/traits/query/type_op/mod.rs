@@ -82,7 +82,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Sized + TypeFoldable<'tcx> + 'tcx {
         // `'static` otherwise.
         let mut canonical_var_values = OriginalQueryValues::default();
         let canonical_self =
-            infcx.canonicalize_hr_query_hack(&query_key, &mut canonical_var_values);
+            infcx.canonicalize_hr_query_hack(query_key.clone(), &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
 
         let param_env = query_key.param_env;

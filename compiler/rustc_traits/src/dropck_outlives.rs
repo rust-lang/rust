@@ -106,7 +106,7 @@ fn dropck_outlives<'tcx>(
                 // do not themselves define a destructor", more or less. We have
                 // to push them onto the stack to be expanded.
                 for ty in constraints.dtorck_types.drain(..) {
-                    match infcx.at(&cause, param_env).normalize(&ty) {
+                    match infcx.at(&cause, param_env).normalize(ty) {
                         Ok(Normalized { value: ty, obligations }) => {
                             fulfill_cx.register_predicate_obligations(infcx, obligations);
 

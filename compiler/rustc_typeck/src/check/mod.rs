@@ -362,7 +362,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxHashSet<LocalDe
 /// conclude that we don't have a defining use of `MyItem`. By mapping inference
 /// variables back to the actual generic parameters, we will correctly see that
 /// we have a defining use of `MyItem`
-fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T
+fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: T) -> T
 where
     T: TypeFoldable<'tcx>,
 {
@@ -510,15 +510,15 @@ fn typeck_with_fallback<'tcx>(
             check_abi(tcx, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside the fn.
-            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), &fn_sig);
+            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
             let fn_sig = inh.normalize_associated_types_in(
                 body.value.span,
                 body_id.hir_id,
                 param_env,
-                &fn_sig,
+                fn_sig,
             );
 
-            let fn_sig = fixup_opaque_types(tcx, &fn_sig);
+            let fn_sig = fixup_opaque_types(tcx, fn_sig);
 
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx
@@ -543,11 +543,11 @@ fn typeck_with_fallback<'tcx>(
                     _ => fallback(),
                 });
 
-            let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
+            let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             let revealed_ty = if tcx.features().impl_trait_in_bindings {
-                fcx.instantiate_opaque_types_from_value(id, &expected_type, body.value.span)
+                fcx.instantiate_opaque_types_from_value(id, expected_type, body.value.span)
             } else {
                 expected_type
             };

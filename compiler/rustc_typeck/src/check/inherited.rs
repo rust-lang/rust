@@ -156,7 +156,7 @@ impl Inherited<'a, 'tcx> {
         span: Span,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: T,
     ) -> T
     where
         T: TypeFoldable<'tcx>,

@@ -59,16 +59,13 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 let o_ty = self.fcx.to_ty(&ty);
 
                 let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
-                    self.fcx.instantiate_opaque_types_from_value(self.parent_id, &o_ty, ty.span)
+                    self.fcx.instantiate_opaque_types_from_value(self.parent_id, o_ty, ty.span)
                 } else {
                     o_ty
                 };
 
-                let c_ty = self
-                    .fcx
-                    .inh
-                    .infcx
-                    .canonicalize_user_type_annotation(&UserType::Ty(revealed_ty));
+                let c_ty =
+                    self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(revealed_ty));
                 debug!(
                     "visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
                     ty.hir_id, o_ty, revealed_ty, c_ty

@@ -224,11 +224,11 @@ fn compare_predicate_entailment<'tcx>(
         let (impl_m_own_bounds, _) = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
-            &ty::Binder::bind(impl_m_own_bounds.predicates),
+            ty::Binder::bind(impl_m_own_bounds.predicates),
         );
         for predicate in impl_m_own_bounds {
             let traits::Normalized { value: predicate, obligations } =
-                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), &predicate);
+                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), predicate);
 
             inh.register_predicates(obligations);
             inh.register_predicate(traits::Obligation::new(cause.clone(), param_env, predicate));
@@ -253,17 +253,17 @@ fn compare_predicate_entailment<'tcx>(
         let (impl_sig, _) = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
-            &tcx.fn_sig(impl_m.def_id),
+            tcx.fn_sig(impl_m.def_id),
         );
         let impl_sig =
-            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, &impl_sig);
+            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder::bind(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, &tcx.fn_sig(trait_m.def_id));
+        let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, tcx.fn_sig(trait_m.def_id));
         let trait_sig = trait_sig.subst(tcx, trait_to_placeholder_substs);
         let trait_sig =
-            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, &trait_sig);
+            inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
@@ -499,7 +499,7 @@ fn compare_self_type<'tcx>(
 
         tcx.infer_ctxt().enter(|infcx| {
             let self_arg_ty =
-                tcx.liberate_late_bound_regions(method.def_id, &ty::Binder::bind(self_arg_ty));
+                tcx.liberate_late_bound_regions(method.def_id, ty::Binder::bind(self_arg_ty));
             let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
             match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
                 ExplicitSelf::ByValue => "self".to_owned(),
@@ -968,12 +968,12 @@ crate fn compare_const_impl<'tcx>(
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty =
-            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, &impl_ty);
+            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, impl_ty);
 
         debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
         let trait_ty =
-            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, &trait_ty);
+            inh.normalize_associated_types_in(impl_c_span, impl_c_hir_id, param_env, trait_ty);
 
         debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
@@ -1136,7 +1136,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
         for predicate in impl_ty_own_bounds.predicates {
             let traits::Normalized { value: predicate, obligations } =
-                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), &predicate);
+                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), predicate);
 
             inh.register_predicates(obligations);
             inh.register_predicate(traits::Obligation::new(cause.clone(), param_env, predicate));
@@ -1261,7 +1261,7 @@ pub fn check_type_bounds<'tcx>(
                 &mut selcx,
                 normalize_param_env,
                 normalize_cause.clone(),
-                &obligation.predicate,
+                obligation.predicate,
             );
             debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
             obligation.predicate = normalized_predicate;

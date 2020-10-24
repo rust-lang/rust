@@ -51,7 +51,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         debug!("implied_outlives_bounds(ty = {:?})", ty);
 
         let mut orig_values = OriginalQueryValues::default();
-        let key = self.canonicalize_query(&param_env.and(ty), &mut orig_values);
+        let key = self.canonicalize_query(param_env.and(ty), &mut orig_values);
         let result = match self.tcx.implied_outlives_bounds(key) {
             Ok(r) => r,
             Err(NoSolution) => {

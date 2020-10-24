@@ -1495,7 +1495,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match ret_ty.kind() {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self);
-                let output = self.erase_late_bound_regions(&sig.output());
+                let output = self.erase_late_bound_regions(sig.output());
                 if output.is_impl_trait() {
                     let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
                     Some((output, fn_decl.output.span()))

@@ -135,7 +135,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     // Check if this is a generator, if so, return the drop glue for it
     if let Some(&ty::Generator(gen_def_id, substs, _)) = ty.map(|ty| ty.kind()) {
         let body = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
-        return body.subst(tcx, substs);
+        return body.clone().subst(tcx, substs);
     }
 
     let substs = if let Some(ty) = ty {
@@ -144,7 +144,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         InternalSubsts::identity_for_item(tcx, def_id)
     };
     let sig = tcx.fn_sig(def_id).subst(tcx, substs);
-    let sig = tcx.erase_late_bound_regions(&sig);
+    let sig = tcx.erase_late_bound_regions(sig);
     let span = tcx.def_span(def_id);
 
     let source_info = SourceInfo::outermost(span);
@@ -338,7 +338,7 @@ impl CloneShimBuilder<'tcx> {
         // or access fields of a Place of type TySelf.
         let substs = tcx.mk_substs_trait(self_ty, &[]);
         let sig = tcx.fn_sig(def_id).subst(tcx, substs);
-        let sig = tcx.erase_late_bound_regions(&sig);
+        let sig = tcx.erase_late_bound_regions(sig);
         let span = tcx.def_span(def_id);
 
         CloneShimBuilder {
@@ -656,7 +656,7 @@ fn build_call_shim<'tcx>(
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
     let (sig_substs, untuple_args) = if let ty::InstanceDef::FnPtrShim(_, ty) = instance {
-        let sig = tcx.erase_late_bound_regions(&ty.fn_sig(tcx));
+        let sig = tcx.erase_late_bound_regions(ty.fn_sig(tcx));
 
         let untuple_args = sig.inputs();
 
@@ -671,7 +671,7 @@ fn build_call_shim<'tcx>(
 
     let def_id = instance.def_id();
     let sig = tcx.fn_sig(def_id);
-    let mut sig = tcx.erase_late_bound_regions(&sig);
+    let mut sig = tcx.erase_late_bound_regions(sig);
 
     assert_eq!(sig_substs.is_some(), !instance.has_polymorphic_mir_body());
     if let Some(sig_substs) = sig_substs {

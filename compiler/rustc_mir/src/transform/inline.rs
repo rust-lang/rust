@@ -122,7 +122,7 @@ impl Inliner<'tcx> {
             let callee_body = callsite.callee.subst_mir_and_normalize_erasing_regions(
                 self.tcx,
                 self.param_env,
-                callee_body,
+                callee_body.clone(),
             );
 
             let old_blocks = caller_body.basic_blocks().next_index();

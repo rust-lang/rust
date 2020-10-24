@@ -1756,7 +1756,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 match tail.kind() {
                     ty::Param(_) | ty::Projection(_) => {
                         debug_assert!(tail.has_param_types_or_consts());
-                        Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(&tail) })
+                        Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
                     _ => bug!(
                         "SizeSkeleton::compute({}): layout errored ({}), yet \
@@ -2545,7 +2545,7 @@ where
     ) -> Self {
         debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
 
-        let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
 
         use rustc_target::spec::abi::Abi::*;
         let conv = match cx.tcx().sess.target.adjust_abi(sig.abi) {

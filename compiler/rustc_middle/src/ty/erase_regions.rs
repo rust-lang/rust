@@ -15,17 +15,17 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns an equivalent value with all free regions removed (note
     /// that late-bound regions remain, because they are important for
     /// subtyping, but they are anonymized and normalized as well)..
-    pub fn erase_regions<T>(self, value: &T) -> T
+    pub fn erase_regions<T>(self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
         // If there's nothing to erase avoid performing the query at all
         if !value.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND | TypeFlags::HAS_FREE_REGIONS) {
-            return value.clone();
+            return value;
         }
-
+        debug!("erase_regions({:?})", value);
         let value1 = value.fold_with(&mut RegionEraserVisitor { tcx: self });
-        debug!("erase_regions({:?}) = {:?}", value, value1);
+        debug!("erase_regions = {:?}", value1);
         value1
     }
 }
@@ -43,7 +43,7 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
         if ty.needs_infer() { ty.super_fold_with(self) } else { self.tcx.erase_regions_ty(ty) }
     }
 
-    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+    fn fold_binder<T>(&mut self, t: ty::Binder<T>) -> ty::Binder<T>
     where
         T: TypeFoldable<'tcx>,
     {

@@ -345,7 +345,7 @@ pub struct InferCtxt<'a, 'tcx> {
 }
 
 /// See the `error_reporting` module for more details.
-#[derive(Clone, Debug, PartialEq, Eq, TypeFoldable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
     Regions(ExpectedFound<ty::Region<'tcx>>),
@@ -955,7 +955,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         Some(self.commit_if_ok(|_snapshot| {
             let ty::SubtypePredicate { a_is_expected, a, b } =
-                self.replace_bound_vars_with_placeholders(&predicate);
+                self.replace_bound_vars_with_placeholders(predicate);
 
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
 
@@ -970,7 +970,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|_snapshot| {
             let ty::OutlivesPredicate(r_a, r_b) =
-                self.replace_bound_vars_with_placeholders(&predicate);
+                self.replace_bound_vars_with_placeholders(predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
             });
@@ -1266,7 +1266,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
-        self.resolve_vars_if_possible(&t).to_string()
+        self.resolve_vars_if_possible(t).to_string()
     }
 
     pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
@@ -1274,7 +1274,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         format!("({})", tstrs.join(", "))
     }
 
-    pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {
+    pub fn trait_ref_to_string(&self, t: ty::TraitRef<'tcx>) -> String {
         self.resolve_vars_if_possible(t).print_only_trait_path().to_string()
     }
 
@@ -1314,7 +1314,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// is left as is. This is an idempotent operation that does
     /// not affect inference state in any way and so you can do it
     /// at will.
-    pub fn resolve_vars_if_possible<T>(&self, value: &T) -> T
+    pub fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<'tcx, T> {
+    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: T) -> FixupResult<'tcx, T> {
         /*!
          * Attempts to resolve all type/region/const variables in
          * `value`. Region inference must have been run already (e.g.,
@@ -1383,7 +1383,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         M: FnOnce(String) -> DiagnosticBuilder<'tcx>,
     {
-        let actual_ty = self.resolve_vars_if_possible(&actual_ty);
+        let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
         // Don't report an error if actual type is `Error`.
@@ -1420,7 +1420,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
-        value: &ty::Binder<T>,
+        value: ty::Binder<T>,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         T: TypeFoldable<'tcx>,
@@ -1508,7 +1508,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         let mut original_values = OriginalQueryValues::default();
-        let canonical = self.canonicalize_query(&(param_env, substs), &mut original_values);
+        let canonical = self.canonicalize_query((param_env, substs), &mut original_values);
 
         let (param_env, substs) = canonical.value;
         // The return value is the evaluated value which doesn't contain any reference to inference

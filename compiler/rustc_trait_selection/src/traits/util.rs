@@ -205,12 +205,12 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     let impl_trait_ref = selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref = impl_trait_ref.subst(selcx.tcx(), impl_substs);
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), &impl_trait_ref);
+        super::normalize(selcx, param_env, ObligationCause::dummy(), impl_trait_ref);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), &predicates);
+        super::normalize(selcx, param_env, ObligationCause::dummy(), predicates);
     let impl_obligations =
         predicates_for_generics(ObligationCause::dummy(), 0, param_env, predicates);
 

@@ -63,7 +63,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 let mut subst_regions = vec![self.universal_regions.fr_static];
                 let universal_substs =
-                    infcx.tcx.fold_regions(&substs, &mut false, |region, _| match *region {
+                    infcx.tcx.fold_regions(substs, &mut false, |region, _| match *region {
                         ty::ReVar(vid) => {
                             subst_regions.push(vid);
                             self.definitions[vid].external_name.unwrap_or_else(|| {
@@ -94,7 +94,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 subst_regions.dedup();
 
                 let universal_concrete_type =
-                    infcx.tcx.fold_regions(&concrete_type, &mut false, |region, _| match *region {
+                    infcx.tcx.fold_regions(concrete_type, &mut false, |region, _| match *region {
                         ty::ReVar(vid) => subst_regions
                             .iter()
                             .find(|ur_vid| self.eval_equal(vid, **ur_vid))
@@ -139,7 +139,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(&ty, &mut false, |region, _| match *region {
+        tcx.fold_regions(ty, &mut false, |region, _| match *region {
             ty::ReVar(vid) => {
                 // Find something that we can name
                 let upper_bound = self.approx_universal_upper_bound(vid);

@@ -21,7 +21,7 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
     tcx.sess.perf_stats.normalize_generic_arg_after_erasing_regions.fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::dummy();
-        match infcx.at(&cause, param_env).normalize(&value) {
+        match infcx.at(&cause, param_env).normalize(value) {
             Ok(Normalized { value: normalized_value, obligations: normalized_obligations }) => {
                 // We don't care about the `obligations`; they are
                 // always only region relations, and we are about to
@@ -31,8 +31,8 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
                     None,
                 );
 
-                let normalized_value = infcx.resolve_vars_if_possible(&normalized_value);
-                infcx.tcx.erase_regions(&normalized_value)
+                let normalized_value = infcx.resolve_vars_if_possible(normalized_value);
+                infcx.tcx.erase_regions(normalized_value)
             }
             Err(NoSolution) => bug!("could not fully normalize `{:?}`", value),
         }

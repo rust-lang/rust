@@ -389,7 +389,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         member_region,
                         span,
                     } => {
-                        let hidden_ty = self.resolve_vars_if_possible(&hidden_ty);
+                        let hidden_ty = self.resolve_vars_if_possible(hidden_ty);
                         unexpected_hidden_region_diagnostic(
                             self.tcx,
                             span,
@@ -590,7 +590,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         match cause.code {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
-                let ty = self.resolve_vars_if_possible(&root_ty);
+                let ty = self.resolve_vars_if_possible(root_ty);
                 if ty.is_suggestable() {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
@@ -661,7 +661,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 _ => {
                     // `last_ty` can be `!`, `expected` will have better info when present.
-                    let t = self.resolve_vars_if_possible(&match exp_found {
+                    let t = self.resolve_vars_if_possible(match exp_found {
                         Some(ty::error::ExpectedFound { expected, .. }) => expected,
                         _ => last_ty,
                     });
@@ -1547,7 +1547,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     _ => (false, Mismatch::Fixed("type")),
                 };
-                let vals = match self.values_str(&values) {
+                let vals = match self.values_str(values) {
                     Some((expected, found)) => Some((expected, found)),
                     None => {
                         // Derived error. Cancel the emitter.
@@ -1893,32 +1893,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     fn values_str(
         &self,
-        values: &ValuePairs<'tcx>,
+        values: ValuePairs<'tcx>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
-        match *values {
-            infer::Types(ref exp_found) => self.expected_found_str_ty(exp_found),
-            infer::Regions(ref exp_found) => self.expected_found_str(exp_found),
-            infer::Consts(ref exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(ref exp_found) => {
+        match values {
+            infer::Types(exp_found) => self.expected_found_str_ty(exp_found),
+            infer::Regions(exp_found) => self.expected_found_str(exp_found),
+            infer::Consts(exp_found) => self.expected_found_str(exp_found),
+            infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),
                     found: exp_found.found.print_only_trait_path(),
                 };
-                self.expected_found_str(&pretty_exp_found)
+                self.expected_found_str(pretty_exp_found)
             }
-            infer::PolyTraitRefs(ref exp_found) => {
+            infer::PolyTraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),
                     found: exp_found.found.print_only_trait_path(),
                 };
-                self.expected_found_str(&pretty_exp_found)
+                self.expected_found_str(pretty_exp_found)
             }
         }
     }
 
     fn expected_found_str_ty(
         &self,
-        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        exp_found: ty::error::ExpectedFound<Ty<'tcx>>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
@@ -1931,7 +1931,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Returns a string of the form "expected `{}`, found `{}`".
     fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
         &self,
-        exp_found: &ty::error::ExpectedFound<T>,
+        exp_found: ty::error::ExpectedFound<T>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
@@ -2180,7 +2180,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "...",
                 );
                 if let Some(infer::RelateParamBound(_, t)) = origin {
-                    let t = self.resolve_vars_if_possible(&t);
+                    let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
@@ -2237,7 +2237,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             debug!("report_sub_sup_conflict: sub_trace.values={:?}", sub_trace.values);
 
             if let (Some((sup_expected, sup_found)), Some((sub_expected, sub_found))) =
-                (self.values_str(&sup_trace.values), self.values_str(&sub_trace.values))
+                (self.values_str(sup_trace.values), self.values_str(sub_trace.values))
             {
                 if sub_expected == sup_expected && sub_found == sup_found {
                     note_and_explain_region(

@@ -2455,7 +2455,7 @@ impl UserTypeProjection {
 CloneTypeFoldableAndLiftImpls! { ProjectionKind, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         use crate::mir::ProjectionElem::*;
 
         let base = self.base.fold_with(folder);

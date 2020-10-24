@@ -158,7 +158,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
             FulfillmentContext::new(),
             ObligationCause::dummy(),
             penv,
-            &impl1_trait_ref,
+            impl1_trait_ref,
         ) {
             Ok(impl1_trait_ref) => impl1_trait_ref,
             Err(err) => {
@@ -247,7 +247,7 @@ fn fulfill_implication<'a, 'tcx>(
 
                 // Now resolve the *substitution* we built for the target earlier, replacing
                 // the inference variables inside with whatever we got from fulfillment.
-                Ok(infcx.resolve_vars_if_possible(&target_substs))
+                Ok(infcx.resolve_vars_if_possible(target_substs))
             }
         }
     })

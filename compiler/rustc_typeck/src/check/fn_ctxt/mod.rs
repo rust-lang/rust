@@ -262,7 +262,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         let (trait_ref, _) = self.replace_bound_vars_with_fresh_vars(
             span,
             infer::LateBoundRegionConversionTime::AssocTypeProjection(item_def_id),
-            &poly_trait_ref,
+            poly_trait_ref,
         );
 
         let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(

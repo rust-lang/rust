@@ -359,15 +359,15 @@ impl<'tcx> Instance<'tcx> {
         // HACK(eddyb) erase regions in `substs` first, so that `param_env.and(...)`
         // below is more likely to ignore the bounds in scope (e.g. if the only
         // generic parameters mentioned by `substs` were lifetime ones).
-        let substs = tcx.erase_regions(&substs);
+        let substs = tcx.erase_regions(substs);
 
         // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
         if let Some((did, param_did)) = def.as_const_arg() {
             tcx.resolve_instance_of_const_arg(
-                tcx.erase_regions(&param_env.and((did, param_did, substs))),
+                tcx.erase_regions(param_env.and((did, param_did, substs))),
             )
         } else {
-            tcx.resolve_instance(tcx.erase_regions(&param_env.and((def.did, substs))))
+            tcx.resolve_instance(tcx.erase_regions(param_env.and((def.did, substs))))
         }
     }
 
@@ -452,7 +452,7 @@ impl<'tcx> Instance<'tcx> {
         let self_ty = tcx.mk_closure(closure_did, substs);
 
         let sig = substs.as_closure().sig();
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
         assert_eq!(sig.inputs().len(), 1);
         let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
 
@@ -485,7 +485,7 @@ impl<'tcx> Instance<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        v: &T,
+        v: T,
     ) -> T
     where
         T: TypeFoldable<'tcx> + Clone,
@@ -493,7 +493,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(substs) = self.substs_for_mir_body() {
             tcx.subst_and_normalize_erasing_regions(substs, param_env, v)
         } else {
-            tcx.normalize_erasing_regions(param_env, v.clone())
+            tcx.normalize_erasing_regions(param_env, v)
         }
     }
 
