@@ -158,7 +158,7 @@
         },
         {
             "comment": "modules",
-            "match": "(mod)\\s+([a-z][A-Za-z0-9_]*)",
+            "match": "(mod)\\s+((?:r#(?!crate|[Ss]elf|super))?[a-z][A-Za-z0-9_]*)",
             "captures": {
                 "1": {
                     "name": "keyword.control.rust"
@@ -295,11 +295,6 @@
                     "comment": "line comments",
                     "name": "comment.line.double-slash.rust",
                     "match": "\\s*//.*"
-                },
-                {
-                    "comment": "inferred types, wildcard patterns, ignored params",
-                    "name": "comment.char.underscore.rust",
-                    "match": "\\b_\\w*\\b[^!(]"
                 }
             ]
         },
@@ -432,9 +427,21 @@
         "functions": {
             "patterns": [
                 {
+                    "comment": "pub as a function",
+                    "match": "\\b(pub)(\\()",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.other.rust"
+                        },
+                        "2": {
+                            "name": "punctuation.brackets.round.rust"
+                        }
+                    }
+                },
+                {
                     "comment": "function definition",
                     "name": "meta.function.definition.rust",
-                    "begin": "\\b(fn)\\s+([A-Za-z0-9_]+)((\\()|(<))",
+                    "begin": "\\b(fn)\\s+((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)((\\()|(<))",
                     "beginCaptures": {
                         "1": {
                             "name": "keyword.control.fn.rust"
@@ -503,18 +510,12 @@
                 {
                     "comment": "function/method calls, chaining",
                     "name": "meta.function.call.rust",
-                    "begin": "(?:(pub)|(?:(\\.)?([A-Za-z0-9_]+)))(\\()",
+                    "begin": "((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)(\\()",
                     "beginCaptures": {
                         "1": {
-                            "name": "keyword.other.rust"
-                        },
-                        "2": {
-                            "name": "keyword.operator.access.dot.rust"
-                        },
-                        "3": {
                             "name": "entity.name.function.rust"
                         },
-                        "4": {
+                        "2": {
                             "name": "punctuation.brackets.round.rust"
                         }
                     },
@@ -1042,7 +1043,7 @@
                 {
                     "comment": "variables",
                     "name": "variable.other.rust",
-                    "match": "\\b(?<!\\.)[a-z0-9_]+\\b"
+                    "match": "\\b(?<!\\.)(?:r#(?!(crate|[Ss]elf|super)))?[a-z0-9_]+\\b"
                 }
             ]
         }
