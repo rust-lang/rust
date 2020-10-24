@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    name: Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }} mode ${{ matrix.build }}
+    name: Enzyme Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }} mode ${{ matrix.build }}
     runs-on: ${{ matrix.os }}
     
     strategy:

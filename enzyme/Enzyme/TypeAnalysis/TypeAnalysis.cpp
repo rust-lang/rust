@@ -2009,8 +2009,14 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
     if (ci->getName() == "realloc") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      if (direction & DOWN) {
+        updateAnalysis(&call, getAnalysis(call.getOperand(0)), &call);
+      }
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      if (direction & UP) {
+        updateAnalysis(call.getOperand(0), getAnalysis(&call), &call);
+      }
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       return;

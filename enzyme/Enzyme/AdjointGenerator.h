@@ -2210,6 +2210,12 @@ public:
     }
 
     if (called && called->getName() == "posix_memalign") {
+      if (gutils->invertedPointers.count(orig)) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+        gutils->invertedPointers.erase(orig);
+        gutils->erase(placeholder);
+      }
+
       bool constval = gutils->isConstantValue(orig);
 
       if (!constval) {
@@ -2260,11 +2266,12 @@ public:
           getReverseBuilder(Builder2);
           Value *tofree = gutils->lookupM(val, Builder2, ValueToValueMapTy(),
                                           /*tryLegalRecompute*/ false);
-          CallInst::CreateFree(tofree, Builder2.GetInsertBlock());
+          auto freeCall = cast<CallInst>(CallInst::CreateFree(tofree, Builder2.GetInsertBlock()));
+          Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
         }
       }
 
-      CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
+      //CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
       // TODO enable this if we need to free the memory
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
@@ -2279,21 +2286,17 @@ public:
         // Note that here we cannot simply replace with null as users who try
         // to find the shadow pointer will use the shadow of null rather than
         // the true shadow of this
-        auto pn = BuilderZ.CreatePHI(orig->getType(), 1,
-                                     (orig->getName() + "_replacementB").str());
-        gutils->fictiousPHIs.push_back(pn);
-        gutils->replaceAWithB(op, pn);
-        gutils->erase(op);
         //}
       } else {
         IRBuilder<> Builder2(gutils->getNewFromOriginal(&call)->getNextNode());
-        auto load = Builder2.CreateLoad(call.getOperand(0));
+        auto load = Builder2.CreateLoad(gutils->getNewFromOriginal(call.getOperand(0)));
         Builder2.SetInsertPoint(&call);
         getReverseBuilder(Builder2);
-        CallInst::CreateFree(gutils->lookupM(load, Builder2,
+        auto freeCall = cast<CallInst>(CallInst::CreateFree(gutils->lookupM(load, Builder2,
                                              ValueToValueMapTy(),
                                              /*tryLegal*/ false),
-                             Builder2.GetInsertBlock());
+                             Builder2.GetInsertBlock()));
+        Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
       }
 
       return;

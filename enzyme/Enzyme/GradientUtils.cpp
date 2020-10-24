@@ -1319,7 +1319,22 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         getNewFromOriginal(op2), arg->getName() + "'ipie");
     invertedPointers[arg] = result;
     return lookupM(invertedPointers[arg], BuilderM);
-  } else if (auto arg = dyn_cast<SelectInst>(oval)) {
+  } else if (auto arg = dyn_cast<ShuffleVectorInst>(oval)) {
+    IRBuilder<> bb(getNewFromOriginal(arg));
+    Value *op0 = arg->getOperand(0);
+    Value *op1 = arg->getOperand(1);
+    #if LLVM_VERSION_MAJOR >= 10
+    auto result = bb.CreateShuffleVector(
+        invertPointerM(op0, bb), invertPointerM(op1, bb),
+        arg->getShuffleMask(), arg->getName() + "'ipsv");
+    #else
+    auto result = bb.CreateShuffleVector(
+        invertPointerM(op0, bb), invertPointerM(op1, bb),
+        arg->getOperand(2), arg->getName() + "'ipsv");
+    #endif
+    invertedPointers[arg] = result;
+    return lookupM(invertedPointers[arg], BuilderM);
+   } else if (auto arg = dyn_cast<SelectInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     auto result = bb.CreateSelect(getNewFromOriginal(arg->getCondition()),
                                   invertPointerM(arg->getTrueValue(), bb),

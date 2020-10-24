@@ -190,6 +190,7 @@ static inline bool OnlyUsedInOMP(AllocaInst *AI) {
     return false;
   return true;
 }
+
 /// Convert necessary stack allocations into mallocs for use in the reverse
 /// pass. Specifically if we're not topLevel all allocations must be upgraded
 /// Even if topLevel any allocations that aren't in the entry block (and
@@ -235,6 +236,192 @@ static inline void UpgradeAllocasToMallocs(Function *NewF, bool topLevel) {
     AI->replaceAllUsesWith(rep);
     AI->eraseFromParent();
   }
+}
+
+// Create a stack variable containing the size of the allocation
+// error if not possible (e.g. not local)
+static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function* NewF, IntegerType* T, const std::map<CallInst*, Value*> &reallocSizes) {
+  IRBuilder <> B(&*NewF->getEntryBlock().begin());
+  AllocaInst* AI = B.CreateAlloca(T);
+
+  std::set< std::pair<Value*, Instruction*> > seen;
+  std::deque< std::pair<Value*, Instruction*> > todo = { {Ptr, Loc} };
+
+  while(todo.size()) {
+    auto next = todo.front();
+    todo.pop_front();
+    if (seen.count(next)) continue;
+    seen.insert(next);
+
+    if (auto CI = dyn_cast<CastInst>(next.first)) {
+      todo.push_back({CI->getOperand(0), CI});
+      continue;
+    }
+
+    // Assume zero size if realloc of undef pointer
+    if (isa<UndefValue>(next.first)) {
+      B.SetInsertPoint(next.second);
+      B.CreateStore(ConstantInt::get(T, 0), AI);
+      continue;
+    }
+    
+    if (auto CE = dyn_cast<ConstantExpr>(next.first)) {
+      if (CE->isCast()) {
+        todo.push_back({CE->getOperand(0), next.second});
+        continue;
+      }
+    }
+
+
+    if (auto C = dyn_cast<Constant>(next.first)) {
+      if (C->isNullValue()) {
+        B.SetInsertPoint(next.second);
+        B.CreateStore(ConstantInt::get(T, 0), AI);
+        continue;
+      }
+    }
+    if (auto CI = dyn_cast<ConstantInt>(next.first)) {
+      // if negative or below 0xFFF this cannot possibly represent
+      // a real pointer, so ignore this case by setting to 0
+      if (CI->isNegative() || CI->getLimitedValue() <= 0xFFF) {
+        B.SetInsertPoint(next.second);
+        B.CreateStore(ConstantInt::get(T, 0), AI);
+        continue;
+      }
+    }
+
+    if (auto PN = dyn_cast<PHINode>(next.first)) {
+      for(size_t i=0; i<PN->getNumIncomingValues(); i++) {
+        todo.push_back({PN->getIncomingValue(i), PN->getIncomingBlock(i)->getTerminator()});
+      }
+      continue;
+    }
+    
+    if (auto CI = dyn_cast<CallInst>(next.first)) {
+      if (auto F = CI->getCalledFunction()) {
+        if (F->getName() == "malloc") {
+          B.SetInsertPoint(next.second);
+          B.CreateStore(CI->getArgOperand(0), AI);
+          continue;
+        }
+        if (F->getName() == "calloc") {
+          B.SetInsertPoint(next.second);
+          B.CreateStore(B.CreateMul(CI->getArgOperand(0),CI->getArgOperand(1)), AI);
+          continue;
+        }
+        if (F->getName() == "realloc") {
+          assert(reallocSizes.find(CI) != reallocSizes.end());
+          B.SetInsertPoint(next.second);
+          B.CreateStore(reallocSizes.find(CI)->second, AI);
+          continue;
+        }
+      }
+    }
+    EmitFailure("DynamicReallocSize", Loc->getDebugLoc(), Loc,
+                "could not statically determine size of realloc ", *Loc, " - because of - ", *next.first);
+    llvm_unreachable("DynamicReallocSize");
+  }
+  return AI;
+}
+
+/// Calls to realloc with an appropriate implementation 
+static inline void ReplaceReallocs(Function *NewF) {
+  std::vector<CallInst *> ToConvert;
+  std::map<CallInst*, Value*> reallocSizes;
+  IntegerType* T;
+
+  for (auto &BB : *NewF) {
+    for (auto &I : BB) {
+      if (auto CI = dyn_cast<CallInst>(&I)) {
+        if (auto F = CI->getCalledFunction()) {
+          if (F->getName() == "realloc") {
+            ToConvert.push_back(CI);
+            IRBuilder <> B(CI->getNextNode());
+            T = cast<IntegerType>(CI->getArgOperand(1)->getType());
+            reallocSizes[CI] = B.CreatePHI(T, 0);
+          }
+        }
+      }
+    }
+  }
+
+  std::vector<AllocaInst*> memoryLocations;
+
+  for (auto CI : ToConvert) {
+    AllocaInst* AI = OldAllocationSize(CI->getArgOperand(0), CI, NewF, T, reallocSizes);
+
+    BasicBlock* resize = BasicBlock::Create(CI->getContext(),
+                                             "resize" + CI->getName(), NewF);
+    assert(resize->getParent() == NewF);
+
+    BasicBlock* splitParent = CI->getParent();
+    BasicBlock* nextBlock = splitParent->splitBasicBlock(CI);
+
+    splitParent->getTerminator()->eraseFromParent();
+    IRBuilder <>B(splitParent);
+
+    Value* p = CI->getArgOperand(0);
+    Value* req = CI->getArgOperand(1);
+    Value* old = B.CreateLoad(AI);
+
+    Value* cmp = B.CreateICmpULE(req, old);
+    // if (req < old)
+    B.CreateCondBr(cmp, nextBlock, resize);
+
+    B.SetInsertPoint(resize);
+    //    size_t newsize = nextPowerOfTwo(req);
+    //    void* next = malloc(newsize);
+    //    memcpy(next, p, newsize);
+    //    free(p);
+    //    return { next, newsize }; 
+    
+    Value* newsize = nextPowerOfTwo(B, req);
+    CallInst* next = cast<CallInst>(CallInst::CreateMalloc(resize, newsize->getType(), Type::getInt8Ty(CI->getContext()), newsize, nullptr, (Function*)nullptr, ""));
+    resize->getInstList().push_back(next);
+    B.SetInsertPoint(resize);
+
+    auto volatile_arg = ConstantInt::getFalse(CI->getContext());
+
+    Value *nargs[] = {next, p, old, volatile_arg};
+
+    Type *tys[] = {next->getType(), p->getType(),
+                    old->getType()};
+
+    auto memcpyF = Intrinsic::getDeclaration(
+        NewF->getParent(), Intrinsic::memcpy, tys);
+
+    auto mem = cast<CallInst>(B.CreateCall(memcpyF, nargs));
+    mem->setCallingConv(memcpyF->getCallingConv());
+
+    CallInst* freeCall = cast<CallInst>(CallInst::CreateFree(p, resize));
+    resize->getInstList().push_back(freeCall);
+    B.SetInsertPoint(resize);
+
+    B.CreateBr(nextBlock);
+
+    // else
+    //   return { p, old }
+    B.SetInsertPoint(&*nextBlock->begin());
+
+    PHINode* retPtr = B.CreatePHI(CI->getType(), 2);
+    retPtr->addIncoming(p, splitParent);
+    retPtr->addIncoming(next, resize);
+    CI->replaceAllUsesWith(retPtr);
+    std::string nam = CI->getName().str();
+    CI->setName("");
+    retPtr->setName(nam);
+    Value* nextSize = B.CreateSelect(cmp, old, req);
+    reallocSizes[CI]->replaceAllUsesWith(nextSize);
+    cast<PHINode>(reallocSizes[CI])->eraseFromParent();
+    reallocSizes[CI] = nextSize;
+  }
+
+  for (auto CI : ToConvert) {
+    CI->eraseFromParent();
+  }
+
+  DominatorTree DT(*NewF);
+  PromoteMemToReg(memoryLocations, DT, /*AC*/nullptr);
 }
 
 /// Perform recursive inlinining on NewF up to the given limit
@@ -395,11 +582,13 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #endif
       }
     }
-
+  
     {
       DominatorTree DT(*NewF);
       PromoteMemoryToRegister(*NewF, DT);
     }
+
+    ReplaceReallocs(NewF);
 
     {
       FunctionAnalysisManager AM;
@@ -433,6 +622,8 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
       SimplifyCFGPass(scfgo).run(*NewF, AM);
     }
   }
+
+  ReplaceReallocs(NewF);
 
   // Run LoopSimplifyPass to ensure preheaders exist on all loops
   {
