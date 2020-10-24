@@ -15,4 +15,11 @@ fn main() {
     panic!(S); // No warning (yet)
     panic!(concat!("{", "}")); //~ WARN panic message contains an unused formatting placeholder
     panic!(concat!("{", "{")); //~ WARN panic message contains braces
+
+    // Check that the lint only triggers for std::panic and core::panic,
+    // not any panic macro:
+    macro_rules! panic {
+        ($e:expr) => ();
+    }
+    panic!("{}"); // OK
 }
