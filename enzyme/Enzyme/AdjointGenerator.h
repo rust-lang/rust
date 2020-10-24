@@ -2209,6 +2209,86 @@ public:
       return;
     }
 
+    if (called && called->getName() == "posix_memalign") {
+      bool constval = gutils->isConstantValue(orig);
+
+      if (!constval) {
+        Value* val;
+        IRBuilder<> Builder2(gutils->getNewFromOriginal(orig));
+        if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
+          Value* ptrshadow = gutils->invertPointerM(call.getArgOperand(0), Builder2);
+          Builder2.CreateCall(called, std::vector<Value*>({ptrshadow, call.getArgOperand(1), call.getArgOperand(2)}));
+          val = Builder2.CreateLoad(ptrshadow);
+          val = gutils->cacheForReverse(Builder2, val, getIndex(orig, CacheType::Shadow));
+
+          auto dst_arg =
+              Builder2.CreateBitCast(val, Type::getInt8PtrTy(call.getContext()));
+          auto val_arg = ConstantInt::get(Type::getInt8Ty(call.getContext()), 0);
+          auto len_arg =
+              Builder2.CreateZExtOrTrunc(call.getArgOperand(2), Type::getInt64Ty(call.getContext()));
+          auto volatile_arg = ConstantInt::getFalse(call.getContext());
+
+    #if LLVM_VERSION_MAJOR == 6
+          auto align_arg =
+              ConstantInt::get(Type::getInt32Ty(call.getContext()), 1);
+          Value *nargs[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
+    #else
+          Value *nargs[] = {dst_arg, val_arg, len_arg, volatile_arg};
+    #endif
+
+          Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+
+          auto memset = cast<CallInst>(
+              Builder2.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(),
+                                                      Intrinsic::memset, tys),
+                            nargs));
+          // memset->addParamAttr(0, Attribute::getWithAlignment(Context,
+          // inst->getAlignment()));
+          memset->addParamAttr(0, Attribute::NonNull);
+        } else {
+          val = gutils->cacheForReverse(Builder2, nullptr, getIndex(orig, CacheType::Shadow));
+        }
+
+        if (Mode == DerivativeMode::Both || Mode == DerivativeMode::Reverse) {
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *tofree = gutils->lookupM(val, Builder2, ValueToValueMapTy(), /*tryLegalRecompute*/false);
+          CallInst::CreateFree(tofree, Builder2.GetInsertBlock());
+        }
+      }
+
+      CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
+      // TODO enable this if we need to free the memory
+      // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
+      // TO FREE'ing
+      if (Mode != DerivativeMode::Both) {
+        //if (is_value_needed_in_reverse<Primal>(
+        //        TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both)) {
+            
+        //  gutils->cacheForReverse(BuilderZ, op,
+        //                          getIndex(orig, CacheType::Self));
+        //} else if (Mode != DerivativeMode::Forward) {
+          // Note that here we cannot simply replace with null as users who try
+          // to find the shadow pointer will use the shadow of null rather than
+          // the true shadow of this
+          auto pn = BuilderZ.CreatePHI(
+              orig->getType(), 1, (orig->getName() + "_replacementB").str());
+          gutils->fictiousPHIs.push_back(pn);
+          gutils->replaceAWithB(op, pn);
+          gutils->erase(op);
+        //}
+      } else {
+        IRBuilder<> Builder2(gutils->getNewFromOriginal(&call)->getNextNode());
+        auto load = Builder2.CreateLoad(call.getOperand(0));
+        Builder2.SetInsertPoint(&call);
+        getReverseBuilder(Builder2);
+        CallInst::CreateFree(gutils->lookupM(load, Builder2, ValueToValueMapTy(), /*tryLegal*/false), Builder2.GetInsertBlock());
+      }
+
+      return;
+    }
+
+
     // Remove free's in forward pass so the memory can be used in the reverse
     // pass
     if (called && isDeallocationFunction(*called, gutils->TLI)) {

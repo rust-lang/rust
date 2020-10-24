@@ -1328,7 +1328,6 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
 
   const size_t lhs = 0;
   const size_t rhs = 1;
-  //const size_t maskIdx = 2;
 
   size_t numFirst =
       cast<VectorType>(I.getOperand(lhs)->getType())->getNumElements();
@@ -1336,11 +1335,6 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
   size_t resSize = (dl.getTypeSizeInBits(resType) + 7) / 8;
 
   auto mask = I.getShuffleMask();
-  llvm::errs() << I << "\n";
-  //assert(mask.size() ==
-  //       cast<VectorType>(I.getOperand(maskIdx)->getType())->getNumElements());
-  //assert(isa<IntegerType>(
-  //    cast<VectorType>(I.getOperand(maskIdx)->getType())->getElementType()));
 
   TypeTree result; //  = getAnalysis(&I);
   for (size_t i = 0; i < mask.size(); ++i) {
@@ -2001,6 +1995,38 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       }
       assert(ci->getReturnType()->isPointerTy());
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      return;
+    }
+    if (ci->getName() == "posix_memalign") {
+      TypeTree ptrptr;
+      ptrptr.insert({-1}, BaseType::Pointer);
+      ptrptr.insert({-1,0}, BaseType::Pointer);
+      updateAnalysis(call.getOperand(0), ptrptr, &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
+    }
+    if (ci->getName() == "realloc") {
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
+    }
+    if (ci->getName() == "mmap") {
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(5), TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
+    }
+    if (ci->getName() == "munmap") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
     }
     if (isDeallocationFunction(*ci, interprocedural.TLI)) {
       size_t Idx = 0;
@@ -2016,6 +2042,21 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         Idx++;
       }
       assert(ci->getReturnType()->isVoidTy());
+      return;
+    }
+
+
+    if (ci->getName() == "strlen") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
+      return;
+    }
+    if (ci->getName() == "bcmp") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1), &call);
+      return;
     }
 
     // CONSIDER(__lgamma_r_finite)

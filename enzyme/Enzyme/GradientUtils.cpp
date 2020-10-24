@@ -1515,7 +1515,7 @@ end:;
 }
 
 Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
-                              const ValueToValueMapTy &incoming_available) {
+                              const ValueToValueMapTy &incoming_available, bool tryLegalRecomputeCheck) {
   assert(val->getName() != "<badref>");
   if (isa<Constant>(val)) {
     return val;
@@ -1670,7 +1670,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     return available[inst];
 
   // TODO consider call as part of
-  if (legalRecompute(prelcssaInst, available)) {
+  if (tryLegalRecomputeCheck && legalRecompute(prelcssaInst, available)) {
     if (shouldRecompute(prelcssaInst, available)) {
       auto op = unwrapM(prelcssaInst, BuilderM, available,
                         UnwrapMode::AttemptSingleUnwrap);

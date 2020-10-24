@@ -109,6 +109,7 @@ const char *KnownInactiveFunctions[] = {
     "__cxa_guard_acquire",
     "__cxa_guard_release",
     "__cxa_guard_abort",
+    "posix_memalign",
     "printf",
     "puts",
     "__enzyme_float",
@@ -154,6 +155,8 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
     if (Name == FuncName)
       return true;
   }
+  if (F->getIntrinsicID() == Intrinsic::trap)
+    return true;
 
   /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive
   /// use
@@ -746,7 +749,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             }
             if (F->getName() == "__cxa_guard_acquire" ||
                 F->getName() == "__cxa_guard_release" ||
-                F->getName() == "__cxa_guard_abort") {
+                F->getName() == "__cxa_guard_abort" ||
+                F->getName() == "posix_memalign") {
               continue;
             }
 
@@ -1117,7 +1121,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   if (auto op = dyn_cast<CallInst>(inst)) {
     if (auto called = op->getCalledFunction()) {
       if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
-          called->getName() == "_ZdlPvm") {
+          called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
         return true;
       }
 
@@ -1125,6 +1129,9 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
         if (called->getName() == FuncName)
           return true;
       }
+
+      if (called->getIntrinsicID() == Intrinsic::trap)
+        return true;
 
       // If requesting emptty unknown functions to be considered inactive, abide
       // by those rules
