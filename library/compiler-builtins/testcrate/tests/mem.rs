@@ -1,0 +1,133 @@
+extern crate compiler_builtins;
+use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
+
+#[test]
+fn memcpy_3() {
+    let mut arr: [u8; 12] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    unsafe {
+        let src = arr.as_ptr().offset(9);
+        let dst = arr.as_mut_ptr().offset(1);
+        assert_eq!(memcpy(dst, src, 3), dst);
+        assert_eq!(arr, [0, 9, 10, 11, 4, 5, 6, 7, 8, 9, 10, 11]);
+    }
+    arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    unsafe {
+        let src = arr.as_ptr().offset(1);
+        let dst = arr.as_mut_ptr().offset(9);
+        assert_eq!(memcpy(dst, src, 3), dst);
+        assert_eq!(arr, [0, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3]);
+    }
+}
+
+#[test]
+fn memcpy_10() {
+    let arr: [u8; 18] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+    let mut dst: [u8; 12] = [0; 12];
+    unsafe {
+        let src = arr.as_ptr().offset(1);
+        assert_eq!(memcpy(dst.as_mut_ptr(), src, 10), dst.as_mut_ptr());
+        assert_eq!(dst, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 0]);
+    }
+    unsafe {
+        let src = arr.as_ptr().offset(8);
+        assert_eq!(memcpy(dst.as_mut_ptr(), src, 10), dst.as_mut_ptr());
+        assert_eq!(dst, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 0]);
+    }
+}
+
+#[test]
+fn memcpy_big() {
+    // Make the arrays cross 3 pages
+    const SIZE: usize = 8193;
+    let src: [u8; SIZE] = [22; SIZE];
+    struct Dst {
+        start: usize,
+        buf: [u8; SIZE],
+        end: usize,
+    }
+
+    let mut dst = Dst {
+        start: 0,
+        buf: [0; SIZE],
+        end: 0,
+    };
+    unsafe {
+        assert_eq!(
+            memcpy(dst.buf.as_mut_ptr(), src.as_ptr(), SIZE),
+            dst.buf.as_mut_ptr()
+        );
+        assert_eq!(dst.start, 0);
+        assert_eq!(dst.buf, [22; SIZE]);
+        assert_eq!(dst.end, 0);
+    }
+}
+
+#[test]
+fn memmove_forward() {
+    let mut arr: [u8; 12] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    unsafe {
+        let src = arr.as_ptr().offset(6);
+        let dst = arr.as_mut_ptr().offset(3);
+        assert_eq!(memmove(dst, src, 5), dst);
+        assert_eq!(arr, [0, 1, 2, 6, 7, 8, 9, 10, 8, 9, 10, 11]);
+    }
+}
+
+#[test]
+fn memmove_backward() {
+    let mut arr: [u8; 12] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    unsafe {
+        let src = arr.as_ptr().offset(3);
+        let dst = arr.as_mut_ptr().offset(6);
+        assert_eq!(memmove(dst, src, 5), dst);
+        assert_eq!(arr, [0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 7, 11]);
+    }
+}
+
+#[test]
+fn memset_zero() {
+    let mut arr: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+    unsafe {
+        let ptr = arr.as_mut_ptr().offset(5);
+        assert_eq!(memset(ptr, 0, 2), ptr);
+        assert_eq!(arr, [0, 1, 2, 3, 4, 0, 0, 7]);
+
+        // Only the LSB matters for a memset
+        assert_eq!(memset(arr.as_mut_ptr(), 0x2000, 8), arr.as_mut_ptr());
+        assert_eq!(arr, [0, 0, 0, 0, 0, 0, 0, 0]);
+    }
+}
+
+#[test]
+fn memset_nonzero() {
+    let mut arr: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+    unsafe {
+        let ptr = arr.as_mut_ptr().offset(2);
+        assert_eq!(memset(ptr, 22, 3), ptr);
+        assert_eq!(arr, [0, 1, 22, 22, 22, 5, 6, 7]);
+
+        // Only the LSB matters for a memset
+        assert_eq!(memset(arr.as_mut_ptr(), 0x2009, 8), arr.as_mut_ptr());
+        assert_eq!(arr, [9, 9, 9, 9, 9, 9, 9, 9]);
+    }
+}
+
+#[test]
+fn memcmp_eq() {
+    let arr1: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+    let arr2: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+    unsafe {
+        assert_eq!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 8), 0);
+        assert_eq!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 3), 0);
+    }
+}
+
+#[test]
+fn memcmp_ne() {
+    let arr1: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+    let arr2: [u8; 8] = [0, 1, 2, 3, 4, 5, 7, 7];
+    unsafe {
+        assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 8) < 0);
+        assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 8) > 0);
+    }
+}
