@@ -115,7 +115,7 @@ impl<'tcx> PassByRefOrValue {
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
-        let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
+        let fn_sig = cx.tcx.erase_late_bound_regions(fn_sig);
 
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 

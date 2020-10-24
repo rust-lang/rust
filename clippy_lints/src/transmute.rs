@@ -491,7 +491,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                                     Applicability::Unspecified,
                                 );
                             } else {
-                                if (cx.tcx.erase_regions(&from_ty) != cx.tcx.erase_regions(&to_ty))
+                                if (cx.tcx.erase_regions(from_ty) != cx.tcx.erase_regions(to_ty))
                                     && !const_context {
                                     span_lint_and_then(
                                         cx,
