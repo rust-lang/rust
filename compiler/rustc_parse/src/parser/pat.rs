@@ -754,6 +754,7 @@ impl<'a> Parser<'a> {
 
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
         if self.check_inline_const(0) {
+            self.eat_keyword(kw::Const);
             self.parse_const_block(self.token.span)
         } else if self.check_path() {
             let lo = self.token.span;
