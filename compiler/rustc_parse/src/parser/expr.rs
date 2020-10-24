@@ -1075,7 +1075,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Unsafe) {
             self.parse_block_expr(None, lo, BlockCheckMode::Unsafe(ast::UserProvided), attrs)
         } else if self.eat_keyword(kw::Const) {
-            self.parse_const_block(lo.to(self.token.span))
+            self.parse_const_block(lo.to(self.prev_token.span))
         } else if self.is_do_catch_block() {
             self.recover_do_catch(attrs)
         } else if self.is_try_block() {
