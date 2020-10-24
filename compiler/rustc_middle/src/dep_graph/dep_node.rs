@@ -174,15 +174,15 @@ macro_rules! contains_eval_always_attr {
 }
 
 macro_rules! encode_query_results {
-    ([][$variant:ident][$($args:expr),*]) => {{}};
-    ([cached $($rest:tt)*][$variant:ident][$($args:expr),*]) => {{
+    ([][$name:ident][$($args:expr),*]) => {{}};
+    ([cached $($rest:tt)*][$name:ident][$($args:expr),*]) => {{
         let ret = query::on_disk_cache::encode_query_results::<
-            query::queries::$variant<'_>
+            query::queries::$name<'_>
         >($($args),*);
         match ret { Ok(()) => (), Err(_) => () }
     }};
-    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$variant:ident][$($args:expr),*]) => {
-        encode_query_results!([$($($modifiers)*)*][$variant][$($args),*])
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$name:ident][$($args:expr),*]) => {
+        encode_query_results!([$($($modifiers)*)*][$name][$($args),*])
     };
 }
 
@@ -190,13 +190,13 @@ macro_rules! define_dep_kinds {
     (<$tcx:tt>
     $(
         [$($attrs:tt)*]
-        $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
+        $name:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
-        $(impl DepKindTrait for dep_kind::$variant {
+        $(impl DepKindTrait for dep_kind::$name {
             #[inline]
             fn index(&self) -> DepKindIndex {
-                DepKindIndex::$variant
+                DepKindIndex::$name
             }
 
             #[inline]
@@ -245,7 +245,7 @@ macro_rules! define_dep_kinds {
                 _encoder: &mut query::on_disk_cache::CacheEncoder<'a, 'tcx, opaque::Encoder>,
                 _query_result_index: &mut query::on_disk_cache::EncodedQueryResultIndex,
             ) {
-                encode_query_results!([$($attrs)*][$variant][_tcx, _encoder, _query_result_index]);
+                encode_query_results!([$($attrs)*][$name][_tcx, _encoder, _query_result_index]);
             }
 
             #[inline]
@@ -281,7 +281,7 @@ macro_rules! define_dep_kinds {
                 debug_assert!(<Key<'_> as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key());
 
                 if let Some(key) = <Key<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node) {
-                    force_query::<queries::$variant<'_>, _>(
+                    force_query::<queries::$name<'_>, _>(
                         tcx,
                         key,
                         rustc_span::DUMMY_SP,
@@ -297,10 +297,10 @@ macro_rules! define_dep_kinds {
             fn query_stats(&self, tcx: TyCtxt<'_>) -> Option<query::stats::QueryStats> {
                 let ret = query::stats::stats::<
                     query::Query<'_>,
-                    <query::queries::$variant<'_> as QueryAccessors<TyCtxt<'_>>>::Cache,
+                    <query::queries::$name<'_> as QueryAccessors<TyCtxt<'_>>>::Cache,
                 >(
-                    stringify!($variant),
-                    &tcx.queries.$variant,
+                    stringify!($name),
+                    &tcx.queries.$name,
                 );
                 Some(ret)
             }
@@ -323,8 +323,8 @@ macro_rules! define_dep_kinds {
                                  .unwrap_or(false));
 
                 let key = <Key<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node).unwrap();
-                if queries::$variant::cache_on_disk(tcx, &key, None) {
-                    let _ = tcx.$variant(key);
+                if queries::$name::cache_on_disk(tcx, &key, None) {
+                    let _ = tcx.$name(key);
                 }
             }
         })*
@@ -337,24 +337,24 @@ macro_rules! define_dep_nodes {
     (<$tcx:tt>
     $(
         [$($attrs:tt)*]
-        $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
+        $name:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
         pub mod dep_kind {
             $(
                 #[allow(non_camel_case_types)]
                 #[derive(Debug)]
-                pub struct $variant;
+                pub struct $name;
             )*
         }
 
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKindIndex {
-            $($variant),*
+            $($name),*
         }
 
-        pub static DEP_KINDS: &[DepKind] = &[ $(&dep_kind::$variant),* ];
+        pub static DEP_KINDS: &[DepKind] = &[ $(&dep_kind::$name),* ];
 
         pub struct DepConstructor;
 
@@ -363,14 +363,14 @@ macro_rules! define_dep_nodes {
             $(
                 #[inline(always)]
                 #[allow(unreachable_code, non_snake_case)]
-                pub fn $variant(_tcx: TyCtxt<'_>, $(arg: $tuple_arg_ty)*) -> DepNode {
+                pub fn $name(_tcx: TyCtxt<'_>, $(arg: $tuple_arg_ty)*) -> DepNode {
                     // tuple args
                     $({
                         erase!($tuple_arg_ty);
-                        return DepNode::construct(_tcx, &dep_kind::$variant, &arg)
+                        return DepNode::construct(_tcx, &dep_kind::$name, &arg)
                     })*
 
-                    return DepNode::construct(_tcx, &dep_kind::$variant, &())
+                    return DepNode::construct(_tcx, &dep_kind::$name, &())
                 }
             )*
         }
@@ -437,8 +437,8 @@ macro_rules! define_dep_nodes {
             /// Used in testing
             fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<DepNode, ()> {
                 match label {
-                    $(stringify!($variant) => {
-                        let kind = &dep_kind::$variant;
+                    $(stringify!($name) => {
+                        let kind = &dep_kind::$name;
 
                         if !kind.can_reconstruct_query_key() {
                             Err(())
@@ -456,7 +456,7 @@ macro_rules! define_dep_nodes {
             fn has_label_string(label: &str) -> bool {
                 match label {
                     $(
-                        stringify!($variant) => true,
+                        stringify!($name) => true,
                     )*
                     _ => false,
                 }
@@ -468,7 +468,7 @@ macro_rules! define_dep_nodes {
         #[allow(dead_code, non_upper_case_globals)]
         pub mod label_strs {
            $(
-                pub const $variant: &str = stringify!($variant);
+                pub const $name: &str = stringify!($name);
             )*
         }
     );
