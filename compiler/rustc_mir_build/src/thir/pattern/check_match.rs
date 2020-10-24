@@ -137,7 +137,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         patcx.include_lint_checks();
         let pattern = patcx.lower_pattern(pat);
         let pattern_ty = pattern.ty;
-        let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
+        let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(pattern));
         if !patcx.errors.is_empty() {
             *have_errors = true;
             patcx.report_inlining_errors(pat.span);
