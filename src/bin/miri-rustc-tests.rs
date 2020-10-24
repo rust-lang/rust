@@ -109,7 +109,7 @@ fn main() {
                 }
             })
             .collect();
-        args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
+        args.splice(1..1, miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
         // file to process
         args.push(path.display().to_string());
 

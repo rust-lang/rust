@@ -153,7 +153,7 @@ fn run_compiler(mut args: Vec<String>, callbacks: &mut (dyn rustc_driver::Callba
 
     // Some options have different defaults in Miri than in plain rustc; apply those by making
     // them the first arguments after the binary name (but later arguments can overwrite them).
-    args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
+    args.splice(1..1, miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
 
     // Invoke compiler, and handle return code.
     let exit_code = rustc_driver::catch_with_exit_code(move || {
