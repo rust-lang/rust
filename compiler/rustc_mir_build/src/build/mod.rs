@@ -75,7 +75,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             kind: hir::TraitItemKind::Const(ty, Some(body_id)),
             ..
         }) => (*body_id, ty.span, None),
-        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => (*body, tcx.hir().span(*hir_id), None),
+        Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => {
+            (*body, tcx.hir().span(*hir_id), None)
+        }
 
         _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def.did),
     };
@@ -183,7 +185,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 return_ty,
                 return_ty_span,
                 body,
-                span_with_body
+                span_with_body,
             );
             mir.yield_ty = yield_ty;
             mir
@@ -581,7 +583,7 @@ fn construct_fn<'a, 'tcx, A>(
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
     body: &'tcx hir::Body<'tcx>,
-    span_with_body: Span
+    span_with_body: Span,
 ) -> Body<'tcx>
 where
     A: Iterator<Item = ArgInfo<'tcx>>,
@@ -615,8 +617,12 @@ where
         let arg_scope_s = (arg_scope, source_info);
         // Attribute epilogue to function's closing brace
         let fn_end = span_with_body.shrink_to_hi();
-        let return_block =
-            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+        let return_block = unpack!(builder.in_breakable_scope(
+            None,
+            Place::return_place(),
+            Some(call_site_scope),
+            fn_end,
+            |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(
                         START_BLOCK,
@@ -626,11 +632,13 @@ where
                         &body.value,
                     )
                 }))
-            }));
+            },
+        ));
         let source_info = builder.source_info(fn_end);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
         builder.build_drop_trees(should_abort);
+        builder.unschedule_return_place_drop();
         return_block.unit()
     }));
 
@@ -657,12 +665,15 @@ fn construct_const<'a, 'tcx>(
     let owner_id = tcx.hir().body_owner(body_id);
     let def_id = tcx.hir().local_def_id(owner_id);
     let span = tcx.hir().span(owner_id);
-    let mut builder = Builder::new(hir, def_id.to_def_id(), span, 0, Safety::Safe, const_ty, const_ty_span, None);
+    let mut builder =
+        Builder::new(hir, def_id.to_def_id(), span, 0, Safety::Safe, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(Place::return_place(), block, expr));
+    // We don't provide a scope because we can't unwind in constants, so won't
+    // need to drop the return place.
+    unpack!(block = builder.into_expr(Place::return_place(), None, block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -697,7 +708,8 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
         hir::BodyOwnerKind::Const => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
-    let mut builder = Builder::new(hir, def_id.to_def_id(), span, num_params, Safety::Safe, ty, span, None);
+    let mut builder =
+        Builder::new(hir, def_id.to_def_id(), span, num_params, Safety::Safe, ty, span, None);
     let source_info = builder.source_info(span);
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
@@ -941,7 +953,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(Place::return_place(), block, body)
+        let call_site =
+            region::Scope { id: ast_body.hir_id.local_id, data: region::ScopeData::CallSite };
+        self.into(Place::return_place(), Some(call_site), block, body)
     }
 
     fn set_correct_source_scope_for_arg(

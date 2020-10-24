@@ -1772,7 +1772,7 @@ fn test_append_drop_leak() {
 
     catch_unwind(move || left.append(&mut right)).unwrap_err();
 
-    assert_eq!(DROPS.load(SeqCst), 4); // Rust issue #47949 ate one little piggy
+    assert_eq!(DROPS.load(SeqCst), 5);
 }
 
 #[test]

@@ -97,13 +97,13 @@ For revisions in Pull Requests (PR):
 103:9-103:29: @4[23]: _18 = (_16.0: &amp;&amp;str)
 103:9-103:29: @4[26]: _20 = &amp;(*_18)
 103:9-103:29: @4[28]: _21 = &lt;&amp;str as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;str, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-103:9-103:29: @4.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb5, unwind: bb9]
+103:9-103:29: @4.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb5, unwind: bb10]
 103:9-103:29: @5[2]: _15 = [move _19]
 103:9-103:29: @5[5]: _14 = &amp;_15
 103:9-103:29: @5[6]: _13 = &amp;(*_14)
 103:9-103:29: @5[7]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-103:9-103:29: @5.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb6, unwind: bb9]
-103:9-103:29: @6.Call: _6 = format(move _7) -&gt; [return: bb7, unwind: bb9]
+103:9-103:29: @5.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb6, unwind: bb10]
+103:9-103:29: @6.Call: _6 = format(move _7) -&gt; [return: bb7, unwind: bb10]
 103:9-103:29: @7[1]: FakeRead(ForLet, _6)
 103:9-103:29: @7[6]: _0 = move _6
 104:6-104:6: @8.Return: return"><span class="annotation">@4,5,6,7,8⦊</span>format!("'{}'", val)</span></span>
@@ -117,13 +117,13 @@ For revisions in Pull Requests (PR):
 103:9-103:29: @4[23]: _18 = (_16.0: &amp;&amp;str)
 103:9-103:29: @4[26]: _20 = &amp;(*_18)
 103:9-103:29: @4[28]: _21 = &lt;&amp;str as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r &amp;str, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-103:9-103:29: @4.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb5, unwind: bb9]
+103:9-103:29: @4.Call: _19 = ArgumentV1::new::&lt;&amp;str&gt;(move _20, move _21) -&gt; [return: bb5, unwind: bb10]
 103:9-103:29: @5[2]: _15 = [move _19]
 103:9-103:29: @5[5]: _14 = &amp;_15
 103:9-103:29: @5[6]: _13 = &amp;(*_14)
 103:9-103:29: @5[7]: _12 = move _13 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-103:9-103:29: @5.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb6, unwind: bb9]
-103:9-103:29: @6.Call: _6 = format(move _7) -&gt; [return: bb7, unwind: bb9]
+103:9-103:29: @5.Call: _7 = Arguments::new_v1(move _8, move _12) -&gt; [return: bb6, unwind: bb10]
+103:9-103:29: @6.Call: _6 = format(move _7) -&gt; [return: bb7, unwind: bb10]
 103:9-103:29: @7[1]: FakeRead(ForLet, _6)
 103:9-103:29: @7[6]: _0 = move _6
 104:6-104:6: @8.Return: return">    }<span class="annotation">⦉@4,5,6,7,8</span></span></span></span></div>
