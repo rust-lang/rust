@@ -515,7 +515,7 @@ macro_rules! define_queries_struct {
             providers: IndexVec<CrateNum, Providers>,
             fallback_extern_providers: Box<Providers>,
 
-            $($(#[$attr])*  $name: QueryState<
+            $($(#[$attr])* pub(crate) $name: QueryState<
                 crate::dep_graph::DepKind,
                 <TyCtxt<$tcx> as QueryContext>::Query,
                 <queries::$name<$tcx> as QueryAccessors<TyCtxt<'tcx>>>::Cache,

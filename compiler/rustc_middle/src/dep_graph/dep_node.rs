@@ -60,11 +60,13 @@ use crate::traits::query::{
 };
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::query;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
+use rustc_query_system::query::QueryAccessors;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::Symbol;
 use std::hash::Hash;
@@ -83,6 +85,8 @@ pub trait DepKindTrait: std::fmt::Debug + Sync {
     fn has_params(&self) -> bool;
 
     fn force_from_dep_node(&self, tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool;
+
+    fn query_stats(&self, tcx: TyCtxt<'_>) -> Option<query::stats::QueryStats>;
 
     fn try_load_from_on_disk_cache(&self, tcx: TyCtxt<'_>, dep_node: &DepNode);
 }
@@ -197,6 +201,18 @@ macro_rules! define_dep_kinds {
                 }
 
                 false
+            }
+
+            #[inline]
+            fn query_stats(&self, tcx: TyCtxt<'_>) -> Option<query::stats::QueryStats> {
+                let ret = query::stats::stats::<
+                    query::Query<'_>,
+                    <query::queries::$variant<'_> as QueryAccessors<TyCtxt<'_>>>::Cache,
+                >(
+                    stringify!($variant),
+                    &tcx.queries.$variant,
+                );
+                Some(ret)
             }
 
             #[inline]
@@ -413,6 +429,11 @@ impl DepKindTrait for dep_kind::Null {
     }
 
     #[inline]
+    fn query_stats(&self, _tcx: TyCtxt<'_>) -> Option<query::stats::QueryStats> {
+        None
+    }
+
+    #[inline]
     fn try_load_from_on_disk_cache<'tcx>(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) {}
 }
 
@@ -451,6 +472,11 @@ impl DepKindTrait for dep_kind::CrateMetadata {
         }
 
         bug!("force_from_dep_node: encountered {:?}", _dep_node);
+    }
+
+    #[inline]
+    fn query_stats(&self, _tcx: TyCtxt<'_>) -> Option<query::stats::QueryStats> {
+        None
     }
 
     #[inline]
@@ -494,6 +520,11 @@ impl DepKindTrait for dep_kind::TraitSelect {
     }
 
     #[inline]
+    fn query_stats(&self, _tcx: TyCtxt<'_>) -> Option<query::stats::QueryStats> {
+        None
+    }
+
+    #[inline]
     fn try_load_from_on_disk_cache<'tcx>(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) {}
 }
 
@@ -532,6 +563,11 @@ impl DepKindTrait for dep_kind::CompileCodegenUnit {
         }
 
         bug!("force_from_dep_node: encountered {:?}", _dep_node);
+    }
+
+    #[inline]
+    fn query_stats(&self, _tcx: TyCtxt<'_>) -> Option<query::stats::QueryStats> {
+        None
     }
 
     #[inline]

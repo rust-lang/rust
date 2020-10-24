@@ -16,6 +16,7 @@ pub use rustc_query_system::dep_graph::{
 
 pub use dep_node::{
     dep_kind, label_strs, DepConstructor, DepKind, DepKindIndex, DepKindTrait, DepNode, DepNodeExt,
+    DEP_KINDS,
 };
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;

@@ -1,10 +1,9 @@
-use crate::ty::query::queries;
+use crate::dep_graph::{self, DepKind};
 use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_query_system::query::{QueryAccessors, QueryCache, QueryContext, QueryState};
+use rustc_query_system::query::{QueryCache, QueryState};
 
 use std::any::type_name;
-use std::hash::Hash;
 use std::mem;
 #[cfg(debug_assertions)]
 use std::sync::atomic::Ordering;
@@ -26,7 +25,7 @@ impl KeyStats for DefId {
 }
 
 #[derive(Clone)]
-struct QueryStats {
+pub struct QueryStats {
     name: &'static str,
     cache_hits: usize,
     key_size: usize,
@@ -37,9 +36,8 @@ struct QueryStats {
     local_def_id_keys: Option<usize>,
 }
 
-fn stats<D, Q, C>(name: &'static str, map: &QueryState<D, Q, C>) -> QueryStats
+crate fn stats<Q, C>(name: &'static str, map: &QueryState<DepKind, Q, C>) -> QueryStats
 where
-    D: Copy + Clone + Eq + Hash,
     Q: Clone,
     C: QueryCache,
 {
@@ -65,7 +63,15 @@ where
 }
 
 pub fn print_stats(tcx: TyCtxt<'_>) {
-    let queries = query_stats(tcx);
+    let mut queries = Vec::new();
+
+    for dk in dep_graph::DEP_KINDS {
+        if let Some(fragment) = dk.query_stats(tcx) {
+            queries.push(fragment)
+        }
+    }
+
+    let queries = queries;
 
     if cfg!(debug_assertions) {
         let hits: usize = queries.iter().map(|s| s.cache_hits).sum();
@@ -118,28 +124,3 @@ pub fn print_stats(tcx: TyCtxt<'_>) {
         println!("   {} - {} = ({}%)", q.name, local, (local as f64 * 100.0) / total);
     }
 }
-
-macro_rules! print_stats {
-    (<$tcx:tt>
-        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($K:ty) -> $V:ty,)*
-    ) => {
-        fn query_stats(tcx: TyCtxt<'_>) -> Vec<QueryStats> {
-            let mut queries = Vec::new();
-
-            $(
-                queries.push(stats::<
-                    crate::dep_graph::DepKind,
-                    <TyCtxt<'_> as QueryContext>::Query,
-                    <queries::$name<'_> as QueryAccessors<TyCtxt<'_>>>::Cache,
-                >(
-                    stringify!($name),
-                    &tcx.queries.$name,
-                ));
-            )*
-
-            queries
-        }
-    }
-}
-
-rustc_query_append! { [print_stats!][<'tcx>] }

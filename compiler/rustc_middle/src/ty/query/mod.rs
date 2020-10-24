@@ -64,7 +64,7 @@ mod plumbing;
 pub(crate) use rustc_query_system::query::CycleError;
 use rustc_query_system::query::*;
 
-mod stats;
+crate mod stats;
 pub use self::stats::print_stats;
 
 #[cfg(parallel_compiler)]
