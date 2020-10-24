@@ -299,6 +299,8 @@ macro_rules! create_config {
                             Err(msg) => eprintln!("Warning for license template file {:?}: {}",
                                                 lt_path, msg),
                         }
+                    } else {
+                        self.license_template = None;
                     }
                 }
             }
