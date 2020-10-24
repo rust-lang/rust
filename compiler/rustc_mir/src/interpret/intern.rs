@@ -129,9 +129,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
         // See const_eval::machine::MemoryExtra::can_access_statics for why
         // immutability is so important.
 
-        // There are no sensible checks we can do here; grep for `mutable_memory_in_const` to
-        // find the checks we are doing elsewhere to avoid even getting here for memory
-        // that "wants" to be mutable.
+        // Validation will ensure that there is no `UnsafeCell` on an immutable allocation.
         alloc.mutability = Mutability::Not;
     };
     // link the alloc id to the actual allocation
@@ -176,7 +174,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                     // they caused.  It also helps us to find cases where const-checking
                     // failed to prevent an `UnsafeCell` (but as `ignore_interior_mut_in_const`
                     // shows that part is not airtight).
-                    mutable_memory_in_const(self.ecx.tcx, "`UnsafeCell`");
+                    //mutable_memory_in_const(self.ecx.tcx, "`UnsafeCell`");
                 }
                 // We are crossing over an `UnsafeCell`, we can mutate again. This means that
                 // References we encounter inside here are interned as pointing to mutable
