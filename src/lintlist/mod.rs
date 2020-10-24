@@ -1190,7 +1190,7 @@ vec![
     Lint {
         name: "manual_unwrap_or",
         group: "complexity",
-        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or`",
+        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or` or `Result::unwrap_or`",
         deprecation: None,
         module: "manual_unwrap_or",
     },
