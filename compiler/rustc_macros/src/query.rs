@@ -421,7 +421,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
-    let mut cached_queries = quote! {};
 
     for group in groups.0 {
         for mut query in group.queries.0 {
@@ -433,12 +432,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 ReturnType::Default => quote! { -> () },
                 _ => quote! { #result_full },
             };
-
-            if modifiers.cache.is_some() {
-                cached_queries.extend(quote! {
-                    #name,
-                });
-            }
 
             let mut attributes = Vec::new();
 
@@ -506,11 +499,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
                     #dep_node_def_stream
                 );
-            }
-        }
-        macro_rules! rustc_cached_queries {
-            ($($macro:tt)*) => {
-                $($macro)*(#cached_queries);
             }
         }
 
