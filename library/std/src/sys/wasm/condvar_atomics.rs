@@ -52,8 +52,9 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn notify_all(&self) {
+        self.cnt.fetch_add(1, SeqCst);
+        // SAFETY: memory_atomic_notify()is always valid
         unsafe {
-            self.cnt.fetch_add(1, SeqCst);
             wasm32::memory_atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
         }
     }
