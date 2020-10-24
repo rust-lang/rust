@@ -94,6 +94,12 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     var fullNewTheme = newTheme + resourcesSuffix + ".css";
     var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
 
+    // If this new value comes from a system setting or from the previously
+    // saved theme, no need to save it.
+    if (saveTheme === true) {
+        updateLocalStorage("rustdoc-theme", newTheme);
+    }
+
     if (styleElem.href === newHref) {
         return;
     }
@@ -112,11 +118,6 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     });
     if (found === true) {
         styleElem.href = newHref;
-        // If this new value comes from a system setting or from the previously
-        // saved theme, no need to save it.
-        if (saveTheme === true) {
-            updateLocalStorage("rustdoc-theme", newTheme);
-        }
     }
 }
 
