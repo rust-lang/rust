@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{edit::AstNodeEdit, make, AstNode, IfExpr, MatchArm},
+    ast::{edit::AstNodeEdit, make, AstNode, BlockExpr, Expr, IfExpr, MatchArm},
     SyntaxKind::WHITESPACE,
 };
 
@@ -92,9 +92,20 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
 pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_arm: MatchArm = ctx.find_node_at_offset::<MatchArm>()?;
     let match_pat = match_arm.pat()?;
-
     let arm_body = match_arm.expr()?;
-    let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone())?;
+
+    let mut replace_node = None;
+    let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone()).or_else(|| {
+        let block_expr = BlockExpr::cast(arm_body.syntax().clone())?;
+        if let Expr::IfExpr(e) = block_expr.expr()? {
+            replace_node = Some(block_expr.syntax().clone());
+            Some(e)
+        } else {
+            None
+        }
+    })?;
+    let replace_node = replace_node.unwrap_or_else(|| if_expr.syntax().clone());
+
     let cond = if_expr.condition()?;
     let then_block = if_expr.then_branch()?;
 
@@ -109,19 +120,23 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
 
     let buf = format!(" if {}", cond.syntax().text());
 
-    let target = if_expr.syntax().text_range();
     acc.add(
         AssistId("move_arm_cond_to_match_guard", AssistKind::RefactorRewrite),
         "Move condition to match guard",
-        target,
+        replace_node.text_range(),
         |edit| {
             let then_only_expr = then_block.statements().next().is_none();
 
             match &then_block.expr() {
                 Some(then_expr) if then_only_expr => {
-                    edit.replace(if_expr.syntax().text_range(), then_expr.syntax().text())
+                    edit.replace(replace_node.text_range(), then_expr.syntax().text())
                 }
-                _ => edit.replace(if_expr.syntax().text_range(), then_block.syntax().text()),
+                _ if replace_node != *if_expr.syntax() => {
+                    // Dedent because if_expr is in a BlockExpr
+                    let replace_with = then_block.dedent(1.into()).syntax().text();
+                    edit.replace(replace_node.text_range(), replace_with)
+                }
+                _ => edit.replace(replace_node.text_range(), then_block.syntax().text()),
             }
 
             edit.insert(match_pat.syntax().text_range().end(), buf);
@@ -225,6 +240,33 @@ fn main() {
     }
 
     #[test]
+    fn move_arm_cond_in_block_to_match_guard_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            <|>if x > 10 {
+                false
+            }
+        },
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn move_arm_cond_to_match_guard_if_let_not_works() {
         check_assist_not_applicable(
             move_arm_cond_to_match_guard,
@@ -289,5 +331,36 @@ fn main() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn move_arm_cond_in_block_to_match_guard_if_multiline_body_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            if x > 10 {
+                92;<|>
+                false
+            }
+        }
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => {
+            92;
+            false
+        }
+        _ => true
+    }
+}
+"#,
+        )
     }
 }
