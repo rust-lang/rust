@@ -19,7 +19,7 @@ impl<T: Clone, F> Iterator for Iterate<T, F> where F: Fn(&T) -> T {
         Some(self.state.clone())
     }
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { (std::usize::MAX, None) }
+    fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
 }
 
 fn main() {

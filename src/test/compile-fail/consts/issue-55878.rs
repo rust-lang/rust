@@ -3,5 +3,5 @@
 
 // error-pattern: are too big for the current architecture
 fn main() {
-    println!("Size: {}", std::mem::size_of::<[u8; std::u64::MAX as usize]>());
+    println!("Size: {}", std::mem::size_of::<[u8; u64::MAX as usize]>());
 }

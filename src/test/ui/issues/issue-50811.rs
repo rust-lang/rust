@@ -3,7 +3,6 @@
 
 extern crate test;
 
-use std::f64::{NAN, NEG_INFINITY, INFINITY, MAX};
 use std::mem::size_of;
 use test::black_box;
 
@@ -12,7 +11,7 @@ use test::black_box;
 macro_rules! compare {
     ($op:tt) => {
         compare!(
-            [NEG_INFINITY, -MAX, -1.0, -0.0, 0.0, 1.0, MAX, INFINITY, NAN],
+            [f64::NEG_INFINITY, -f64::MAX, -1.0, -0.0, 0.0, 1.0, f64::MAX, f64::INFINITY, f64::NAN],
             $op
         );
     };
@@ -20,7 +19,7 @@ macro_rules! compare {
         $(compare!(
             $lhs,
             $op,
-            [NEG_INFINITY, -MAX, -1.0, -0.0, 0.0, 1.0, MAX, INFINITY, NAN]
+            [f64::NEG_INFINITY, -f64::MAX, -1.0, -0.0, 0.0, 1.0, f64::MAX, f64::INFINITY, f64::NAN]
         );)+
     };
     ($lhs:expr, $op:tt, [$($rhs:expr),+]) => {
@@ -44,8 +43,8 @@ macro_rules! compare {
 fn main() {
     assert_eq!(0.0/0.0 < 0.0/0.0, false);
     assert_eq!(0.0/0.0 > 0.0/0.0, false);
-    assert_eq!(NAN < NAN, false);
-    assert_eq!(NAN > NAN, false);
+    assert_eq!(f64::NAN < f64::NAN, false);
+    assert_eq!(f64::NAN > f64::NAN, false);
 
     compare!(==);
     compare!(!=);

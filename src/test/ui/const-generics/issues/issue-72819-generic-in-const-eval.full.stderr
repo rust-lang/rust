@@ -1,8 +1,8 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72819-generic-in-const-eval.rs:9:47
+  --> $DIR/issue-72819-generic-in-const-eval.rs:9:39
    |
-LL | where Assert::<{N < usize::max_value() / 2}>: IsTrue,
-   |                                               ^^^^^^
+LL | where Assert::<{N < usize::MAX / 2}>: IsTrue,
+   |                                       ^^^^^^
    |
    = note: this may fail depending on what value the parameter takes
 

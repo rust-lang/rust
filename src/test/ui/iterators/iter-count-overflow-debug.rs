@@ -4,13 +4,12 @@
 // compile-flags: -C debug_assertions=yes -C opt-level=3
 
 use std::panic;
-use std::usize::MAX;
 
 fn main() {
-    assert_eq!((0..MAX).by_ref().count(), MAX);
+    assert_eq!((0..usize::MAX).by_ref().count(), usize::MAX);
 
     let r = panic::catch_unwind(|| {
-        (0..=MAX).by_ref().count()
+        (0..=usize::MAX).by_ref().count()
     });
     assert!(r.is_err());
 }

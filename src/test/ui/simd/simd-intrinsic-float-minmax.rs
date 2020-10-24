@@ -20,11 +20,11 @@ fn main() {
     let y = f32x4(2.0, 1.0, 4.0, 3.0);
 
     #[cfg(not(any(target_arch = "mips", target_arch = "mips64")))]
-    let nan = ::std::f32::NAN;
+    let nan = f32::NAN;
     // MIPS hardware treats f32::NAN as SNAN. Clear the signaling bit.
     // See https://github.com/rust-lang/rust/issues/52746.
     #[cfg(any(target_arch = "mips", target_arch = "mips64"))]
-    let nan = f32::from_bits(::std::f32::NAN.to_bits() - 1);
+    let nan = f32::from_bits(f32::NAN.to_bits() - 1);
 
     let n = f32x4(nan, nan, nan, nan);
 

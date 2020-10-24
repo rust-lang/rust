@@ -52,6 +52,7 @@ pub const MY_TYPE_WITH_STR: MyTypeWithStr = MyTypeWithStr("show this");
 pub use std::f32::consts::PI;
 
 // @has show_const_contents/constant.MAX.html '= i32::MAX; // 2_147_483_647i32'
+#[allow(deprecated, deprecated_in_future)]
 pub use std::i32::MAX;
 
 macro_rules! int_module {

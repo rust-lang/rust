@@ -1,7 +1,7 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:8
    |
-LL |     m!(0f32, core::f32::NEG_INFINITY..);
+LL |     m!(0f32, f32::NEG_INFINITY..);
    |        ^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -10,7 +10,7 @@ LL |     m!(0f32, core::f32::NEG_INFINITY..);
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:17:8
    |
-LL |     m!(0f32, ..core::f32::INFINITY);
+LL |     m!(0f32, ..f32::INFINITY);
    |        ^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -73,7 +73,7 @@ LL |     m!('a', ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `u8::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:41:12
    |
-LL |         m!(0, ..core::u8::MAX);
+LL |         m!(0, ..u8::MAX);
    |            ^ pattern `u8::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -127,7 +127,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `u16::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:54:12
    |
-LL |         m!(0, ..core::u16::MAX);
+LL |         m!(0, ..u16::MAX);
    |            ^ pattern `u16::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -181,7 +181,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `u32::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:67:12
    |
-LL |         m!(0, ..core::u32::MAX);
+LL |         m!(0, ..u32::MAX);
    |            ^ pattern `u32::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -235,7 +235,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `u64::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:80:12
    |
-LL |         m!(0, ..core::u64::MAX);
+LL |         m!(0, ..u64::MAX);
    |            ^ pattern `u64::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -289,7 +289,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `u128::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:93:12
    |
-LL |         m!(0, ..core::u128::MAX);
+LL |         m!(0, ..u128::MAX);
    |            ^ pattern `u128::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -343,7 +343,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `i8::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:109:12
    |
-LL |         m!(0, ..core::i8::MAX);
+LL |         m!(0, ..i8::MAX);
    |            ^ pattern `i8::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -397,7 +397,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `i16::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:122:12
    |
-LL |         m!(0, ..core::i16::MAX);
+LL |         m!(0, ..i16::MAX);
    |            ^ pattern `i16::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -451,7 +451,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `i32::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:135:12
    |
-LL |         m!(0, ..core::i32::MAX);
+LL |         m!(0, ..i32::MAX);
    |            ^ pattern `i32::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -505,7 +505,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `i64::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:148:12
    |
-LL |         m!(0, ..core::i64::MAX);
+LL |         m!(0, ..i64::MAX);
    |            ^ pattern `i64::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
@@ -559,7 +559,7 @@ LL |         m!(0, ..VAL_1 | VAL_2..);
 error[E0004]: non-exhaustive patterns: `i128::MAX` not covered
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:161:12
    |
-LL |         m!(0, ..core::i128::MAX);
+LL |         m!(0, ..i128::MAX);
    |            ^ pattern `i128::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
