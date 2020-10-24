@@ -601,6 +601,9 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block
     (active, inline_const, "1.49.0", Some(76001), None),
 
+    /// Enables `#[cfg(panic = "...")]` config key.
+    (active, cfg_panic, "1.49.0", Some(77443), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

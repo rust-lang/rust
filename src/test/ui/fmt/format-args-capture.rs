@@ -1,13 +1,16 @@
 // run-pass
-// ignore-wasm32
-// ignore-wasm64
 #![feature(format_args_capture)]
+#![feature(cfg_panic)]
 
 fn main() {
     named_argument_takes_precedence_to_captured();
-    panic_with_single_argument_does_not_get_formatted();
-    panic_with_multiple_arguments_is_formatted();
     formatting_parameters_can_be_captured();
+
+    #[cfg(not(panic = "abort"))]
+    {
+        panic_with_single_argument_does_not_get_formatted();
+        panic_with_multiple_arguments_is_formatted();
+    }
 }
 
 fn named_argument_takes_precedence_to_captured() {
