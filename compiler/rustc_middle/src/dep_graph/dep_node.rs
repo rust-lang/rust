@@ -67,7 +67,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
 use rustc_query_system::query::QueryAccessors;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::Symbol;
 use std::hash::Hash;
 
@@ -83,6 +83,13 @@ pub trait DepKindTrait: std::fmt::Debug + Sync {
     fn is_eval_always(&self) -> bool;
 
     fn has_params(&self) -> bool;
+
+    fn encode_query_results<'a, 'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        encoder: &mut query::on_disk_cache::CacheEncoder<'a, 'tcx, opaque::Encoder>,
+        query_result_index: &mut query::on_disk_cache::EncodedQueryResultIndex,
+    );
 
     fn force_from_dep_node(&self, tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool;
 
@@ -122,6 +129,19 @@ macro_rules! contains_anon_attr {
 
 macro_rules! contains_eval_always_attr {
     ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_eval_always_attr!($attr) | )* false});
+}
+
+macro_rules! encode_query_results {
+    ([][$variant:ident][$($args:expr),*]) => {{}};
+    ([cached $($rest:tt)*][$variant:ident][$($args:expr),*]) => {{
+        let ret = query::on_disk_cache::encode_query_results::<
+            query::queries::$variant<'_>
+        >($($args),*);
+        match ret { Ok(()) => (), Err(_) => () }
+    }};
+    ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$variant:ident][$($args:expr),*]) => {
+        encode_query_results!([$($($modifiers)*)*][$variant][$($args),*])
+    };
 }
 
 macro_rules! define_dep_kinds {
@@ -174,6 +194,16 @@ macro_rules! define_dep_kinds {
                 })*
 
                 false
+            }
+
+            #[inline]
+            fn encode_query_results<'a, 'tcx>(
+                &self,
+                _tcx: TyCtxt<'tcx>,
+                _encoder: &mut query::on_disk_cache::CacheEncoder<'a, 'tcx, opaque::Encoder>,
+                _query_result_index: &mut query::on_disk_cache::EncodedQueryResultIndex,
+            ) {
+                encode_query_results!([$($attrs)*][$variant][_tcx, _encoder, _query_result_index]);
             }
 
             #[inline]
@@ -423,6 +453,15 @@ impl DepKindTrait for dep_kind::Null {
     }
 
     #[inline]
+    fn encode_query_results<'a, 'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _encoder: &mut query::on_disk_cache::CacheEncoder<'a, 'tcx, opaque::Encoder>,
+        _query_result_index: &mut query::on_disk_cache::EncodedQueryResultIndex,
+    ) {
+    }
+
+    #[inline]
     fn force_from_dep_node(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) -> bool {
         // Forcing this makes no sense.
         bug!("force_from_dep_node: encountered {:?}", _dep_node);
@@ -461,6 +500,15 @@ impl DepKindTrait for dep_kind::CrateMetadata {
     #[inline]
     fn has_params(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn encode_query_results<'a, 'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _encoder: &mut query::on_disk_cache::CacheEncoder<'a, 'tcx, opaque::Encoder>,
+        _query_result_index: &mut query::on_disk_cache::EncodedQueryResultIndex,
+    ) {
     }
 
     #[inline]
@@ -510,6 +558,15 @@ impl DepKindTrait for dep_kind::TraitSelect {
     }
 
     #[inline]
+    fn encode_query_results<'a, 'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _encoder: &mut query::on_disk_cache::CacheEncoder<'a, 'tcx, opaque::Encoder>,
+        _query_result_index: &mut query::on_disk_cache::EncodedQueryResultIndex,
+    ) {
+    }
+
+    #[inline]
     fn force_from_dep_node(&self, _tcx: TyCtxt<'tcx>, _dep_node: &DepNode) -> bool {
         // These are anonymous nodes.
         if !self.can_reconstruct_query_key() {
@@ -553,6 +610,15 @@ impl DepKindTrait for dep_kind::CompileCodegenUnit {
     #[allow(unreachable_code)]
     fn has_params(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn encode_query_results<'a, 'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _encoder: &mut query::on_disk_cache::CacheEncoder<'a, 'tcx, opaque::Encoder>,
+        _query_result_index: &mut query::on_disk_cache::EncodedQueryResultIndex,
+    ) {
     }
 
     #[inline]

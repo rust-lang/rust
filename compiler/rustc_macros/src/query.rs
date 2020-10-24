@@ -466,6 +466,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             if modifiers.eval_always {
                 attributes.push(quote! { eval_always });
             };
+            // Pass on the cache modifier
+            if modifiers.cache.is_some() {
+                attributes.push(quote! { cached });
+            };
 
             let attribute_stream = quote! {#(#attributes),*};
             let doc_comments = query.doc_comments.iter();

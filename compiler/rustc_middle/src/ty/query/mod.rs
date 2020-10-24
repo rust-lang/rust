@@ -83,7 +83,7 @@ use rustc_query_system::query::QueryAccessors;
 pub use rustc_query_system::query::QueryConfig;
 pub(crate) use rustc_query_system::query::QueryDescription;
 
-mod on_disk_cache;
+pub mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;
 
 mod profiling_support;
