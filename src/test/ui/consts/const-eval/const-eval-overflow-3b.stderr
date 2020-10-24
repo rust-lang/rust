@@ -1,11 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/const-eval-overflow-3b.rs:18:22
+  --> $DIR/const-eval-overflow-3b.rs:16:22
    |
 LL |     = [0; (i8::MAX + 1u8) as usize];
    |                      ^^^ expected `i8`, found `u8`
 
 error[E0277]: cannot add `u8` to `i8`
-  --> $DIR/const-eval-overflow-3b.rs:18:20
+  --> $DIR/const-eval-overflow-3b.rs:16:20
    |
 LL |     = [0; (i8::MAX + 1u8) as usize];
    |                    ^ no implementation for `i8 + u8`

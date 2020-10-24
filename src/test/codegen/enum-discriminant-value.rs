@@ -4,14 +4,14 @@
 
 #[repr(i64)]
 pub enum I64 {
-    I64Min = std::i64::MIN,
-    I64Max = std::i64::MAX,
+    I64Min = i64::MIN,
+    I64Max = i64::MAX,
 }
 
 #[repr(u64)]
 pub enum U64 {
-    U64Min = std::u64::MIN,
-    U64Max = std::u64::MAX,
+    U64Min = u64::MIN,
+    U64Max = u64::MAX,
 }
 
 fn main() {

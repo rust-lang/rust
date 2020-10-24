@@ -5,8 +5,6 @@
 
 #![crate_type="lib"]
 
-use std::i32;
-
 pub trait Foo {
     const NEG: i32;
     const NEG_REV: i32;

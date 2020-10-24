@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-eval-overflow-3.rs:20:11
+  --> $DIR/const-eval-overflow-3.rs:18:11
    |
 LL |     = [0; (i8::MAX + 1) as usize];
    |           ^^^^^^^^^^^^^ attempt to compute `i8::MAX + 1_i8`, which would overflow

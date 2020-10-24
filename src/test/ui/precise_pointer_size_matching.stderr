@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `isize::MIN..=-6_isize` and `21_isize..=isize::MAX` not covered
-  --> $DIR/precise_pointer_size_matching.rs:24:11
+  --> $DIR/precise_pointer_size_matching.rs:22:11
    |
 LL |     match 0isize {
    |           ^^^^^^ patterns `isize::MIN..=-6_isize` and `21_isize..=isize::MAX` not covered
@@ -8,7 +8,7 @@ LL |     match 0isize {
    = note: the matched value is of type `isize`
 
 error[E0004]: non-exhaustive patterns: `0_usize` and `21_usize..=usize::MAX` not covered
-  --> $DIR/precise_pointer_size_matching.rs:29:11
+  --> $DIR/precise_pointer_size_matching.rs:27:11
    |
 LL |     match 0usize {
    |           ^^^^^^ patterns `0_usize` and `21_usize..=usize::MAX` not covered

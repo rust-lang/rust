@@ -6,5 +6,5 @@
 #![allow(arithmetic_overflow)]
 
 fn main() {
-    let _x = -std::i8::MIN;
+    let _x = -i8::MIN;
 }

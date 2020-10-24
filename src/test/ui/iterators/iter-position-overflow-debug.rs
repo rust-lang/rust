@@ -4,11 +4,10 @@
 // compile-flags: -C debug_assertions=yes -C opt-level=3
 
 use std::panic;
-use std::usize::MAX;
 
 fn main() {
-    let n = MAX as u64;
-    assert_eq!((0..).by_ref().position(|i| i >= n), Some(MAX));
+    let n = usize::MAX as u64;
+    assert_eq!((0..).by_ref().position(|i| i >= n), Some(usize::MAX));
 
     let r = panic::catch_unwind(|| {
         (0..).by_ref().position(|i| i > n)

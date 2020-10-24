@@ -6,7 +6,7 @@ const fn test_me<T>(a: usize, b: usize) -> usize {
     if a < b {
         std::mem::size_of::<T>()
     } else {
-        std::usize::MAX
+        usize::MAX
     }
 }
 
