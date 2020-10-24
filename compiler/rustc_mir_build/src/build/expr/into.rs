@@ -10,8 +10,9 @@ use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_span::symbol::sym;
-
 use rustc_target::spec::abi::Abi;
+
+use std::slice;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -271,7 +272,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
-                let fields = if let Some(FruInfo { base, field_types }) = base {
+                let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
                     let base = unpack!(block = this.as_place(block, base));
 
                     // MIR does not natively support FRU, so for each
@@ -306,6 +307,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty,
                     active_field_index,
                 );
+                this.record_operands_moved(&fields);
                 this.cfg.push_assign(
                     block,
                     source_info,
@@ -432,6 +434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let scope = this.local_scope();
                 let value = unpack!(block = this.as_operand(block, scope, value));
                 let resume = this.cfg.start_new_block();
+                this.record_operands_moved(slice::from_ref(&value));
                 this.cfg.terminate(
                     block,
                     source_info,

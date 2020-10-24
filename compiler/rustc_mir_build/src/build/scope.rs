@@ -83,7 +83,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::thir::{Expr, ExprRef, LintLevel};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
@@ -1379,7 +1379,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm {.. } => {
+            | TerminatorKind::InlineAsm { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }
         }

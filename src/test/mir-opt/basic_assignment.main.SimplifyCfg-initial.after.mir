@@ -41,44 +41,36 @@ fn main() -> () {
         StorageLive(_5);                 // scope 3 at $DIR/basic_assignment.rs:19:9: 19:15
         StorageLive(_6);                 // scope 4 at $DIR/basic_assignment.rs:23:14: 23:20
         _6 = move _4;                    // scope 4 at $DIR/basic_assignment.rs:23:14: 23:20
-        replace(_5 <- move _6) -> [return: bb1, unwind: bb5]; // scope 4 at $DIR/basic_assignment.rs:23:5: 23:11
+        replace(_5 <- move _6) -> [return: bb1, unwind: bb4]; // scope 4 at $DIR/basic_assignment.rs:23:5: 23:11
     }
 
     bb1: {
-        drop(_6) -> [return: bb2, unwind: bb6]; // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
+        StorageDead(_6);                 // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
+        _0 = const ();                   // scope 0 at $DIR/basic_assignment.rs:10:11: 24:2
+        drop(_5) -> [return: bb2, unwind: bb5]; // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
     bb2: {
-        StorageDead(_6);                 // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
-        _0 = const ();                   // scope 0 at $DIR/basic_assignment.rs:10:11: 24:2
-        drop(_5) -> [return: bb3, unwind: bb7]; // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
+        StorageDead(_5);                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
+        drop(_4) -> [return: bb3, unwind: bb6]; // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
     bb3: {
-        StorageDead(_5);                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
-        drop(_4) -> [return: bb4, unwind: bb8]; // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
-    }
-
-    bb4: {
         StorageDead(_4);                 // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
         StorageDead(_2);                 // scope 1 at $DIR/basic_assignment.rs:24:1: 24:2
         StorageDead(_1);                 // scope 0 at $DIR/basic_assignment.rs:24:1: 24:2
         return;                          // scope 0 at $DIR/basic_assignment.rs:24:2: 24:2
     }
 
+    bb4 (cleanup): {
+        drop(_5) -> bb5;                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
+    }
+
     bb5 (cleanup): {
-        drop(_6) -> bb6;                 // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
+        drop(_4) -> bb6;                 // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
     bb6 (cleanup): {
-        drop(_5) -> bb7;                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
-    }
-
-    bb7 (cleanup): {
-        drop(_4) -> bb8;                 // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
-    }
-
-    bb8 (cleanup): {
         resume;                          // scope 0 at $DIR/basic_assignment.rs:10:1: 24:2
     }
 }
