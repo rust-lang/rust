@@ -552,6 +552,15 @@ impl<'a> Parser<'a> {
         self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
     }
 
+    fn check_inline_const(&self, dist: usize) -> bool {
+        self.is_keyword_ahead(dist, &[kw::Const])
+            && self.look_ahead(dist + 1, |t| match t.kind {
+                token::Interpolated(ref nt) => matches!(**nt, token::NtBlock(..)),
+                token::OpenDelim(DelimToken::Brace) => true,
+                _ => false,
+            })
+    }
+
     /// Checks to see if the next token is either `+` or `+=`.
     /// Otherwise returns `false`.
     fn check_plus(&mut self) -> bool {
