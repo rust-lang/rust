@@ -22,6 +22,14 @@ impl InherentOverlapChecker<'tcx> {
         let impl_items1 = self.tcx.associated_items(impl1);
         let impl_items2 = self.tcx.associated_items(impl2);
 
+        let mut impl_items1 = &impl_items1;
+        let mut impl_items2 = &impl_items2;
+
+        // Performance optimization: iterate over the smaller list
+        if impl_items1.len() > impl_items2.len() {
+            std::mem::swap(&mut impl_items1, &mut impl_items2);
+        }
+
         for item1 in impl_items1.in_definition_order() {
             let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).any(|item2| {
                 // Symbols and namespace match, compare hygienically.
