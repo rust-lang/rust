@@ -111,17 +111,6 @@ cfg_if! {
 
 type Profiler = measureme::Profiler<SerializationSink>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
-pub enum ProfileCategory {
-    Parsing,
-    Expansion,
-    TypeChecking,
-    BorrowChecking,
-    Codegen,
-    Linking,
-    Other,
-}
-
 bitflags::bitflags! {
     struct EventFilter: u32 {
         const GENERIC_ACTIVITIES = 1 << 0;
