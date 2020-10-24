@@ -103,7 +103,9 @@ impl ReentrantMutex {
             };
             let mut event = MaybeUninit::<abi::event>::uninit();
             let mut nevents = MaybeUninit::<usize>::uninit();
-            let ret = abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr());
+            // SAFE: The caller must to ensure that `event` and `nevents` are initialized.
+            let ret =
+                unsafe { abi::poll(&subscription, event.as_mut_ptr(), 1, nevents.as_mut_ptr()) };
             assert_eq!(ret, abi::errno::SUCCESS, "Failed to acquire mutex");
             let event = event.assume_init();
             assert_eq!(event.error, abi::errno::SUCCESS, "Failed to acquire mutex");
