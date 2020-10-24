@@ -81,6 +81,9 @@ pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use index::range;
 
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+pub use ascii::EscapeAscii;
+
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
