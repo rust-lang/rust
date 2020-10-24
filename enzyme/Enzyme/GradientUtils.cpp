@@ -1158,15 +1158,20 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
   if (auto arg = dyn_cast<GlobalVariable>(oval)) {
     if (!hasMetadata(arg, "enzyme_shadow")) {
       if ((llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx ||
-      llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx64) && cast<PointerType>(arg->getType())->getAddressSpace() == 3 ) {
+               Triple::nvptx ||
+           llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+               Triple::nvptx64) &&
+          cast<PointerType>(arg->getType())->getAddressSpace() == 3) {
         llvm::errs() << "warning found shared memory\n";
-        Type* type = cast<PointerType>(arg->getType())->getElementType();
-        #if LLVM_VERSION_MAJOR >= 11
-        auto shadow = new GlobalVariable(*arg->getParent(), type, arg->isConstant(), arg->getLinkage(), Constant::getNullValue(type), arg->getName()+"_shadow", arg, arg->getThreadLocalMode(), arg->getAddressSpace(), arg->isExternallyInitialized());
+#if LLVM_VERSION_MAJOR >= 11
+        Type *type = cast<PointerType>(arg->getType())->getElementType();
+        auto shadow = new GlobalVariable(
+            *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
+            Constant::getNullValue(type), arg->getName() + "_shadow", arg,
+            arg->getThreadLocalMode(), arg->getAddressSpace(),
+            arg->isExternallyInitialized());
         return invertedPointers[oval] = shadow;
-        #endif
+#endif
       }
 
       llvm::errs() << *arg << "\n";

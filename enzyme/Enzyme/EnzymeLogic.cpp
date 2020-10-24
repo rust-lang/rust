@@ -1775,7 +1775,15 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
     if (PHINode *orig = dyn_cast<PHINode>(&*I)) {
       if (gutils->isConstantValue(orig))
         continue;
-      auto PNtype = TR.intType(orig, /*necessary*/ false);
+
+      size_t size = 1;
+      if (orig->getType()->isSized())
+        size = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                    orig->getType()) +
+                7) /
+               8;
+
+      auto PNtype = TR.intType(size, orig, /*necessary*/ false);
 
       // TODO remove explicit type check and only use PNtype
       if (PNtype == BaseType::Pointer || orig->getType()->isPointerTy())
@@ -1787,9 +1795,11 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       Type *PNfloatType = PNtype.isFloat();
       if (!PNfloatType)
         llvm::errs() << " for orig " << *orig << " saw "
-                     << TR.intType(orig, /*necessary*/ false).str() << "\n";
+                     << TR.intType(size, orig, /*necessary*/ false).str()
+                     << " - "
+                     << "\n";
       assert(PNfloatType);
-      TR.intType(orig, /*necessary*/ true);
+      TR.intType(size, orig, /*necessary*/ true);
 
       for (BasicBlock *opred : predecessors(oBB)) {
         auto oval = orig->getIncomingValueForBlock(opred);

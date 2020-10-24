@@ -311,7 +311,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     // Even if returning a pointer, this instruction is considered inactive
     // since the instruction doesn't prop gradients. Thus, so long as we don't
     // return an object containing a float, this instruction is inactive
-    if (!TR.intType(I, /*errifNotFound*/ false).isPossibleFloat()) {
+    if (!TR.intType(1, I, /*errifNotFound*/ false).isPossibleFloat()) {
       if (printconst)
         llvm::errs()
             << " constant instruction from known non-float non-writing "
@@ -479,11 +479,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
   // This value is certainly an integer (and only and integer, not a pointer or
   // float). Therefore its value is constant
-  if (TR.intType(Val, /*errIfNotFound*/ false).isIntegral()) {
+  if (TR.intType(1, Val, /*errIfNotFound*/ false).isIntegral()) {
     if (printconst)
       llvm::errs() << " Value const as integral " << (int)directions << " "
                    << *Val << " "
-                   << TR.intType(Val, /*errIfNotFound*/ false).str() << "\n";
+                   << TR.intType(1, Val, /*errIfNotFound*/ false).str() << "\n";
     ConstantValues.insert(Val);
     return true;
   }
@@ -622,7 +622,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   bool containsPointer = true;
   if (Val->getType()->isFPOrFPVectorTy())
     containsPointer = false;
-  if (!TR.intType(Val, /*errIfNotFound*/ false).isPossiblePointer())
+  if (!TR.intType(1, Val, /*errIfNotFound*/ false).isPossiblePointer())
     containsPointer = false;
 
   if (containsPointer) {
@@ -1323,7 +1323,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     // the list of users to analyze
     if (auto I = dyn_cast<Instruction>(a)) {
       if (!I->mayWriteToMemory()) {
-        if (TR.intType(I, /*errIfNotFound*/ false).isIntegral()) {
+        if (TR.intType(1, I, /*errIfNotFound*/ false).isIntegral()) {
           continue;
         }
         for (auto u : I->users()) {

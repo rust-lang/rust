@@ -170,7 +170,8 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
       // We place that at first non phi as it may produce a non-phi instruction
       // and must thus be expanded after all phi's
       Value *NewIV =
-          Exp.expandCodeFor(S, S->getType(), Header->getFirstNonPHI());
+          Exp.expandCodeFor(S, PN->getType(), Header->getFirstNonPHI());
+      assert(NewIV->getType() == PN->getType());
       if (NewIV == PN) {
         continue;
       }

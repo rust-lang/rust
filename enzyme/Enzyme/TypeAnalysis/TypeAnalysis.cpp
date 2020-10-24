@@ -316,6 +316,13 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
     llvm::errs() << "\n";
   }
 
+
+  if (auto CE = dyn_cast<ConstantExpr>(Val)) {
+    if (CE->isCast() && isa<ConstantInt>(CE->getOperand(0))) {
+      return;
+    }
+  }
+
   if (auto I = dyn_cast<Instruction>(Val)) {
     if (fntypeinfo.Function != I->getParent()->getParent()) {
       llvm::errs() << "function: " << *fntypeinfo.Function << "\n";
@@ -940,7 +947,7 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     // only propagate anything's up if there is one
     // incoming value
     bool multipleValues = false;
-    Value* value = nullptr;
+    Value *value = nullptr;
     for (auto &op : phi.incoming_values()) {
       if (value == nullptr) {
         value = op;
@@ -1053,7 +1060,7 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
       // TODO consider the or of anything (see selectinst)
       // however, this cannot be done yet for risk of turning
       // phi's that add floats into anything
-      //PhiTypes |= newData.JustAnything();
+      // PhiTypes |= newData.JustAnything();
     } else {
       set = true;
       PhiTypes = newData;
@@ -1221,13 +1228,14 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
     vd &= getAnalysis(I.getFalseValue());
 
     // A regular and operation, however is not sufficient. One of the operands
-    // could be anything whereas the other is concrete, resulting in the concrete
-    // type (e.g. select true, anything(0), integer(i64)) This is not correct as
-    // the result of the select could always be anything (e.g. if it is a pointer).
-    // As a result, explicitly or in any anything values
-    // TODO this should be propagated elsewhere as well (specifically returns, phi)
-    vd |=  getAnalysis(I.getTrueValue()).JustAnything();
-    vd |=  getAnalysis(I.getFalseValue()).JustAnything();
+    // could be anything whereas the other is concrete, resulting in the
+    // concrete type (e.g. select true, anything(0), integer(i64)) This is not
+    // correct as the result of the select could always be anything (e.g. if it
+    // is a pointer). As a result, explicitly or in any anything values
+    // TODO this should be propagated elsewhere as well (specifically returns,
+    // phi)
+    vd |= getAnalysis(I.getTrueValue()).JustAnything();
+    vd |= getAnalysis(I.getFalseValue()).JustAnything();
     updateAnalysis(&I, vd, &I);
   }
 }
@@ -1235,25 +1243,24 @@ void TypeAnalyzer::visitSelectInst(SelectInst &I) {
 void TypeAnalyzer::visitExtractElementInst(ExtractElementInst &I) {
   updateAnalysis(I.getIndexOperand(), BaseType::Integer, &I);
 
-
   auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
-  VectorType* vecType = cast<VectorType>(I.getVectorOperand()->getType());
+  VectorType *vecType = cast<VectorType>(I.getVectorOperand()->getType());
 
-  size_t size = (dl.getTypeSizeInBits(vecType->getElementType()) + 7)/ 8;
+  size_t size = (dl.getTypeSizeInBits(vecType->getElementType()) + 7) / 8;
 
   if (auto CI = dyn_cast<ConstantInt>(I.getIndexOperand())) {
     size_t off = CI->getZExtValue() * size;
 
     if (direction & DOWN)
       updateAnalysis(&I,
-                    getAnalysis(I.getVectorOperand())
-                        .ShiftIndices(dl, off, size, /*addOffset*/ 0)
-                        .CanonicalizeValue(size, dl),
-                    &I);
+                     getAnalysis(I.getVectorOperand())
+                         .ShiftIndices(dl, off, size, /*addOffset*/ 0)
+                         .CanonicalizeValue(size, dl),
+                     &I);
 
     if (direction & UP)
       updateAnalysis(I.getVectorOperand(),
-                    getAnalysis(&I).ShiftIndices(dl, 0, size, off), &I);
+                     getAnalysis(&I).ShiftIndices(dl, 0, size, off), &I);
 
   } else {
     if (direction & DOWN) {
@@ -1273,9 +1280,9 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
   updateAnalysis(I.getOperand(2), BaseType::Integer, &I);
 
   auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
-  VectorType* vecType = cast<VectorType>(I.getOperand(0)->getType());
+  VectorType *vecType = cast<VectorType>(I.getOperand(0)->getType());
   size_t numElems = vecType->getNumElements();
-  size_t size = (dl.getTypeSizeInBits(vecType->getElementType()) + 7)/ 8;
+  size_t size = (dl.getTypeSizeInBits(vecType->getElementType()) + 7) / 8;
   size_t vecSize = (dl.getTypeSizeInBits(vecType) + 7) / 8;
 
   if (auto CI = dyn_cast<ConstantInt>(I.getOperand(2))) {
@@ -1283,19 +1290,20 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 
     if (direction & UP)
       updateAnalysis(I.getOperand(0),
-                    getAnalysis(&I).Clear(off, off + size, vecSize), &I);
+                     getAnalysis(&I).Clear(off, off + size, vecSize), &I);
 
     if (direction & UP)
       updateAnalysis(I.getOperand(1),
-                    getAnalysis(&I)
-                        .ShiftIndices(dl, off, size, 0)
-                        .CanonicalizeValue(size, dl), &I);
+                     getAnalysis(&I)
+                         .ShiftIndices(dl, off, size, 0)
+                         .CanonicalizeValue(size, dl),
+                     &I);
 
     if (direction & DOWN) {
       auto new_res =
-        getAnalysis(I.getOperand(0)).Clear(off, off + size, vecSize);
-      auto shifted = getAnalysis(I.getOperand(1))
-                        .ShiftIndices(dl, 0, size, off);
+          getAnalysis(I.getOperand(0)).Clear(off, off + size, vecSize);
+      auto shifted =
+          getAnalysis(I.getOperand(1)).ShiftIndices(dl, 0, size, off);
       new_res |= shifted;
       updateAnalysis(&I, new_res.CanonicalizeValue(vecSize, dl), &I);
     }
@@ -1304,7 +1312,7 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
       auto new_res = getAnalysis(I.getOperand(0));
       auto inserted = getAnalysis(I.getOperand(1));
       // TODO merge of anythings (see selectinst)
-      for(size_t i=0; i<numElems; ++i)
+      for (size_t i = 0; i < numElems; ++i)
         new_res &= inserted.ShiftIndices(dl, 0, size, size * i);
       updateAnalysis(&I, new_res.CanonicalizeValue(vecSize, dl), &I);
     }
@@ -1314,64 +1322,72 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
   // See selectinst type propagation rule for a description
   // of the ncessity and correctness of this rule.
-  VectorType* resType = cast<VectorType>(I.getType());
+  VectorType *resType = cast<VectorType>(I.getType());
 
   auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
 
-  size_t lhs = 0;
-  size_t rhs = 1;
-  size_t maskIdx = 2;
+  const size_t lhs = 0;
+  const size_t rhs = 1;
+  //const size_t maskIdx = 2;
 
-
-  size_t numFirst = cast<VectorType>(I.getOperand(lhs)->getType())->getNumElements();
-  size_t size = (dl.getTypeSizeInBits(resType->getElementType()) + 7)/ 8;
-  size_t resSize = (dl.getTypeSizeInBits(resType) + 7)/ 8;
+  size_t numFirst =
+      cast<VectorType>(I.getOperand(lhs)->getType())->getNumElements();
+  size_t size = (dl.getTypeSizeInBits(resType->getElementType()) + 7) / 8;
+  size_t resSize = (dl.getTypeSizeInBits(resType) + 7) / 8;
 
   auto mask = I.getShuffleMask();
+  llvm::errs() << I << "\n";
+  //assert(mask.size() ==
+  //       cast<VectorType>(I.getOperand(maskIdx)->getType())->getNumElements());
+  //assert(isa<IntegerType>(
+  //    cast<VectorType>(I.getOperand(maskIdx)->getType())->getElementType()));
 
-  assert(mask.size() == cast<VectorType>(I.getOperand(maskIdx)->getType())->getNumElements());
-  assert(isa<IntegerType>(cast<VectorType>(I.getOperand(maskIdx)->getType())->getElementType()));
-
-
-  TypeTree result;//  = getAnalysis(&I);
-  for(size_t i=0; i < mask.size(); ++i) {
-    #if LLVM_VERSION_MAJOR > 10
-    if (mask[i] == ShuffleVectorInst::UndefMaskElem)
-    #else
+  TypeTree result; //  = getAnalysis(&I);
+  for (size_t i = 0; i < mask.size(); ++i) {
+#if LLVM_VERSION_MAJOR >= 12
+    if (mask[i] == UndefMaskElem)
+#else
     if (mask[i] == -1)
-    #endif
+#endif
     {
       if (direction & DOWN) {
-        result |= TypeTree(BaseType::Anything).Only(-1).ShiftIndices(dl, 0, size, size * i);
-
-        //llvm::errs() << "Uadding idx i: " << i << " - " <<  TypeTree(BaseType::Anything).Only(-1).ShiftIndices(dl, 0, size, size * i).str() << " BECOMES " << result.str() << "\n";
+        result |= TypeTree(BaseType::Anything)
+                      .Only(-1)
+                      .ShiftIndices(dl, 0, size, size * i);
       }
     } else {
       if ((size_t)mask[i] < numFirst) {
         if (direction & UP) {
-          updateAnalysis(I.getOperand(lhs),
-                         getAnalysis(&I).ShiftIndices(dl, size * i, size, size * mask[i]), &I);
+          updateAnalysis(
+              I.getOperand(lhs),
+              getAnalysis(&I).ShiftIndices(dl, size * i, size, size * mask[i]),
+              &I);
         }
         if (direction & DOWN) {
-          result |= getAnalysis(I.getOperand(lhs)).ShiftIndices(dl, size * mask[i], size, size * i);
-          //llvm::errs() << "adding idx i: " << i << " - " << getAnalysis(I.getOperand(lhs)).ShiftIndices(dl, size * mask[i], size, size * i).str() << " BECOMES " << result.str() << "\n";
+          result |= getAnalysis(I.getOperand(lhs))
+                        .ShiftIndices(dl, size * mask[i], size, size * i);
         }
       } else {
         if (direction & UP) {
           updateAnalysis(I.getOperand(rhs),
-                         getAnalysis(&I).ShiftIndices(dl, size * i, size, size * (mask[i] - numFirst)), &I);
+                         getAnalysis(&I).ShiftIndices(
+                             dl, size * i, size, size * (mask[i] - numFirst)),
+                         &I);
         }
         if (direction & DOWN) {
-          result |= getAnalysis(I.getOperand(rhs)).ShiftIndices(dl, size * (mask[i] - numFirst), size, size * i);
+          result |= getAnalysis(I.getOperand(rhs))
+                        .ShiftIndices(dl, size * (mask[i] - numFirst), size,
+                                      size * i);
         }
       }
     }
   }
 
   if (direction & DOWN) {
-    //llvm::errs() << "\n\ndownres: " << result.str() << " resSize: " << resSize << "\n";
+    // llvm::errs() << "\n\ndownres: " << result.str() << " resSize: " <<
+    // resSize << "\n";
     result = result.CanonicalizeValue(resSize, dl);
-    //llvm::errs() << "canonicalized: " << result.str() << "\n\n\n";
+    // llvm::errs() << "canonicalized: " << result.str() << "\n\n\n";
     updateAnalysis(&I, result, &I);
   }
 }
@@ -1396,7 +1412,6 @@ void TypeAnalyzer::visitExtractValueInst(ExtractValueInst &I) {
   delete g2;
 
   int off = (int)ai.getLimitedValue();
-
   int size = dl.getTypeSizeInBits(I.getType()) / 8;
 
   if (direction & DOWN)
@@ -1445,7 +1460,6 @@ void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
                        .ShiftIndices(dl, off, ins_size, 0)
                        .CanonicalizeValue(ins_size, dl),
                    &I);
-
   auto new_res =
       getAnalysis(I.getAggregateOperand()).Clear(off, off + ins_size, agg_size);
   auto shifted = getAnalysis(I.getInsertedValueOperand())
@@ -2453,12 +2467,23 @@ TypeTree TypeAnalysis::query(Value *val, const FnTypeInfo &fn) {
   return found.getAnalysis(val);
 }
 
-ConcreteType TypeAnalysis::intType(Value *val, const FnTypeInfo &fn,
-                                   bool errIfNotFound) {
+ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
+                                   bool errIfNotFound, bool pointerIntSame) {
   assert(val);
   assert(val->getType());
-  auto q = query(val, fn).Data0();
-  auto dt = q[{}];
+  auto q = query(val, fn);
+  auto dt = q[{0}];
+  /*
+  size_t ObjSize = 1;
+  if (val->getType()->isSized())
+    ObjSize = (fn.Function->getParent()->getDataLayout().getTypeSizeInBits(
+        val->getType()) +7) / 8;
+  */
+  dt.orIn(q[{-1}], pointerIntSame);
+  for (size_t i = 1; i < num; ++i) {
+    dt.orIn(q[{(int)i}], pointerIntSame);
+  }
+
   if (errIfNotFound && (!dt.isKnown() || dt == BaseType::Anything)) {
     if (auto inst = dyn_cast<Instruction>(val)) {
       llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
@@ -2576,8 +2601,9 @@ void TypeResults::dump() {
   analysis.analyzedFunctions.find(info)->second.dump();
 }
 
-ConcreteType TypeResults::intType(Value *val, bool errIfNotFound) {
-  return analysis.intType(val, info, errIfNotFound);
+ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
+                                  bool pointerIntSame) {
+  return analysis.intType(num, val, info, errIfNotFound, pointerIntSame);
 }
 
 ConcreteType TypeResults::firstPointer(size_t num, Value *val,

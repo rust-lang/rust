@@ -3,8 +3,7 @@
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//===----------------------------------------------------------------------===//
-// This file has been modified for Enzyme
+//
 //===----------------------------------------------------------------------===//
 //
 // This file contains the implementation of the scalar evolution expander,
@@ -651,15 +650,11 @@ static const Loop *PickMostRelevantLoop(const Loop *A, const Loop *B,
 /// getRelevantLoop - Get the most relevant loop associated with the given
 /// expression, according to PickMostRelevantLoop.
 const Loop *fake::SCEVExpander::getRelevantLoop(const SCEV *S) {
-  assert(S);
   // Test whether we've already computed the most relevant loop for this SCEV.
   auto Pair = RelevantLoops.insert(std::make_pair(S, nullptr));
-  if (!S)
-    return nullptr;
   if (!Pair.second)
     return Pair.first->second;
-
-  assert(S);
+  if (S == nullptr) return nullptr;
   if (isa<SCEVConstant>(S))
     // A constant has no relevant loops.
     return nullptr;
@@ -677,7 +672,7 @@ const Loop *fake::SCEVExpander::getRelevantLoop(const SCEV *S) {
       L = PickMostRelevantLoop(L, getRelevantLoop(Op), SE.DT);
     return RelevantLoops[N] = L;
   }
-  if (const SCEVCastExpr *C = dyn_cast<SCEVCastExpr>(S)) {
+  if (const SCEVIntegralCastExpr *C = dyn_cast<SCEVIntegralCastExpr>(S)) {
     const Loop *Result = getRelevantLoop(C->getOperand());
     return RelevantLoops[C] = Result;
   }
@@ -735,10 +730,8 @@ Value *fake::SCEVExpander::visitAddExpr(const SCEVAddExpr *S) {
   SmallVector<std::pair<const Loop *, const SCEV *>, 8> OpsAndLoops;
   for (std::reverse_iterator<SCEVAddExpr::op_iterator> I(S->op_end()),
        E(S->op_begin());
-       I != E; ++I) {
-    assert(*I);
+       I != E; ++I)
     OpsAndLoops.push_back(std::make_pair(getRelevantLoop(*I), *I));
-  }
 
   // Sort by loop. Use a stable sort so that constants follow non-constants and
   // pointer operands precede non-pointer operands.
@@ -1906,7 +1899,7 @@ Value *fake::SCEVExpander::expand(const SCEV *S) {
         else
           // LSR sets the insertion point for AddRec start/step values to the
           // block start to simplify value reuse, even though it's an invalid
-          // position. fake::SCEVExpander must correct for this in all cases.
+          // position. SCEVExpander must correct for this in all cases.
           InsertPt = &*L->getHeader()->getFirstInsertionPt();
       } else {
         // If the SCEV is computable at this level, insert it into the header
@@ -2019,8 +2012,8 @@ fake::SCEVExpander::getOrInsertCanonicalInductionVariable(const Loop *L,
 /// replace them with their most canonical representative. Return the number of
 /// phis eliminated.
 ///
-/// This does not depend on any fake::SCEVExpander state but should be used in
-/// the same context that fake::SCEVExpander is used.
+/// This does not depend on any SCEVExpander state but should be used in
+/// the same context that SCEVExpander is used.
 unsigned fake::SCEVExpander::replaceCongruentIVs(
     Loop *L, const DominatorTree *DT,
     SmallVectorImpl<WeakTrackingVH> &DeadInsts,
@@ -2035,8 +2028,8 @@ unsigned fake::SCEVExpander::replaceCongruentIVs(
       // Put pointers at the back and make sure pointer < pointer = false.
       if (!LHS->getType()->isIntegerTy() || !RHS->getType()->isIntegerTy())
         return RHS->getType()->isIntegerTy() && !LHS->getType()->isIntegerTy();
-      return RHS->getType()->getPrimitiveSizeInBits() <
-             LHS->getType()->getPrimitiveSizeInBits();
+      return RHS->getType()->getPrimitiveSizeInBits().getFixedSize() <
+             LHS->getType()->getPrimitiveSizeInBits().getFixedSize();
     });
 
   unsigned NumElim = 0;
@@ -2255,8 +2248,8 @@ costAndCollectOperands(const fake::SCEVOperand &WorkItem,
   };
 
   switch (S->getSCEVType()) {
-  default:
-    llvm_unreachable("No other scev expressions possible.");
+  case scCouldNotCompute:
+    llvm_unreachable("Attempt to use a SCEVCouldNotCompute object!");
   case scUnknown:
   case scConstant:
     return 0;
@@ -2363,16 +2356,19 @@ bool fake::SCEVExpander::isHighCostExpansionHelper(
   if (getRelatedExistingExpansion(S, &At, L))
     return false; // Consider the expression to be free.
 
-  // Assume to be zero-cost.
-  if (isa<SCEVUnknown>(S))
-    return false;
-
   TargetTransformInfo::TargetCostKind CostKind =
       L->getHeader()->getParent()->hasMinSize()
           ? TargetTransformInfo::TCK_CodeSize
           : TargetTransformInfo::TCK_RecipThroughput;
 
-  if (auto *Constant = dyn_cast<SCEVConstant>(S)) {
+  switch (S->getSCEVType()) {
+  case scCouldNotCompute:
+    llvm_unreachable("Attempt to use a SCEVCouldNotCompute object!");
+  case scUnknown:
+    // Assume to be zero-cost.
+    return false;
+  case scConstant: {
+    auto *Constant = dyn_cast<SCEVConstant>(S);
     // Only evalulate the costs of constants when optimizing for size.
     if (CostKind != TargetTransformInfo::TCK_CodeSize)
       return 0;
@@ -2381,12 +2377,16 @@ bool fake::SCEVExpander::isHighCostExpansionHelper(
     BudgetRemaining -= TTI.getIntImmCostInst(
         WorkItem.ParentOpcode, WorkItem.OperandIdx, Imm, Ty, CostKind);
     return BudgetRemaining < 0;
-  } else if (isa<SCEVCastExpr>(S)) {
-    int Cost =
-        costAndCollectOperands<SCEVCastExpr>(WorkItem, TTI, CostKind, Worklist);
+  }
+  case scTruncate:
+  case scZeroExtend:
+  case scSignExtend: {
+    int Cost = costAndCollectOperands<SCEVIntegralCastExpr>(WorkItem, TTI,
+                                                            CostKind, Worklist);
     BudgetRemaining -= Cost;
     return false; // Will answer upon next entry into this function.
-  } else if (isa<SCEVUDivExpr>(S)) {
+  }
+  case scUDivExpr: {
     // UDivExpr is very likely a UDiv that ScalarEvolution's HowFarToZero or
     // HowManyLessThans produced to compute a precise expression, rather than a
     // UDiv from the user's code. If we can't find a UDiv in the code with some
@@ -2404,8 +2404,14 @@ bool fake::SCEVExpander::isHighCostExpansionHelper(
     // Need to count the cost of this UDiv.
     BudgetRemaining -= Cost;
     return false; // Will answer upon next entry into this function.
-  } else if (const SCEVNAryExpr *NAry = dyn_cast<SCEVNAryExpr>(S)) {
-    assert(NAry->getNumOperands() > 1 &&
+  }
+  case scAddExpr:
+  case scMulExpr:
+  case scUMaxExpr:
+  case scSMaxExpr:
+  case scUMinExpr:
+  case scSMinExpr: {
+    assert(dyn_cast<SCEVNAryExpr>(S)->getNumOperands() > 1 &&
            "Nary expr should have more than 1 operand.");
     // The simple nary expr will require one less op (or pair of ops)
     // than the number of it's terms.
@@ -2413,14 +2419,16 @@ bool fake::SCEVExpander::isHighCostExpansionHelper(
         costAndCollectOperands<SCEVNAryExpr>(WorkItem, TTI, CostKind, Worklist);
     BudgetRemaining -= Cost;
     return BudgetRemaining < 0;
-  } else if (isa<SCEVAddRecExpr>(S)) {
+  }
+  case scAddRecExpr: {
     assert(cast<SCEVAddRecExpr>(S)->getNumOperands() >= 2 &&
            "Polynomial should be at least linear");
     BudgetRemaining -= costAndCollectOperands<SCEVAddRecExpr>(
         WorkItem, TTI, CostKind, Worklist);
     return BudgetRemaining < 0;
-  } else
-    llvm_unreachable("No other scev expressions possible.");
+  }
+  }
+  llvm_unreachable("Unknown SCEV kind!");
 }
 
 Value *fake::SCEVExpander::expandCodeForPredicate(const SCEVPredicate *Pred,
@@ -2696,7 +2704,7 @@ bool isSafeToExpandAt(const SCEV *S, const Instruction *InsertionPoint,
   return false;
 }
 
-fake::SCEVExpanderCleaner::~SCEVExpanderCleaner() {
+SCEVExpanderCleaner::~SCEVExpanderCleaner() {
   // Result is used, nothing to remove.
   if (ResultUsed)
     return;

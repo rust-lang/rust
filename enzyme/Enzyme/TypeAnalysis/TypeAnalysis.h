@@ -98,7 +98,8 @@ public:
 
 public:
   TypeResults(TypeAnalysis &analysis, const FnTypeInfo &fn);
-  ConcreteType intType(llvm::Value *val, bool errIfNotFound = true);
+  ConcreteType intType(size_t num, llvm::Value *val, bool errIfNotFound = true,
+                       bool pointerIntSame = false);
 
   /// Returns whether in the first num bytes there is pointer, int, float, or
   /// none If pointerIntSame is set to true, then consider either as the same
@@ -276,8 +277,8 @@ public:
 
   /// Get the underlying data type of value val given a particular context
   /// If the type is not known err if errIfNotFound
-  ConcreteType intType(llvm::Value *val, const FnTypeInfo &fn,
-                       bool errIfNotFound = true);
+  ConcreteType intType(size_t num, llvm::Value *val, const FnTypeInfo &fn,
+                       bool errIfNotFound = true, bool pointerIntSame = false);
 
   /// Get the underlying data type of first num bytes of val given a particular
   /// context If the type is not known err if errIfNotFound. Consider ints and
