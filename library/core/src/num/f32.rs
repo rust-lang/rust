@@ -24,6 +24,7 @@ use crate::num::FpCategory;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let r = std::f32::RADIX;
 ///
 /// // intended way
@@ -43,6 +44,7 @@ pub const RADIX: u32 = f32::RADIX;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f32::MANTISSA_DIGITS;
 ///
 /// // intended way
@@ -62,6 +64,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f32::DIGITS;
 ///
 /// // intended way
@@ -85,6 +88,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let e = std::f32::EPSILON;
 ///
 /// // intended way
@@ -104,6 +108,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN;
 ///
 /// // intended way
@@ -120,6 +125,7 @@ pub const MIN: f32 = f32::MIN;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN_POSITIVE;
 ///
 /// // intended way
@@ -139,6 +145,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f32::MAX;
 ///
 /// // intended way
@@ -155,6 +162,7 @@ pub const MAX: f32 = f32::MAX;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN_EXP;
 ///
 /// // intended way
@@ -174,6 +182,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f32::MAX_EXP;
 ///
 /// // intended way
@@ -193,6 +202,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN_10_EXP;
 ///
 /// // intended way
@@ -212,6 +222,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f32::MAX_10_EXP;
 ///
 /// // intended way
@@ -231,6 +242,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let nan = std::f32::NAN;
 ///
 /// // intended way
@@ -247,6 +259,7 @@ pub const NAN: f32 = f32::NAN;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let inf = std::f32::INFINITY;
 ///
 /// // intended way
@@ -266,6 +279,7 @@ pub const INFINITY: f32 = f32::INFINITY;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let ninf = std::f32::NEG_INFINITY;
 ///
 /// // intended way

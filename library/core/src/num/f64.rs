@@ -24,6 +24,7 @@ use crate::num::FpCategory;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let r = std::f64::RADIX;
 ///
 /// // intended way
@@ -43,6 +44,7 @@ pub const RADIX: u32 = f64::RADIX;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f64::MANTISSA_DIGITS;
 ///
 /// // intended way
@@ -62,6 +64,7 @@ pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f64::DIGITS;
 ///
 /// // intended way
@@ -85,6 +88,7 @@ pub const DIGITS: u32 = f64::DIGITS;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let e = std::f64::EPSILON;
 ///
 /// // intended way
@@ -104,6 +108,7 @@ pub const EPSILON: f64 = f64::EPSILON;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN;
 ///
 /// // intended way
@@ -120,6 +125,7 @@ pub const MIN: f64 = f64::MIN;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN_POSITIVE;
 ///
 /// // intended way
@@ -139,6 +145,7 @@ pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f64::MAX;
 ///
 /// // intended way
@@ -155,6 +162,7 @@ pub const MAX: f64 = f64::MAX;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN_EXP;
 ///
 /// // intended way
@@ -174,6 +182,7 @@ pub const MIN_EXP: i32 = f64::MIN_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f64::MAX_EXP;
 ///
 /// // intended way
@@ -193,6 +202,7 @@ pub const MAX_EXP: i32 = f64::MAX_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f64::MIN_10_EXP;
 ///
 /// // intended way
@@ -212,6 +222,7 @@ pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f64::MAX_10_EXP;
 ///
 /// // intended way
@@ -231,6 +242,7 @@ pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let nan = std::f64::NAN;
 ///
 /// // intended way
@@ -247,6 +259,7 @@ pub const NAN: f64 = f64::NAN;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let inf = std::f64::INFINITY;
 ///
 /// // intended way
@@ -266,6 +279,7 @@ pub const INFINITY: f64 = f64::INFINITY;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let ninf = std::f64::NEG_INFINITY;
 ///
 /// // intended way

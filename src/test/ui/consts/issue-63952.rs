@@ -1,7 +1,5 @@
 // Regression test for #63952, shouldn't hang.
 
-use std::usize;
-
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct SliceRepr {

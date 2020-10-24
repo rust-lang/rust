@@ -67,6 +67,7 @@ mod reuse {
 
 mod guard {
     pub fn check() {
+        #[allow(deprecated, deprecated_in_future)]
         use std::u8; // bring module u8 in scope
         fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
             u8::max_value() // OK, resolves to associated function <u8>::max_value,
