@@ -10,6 +10,8 @@ pub mod defs;
 pub mod search;
 pub mod imports_locator;
 pub mod source_change;
+pub mod ty_filter;
+pub mod traits;
 
 use std::{fmt, sync::Arc};
 

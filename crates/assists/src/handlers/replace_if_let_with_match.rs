@@ -7,10 +7,8 @@ use syntax::{
     AstNode,
 };
 
-use crate::{
-    utils::{unwrap_trivial_block, TryEnum},
-    AssistContext, AssistId, AssistKind, Assists,
-};
+use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, Assists};
+use ide_db::ty_filter::TryEnum;
 
 // Assist: replace_if_let_with_match
 //

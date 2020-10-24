@@ -21,7 +21,6 @@ base_db = { path = "../base_db", version = "0.0.0" }
 ide_db = { path = "../ide_db", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 test_utils = { path = "../test_utils", version = "0.0.0" }
-assists = { path = "../assists", version = "0.0.0" }
 call_info = { path = "../call_info", version = "0.0.0" }
 
 # completions crate should depend only on the top-level `hir` package. if you need

@@ -1,4 +1,5 @@
 use hir::HasSource;
+use ide_db::traits::{get_missing_assoc_items, resolve_target_trait};
 use syntax::{
     ast::{
         self,
@@ -11,7 +12,7 @@ use syntax::{
 use crate::{
     assist_context::{AssistContext, Assists},
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
-    utils::{get_missing_assoc_items, render_snippet, resolve_target_trait, Cursor},
+    utils::{render_snippet, Cursor},
     AssistId, AssistKind,
 };
 
