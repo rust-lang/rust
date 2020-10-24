@@ -6,12 +6,16 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/matches_reduce_branches.rs:6:25: 6:25
       let mut _2: bool;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _3: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
++     let mut _4: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _3 = discriminant(_1);           // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
 -         switchInt(move _3) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
-+         _2 = Eq(_3, const 0_isize);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++         StorageLive(_4);                 // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
++         _4 = move _3;                    // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
++         _2 = Eq(_4, const 0_isize);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++         StorageDead(_4);                 // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
 +         goto -> bb3;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
       }
   

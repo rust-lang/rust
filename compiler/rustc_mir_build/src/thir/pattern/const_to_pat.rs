@@ -387,14 +387,16 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // `&str` and `&[u8]` are represented as `ConstValue::Slice`, let's keep using this
                 // optimization for now.
                 ty::Str => PatKind::Constant { value: cv },
-                ty::Slice(elem_ty) if elem_ty == tcx.types.u8 => PatKind::Constant { value: cv },
                 // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
                 // matching against references, you can only use byte string literals.
-                // FIXME: clean this up, likely by permitting array patterns when matching on slices
-                ty::Array(elem_ty, _) if elem_ty == tcx.types.u8 => PatKind::Constant { value: cv },
+                // The typechecker has a special case for byte string literals, by treating them
+                // as slices. This means we turn `&[T; N]` constants into slice patterns, which
+                // has no negative effects on pattern matching, even if we're actually matching on
+                // arrays.
+                ty::Array(..) |
                 // Cannot merge this with the catch all branch below, because the `const_deref`
-                // changes the type from slice to array, and slice patterns behave differently from
-                // array patterns.
+                // changes the type from slice to array, we need to keep the original type in the
+                // pattern.
                 ty::Slice(..) => {
                     let old = self.behind_reference.replace(true);
                     let array = tcx.deref_const(self.param_env.and(cv));

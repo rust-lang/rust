@@ -2109,7 +2109,7 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
             move |(), x| {
                 if f(x) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
             }
@@ -2162,7 +2162,7 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<(), ()> {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
             move |(), x| {
                 if f(x) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
             }
@@ -2222,9 +2222,7 @@ pub trait Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(
-            mut predicate: impl FnMut(&T) -> bool,
-        ) -> impl FnMut((), T) -> ControlFlow<(), T> {
+        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
             move |(), x| {
                 if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
             }
@@ -2255,9 +2253,7 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> Option<B>,
     {
         #[inline]
-        fn check<T, B>(
-            mut f: impl FnMut(T) -> Option<B>,
-        ) -> impl FnMut((), T) -> ControlFlow<(), B> {
+        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> ControlFlow<B> {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
                 None => ControlFlow::CONTINUE,
@@ -2296,7 +2292,7 @@ pub trait Iterator {
         R: Try<Ok = bool>,
     {
         #[inline]
-        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<(), Result<T, R::Error>>
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
         where
             F: FnMut(&T) -> R,
             R: Try<Ok = bool>,

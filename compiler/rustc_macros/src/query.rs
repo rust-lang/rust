@@ -190,7 +190,11 @@ impl<T: Parse> Parse for List<T> {
 }
 
 /// A named group containing queries.
+///
+/// For now, the name is not used any more, but the capability remains interesting for future
+/// developments of the query system.
 struct Group {
+    #[allow(unused)]
     name: Ident,
     queries: List<Query>,
 }
@@ -417,12 +421,9 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
-    let mut dep_node_force_stream = quote! {};
-    let mut try_load_from_on_disk_cache_stream = quote! {};
     let mut cached_queries = quote! {};
 
     for group in groups.0 {
-        let mut group_stream = quote! {};
         for mut query in group.queries.0 {
             let modifiers = process_modifiers(&mut query);
             let name = &query.name;
@@ -436,22 +437,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             if modifiers.cache.is_some() {
                 cached_queries.extend(quote! {
                     #name,
-                });
-
-                try_load_from_on_disk_cache_stream.extend(quote! {
-                    ::rustc_middle::dep_graph::DepKind::#name => {
-                        if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
-                            debug_assert!($tcx.dep_graph
-                                            .node_color($dep_node)
-                                            .map(|c| c.is_green())
-                                            .unwrap_or(false));
-
-                            let key = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node).unwrap();
-                            if queries::#name::cache_on_disk($tcx, &key, None) {
-                                let _ = $tcx.#name(key);
-                            }
-                        }
-                    }
                 });
             }
 
@@ -485,9 +470,9 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             let attribute_stream = quote! {#(#attributes),*};
             let doc_comments = query.doc_comments.iter();
             // Add the query to the group
-            group_stream.extend(quote! {
+            query_stream.extend(quote! {
                 #(#doc_comments)*
-                [#attribute_stream] fn #name: #name(#arg) #result,
+                [#attribute_stream] fn #name(#arg) #result,
             });
 
             // Create a dep node for the query
@@ -495,36 +480,9 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 [#attribute_stream] #name(#arg),
             });
 
-            // Add a match arm to force the query given the dep node
-            dep_node_force_stream.extend(quote! {
-                ::rustc_middle::dep_graph::DepKind::#name => {
-                    if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
-                        if let Some(key) = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node) {
-                            force_query::<crate::ty::query::queries::#name<'_>, _>(
-                                $tcx,
-                                key,
-                                DUMMY_SP,
-                                *$dep_node
-                            );
-                            return true;
-                        }
-                    }
-                }
-            });
-
             add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
-        let name = &group.name;
-        query_stream.extend(quote! {
-            #name { #group_stream },
-        });
     }
-
-    dep_node_force_stream.extend(quote! {
-        ::rustc_middle::dep_graph::DepKind::Null => {
-            bug!("Cannot force dep node: {:?}", $dep_node)
-        }
-    });
 
     TokenStream::from(quote! {
         macro_rules! rustc_query_append {
@@ -546,15 +504,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 );
             }
         }
-        macro_rules! rustc_dep_node_force {
-            ([$dep_node:expr, $tcx:expr] $($other:tt)*) => {
-                match $dep_node.kind {
-                    $($other)*
-
-                    #dep_node_force_stream
-                }
-            }
-        }
         macro_rules! rustc_cached_queries {
             ($($macro:tt)*) => {
                 $($macro)*(#cached_queries);
@@ -562,14 +511,5 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         }
 
         #query_description_stream
-
-        macro_rules! rustc_dep_node_try_load_from_on_disk_cache {
-            ($dep_node:expr, $tcx:expr) => {
-                match $dep_node.kind {
-                    #try_load_from_on_disk_cache_stream
-                    _ => (),
-                }
-            }
-        }
     })
 }

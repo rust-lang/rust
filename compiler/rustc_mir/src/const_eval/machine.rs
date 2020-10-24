@@ -70,9 +70,10 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
     ) -> InterpResult<'tcx> {
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn()
+            || Some(def_id) == self.tcx.lang_items().panic_str()
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
-            // &'static str
+            // &str
             assert!(args.len() == 1);
 
             let msg_place = self.deref_operand(args[0])?;

@@ -34,7 +34,6 @@ use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::profiling::ProfileCategory::*;
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -169,26 +168,71 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
         return false;
     }
 
-    rustc_dep_node_force!([dep_node, tcx]
-        // These are inputs that are expected to be pre-allocated and that
-        // should therefore always be red or green already.
-        DepKind::CrateMetadata |
+    macro_rules! force_from_dep_node {
+        ($($(#[$attr:meta])* [$($modifiers:tt)*] $name:ident($K:ty),)*) => {
+            match dep_node.kind {
+                // These are inputs that are expected to be pre-allocated and that
+                // should therefore always be red or green already.
+                DepKind::CrateMetadata |
 
-        // These are anonymous nodes.
-        DepKind::TraitSelect |
+                // These are anonymous nodes.
+                DepKind::TraitSelect |
 
-        // We don't have enough information to reconstruct the query key of
-        // these.
-        DepKind::CompileCodegenUnit => {
-            bug!("force_from_dep_node: encountered {:?}", dep_node)
+                // We don't have enough information to reconstruct the query key of
+                // these.
+                DepKind::CompileCodegenUnit |
+
+                // Forcing this makes no sense.
+                DepKind::Null => {
+                    bug!("force_from_dep_node: encountered {:?}", dep_node)
+                }
+
+                $(DepKind::$name => {
+                    debug_assert!(<$K as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key());
+
+                    if let Some(key) = <$K as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node) {
+                        force_query::<queries::$name<'_>, _>(
+                            tcx,
+                            key,
+                            DUMMY_SP,
+                            *dep_node
+                        );
+                        return true;
+                    }
+                })*
+            }
         }
-    );
+    }
+
+    rustc_dep_node_append! { [force_from_dep_node!][] }
 
     false
 }
 
 pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
-    rustc_dep_node_try_load_from_on_disk_cache!(dep_node, tcx)
+    macro_rules! try_load_from_on_disk_cache {
+        ($($name:ident,)*) => {
+            match dep_node.kind {
+                $(DepKind::$name => {
+                    if <query_keys::$name<'tcx> as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
+                        debug_assert!(tcx.dep_graph
+                                         .node_color(dep_node)
+                                         .map(|c| c.is_green())
+                                         .unwrap_or(false));
+
+                        let key = <query_keys::$name<'tcx> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node).unwrap();
+                        if queries::$name::cache_on_disk(tcx, &key, None) {
+                            let _ = tcx.$name(key);
+                        }
+                    }
+                })*
+
+                _ => (),
+            }
+        }
+    }
+
+    rustc_cached_queries!(try_load_from_on_disk_cache!);
 }
 
 mod sealed {
