@@ -1,6 +1,5 @@
 //! Provides a way to attach fixes to the diagnostics.
 //! The same module also has all curret custom fixes for the diagnostics implemented.
-use base_db::FileId;
 use hir::{
     db::AstDatabase,
     diagnostics::{
@@ -9,6 +8,7 @@ use hir::{
     },
     HasSource, HirDisplay, Semantics, VariantDef,
 };
+use ide_db::base_db::FileId;
 use ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,

@@ -1,5 +1,5 @@
-use base_db::FileId;
 use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
+use ide_db::base_db::FileId;
 use syntax::{
     ast::{self, VisibilityOwner},
     AstNode, TextRange, TextSize,

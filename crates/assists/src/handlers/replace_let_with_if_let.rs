@@ -9,7 +9,8 @@ use syntax::{
     AstNode, T,
 };
 
-use crate::{utils::TryEnum, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
+use ide_db::ty_filter::TryEnum;
 
 // Assist: replace_let_with_if_let
 //

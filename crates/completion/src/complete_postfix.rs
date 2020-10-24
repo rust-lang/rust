@@ -2,7 +2,7 @@
 
 mod format_like;
 
-use assists::utils::TryEnum;
+use ide_db::ty_filter::TryEnum;
 use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange, TextSize,

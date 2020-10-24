@@ -31,8 +31,8 @@
 //! }
 //! ```
 
-use assists::utils::get_missing_assoc_items;
 use hir::{self, HasAttrs, HasSource};
+use ide_db::traits::get_missing_assoc_items;
 use syntax::{
     ast::{self, edit, Impl},
     display::function_declaration,

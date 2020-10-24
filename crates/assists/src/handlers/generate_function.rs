@@ -1,5 +1,5 @@
-use base_db::FileId;
 use hir::HirDisplay;
+use ide_db::base_db::FileId;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{

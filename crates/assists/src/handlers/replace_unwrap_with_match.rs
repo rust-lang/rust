@@ -10,9 +10,10 @@ use syntax::{
 };
 
 use crate::{
-    utils::{render_snippet, Cursor, TryEnum},
+    utils::{render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
+use ide_db::ty_filter::TryEnum;
 
 // Assist: replace_unwrap_with_match
 //

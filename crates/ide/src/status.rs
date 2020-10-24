@@ -1,10 +1,10 @@
 use std::{fmt, iter::FromIterator, sync::Arc};
 
-use base_db::{
+use hir::MacroFile;
+use ide_db::base_db::{
     salsa::debug::{DebugQueryTable, TableEntry},
     CrateId, FileId, FileTextQuery, SourceDatabase, SourceRootId,
 };
-use hir::MacroFile;
 use ide_db::{
     symbol_index::{LibrarySymbolsQuery, SymbolIndex},
     RootDatabase,
@@ -16,7 +16,7 @@ use stdx::format_to;
 use syntax::{ast, Parse, SyntaxNode};
 
 fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
-    base_db::ParseQuery.in_db(db).entries::<SyntaxTreeStats>()
+    ide_db::base_db::ParseQuery.in_db(db).entries::<SyntaxTreeStats>()
 }
 fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     hir::db::ParseMacroQuery.in_db(db).entries::<SyntaxTreeStats>()

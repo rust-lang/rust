@@ -50,7 +50,6 @@ checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 name = "assists"
 version = "0.0.0"
 dependencies = [
- "base_db",
  "either",
  "hir",
  "ide_db",
@@ -126,20 +125,6 @@ name = "byteorder"
 version = "1.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
-
-[[package]]
-name = "call_info"
-version = "0.0.0"
-dependencies = [
- "base_db",
- "either",
- "expect-test",
- "hir",
- "ide_db",
- "stdx",
- "syntax",
- "test_utils",
-]
 
 [[package]]
 name = "cargo_metadata"
@@ -268,9 +253,7 @@ dependencies = [
 name = "completion"
 version = "0.0.0"
 dependencies = [
- "assists",
  "base_db",
- "call_info",
  "expect-test",
  "hir",
  "ide_db",
@@ -655,8 +638,6 @@ name = "ide"
 version = "0.0.0"
 dependencies = [
  "assists",
- "base_db",
- "call_info",
  "cfg",
  "completion",
  "either",
@@ -685,6 +666,7 @@ version = "0.0.0"
 dependencies = [
  "base_db",
  "either",
+ "expect-test",
  "fst",
  "hir",
  "log",
@@ -1356,7 +1338,6 @@ name = "rust-analyzer"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "base_db",
  "cfg",
  "crossbeam-channel 0.5.0",
  "env_logger",
@@ -1614,7 +1595,6 @@ dependencies = [
 name = "ssr"
 version = "0.0.0"
 dependencies = [
- "base_db",
  "expect-test",
  "hir",
  "ide_db",

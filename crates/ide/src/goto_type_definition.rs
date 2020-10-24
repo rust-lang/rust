@@ -54,7 +54,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 
 #[cfg(test)]
 mod tests {
-    use base_db::FileRange;
+    use ide_db::base_db::FileRange;
 
     use crate::fixture;
 

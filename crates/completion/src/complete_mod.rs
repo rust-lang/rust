@@ -1,7 +1,7 @@
 //! Completes mod declarations.
 
-use base_db::{SourceDatabaseExt, VfsPath};
 use hir::{Module, ModuleSource};
+use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use ide_db::RootDatabase;
 use rustc_hash::FxHashSet;
 

@@ -23,7 +23,7 @@ mod complete_macro_in_item_position;
 mod complete_trait_impl;
 mod complete_mod;
 
-use base_db::FilePosition;
+use ide_db::base_db::FilePosition;
 use ide_db::RootDatabase;
 
 use crate::{

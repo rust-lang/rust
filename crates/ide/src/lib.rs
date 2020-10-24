@@ -48,11 +48,11 @@ mod doc_links;
 
 use std::sync::Arc;
 
-use base_db::{
+use cfg::CfgOptions;
+use ide_db::base_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
 };
-use cfg::CfgOptions;
 use ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
@@ -80,19 +80,19 @@ pub use crate::{
         Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
     },
 };
-pub use call_info::CallInfo;
 pub use completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
 };
+pub use ide_db::call_info::CallInfo;
 
 pub use assists::{
     utils::MergeBehaviour, Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist,
 };
-pub use base_db::{
+pub use hir::{Documentation, Semantics};
+pub use ide_db::base_db::{
     Canceled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
     SourceRootId,
 };
-pub use hir::{Documentation, Semantics};
 pub use ide_db::{
     label::Label,
     line_index::{LineCol, LineIndex},
@@ -396,7 +396,7 @@ impl Analysis {
 
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
-        self.with_db(|db| call_info::call_info(db, position))
+        self.with_db(|db| ide_db::call_info::call_info(db, position))
     }
 
     /// Computes call hierarchy candidates for the given file position.

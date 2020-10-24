@@ -74,7 +74,7 @@ fn impls_for_trait(
 
 #[cfg(test)]
 mod tests {
-    use base_db::FileRange;
+    use ide_db::base_db::FileRange;
 
     use crate::fixture;
 

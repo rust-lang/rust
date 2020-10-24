@@ -3,8 +3,8 @@
 use std::{collections::BTreeMap, convert::TryFrom};
 
 use ast::{HasQuotes, HasStringValue};
-use call_info::ActiveParameter;
 use hir::Semantics;
+use ide_db::call_info::ActiveParameter;
 use itertools::Itertools;
 use syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
 

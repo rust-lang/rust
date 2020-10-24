@@ -1,8 +1,8 @@
-use base_db::SourceDatabase;
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
     Module, ModuleDef, ModuleSource, Semantics,
 };
+use ide_db::base_db::SourceDatabase;
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -385,8 +385,8 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 
 #[cfg(test)]
 mod tests {
-    use base_db::FileLoader;
     use expect_test::{expect, Expect};
+    use ide_db::base_db::FileLoader;
 
     use crate::fixture;
 
@@ -633,6 +633,33 @@ fn main() { }
                 #
                 foo(Path::new("hello, world!"))
                 ```
+            "##]],
+        );
+    }
+
+    #[test]
+    fn hover_shows_fn_doc_attr_raw_string() {
+        check(
+            r##"
+#[doc = r#"Raw string doc attr"#]
+pub fn foo<|>(_: &Path) {}
+
+fn main() { }
+"##,
+            expect![[r##"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                pub fn foo(_: &Path)
+                ```
+
+                ---
+
+                Raw string doc attr
             "##]],
         );
     }

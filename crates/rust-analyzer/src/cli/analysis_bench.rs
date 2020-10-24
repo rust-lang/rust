@@ -3,12 +3,12 @@
 use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use anyhow::{bail, format_err, Result};
-use base_db::{
-    salsa::{Database, Durability},
-    FileId,
-};
 use ide::{
     Analysis, AnalysisHost, Change, CompletionConfig, DiagnosticsConfig, FilePosition, LineCol,
+};
+use ide_db::base_db::{
+    salsa::{Database, Durability},
+    FileId,
 };
 use vfs::AbsPathBuf;
 

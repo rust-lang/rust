@@ -1,7 +1,7 @@
 //! Runs completion for testing purposes.
 
-use base_db::{fixture::ChangeFixture, FileLoader, FilePosition};
 use hir::Semantics;
+use ide_db::base_db::{fixture::ChangeFixture, FileLoader, FilePosition};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};

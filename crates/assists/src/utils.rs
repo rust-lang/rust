@@ -2,14 +2,13 @@
 pub(crate) mod insert_use;
 pub(crate) mod import_assets;
 
-use std::{iter, ops};
+use std::ops;
 
-use hir::{Adt, Crate, Enum, Module, ScopeDef, Semantics, Trait, Type};
+use hir::{Crate, Enum, Module, ScopeDef, Semantics, Trait};
 use ide_db::RootDatabase;
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, make, ArgListOwner, NameOwner},
+    ast::{self, make, ArgListOwner},
     AstNode, Direction,
     SyntaxKind::*,
     SyntaxNode, TextSize, T,
@@ -115,72 +114,6 @@ pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor
     }
 }
 
-pub fn get_missing_assoc_items(
-    sema: &Semantics<RootDatabase>,
-    impl_def: &ast::Impl,
-) -> Vec<hir::AssocItem> {
-    // Names must be unique between constants and functions. However, type aliases
-    // may share the same name as a function or constant.
-    let mut impl_fns_consts = FxHashSet::default();
-    let mut impl_type = FxHashSet::default();
-
-    if let Some(item_list) = impl_def.assoc_item_list() {
-        for item in item_list.assoc_items() {
-            match item {
-                ast::AssocItem::Fn(f) => {
-                    if let Some(n) = f.name() {
-                        impl_fns_consts.insert(n.syntax().to_string());
-                    }
-                }
-
-                ast::AssocItem::TypeAlias(t) => {
-                    if let Some(n) = t.name() {
-                        impl_type.insert(n.syntax().to_string());
-                    }
-                }
-
-                ast::AssocItem::Const(c) => {
-                    if let Some(n) = c.name() {
-                        impl_fns_consts.insert(n.syntax().to_string());
-                    }
-                }
-                ast::AssocItem::MacroCall(_) => (),
-            }
-        }
-    }
-
-    resolve_target_trait(sema, impl_def).map_or(vec![], |target_trait| {
-        target_trait
-            .items(sema.db)
-            .iter()
-            .filter(|i| match i {
-                hir::AssocItem::Function(f) => {
-                    !impl_fns_consts.contains(&f.name(sema.db).to_string())
-                }
-                hir::AssocItem::TypeAlias(t) => !impl_type.contains(&t.name(sema.db).to_string()),
-                hir::AssocItem::Const(c) => c
-                    .name(sema.db)
-                    .map(|n| !impl_fns_consts.contains(&n.to_string()))
-                    .unwrap_or_default(),
-            })
-            .cloned()
-            .collect()
-    })
-}
-
-pub(crate) fn resolve_target_trait(
-    sema: &Semantics<RootDatabase>,
-    impl_def: &ast::Impl,
-) -> Option<hir::Trait> {
-    let ast_path =
-        impl_def.trait_().map(|it| it.syntax().clone()).and_then(ast::PathType::cast)?.path()?;
-
-    match sema.resolve_path(&ast_path) {
-        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def),
-        _ => None,
-    }
-}
-
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
         .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
@@ -220,54 +153,6 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
         // FIXME:
         // ast::Expr::Literal(true | false )
         _ => None,
-    }
-}
-
-#[derive(Clone, Copy)]
-pub enum TryEnum {
-    Result,
-    Option,
-}
-
-impl TryEnum {
-    const ALL: [TryEnum; 2] = [TryEnum::Option, TryEnum::Result];
-
-    pub fn from_ty(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<TryEnum> {
-        let enum_ = match ty.as_adt() {
-            Some(Adt::Enum(it)) => it,
-            _ => return None,
-        };
-        TryEnum::ALL.iter().find_map(|&var| {
-            if &enum_.name(sema.db).to_string() == var.type_name() {
-                return Some(var);
-            }
-            None
-        })
-    }
-
-    pub(crate) fn happy_case(self) -> &'static str {
-        match self {
-            TryEnum::Result => "Ok",
-            TryEnum::Option => "Some",
-        }
-    }
-
-    pub(crate) fn sad_pattern(self) -> ast::Pat {
-        match self {
-            TryEnum::Result => make::tuple_struct_pat(
-                make::path_unqualified(make::path_segment(make::name_ref("Err"))),
-                iter::once(make::wildcard_pat().into()),
-            )
-            .into(),
-            TryEnum::Option => make::ident_pat(make::name("None")).into(),
-        }
-    }
-
-    fn type_name(self) -> &'static str {
-        match self {
-            TryEnum::Result => "Result",
-            TryEnum::Option => "Option",
-        }
     }
 }
 

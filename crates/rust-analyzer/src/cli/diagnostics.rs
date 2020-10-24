@@ -6,9 +6,9 @@ use std::path::Path;
 use anyhow::anyhow;
 use rustc_hash::FxHashSet;
 
-use base_db::SourceDatabaseExt;
 use hir::Crate;
 use ide::{DiagnosticsConfig, Severity};
+use ide_db::base_db::SourceDatabaseExt;
 
 use crate::cli::{load_cargo::load_cargo, Result};
 

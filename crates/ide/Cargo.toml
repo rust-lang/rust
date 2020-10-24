@@ -23,14 +23,12 @@ url = "2.1.1"
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 text_edit = { path = "../text_edit", version = "0.0.0" }
-base_db = { path = "../base_db", version = "0.0.0" }
 ide_db = { path = "../ide_db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 test_utils = { path = "../test_utils", version = "0.0.0" }
 assists = { path = "../assists", version = "0.0.0" }
 ssr = { path = "../ssr", version = "0.0.0" }
-call_info = { path = "../call_info", version = "0.0.0" }
 completion = { path = "../completion", version = "0.0.0" }
 
 # ide should depend only on the top-level `hir` package. if you need

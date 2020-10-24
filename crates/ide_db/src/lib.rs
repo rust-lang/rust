@@ -10,6 +10,9 @@ pub mod defs;
 pub mod search;
 pub mod imports_locator;
 pub mod source_change;
+pub mod ty_filter;
+pub mod traits;
+pub mod call_info;
 
 use std::{fmt, sync::Arc};
 
@@ -22,6 +25,9 @@ use hir::db::{AstDatabase, DefDatabase, HirDatabase};
 use rustc_hash::FxHashSet;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
+
+/// `base_db` is normally also needed in places where `ide_db` is used, so this re-export is for convenience.
+pub use base_db;
 
 #[salsa::database(
     base_db::SourceDatabaseStorage,

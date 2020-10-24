@@ -17,8 +17,8 @@ mod tests;
 pub mod utils;
 pub mod ast_transform;
 
-use base_db::FileRange;
 use hir::Semantics;
+use ide_db::base_db::FileRange;
 use ide_db::{label::Label, source_change::SourceChange, RootDatabase};
 use syntax::TextRange;
 

@@ -1,4 +1,4 @@
-use base_db::{FileId, SourceDatabase};
+use ide_db::base_db::{FileId, SourceDatabase};
 use ide_db::RootDatabase;
 use syntax::{
     algo, AstNode, NodeOrToken, SourceFile,
