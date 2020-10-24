@@ -242,25 +242,15 @@ macro_rules! hash_result {
     };
 }
 
-macro_rules! define_queries {
-    (<$tcx:tt> $($category:tt {
-        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*
-    },)*) => {
-        define_queries_inner! { <$tcx>
-            $($( $(#[$attr])* category<$category> [$($modifiers)*] fn $name: $node($($K)*) -> $V,)*)*
-        }
-    }
-}
-
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     ($K:ty) => { $K };
 }
 
-macro_rules! define_queries_inner {
+macro_rules! define_queries {
     (<$tcx:tt>
-     $($(#[$attr:meta])* category<$category:tt>
-        [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*) => {
+     $($(#[$attr:meta])*
+        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
         use std::mem;
         use crate::{
@@ -268,7 +258,6 @@ macro_rules! define_queries_inner {
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
-        use rustc_data_structures::profiling::ProfileCategory;
 
         define_queries_struct! {
             tcx: $tcx,
@@ -362,13 +351,12 @@ macro_rules! define_queries_inner {
                 as QueryStorage
             >::Stored;
             const NAME: &'static str = stringify!($name);
-            const CATEGORY: ProfileCategory = $category;
         }
 
         impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
-            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
+            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
 
             type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
 
