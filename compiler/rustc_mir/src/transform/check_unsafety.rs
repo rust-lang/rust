@@ -190,7 +190,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
         }
 
-        for (i, elem) in place.projection.iter().enumerate() {
+        for (i, _elem) in place.projection.iter().enumerate() {
             let proj_base = &place.projection[..i];
             if context.is_borrow() {
                 if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
@@ -236,23 +236,28 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     UnsafetyViolationDetails::DerefOfRawPointer,
                 ),
                 ty::Adt(adt, _) if adt.is_union() => {
-                    if context == PlaceContext::MutatingUse(MutatingUseContext::Store)
+                    let assign_to_field = context
+                        == PlaceContext::MutatingUse(MutatingUseContext::Store)
                         || context == PlaceContext::MutatingUse(MutatingUseContext::Drop)
-                        || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
-                    {
-                        let elem_ty = match elem {
-                            ProjectionElem::Field(_, ty) => ty,
-                            _ => span_bug!(
-                                self.source_info.span,
-                                "non-field projection {:?} from union?",
-                                place
-                            ),
-                        };
-                        let manually_drop = elem_ty
+                        || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput);
+                    // If there is a `Deref` further along the projection chain, this is *not* an
+                    // assignment to a union field. In that case the union field is just read to
+                    // obtain the pointer/reference.
+                    let assign_to_field = assign_to_field
+                        && !place.projection[i..]
+                            .iter()
+                            .any(|elem| matches!(elem, ProjectionElem::Deref));
+                    // If this is just an assignment, determine if the assigned type needs dropping.
+                    if assign_to_field {
+                        // We have to check the actual type of the assignment, as that determines if the
+                        // old value is being dropped.
+                        let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
+                        // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
+                        let manually_drop = assigned_ty
                             .ty_adt_def()
                             .map_or(false, |adt_def| adt_def.is_manually_drop());
                         let nodrop = manually_drop
-                            || elem_ty.is_copy_modulo_regions(
+                            || assigned_ty.is_copy_modulo_regions(
                                 self.tcx.at(self.source_info.span),
                                 self.param_env,
                             );
@@ -260,7 +265,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             self.require_unsafe(
                                 UnsafetyViolationKind::GeneralAndConstFn,
                                 UnsafetyViolationDetails::AssignToDroppingUnionField,
-                            )
+                            );
                         } else {
                             // write to non-drop union field, safe
                         }
