@@ -1,5 +1,5 @@
 use rustc_data_structures::graph::iterate::{
-    ControlFlow, NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
+    NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
 use rustc_hir::intravisit::FnKind;
 use rustc_middle::hir::map::blocks::FnLikeNode;
@@ -8,6 +8,7 @@ use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
+use std::ops::ControlFlow;
 
 crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();

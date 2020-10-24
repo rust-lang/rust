@@ -1,6 +1,7 @@
 use super::{DirectedGraph, WithNumNodes, WithStartNode, WithSuccessors};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use std::ops::ControlFlow;
 
 #[cfg(test)]
 mod tests;
@@ -85,10 +86,6 @@ where
         Some(n)
     }
 }
-
-/// Allows searches to terminate early with a value.
-// FIXME (#75744): remove the alias once the generics are in a better order and `C=()`.
-pub type ControlFlow<T> = std::ops::ControlFlow<(), T>;
 
 /// The status of a node in the depth-first search.
 ///
