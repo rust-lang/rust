@@ -8,61 +8,52 @@
       let mut _3: isize;                   // in scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
       let mut _4: bool;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _5: isize;                   // in scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
+      let mut _6: isize;                   // in scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
+      let mut _7: isize;                   // in scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
+      let mut _8: bool;                    // in scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _3 = discriminant(_1);           // scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
-          switchInt(move _3) -> [0_isize: bb6, otherwise: bb5]; // scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
+          StorageLive(_6);                 // scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
+          _6 = move _3;                    // scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
+          _2 = Eq(_6, const 0_isize);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_6);                 // scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
+          goto -> bb4;                     // scope 0 at $DIR/not_equal_false.rs:4:17: 4:21
       }
   
       bb1: {
           _0 = const true;                 // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
-          goto -> bb4;                     // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+          goto -> bb3;                     // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
       }
   
       bb2: {
-          _0 = const false;                // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
-          goto -> bb4;                     // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+          StorageLive(_4);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _5 = discriminant(_1);           // scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
+          StorageLive(_7);                 // scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
+          _7 = move _5;                    // scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
+          _4 = Eq(_7, const 1_isize);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_7);                 // scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
+          goto -> bb5;                     // scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
       }
   
       bb3: {
-          StorageLive(_4);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _5 = discriminant(_1);           // scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
-          switchInt(move _5) -> [1_isize: bb9, otherwise: bb8]; // scope 0 at $DIR/not_equal_false.rs:4:38: 4:45
-      }
-  
-      bb4: {
           StorageDead(_4);                 // scope 0 at $DIR/not_equal_false.rs:4:45: 4:46
           StorageDead(_2);                 // scope 0 at $DIR/not_equal_false.rs:4:45: 4:46
           return;                          // scope 0 at $DIR/not_equal_false.rs:5:2: 5:2
       }
   
+      bb4: {
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+      }
+  
       bb5: {
-          _2 = const false;                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          goto -> bb7;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      }
-  
-      bb6: {
-          _2 = const true;                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          goto -> bb7;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      }
-  
-      bb7: {
-          switchInt(move _2) -> [false: bb3, otherwise: bb1]; // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
-      }
-  
-      bb8: {
-          _4 = const false;                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          goto -> bb10;                    // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      }
-  
-      bb9: {
-          _4 = const true;                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          goto -> bb10;                    // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      }
-  
-      bb10: {
-          switchInt(move _4) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+          StorageLive(_8);                 // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+          _8 = move _4;                    // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+-         _0 = Ne(_8, const false);        // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
++         _0 = _8;                         // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+          StorageDead(_8);                 // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
+          goto -> bb3;                     // scope 0 at $DIR/not_equal_false.rs:4:5: 4:46
       }
   }
   

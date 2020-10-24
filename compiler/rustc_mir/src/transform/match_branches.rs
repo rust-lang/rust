@@ -38,19 +38,16 @@ pub struct MatchBranchSimplification;
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // FIXME: This optimization can result in unsoundness, because it introduces
-        // additional uses of a place holding the discriminant value without ensuring that
-        // it is valid to do so.
-        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
+        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
             return;
         }
 
         let param_env = tcx.param_env(body.source.def_id());
-        let bbs = body.basic_blocks_mut();
+        let (bbs, local_decls) = body.basic_blocks_and_local_decls_mut();
         'outer: for bb_idx in bbs.indices() {
             let (discr, val, switch_ty, first, second) = match bbs[bb_idx].terminator().kind {
                 TerminatorKind::SwitchInt {
-                    discr: Operand::Copy(ref place) | Operand::Move(ref place),
+                    discr: ref discr @ (Operand::Copy(_) | Operand::Move(_)),
                     switch_ty,
                     ref targets,
                     ..
@@ -59,7 +56,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     if target == targets.otherwise() {
                         continue;
                     }
-                    (place, value, switch_ty, target, targets.otherwise())
+                    (discr, value, switch_ty, target, targets.otherwise())
                 }
                 // Only optimize switch int statements
                 _ => continue,
@@ -99,6 +96,10 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             // Take ownership of items now that we know we can optimize.
             let discr = discr.clone();
 
+            // Introduce a temporary for the discriminant value.
+            let source_info = bbs[bb_idx].terminator().source_info;
+            let discr_local = local_decls.push(LocalDecl::new(switch_ty, source_info.span));
+
             // We already checked that first and second are different blocks,
             // and bb_idx has a different terminator from both of them.
             let (from, first, second) = bbs.pick3_mut(bb_idx, first, second);
@@ -127,7 +128,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                                 rustc_span::DUMMY_SP,
                             );
                             let op = if f_b { BinOp::Eq } else { BinOp::Ne };
-                            let rhs = Rvalue::BinaryOp(op, Operand::Copy(discr.clone()), const_cmp);
+                            let rhs = Rvalue::BinaryOp(
+                                op,
+                                Operand::Copy(Place::from(discr_local)),
+                                const_cmp,
+                            );
                             Statement {
                                 source_info: f.source_info,
                                 kind: StatementKind::Assign(box (*lhs, rhs)),
@@ -138,7 +143,16 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     _ => unreachable!(),
                 }
             });
+
+            from.statements
+                .push(Statement { source_info, kind: StatementKind::StorageLive(discr_local) });
+            from.statements.push(Statement {
+                source_info,
+                kind: StatementKind::Assign(box (Place::from(discr_local), Rvalue::Use(discr))),
+            });
             from.statements.extend(new_stmts);
+            from.statements
+                .push(Statement { source_info, kind: StatementKind::StorageDead(discr_local) });
             from.terminator_mut().kind = first.terminator().kind.clone();
         }
     }
