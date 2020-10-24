@@ -1,8 +1,8 @@
 use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, GlobalId, Immediate,
-    InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
+    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
+    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
     ScalarMaybeUninit, StackPopCleanup,
 };
 
@@ -376,13 +376,14 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 // https://github.com/rust-lang/rust/issues/67465 is made
                 if cid.promoted.is_none() {
                     let mut ref_tracking = RefTracking::new(mplace);
+                    let mut inner = false;
                     while let Some((mplace, path)) = ref_tracking.todo.pop() {
-                        ecx.const_validate_operand(
-                            mplace.into(),
-                            path,
-                            &mut ref_tracking,
-                            /*may_ref_to_static*/ ecx.memory.extra.can_access_statics,
-                        )?;
+                        let mode = match tcx.static_mutability(cid.instance.def_id()) {
+                            Some(_) => CtfeValidationMode::Regular, // a `static`
+                            None => CtfeValidationMode::Const { inner },
+                        };
+                        ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
+                        inner = true;
                     }
                 }
             };
