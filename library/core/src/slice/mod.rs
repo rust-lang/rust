@@ -76,6 +76,9 @@ pub use sort::heapsort;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+pub use ascii::EscapeAscii;
+
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
