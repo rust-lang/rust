@@ -1062,6 +1062,13 @@ vec![
         module: "large_stack_arrays",
     },
     Lint {
+        name: "large_types_passed_by_value",
+        group: "pedantic",
+        desc: "functions taking large arguments by value",
+        deprecation: None,
+        module: "pass_by_ref_or_value",
+    },
+    Lint {
         name: "len_without_is_empty",
         group: "style",
         desc: "traits or impls with a public `len` method but no corresponding `is_empty` method",
@@ -2389,7 +2396,7 @@ vec![
         group: "pedantic",
         desc: "functions taking small copyable arguments by reference",
         deprecation: None,
-        module: "trivially_copy_pass_by_ref",
+        module: "pass_by_ref_or_value",
     },
     Lint {
         name: "try_err",
