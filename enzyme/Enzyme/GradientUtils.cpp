@@ -1515,7 +1515,8 @@ end:;
 }
 
 Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
-                              const ValueToValueMapTy &incoming_available, bool tryLegalRecomputeCheck) {
+                              const ValueToValueMapTy &incoming_available,
+                              bool tryLegalRecomputeCheck) {
   assert(val->getName() != "<badref>");
   if (isa<Constant>(val)) {
     return val;

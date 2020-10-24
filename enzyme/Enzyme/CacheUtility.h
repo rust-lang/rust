@@ -271,7 +271,8 @@ public:
   virtual llvm::Value *
   lookupM(llvm::Value *val, llvm::IRBuilder<> &BuilderM,
           const llvm::ValueToValueMapTy &incoming_availalble =
-              llvm::ValueToValueMapTy(), bool tryLegalityCheck=true) = 0;
+              llvm::ValueToValueMapTy(),
+          bool tryLegalityCheck = true) = 0;
 
   /// If an allocation is requested to be freed, this subclass will be called to
   /// chose how and where to free it. It is by default not implemented, falling

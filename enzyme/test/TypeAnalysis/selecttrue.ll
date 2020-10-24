@@ -7,7 +7,7 @@ define void @caller() {
 entry:
   %sel = select i1 true, i64 0, i64 8
   %ptr = inttoptr i64 %sel to i64*
-  %ld = load i64, i64* %ptr
+  %ld = load i64, i64* %ptr, align 8
   ret void
 }
 
@@ -15,5 +15,5 @@ entry:
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %sel = select i1 true, i64 0, i64 8: {[-1]:Anything}
 ; CHECK-NEXT:   %ptr = inttoptr i64 %sel to i64*: {[-1]:Anything}
-; CHECK-NEXT:   %ld = load i64, i64* %ptr: {}
+; CHECK-NEXT:   %ld = load i64, i64* %ptr, align 8: {}
 ; CHECK-NEXT:   ret void: {}

@@ -764,9 +764,10 @@ public:
     return inst;
   }
 
-  Value *lookupM(Value *val, IRBuilder<> &BuilderM,
-                 const ValueToValueMapTy &incoming_availalble =
-                     ValueToValueMapTy(), bool tryLegalRecomputeCheck=true) override;
+  Value *
+  lookupM(Value *val, IRBuilder<> &BuilderM,
+          const ValueToValueMapTy &incoming_availalble = ValueToValueMapTy(),
+          bool tryLegalRecomputeCheck = true) override;
 
   Value *invertPointerM(Value *val, IRBuilder<> &BuilderM);
 
