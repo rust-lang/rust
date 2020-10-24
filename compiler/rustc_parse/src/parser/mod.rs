@@ -1178,8 +1178,9 @@ impl<'a> Parser<'a> {
 
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
-    /// into a `TokenStream`, and returned along with the result
-    /// of the callback.
+    /// into a `LazyTokenStream`, and returned along with the result
+    /// of the callback. The returned `LazyTokenStream` will be `None`
+    /// if not tokens were captured.
     ///
     /// Note: If your callback consumes an opening delimiter
     /// (including the case where you call `collect_tokens`
@@ -1195,7 +1196,7 @@ impl<'a> Parser<'a> {
     pub fn collect_tokens<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
-    ) -> PResult<'a, (R, LazyTokenStream)> {
+    ) -> PResult<'a, (R, Option<LazyTokenStream>)> {
         let start_token = (self.token.clone(), self.token_spacing);
         let mut cursor_snapshot = self.token_cursor.clone();
 
@@ -1204,6 +1205,11 @@ impl<'a> Parser<'a> {
         let new_calls = self.token_cursor.num_next_calls;
         let num_calls = new_calls - cursor_snapshot.num_next_calls;
         let desugar_doc_comments = self.desugar_doc_comments;
+
+        // We didn't capture any tokens
+        if num_calls == 0 {
+            return Ok((ret, None));
+        }
 
         // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
         // and `num_calls`, we can reconstruct the `TokenStream` seen
@@ -1233,7 +1239,7 @@ impl<'a> Parser<'a> {
         };
         let stream = LazyTokenStream::new(LazyTokenStreamInner::Lazy(Box::new(lazy_cb)));
 
-        Ok((ret, stream))
+        Ok((ret, Some(stream)))
     }
 
     /// `::{` or `::*`

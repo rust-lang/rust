@@ -577,7 +577,7 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
-    let Attribute { kind, id: _, style: _, span } = attr;
+    let Attribute { kind, id: _, style: _, span, tokens: _ } = attr;
     match kind {
         AttrKind::Normal(AttrItem { path, args, tokens: _ }) => {
             vis.visit_path(path);

@@ -1785,6 +1785,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 span: at.span,
                 id: at.id,
                 style: at.style,
+                tokens: None,
             };
         } else {
             noop_visit_attribute(at, self)

@@ -151,7 +151,7 @@ impl<'a> Parser<'a> {
         if let Some(tokens) = tokens {
             if let Some(item) = &mut item {
                 if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                    item.tokens = Some(tokens);
+                    item.tokens = tokens;
                 }
             }
         }
