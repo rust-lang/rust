@@ -345,6 +345,7 @@ mod wildcard_dependencies;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
+mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 pub use crate::utils::conf::Conf;
@@ -944,6 +945,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &write::WRITE_LITERAL,
         &write::WRITE_WITH_NEWLINE,
         &zero_div_zero::ZERO_DIVIDED_BY_ZERO,
+        &zero_sized_map_values::ZERO_SIZED_MAP_VALUES,
     ]);
     // end register lints, do not remove this comment, it’s used in `update_lints`
 
@@ -1204,6 +1206,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
     store.register_late_pass(|| box strings::StrToString);
     store.register_late_pass(|| box strings::StringToString);
+    store.register_late_pass(|| box zero_sized_map_values::ZeroSizedMapValues);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1336,6 +1339,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unused_self::UNUSED_SELF),
         LintId::of(&wildcard_imports::ENUM_GLOB_USE),
         LintId::of(&wildcard_imports::WILDCARD_IMPORTS),
+        LintId::of(&zero_sized_map_values::ZERO_SIZED_MAP_VALUES),
     ]);
 
     #[cfg(feature = "internal-lints")]
