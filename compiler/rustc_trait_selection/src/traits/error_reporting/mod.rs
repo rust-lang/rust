@@ -671,9 +671,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
 
-            OutputTypeParameterMismatch(ref found_trait_ref, ref expected_trait_ref, _) => {
-                let found_trait_ref = self.resolve_vars_if_possible(*found_trait_ref);
-                let expected_trait_ref = self.resolve_vars_if_possible(*expected_trait_ref);
+            OutputTypeParameterMismatch(found_trait_ref, expected_trait_ref, _) => {
+                let found_trait_ref = self.resolve_vars_if_possible(found_trait_ref);
+                let expected_trait_ref = self.resolve_vars_if_possible(expected_trait_ref);
 
                 if expected_trait_ref.self_ty().references_error() {
                     return;

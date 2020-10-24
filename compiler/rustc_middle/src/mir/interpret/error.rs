@@ -29,7 +29,7 @@ impl From<ErrorReported> for ErrorHandled {
     }
 }
 
-CloneTypeFoldableAndLiftImpls! {
+TrivialTypeFoldableAndLiftImpls! {
     ErrorHandled,
 }
 

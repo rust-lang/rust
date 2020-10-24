@@ -4,7 +4,7 @@ use super::*;
 use crate::ty;
 use rustc_data_structures::functor::IdFunctor;
 
-CloneTypeFoldableAndLiftImpls! {
+TrivialTypeFoldableAndLiftImpls! {
     BlockTailInfo,
     MirPhase,
     SourceInfo,
@@ -24,7 +24,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             SwitchInt { discr, switch_ty, targets } => SwitchInt {
                 discr: discr.fold_with(folder),
                 switch_ty: switch_ty.fold_with(folder),
-                targets: targets.clone(),
+                targets,
             },
             Drop { place, target, unwind } => {
                 Drop { place: place.fold_with(folder), target, unwind }
@@ -42,7 +42,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 drop,
             },
             Call { func, args, destination, cleanup, from_hir_call, fn_span } => {
-                let dest = destination.as_ref().map(|&(loc, dest)| (loc.fold_with(folder), dest));
+                let dest = destination.map(|(loc, dest)| (loc.fold_with(folder), dest));
 
                 Call {
                     func: func.fold_with(folder),
@@ -63,7 +63,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     OverflowNeg(op) => OverflowNeg(op.fold_with(folder)),
                     DivisionByZero(op) => DivisionByZero(op.fold_with(folder)),
                     RemainderByZero(op) => RemainderByZero(op.fold_with(folder)),
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => msg.clone(),
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => msg,
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
             }
@@ -162,8 +162,7 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        let v = self.iter().map(|t| t.fold_with(folder)).collect::<Vec<_>>();
-        folder.tcx().intern_place_elems(&v)
+        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_place_elems(v))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
@@ -322,7 +321,7 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
 
 impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Self {
-        self.clone()
+        self
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
         ControlFlow::CONTINUE

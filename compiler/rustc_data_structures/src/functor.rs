@@ -22,7 +22,7 @@ impl<T> IdFunctor for Box<T> {
         unsafe {
             // SAFETY: The raw pointer points to a valid value of type `T`.
             let value = ptr::read(raw);
-            // SAFETY: Convert's `Box<T>` to `Box<MaybeUninit<T>>` which is the
+            // SAFETY: Converts `Box<T>` to `Box<MaybeUninit<T>>` which is the
             // inverse of `Box::assume_init()` and should be safe.
             let mut raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
             // SAFETY: Write the mapped value back into the `Box`.

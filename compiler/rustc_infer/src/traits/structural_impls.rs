@@ -62,7 +62,7 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         traits::Obligation {
-            cause: self.cause.clone(),
+            cause: self.cause,
             recursion_depth: self.recursion_depth,
             predicate: self.predicate.fold_with(folder),
             param_env: self.param_env.fold_with(folder),

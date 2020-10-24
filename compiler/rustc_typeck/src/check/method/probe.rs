@@ -1393,18 +1393,19 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                         // Determine exactly which obligation wasn't met, so
                                         // that we can give more context in the error.
                                         if !self.predicate_may_hold(obligation) {
-                                            let o =
-                                                self.resolve_vars_if_possible(obligation.clone());
+                                            let nested_predicate =
+                                                self.resolve_vars_if_possible(obligation.predicate);
                                             let predicate =
                                                 self.resolve_vars_if_possible(predicate);
-                                            let p = if predicate == o.predicate {
+                                            let p = if predicate == nested_predicate {
                                                 // Avoid "`MyStruct: Foo` which is required by
                                                 // `MyStruct: Foo`" in E0599.
                                                 None
                                             } else {
                                                 Some(predicate)
                                             };
-                                            possibly_unsatisfied_predicates.push((o.predicate, p));
+                                            possibly_unsatisfied_predicates
+                                                .push((nested_predicate, p));
                                         }
                                     }
                                 }

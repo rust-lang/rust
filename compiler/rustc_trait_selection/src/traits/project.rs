@@ -365,7 +365,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Projection(ref data) if !data.has_escaping_bound_vars() => {
+            ty::Projection(data) if !data.has_escaping_bound_vars() => {
                 // This is kind of hacky -- we need to be able to
                 // handle normalization within binders because
                 // otherwise we wind up a need to normalize when doing
@@ -381,7 +381,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 let normalized_ty = normalize_projection_type(
                     self.selcx,
                     self.param_env,
-                    *data,
+                    data,
                     self.cause.clone(),
                     self.depth,
                     &mut self.obligations,

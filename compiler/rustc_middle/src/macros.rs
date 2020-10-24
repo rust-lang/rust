@@ -48,7 +48,7 @@ macro_rules! CloneLiftImpls {
 /// Used for types that are `Copy` and which **do not care arena
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
-macro_rules! CloneTypeFoldableImpls {
+macro_rules! TrivialTypeFoldableImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
@@ -71,7 +71,7 @@ macro_rules! CloneTypeFoldableImpls {
     };
 
     ($($ty:ty,)+) => {
-        CloneTypeFoldableImpls! {
+        TrivialTypeFoldableImpls! {
             for <'tcx> {
                 $($ty,)+
             }
@@ -80,9 +80,9 @@ macro_rules! CloneTypeFoldableImpls {
 }
 
 #[macro_export]
-macro_rules! CloneTypeFoldableAndLiftImpls {
+macro_rules! TrivialTypeFoldableAndLiftImpls {
     ($($t:tt)*) => {
-        CloneTypeFoldableImpls! { $($t)* }
+        TrivialTypeFoldableImpls! { $($t)* }
         CloneLiftImpls! { $($t)* }
     }
 }

@@ -68,7 +68,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             &ObligationCause::misc(span, body_id),
             param_env,
             &orig_values,
-            &result,
+            result,
         );
         debug!("implied_outlives_bounds for {:?}: {:#?}", ty, result);
         let result = match result {

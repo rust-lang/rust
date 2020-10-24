@@ -105,7 +105,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitAliasData<'tcx, 
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
-CloneTypeFoldableAndLiftImpls! {
+TrivialTypeFoldableAndLiftImpls! {
     super::IfExpressionCause,
     super::ImplSourceDiscriminantKindData,
 }
