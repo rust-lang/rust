@@ -2036,13 +2036,13 @@ direct_interners! {
 
 macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ty)),+ $(,)?) => (
-        $(impl<'tcx> TyCtxt<'tcx> {
-            pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
+        impl<'tcx> TyCtxt<'tcx> {
+            $(pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
                 self.interners.$field.intern_ref(v, || {
                     Interned(List::from_arena(&*self.arena, v))
                 }).0
-            }
-        })+
+            })+
+        }
     );
 }
 
