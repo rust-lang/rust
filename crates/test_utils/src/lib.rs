@@ -43,12 +43,12 @@ macro_rules! assert_eq_text {
         let right = $right;
         if left != right {
             if left.trim() == right.trim() {
-                eprintln!("Left:\n{:?}\n\nRight:\n{:?}\n\nWhitespace difference\n", left, right);
+                std::eprintln!("Left:\n{:?}\n\nRight:\n{:?}\n\nWhitespace difference\n", left, right);
             } else {
                 let changeset = $crate::__Changeset::new(left, right, "\n");
-                eprintln!("Left:\n{}\n\nRight:\n{}\n\nDiff:\n{}\n", left, right, changeset);
+                std::eprintln!("Left:\n{}\n\nRight:\n{}\n\nDiff:\n{}\n", left, right, changeset);
             }
-            eprintln!($($tt)*);
+            std::eprintln!($($tt)*);
             panic!("text differs");
         }
     }};
