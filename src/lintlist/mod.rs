@@ -1304,7 +1304,7 @@ vec![
         group: "pedantic",
         desc: "`match` with identical arm bodies",
         deprecation: None,
-        module: "copies",
+        module: "matches",
     },
     Lint {
         name: "match_single_binding",
