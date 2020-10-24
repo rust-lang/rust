@@ -2202,32 +2202,30 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
         }
 
         doc_comment! {
-            concat!("**This method is soft-deprecated.**
-
-Although using it won’t cause a compilation warning,
-new code should use [`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN) instead.
+            concat!("
+New code should instead use [`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN).
 
 Returns the smallest value that can be represented by this integer type."),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_min_value", since = "1.32.0")]
+            #[rustc_deprecated(since = "1.49.0", reason = "replaced by the `MIN` associated constant on this type")]
             pub const fn min_value() -> Self {
                 Self::MIN
             }
         }
 
         doc_comment! {
-            concat!("**This method is soft-deprecated.**
-
-Although using it won’t cause a compilation warning,
-new code should use [`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX) instead.
+            concat!("
+New code should instead use [`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX).
 
 Returns the largest value that can be represented by this integer type."),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline(always)]
             #[rustc_promotable]
             #[rustc_const_stable(feature = "const_max_value", since = "1.32.0")]
+            #[rustc_deprecated(since = "1.49.0", reason = "replaced by the `MAX` associated constant on this type")]
             pub const fn max_value() -> Self {
                 Self::MAX
             }
