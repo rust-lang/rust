@@ -1,156 +1,145 @@
 //! Functions for string case manipulation, such as detecting the identifier case,
 //! and converting it into appropriate form.
 
-#[derive(Debug)]
-enum DetectedCase {
-    LowerCamelCase,
-    UpperCamelCase,
-    LowerSnakeCase,
-    UpperSnakeCase,
-    Unknown,
-}
-
-fn detect_case(ident: &str) -> DetectedCase {
-    let trimmed_ident = ident.trim_matches('_');
-    let first_lowercase = trimmed_ident.starts_with(|chr: char| chr.is_ascii_lowercase());
-    let mut has_lowercase = first_lowercase;
-    let mut has_uppercase = false;
-    let mut has_underscore = false;
-
-    for chr in trimmed_ident.chars() {
-        if chr == '_' {
-            has_underscore = true;
-        } else if chr.is_ascii_uppercase() {
-            has_uppercase = true;
-        } else if chr.is_ascii_lowercase() {
-            has_lowercase = true;
-        }
-    }
-
-    if has_uppercase {
-        if !has_lowercase {
-            if has_underscore {
-                DetectedCase::UpperSnakeCase
-            } else {
-                // It has uppercase only and no underscores. Ex: "AABB"
-                // This is a camel cased acronym.
-                DetectedCase::UpperCamelCase
-            }
-        } else if !has_underscore {
-            if first_lowercase {
-                DetectedCase::LowerCamelCase
-            } else {
-                DetectedCase::UpperCamelCase
-            }
-        } else {
-            // It has uppercase, it has lowercase, it has underscore.
-            // No assumptions here
-            DetectedCase::Unknown
-        }
-    } else {
-        DetectedCase::LowerSnakeCase
-    }
-}
+// Code that was taken from rustc was taken at commit 89fdb30,
+// from file /compiler/rustc_lint/src/nonstandard_style.rs
 
 /// Converts an identifier to an UpperCamelCase form.
 /// Returns `None` if the string is already is UpperCamelCase.
 pub fn to_camel_case(ident: &str) -> Option<String> {
-    let detected_case = detect_case(ident);
-
-    match detected_case {
-        DetectedCase::UpperCamelCase => return None,
-        DetectedCase::LowerCamelCase => {
-            let mut first_capitalized = false;
-            let output = ident
-                .chars()
-                .map(|chr| {
-                    if !first_capitalized && chr.is_ascii_lowercase() {
-                        first_capitalized = true;
-                        chr.to_ascii_uppercase()
-                    } else {
-                        chr
-                    }
-                })
-                .collect();
-            return Some(output);
-        }
-        _ => {}
+    if is_camel_case(ident) {
+        return None;
     }
 
-    let mut output = String::with_capacity(ident.len());
+    // Taken from rustc.
+    let ret = ident
+        .trim_matches('_')
+        .split('_')
+        .filter(|component| !component.is_empty())
+        .map(|component| {
+            let mut camel_cased_component = String::new();
 
-    let mut capital_added = false;
-    for chr in ident.chars() {
-        if chr.is_alphabetic() {
-            if !capital_added {
-                output.push(chr.to_ascii_uppercase());
-                capital_added = true;
-            } else {
-                output.push(chr.to_ascii_lowercase());
+            let mut new_word = true;
+            let mut prev_is_lower_case = true;
+
+            for c in component.chars() {
+                // Preserve the case if an uppercase letter follows a lowercase letter, so that
+                // `camelCase` is converted to `CamelCase`.
+                if prev_is_lower_case && c.is_uppercase() {
+                    new_word = true;
+                }
+
+                if new_word {
+                    camel_cased_component.push_str(&c.to_uppercase().to_string());
+                } else {
+                    camel_cased_component.push_str(&c.to_lowercase().to_string());
+                }
+
+                prev_is_lower_case = c.is_lowercase();
+                new_word = false;
             }
-        } else if chr == '_' {
-            // Skip this character and make the next one capital.
-            capital_added = false;
-        } else {
-            // Put the characted as-is.
-            output.push(chr);
-        }
-    }
 
-    if output == ident {
-        // While we didn't detect the correct case at the beginning, there
-        // may be special cases: e.g. `A` is both valid CamelCase and UPPER_SNAKE_CASE.
-        None
-    } else {
-        Some(output)
-    }
+            camel_cased_component
+        })
+        .fold((String::new(), None), |(acc, prev): (String, Option<String>), next| {
+            // separate two components with an underscore if their boundary cannot
+            // be distinguished using a uppercase/lowercase case distinction
+            let join = if let Some(prev) = prev {
+                let l = prev.chars().last().unwrap();
+                let f = next.chars().next().unwrap();
+                !char_has_case(l) && !char_has_case(f)
+            } else {
+                false
+            };
+            (acc + if join { "_" } else { "" } + &next, Some(next))
+        })
+        .0;
+    Some(ret)
 }
 
 /// Converts an identifier to a lower_snake_case form.
 /// Returns `None` if the string is already in lower_snake_case.
 pub fn to_lower_snake_case(ident: &str) -> Option<String> {
-    // First, assume that it's UPPER_SNAKE_CASE.
-    match detect_case(ident) {
-        DetectedCase::LowerSnakeCase => return None,
-        DetectedCase::UpperSnakeCase => {
-            return Some(ident.chars().map(|chr| chr.to_ascii_lowercase()).collect())
-        }
-        _ => {}
+    if is_lower_snake_case(ident) {
+        return None;
+    } else if is_upper_snake_case(ident) {
+        return Some(ident.to_lowercase());
     }
 
-    // Otherwise, assume that it's CamelCase.
-    let lower_snake_case = stdx::to_lower_snake_case(ident);
-
-    if lower_snake_case == ident {
-        // While we didn't detect the correct case at the beginning, there
-        // may be special cases: e.g. `a` is both valid camelCase and snake_case.
-        None
-    } else {
-        Some(lower_snake_case)
-    }
+    Some(stdx::to_lower_snake_case(ident))
 }
 
 /// Converts an identifier to an UPPER_SNAKE_CASE form.
 /// Returns `None` if the string is already is UPPER_SNAKE_CASE.
 pub fn to_upper_snake_case(ident: &str) -> Option<String> {
-    match detect_case(ident) {
-        DetectedCase::UpperSnakeCase => return None,
-        DetectedCase::LowerSnakeCase => {
-            return Some(ident.chars().map(|chr| chr.to_ascii_uppercase()).collect())
-        }
-        _ => {}
+    if is_upper_snake_case(ident) {
+        return None;
+    } else if is_lower_snake_case(ident) {
+        return Some(ident.to_uppercase());
     }
 
-    // Normalize the string from whatever form it's in currently, and then just make it uppercase.
-    let upper_snake_case = stdx::to_upper_snake_case(ident);
+    Some(stdx::to_upper_snake_case(ident))
+}
 
-    if upper_snake_case == ident {
-        // While we didn't detect the correct case at the beginning, there
-        // may be special cases: e.g. `A` is both valid CamelCase and UPPER_SNAKE_CASE.
-        None
-    } else {
-        Some(upper_snake_case)
+// Taken from rustc.
+// Modified by replacing the use of unstable feature `array_windows`.
+fn is_camel_case(name: &str) -> bool {
+    let name = name.trim_matches('_');
+    if name.is_empty() {
+        return true;
     }
+
+    let mut fst = None;
+    // start with a non-lowercase letter rather than non-uppercase
+    // ones (some scripts don't have a concept of upper/lowercase)
+    !name.chars().next().unwrap().is_lowercase()
+        && !name.contains("__")
+        && !name.chars().any(|snd| {
+            let ret = match (fst, snd) {
+                (None, _) => false,
+                (Some(fst), snd) => {
+                    char_has_case(fst) && snd == '_' || char_has_case(snd) && fst == '_'
+                }
+            };
+            fst = Some(snd);
+
+            ret
+        })
+}
+
+fn is_lower_snake_case(ident: &str) -> bool {
+    is_snake_case(ident, char::is_uppercase)
+}
+
+fn is_upper_snake_case(ident: &str) -> bool {
+    is_snake_case(ident, char::is_lowercase)
+}
+
+// Taken from rustc.
+// Modified to allow checking for both upper and lower snake case.
+fn is_snake_case<F: Fn(char) -> bool>(ident: &str, wrong_case: F) -> bool {
+    if ident.is_empty() {
+        return true;
+    }
+    let ident = ident.trim_matches('_');
+
+    let mut allow_underscore = true;
+    ident.chars().all(|c| {
+        allow_underscore = match c {
+            '_' if !allow_underscore => return false,
+            '_' => false,
+            // It would be more obvious to check for the correct case,
+            // but some characters do not have a case.
+            c if !wrong_case(c) => true,
+            _ => return false,
+        };
+        true
+    })
+}
+
+// Taken from rustc.
+fn char_has_case(c: char) -> bool {
+    c.is_lowercase() || c.is_uppercase()
 }
 
 #[cfg(test)]
@@ -173,6 +162,7 @@ mod tests {
         check(to_lower_snake_case, "CamelCase", expect![["camel_case"]]);
         check(to_lower_snake_case, "lowerCamelCase", expect![["lower_camel_case"]]);
         check(to_lower_snake_case, "a", expect![[""]]);
+        check(to_lower_snake_case, "abc", expect![[""]]);
     }
 
     #[test]
@@ -187,6 +177,11 @@ mod tests {
         check(to_camel_case, "name", expect![["Name"]]);
         check(to_camel_case, "A", expect![[""]]);
         check(to_camel_case, "AABB", expect![[""]]);
+        // Taken from rustc: /compiler/rustc_lint/src/nonstandard_style/tests.rs
+        check(to_camel_case, "X86_64", expect![[""]]);
+        check(to_camel_case, "x86__64", expect![["X86_64"]]);
+        check(to_camel_case, "Abc_123", expect![["Abc123"]]);
+        check(to_camel_case, "A1_b2_c3", expect![["A1B2C3"]]);
     }
 
     #[test]
@@ -197,5 +192,7 @@ mod tests {
         check(to_upper_snake_case, "CamelCase", expect![["CAMEL_CASE"]]);
         check(to_upper_snake_case, "lowerCamelCase", expect![["LOWER_CAMEL_CASE"]]);
         check(to_upper_snake_case, "A", expect![[""]]);
+        check(to_upper_snake_case, "ABC", expect![[""]]);
+        check(to_upper_snake_case, "X86_64", expect![[""]]);
     }
 }
