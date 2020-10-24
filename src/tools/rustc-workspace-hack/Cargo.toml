@@ -66,7 +66,7 @@ crossbeam-utils = { version = "0.7.2", features = ["nightly"] }
 proc-macro2 = { version = "1", features = ["default"] }
 quote = { version = "1", features = ["default"] }
 serde = { version = "1.0.82", features = ['derive'] }
-serde_json = { version = "1.0.31", features = ["raw_value"] }
+serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }
 smallvec-0_6 = { package = "smallvec", version = "0.6", features = ['union', 'may_dangle'] }
 smallvec = { version = "1.0", features = ['union', 'may_dangle'] }
 syn = { version = "1", features = ['fold', 'full', 'extra-traits', 'visit', 'visit-mut'] }
