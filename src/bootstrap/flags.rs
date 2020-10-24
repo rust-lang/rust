@@ -232,7 +232,13 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         match subcommand.as_str() {
             "test" | "t" => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
-                opts.optmulti("", "test-args", "extra arguments", "ARGS");
+                opts.optmulti(
+                    "",
+                    "test-args",
+                    "extra arguments to be passed for the test tool being used \
+                        (e.g. libtest, compiletest or rustdoc)",
+                    "ARGS",
+                );
                 opts.optmulti(
                     "",
                     "rustc-args",
