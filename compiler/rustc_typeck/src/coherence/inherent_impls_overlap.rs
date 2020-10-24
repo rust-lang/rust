@@ -33,12 +33,9 @@ impl InherentOverlapChecker<'tcx> {
         }
 
         for item1 in impl_items1.in_definition_order() {
-            let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).any(|item2| {
-                // Symbols and namespace match, compare hygienically.
-                item1.kind.namespace() == item2.kind.namespace()
-                    && item1.ident.normalize_to_macros_2_0()
-                        == item2.ident.normalize_to_macros_2_0()
-            });
+            let collision = impl_items2
+                .filter_by_name_unhygienic(item1.ident.name)
+                .any(|item2| self.compare_hygienically(item1, item2));
 
             if collision {
                 return true;
@@ -46,6 +43,12 @@ impl InherentOverlapChecker<'tcx> {
         }
 
         false
+    }
+
+    fn compare_hygienically(&self, item1: &'tcx ty::AssocItem, item2: &'tcx ty::AssocItem) -> bool {
+        // Symbols and namespace match, compare hygienically.
+        item1.kind.namespace() == item2.kind.namespace()
+            && item1.ident.normalize_to_macros_2_0() == item2.ident.normalize_to_macros_2_0()
     }
 
     fn check_for_common_items_in_impls(
@@ -58,12 +61,9 @@ impl InherentOverlapChecker<'tcx> {
         let impl_items2 = self.tcx.associated_items(impl2);
 
         for item1 in impl_items1.in_definition_order() {
-            let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).find(|item2| {
-                // Symbols and namespace match, compare hygienically.
-                item1.kind.namespace() == item2.kind.namespace()
-                    && item1.ident.normalize_to_macros_2_0()
-                        == item2.ident.normalize_to_macros_2_0()
-            });
+            let collision = impl_items2
+                .filter_by_name_unhygienic(item1.ident.name)
+                .find(|item2| self.compare_hygienically(item1, item2));
 
             if let Some(item2) = collision {
                 let name = item1.ident.normalize_to_macros_2_0();
