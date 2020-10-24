@@ -4,6 +4,9 @@
 # Versions of the toolchain components are configurable in `musl-cross-make/Makefile` and
 # musl unlike GLIBC is forward compatible so upgrading it shouldn't break old distributions.
 # Right now we have: Binutils 2.31.1, GCC 9.2.0, musl 1.1.24.
+
+# ignore-tidy-linelength
+
 set -ex
 
 hide_output() {
@@ -26,6 +29,9 @@ exit 1
 ARCH=$1
 TARGET=$ARCH-linux-musl
 
+# Don't depend on the mirrors of sabotage linux that musl-cross-make uses.
+LINUX_HEADERS_SITE=https://ci-mirrors.rust-lang.org/rustc/sabotage-linux-tarballs
+
 OUTPUT=/usr/local
 shift
 
@@ -38,8 +44,8 @@ cd musl-cross-make
 # A few commits ahead of v0.9.9 to include the cowpatch fix:
 git checkout a54eb56f33f255dfca60be045f12a5cfaf5a72a9
 
-hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.1.24
-hide_output make install TARGET=$TARGET MUSL_VER=1.1.24 OUTPUT=$OUTPUT
+hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.1.24 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE
+hide_output make install TARGET=$TARGET MUSL_VER=1.1.24 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE OUTPUT=$OUTPUT
 
 cd -
 
