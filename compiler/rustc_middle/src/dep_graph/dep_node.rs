@@ -348,13 +348,14 @@ macro_rules! define_dep_nodes {
             )*
         }
 
+        /// This enum serves as an index into the `DEP_KINDS` array.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKindIndex {
             $($name),*
         }
 
-        pub static DEP_KINDS: &[DepKind] = &[ $(&dep_kind::$name),* ];
+        crate static DEP_KINDS: &[DepKind] = &[ $(&dep_kind::$name),* ];
 
         pub struct DepConstructor;
 
@@ -643,7 +644,9 @@ impl<E: Encoder> Encodable<E> for &dyn DepKindTrait {
 impl<D: Decoder> Decodable<D> for &dyn DepKindTrait {
     fn decode(dec: &mut D) -> Result<Self, D::Error> {
         let idx = DepKindIndex::decode(dec)?;
-        Ok(DEP_KINDS[idx as usize])
+        let dk = DEP_KINDS[idx as usize];
+        debug_assert!(dk.index() == idx);
+        Ok(dk)
     }
 }
 
