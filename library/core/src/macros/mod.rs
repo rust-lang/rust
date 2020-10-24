@@ -10,7 +10,7 @@ macro_rules! panic {
         $crate::panicking::panic($msg)
     );
     ($msg:expr) => (
-        $crate::panic!("{}", $crate::convert::identity::<&str>($msg))
+        $crate::panicking::panic_str($msg)
     );
     ($msg:expr,) => (
         $crate::panic!($msg)

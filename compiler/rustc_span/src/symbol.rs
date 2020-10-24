@@ -777,6 +777,7 @@ symbols! {
         panic_info,
         panic_location,
         panic_runtime,
+        panic_str,
         panic_unwind,
         param_attrs,
         parent_trait,
