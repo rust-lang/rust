@@ -23,21 +23,8 @@ use crate::sys::cmath;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f32::{
-    consts,
-    DIGITS,
-    EPSILON,
-    MANTISSA_DIGITS,
-    RADIX,
-    INFINITY,
-    MAX_10_EXP,
-    NAN,
-    NEG_INFINITY,
-    MAX,
-    MIN,
-    MIN_POSITIVE,
-    MAX_EXP,
-    MIN_10_EXP,
-    MIN_EXP
+    consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
+    MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
 };
 
 #[cfg(not(test))]
