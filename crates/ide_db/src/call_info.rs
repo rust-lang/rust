@@ -2,13 +2,14 @@
 use base_db::FilePosition;
 use either::Either;
 use hir::{HasAttrs, HirDisplay, Semantics, Type};
-use ide_db::RootDatabase;
 use stdx::format_to;
 use syntax::{
     ast::{self, ArgListOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 use test_utils::mark;
+
+use crate::RootDatabase;
 
 /// Contains information about a call site. Specifically the
 /// `FunctionSignature`and current parameter.
@@ -228,9 +229,9 @@ impl FnCallNode {
 
 #[cfg(test)]
 mod tests {
+    use crate::RootDatabase;
     use base_db::{fixture::ChangeFixture, FilePosition};
     use expect_test::{expect, Expect};
-    use ide_db::RootDatabase;
     use test_utils::{mark, RangeOrOffset};
 
     /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
@@ -249,7 +250,7 @@ mod tests {
 
     fn check(ra_fixture: &str, expect: Expect) {
         let (db, position) = position(ra_fixture);
-        let call_info = crate::call_info(&db, position);
+        let call_info = crate::call_info::call_info(&db, position);
         let actual = match call_info {
             Some(call_info) => {
                 let docs = match &call_info.doc {

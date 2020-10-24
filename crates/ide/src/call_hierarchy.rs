@@ -2,8 +2,8 @@
 
 use indexmap::IndexMap;
 
-use call_info::FnCallNode;
 use hir::Semantics;
+use ide_db::call_info::FnCallNode;
 use ide_db::RootDatabase;
 use syntax::{ast, match_ast, AstNode, TextRange};
 

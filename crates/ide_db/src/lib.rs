@@ -12,6 +12,7 @@ pub mod imports_locator;
 pub mod source_change;
 pub mod ty_filter;
 pub mod traits;
+pub mod call_info;
 
 use std::{fmt, sync::Arc};
 

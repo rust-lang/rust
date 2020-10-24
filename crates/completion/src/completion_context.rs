@@ -1,9 +1,8 @@
 //! See `CompletionContext` structure.
 
 use base_db::{FilePosition, SourceDatabase};
-use call_info::ActiveParameter;
 use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
-use ide_db::RootDatabase;
+use ide_db::{call_info::ActiveParameter, RootDatabase};
 use syntax::{
     algo::{find_covering_element, find_node_at_offset},
     ast, match_ast, AstNode, NodeOrToken,

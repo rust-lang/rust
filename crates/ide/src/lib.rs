@@ -80,10 +80,10 @@ pub use crate::{
         Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
     },
 };
-pub use call_info::CallInfo;
 pub use completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
 };
+pub use ide_db::call_info::CallInfo;
 
 pub use assists::{
     utils::MergeBehaviour, Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist,
@@ -396,7 +396,7 @@ impl Analysis {
 
     /// Computes parameter information for the given call expression.
     pub fn call_info(&self, position: FilePosition) -> Cancelable<Option<CallInfo>> {
-        self.with_db(|db| call_info::call_info(db, position))
+        self.with_db(|db| ide_db::call_info::call_info(db, position))
     }
 
     /// Computes call hierarchy candidates for the given file position.
