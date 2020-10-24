@@ -292,7 +292,7 @@ fn _replace_children(
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum InsertPos {
     FirstChildOf(SyntaxNode),
-    Before(SyntaxElement),
+    // Before(SyntaxElement),
     After(SyntaxElement),
 }
 
@@ -328,10 +328,15 @@ impl<'a> SyntaxRewriter<'a> {
         before: &T,
         what: &U,
     ) {
-        self.insertions
-            .entry(InsertPos::Before(before.clone().into()))
-            .or_insert_with(Vec::new)
-            .push(what.clone().into());
+        let before = before.clone().into();
+        let pos = match before.prev_sibling_or_token() {
+            Some(sibling) => InsertPos::After(sibling),
+            None => match before.parent() {
+                Some(parent) => InsertPos::FirstChildOf(parent),
+                None => return,
+            },
+        };
+        self.insertions.entry(pos).or_insert_with(Vec::new).push(what.clone().into());
     }
     pub fn insert_after<T: Clone + Into<SyntaxElement>, U: Clone + Into<SyntaxElement>>(
         &mut self,
@@ -361,10 +366,15 @@ impl<'a> SyntaxRewriter<'a> {
         before: &T,
         what: U,
     ) {
-        self.insertions
-            .entry(InsertPos::Before(before.clone().into()))
-            .or_insert_with(Vec::new)
-            .extend(what);
+        let before = before.clone().into();
+        let pos = match before.prev_sibling_or_token() {
+            Some(sibling) => InsertPos::After(sibling),
+            None => match before.parent() {
+                Some(parent) => InsertPos::FirstChildOf(parent),
+                None => return,
+            },
+        };
+        self.insertions.entry(pos).or_insert_with(Vec::new).extend(what);
     }
     pub fn insert_many_after<
         T: Clone + Into<SyntaxElement>,
@@ -440,7 +450,7 @@ impl<'a> SyntaxRewriter<'a> {
             .map(element_to_node_or_parent)
             .chain(self.insertions.keys().map(|pos| match pos {
                 InsertPos::FirstChildOf(it) => it.clone(),
-                InsertPos::Before(it) | InsertPos::After(it) => element_to_node_or_parent(it),
+                InsertPos::After(it) => element_to_node_or_parent(it),
             }))
             // If we only have one replacement/insertion, we must return its parent node, since `rewrite` does
             // not replace the node passed to it.
@@ -477,9 +487,6 @@ impl<'a> SyntaxRewriter<'a> {
         acc: &mut Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
         element: &SyntaxElement,
     ) {
-        if let Some(elements) = self.insertions(&InsertPos::Before(element.clone())) {
-            acc.extend(elements.map(element_to_green));
-        }
         if let Some(replacement) = self.replacement(&element) {
             match replacement {
                 Replacement::Single(element) => acc.push(element_to_green(element)),
