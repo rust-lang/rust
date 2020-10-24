@@ -3,8 +3,8 @@
 //! request takes longer to compute. This modules implemented prepopulating of
 //! various caches, it's not really advanced at the moment.
 
-use base_db::SourceDatabase;
 use hir::db::DefDatabase;
+use ide_db::base_db::SourceDatabase;
 
 use crate::RootDatabase;
 

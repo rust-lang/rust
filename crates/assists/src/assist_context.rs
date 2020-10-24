@@ -3,8 +3,8 @@
 use std::mem;
 
 use algo::find_covering_element;
-use base_db::{FileId, FileRange};
 use hir::Semantics;
+use ide_db::base_db::{FileId, FileRange};
 use ide_db::{
     label::Label,
     source_change::{SourceChange, SourceFileEdit},

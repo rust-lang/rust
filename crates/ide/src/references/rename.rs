@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
-use base_db::SourceDatabaseExt;
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
+use ide_db::base_db::SourceDatabaseExt;
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,

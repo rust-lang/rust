@@ -9,11 +9,11 @@ mod field_shorthand;
 
 use std::cell::RefCell;
 
-use base_db::SourceDatabase;
 use hir::{
     diagnostics::{Diagnostic as _, DiagnosticSinkBuilder},
     Semantics,
 };
+use ide_db::base_db::SourceDatabase;
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;

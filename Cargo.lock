@@ -50,7 +50,6 @@ checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
 name = "assists"
 version = "0.0.0"
 dependencies = [
- "base_db",
  "either",
  "hir",
  "ide_db",
@@ -627,7 +626,6 @@ name = "ide"
 version = "0.0.0"
 dependencies = [
  "assists",
- "base_db",
  "cfg",
  "completion",
  "either",
@@ -1315,7 +1313,6 @@ name = "rust-analyzer"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "base_db",
  "cfg",
  "crossbeam-channel 0.5.0",
  "env_logger",
@@ -1548,7 +1545,6 @@ dependencies = [
 name = "ssr"
 version = "0.0.0"
 dependencies = [
- "base_db",
  "expect-test",
  "hir",
  "ide_db",

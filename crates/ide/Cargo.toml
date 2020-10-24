@@ -23,7 +23,6 @@ url = "2.1.1"
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 text_edit = { path = "../text_edit", version = "0.0.0" }
-base_db = { path = "../base_db", version = "0.0.0" }
 ide_db = { path = "../ide_db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }

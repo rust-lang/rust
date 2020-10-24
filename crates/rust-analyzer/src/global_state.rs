@@ -5,10 +5,10 @@
 
 use std::{sync::Arc, time::Instant};
 
-use base_db::{CrateId, VfsPath};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use ide::{Analysis, AnalysisHost, Change, FileId};
+use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};

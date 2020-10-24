@@ -137,7 +137,7 @@ impl CallLocations {
 
 #[cfg(test)]
 mod tests {
-    use base_db::FilePosition;
+    use ide_db::base_db::FilePosition;
 
     use crate::fixture;
 

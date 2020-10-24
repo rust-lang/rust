@@ -6,16 +6,16 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use base_db::{
-    salsa::{self, ParallelDatabase},
-    SourceDatabaseExt,
-};
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     original_range, AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
+use ide_db::base_db::{
+    salsa::{self, ParallelDatabase},
+    SourceDatabaseExt,
+};
 use itertools::Itertools;
 use oorandom::Rand32;
 use rayon::prelude::*;

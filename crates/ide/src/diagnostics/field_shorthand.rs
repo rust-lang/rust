@@ -1,7 +1,7 @@
 //! Suggests shortening `Foo { field: field }` to `Foo { field }` in both
 //! expressions and patterns.
 
-use base_db::FileId;
+use ide_db::base_db::FileId;
 use ide_db::source_change::SourceFileEdit;
 use syntax::{ast, match_ast, AstNode, SyntaxNode};
 use text_edit::TextEdit;

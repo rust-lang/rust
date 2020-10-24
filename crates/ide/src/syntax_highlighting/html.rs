@@ -1,6 +1,6 @@
 //! Renders a bit of code as HTML.
 
-use base_db::SourceDatabase;
+use ide_db::base_db::SourceDatabase;
 use oorandom::Rand32;
 use stdx::format_to;
 use syntax::{AstNode, TextRange, TextSize};

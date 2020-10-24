@@ -1,5 +1,5 @@
-use base_db::{CrateId, FileId, FilePosition};
 use hir::Semantics;
+use ide_db::base_db::{CrateId, FileId, FilePosition};
 use ide_db::RootDatabase;
 use syntax::{
     algo::find_node_at_offset,

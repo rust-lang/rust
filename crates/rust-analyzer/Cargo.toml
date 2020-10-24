@@ -46,7 +46,6 @@ cfg = { path = "../cfg", version = "0.0.0" }
 toolchain = { path = "../toolchain", version = "0.0.0" }
 
 # This should only be used in CLI
-base_db = { path = "../base_db", version = "0.0.0" }
 ide_db = { path = "../ide_db", version = "0.0.0" }
 ssr = { path = "../ssr", version = "0.0.0" }
 hir = { path = "../hir", version = "0.0.0" }

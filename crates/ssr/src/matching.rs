@@ -6,8 +6,8 @@ use crate::{
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
     SsrMatches,
 };
-use base_db::FileRange;
 use hir::Semantics;
+use ide_db::base_db::FileRange;
 use rustc_hash::FxHashMap;
 use std::{cell::Cell, iter::Peekable};
 use syntax::ast::{AstNode, AstToken};

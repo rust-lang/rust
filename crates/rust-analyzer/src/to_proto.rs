@@ -4,13 +4,13 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-use base_db::{FileId, FileRange};
 use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
     FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
     Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
     ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
+use ide_db::base_db::{FileId, FileRange};
 use itertools::Itertools;
 use syntax::{SyntaxKind, TextRange, TextSize};
 
@@ -809,7 +809,7 @@ mod tests {
         let completions: Vec<(String, Option<String>)> = analysis
             .completions(
                 &ide::CompletionConfig::default(),
-                base_db::FilePosition { file_id, offset },
+                ide_db::base_db::FilePosition { file_id, offset },
             )
             .unwrap()
             .unwrap()

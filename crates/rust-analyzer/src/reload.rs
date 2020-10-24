@@ -1,9 +1,9 @@
 //! Project loading & configuration updates
 use std::{mem, sync::Arc};
 
-use base_db::{CrateGraph, SourceRoot, VfsPath};
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use ide::Change;
+use ide_db::base_db::{CrateGraph, SourceRoot, VfsPath};
 use project_model::{ProcMacroClient, ProjectWorkspace};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 

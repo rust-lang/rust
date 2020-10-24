@@ -1,5 +1,5 @@
-use base_db::FileId;
 use hir::{EnumVariant, Module, ModuleDef, Name};
+use ide_db::base_db::FileId;
 use ide_db::{defs::Definition, search::Reference, RootDatabase};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;

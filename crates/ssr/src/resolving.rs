@@ -2,7 +2,7 @@
 
 use crate::errors::error;
 use crate::{parsing, SsrError};
-use base_db::FilePosition;
+use ide_db::base_db::FilePosition;
 use parsing::Placeholder;
 use rustc_hash::FxHashMap;
 use syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};

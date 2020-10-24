@@ -191,8 +191,8 @@ fn get_struct_def_name_for_struct_literal_search(
 
 #[cfg(test)]
 mod tests {
-    use base_db::FileId;
     use expect_test::{expect, Expect};
+    use ide_db::base_db::FileId;
     use stdx::format_to;
 
     use crate::{fixture, SearchScope};
