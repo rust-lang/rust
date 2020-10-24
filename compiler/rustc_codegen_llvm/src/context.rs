@@ -324,8 +324,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     #[inline]
-    pub fn coverage_context(&'a self) -> &'a coverageinfo::CrateCoverageContext<'tcx> {
-        self.coverage_cx.as_ref().unwrap()
+    pub fn coverage_context(&'a self) -> Option<&'a coverageinfo::CrateCoverageContext<'tcx>> {
+        self.coverage_cx.as_ref()
     }
 }
 
