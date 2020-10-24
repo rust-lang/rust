@@ -2,6 +2,10 @@
 //!
 //! Producing a parser is an explicit non-goal -- it's ok for this grammar to be
 //! ambiguous, non LL, non LR, etc.
+//!
+//! See this
+//! [introductory post](https://rust-analyzer.github.io/blog/2020/10/24/introducing-ungrammar.html)
+//! for details.
 mod error;
 mod lexer;
 mod parser;
