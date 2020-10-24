@@ -164,7 +164,7 @@ TypeAlias =
 Struct =
   Attr* Visibility?
   'struct' Name GenericParamList? (
-    WhereClause?  (RecordFieldList | ';')
+    WhereClause? (RecordFieldList | ';')
   | TupleFieldList WhereClause? ';'
   )
 
