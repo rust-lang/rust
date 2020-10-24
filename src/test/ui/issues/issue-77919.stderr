@@ -1,0 +1,46 @@
+error[E0412]: cannot find type `PhantomData` in this scope
+  --> $DIR/issue-77919.rs:9:9
+   |
+LL |     _n: PhantomData,
+   |         ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL | use std::marker::PhantomData;
+   |
+
+error[E0412]: cannot find type `VAL` in this scope
+  --> $DIR/issue-77919.rs:11:63
+   |
+LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
+   |          -                                                    ^^^ not found in this scope
+   |          |
+   |          help: you might be missing a type parameter: `, VAL`
+
+error[E0046]: not all trait items implemented, missing: `VAL`
+  --> $DIR/issue-77919.rs:11:1
+   |
+LL |     const VAL: T;
+   |     ------------- `VAL` from trait
+...
+LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `VAL` in implementation
+
+error: any use of this value will cause an error
+  --> $DIR/issue-77919.rs:5:5
+   |
+LL |     const VAL: T;
+   |     ^^^^^^^^^^^^^ no MIR body is available for DefId(0:7 ~ issue_77919[317d]::TypeVal::VAL)
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-77919.rs:2:9
+   |
+LL |     [1; <Multiply<Five, Five>>::VAL];
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0046, E0080, E0412.
+For more information about an error, try `rustc --explain E0046`.
