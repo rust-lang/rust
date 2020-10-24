@@ -19,7 +19,7 @@ use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
 use rustc_middle::middle::stability;
-use rustc_middle::{span_bug, ty};
+use rustc_middle::ty;
 use rustc_session::lint::builtin::UNUSED_MACROS;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -885,11 +885,11 @@ impl<'a> Resolver<'a> {
                                  initial_res: Option<Res>,
                                  res: Res| {
             if let Some(initial_res) = initial_res {
-                if res != initial_res && res != Res::Err && this.ambiguity_errors.is_empty() {
+                if res != initial_res {
                     // Make sure compilation does not succeed if preferred macro resolution
                     // has changed after the macro had been expanded. In theory all such
-                    // situations should be reported as ambiguity errors, so this is a bug.
-                    span_bug!(span, "inconsistent resolution for a macro");
+                    // situations should be reported as errors, so this is a bug.
+                    this.session.delay_span_bug(span, "inconsistent resolution for a macro");
                 }
             } else {
                 // It's possible that the macro was unresolved (indeterminate) and silently
