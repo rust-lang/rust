@@ -191,101 +191,10 @@ macro_rules! define_dep_nodes {
             )*
         }
 
-        pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
-
-        // We keep a lot of `DepNode`s in memory during compilation. It's not
-        // required that their size stay the same, but we don't want to change
-        // it inadvertently. This assert just ensures we're aware of any change.
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        static_assert_size!(DepNode, 17);
-
-        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-        static_assert_size!(DepNode, 24);
-
-        pub trait DepNodeExt: Sized {
-            /// Construct a DepNode from the given DepKind and DefPathHash. This
-            /// method will assert that the given DepKind actually requires a
-            /// single DefId/DefPathHash parameter.
-            fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> Self;
-
-            /// Extracts the DefId corresponding to this DepNode. This will work
-            /// if two conditions are met:
-            ///
-            /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
-            /// 2. the item that the DefPath refers to exists in the current tcx.
-            ///
-            /// Condition (1) is determined by the DepKind variant of the
-            /// DepNode. Condition (2) might not be fulfilled if a DepNode
-            /// refers to something from the previous compilation session that
-            /// has been removed.
-            fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId>;
-
-            /// Used in testing
-            fn from_label_string(label: &str, def_path_hash: DefPathHash)
-                -> Result<Self, ()>;
-
-            /// Used in testing
-            fn has_label_string(label: &str) -> bool;
-        }
-
-        impl DepNodeExt for DepNode {
-            /// Construct a DepNode from the given DepKind and DefPathHash. This
-            /// method will assert that the given DepKind actually requires a
-            /// single DefId/DefPathHash parameter.
-            fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-                debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
-                DepNode {
-                    kind,
-                    hash: def_path_hash.0.into(),
-                }
-            }
-
-            /// Extracts the DefId corresponding to this DepNode. This will work
-            /// if two conditions are met:
-            ///
-            /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
-            /// 2. the item that the DefPath refers to exists in the current tcx.
-            ///
-            /// Condition (1) is determined by the DepKind variant of the
-            /// DepNode. Condition (2) might not be fulfilled if a DepNode
-            /// refers to something from the previous compilation session that
-            /// has been removed.
-            fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
-                if self.kind.can_reconstruct_query_key() {
-                    tcx.queries.on_disk_cache.as_ref()?.def_path_hash_to_def_id(tcx, DefPathHash(self.hash.into()))
-                } else {
-                    None
-                }
-            }
-
-            /// Used in testing
-            fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<DepNode, ()> {
-                let kind = match label {
-                    $(
-                        stringify!($variant) => DepKind::$variant,
-                    )*
-                    _ => return Err(()),
-                };
-
-                if !kind.can_reconstruct_query_key() {
-                    return Err(());
-                }
-
-                if kind.has_params() {
-                    Ok(DepNode::from_def_path_hash(def_path_hash, kind))
-                } else {
-                    Ok(DepNode::new_no_params(kind))
-                }
-            }
-
-            /// Used in testing
-            fn has_label_string(label: &str) -> bool {
-                match label {
-                    $(
-                        stringify!($variant) => true,
-                    )*
-                    _ => false,
-                }
+        fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
+            match label {
+                $(stringify!($variant) => Ok(DepKind::$variant),)*
+                _ => Err(()),
             }
         }
 
@@ -311,6 +220,93 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     [] CompileCodegenUnit(Symbol),
 ]);
+
+pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
+
+// We keep a lot of `DepNode`s in memory during compilation. It's not
+// required that their size stay the same, but we don't want to change
+// it inadvertently. This assert just ensures we're aware of any change.
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+static_assert_size!(DepNode, 17);
+
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+static_assert_size!(DepNode, 24);
+
+pub trait DepNodeExt: Sized {
+    /// Construct a DepNode from the given DepKind and DefPathHash. This
+    /// method will assert that the given DepKind actually requires a
+    /// single DefId/DefPathHash parameter.
+    fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> Self;
+
+    /// Extracts the DefId corresponding to this DepNode. This will work
+    /// if two conditions are met:
+    ///
+    /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
+    /// 2. the item that the DefPath refers to exists in the current tcx.
+    ///
+    /// Condition (1) is determined by the DepKind variant of the
+    /// DepNode. Condition (2) might not be fulfilled if a DepNode
+    /// refers to something from the previous compilation session that
+    /// has been removed.
+    fn extract_def_id(&self, tcx: TyCtxt<'_>) -> Option<DefId>;
+
+    /// Used in testing
+    fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<Self, ()>;
+
+    /// Used in testing
+    fn has_label_string(label: &str) -> bool;
+}
+
+impl DepNodeExt for DepNode {
+    /// Construct a DepNode from the given DepKind and DefPathHash. This
+    /// method will assert that the given DepKind actually requires a
+    /// single DefId/DefPathHash parameter.
+    fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
+        debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
+        DepNode { kind, hash: def_path_hash.0.into() }
+    }
+
+    /// Extracts the DefId corresponding to this DepNode. This will work
+    /// if two conditions are met:
+    ///
+    /// 1. The Fingerprint of the DepNode actually is a DefPathHash, and
+    /// 2. the item that the DefPath refers to exists in the current tcx.
+    ///
+    /// Condition (1) is determined by the DepKind variant of the
+    /// DepNode. Condition (2) might not be fulfilled if a DepNode
+    /// refers to something from the previous compilation session that
+    /// has been removed.
+    fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
+        if self.kind.can_reconstruct_query_key() {
+            tcx.queries
+                .on_disk_cache
+                .as_ref()?
+                .def_path_hash_to_def_id(tcx, DefPathHash(self.hash.into()))
+        } else {
+            None
+        }
+    }
+
+    /// Used in testing
+    fn from_label_string(label: &str, def_path_hash: DefPathHash) -> Result<DepNode, ()> {
+        let kind = dep_kind_from_label_string(label)?;
+
+        if !kind.can_reconstruct_query_key() {
+            return Err(());
+        }
+
+        if kind.has_params() {
+            Ok(DepNode::from_def_path_hash(def_path_hash, kind))
+        } else {
+            Ok(DepNode::new_no_params(kind))
+        }
+    }
+
+    /// Used in testing
+    fn has_label_string(label: &str) -> bool {
+        dep_kind_from_label_string(label).is_ok()
+    }
+}
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
     #[inline]
