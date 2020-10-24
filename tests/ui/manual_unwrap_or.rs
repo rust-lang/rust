@@ -95,10 +95,23 @@ fn result_unwrap_or() {
         Err(_) => 42,
     };
 
-    // int case, suggestion must surround with parenthesis
+    // int case, suggestion must surround Result expr with parenthesis
     match Ok(1) as Result<i32, &str> {
         Ok(i) => i,
         Err(_) => 42,
+    };
+
+    // method call case, suggestion must not surround Result expr `s.method()` with parenthesis
+    struct S {}
+    impl S {
+        fn method(self) -> Option<i32> {
+            Some(42)
+        }
+    }
+    let s = S {};
+    match s.method() {
+        Some(i) => i,
+        None => 42,
     };
 
     // int case reversed

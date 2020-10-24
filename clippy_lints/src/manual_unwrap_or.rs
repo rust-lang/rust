@@ -1,5 +1,6 @@
 use crate::consts::constant_simple;
 use crate::utils;
+use crate::utils::sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{def, Arm, Expr, ExprKind, Pat, PatKind, QPath};
@@ -104,28 +105,20 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             None
         };
         if let Some(or_arm) = applicable_or_arm(match_arms);
-        if let Some(scrutinee_snippet) = utils::snippet_opt(cx, scrutinee.span);
         if let Some(or_body_snippet) = utils::snippet_opt(cx, or_arm.body.span);
         if let Some(indent) = utils::indent_of(cx, expr.span);
         if constant_simple(cx, cx.typeck_results(), or_arm.body).is_some();
         then {
             let reindented_or_body =
                 utils::reindent_multiline(or_body_snippet.into(), true, Some(indent));
-            let wrap_in_parens = !matches!(scrutinee, Expr {
-                kind: ExprKind::Call(..) | ExprKind::Path(_), ..
-            });
-            let l_paren = if wrap_in_parens { "(" } else { "" };
-            let r_paren = if wrap_in_parens { ")" } else { "" };
             utils::span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,
                 &format!("this pattern reimplements `{}`", case.unwrap_fn_path()),
                 "replace with",
                 format!(
-                    "{}{}{}.unwrap_or({})",
-                    l_paren,
-                    scrutinee_snippet,
-                    r_paren,
+                    "{}.unwrap_or({})",
+                    sugg::Sugg::hir(cx, scrutinee, "..").maybe_par(),
                     reindented_or_body,
                 ),
                 Applicability::MachineApplicable,

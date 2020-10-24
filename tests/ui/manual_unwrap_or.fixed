@@ -74,8 +74,18 @@ fn result_unwrap_or() {
     let a = Ok::<i32, &str>(1);
     a.unwrap_or(42);
 
-    // int case, suggestion must surround with parenthesis
+    // int case, suggestion must surround Result expr with parenthesis
     (Ok(1) as Result<i32, &str>).unwrap_or(42);
+
+    // method call case, suggestion must not surround Result expr `s.method()` with parenthesis
+    struct S {}
+    impl S {
+        fn method(self) -> Option<i32> {
+            Some(42)
+        }
+    }
+    let s = S {};
+    s.method().unwrap_or(42);
 
     // int case reversed
     Ok::<i32, &str>(1).unwrap_or(42);
