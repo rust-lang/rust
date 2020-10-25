@@ -3,7 +3,6 @@
 mod config;
 mod item;
 mod context;
-mod presentation;
 mod patterns;
 mod generated_lint_completions;
 #[cfg(test)]
