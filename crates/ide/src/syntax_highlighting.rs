@@ -579,7 +579,14 @@ fn highlight_element(
                 }
             }
             T![-] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
-                HighlightTag::NumericLiteral.into()
+                let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
+
+                let expr = prefix_expr.expr()?;
+                match expr {
+                    ast::Expr::Literal(_) => HighlightTag::NumericLiteral,
+                    _ => HighlightTag::Operator,
+                }
+                .into()
             }
             _ if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
                 HighlightTag::Operator.into()
