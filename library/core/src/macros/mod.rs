@@ -44,7 +44,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left == right)`
+                    $crate::panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
  right: `{:?}`"#, &*left_val, &*right_val)
                 }
@@ -58,7 +58,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left == right)`
+                    $crate::panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
                            $crate::format_args!($($arg)+))
@@ -95,7 +95,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left != right)`
+                    $crate::panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
  right: `{:?}`"#, &*left_val, &*right_val)
                 }
@@ -109,7 +109,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    panic!(r#"assertion failed: `(left != right)`
+                    $crate::panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
                            $crate::format_args!($($arg)+))
@@ -466,7 +466,7 @@ macro_rules! writeln {
 ///
 /// # Panics
 ///
-/// This will always [`panic!`]
+/// This will always [`panic!`].
 ///
 /// # Examples
 ///
@@ -500,13 +500,13 @@ macro_rules! writeln {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unreachable {
     () => ({
-        panic!("internal error: entered unreachable code")
+        $crate::panic!("internal error: entered unreachable code")
     });
     ($msg:expr $(,)?) => ({
         $crate::unreachable!("{}", $msg)
     });
     ($fmt:expr, $($arg:tt)*) => ({
-        panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
+        $crate::panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
     });
 }
 
@@ -584,8 +584,8 @@ macro_rules! unreachable {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
-    () => (panic!("not implemented"));
-    ($($arg:tt)+) => (panic!("not implemented: {}", $crate::format_args!($($arg)+)));
+    () => ($crate::panic!("not implemented"));
+    ($($arg:tt)+) => ($crate::panic!("not implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Indicates unfinished code.
@@ -645,8 +645,8 @@ macro_rules! unimplemented {
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
 macro_rules! todo {
-    () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
+    () => ($crate::panic!("not yet implemented"));
+    ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Definitions of built-in macros.
