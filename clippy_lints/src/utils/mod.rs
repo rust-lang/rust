@@ -299,7 +299,7 @@ pub fn qpath_res(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, id: hir::HirId) -
         hir::QPath::Resolved(_, path) => path.res,
         hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
             if cx.tcx.has_typeck_results(id.owner.to_def_id()) {
-                cx.tcx.typeck(id.owner.to_def_id().expect_local()).qpath_res(qpath, id)
+                cx.tcx.typeck(id.owner).qpath_res(qpath, id)
             } else {
                 Res::Err
             }
