@@ -14,6 +14,8 @@ trait Sized {}
 
 #[lang = "copy"]
 trait Copy {}
+impl Copy for bool {}
+impl Copy for &bool {}
 
 #[lang = "freeze"]
 trait Freeze {}

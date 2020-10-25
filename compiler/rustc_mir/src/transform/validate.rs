@@ -5,10 +5,10 @@ use crate::dataflow::{Analysis, ResultsCursor};
 use crate::util::storage::AlwaysLiveLocals;
 
 use super::MirPass;
-use rustc_middle::mir::{
-    interpret::Scalar,
-    visit::{PlaceContext, Visitor},
-};
+use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::traversal;
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceRef,
     Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
@@ -52,6 +52,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             tcx,
             param_env,
             mir_phase,
+            reachable_blocks: traversal::reachable_as_bitset(body),
             storage_liveness,
             place_cache: Vec::new(),
         }
@@ -157,6 +158,7 @@ struct TypeChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
+    reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
     place_cache: Vec<PlaceRef<'tcx>>,
 }
@@ -232,7 +234,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
-        if context.is_use() {
+        if self.reachable_blocks.contains(location.block) && context.is_use() {
             // Uses of locals must occur while the local's storage is allocated.
             self.storage_liveness.seek_after_primary_effect(location);
             let locals_with_storage = self.storage_liveness.get();
@@ -249,13 +251,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
-        // `Operand::Copy` is only supposed to be used with `Copy` types.
-        if let Operand::Copy(place) = operand {
-            let ty = place.ty(&self.body.local_decls, self.tcx).ty;
-            let span = self.body.source_info(location).span;
+        // This check is somewhat expensive, so only run it when -Zvalidate-mir is passed.
+        if self.tcx.sess.opts.debugging_opts.validate_mir {
+            // `Operand::Copy` is only supposed to be used with `Copy` types.
+            if let Operand::Copy(place) = operand {
+                let ty = place.ty(&self.body.local_decls, self.tcx).ty;
+                let span = self.body.source_info(location).span;
 
-            if !ty.is_copy_modulo_regions(self.tcx.at(span), self.param_env) {
-                self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
+                if !ty.is_copy_modulo_regions(self.tcx.at(span), self.param_env) {
+                    self.fail(location, format!("`Operand::Copy` with non-`Copy` type {}", ty));
+                }
             }
         }
 
@@ -341,6 +346,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             _ => {}
         }
+
+        self.super_statement(statement, location);
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
@@ -489,6 +496,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop => {}
         }
+
+        self.super_terminator(terminator, location);
     }
 
     fn visit_source_scope(&mut self, scope: &SourceScope) {
