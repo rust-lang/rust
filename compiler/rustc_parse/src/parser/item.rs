@@ -1551,10 +1551,9 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         sig_hi: &mut Span,
     ) -> PResult<'a, Option<P<Block>>> {
-        let (inner_attrs, body) = if self.check(&token::Semi) {
+        let (inner_attrs, body) = if self.eat(&token::Semi) {
             // Include the trailing semicolon in the span of the signature
-            *sig_hi = self.token.span;
-            self.bump(); // `;`
+            *sig_hi = self.prev_token.span;
             (Vec::new(), None)
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
@@ -1574,7 +1573,9 @@ impl<'a> Parser<'a> {
                 .emit();
             (Vec::new(), Some(self.mk_block_err(span)))
         } else {
-            return self.expected_semi_or_open_brace();
+            return self
+                .expected_one_of_not_found(&[], &[token::Semi, token::OpenDelim(token::Brace)])
+                .map(|_| None);
         };
         attrs.extend(inner_attrs);
         Ok(body)
