@@ -256,7 +256,11 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 value: print_evaluated_const(cx, def_id),
                 is_literal: is_literal_expr(cx, body_id.hir_id),
             })),
-            ItemKind::Fn(ref sig, ref generics, body) => NotInlined(clean_function(self, sig, &generics, body, cx)),
+            ItemKind::Fn(ref sig, ref generics, body) => {
+                NotInlined(clean_function(self, sig, &generics, body, cx))
+            }
+            // TODO: this should also take the span into account (inner or outer)
+            ItemKind::Mod(ref mod_) => NotInlined(mod_.clean(cx)),
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -344,6 +348,21 @@ impl Clean<Item> for hir::Crate<'_> {
             def_id: cx.tcx.hir().local_def_id(id).to_def_id(),
             kind: ModuleItem(Module { is_crate: true, items: items.collect() }),
         }
+    }
+}
+
+impl Clean<ItemKind> for hir::Mod<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> ItemKind {
+        ModuleItem(Module {
+            is_crate: false,
+            items: self.item_ids.clean(cx).into_iter().flatten().collect(),
+        })
+    }
+}
+
+impl Clean<Vec<Item>> for hir::ItemId {
+    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
+        cx.tcx.hir().item(self.id).clean(cx)
     }
 }
 
@@ -963,7 +982,13 @@ impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::Bo
     }
 }
 
-fn clean_function(item: &hir::Item<'_>, sig: &hir::FnSig<'_>, generics: &hir::Generics<'_>, body: hir::BodyId, cx: &DocContext<'_>) -> ItemKind {
+fn clean_function(
+    item: &hir::Item<'_>,
+    sig: &hir::FnSig<'_>,
+    generics: &hir::Generics<'_>,
+    body: hir::BodyId,
+    cx: &DocContext<'_>,
+) -> ItemKind {
     let (generics, decl) =
         enter_impl_trait(cx, || (generics.clean(cx), (sig.decl, body).clean(cx)));
 
