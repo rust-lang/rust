@@ -93,8 +93,9 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
     if macro_contents.len() < 2 {
         return false;
     }
+    let mut macro_contents = macro_contents.into_iter().peekable();
     let mut unpaired_brackets_in_contents = Vec::new();
-    for element in macro_contents {
+    while let Some(element) = macro_contents.next() {
         match element.kind() {
             T!['('] | T!['['] | T!['{'] => unpaired_brackets_in_contents.push(element),
             T![')'] => {
@@ -118,8 +119,14 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
             symbol_kind => {
                 let symbol_not_in_bracket = unpaired_brackets_in_contents.is_empty();
                 if symbol_not_in_bracket
-                    && symbol_kind != SyntaxKind::COLON
-                    && symbol_kind.is_punct()
+                    && symbol_kind != SyntaxKind::COLON // paths
+                    && (symbol_kind != SyntaxKind::DOT // field/method access
+                        || macro_contents // range expressions consist of two SyntaxKind::Dot in macro invocations
+                            .peek()
+                            .map(|element| element.kind() == SyntaxKind::DOT)
+                            .unwrap_or(false))
+                    && symbol_kind != SyntaxKind::QUESTION // try operator
+                    && (symbol_kind.is_punct() || symbol_kind == SyntaxKind::AS_KW)
                 {
                     return true;
                 }
@@ -243,6 +250,25 @@ fn main() {
     }
 
     #[test]
+    fn test_remove_dbg_method_chaining() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo().bar()).baz();"#,
+            r#"let res = foo().bar().baz();"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo.bar()).baz();"#,
+            r#"let res = foo.bar().baz();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_field_chaining() {
+        check_assist(remove_dbg, r#"let res = <|>dbg!(foo.bar).baz;"#, r#"let res = foo.bar.baz;"#);
+    }
+
+    #[test]
     fn test_remove_dbg_from_inside_fn() {
         check_assist_target(
             remove_dbg,
@@ -278,6 +304,61 @@ fn main() {
     let x = square(5 + 10);
     println!("{}", x);
 }"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_try_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(result?).foo();"#,
+            r#"let res = result?.foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_await_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(fut.await).foo();"#,
+            r#"let res = fut.await.foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_as_cast() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(3 as usize).foo();"#,
+            r#"let res = (3 as usize).foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_index_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(array[3]).foo();"#,
+            r#"let res = array[3].foo();"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(tuple.3).foo();"#,
+            r#"let res = tuple.3.foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_range_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo..bar).foo();"#,
+            r#"let res = (foo..bar).foo();"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo..=bar).foo();"#,
+            r#"let res = (foo..=bar).foo();"#,
         );
     }
 }
