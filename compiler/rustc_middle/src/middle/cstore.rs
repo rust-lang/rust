@@ -8,6 +8,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_macros::HashStable;
@@ -185,6 +186,7 @@ pub trait CrateStore {
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
+    fn def_kind(&self, def: DefId) -> DefKind;
     fn def_path(&self, def: DefId) -> DefPath;
     fn def_path_hash(&self, def: DefId) -> DefPathHash;
     fn all_def_path_hashes_and_def_ids(&self, cnum: CrateNum) -> Vec<(DefPathHash, DefId)>;
