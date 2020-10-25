@@ -3,6 +3,8 @@
 #![allow(unconditional_panic, const_err)]
 #![feature(const_fn, const_fn_union)]
 
+use std::cell::Cell;
+
 // We do not promote mutable references.
 static mut TEST1: Option<&mut [i32]> = Some(&mut [1, 2, 3]); //~ ERROR temporary value dropped while borrowed
 
@@ -32,4 +34,7 @@ const TEST_UNION: () = {
     let _x: &'static i32 = &unsafe { U { x: 0 }.x }; //~ ERROR temporary value dropped while borrowed
 };
 
-fn main() {}
+fn main() {
+    // We must not promote things with interior mutability.
+    let _val: &'static _ = &(Cell::new(1), 2).0; //~ ERROR temporary value dropped while borrowed
+}
