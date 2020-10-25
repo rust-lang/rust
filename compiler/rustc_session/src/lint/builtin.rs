@@ -2647,6 +2647,35 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `uninhabited_static` lint detects uninhbaited statics.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// enum Void {}
+    /// extern {
+    ///     static EXTERN: Void;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Statics with an uninhabited type can never be initialized, so they are impossible to define.
+    /// However, this can be side-stepped with an `extern static`, leading to problems later in the
+    /// compiler which assumes that there are no initialized uninhabited places (such as locals or
+    /// statics). This was accientally allowed, but is being phased out.
+    pub UNINHABITED_STATIC,
+    Warn,
+    "uninhabited static",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #74840 <https://github.com/rust-lang/rust/issues/74840>",
+        edition: None,
+    };
+}
+
 declare_tool_lint! {
     pub rustc::INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
@@ -2732,6 +2761,7 @@ declare_lint_pass! {
         CENUM_IMPL_DROP_CAST,
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+        UNINHABITED_STATIC,
     ]
 }
 

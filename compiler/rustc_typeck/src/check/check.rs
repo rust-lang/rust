@@ -14,8 +14,9 @@ use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
-use rustc_middle::ty::{self, RegionKind, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, RegionKind, ToPredicate, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
+use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
@@ -338,7 +339,7 @@ pub(super) fn check_struct(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def);
 }
 
-pub(super) fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
+fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     let def_id = tcx.hir().local_def_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
@@ -349,7 +350,7 @@ pub(super) fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
 }
 
 /// Check that the fields of the `union` do not need dropping.
-pub(super) fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
+fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
     let item_type = tcx.type_of(item_def_id);
     if let ty::Adt(def, substs) = item_type.kind() {
         assert!(def.is_union());
@@ -375,6 +376,36 @@ pub(super) fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: Local
         span_bug!(span, "unions must be ty::Adt, but got {:?}", item_type.kind());
     }
     true
+}
+
+/// Check that a `static` is inhabited.
+fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
+    // Make sure statics are inhabited.
+    // Other parts of the compiler assume that there are no uninhabited places. In principle it
+    // would be enough to check this for `extern` statics, as statics with an initializer will
+    // have UB during initialization if they are uninhabited, but there also seems to be no good
+    // reason to allow any statics to be uninhabited.
+    let ty = tcx.type_of(def_id);
+    let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
+        Ok(l) => l,
+        Err(_) => {
+            // Generic statics are rejected, but we still reach this case.
+            tcx.sess.delay_span_bug(span, "generic static must be rejected");
+            return;
+        }
+    };
+    if layout.abi.is_uninhabited() {
+        tcx.struct_span_lint_hir(
+            UNINHABITED_STATIC,
+            tcx.hir().local_def_id_to_hir_id(def_id),
+            span,
+            |lint| {
+                lint.build("static of uninhabited type")
+                .note("uninhabited statics cannot be initialized, and any access would be an immediate error")
+                .emit();
+            },
+        );
+    }
 }
 
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
@@ -609,6 +640,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             let def_id = tcx.hir().local_def_id(it.hir_id);
             tcx.ensure().typeck(def_id);
             maybe_check_static_with_link_section(tcx, def_id, it.span);
+            check_static_inhabited(tcx, def_id, it.span);
         }
         hir::ItemKind::Const(..) => {
             tcx.ensure().typeck(tcx.hir().local_def_id(it.hir_id));
@@ -691,7 +723,8 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 }
             } else {
                 for item in m.items {
-                    let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
+                    let def_id = tcx.hir().local_def_id(item.hir_id);
+                    let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
                         let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts) {
@@ -722,8 +755,14 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         .emit();
                     }
 
-                    if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.kind {
-                        require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item.span);
+                    match item.kind {
+                        hir::ForeignItemKind::Fn(ref fn_decl, _, _) => {
+                            require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item.span);
+                        }
+                        hir::ForeignItemKind::Static(..) => {
+                            check_static_inhabited(tcx, def_id, item.span);
+                        }
+                        _ => {}
                     }
                 }
             }
