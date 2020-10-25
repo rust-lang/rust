@@ -802,6 +802,7 @@ public:
     assert(BB2);
 
     Builder2.SetInsertPoint(BB2);
+    Builder2.SetCurrentDebugLocation(gutils->getNewFromOriginal(Builder2.getCurrentDebugLocation()));
     Builder2.setFastMathFlags(getFast());
   }
 
