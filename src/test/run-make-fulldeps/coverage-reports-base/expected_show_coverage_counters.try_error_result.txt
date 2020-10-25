@@ -2,16 +2,18 @@ Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/
 Counter in file 0 13:9 -> 14:23, #1
 Counter in file 0 17:9 -> 17:10, ((#1 + (#2 + #3)) - #4)
 Counter in file 0 19:9 -> 19:14, (#1 + (#2 + #3))
-Counter in file 0 21:9 -> 25:26, #7
-Counter in file 0 27:13 -> 27:41, #8
+Counter in file 0 21:9 -> 25:26, #8
+Counter in file 0 27:13 -> 27:41, #9
 Counter in file 0 27:41 -> 27:42, #5
-Counter in file 0 31:13 -> 31:42, (#7 - #8)
-Counter in file 0 31:42 -> 31:43, #6
-Counter in file 0 32:10 -> 32:11, #2
-Counter in file 0 32:10 -> 32:11, #3
-Counter in file 0 33:6 -> 33:7, (#2 + #3)
-Counter in file 0 34:5 -> 34:11, #4
-Counter in file 0 35:1 -> 35:2, ((#5 + #6) + #4)
+Counter in file 0 28:13 -> 28:42, (#9 - #5)
+Counter in file 0 28:42 -> 28:43, #6
+Counter in file 0 32:13 -> 32:42, (#8 - #9)
+Counter in file 0 32:42 -> 32:43, #7
+Counter in file 0 33:10 -> 33:11, #2
+Counter in file 0 33:10 -> 33:11, #3
+Counter in file 0 34:6 -> 34:7, (#2 + #3)
+Counter in file 0 35:5 -> 35:11, #4
+Counter in file 0 36:1 -> 36:2, ((#5 + (#6 + #7)) + #4)
 Counter in file 0 5:8 -> 5:20, #1
 Counter in file 0 6:9 -> 6:16, #2
 Counter in file 0 8:9 -> 8:15, (#1 - #2)
@@ -28,12 +30,14 @@ Combined regions:
   21:9 -> 25:26 (count=6)
   27:13 -> 27:41 (count=1)
   27:41 -> 27:42 (count=1)
-  31:13 -> 31:42 (count=5)
-  31:42 -> 31:43 (count=0)
-  32:10 -> 32:11 (count=5)
-  33:6 -> 33:7 (count=5)
-  34:5 -> 34:11 (count=0)
-  35:1 -> 35:2 (count=1)
+  28:13 -> 28:42 (count=0)
+  28:42 -> 28:43 (count=0)
+  32:13 -> 32:42 (count=5)
+  32:42 -> 32:43 (count=0)
+  33:10 -> 33:11 (count=5)
+  34:6 -> 34:7 (count=5)
+  35:5 -> 35:11 (count=0)
+  36:1 -> 36:2 (count=1)
 Segment at 5:8 (count = 6), RegionEntry
 Segment at 5:20 (count = 0), Skipped
 Segment at 6:9 (count = 1), RegionEntry
@@ -53,14 +57,17 @@ Segment at 25:26 (count = 0), Skipped
 Segment at 27:13 (count = 1), RegionEntry
 Segment at 27:41 (count = 1), RegionEntry
 Segment at 27:42 (count = 0), Skipped
-Segment at 31:13 (count = 5), RegionEntry
-Segment at 31:42 (count = 0), RegionEntry
-Segment at 31:43 (count = 0), Skipped
-Segment at 32:10 (count = 5), RegionEntry
-Segment at 32:11 (count = 0), Skipped
-Segment at 33:6 (count = 5), RegionEntry
-Segment at 33:7 (count = 0), Skipped
-Segment at 34:5 (count = 0), RegionEntry
-Segment at 34:11 (count = 0), Skipped
-Segment at 35:1 (count = 1), RegionEntry
-Segment at 35:2 (count = 0), Skipped
+Segment at 28:13 (count = 0), RegionEntry
+Segment at 28:42 (count = 0), RegionEntry
+Segment at 28:43 (count = 0), Skipped
+Segment at 32:13 (count = 5), RegionEntry
+Segment at 32:42 (count = 0), RegionEntry
+Segment at 32:43 (count = 0), Skipped
+Segment at 33:10 (count = 5), RegionEntry
+Segment at 33:11 (count = 0), Skipped
+Segment at 34:6 (count = 5), RegionEntry
+Segment at 34:7 (count = 0), Skipped
+Segment at 35:5 (count = 0), RegionEntry
+Segment at 35:11 (count = 0), Skipped
+Segment at 36:1 (count = 1), RegionEntry
+Segment at 36:2 (count = 0), Skipped

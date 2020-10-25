@@ -157,7 +157,25 @@ impl<'tcx> FunctionCoverage<'tcx> {
         let mut counter_expressions = Vec::with_capacity(self.expressions.len());
         let mut expression_regions = Vec::with_capacity(self.expressions.len());
         let mut new_indexes = IndexVec::from_elem_n(None, self.expressions.len());
-        // Note that an `Expression`s at any given index can include other expressions as
+
+        // This closure converts any `Expression` operand (`lhs` or `rhs` of the `Op::Add` or
+        // `Op::Subtract` operation) into its native `llvm::coverage::Counter::CounterKind` type
+        // and value. Operand ID value `0` maps to `CounterKind::Zero`; values in the known range
+        // of injected LLVM counters map to `CounterKind::CounterValueReference` (and the value
+        // matches the injected counter index); and any other value is converted into a
+        // `CounterKind::Expression` with the expression's `new_index`.
+        //
+        // Expressions will be returned from this function in a sequential vector (array) of
+        // `CounterExpression`, so the expression IDs must be mapped from their original,
+        // potentially sparse set of indexes, originally in reverse order from `u32::MAX`.
+        //
+        // An `Expression` as an operand will have already been encountered as an `Expression` with
+        // operands, so its new_index will already have been generated (as a 1-up index value).
+        // (If an `Expression` as an operand does not have a corresponding new_index, it was
+        // probably optimized out, after the expression was injected into the MIR, so it will
+        // get a `CounterKind::Zero` instead.)
+        //
+        // In other words, an `Expression`s at any given index can include other expressions as
         // operands, but expression operands can only come from the subset of expressions having
         // `expression_index`s lower than the referencing `Expression`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
