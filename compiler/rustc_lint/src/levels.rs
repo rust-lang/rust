@@ -562,6 +562,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
+    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) {
+        // We will call `with_lint_attrs` when we walk
+        // the `StmtKind`. The outer statement itself doesn't
+        // define the lint levels.
+        intravisit::walk_stmt(self, e);
+    }
+
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         self.with_lint_attrs(e.hir_id, &e.attrs, |builder| {
             intravisit::walk_expr(builder, e);
