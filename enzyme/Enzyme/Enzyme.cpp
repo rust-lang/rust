@@ -345,13 +345,10 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
 static bool lowerEnzymeCalls(Function &F, TargetLibraryInfo &TLI, AAResults &AA,
                              bool PostOpt, bool &successful) {
 
-  bool Changed = false;
-
-reset:
+  std::vector<CallInst *> toLower;
   for (BasicBlock &BB : F) {
-
-    for (auto BI = BB.rbegin(), BE = BB.rend(); BI != BE; ++BI) {
-      CallInst *CI = dyn_cast<CallInst>(&*BI);
+    for (Instruction &I : BB) {
+      CallInst *CI = dyn_cast<CallInst>(&I);
       if (!CI)
         continue;
 
@@ -370,12 +367,17 @@ reset:
       if (Fn && (Fn->getName() == "__enzyme_autodiff" ||
                  Fn->getName().startswith("__enzyme_autodiff") ||
                  Fn->getName().contains("__enzyme_autodiff"))) {
-        successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
-        Changed = true;
-        if (successful)
-          goto reset;
+        toLower.push_back(CI);
       }
     }
+  }
+
+  bool Changed = false;
+  for (auto CI : toLower) {
+    successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
+    Changed = true;
+    if (!successful)
+      break;
   }
 
   return Changed;

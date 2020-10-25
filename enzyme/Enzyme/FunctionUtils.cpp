@@ -658,7 +658,7 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
       AM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
       AM.registerPass([] { return LazyValueAnalysis(); });
-#if LLVM_VERSION_MAJOR > 10
+#if LLVM_VERSION_MAJOR >= 8
       AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
 #if LLVM_VERSION_MAJOR <= 7
@@ -714,7 +714,7 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #if LLVM_VERSION_MAJOR >= 8
     AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
-#if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 8
     AM.registerPass([] { return MemorySSAAnalysis(); });
 #endif
     LoopSimplifyPass().run(*NewF, AM);

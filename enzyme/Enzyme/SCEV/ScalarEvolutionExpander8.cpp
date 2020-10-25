@@ -628,6 +628,8 @@ const Loop *fake::SCEVExpander::getRelevantLoop(const SCEV *S) {
   if (!Pair.second)
     return Pair.first->second;
 
+  if (S == nullptr)
+    return nullptr;
   if (isa<SCEVConstant>(S))
     // A constant has no relevant loops.
     return nullptr;
