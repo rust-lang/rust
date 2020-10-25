@@ -119,6 +119,7 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
                 let symbol_not_in_bracket = unpaired_brackets_in_contents.is_empty();
                 if symbol_not_in_bracket
                     && symbol_kind != SyntaxKind::COLON
+                    && symbol_kind != SyntaxKind::DOT
                     && symbol_kind.is_punct()
                 {
                     return true;
@@ -240,6 +241,25 @@ fn main() {
 
         check_assist(remove_dbg, r#"let res = <|>dbg!(2 + 2) * 5"#, r#"let res = (2 + 2) * 5"#);
         check_assist(remove_dbg, r#"let res = <|>dbg![2 + 2] * 5"#, r#"let res = (2 + 2) * 5"#);
+    }
+
+    #[test]
+    fn test_remove_dbg_method_chaining() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo().bar()).baz();"#,
+            r#"let res = foo().bar().baz();"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo.bar()).baz();"#,
+            r#"let res = foo.bar().baz();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_field_chaining() {
+        check_assist(remove_dbg, r#"let res = <|>dbg!(foo.bar).baz;"#, r#"let res = foo.bar.baz;"#);
     }
 
     #[test]
