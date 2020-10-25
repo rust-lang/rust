@@ -4,7 +4,7 @@ error: digits of hex or binary literal not grouped by four
 LL |         0x1_234_567,
    |         ^^^^^^^^^^^ help: consider: `0x0123_4567`
    |
-   = note: `-D clippy::unusual-byte-grouping` implied by `-D warnings`
+   = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
 
 error: digits of hex or binary literal not grouped by four
   --> $DIR/large_digit_groups.rs:22:9

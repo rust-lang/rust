@@ -96,7 +96,7 @@ declare_clippy_lint! {
     /// let x: u32 = 0xFFF_FFF;
     /// let y: u8 = 0b01_011_101;
     /// ```
-    pub UNUSUAL_BYTE_GROUPING,
+    pub UNUSUAL_BYTE_GROUPINGS,
     style,
     "binary or hex literals that aren't grouped by four"
 }
@@ -144,7 +144,7 @@ enum WarningType {
     LargeDigitGroups,
     DecimalRepresentation,
     MistypedLiteralSuffix,
-    UnusualByteGrouping,
+    UnusualByteGroupings,
 }
 
 impl WarningType {
@@ -195,9 +195,9 @@ impl WarningType {
                 suggested_format,
                 Applicability::MachineApplicable,
             ),
-            Self::UnusualByteGrouping => span_lint_and_sugg(
+            Self::UnusualByteGroupings => span_lint_and_sugg(
                 cx,
-                UNUSUAL_BYTE_GROUPING,
+                UNUSUAL_BYTE_GROUPINGS,
                 span,
                 "digits of hex or binary literal not grouped by four",
                 "consider",
@@ -213,7 +213,7 @@ declare_lint_pass!(LiteralDigitGrouping => [
     INCONSISTENT_DIGIT_GROUPING,
     LARGE_DIGIT_GROUPS,
     MISTYPED_LITERAL_SUFFIXES,
-    UNUSUAL_BYTE_GROUPING,
+    UNUSUAL_BYTE_GROUPINGS,
 ]);
 
 impl EarlyLintPass for LiteralDigitGrouping {
@@ -268,7 +268,7 @@ impl LiteralDigitGrouping {
                     let should_warn = match warning_type {
                         | WarningType::UnreadableLiteral
                         | WarningType::InconsistentDigitGrouping
-                        | WarningType::UnusualByteGrouping
+                        | WarningType::UnusualByteGroupings
                         | WarningType::LargeDigitGroups => {
                             !in_macro(lit.span)
                         }
@@ -369,7 +369,7 @@ impl LiteralDigitGrouping {
         let first = groups.next().expect("At least one group");
 
         if (radix == Radix::Binary || radix == Radix::Hexadecimal) && groups.any(|i| i != 4 && i != 2) {
-            return Err(WarningType::UnusualByteGrouping);
+            return Err(WarningType::UnusualByteGroupings);
         }
 
         if let Some(second) = groups.next() {

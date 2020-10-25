@@ -75,7 +75,7 @@ error: digits of hex or binary literal not grouped by four
 LL |     let fail24 = 0xAB_ABC_AB;
    |                  ^^^^^^^^^^^ help: consider: `0x0ABA_BCAB`
    |
-   = note: `-D clippy::unusual-byte-grouping` implied by `-D warnings`
+   = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
 
 error: digits of hex or binary literal not grouped by four
   --> $DIR/literals.rs:38:18

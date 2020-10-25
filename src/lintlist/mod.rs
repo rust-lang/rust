@@ -2644,7 +2644,7 @@ vec![
         module: "unused_unit",
     },
     Lint {
-        name: "unusual_byte_grouping",
+        name: "unusual_byte_groupings",
         group: "style",
         desc: "binary or hex literals that aren\'t grouped by four",
         deprecation: None,
