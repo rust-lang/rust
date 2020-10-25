@@ -33,8 +33,9 @@ struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// A list of all encountered allocations. After type-based interning, we traverse this list to
     /// also intern allocations that are only referenced by a raw pointer or inside a union.
     leftover_allocations: &'rt mut FxHashSet<AllocId>,
-    /// The root kind of the value that we're looking at. This field is never mutated and only used
-    /// for sanity assertions that will ICE when `const_qualif` screws up.
+    /// The root kind of the value that we're looking at. This field is never mutated for a
+    /// particular allocation. It is primarily used to make as many allocations as possible
+    /// read-only so LLVM can place them in const memory.
     mode: InternMode,
     /// This field stores whether we are *currently* inside an `UnsafeCell`. This can affect
     /// the intern mode of references we encounter.
@@ -113,8 +114,8 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
         // For this, we need to take into account `UnsafeCell`. When `ty` is `None`, we assume
         // no interior mutability.
         let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx, ecx.param_env));
-        // For statics, allocation mutability is the combination of the place mutability and
-        // the type mutability.
+        // For statics, allocation mutability is the combination of place mutability and
+        // type mutability.
         // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
         let immutable = mutability == Mutability::Not && frozen;
         if immutable {
@@ -188,8 +189,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
             }
         }
 
-        // ZSTs do not need validation unless they're uninhabited
-        if mplace.layout.is_zst() && !mplace.layout.abi.is_uninhabited() {
+        // ZSTs cannot contain pointers, so we can skip them.
+        if mplace.layout.is_zst() {
             return Ok(());
         }
 
@@ -209,13 +210,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
             if let ty::Dynamic(..) =
                 tcx.struct_tail_erasing_lifetimes(referenced_ty, self.ecx.param_env).kind()
             {
-                // Validation will error (with a better message) on an invalid vtable pointer
-                // so we can safely not do anything if this is not a real pointer.
                 if let Scalar::Ptr(vtable) = mplace.meta.unwrap_meta() {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
                     self.intern_shallow(vtable.alloc_id, InternMode::ConstInner, None);
                 } else {
+                    // Validation will error (with a better message) on an invalid vtable pointer.
                     // Let validation show the error message, but make sure it *does* error.
                     tcx.sess
                         .delay_span_bug(tcx.span, "vtables pointers cannot be integer pointers");
@@ -224,7 +224,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
             // Check if we have encountered this pointer+layout combination before.
             // Only recurse for allocation-backed pointers.
             if let Scalar::Ptr(ptr) = mplace.ptr {
-                // Compute the mode with which we intern this.
+                // Compute the mode with which we intern this. Our goal here is to make as many
+                // statics as we can immutable so they can be placed in const memory by LLVM.
                 let ref_mode = match self.mode {
                     InternMode::Static(mutbl) => {
                         // In statics, merge outer mutability with reference mutability and
@@ -243,8 +244,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                             }
                             Mutability::Not => {
                                 // A shared reference, things become immutable.
-                                // We do *not* consier `freeze` here -- that is done more precisely
-                                // when traversing the referenced data (by tracking `UnsafeCell`).
+                                // We do *not* consider `freeze` here: `intern_shallow` considers
+                                // `freeze` for the actual mutability of this allocation; the intern
+                                // mode for references contained in this allocation is tracked more
+                                // precisely when traversing the referenced data (by tracking
+                                // `UnsafeCell`). This makes sure that `&(&i32, &Cell<i32>)` still
+                                // has the left inner reference interned into a read-only
+                                // allocation.
                                 InternMode::Static(Mutability::Not)
                             }
                             Mutability::Mut => {
