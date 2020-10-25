@@ -579,7 +579,7 @@ where
         })?;
 
         if is_empty {
-            return Try::from_ok(acc);
+            return try { acc };
         }
 
         loop {
@@ -715,7 +715,7 @@ where
         if self.first_take {
             self.first_take = false;
             match self.iter.next() {
-                None => return Try::from_ok(acc),
+                None => return try { acc },
                 Some(x) => acc = f(acc, x)?,
             }
         }
@@ -792,7 +792,7 @@ where
         }
 
         match self.next_back() {
-            None => Try::from_ok(init),
+            None => try { init },
             Some(x) => {
                 let acc = f(init, x)?;
                 from_fn(nth_back(&mut self.iter, self.step)).try_fold(acc, f)
@@ -1075,7 +1075,7 @@ fn filter_try_fold<'a, T, Acc, R: Try<Ok = Acc>>(
     predicate: &'a mut impl FnMut(&T) -> bool,
     mut fold: impl FnMut(Acc, T) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {
-    move |acc, item| if predicate(&item) { fold(acc, item) } else { R::from_ok(acc) }
+    move |acc, item| if predicate(&item) { fold(acc, item) } else { try { acc } }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1229,7 +1229,7 @@ fn filter_map_try_fold<'a, T, B, Acc, R: Try<Ok = Acc>>(
 ) -> impl FnMut(Acc, T) -> R + 'a {
     move |acc, item| match f(item) {
         Some(x) => fold(acc, x),
-        None => R::from_ok(acc),
+        None => try { acc },
     }
 }
 
@@ -1280,7 +1280,7 @@ where
         #[inline]
         fn find<T, B>(
             f: &mut impl FnMut(T) -> Option<B>,
-        ) -> impl FnMut((), T) -> ControlFlow<(), B> + '_ {
+        ) -> impl FnMut((), T) -> ControlFlow<B> + '_ {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
                 None => ControlFlow::CONTINUE,
@@ -1660,7 +1660,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
         R: Try<Ok = B>,
     {
         let acc = match self.peeked.take() {
-            Some(None) => return Try::from_ok(init),
+            Some(None) => return try { init },
             Some(Some(v)) => f(init, v)?,
             None => init,
         };
@@ -1703,7 +1703,7 @@ where
         R: Try<Ok = B>,
     {
         match self.peeked.take() {
-            Some(None) => Try::from_ok(init),
+            Some(None) => try { init },
             Some(Some(v)) => match self.iter.try_rfold(init, &mut f).into_result() {
                 Ok(acc) => f(acc, v),
                 Err(e) => {
@@ -1938,7 +1938,7 @@ where
         if !self.flag {
             match self.next() {
                 Some(v) => init = fold(init, v)?,
-                None => return Try::from_ok(init),
+                None => return try { init },
             }
         }
         self.iter.try_fold(init, fold)
@@ -2059,19 +2059,19 @@ where
             flag: &'a mut bool,
             p: &'a mut impl FnMut(&T) -> bool,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
             move |acc, x| {
                 if p(&x) {
                     ControlFlow::from_try(fold(acc, x))
                 } else {
                     *flag = true;
-                    ControlFlow::Break(Try::from_ok(acc))
+                    ControlFlow::Break(try { acc })
                 }
             }
         }
 
         if self.flag {
-            Try::from_ok(init)
+            try { init }
         } else {
             let flag = &mut self.flag;
             let p = &mut self.predicate;
@@ -2180,7 +2180,7 @@ where
         let Self { iter, predicate } = self;
         iter.try_fold(init, |acc, x| match predicate(x) {
             Some(item) => ControlFlow::from_try(fold(acc, item)),
-            None => ControlFlow::Break(Try::from_ok(acc)),
+            None => ControlFlow::Break(try { acc }),
         })
         .into_try()
     }
@@ -2316,7 +2316,7 @@ where
         if n > 0 {
             // nth(n) skips n+1
             if self.iter.nth(n - 1).is_none() {
-                return Try::from_ok(init);
+                return try { init };
             }
         }
         self.iter.try_fold(init, fold)
@@ -2372,7 +2372,7 @@ where
         fn check<T, Acc, R: Try<Ok = Acc>>(
             mut n: usize,
             mut fold: impl FnMut(Acc, T) -> R,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> {
             move |acc, x| {
                 n -= 1;
                 let r = fold(acc, x);
@@ -2381,11 +2381,7 @@ where
         }
 
         let n = self.len();
-        if n == 0 {
-            Try::from_ok(init)
-        } else {
-            self.iter.try_rfold(init, check(n, fold)).into_try()
-        }
+        if n == 0 { try { init } } else { self.iter.try_rfold(init, check(n, fold)).into_try() }
     }
 
     fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
@@ -2500,7 +2496,7 @@ where
         fn check<'a, T, Acc, R: Try<Ok = Acc>>(
             n: &'a mut usize,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
             move |acc, x| {
                 *n -= 1;
                 let r = fold(acc, x);
@@ -2509,7 +2505,7 @@ where
         }
 
         if self.n == 0 {
-            Try::from_ok(init)
+            try { init }
         } else {
             let n = &mut self.n;
             self.iter.try_fold(init, check(n, fold)).into_try()
@@ -2587,11 +2583,11 @@ where
         R: Try<Ok = Acc>,
     {
         if self.n == 0 {
-            Try::from_ok(init)
+            try { init }
         } else {
             let len = self.iter.len();
             if len > self.n && self.iter.nth_back(len - self.n - 1).is_none() {
-                Try::from_ok(init)
+                try { init }
             } else {
                 self.iter.try_rfold(init, fold)
             }
@@ -2685,9 +2681,9 @@ where
             state: &'a mut St,
             f: &'a mut impl FnMut(&mut St, T) -> Option<B>,
             mut fold: impl FnMut(Acc, B) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
             move |acc, x| match f(state, x) {
-                None => ControlFlow::Break(Try::from_ok(acc)),
+                None => ControlFlow::Break(try { acc }),
                 Some(x) => ControlFlow::from_try(fold(acc, x)),
             }
         }
@@ -2951,7 +2947,7 @@ where
                 Ok(x) => ControlFlow::from_try(f(acc, x)),
                 Err(e) => {
                     *error = Err(e);
-                    ControlFlow::Break(Try::from_ok(acc))
+                    ControlFlow::Break(try { acc })
                 }
             })
             .into_try()

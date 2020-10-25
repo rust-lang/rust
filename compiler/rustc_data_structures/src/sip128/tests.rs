@@ -450,3 +450,48 @@ fn test_short_write_works() {
 
     assert_eq!(h1_hash, h2_hash);
 }
+
+macro_rules! test_fill_buffer {
+    ($type:ty, $write_method:ident) => {{
+        // Test filling and overfilling the buffer from all possible offsets
+        // for a given integer type and its corresponding write method.
+        const SIZE: usize = std::mem::size_of::<$type>();
+        let input = [42; BUFFER_SIZE];
+        let x = 0x01234567_89ABCDEF_76543210_FEDCBA98_u128 as $type;
+        let x_bytes = &x.to_ne_bytes();
+
+        for i in 1..=SIZE {
+            let s = &input[..BUFFER_SIZE - i];
+
+            let mut h1 = SipHasher128::new_with_keys(7, 13);
+            h1.write(s);
+            h1.$write_method(x);
+
+            let mut h2 = SipHasher128::new_with_keys(7, 13);
+            h2.write(s);
+            h2.write(x_bytes);
+
+            let h1_hash = h1.finish128();
+            let h2_hash = h2.finish128();
+
+            assert_eq!(h1_hash, h2_hash);
+        }
+    }};
+}
+
+#[test]
+fn test_fill_buffer() {
+    test_fill_buffer!(u8, write_u8);
+    test_fill_buffer!(u16, write_u16);
+    test_fill_buffer!(u32, write_u32);
+    test_fill_buffer!(u64, write_u64);
+    test_fill_buffer!(u128, write_u128);
+    test_fill_buffer!(usize, write_usize);
+
+    test_fill_buffer!(i8, write_i8);
+    test_fill_buffer!(i16, write_i16);
+    test_fill_buffer!(i32, write_i32);
+    test_fill_buffer!(i64, write_i64);
+    test_fill_buffer!(i128, write_i128);
+    test_fill_buffer!(isize, write_isize);
+}

@@ -29,7 +29,7 @@ pub mod memchr;
 
 mod ascii;
 mod cmp;
-mod index;
+pub(crate) mod index;
 mod iter;
 mod raw;
 mod rotate;
@@ -73,9 +73,6 @@ pub use sort::heapsort;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 
-#[unstable(feature = "slice_check_range", issue = "76393")]
-pub use index::check_range;
-
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
@@ -91,7 +88,8 @@ impl<T> [T] {
     #[rustc_const_stable(feature = "const_slice_len", since = "1.32.0")]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
-    #[allow_internal_unstable(const_fn_union)]
+    #[cfg_attr(not(bootstrap), rustc_allow_const_fn_unstable(const_fn_union))]
+    #[cfg_attr(bootstrap, allow_internal_unstable(const_fn_union))]
     pub const fn len(&self) -> usize {
         // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
         // Only `std` can make this guarantee.
@@ -1948,10 +1946,10 @@ impl<T> [T] {
     ///
     /// The comparator function must define a total ordering for the elements in the slice. If
     /// the ordering is not total, the order of the elements is unspecified. An order is a
-    /// total order if it is (for all a, b and c):
+    /// total order if it is (for all `a`, `b` and `c`):
     ///
-    /// * total and antisymmetric: exactly one of a < b, a == b or a > b is true; and
-    /// * transitive, a < b and b < c implies a < c. The same must hold for both == and >.
+    /// * total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true, and
+    /// * transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
     ///
     /// For example, while [`f64`] doesn't implement [`Ord`] because `NaN != NaN`, we can use
     /// `partial_cmp` as our sort function when we know the slice doesn't contain a `NaN`.
@@ -2714,7 +2712,7 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        let Range { start: src_start, end: src_end } = check_range(self.len(), src);
+        let Range { start: src_start, end: src_end } = src.assert_len(self.len());
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
         // SAFETY: the conditions for `ptr::copy` have all been checked above,

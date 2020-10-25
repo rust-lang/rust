@@ -30,15 +30,27 @@ while [[ "$1" != "" ]]; do
            ! (cmp -s -- "$BUILD_DIR"/"$STDOUT_NAME" "$MYDIR"/"$STDOUT_NAME"); then
         echo updating "$MYDIR"/"$STDOUT_NAME"
         cp "$BUILD_DIR"/"$STDOUT_NAME" "$MYDIR"/"$STDOUT_NAME"
+        if [[ ! -s "$MYDIR"/"$STDOUT_NAME" ]]; then
+            echo removing "$MYDIR"/"$STDOUT_NAME"
+            rm "$MYDIR"/"$STDOUT_NAME"
+        fi
     fi
     if [[ -f "$BUILD_DIR"/"$STDERR_NAME" ]] && \
            ! (cmp -s -- "$BUILD_DIR"/"$STDERR_NAME" "$MYDIR"/"$STDERR_NAME"); then
         echo updating "$MYDIR"/"$STDERR_NAME"
         cp "$BUILD_DIR"/"$STDERR_NAME" "$MYDIR"/"$STDERR_NAME"
+        if [[ ! -s "$MYDIR"/"$STDERR_NAME" ]]; then
+            echo removing "$MYDIR"/"$STDERR_NAME"
+            rm "$MYDIR"/"$STDERR_NAME"
+        fi
     fi
     if [[ -f "$BUILD_DIR"/"$FIXED_NAME" ]] && \
            ! (cmp -s -- "$BUILD_DIR"/"$FIXED_NAME" "$MYDIR"/"$FIXED_NAME"); then
         echo updating "$MYDIR"/"$FIXED_NAME"
         cp "$BUILD_DIR"/"$FIXED_NAME" "$MYDIR"/"$FIXED_NAME"
+        if [[ ! -s "$MYDIR"/"$FIXED_NAME" ]]; then
+            echo removing "$MYDIR"/"$FIXED_NAME"
+            rm "$MYDIR"/"$FIXED_NAME"
+        fi
     fi
 done

@@ -152,10 +152,14 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
             }
             Rvalue::ThreadLocalRef(did) => {
+                let static_ty = tcx.type_of(did);
                 if tcx.is_mutable_static(did) {
-                    tcx.mk_mut_ptr(tcx.type_of(did))
+                    tcx.mk_mut_ptr(static_ty)
+                } else if tcx.is_foreign_item(did) {
+                    tcx.mk_imm_ptr(static_ty)
                 } else {
-                    tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.type_of(did))
+                    // FIXME: These things don't *really* have 'static lifetime.
+                    tcx.mk_imm_ref(tcx.lifetimes.re_static, static_ty)
                 }
             }
             Rvalue::Ref(reg, bk, ref place) => {

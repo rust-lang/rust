@@ -34,6 +34,9 @@ then
     exit 1
 fi
 
+# Avoid failure caused by newer mdbook.
+export MDBOOK_OUTPUT__HTML__INPUT_404=""
+
 book_name=""
 # Iterative will avoid cleaning up, so you can quickly run it repeatedly.
 iterative=0

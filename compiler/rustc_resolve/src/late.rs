@@ -369,7 +369,7 @@ struct DiagnosticMetadata<'ast> {
     /// param.
     currently_processing_generics: bool,
 
-    /// The current enclosing function (used for better errors).
+    /// The current enclosing (non-closure) function (used for better errors).
     current_function: Option<(FnKind<'ast>, Span)>,
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
@@ -515,8 +515,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             FnKind::Fn(FnCtxt::Assoc(_), ..) => NormalRibKind,
             FnKind::Closure(..) => ClosureOrAsyncRibKind,
         };
-        let previous_value =
-            replace(&mut self.diagnostic_metadata.current_function, Some((fn_kind, sp)));
+        let previous_value = self.diagnostic_metadata.current_function;
+        if matches!(fn_kind, FnKind::Fn(..)) {
+            self.diagnostic_metadata.current_function = Some((fn_kind, sp));
+        }
         debug!("(resolving function) entering function");
         let declaration = fn_kind.decl();
 

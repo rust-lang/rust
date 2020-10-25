@@ -618,10 +618,9 @@ pub trait PrettyPrinter<'tcx>:
                         // may contain unbound variables. We therefore do this manually.
                         //
                         // FIXME(lcnr): Find out why exactly this is the case :)
-                        if let ty::PredicateAtom::Trait(pred, _) =
-                            predicate.bound_atom(self.tcx()).skip_binder()
-                        {
-                            let trait_ref = ty::Binder::bind(pred.trait_ref);
+                        let bound_predicate = predicate.bound_atom_with_opt_escaping(self.tcx());
+                        if let ty::PredicateAtom::Trait(pred, _) = bound_predicate.skip_binder() {
+                            let trait_ref = bound_predicate.rebind(pred.trait_ref);
                             // Don't print +Sized, but rather +?Sized if absent.
                             if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
                                 is_sized = true;
@@ -1849,7 +1848,7 @@ macro_rules! forward_display_to_print {
         $(impl fmt::Display for $ty {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 ty::tls::with(|tcx| {
-                    tcx.lift(self)
+                    tcx.lift(*self)
                         .expect("could not lift for printing")
                         .print(FmtPrinter::new(tcx, f, Namespace::TypeNS))?;
                     Ok(())

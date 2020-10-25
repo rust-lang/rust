@@ -432,6 +432,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Break(..)
             | hir::ExprKind::Continue(_)
             | hir::ExprKind::Lit(_)
+            | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Block(..)
             | hir::ExprKind::Assign(..)
@@ -1173,7 +1174,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::InOut { expr, .. } => {
-                            succ = self.write_place(expr, succ, ACC_READ | ACC_WRITE);
+                            succ = self.write_place(expr, succ, ACC_READ | ACC_WRITE | ACC_USE);
                         }
                         hir::InlineAsmOperand::SplitInOut { out_expr, .. } => {
                             if let Some(expr) = out_expr {
@@ -1232,6 +1233,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Lit(..)
+            | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Err
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
             | hir::ExprKind::Path(hir::QPath::LangItem(..)) => succ,
@@ -1478,6 +1480,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Break(..)
         | hir::ExprKind::Continue(..)
         | hir::ExprKind::Lit(_)
+        | hir::ExprKind::ConstBlock(..)
         | hir::ExprKind::Block(..)
         | hir::ExprKind::AddrOf(..)
         | hir::ExprKind::Struct(..)

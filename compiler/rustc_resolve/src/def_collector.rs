@@ -76,6 +76,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         let def_data = match &i.kind {
             ItemKind::Impl { .. } => DefPathData::Impl,
             ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
+                // Fake crate root item from expand.
                 return visit::walk_item(self, i);
             }
             ItemKind::Mod(..)
@@ -239,13 +240,13 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.kind {
-            TyKind::MacCall(..) => return self.visit_macro_invoc(ty.id),
+            TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
             TyKind::ImplTrait(node_id, _) => {
-                self.create_def(node_id, DefPathData::ImplTrait, ty.span);
+                let parent_def = self.create_def(node_id, DefPathData::ImplTrait, ty.span);
+                self.with_parent(parent_def, |this| visit::walk_ty(this, ty));
             }
-            _ => {}
+            _ => visit::walk_ty(self, ty),
         }
-        visit::walk_ty(self, ty);
     }
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {

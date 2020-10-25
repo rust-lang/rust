@@ -10,82 +10,90 @@ use rustc_span::symbol::Ident;
 use rustc_span::{source_map::Spanned, Span};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    crate fn lower_pat(&mut self, p: &Pat) -> &'hir hir::Pat<'hir> {
+    crate fn lower_pat(&mut self, mut pattern: &Pat) -> &'hir hir::Pat<'hir> {
         ensure_sufficient_stack(|| {
-            let node = match p.kind {
-                PatKind::Wild => hir::PatKind::Wild,
-                PatKind::Ident(ref binding_mode, ident, ref sub) => {
-                    let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
-                    let node = self.lower_pat_ident(p, binding_mode, ident, lower_sub);
-                    node
-                }
-                PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
-                PatKind::TupleStruct(ref path, ref pats) => {
-                    let qpath = self.lower_qpath(
-                        p.id,
-                        &None,
-                        path,
-                        ParamMode::Optional,
-                        ImplTraitContext::disallowed(),
-                    );
-                    let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
-                    hir::PatKind::TupleStruct(qpath, pats, ddpos)
-                }
-                PatKind::Or(ref pats) => hir::PatKind::Or(
-                    self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat(x))),
-                ),
-                PatKind::Path(ref qself, ref path) => {
-                    let qpath = self.lower_qpath(
-                        p.id,
-                        qself,
-                        path,
-                        ParamMode::Optional,
-                        ImplTraitContext::disallowed(),
-                    );
-                    hir::PatKind::Path(qpath)
-                }
-                PatKind::Struct(ref path, ref fields, etc) => {
-                    let qpath = self.lower_qpath(
-                        p.id,
-                        &None,
-                        path,
-                        ParamMode::Optional,
-                        ImplTraitContext::disallowed(),
-                    );
+            // loop here to avoid recursion
+            let node = loop {
+                match pattern.kind {
+                    PatKind::Wild => break hir::PatKind::Wild,
+                    PatKind::Ident(ref binding_mode, ident, ref sub) => {
+                        let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
+                        break self.lower_pat_ident(pattern, binding_mode, ident, lower_sub);
+                    }
+                    PatKind::Lit(ref e) => break hir::PatKind::Lit(self.lower_expr(e)),
+                    PatKind::TupleStruct(ref path, ref pats) => {
+                        let qpath = self.lower_qpath(
+                            pattern.id,
+                            &None,
+                            path,
+                            ParamMode::Optional,
+                            ImplTraitContext::disallowed(),
+                        );
+                        let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
+                        break hir::PatKind::TupleStruct(qpath, pats, ddpos);
+                    }
+                    PatKind::Or(ref pats) => {
+                        break hir::PatKind::Or(
+                            self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat(x))),
+                        );
+                    }
+                    PatKind::Path(ref qself, ref path) => {
+                        let qpath = self.lower_qpath(
+                            pattern.id,
+                            qself,
+                            path,
+                            ParamMode::Optional,
+                            ImplTraitContext::disallowed(),
+                        );
+                        break hir::PatKind::Path(qpath);
+                    }
+                    PatKind::Struct(ref path, ref fields, etc) => {
+                        let qpath = self.lower_qpath(
+                            pattern.id,
+                            &None,
+                            path,
+                            ParamMode::Optional,
+                            ImplTraitContext::disallowed(),
+                        );
 
-                    let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::FieldPat {
-                        hir_id: self.next_id(),
-                        ident: f.ident,
-                        pat: self.lower_pat(&f.pat),
-                        is_shorthand: f.is_shorthand,
-                        span: f.span,
-                    }));
-                    hir::PatKind::Struct(qpath, fs, etc)
+                        let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::FieldPat {
+                            hir_id: self.next_id(),
+                            ident: f.ident,
+                            pat: self.lower_pat(&f.pat),
+                            is_shorthand: f.is_shorthand,
+                            span: f.span,
+                        }));
+                        break hir::PatKind::Struct(qpath, fs, etc);
+                    }
+                    PatKind::Tuple(ref pats) => {
+                        let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
+                        break hir::PatKind::Tuple(pats, ddpos);
+                    }
+                    PatKind::Box(ref inner) => {
+                        break hir::PatKind::Box(self.lower_pat(inner));
+                    }
+                    PatKind::Ref(ref inner, mutbl) => {
+                        break hir::PatKind::Ref(self.lower_pat(inner), mutbl);
+                    }
+                    PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => {
+                        break hir::PatKind::Range(
+                            e1.as_deref().map(|e| self.lower_expr(e)),
+                            e2.as_deref().map(|e| self.lower_expr(e)),
+                            self.lower_range_end(end, e2.is_some()),
+                        );
+                    }
+                    PatKind::Slice(ref pats) => break self.lower_pat_slice(pats),
+                    PatKind::Rest => {
+                        // If we reach here the `..` pattern is not semantically allowed.
+                        break self.ban_illegal_rest_pat(pattern.span);
+                    }
+                    // return inner to be processed in next loop
+                    PatKind::Paren(ref inner) => pattern = inner,
+                    PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
                 }
-                PatKind::Tuple(ref pats) => {
-                    let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
-                    hir::PatKind::Tuple(pats, ddpos)
-                }
-                PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
-                PatKind::Ref(ref inner, mutbl) => hir::PatKind::Ref(self.lower_pat(inner), mutbl),
-                PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => {
-                    hir::PatKind::Range(
-                        e1.as_deref().map(|e| self.lower_expr(e)),
-                        e2.as_deref().map(|e| self.lower_expr(e)),
-                        self.lower_range_end(end, e2.is_some()),
-                    )
-                }
-                PatKind::Slice(ref pats) => self.lower_pat_slice(pats),
-                PatKind::Rest => {
-                    // If we reach here the `..` pattern is not semantically allowed.
-                    self.ban_illegal_rest_pat(p.span)
-                }
-                // FIXME: consider not using recursion to lower this.
-                PatKind::Paren(ref inner) => return self.lower_pat(inner),
-                PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", p.span),
             };
 
-            self.pat_with_node_id_of(p, node)
+            self.pat_with_node_id_of(pattern, node)
         })
     }
 

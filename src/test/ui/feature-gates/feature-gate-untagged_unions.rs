@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 union U1 { // OK
     a: u8,
 }
@@ -6,15 +8,23 @@ union U2<T: Copy> { // OK
     a: T,
 }
 
-union U3 { //~ ERROR unions with non-`Copy` fields are unstable
+union U22<T> { // OK
+    a: std::mem::ManuallyDrop<T>,
+}
+
+union U3 {
     a: String, //~ ERROR unions may not contain fields that need dropping
 }
 
-union U4<T> { //~ ERROR unions with non-`Copy` fields are unstable
+union U32 { // field that does not drop but is not `Copy`, either -- this is the real feature gate test!
+    a: std::cell::RefCell<i32>, //~ ERROR unions with non-`Copy` fields other than `ManuallyDrop<T>` are unstable
+}
+
+union U4<T> {
     a: T, //~ ERROR unions may not contain fields that need dropping
 }
 
-union U5 { //~ ERROR unions with `Drop` implementations are unstable
+union U5 { // Having a drop impl is OK
     a: u8,
 }
 

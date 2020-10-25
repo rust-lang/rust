@@ -84,7 +84,7 @@ impl<'a> SourceCollector<'a> {
         };
 
         // Remove the utf-8 BOM if any
-        if contents.starts_with("\u{feff}") {
+        if contents.starts_with('\u{feff}') {
             contents.drain(..3);
         }
 
@@ -99,16 +99,15 @@ impl<'a> SourceCollector<'a> {
             href.push('/');
         });
         self.scx.ensure_dir(&cur)?;
-        let mut fname = p.file_name().expect("source has no filename").to_os_string();
+
+        let src_fname = p.file_name().expect("source has no filename").to_os_string();
+        let mut fname = src_fname.clone();
         fname.push(".html");
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let title = format!(
-            "{} -- source",
-            cur.file_name().expect("failed to get file name").to_string_lossy()
-        );
-        let desc = format!("Source to the Rust file `{}`.", filename);
+        let title = format!("{} - source", src_fname.to_string_lossy());
+        let desc = format!("Source of the Rust file `{}`.", filename);
         let page = layout::Page {
             title: &title,
             css_class: "source",

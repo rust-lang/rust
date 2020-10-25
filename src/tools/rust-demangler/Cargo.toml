@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 regex = "1.0"
-rustc-demangle = "0.1"
+rustc-demangle = "0.1.17"
 
 [[bin]]
 name = "rust-demangler"

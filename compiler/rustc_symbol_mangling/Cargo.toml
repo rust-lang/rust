@@ -10,7 +10,7 @@ doctest = false
 [dependencies]
 tracing = "0.1"
 punycode = "0.4.0"
-rustc-demangle = "0.1.16"
+rustc-demangle = "0.1.18"
 
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }

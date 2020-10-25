@@ -103,7 +103,7 @@ impl<'a> Parser<'a> {
                     // If we captured tokens during parsing (due to outer attributes),
                     // use those.
                     if item.tokens.is_none() {
-                        item.tokens = Some(tokens);
+                        item.tokens = tokens;
                     }
                     token::NtItem(item)
                 }
@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
                 let (mut block, tokens) = self.collect_tokens(|this| this.parse_block())?;
                 // We have have eaten an NtBlock, which could already have tokens
                 if block.tokens.is_none() {
-                    block.tokens = Some(tokens);
+                    block.tokens = tokens;
                 }
                 token::NtBlock(block)
             }
@@ -124,7 +124,7 @@ impl<'a> Parser<'a> {
                 match stmt {
                     Some(mut s) => {
                         if s.tokens.is_none() {
-                            s.tokens = Some(tokens);
+                            s.tokens = tokens;
                         }
                         token::NtStmt(s)
                     }
@@ -137,7 +137,7 @@ impl<'a> Parser<'a> {
                 let (mut pat, tokens) = self.collect_tokens(|this| this.parse_pat(None))?;
                 // We have have eaten an NtPat, which could already have tokens
                 if pat.tokens.is_none() {
-                    pat.tokens = Some(tokens);
+                    pat.tokens = tokens;
                 }
                 token::NtPat(pat)
             }
@@ -146,7 +146,7 @@ impl<'a> Parser<'a> {
                 // If we captured tokens during parsing (due to outer attributes),
                 // use those.
                 if expr.tokens.is_none() {
-                    expr.tokens = Some(tokens);
+                    expr.tokens = tokens;
                 }
                 token::NtExpr(expr)
             }
@@ -155,7 +155,7 @@ impl<'a> Parser<'a> {
                     self.collect_tokens(|this| this.parse_literal_maybe_minus())?;
                 // We have have eaten a nonterminal, which  could already have tokens
                 if lit.tokens.is_none() {
-                    lit.tokens = Some(tokens);
+                    lit.tokens = tokens;
                 }
                 token::NtLiteral(lit)
             }
@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
                 let (mut ty, tokens) = self.collect_tokens(|this| this.parse_ty())?;
                 // We have an eaten an NtTy, which could already have tokens
                 if ty.tokens.is_none() {
-                    ty.tokens = Some(tokens);
+                    ty.tokens = tokens;
                 }
                 token::NtTy(ty)
             }
@@ -183,15 +183,15 @@ impl<'a> Parser<'a> {
                     self.collect_tokens(|this| this.parse_path(PathStyle::Type))?;
                 // We have have eaten an NtPath, which could already have tokens
                 if path.tokens.is_none() {
-                    path.tokens = Some(tokens);
+                    path.tokens = tokens;
                 }
                 token::NtPath(path)
             }
             NonterminalKind::Meta => {
-                let (mut attr, tokens) = self.collect_tokens(|this| this.parse_attr_item())?;
+                let (mut attr, tokens) = self.collect_tokens(|this| this.parse_attr_item(false))?;
                 // We may have eaten a nonterminal, which could already have tokens
                 if attr.tokens.is_none() {
-                    attr.tokens = Some(tokens);
+                    attr.tokens = tokens;
                 }
                 token::NtMeta(P(attr))
             }
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
                     self.collect_tokens(|this| this.parse_visibility(FollowedByType::Yes))?;
                 // We may have etan an `NtVis`, which could already have tokens
                 if vis.tokens.is_none() {
-                    vis.tokens = Some(tokens);
+                    vis.tokens = tokens;
                 }
                 token::NtVis(vis)
             }

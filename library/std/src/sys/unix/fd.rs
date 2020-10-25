@@ -200,7 +200,8 @@ impl FileDesc {
         target_os = "l4re",
         target_os = "linux",
         target_os = "haiku",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -217,7 +218,8 @@ impl FileDesc {
         target_os = "l4re",
         target_os = "linux",
         target_os = "haiku",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {

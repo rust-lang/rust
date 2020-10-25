@@ -7,7 +7,7 @@
       let mut _2: &[&i32; 1];              // in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
       let _3: [&i32; 1];                   // in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
       let mut _4: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:13:32: 13:45
-      let _5: &i32;                        // in scope 0 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
+      let _5: *const i32;                  // in scope 0 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
 +     let mut _6: &[&i32; 1];              // in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
       scope 1 {
       }
@@ -18,16 +18,16 @@
 -         StorageLive(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
 -         StorageLive(_4);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:32: 13:45
 -         StorageLive(_5);                 // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
--         _5 = const {alloc2: &i32};       // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
+-         _5 = const {alloc2: *const i32}; // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
 +         _6 = const FOO::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
                                            // ty::Const
--                                          // + ty: &i32
+-                                          // + ty: *const i32
 -                                          // + val: Value(Scalar(alloc2))
 +                                          // + ty: &[&i32; 1]
 +                                          // + val: Unevaluated(WithOptConstParam { did: DefId(0:7 ~ const_promotion_extern_static[317d]::FOO), const_param_did: None }, [], Some(promoted[0]))
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:13:42: 13:43
--                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc2)) }
+-                                          // + literal: Const { ty: *const i32, val: Value(Scalar(alloc2)) }
 -         _4 = &(*_5);                     // scope 1 at $DIR/const-promotion-extern-static.rs:13:41: 13:43
 -         _3 = [move _4];                  // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
 -         _2 = &_3;                        // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46

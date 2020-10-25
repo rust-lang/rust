@@ -6,6 +6,7 @@
 // contain a proc-macro.
 
 #![feature(repr128)]
+#![allow(incomplete_features)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;

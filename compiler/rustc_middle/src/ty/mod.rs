@@ -125,6 +125,7 @@ mod sty;
 pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,
+    pub visibilities: FxHashMap<LocalDefId, Visibility>,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -1056,9 +1057,21 @@ impl<'tcx> Predicate<'tcx> {
         }
     }
 
+    /// Converts this to a `Binder<PredicateAtom<'tcx>>`. If the value was an
+    /// `Atom`, then it is not allowed to contain escaping bound vars.
+    pub fn bound_atom(self) -> Binder<PredicateAtom<'tcx>> {
+        match self.kind() {
+            &PredicateKind::ForAll(binder) => binder,
+            &PredicateKind::Atom(atom) => {
+                debug_assert!(!atom.has_escaping_bound_vars());
+                Binder::dummy(atom)
+            }
+        }
+    }
+
     /// Allows using a `Binder<PredicateAtom<'tcx>>` even if the given predicate previously
     /// contained unbound variables by shifting these variables outwards.
-    pub fn bound_atom(self, tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
+    pub fn bound_atom_with_opt_escaping(self, tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
         match self.kind() {
             &PredicateKind::ForAll(binder) => binder,
             &PredicateKind::Atom(atom) => Binder::wrap_nonbinding(tcx, atom),
@@ -2436,8 +2449,10 @@ impl<'tcx> AdtDef {
         self.variants.iter().flat_map(|v| v.fields.iter())
     }
 
+    /// Whether the ADT lacks fields. Note that this includes uninhabited enums,
+    /// e.g., `enum Void {}` is considered payload free as well.
     pub fn is_payloadfree(&self) -> bool {
-        !self.variants.is_empty() && self.variants.iter().all(|v| v.fields.is_empty())
+        self.variants.iter().all(|v| v.fields.is_empty())
     }
 
     /// Return a `VariantDef` given a variant id.

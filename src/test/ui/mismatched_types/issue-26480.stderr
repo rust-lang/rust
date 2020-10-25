@@ -8,7 +8,7 @@ LL |     write!(hello);
    |     -------------- in this macro invocation
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you can convert an `usize` to `u64` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
    |
 LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

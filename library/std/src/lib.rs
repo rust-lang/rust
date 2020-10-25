@@ -206,6 +206,7 @@
 #![needs_panic_runtime]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
+#![cfg_attr(not(bootstrap), feature(rustc_allow_const_fn_unstable))]
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
@@ -259,6 +260,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
 #![feature(external_doc)]
+#![feature(fmt_as_str)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
 #![feature(gen_future)]
@@ -319,7 +321,7 @@
 #![feature(unsafe_block_in_unsafe_fn)]
 #![feature(unsafe_cell_get_mut)]
 #![feature(unsafe_cell_raw_get)]
-#![feature(untagged_unions)]
+#![cfg_attr(bootstrap, feature(untagged_unions))]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
 #![feature(wake_trait)]

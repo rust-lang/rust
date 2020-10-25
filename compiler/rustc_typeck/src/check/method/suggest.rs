@@ -637,9 +637,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
                     let mut format_pred = |pred: ty::Predicate<'tcx>| {
-                        match pred.skip_binders() {
+                        let bound_predicate = pred.bound_atom();
+                        match bound_predicate.skip_binder() {
                             ty::PredicateAtom::Projection(pred) => {
-                                let pred = ty::Binder::bind(pred);
+                                let pred = bound_predicate.rebind(pred);
                                 // `<Foo as Iterator>::Item = String`.
                                 let trait_ref =
                                     pred.skip_binder().projection_ty.trait_ref(self.tcx);
@@ -658,8 +659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Some((obligation, trait_ref.self_ty()))
                             }
                             ty::PredicateAtom::Trait(poly_trait_ref, _) => {
-                                let poly_trait_ref = ty::Binder::bind(poly_trait_ref);
-                                let p = poly_trait_ref.skip_binder().trait_ref;
+                                let p = poly_trait_ref.trait_ref;
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
                                 let obligation = format!("{}: {}", self_ty, path);

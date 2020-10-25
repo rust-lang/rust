@@ -40,7 +40,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, AdtKind, Const, ToPolyTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::config::SanitizerSet;
 use rustc_session::lint;
@@ -851,7 +851,6 @@ fn convert_variant(
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<Ident, Span> = Default::default();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(variant_did.unwrap_or(parent_did));
     let fields = def
         .fields()
         .iter()
@@ -868,11 +867,7 @@ fn convert_variant(
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
 
-            ty::FieldDef {
-                did: fid.to_def_id(),
-                ident: f.ident,
-                vis: ty::Visibility::from_hir(&f.vis, hir_id, tcx),
-            }
+            ty::FieldDef { did: fid.to_def_id(), ident: f.ident, vis: tcx.visibility(fid) }
         })
         .collect();
     let recovered = match def {
@@ -2790,6 +2785,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             None => ia,
         }
     });
+
+    // #73631: closures inherit `#[target_feature]` annotations
+    if tcx.features().target_feature_11 && tcx.is_closure(id) {
+        let owner_id = tcx.parent(id).expect("closure should have a parent");
+        codegen_fn_attrs
+            .target_features
+            .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied())
+    }
 
     // If a function uses #[target_feature] it can't be inlined into general
     // purpose functions as they wouldn't have the right target features

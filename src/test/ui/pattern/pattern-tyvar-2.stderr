@@ -1,4 +1,4 @@
-error[E0369]: cannot multiply `{integer}` to `Vec<isize>`
+error[E0369]: cannot multiply `Vec<isize>` by `{integer}`
   --> $DIR/pattern-tyvar-2.rs:3:71
    |
 LL | fn foo(t: Bar) -> isize { match t { Bar::T1(_, Some(x)) => { return x * 3; } _ => { panic!(); } } }

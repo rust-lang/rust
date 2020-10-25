@@ -153,6 +153,7 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: bool) -> bool {
             kw::Do,
             kw::Box,
             kw::Break,
+            kw::Const,
             kw::Continue,
             kw::False,
             kw::For,

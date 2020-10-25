@@ -259,7 +259,7 @@ use crate::raw_vec::RawVec;
 /// `Vec` does not guarantee any particular growth strategy when reallocating
 /// when full, nor when [`reserve`] is called. The current strategy is basic
 /// and it may prove desirable to use a non-constant growth factor. Whatever
-/// strategy is used will of course guarantee `O(1)` amortized [`push`].
+/// strategy is used will of course guarantee *O*(1) amortized [`push`].
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and
 /// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
@@ -1314,7 +1314,7 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let Range { start, end } = slice::check_range(len, range);
+        let Range { start, end } = range.assert_len(len);
 
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked
@@ -1600,50 +1600,6 @@ impl<T: Clone> Vec<T> {
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
-    }
-}
-
-impl<T: Default> Vec<T> {
-    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
-    ///
-    /// If `new_len` is greater than `len`, the `Vec` is extended by the
-    /// difference, with each additional slot filled with [`Default::default()`].
-    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
-    ///
-    /// This method uses [`Default`] to create new values on every push. If
-    /// you'd rather [`Clone`] a given value, use [`resize`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![allow(deprecated)]
-    /// #![feature(vec_resize_default)]
-    ///
-    /// let mut vec = vec![1, 2, 3];
-    /// vec.resize_default(5);
-    /// assert_eq!(vec, [1, 2, 3, 0, 0]);
-    ///
-    /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.resize_default(2);
-    /// assert_eq!(vec, [1, 2]);
-    /// ```
-    ///
-    /// [`resize`]: Vec::resize
-    #[unstable(feature = "vec_resize_default", issue = "41758")]
-    #[rustc_deprecated(
-        reason = "This is moving towards being removed in favor \
-                  of `.resize_with(Default::default)`.  If you disagree, please comment \
-                  in the tracking issue.",
-        since = "1.33.0"
-    )]
-    pub fn resize_default(&mut self, new_len: usize) {
-        let len = self.len();
-
-        if new_len > len {
-            self.extend_with(new_len - len, ExtendDefault);
-        } else {
-            self.truncate(new_len);
-        }
     }
 }
 

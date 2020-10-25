@@ -1,30 +1,34 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-19538.rs:17:15
    |
+LL |     let test: &mut dyn Bar = &mut thing;
+   |               ^^^^^^^^^^^^ `Bar` cannot be made into an object
+   |
+   = help: consider moving `foo` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-19538.rs:2:8
+   |
 LL |     fn foo<T>(&self, val: T);
-   |        --- ...because method `foo` has generic type parameters
+   |        ^^^ ...because method `foo` has generic type parameters
 ...
 LL | trait Bar: Foo { }
    |       --- this trait cannot be made into an object...
-...
-LL |     let test: &mut dyn Bar = &mut thing;
-   |               ^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
-   |
-   = help: consider moving `foo` to another trait
 
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-19538.rs:17:30
    |
+LL |     let test: &mut dyn Bar = &mut thing;
+   |                              ^^^^^^^^^^ `Bar` cannot be made into an object
+   |
+   = help: consider moving `foo` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-19538.rs:2:8
+   |
 LL |     fn foo<T>(&self, val: T);
-   |        --- ...because method `foo` has generic type parameters
+   |        ^^^ ...because method `foo` has generic type parameters
 ...
 LL | trait Bar: Foo { }
    |       --- this trait cannot be made into an object...
-...
-LL |     let test: &mut dyn Bar = &mut thing;
-   |                              ^^^^^^^^^^ the trait `Bar` cannot be made into an object
-   |
-   = help: consider moving `foo` to another trait
    = note: required because of the requirements on the impl of `CoerceUnsized<&mut dyn Bar>` for `&mut Thing`
    = note: required by cast to type `&mut dyn Bar`
 

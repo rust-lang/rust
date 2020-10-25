@@ -89,7 +89,7 @@ fn str_index_overflow_fail() -> ! {
 /// self`. Equivalent to `&self[0 .. len]` or `&mut self[0 .. len]`. Unlike
 /// other indexing operations, this can never panic.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -130,7 +130,7 @@ unsafe impl SliceIndex<str> for ops::RangeFull {
 /// Returns a slice of the given string from the byte range
 /// [`begin`, `end`).
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -237,7 +237,7 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
 /// Returns a slice of the given string from the byte range [`0`, `end`).
 /// Equivalent to `&self[0 .. end]` or `&mut self[0 .. end]`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -308,7 +308,7 @@ unsafe impl SliceIndex<str> for ops::RangeTo<usize> {
 /// `len`). Equivalent to `&self[begin .. len]` or `&mut self[begin ..
 /// len]`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// Prior to 1.20.0, these indexing operations were still supported by
 /// direct implementation of `Index` and `IndexMut`.
@@ -385,7 +385,7 @@ unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
 /// self[begin .. end + 1]`, except if `end` has the maximum value for
 /// `usize`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// # Panics
 ///
@@ -398,39 +398,35 @@ unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
     fn get(self, slice: &str) -> Option<&Self::Output> {
-        if *self.end() == usize::MAX { None } else { (*self.start()..self.end() + 1).get(slice) }
+        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
     }
     #[inline]
     fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-        if *self.end() == usize::MAX {
-            None
-        } else {
-            (*self.start()..self.end() + 1).get_mut(slice)
-        }
+        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
     }
     #[inline]
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
-        unsafe { (*self.start()..self.end() + 1).get_unchecked(slice) }
+        unsafe { self.into_slice_range().get_unchecked(slice) }
     }
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
-        unsafe { (*self.start()..self.end() + 1).get_unchecked_mut(slice) }
+        unsafe { self.into_slice_range().get_unchecked_mut(slice) }
     }
     #[inline]
     fn index(self, slice: &str) -> &Self::Output {
         if *self.end() == usize::MAX {
             str_index_overflow_fail();
         }
-        (*self.start()..self.end() + 1).index(slice)
+        self.into_slice_range().index(slice)
     }
     #[inline]
     fn index_mut(self, slice: &mut str) -> &mut Self::Output {
         if *self.end() == usize::MAX {
             str_index_overflow_fail();
         }
-        (*self.start()..self.end() + 1).index_mut(slice)
+        self.into_slice_range().index_mut(slice)
     }
 }
 
@@ -441,7 +437,7 @@ unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
 /// Equivalent to `&self [0 .. end + 1]`, except if `end` has the maximum
 /// value for `usize`.
 ///
-/// This operation is `O(1)`.
+/// This operation is *O*(1).
 ///
 /// # Panics
 ///

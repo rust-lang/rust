@@ -642,24 +642,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             debug!(?poly_trait_ref, "assemble_candidates_from_object_ty");
 
+            let poly_trait_predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
+            let placeholder_trait_predicate =
+                self.infcx().replace_bound_vars_with_placeholders(&poly_trait_predicate);
+
             // Count only those upcast versions that match the trait-ref
             // we are looking for. Specifically, do not only check for the
             // correct trait, but also the correct type parameters.
             // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
             // but `Foo` is declared as `trait Foo: Bar<u32>`.
-            let upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
-                .filter(|upcast_trait_ref| {
-                    self.infcx
-                        .probe(|_| self.match_poly_trait_ref(obligation, *upcast_trait_ref).is_ok())
+            let candidate_supertraits = util::supertraits(self.tcx(), poly_trait_ref)
+                .enumerate()
+                .filter(|&(_, upcast_trait_ref)| {
+                    self.infcx.probe(|_| {
+                        self.match_normalize_trait_ref(
+                            obligation,
+                            upcast_trait_ref,
+                            placeholder_trait_predicate.trait_ref,
+                        )
+                        .is_ok()
+                    })
                 })
-                .count();
+                .map(|(idx, _)| ObjectCandidate(idx));
 
-            if upcast_trait_refs > 1 {
-                // Can be upcast in many ways; need more type information.
-                candidates.ambiguous = true;
-            } else if upcast_trait_refs == 1 {
-                candidates.vec.push(ObjectCandidate);
-            }
+            candidates.vec.extend(candidate_supertraits);
         })
     }
 

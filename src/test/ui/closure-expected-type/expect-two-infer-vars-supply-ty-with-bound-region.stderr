@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/expect-two-infer-vars-supply-ty-with-bound-region.rs:8:5
+  --> $DIR/expect-two-infer-vars-supply-ty-with-bound-region.rs:8:27
    |
 LL |     with_closure(|x: u32, y| {});
-   |     ^^^^^^^^^^^^ cannot infer type for type parameter `B` declared on the function `with_closure`
+   |                           ^ consider giving this closure parameter a type
 
 error: aborting due to previous error
 

@@ -116,7 +116,8 @@ impl<T> RawVec<T, Global> {
 impl<T, A: AllocRef> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
-    #[allow_internal_unstable(const_fn)]
+    #[cfg_attr(not(bootstrap), rustc_allow_const_fn_unstable(const_fn))]
+    #[cfg_attr(bootstrap, allow_internal_unstable(const_fn))]
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr: Unique::dangling(), cap: 0, alloc }
@@ -259,7 +260,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// Ensures that the buffer contains at least enough space to hold `len +
     /// additional` elements. If it doesn't already have enough capacity, will
     /// reallocate enough space plus comfortable slack space to get amortized
-    /// `O(1)` behavior. Will limit this behavior if it would needlessly cause
+    /// *O*(1) behavior. Will limit this behavior if it would needlessly cause
     /// itself to panic.
     ///
     /// If `len` exceeds `self.capacity()`, this may fail to actually allocate

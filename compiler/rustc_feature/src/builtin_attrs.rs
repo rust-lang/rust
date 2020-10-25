@@ -380,6 +380,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
+        rustc_allow_const_fn_unstable, AssumedUsed, template!(Word, List: "feat1, feat2, ..."),
+        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
+    ),
+    gated!(
         allow_internal_unsafe, Normal, template!(Word),
         "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
@@ -598,7 +602,7 @@ pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
 }
 
-pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &'static BuiltinAttribute>> =
+pub static BUILTIN_ATTRIBUTE_MAP: SyncLazy<FxHashMap<Symbol, &BuiltinAttribute>> =
     SyncLazy::new(|| {
         let mut map = FxHashMap::default();
         for attr in BUILTIN_ATTRIBUTES.iter() {

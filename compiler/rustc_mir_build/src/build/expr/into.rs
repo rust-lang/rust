@@ -454,6 +454,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Array { .. }
             | ExprKind::Tuple { .. }
             | ExprKind::Closure { .. }
+            | ExprKind::ConstBlock { .. }
             | ExprKind::Literal { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. } => {

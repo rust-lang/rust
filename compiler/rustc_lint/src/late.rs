@@ -174,12 +174,13 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
-        // statement attributes are actually just attributes on one of
-        // - item
-        // - local
-        // - expression
-        // so we keep track of lint levels there
-        lint_callback!(self, check_stmt, s);
+        let get_item = |id: hir::ItemId| self.context.tcx.hir().item(id.id);
+        let attrs = &s.kind.attrs(get_item);
+        // See `EarlyContextAndPass::visit_stmt` for an explanation
+        // of why we call `walk_stmt` outside of `with_lint_attrs`
+        self.with_lint_attrs(s.hir_id, attrs, |cx| {
+            lint_callback!(cx, check_stmt, s);
+        });
         hir_visit::walk_stmt(self, s);
     }
 

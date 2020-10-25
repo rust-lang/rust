@@ -258,7 +258,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(&ia.inputs_exprs);
             }
 
-            hir::ExprKind::Continue(..) | hir::ExprKind::Lit(..) | hir::ExprKind::Err => {}
+            hir::ExprKind::Continue(..)
+            | hir::ExprKind::Lit(..)
+            | hir::ExprKind::ConstBlock(..)
+            | hir::ExprKind::Err => {}
 
             hir::ExprKind::Loop(ref blk, _, _) => {
                 self.walk_block(blk);

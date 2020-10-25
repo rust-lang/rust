@@ -650,6 +650,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn blocks(&self) -> u64;
+    #[cfg(target_os = "vxworks")]
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn attrib(&self) -> u8;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -701,6 +704,10 @@ impl MetadataExt for fs::Metadata {
     }
     fn blocks(&self) -> u64 {
         self.st_blocks()
+    }
+    #[cfg(target_os = "vxworks")]
+    fn attrib(&self) -> u8 {
+        self.st_attrib()
     }
 }
 

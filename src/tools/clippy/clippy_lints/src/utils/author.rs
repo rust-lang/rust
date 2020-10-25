@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
-        if !has_attr(cx.sess(), stmt.kind.attrs()) {
+        if !has_attr(cx.sess(), stmt.kind.attrs(|id| cx.tcx.hir().item(id.id))) {
             return;
         }
         prelude();
@@ -505,6 +505,11 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.print_qpath(path);
                 println!("    if {}.len() == {};", fields_pat, fields.len());
                 println!("    // unimplemented: field checks");
+            },
+            ExprKind::ConstBlock(_) => {
+                let value_pat = self.next("value");
+                println!("Const({})", value_pat);
+                self.current = value_pat;
             },
             // FIXME: compute length (needs type info)
             ExprKind::Repeat(ref value, _) => {

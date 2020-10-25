@@ -158,6 +158,13 @@ crate enum PatKind<'tcx> {
         subpattern: Pat<'tcx>,
     },
 
+    /// One of the following:
+    /// * `&str`, which will be handled as a string pattern and thus exhaustiveness
+    ///   checking will detect if you use the same string twice in different patterns.
+    /// * integer, bool, char or float, which will be handled by exhaustivenes to cover exactly
+    ///   its own value, similar to `&str`, but these values are much simpler.
+    /// * Opaque constants, that must not be matched structurally. So anything that does not derive
+    ///   `PartialEq` and `Eq`.
     Constant {
         value: &'tcx ty::Const<'tcx>,
     },
@@ -856,6 +863,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             *self.lower_path(qpath, expr.hir_id, expr.span).kind
         } else {
             let (lit, neg) = match expr.kind {
+                hir::ExprKind::ConstBlock(ref anon_const) => {
+                    let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                    let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                    return *self.const_to_pat(value, expr.hir_id, expr.span, false).kind;
+                }
                 hir::ExprKind::Lit(ref lit) => (lit, false),
                 hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                     let lit = match expr.kind {

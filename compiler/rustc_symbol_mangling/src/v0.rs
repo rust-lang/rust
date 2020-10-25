@@ -4,6 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::mir::interpret::sign_extend;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
@@ -527,17 +528,31 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match ct.ty.kind() {
-            ty::Uint(_) => {}
-            ty::Bool => {}
+        let mut neg = false;
+        let val = match ct.ty.kind() {
+            ty::Uint(_) | ty::Bool | ty::Char => {
+                ct.try_eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty)
+            }
+            ty::Int(_) => {
+                let param_env = ty::ParamEnv::reveal_all();
+                ct.try_eval_bits(self.tcx, param_env, ct.ty).and_then(|b| {
+                    let sz = self.tcx.layout_of(param_env.and(ct.ty)).ok()?.size;
+                    let val = sign_extend(b, sz) as i128;
+                    if val < 0 {
+                        neg = true;
+                    }
+                    Some(val.wrapping_abs() as u128)
+                })
+            }
             _ => {
                 bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
             }
-        }
-        self = ct.ty.print(self)?;
+        };
 
-        if let Some(bits) = ct.try_eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty) {
-            let _ = write!(self.out, "{:x}_", bits);
+        if let Some(bits) = val {
+            // We only print the type if the const can be evaluated.
+            self = ct.ty.print(self)?;
+            let _ = write!(self.out, "{}{:x}_", if neg { "n" } else { "" }, bits);
         } else {
             // NOTE(eddyb) despite having the path, we need to
             // encode a placeholder, as the path could refer

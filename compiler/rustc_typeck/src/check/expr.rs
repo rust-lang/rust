@@ -286,6 +286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::DropTemps(ref e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(ref args) => self.check_expr_array(args, expected, expr),
+            ExprKind::ConstBlock(ref anon_const) => self.to_const(anon_const).ty,
             ExprKind::Repeat(ref element, ref count) => {
                 self.check_expr_repeat(element, count, expected, expr)
             }

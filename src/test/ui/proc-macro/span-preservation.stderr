@@ -15,7 +15,7 @@ LL |     match x {
 LL |         Some(x) => { return x },
    |                             ^ expected `usize`, found `isize`
    |
-help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         Some(x) => { return x.try_into().unwrap() },
    |                             ^^^^^^^^^^^^^^^^^^^^^

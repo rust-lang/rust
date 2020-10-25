@@ -210,6 +210,11 @@ declare_features! (
     /// it is not on path for eventual stabilization).
     (active, no_niche, "1.42.0", None, None),
 
+    /// Allows using `#[rustc_allow_const_fn_unstable]`.
+    /// This is an attribute on `const fn` for the same
+    /// purpose as `#[allow_internal_unstable]`.
+    (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
+
     // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
@@ -598,6 +603,9 @@ declare_features! (
     /// Allows `#[instruction_set(_)]` attribute
     (active, isa_attribute, "1.48.0", Some(74727), None),
 
+    /// Allow anonymous constants from an inline `const` block
+    (active, inline_const, "1.49.0", Some(76001), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -618,6 +626,8 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_trait_bound_opt_out,
     sym::lazy_normalization_consts,
     sym::specialization,
+    sym::inline_const,
+    sym::repr128,
 ];
 
 /// Some features are not allowed to be used together at the same time, if

@@ -7,29 +7,53 @@ pub use self::rand::hashmap_random_keys;
 pub use crate::os::vxworks as platform;
 pub use libc::strlen;
 
+#[macro_use]
+#[path = "../unix/weak.rs"]
+pub mod weak;
+
+#[path = "../unix/alloc.rs"]
 pub mod alloc;
+#[path = "../unix/args.rs"]
 pub mod args;
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
+#[path = "../unix/condvar.rs"]
 pub mod condvar;
 pub mod env;
+#[path = "../unix/ext/mod.rs"]
 pub mod ext;
+#[path = "../unix/fd.rs"]
 pub mod fd;
+#[path = "../unix/fs.rs"]
 pub mod fs;
+#[path = "../unix/io.rs"]
 pub mod io;
+#[path = "../unix/memchr.rs"]
 pub mod memchr;
+#[path = "../unix/mutex.rs"]
 pub mod mutex;
+#[path = "../unix/net.rs"]
 pub mod net;
+#[path = "../unix/os.rs"]
 pub mod os;
+#[path = "../unix/path.rs"]
 pub mod path;
+#[path = "../unix/pipe.rs"]
 pub mod pipe;
 pub mod process;
 pub mod rand;
+#[path = "../unix/rwlock.rs"]
 pub mod rwlock;
+#[path = "../unix/stack_overflow.rs"]
 pub mod stack_overflow;
+#[path = "../unix/stdio.rs"]
 pub mod stdio;
+#[path = "../unix/thread.rs"]
 pub mod thread;
 pub mod thread_local_dtor;
+#[path = "../unix/thread_local_key.rs"]
 pub mod thread_local_key;
+#[path = "../unix/time.rs"]
 pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;

@@ -1,0 +1,61 @@
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:6:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(i) => i,
+LL | |         None => 42,
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(42)`
+   |
+   = note: `-D clippy::manual-unwrap-or` implied by `-D warnings`
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:12:5
+   |
+LL | /     match Some(1) {
+LL | |         None => 42,
+LL | |         Some(i) => i,
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(42)`
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:18:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(i) => i,
+LL | |         None => 1 + 42,
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(1 + 42)`
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:25:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(i) => i,
+LL | |         None => {
+LL | |             42 + 42
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+help: replace with
+   |
+LL |     Some(1).unwrap_or({
+LL |         42 + 42
+LL |             + 42 + 42 + 42
+LL |             + 42 + 42 + 42
+LL |     });
+   |
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:35:5
+   |
+LL | /     match Some("Bob") {
+LL | |         Some(i) => i,
+LL | |         None => "Alice",
+LL | |     };
+   | |_____^ help: replace with: `Some("Bob").unwrap_or("Alice")`
+
+error: aborting due to 5 previous errors
+

@@ -317,7 +317,7 @@ where
         }
         self.backiter = None;
 
-        Try::from_ok(init)
+        try { init }
     }
 
     #[inline]
@@ -397,7 +397,7 @@ where
         }
         self.frontiter = None;
 
-        Try::from_ok(init)
+        try { init }
     }
 
     #[inline]

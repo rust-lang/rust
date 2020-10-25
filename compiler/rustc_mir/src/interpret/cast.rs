@@ -139,9 +139,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // # First handle non-scalar source values.
 
-        // Handle cast from a univariant (ZST) enum.
+        // Handle cast from a ZST enum (0 or 1 variants).
         match src.layout.variants {
             Variants::Single { index } => {
+                if src.layout.abi.is_uninhabited() {
+                    // This is dead code, because an uninhabited enum is UB to
+                    // instantiate.
+                    throw_ub!(Unreachable);
+                }
                 if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;

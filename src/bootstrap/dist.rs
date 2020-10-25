@@ -2538,8 +2538,15 @@ impl Step for RustDev {
         let dst_bindir = image.join("bin");
         t!(fs::create_dir_all(&dst_bindir));
 
-        let exe = builder.llvm_out(target).join("bin").join(exe("llvm-config", target));
-        builder.install(&exe, &dst_bindir, 0o755);
+        let src_bindir = builder.llvm_out(target).join("bin");
+        let install_bin =
+            |name| builder.install(&src_bindir.join(exe(name, target)), &dst_bindir, 0o755);
+        install_bin("llvm-config");
+        install_bin("llvm-ar");
+        install_bin("llvm-objdump");
+        install_bin("llvm-profdata");
+        install_bin("llvm-bcanalyzer");
+        install_bin("llvm-cov");
         builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);
 
         // Copy the include directory as well; needed mostly to build

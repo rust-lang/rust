@@ -751,13 +751,20 @@ impl UnusedDelimLint for UnusedParens {
                 if !Self::is_expr_delims_necessary(inner, followed_by_block)
                     && value.attrs.is_empty()
                     && !value.span.from_expansion()
+                    && (ctx != UnusedDelimsCtx::LetScrutineeExpr
+                        || match inner.kind {
+                            ast::ExprKind::Binary(
+                                rustc_span::source_map::Spanned { node, .. },
+                                _,
+                                _,
+                            ) if node.lazy() => false,
+                            _ => true,
+                        })
                 {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
                 }
             }
             ast::ExprKind::Let(_, ref expr) => {
-                // FIXME(#60336): Properly handle `let true = (false && true)`
-                // actually needing the parenthesis.
                 self.check_unused_delims_expr(
                     cx,
                     expr,
@@ -837,10 +844,6 @@ impl EarlyLintPass for UnusedParens {
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
             Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not),
         }
-    }
-
-    fn check_anon_const(&mut self, cx: &EarlyContext<'_>, c: &ast::AnonConst) {
-        self.check_unused_delims_expr(cx, &c.value, UnusedDelimsCtx::AnonConst, false, None, None);
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
@@ -965,13 +968,6 @@ impl UnusedDelimLint for UnusedBraces {
                         if !Self::is_expr_delims_necessary(expr, followed_by_block)
                             && (ctx != UnusedDelimsCtx::AnonConst
                                 || matches!(expr.kind, ast::ExprKind::Lit(_)))
-                            // array length expressions are checked during `check_anon_const` and `check_ty`,
-                            // once as `ArrayLenExpr` and once as `AnonConst`.
-                            //
-                            // As we do not want to lint this twice, we do not emit an error for
-                            // `ArrayLenExpr` if `AnonConst` would do the same.
-                            && (ctx != UnusedDelimsCtx::ArrayLenExpr
-                                || !matches!(expr.kind, ast::ExprKind::Lit(_)))
                             && !cx.sess().source_map().is_multiline(value.span)
                             && value.attrs.is_empty()
                             && !value.span.from_expansion()
@@ -999,21 +995,54 @@ impl UnusedDelimLint for UnusedBraces {
 }
 
 impl EarlyLintPass for UnusedBraces {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        <Self as UnusedDelimLint>::check_expr(self, cx, e)
-    }
-
-    fn check_anon_const(&mut self, cx: &EarlyContext<'_>, c: &ast::AnonConst) {
-        self.check_unused_delims_expr(cx, &c.value, UnusedDelimsCtx::AnonConst, false, None, None);
-    }
-
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         <Self as UnusedDelimLint>::check_stmt(self, cx, s)
     }
 
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
+        <Self as UnusedDelimLint>::check_expr(self, cx, e);
+
+        if let ExprKind::Repeat(_, ref anon_const) = e.kind {
+            self.check_unused_delims_expr(
+                cx,
+                &anon_const.value,
+                UnusedDelimsCtx::AnonConst,
+                false,
+                None,
+                None,
+            );
+        }
+    }
+
+    fn check_generic_arg(&mut self, cx: &EarlyContext<'_>, arg: &ast::GenericArg) {
+        if let ast::GenericArg::Const(ct) = arg {
+            self.check_unused_delims_expr(
+                cx,
+                &ct.value,
+                UnusedDelimsCtx::AnonConst,
+                false,
+                None,
+                None,
+            );
+        }
+    }
+
+    fn check_variant(&mut self, cx: &EarlyContext<'_>, v: &ast::Variant) {
+        if let Some(anon_const) = &v.disr_expr {
+            self.check_unused_delims_expr(
+                cx,
+                &anon_const.value,
+                UnusedDelimsCtx::AnonConst,
+                false,
+                None,
+                None,
+            );
+        }
+    }
+
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
-        if let &ast::TyKind::Paren(ref r) = &ty.kind {
-            if let ast::TyKind::Array(_, ref len) = r.kind {
+        match ty.kind {
+            ast::TyKind::Array(_, ref len) => {
                 self.check_unused_delims_expr(
                     cx,
                     &len.value,
@@ -1023,6 +1052,19 @@ impl EarlyLintPass for UnusedBraces {
                     None,
                 );
             }
+
+            ast::TyKind::Typeof(ref anon_const) => {
+                self.check_unused_delims_expr(
+                    cx,
+                    &anon_const.value,
+                    UnusedDelimsCtx::AnonConst,
+                    false,
+                    None,
+                    None,
+                );
+            }
+
+            _ => {}
         }
     }
 

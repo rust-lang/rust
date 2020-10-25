@@ -127,7 +127,10 @@ pub enum SelectionCandidate<'tcx> {
 
     TraitAliasCandidate(DefId),
 
-    ObjectCandidate,
+    /// Matching `dyn Trait` with a supertrait of `Trait`. The index is the
+    /// position in the iterator returned by
+    /// `rustc_infer::traits::util::supertraits`.
+    ObjectCandidate(usize),
 
     BuiltinObjectCandidate,
 

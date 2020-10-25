@@ -538,6 +538,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                         self.visit_fn_ret_ty(&f.decl.output)
                     }
+                    TyKind::ImplTrait(def_node_id, _) => {
+                        self.lctx.allocate_hir_id_counter(def_node_id);
+                        self.with_hir_id_owner(Some(def_node_id), |this| {
+                            visit::walk_ty(this, t);
+                        });
+                    }
                     _ => visit::walk_ty(self, t),
                 }
             }
@@ -972,7 +978,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
-        Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
+        // Tokens aren't needed after macro expansion and parsing
+        Attribute { kind, id: attr.id, style: attr.style, span: attr.span, tokens: None }
     }
 
     fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {
@@ -1346,10 +1353,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
 
-                        let hir_bounds = self.lower_param_bounds(
-                            bounds,
-                            ImplTraitContext::Universal(in_band_ty_params),
-                        );
+                        self.allocate_hir_id_counter(def_node_id);
+
+                        let hir_bounds = self.with_hir_id_owner(def_node_id, |this| {
+                            this.lower_param_bounds(
+                                bounds,
+                                ImplTraitContext::Universal(in_band_ty_params),
+                            )
+                        });
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         in_band_ty_params.push(hir::GenericParam {
@@ -1713,7 +1724,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 pat: self.lower_pat(&l.pat),
                 init,
                 span: l.span,
-                attrs: l.attrs.clone(),
+                attrs: l.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
                 source: hir::LocalSource::Normal,
             },
             ids,
@@ -2200,7 +2211,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         .attrs
                         .iter()
                         .filter(|attr| self.sess.check_name(attr, sym::rustc_synthetic))
-                        .map(|_| hir::SyntheticTyParamKind::ImplTrait)
+                        .map(|_| hir::SyntheticTyParamKind::FromAttr)
                         .next(),
                 };
 

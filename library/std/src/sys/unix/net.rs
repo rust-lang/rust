@@ -77,6 +77,7 @@ impl Socket {
         }
     }
 
+    #[cfg(not(target_os = "vxworks"))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
@@ -96,6 +97,11 @@ impl Socket {
                 }
             }
         }
+    }
+
+    #[cfg(target_os = "vxworks")]
+    pub fn new_pair(_fam: c_int, _ty: c_int) -> io::Result<(Socket, Socket)> {
+        unimplemented!()
     }
 
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
@@ -366,7 +372,7 @@ impl IntoInner<c_int> for Socket {
 // res_init unconditionally, we call it only when we detect we're linking
 // against glibc version < 2.26. (That is, when we both know its needed and
 // believe it's thread-safe).
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 fn on_resolver_failure() {
     use crate::sys;
 
@@ -378,5 +384,5 @@ fn on_resolver_failure() {
     }
 }
 
-#[cfg(not(target_env = "gnu"))]
+#[cfg(any(not(target_env = "gnu"), target_os = "vxworks"))]
 fn on_resolver_failure() {}

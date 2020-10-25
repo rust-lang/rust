@@ -30,6 +30,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let kind = match e.kind {
                 ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
                 ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
+                ExprKind::ConstBlock(ref anon_const) => {
+                    let anon_const = self.lower_anon_const(anon_const);
+                    hir::ExprKind::ConstBlock(anon_const)
+                }
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = self.lower_expr(expr);
                     let count = self.lower_anon_const(count);
@@ -206,9 +210,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ex.span = e.span;
                     }
                     // Merge attributes into the inner expression.
-                    let mut attrs = e.attrs.clone();
+                    let mut attrs: Vec<_> = e.attrs.iter().map(|a| self.lower_attr(a)).collect();
                     attrs.extend::<Vec<_>>(ex.attrs.into());
-                    ex.attrs = attrs;
+                    ex.attrs = attrs.into();
                     return ex;
                 }
 
@@ -1186,52 +1190,47 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                          input| {
                             match used_regs.entry(r) {
                                 Entry::Occupied(o) => {
-                                    if !skip {
-                                        skip = true;
-
-                                        let idx2 = *o.get();
-                                        let op2 = &operands[idx2];
-                                        let op_sp2 = asm.operands[idx2].1;
-                                        let reg2 = match op2.reg() {
-                                            Some(asm::InlineAsmRegOrRegClass::Reg(r)) => r,
-                                            _ => unreachable!(),
-                                        };
-
-                                        let msg = format!(
-                                            "register `{}` conflicts with register `{}`",
-                                            reg.name(),
-                                            reg2.name()
-                                        );
-                                        let mut err = sess.struct_span_err(op_sp, &msg);
-                                        err.span_label(
-                                            op_sp,
-                                            &format!("register `{}`", reg.name()),
-                                        );
-                                        err.span_label(
-                                            op_sp2,
-                                            &format!("register `{}`", reg2.name()),
-                                        );
-
-                                        match (op, op2) {
-                                            (
-                                                hir::InlineAsmOperand::In { .. },
-                                                hir::InlineAsmOperand::Out { late, .. },
-                                            )
-                                            | (
-                                                hir::InlineAsmOperand::Out { late, .. },
-                                                hir::InlineAsmOperand::In { .. },
-                                            ) => {
-                                                assert!(!*late);
-                                                let out_op_sp = if input { op_sp2 } else { op_sp };
-                                                let msg = "use `lateout` instead of \
-                                                     `out` to avoid conflict";
-                                                err.span_help(out_op_sp, msg);
-                                            }
-                                            _ => {}
-                                        }
-
-                                        err.emit();
+                                    if skip {
+                                        return;
                                     }
+                                    skip = true;
+
+                                    let idx2 = *o.get();
+                                    let op2 = &operands[idx2];
+                                    let op_sp2 = asm.operands[idx2].1;
+                                    let reg2 = match op2.reg() {
+                                        Some(asm::InlineAsmRegOrRegClass::Reg(r)) => r,
+                                        _ => unreachable!(),
+                                    };
+
+                                    let msg = format!(
+                                        "register `{}` conflicts with register `{}`",
+                                        reg.name(),
+                                        reg2.name()
+                                    );
+                                    let mut err = sess.struct_span_err(op_sp, &msg);
+                                    err.span_label(op_sp, &format!("register `{}`", reg.name()));
+                                    err.span_label(op_sp2, &format!("register `{}`", reg2.name()));
+
+                                    match (op, op2) {
+                                        (
+                                            hir::InlineAsmOperand::In { .. },
+                                            hir::InlineAsmOperand::Out { late, .. },
+                                        )
+                                        | (
+                                            hir::InlineAsmOperand::Out { late, .. },
+                                            hir::InlineAsmOperand::In { .. },
+                                        ) => {
+                                            assert!(!*late);
+                                            let out_op_sp = if input { op_sp2 } else { op_sp };
+                                            let msg = "use `lateout` instead of \
+                                                    `out` to avoid conflict";
+                                            err.span_help(out_op_sp, msg);
+                                        }
+                                        _ => {}
+                                    }
+
+                                    err.emit();
                                 }
                                 Entry::Vacant(v) => {
                                     v.insert(idx);
@@ -1472,13 +1471,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::MatchSource::ForLoopDesugar,
         ));
 
+        let attrs: Vec<_> = e.attrs.iter().map(|a| self.lower_attr(a)).collect();
+
         // This is effectively `{ let _result = ...; _result }`.
         // The construct was introduced in #21984 and is necessary to make sure that
         // temporaries in the `head` expression are dropped and do not leak to the
         // surrounding scope of the `match` since the `match` is not a terminating scope.
         //
         // Also, add the attributes to the outer returned expr node.
-        self.expr_drop_temps_mut(desugared_span, match_expr, e.attrs.clone())
+        self.expr_drop_temps_mut(desugared_span, match_expr, attrs.into())
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:

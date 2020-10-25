@@ -12,7 +12,7 @@ error[E0446]: private type `m2::Priv` in public interface
   --> $DIR/issue-30079.rs:18:9
    |
 LL |     struct Priv;
-   |     - `m2::Priv` declared as private
+   |     ------------ `m2::Priv` declared as private
 LL |     impl ::std::ops::Deref for ::SemiPriv {
 LL |         type Target = Priv;
    |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
@@ -21,7 +21,7 @@ error[E0446]: private type `m3::Priv` in public interface
   --> $DIR/issue-30079.rs:35:9
    |
 LL |     struct Priv;
-   |     - `m3::Priv` declared as private
+   |     ------------ `m3::Priv` declared as private
 LL |     impl ::SemiPrivTrait for () {
 LL |         type Assoc = Priv;
    |         ^^^^^^^^^^^^^^^^^^ can't leak private type

@@ -796,14 +796,22 @@ body.blur > :not(#help) {
 	clear: left;
 	display: block;
 }
+#help > div > span {
+	text-align: center;
+	display: block;
+	margin: 10px 0;
+	font-size: 18px;
+	border-bottom: 1px solid #ccc;
+	padding-bottom: 4px;
+	margin-bottom: 6px;
+}
 #help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }
 #help h1, #help h2 { margin-top: 0; }
 #help > div div {
 	width: 50%;
 	float: left;
-	padding: 20px;
-	padding-left: 17px;
+	padding: 0 20px 20px 17px;;
 }
 
 .stab {
@@ -1557,12 +1565,43 @@ h4 > .notable-traits {
 }
 
 @media (max-width: 416px) {
-	#titles {
+	#titles, #titles > div {
 		height: 73px;
 	}
 
-	#titles > div {
-		height: 73px;
+	#main > table:not(.table-display) td {
+		word-break: break-word;
+		min-width: 10%;
+	}
+
+	.search-container > div {
+		display: block;
+		width: calc(100% - 37px);
+	}
+
+	#crate-search {
+		width: 100%;
+		border-radius: 4px;
+		border: 0;
+	}
+
+	#crate-search + .search-input {
+		width: calc(100% + 71px);
+		margin-left: -36px;
+	}
+
+	#theme-picker, #settings-menu {
+		padding: 5px;
+		width: 31px;
+		height: 31px;
+	}
+
+	#theme-picker {
+		margin-top: -2px;
+	}
+
+	#settings-menu {
+		top: 7px;
 	}
 }
 

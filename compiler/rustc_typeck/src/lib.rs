@@ -317,7 +317,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                 }
             }
 
-            let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+            let se_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
                 [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))].iter().cloned(),
                 tcx.types.isize,
                 false,

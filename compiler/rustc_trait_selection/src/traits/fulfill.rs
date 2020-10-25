@@ -1,6 +1,6 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
 use rustc_data_structures::obligation_forest::ProcessResult;
-use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
+use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
 use rustc_infer::traits::{TraitEngine, TraitEngineExt as _, TraitObligation};
@@ -129,13 +129,11 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             debug!("select: starting another iteration");
 
             // Process pending obligations.
-            let outcome = self.predicates.process_obligations(
-                &mut FulfillProcessor {
+            let outcome: Outcome<_, _> =
+                self.predicates.process_obligations(&mut FulfillProcessor {
                     selcx,
                     register_region_obligations: self.register_region_obligations,
-                },
-                DoCompleted::No,
-            );
+                });
             debug!("select: outcome={:#?}", outcome);
 
             // FIXME: if we kept the original cache key, we could mark projection
@@ -353,7 +351,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 // This means we need to pass it the bound version of our
                 // predicate.
                 ty::PredicateAtom::Trait(trait_ref, _constness) => {
-                    let trait_obligation = obligation.with(Binder::bind(trait_ref));
+                    let trait_obligation = obligation.with(binder.rebind(trait_ref));
 
                     self.process_trait_obligation(
                         obligation,
@@ -362,7 +360,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     )
                 }
                 ty::PredicateAtom::Projection(data) => {
-                    let project_obligation = obligation.with(Binder::bind(data));
+                    let project_obligation = obligation.with(binder.rebind(data));
 
                     self.process_projection_obligation(
                         project_obligation,

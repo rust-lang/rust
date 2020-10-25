@@ -302,7 +302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 true,
                             ),
                             hir::BinOpKind::Mul => (
-                                format!("cannot multiply `{}` to `{}`", rhs_ty, lhs_ty),
+                                format!("cannot multiply `{}` by `{}`", lhs_ty, rhs_ty),
                                 Some("std::ops::Mul"),
                                 true,
                             ),

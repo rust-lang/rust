@@ -1,5 +1,5 @@
 use rustc_data_structures::graph::iterate::{
-    ControlFlow, NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
+    NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
 use rustc_hir::intravisit::FnKind;
 use rustc_middle::hir::map::blocks::FnLikeNode;
@@ -8,6 +8,7 @@ use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
+use std::ops::ControlFlow;
 
 crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
@@ -71,12 +72,14 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
 
         let func_ty = func.ty(body, tcx);
         if let ty::FnDef(callee, substs) = *func_ty.kind() {
-            let (callee, call_substs) =
-                if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, callee, substs) {
-                    (instance.def_id(), instance.substs)
-                } else {
-                    (callee, substs)
-                };
+            let normalized_substs = tcx.normalize_erasing_regions(param_env, substs);
+            let (callee, call_substs) = if let Ok(Some(instance)) =
+                Instance::resolve(tcx, param_env, callee, normalized_substs)
+            {
+                (instance.def_id(), instance.substs)
+            } else {
+                (callee, normalized_substs)
+            };
 
             // FIXME(#57965): Make this work across function boundaries
 

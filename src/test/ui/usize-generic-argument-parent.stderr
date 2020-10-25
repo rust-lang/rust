@@ -1,0 +1,9 @@
+error[E0109]: const arguments are not allowed for this type
+  --> $DIR/usize-generic-argument-parent.rs:2:18
+   |
+LL |     let x: usize<foo>;
+   |                  ^^^ const argument not allowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0109`.

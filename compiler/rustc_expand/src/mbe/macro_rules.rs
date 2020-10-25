@@ -288,7 +288,8 @@ fn generic_extension<'cx>(
                 // Replace all the tokens for the corresponding positions in the macro, to maintain
                 // proper positions in error reporting, while maintaining the macro_backtrace.
                 if rhs_spans.len() == tts.len() {
-                    tts = tts.map_enumerated(|i, mut tt| {
+                    tts = tts.map_enumerated(|i, tt| {
+                        let mut tt = tt.clone();
                         let mut sp = rhs_spans[i];
                         sp = sp.with_ctxt(tt.span().ctxt());
                         tt.set_span(sp);

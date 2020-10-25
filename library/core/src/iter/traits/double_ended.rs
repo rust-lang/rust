@@ -122,6 +122,9 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(iter.advance_back_by(0), Ok(()));
     /// assert_eq!(iter.advance_back_by(100), Err(1)); // only `&3` was skipped
     /// ```
+    ///
+    /// [`Ok(())`]: Ok
+    /// [`Err(k)`]: Err
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
@@ -221,7 +224,7 @@ pub trait DoubleEndedIterator: Iterator {
         while let Some(x) = self.next_back() {
             accum = f(accum, x)?;
         }
-        Try::from_ok(accum)
+        try { accum }
     }
 
     /// An iterator method that reduces the iterator's elements to a single,
@@ -336,9 +339,7 @@ pub trait DoubleEndedIterator: Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(
-            mut predicate: impl FnMut(&T) -> bool,
-        ) -> impl FnMut((), T) -> ControlFlow<(), T> {
+        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
             move |(), x| {
                 if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
             }

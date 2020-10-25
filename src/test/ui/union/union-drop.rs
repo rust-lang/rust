@@ -4,8 +4,7 @@
 
 // Drop works for union itself.
 
-#![feature(untagged_unions)]
-
+#[derive(Copy, Clone)]
 struct S;
 
 union U {

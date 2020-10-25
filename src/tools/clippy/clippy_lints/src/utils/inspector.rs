@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
-        if !has_attr(cx.sess(), stmt.kind.attrs()) {
+        if !has_attr(cx.sess(), stmt.kind.attrs(|id| cx.tcx.hir().item(id.id))) {
             return;
         }
         match stmt.kind {
@@ -337,6 +337,11 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 println!("{}base:", ind);
                 print_expr(cx, base, indent + 1);
             }
+        },
+        hir::ExprKind::ConstBlock(ref anon_const) => {
+            println!("{}ConstBlock", ind);
+            println!("{}anon_const:", ind);
+            print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
         },
         hir::ExprKind::Repeat(ref val, ref anon_const) => {
             println!("{}Repeat", ind);

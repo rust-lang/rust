@@ -674,29 +674,16 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             TerminatorKind::SwitchInt { ref discr, switch_ty: _, targets: _ } => {
                 self.consume_operand(loc, (discr, span), flow_state);
             }
-            TerminatorKind::Drop { place: ref drop_place, target: _, unwind: _ } => {
-                let tcx = self.infcx.tcx;
-
-                // Compute the type with accurate region information.
-                let drop_place_ty = drop_place.ty(self.body, self.infcx.tcx);
-
-                // Erase the regions.
-                let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
-
-                // "Lift" into the tcx -- once regions are erased, this type should be in the
-                // global arenas; this "lift" operation basically just asserts that is true, but
-                // that is useful later.
-                tcx.lift(&drop_place_ty).unwrap();
-
+            TerminatorKind::Drop { place, target: _, unwind: _ } => {
                 debug!(
                     "visit_terminator_drop \
-                     loc: {:?} term: {:?} drop_place: {:?} drop_place_ty: {:?} span: {:?}",
-                    loc, term, drop_place, drop_place_ty, span
+                     loc: {:?} term: {:?} place: {:?} span: {:?}",
+                    loc, term, place, span
                 );
 
                 self.access_place(
                     loc,
-                    (*drop_place, span),
+                    (place, span),
                     (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                     flow_state,

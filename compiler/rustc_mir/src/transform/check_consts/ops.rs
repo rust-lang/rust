@@ -224,7 +224,8 @@ impl NonConstOp for CellBorrow {
 }
 
 #[derive(Debug)]
-pub struct MutBorrow;
+pub struct MutBorrow(pub hir::BorrowKind);
+
 impl NonConstOp for MutBorrow {
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         // Forbid everywhere except in const fn with a feature gate
@@ -236,22 +237,28 @@ impl NonConstOp for MutBorrow {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        let raw = match self.0 {
+            hir::BorrowKind::Raw => "raw ",
+            hir::BorrowKind::Ref => "",
+        };
+
         let mut err = if ccx.const_kind() == hir::ConstContext::ConstFn {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_mut_refs,
                 span,
-                &format!("mutable references are not allowed in {}s", ccx.const_kind()),
+                &format!("{}mutable references are not allowed in {}s", raw, ccx.const_kind()),
             )
         } else {
             let mut err = struct_span_err!(
                 ccx.tcx.sess,
                 span,
                 E0764,
-                "mutable references are not allowed in {}s",
+                "{}mutable references are not allowed in {}s",
+                raw,
                 ccx.const_kind(),
             );
-            err.span_label(span, format!("`&mut` is only allowed in `const fn`"));
+            err.span_label(span, format!("`&{}mut` is only allowed in `const fn`", raw));
             err
         };
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
@@ -267,29 +274,6 @@ impl NonConstOp for MutBorrow {
             );
         }
         err
-    }
-}
-
-// FIXME(ecstaticmorse): Unify this with `MutBorrow`. It has basically the same issues.
-#[derive(Debug)]
-pub struct MutAddressOf;
-impl NonConstOp for MutAddressOf {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        // Forbid everywhere except in const fn with a feature gate
-        if ccx.const_kind() == hir::ConstContext::ConstFn {
-            Status::Unstable(sym::const_mut_refs)
-        } else {
-            Status::Forbidden
-        }
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_mut_refs,
-            span,
-            &format!("`&raw mut` is not allowed in {}s", ccx.const_kind()),
-        )
     }
 }
 

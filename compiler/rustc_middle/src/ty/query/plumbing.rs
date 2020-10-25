@@ -40,7 +40,8 @@ impl QueryContext for TyCtxt<'tcx> {
 
     fn try_collect_active_jobs(
         &self,
-    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self>>> {
+    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self::DepKind, Self::Query>>>
+    {
         self.queries.try_collect_active_jobs()
     }
 
@@ -241,25 +242,15 @@ macro_rules! hash_result {
     };
 }
 
-macro_rules! define_queries {
-    (<$tcx:tt> $($category:tt {
-        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*
-    },)*) => {
-        define_queries_inner! { <$tcx>
-            $($( $(#[$attr])* category<$category> [$($modifiers)*] fn $name: $node($($K)*) -> $V,)*)*
-        }
-    }
-}
-
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     ($K:ty) => { $K };
 }
 
-macro_rules! define_queries_inner {
+macro_rules! define_queries {
     (<$tcx:tt>
-     $($(#[$attr:meta])* category<$category:tt>
-        [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*) => {
+     $($(#[$attr:meta])*
+        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
         use std::mem;
         use crate::{
@@ -267,7 +258,6 @@ macro_rules! define_queries_inner {
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
-        use rustc_data_structures::profiling::ProfileCategory;
 
         define_queries_struct! {
             tcx: $tcx,
@@ -353,7 +343,7 @@ macro_rules! define_queries_inner {
             $(pub type $name<$tcx> = $V;)*
         }
 
-        $(impl<$tcx> QueryConfig<TyCtxt<$tcx>> for queries::$name<$tcx> {
+        $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $($K)*;
             type Value = $V;
             type Stored = <
@@ -361,18 +351,17 @@ macro_rules! define_queries_inner {
                 as QueryStorage
             >::Stored;
             const NAME: &'static str = stringify!($name);
-            const CATEGORY: ProfileCategory = $category;
         }
 
         impl<$tcx> QueryAccessors<TyCtxt<$tcx>> for queries::$name<$tcx> {
             const ANON: bool = is_anon!([$($modifiers)*]);
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
-            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
+            const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$name;
 
             type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
 
             #[inline(always)]
-            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<TyCtxt<$tcx>, Self::Cache> {
+            fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query, Self::Cache> {
                 &tcx.queries.$name
             }
 
@@ -454,7 +443,7 @@ macro_rules! define_queries_inner {
             #[inline(always)]
             #[must_use]
             pub fn $name(self, key: query_helper_param_ty!($($K)*))
-                -> <queries::$name<$tcx> as QueryConfig<TyCtxt<$tcx>>>::Stored
+                -> <queries::$name<$tcx> as QueryConfig>::Stored
             {
                 self.at(DUMMY_SP).$name(key.into_query_param())
             })*
@@ -493,7 +482,7 @@ macro_rules! define_queries_inner {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*))
-                -> <queries::$name<$tcx> as QueryConfig<TyCtxt<$tcx>>>::Stored
+                -> <queries::$name<$tcx> as QueryConfig>::Stored
             {
                 get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param())
             })*
@@ -527,7 +516,8 @@ macro_rules! define_queries_struct {
             fallback_extern_providers: Box<Providers>,
 
             $($(#[$attr])*  $name: QueryState<
-                TyCtxt<$tcx>,
+                crate::dep_graph::DepKind,
+                <TyCtxt<$tcx> as QueryContext>::Query,
                 <queries::$name<$tcx> as QueryAccessors<TyCtxt<'tcx>>>::Cache,
             >,)*
         }
@@ -548,7 +538,7 @@ macro_rules! define_queries_struct {
 
             pub(crate) fn try_collect_active_jobs(
                 &self
-            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<TyCtxt<'tcx>>>> {
+            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<crate::dep_graph::DepKind, <TyCtxt<$tcx> as QueryContext>::Query>>> {
                 let mut jobs = FxHashMap::default();
 
                 $(

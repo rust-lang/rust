@@ -63,7 +63,7 @@ impl<'a> Comments<'a> {
     }
 
     pub fn trailing_comment(
-        &mut self,
+        &self,
         span: rustc_span::Span,
         next_pos: Option<BytePos>,
     ) -> Option<Comment> {
@@ -1714,6 +1714,14 @@ impl<'a> State<'a> {
         self.end();
     }
 
+    fn print_expr_anon_const(&mut self, expr: &ast::AnonConst, attrs: &[ast::Attribute]) {
+        self.ibox(INDENT_UNIT);
+        self.s.word("const");
+        self.print_inner_attributes_inline(attrs);
+        self.print_expr(&expr.value);
+        self.end();
+    }
+
     fn print_expr_repeat(
         &mut self,
         element: &ast::Expr,
@@ -1889,6 +1897,9 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Array(ref exprs) => {
                 self.print_expr_vec(&exprs[..], attrs);
+            }
+            ast::ExprKind::ConstBlock(ref anon_const) => {
+                self.print_expr_anon_const(anon_const, attrs);
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(element, count, attrs);

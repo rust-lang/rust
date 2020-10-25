@@ -4,7 +4,6 @@
 }
 
 .setting-line > div {
-	max-width: calc(100% - 74px);
 	display: inline-block;
 	vertical-align: top;
 	font-size: 17px;
@@ -28,6 +27,38 @@
 
 .toggle input {
 	display: none;
+}
+
+.select-wrapper {
+	float: right;
+	position: relative;
+	height: 27px;
+	min-width: 25%;
+}
+
+.select-wrapper select {
+	appearance: none;
+	-moz-appearance: none;
+	-webkit-appearance: none;
+	background: none;
+	border: 2px solid #ccc;
+	padding-right: 28px;
+	width: 100%;
+}
+
+.select-wrapper img {
+	pointer-events: none;
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	background: #ccc;
+	height: 100%;
+	width: 28px;
+	padding: 0px 4px;
+}
+
+.select-wrapper select option {
+	color: initial;
 }
 
 .slider {

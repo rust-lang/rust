@@ -103,7 +103,7 @@ impl<'tcx> Place<'tcx> {
 
     /// Returns the type of this `Place` after all projections have been applied.
     pub fn ty(&self) -> Ty<'tcx> {
-        self.projections.last().map_or_else(|| self.base_ty, |proj| proj.ty)
+        self.projections.last().map_or(self.base_ty, |proj| proj.ty)
     }
 
     /// Returns the type of this `Place` immediately before `projection_index`th projection

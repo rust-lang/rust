@@ -503,7 +503,7 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
             format!("{}{}", format_integer_with_underscore_sep(&data.to_string()), ui.name_str())
         }
         (ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, .. })), ty::Int(i)) => {
-            let ty = cx.tcx.lift(&ct.ty).unwrap();
+            let ty = cx.tcx.lift(ct.ty).unwrap();
             let size = cx.tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let sign_extended_data = sign_extend(data, size) as i128;
 

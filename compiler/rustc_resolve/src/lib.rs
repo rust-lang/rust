@@ -19,7 +19,7 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use rustc_arena::TypedArena;
+use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
@@ -944,7 +944,8 @@ pub struct Resolver<'a> {
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
-
+    /// Visibilities in "lowered" form, for all entities that have them.
+    visibilities: FxHashMap<LocalDefId, ty::Visibility>,
     used_imports: FxHashSet<(NodeId, Namespace)>,
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -1008,10 +1009,6 @@ pub struct Resolver<'a> {
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
 
-    /// Stores enum visibilities to properly build a reduced graph
-    /// when visiting the correspondent variants.
-    variant_vis: DefIdMap<ty::Visibility>,
-
     lint_buffer: LintBuffer,
 
     next_node_id: NodeId,
@@ -1028,6 +1025,9 @@ pub struct Resolver<'a> {
     invocation_parents: FxHashMap<ExpnId, LocalDefId>,
 
     next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
+    /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
+    /// FIXME: Replace with a more general AST map (together with some other fields).
+    trait_impl_items: FxHashSet<LocalDefId>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1035,12 +1035,10 @@ pub struct Resolver<'a> {
 pub struct ResolverArenas<'a> {
     modules: TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
-    name_bindings: TypedArena<NameBinding<'a>>,
     imports: TypedArena<Import<'a>>,
     name_resolutions: TypedArena<RefCell<NameResolution<'a>>>,
-    macro_rules_bindings: TypedArena<MacroRulesBinding<'a>>,
     ast_paths: TypedArena<ast::Path>,
-    pattern_spans: TypedArena<Span>,
+    dropless: DroplessArena,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1055,7 +1053,7 @@ impl<'a> ResolverArenas<'a> {
         self.local_modules.borrow()
     }
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
-        self.name_bindings.alloc(name_binding)
+        self.dropless.alloc(name_binding)
     }
     fn alloc_import(&'a self, import: Import<'a>) -> &'a Import<'_> {
         self.imports.alloc(import)
@@ -1067,13 +1065,13 @@ impl<'a> ResolverArenas<'a> {
         &'a self,
         binding: MacroRulesBinding<'a>,
     ) -> &'a MacroRulesBinding<'a> {
-        self.macro_rules_bindings.alloc(binding)
+        self.dropless.alloc(binding)
     }
     fn alloc_ast_paths(&'a self, paths: &[ast::Path]) -> &'a [ast::Path] {
         self.ast_paths.alloc_from_iter(paths.iter().cloned())
     }
     fn alloc_pattern_spans(&'a self, spans: impl Iterator<Item = Span>) -> &'a [Span] {
-        self.pattern_spans.alloc_from_iter(spans)
+        self.dropless.alloc_from_iter(spans)
     }
 }
 
@@ -1195,7 +1193,8 @@ impl<'a> Resolver<'a> {
         metadata_loader: &'a MetadataLoaderDyn,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a> {
-        let root_def_id = DefId::local(CRATE_DEF_INDEX);
+        let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };
+        let root_def_id = root_local_def_id.to_def_id();
         let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: session.contains_name(&krate.attrs, sym::no_implicit_prelude),
@@ -1213,10 +1212,13 @@ impl<'a> Resolver<'a> {
             )
         });
         let mut module_map = FxHashMap::default();
-        module_map.insert(LocalDefId { local_def_index: CRATE_DEF_INDEX }, graph_root);
+        module_map.insert(root_local_def_id, graph_root);
 
         let definitions = Definitions::new(crate_name, session.local_crate_disambiguator());
         let root = definitions.get_root_def();
+
+        let mut visibilities = FxHashMap::default();
+        visibilities.insert(root_local_def_id, ty::Visibility::Public);
 
         let mut def_id_to_span = IndexVec::default();
         assert_eq!(def_id_to_span.push(rustc_span::DUMMY_SP), root);
@@ -1240,9 +1242,6 @@ impl<'a> Resolver<'a> {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
             if !session.contains_name(&krate.attrs, sym::no_std) {
                 extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
-                if session.rust_2018() {
-                    extern_prelude.insert(Ident::with_dummy_span(sym::meta), Default::default());
-                }
             }
         }
 
@@ -1293,7 +1292,7 @@ impl<'a> Resolver<'a> {
             ast_transform_scopes: FxHashMap::default(),
 
             glob_map: Default::default(),
-
+            visibilities,
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
             maybe_unused_extern_crates: Vec::new(),
@@ -1342,7 +1341,6 @@ impl<'a> Resolver<'a> {
                 .map(|(feat, ..)| *feat)
                 .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                 .collect(),
-            variant_vis: Default::default(),
             lint_buffer: LintBuffer::default(),
             next_node_id: NodeId::from_u32(1),
             def_id_to_span,
@@ -1351,6 +1349,7 @@ impl<'a> Resolver<'a> {
             placeholder_field_indices: Default::default(),
             invocation_parents,
             next_disambiguator: Default::default(),
+            trait_impl_items: Default::default(),
         }
     }
 
@@ -1374,6 +1373,7 @@ impl<'a> Resolver<'a> {
 
     pub fn into_outputs(self) -> ResolverOutputs {
         let definitions = self.definitions;
+        let visibilities = self.visibilities;
         let extern_crate_map = self.extern_crate_map;
         let export_map = self.export_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
@@ -1382,6 +1382,7 @@ impl<'a> Resolver<'a> {
         ResolverOutputs {
             definitions: definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
+            visibilities,
             extern_crate_map,
             export_map,
             glob_map,
@@ -1399,6 +1400,7 @@ impl<'a> Resolver<'a> {
         ResolverOutputs {
             definitions: self.definitions.clone(),
             cstore: Box::new(self.cstore().clone()),
+            visibilities: self.visibilities.clone(),
             extern_crate_map: self.extern_crate_map.clone(),
             export_map: self.export_map.clone(),
             glob_map: self.glob_map.clone(),

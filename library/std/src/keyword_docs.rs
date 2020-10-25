@@ -102,7 +102,9 @@ mod break_keyword {}
 
 #[doc(keyword = "const")]
 //
-/// Compile-time constants and deterministic functions.
+/// Compile-time constants and compile-time evaluable functions.
+///
+/// ## Compile-time constants
 ///
 /// Sometimes a certain value is used many times throughout a program, and it can become
 /// inconvenient to copy it over and over. What's more, it's not always possible or desirable to
@@ -145,15 +147,28 @@ mod break_keyword {}
 ///
 /// Constants, like statics, should always be in `SCREAMING_SNAKE_CASE`.
 ///
+/// For more detail on `const`, see the [Rust Book] or the [Reference].
+///
+/// ## Compile-time evaluable functions
+///
+/// The other main use of the `const` keyword is in `const fn`. This marks a function as being
+/// callable in the body of a `const` or `static` item and in array initializers (commonly called
+/// "const contexts"). `const fn` are restricted in the set of operations they can perform, to
+/// ensure that they can be evaluated at compile-time. See the [Reference][const-eval] for more
+/// detail.
+///
+/// Turning a `fn` into a `const fn` has no effect on run-time uses of that function.
+///
+/// ## Other uses of `const`
+///
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
 /// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
-///
-/// For more detail on `const`, see the [Rust Book] or the [Reference].
 ///
 /// [pointer primitive]: primitive.pointer.html
 /// [Rust Book]:
 /// ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
 /// [Reference]: ../reference/items/constant-items.html
+/// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
 
 #[doc(keyword = "continue")]
@@ -331,7 +346,7 @@ mod else_keyword {}
 /// When data follows along with a variant, such as with rust's built-in [`Option`] type, the data
 /// is added as the type describes, for example `Option::Some(123)`. The same follows with
 /// struct-like variants, with things looking like `ComplexEnum::LotsOfThings { usual_struct_stuff:
-/// true, blah: "hello!".to_string(), }`. Empty Enums are similar to () in that they cannot be
+/// true, blah: "hello!".to_string(), }`. Empty Enums are similar to [`!`] in that they cannot be
 /// instantiated at all, and are used mainly to mess with the type system in interesting ways.
 ///
 /// For more information, take a look at the [Rust Book] or the [Reference]
@@ -339,6 +354,7 @@ mod else_keyword {}
 /// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
 /// [Reference]: ../reference/items/enumerations.html
+/// [`!`]: primitive.never.html
 mod enum_keyword {}
 
 #[doc(keyword = "extern")]

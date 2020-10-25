@@ -11,11 +11,11 @@ doctest = false
 [dependencies]
 bitflags = "1.0"
 libc = "0.2"
-measureme = "0.7.1"
+measureme = "9.0.0"
 snap = "1"
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
-rustc-demangle = "0.1"
+rustc-demangle = "0.1.18"
 rustc_attr = { path = "../rustc_attr" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_data_structures = { path = "../rustc_data_structures" }

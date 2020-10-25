@@ -486,6 +486,8 @@ impl Generics<'hir> {
 #[derive(HashStable_Generic)]
 pub enum SyntheticTyParamKind {
     ImplTrait,
+    // Created by the `#[rustc_synthetic]` attribute.
+    FromAttr,
 }
 
 /// A where-clause in a definition.
@@ -1099,11 +1101,11 @@ pub enum StmtKind<'hir> {
     Semi(&'hir Expr<'hir>),
 }
 
-impl StmtKind<'hir> {
-    pub fn attrs(&self) -> &'hir [Attribute] {
+impl<'hir> StmtKind<'hir> {
+    pub fn attrs(&self, get_item: impl FnOnce(ItemId) -> &'hir Item<'hir>) -> &'hir [Attribute] {
         match *self {
             StmtKind::Local(ref l) => &l.attrs,
-            StmtKind::Item(_) => &[],
+            StmtKind::Item(ref item_id) => &get_item(*item_id).attrs,
             StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => &e.attrs,
         }
     }
@@ -1361,6 +1363,7 @@ impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
             ExprKind::Box(_) => ExprPrecedence::Box,
+            ExprKind::ConstBlock(_) => ExprPrecedence::ConstBlock,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
             ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
@@ -1446,6 +1449,7 @@ impl Expr<'_> {
             | ExprKind::LlvmInlineAsm(..)
             | ExprKind::AssignOp(..)
             | ExprKind::Lit(_)
+            | ExprKind::ConstBlock(..)
             | ExprKind::Unary(..)
             | ExprKind::Box(..)
             | ExprKind::AddrOf(..)
@@ -1501,6 +1505,8 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
 pub enum ExprKind<'hir> {
     /// A `box x` expression.
     Box(&'hir Expr<'hir>),
+    /// Allow anonymous constants from an inline `const` block
+    ConstBlock(AnonConst),
     /// An array (e.g., `[a, b, c, d]`).
     Array(&'hir [Expr<'hir>]),
     /// A function call.
@@ -2375,15 +2381,6 @@ impl VisibilityKind<'_> {
         match *self {
             VisibilityKind::Public | VisibilityKind::Inherited => false,
             VisibilityKind::Crate(..) | VisibilityKind::Restricted { .. } => true,
-        }
-    }
-
-    pub fn descr(&self) -> &'static str {
-        match *self {
-            VisibilityKind::Public => "public",
-            VisibilityKind::Inherited => "private",
-            VisibilityKind::Crate(..) => "crate-visible",
-            VisibilityKind::Restricted { .. } => "restricted",
         }
     }
 }

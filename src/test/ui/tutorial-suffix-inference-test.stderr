@@ -5,7 +5,7 @@ LL |     identity_u16(x);
    |                  ^
    |                  |
    |                  expected `u16`, found `u8`
-   |                  help: you can convert an `u8` to `u16`: `x.into()`
+   |                  help: you can convert a `u8` to a `u16`: `x.into()`
 
 error[E0308]: mismatched types
   --> $DIR/tutorial-suffix-inference-test.rs:12:18
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
 LL |     identity_u16(y);
    |                  ^ expected `u16`, found `i32`
    |
-help: you can convert an `i32` to `u16` and panic if the converted value wouldn't fit
+help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     identity_u16(y.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ error[E0308]: mismatched types
 LL |     identity_u16(a);
    |                  ^ expected `u16`, found `isize`
    |
-help: you can convert an `isize` to `u16` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     identity_u16(a.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `PartialEqNotEq: Eq` is not satisfied
-  --> $DIR/union-derive-eq.rs:15:5
+  --> $DIR/union-derive-eq.rs:13:5
    |
 LL |     a: PartialEqNotEq,
    |     ^^^^^^^^^^^^^^^^^ the trait `Eq` is not implemented for `PartialEqNotEq`

@@ -2716,10 +2716,6 @@ function defocusSearchBar() {
         };
     }
 
-    window.onresize = function() {
-        hideSidebar();
-    };
-
     if (main) {
         onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
             e.remove();
@@ -2796,6 +2792,10 @@ function defocusSearchBar() {
         addClass(popup, "hidden");
         popup.id = "help";
 
+        var book_info = document.createElement("span");
+        book_info.innerHTML = "You can find more information in \
+            <a href=\"https://doc.rust-lang.org/rustdoc/\">the rustdoc book</a>.";
+
         var container = document.createElement("div");
         var shortcuts = [
             ["?", "Show this help dialog"],
@@ -2829,6 +2829,7 @@ function defocusSearchBar() {
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
 
+        container.appendChild(book_info);
         container.appendChild(div_shortcuts);
         container.appendChild(div_infos);
 

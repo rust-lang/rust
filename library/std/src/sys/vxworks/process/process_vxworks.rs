@@ -1,3 +1,4 @@
+use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::sys;
 use crate::sys::cvt;
@@ -67,7 +68,7 @@ impl Command {
             let _lock = sys::os::env_lock();
 
             let ret = libc::rtpSpawn(
-                self.get_program().as_ptr(),
+                self.get_program_cstr().as_ptr(),
                 self.get_argv().as_ptr() as *mut *const c_char, // argv
                 c_envp as *mut *const c_char,
                 100 as c_int, // initial priority
@@ -164,6 +165,50 @@ impl Process {
         } else {
             self.status = Some(ExitStatus::new(status));
             Ok(Some(ExitStatus::new(status)))
+        }
+    }
+}
+
+/// Unix exit statuses
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatus(c_int);
+
+impl ExitStatus {
+    pub fn new(status: c_int) -> ExitStatus {
+        ExitStatus(status)
+    }
+
+    fn exited(&self) -> bool {
+        libc::WIFEXITED(self.0)
+    }
+
+    pub fn success(&self) -> bool {
+        self.code() == Some(0)
+    }
+
+    pub fn code(&self) -> Option<i32> {
+        if self.exited() { Some(libc::WEXITSTATUS(self.0)) } else { None }
+    }
+
+    pub fn signal(&self) -> Option<i32> {
+        if !self.exited() { Some(libc::WTERMSIG(self.0)) } else { None }
+    }
+}
+
+/// Converts a raw `c_int` to a type-safe `ExitStatus` by wrapping it without copying.
+impl From<c_int> for ExitStatus {
+    fn from(a: c_int) -> ExitStatus {
+        ExitStatus(a)
+    }
+}
+
+impl fmt::Display for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(code) = self.code() {
+            write!(f, "exit code: {}", code)
+        } else {
+            let signal = self.signal().unwrap();
+            write!(f, "signal: {}", signal)
         }
     }
 }

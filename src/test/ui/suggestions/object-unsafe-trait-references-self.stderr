@@ -1,29 +1,34 @@
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/object-unsafe-trait-references-self.rs:6:11
    |
-LL | trait Trait {
-   |       ----- this trait cannot be made into an object...
-LL |     fn baz(&self, _: Self) {}
-   |                      ---- ...because method `baz` references the `Self` type in this parameter
-LL |     fn bat(&self) -> Self {}
-   |                      ---- ...because method `bat` references the `Self` type in its return type
-...
 LL | fn bar(x: &dyn Trait) {}
-   |           ^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |           ^^^^^^^^^^ `Trait` cannot be made into an object
    |
    = help: consider moving `baz` to another trait
    = help: consider moving `bat` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-unsafe-trait-references-self.rs:2:22
+   |
+LL | trait Trait {
+   |       ----- this trait cannot be made into an object...
+LL |     fn baz(&self, _: Self) {}
+   |                      ^^^^ ...because method `baz` references the `Self` type in this parameter
+LL |     fn bat(&self) -> Self {}
+   |                      ^^^^ ...because method `bat` references the `Self` type in its return type
 
 error[E0038]: the trait `Other` cannot be made into an object
   --> $DIR/object-unsafe-trait-references-self.rs:10:11
    |
+LL | fn foo(x: &dyn Other) {}
+   |           ^^^^^^^^^^ `Other` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-unsafe-trait-references-self.rs:8:14
+   |
 LL | trait Other: Sized {}
-   |       -----  ----- ...because it requires `Self: Sized`
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
    |       |
    |       this trait cannot be made into an object...
-LL | 
-LL | fn foo(x: &dyn Other) {}
-   |           ^^^^^^^^^^ the trait `Other` cannot be made into an object
 
 error: aborting due to 2 previous errors
 

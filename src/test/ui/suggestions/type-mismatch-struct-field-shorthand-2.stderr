@@ -5,7 +5,7 @@ LL |     let _ = RGB { r, g, c };
    |                   ^
    |                   |
    |                   expected `f64`, found `f32`
-   |                   help: you can convert an `f32` to `f64`: `r: r.into()`
+   |                   help: you can convert an `f32` to an `f64`: `r: r.into()`
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch-struct-field-shorthand-2.rs:5:22
@@ -14,7 +14,7 @@ LL |     let _ = RGB { r, g, c };
    |                      ^
    |                      |
    |                      expected `f64`, found `f32`
-   |                      help: you can convert an `f32` to `f64`: `g: g.into()`
+   |                      help: you can convert an `f32` to an `f64`: `g: g.into()`
 
 error[E0560]: struct `RGB` has no field named `c`
   --> $DIR/type-mismatch-struct-field-shorthand-2.rs:5:25

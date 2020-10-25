@@ -287,7 +287,7 @@ impl<'a> AstValidator<'a> {
     // ```
     fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
         match expr.kind {
-            ExprKind::Lit(..) | ExprKind::Err => {}
+            ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => self.err_handler().span_err(
