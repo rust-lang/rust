@@ -1,8 +1,8 @@
-error: expected one of `!`, `+`, `::`, `;`, `where`, or `{`, found `>`
+error: unmatched angle bracket
   --> $DIR/issue-24780.rs:5:23
    |
 LL | fn foo() -> Vec<usize>> {
-   |                       ^ expected one of `!`, `+`, `::`, `;`, `where`, or `{`
+   |                       ^^ help: remove extra angle bracket
 
 error: aborting due to previous error
 
