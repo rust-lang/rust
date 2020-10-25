@@ -104,7 +104,9 @@ impl FlagComputation {
                 self.add_ty(substs.return_ty());
                 self.add_ty(substs.witness());
                 self.add_ty(substs.yield_ty());
-                self.add_ty(substs.tupled_upvars_ty());
+                if let Ok(tupled_ty) = substs.tupled_upvars_ty() {
+                    self.add_ty(tupled_ty);
+                }
             }
 
             &ty::GeneratorWitness(ts) => {
@@ -122,7 +124,9 @@ impl FlagComputation {
 
                 self.add_ty(substs.sig_as_fn_ptr_ty());
                 self.add_ty(substs.kind_ty());
-                self.add_ty(substs.tupled_upvars_ty());
+                if let Ok(tupled_ty) = substs.tupled_upvars_ty() {
+                    self.add_ty(tupled_ty);
+                }
             }
 
             &ty::Bound(debruijn, _) => {

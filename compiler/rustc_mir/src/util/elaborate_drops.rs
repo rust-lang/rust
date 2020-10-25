@@ -850,7 +850,12 @@ where
         let ty = self.place_ty(self.place);
         match ty.kind() {
             ty::Closure(_, substs) => {
-                let tys: Vec<_> = substs.as_closure().upvar_tys().collect();
+                let substs = substs.as_closure();
+                let tys: Vec<_> = if substs.tupled_upvars_ty().is_ok() {
+                    substs.upvar_tys().collect()
+                } else {
+                    vec![]
+                };
                 self.open_drop_for_tuple(&tys)
             }
             // Note that `elaborate_drops` only drops the upvars of a generator,
@@ -860,7 +865,12 @@ where
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
             ty::Generator(_, substs, _) => {
-                let tys: Vec<_> = substs.as_generator().upvar_tys().collect();
+                let substs = substs.as_generator();
+                let tys: Vec<_> = if substs.tupled_upvars_ty().is_ok() {
+                    substs.upvar_tys().collect()
+                } else {
+                    vec![]
+                };
                 self.open_drop_for_tuple(&tys)
             }
             ty::Tuple(..) => {

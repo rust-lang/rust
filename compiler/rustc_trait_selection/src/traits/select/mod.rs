@@ -1601,12 +1601,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Closure(_, substs) => {
                 // (*) binder moved here
-                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
-                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
-                    // Not yet resolved.
-                    Ambiguous
+
+                if let Ok(tupled_tys) = substs.as_closure().tupled_upvars_ty() {
+                    let ty = self.infcx.shallow_resolve(tupled_tys);
+                    if let ty::Infer(ty::TyVar(_)) = ty.kind() {
+                        // Not yet resolved.
+                        Ambiguous
+                    } else {
+                        Where(
+                            obligation.predicate.rebind(substs.as_closure().upvar_tys().collect()),
+                        )
+                    }
                 } else {
-                    Where(obligation.predicate.rebind(substs.as_closure().upvar_tys().collect()))
+                    Where(ty::Binder::dummy(Vec::new()))
                 }
             }
 
@@ -1677,14 +1684,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Closure(_, ref substs) => {
-                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
-                vec![ty]
+                if let Ok(tupled_tys) = substs.as_closure().tupled_upvars_ty() {
+                    let ty = self.infcx.shallow_resolve(tupled_tys);
+                    vec![ty]
+                } else {
+                    vec![]
+                }
             }
 
             ty::Generator(_, ref substs, _) => {
-                let ty = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
+                let tys_vec = if let Ok(tupled_tys) = substs.as_closure().tupled_upvars_ty() {
+                    let ty = self.infcx.shallow_resolve(tupled_tys);
+                    vec![ty]
+                } else {
+                    vec![]
+                };
                 let witness = substs.as_generator().witness();
-                vec![ty].into_iter().chain(iter::once(witness)).collect()
+                tys_vec.into_iter().chain(iter::once(witness)).collect()
             }
 
             ty::GeneratorWitness(types) => {

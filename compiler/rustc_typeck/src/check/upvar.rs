@@ -206,7 +206,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tupe type in the closure with it:
         let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
-        self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
+        if let Ok(tupled_upvars) = substs.tupled_upvars_ty() {
+            self.demand_suptype(span, tupled_upvars, final_tupled_upvars_type);
+        }
 
         // If we are also inferred the closure kind here,
         // process any deferred resolutions.

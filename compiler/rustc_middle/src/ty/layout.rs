@@ -609,12 +609,23 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ty::Generator(def_id, substs, _) => self.generator_layout(ty, def_id, substs)?,
 
             ty::Closure(_, ref substs) => {
-                let tys = substs.as_closure().upvar_tys();
-                univariant(
-                    &tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
-                    &ReprOptions::default(),
-                    StructKind::AlwaysSized,
-                )?
+                let substs = substs.as_closure();
+                if substs.tupled_upvars_ty().is_ok() {
+                    let tys = substs.upvar_tys();
+                    univariant(
+                        &tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
+                        &ReprOptions::default(),
+                        StructKind::AlwaysSized,
+                    )?
+                } else {
+                    univariant(
+                        &std::iter::empty()
+                            .map(|ty| self.layout_of(ty))
+                            .collect::<Result<Vec<_>, _>>()?,
+                        &ReprOptions::default(),
+                        StructKind::AlwaysSized,
+                    )?
+                }
             }
 
             ty::Tuple(tys) => {
@@ -1396,10 +1407,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let info = tcx.generator_layout(def_id);
         let (ineligible_locals, assignments) = self.generator_saved_local_eligibility(&info);
 
+        let substs = substs.as_generator();
+
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let tag_index = substs.as_generator().prefix_tys().count();
+        let tag_index =
+            if substs.tupled_upvars_ty().is_ok() { substs.prefix_tys().count() } else { 0 };
 
         // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
         let max_discr = (info.variant_fields.len() - 1) as u128;
@@ -1415,7 +1429,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .map(|ty| tcx.mk_maybe_uninit(ty))
             .map(|ty| self.layout_of(ty));
         let prefix_layouts = substs
-            .as_generator()
             .prefix_tys()
             .map(|ty| self.layout_of(ty))
             .chain(iter::once(Ok(tag_layout)))

@@ -14,6 +14,7 @@ use crate::ty::{DelaySpanBugEmitted, List, ParamEnv, TyS};
 use polonius_engine::Atom;
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
@@ -388,15 +389,23 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.split().parent_substs
     }
 
+    /// Returns an iterator that iterates the types of paths captured by a closure.
+    /// Note it's possible that there was a type error that prevented us from figuring out
+    /// the types of the upvars captured by the closure.
+    ///
+    /// This function can be safely called if `self.tupled_upvars_ty().is_ok()` is true.
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        self.tupled_upvars_ty().tuple_fields()
+        self.split().tupled_upvars_ty.expect_ty().tuple_fields()
     }
 
-    /// Returns the tuple type representing the upvars for this closure.
+    /// Returns a tuple type containing the types of paths captured by the closure.
+    /// Returns Err(ErrorReported) if a type error prevented us from figuring out
+    /// the types of the upvars for this closure.
     #[inline]
-    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty.expect_ty()
+    pub fn tupled_upvars_ty(self) -> Result<Ty<'tcx>, ErrorReported> {
+        let tupled_ty = self.split().tupled_upvars_ty.expect_ty();
+        if let TyKind::Error(_) = tupled_ty.kind() { Err(ErrorReported) } else { Ok(tupled_ty) }
     }
 
     /// Returns the closure kind for this closure; may return a type
@@ -515,15 +524,23 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         self.split().witness.expect_ty()
     }
 
+    /// Returns an iterator that iterates the types of paths captured by a generator.
+    /// Note it's possible that there was a type error that prevented us from figuring out
+    /// the types of the upvars captured by the generator.
+    ///
+    /// This function can be safely called if `self.tupled_upvars_ty().is_ok()` is true.
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        self.tupled_upvars_ty().tuple_fields()
+        self.split().tupled_upvars_ty.expect_ty().tuple_fields()
     }
 
-    /// Returns the tuple type representing the upvars for this generator.
+    /// Returns a tuple type containing the types of paths captured by the generator.
+    /// Returns Err(ErrorReported) if a type error prevented us from figuring out
+    /// the types of the upvars for this generator.
     #[inline]
-    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty.expect_ty()
+    pub fn tupled_upvars_ty(self) -> Result<Ty<'tcx>, ErrorReported> {
+        let tupled_ty = self.split().tupled_upvars_ty.expect_ty();
+        if let TyKind::Error(_) = tupled_ty.kind() { Err(ErrorReported) } else { Ok(tupled_ty) }
     }
 
     /// Returns the type representing the resume type of the generator.
@@ -660,6 +677,11 @@ pub enum UpvarSubsts<'tcx> {
 }
 
 impl<'tcx> UpvarSubsts<'tcx> {
+    /// Returns an iterator that iterates the types of paths captured by a closure/generator.
+    /// Note it's possible that there was a type error that prevented us from figuring out
+    /// the types of the upvars captured by the closure/generator.
+    ///
+    /// This function can be safely called if `self.tupled_upvars_ty().is_ok()` is true.
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let tupled_upvars_ty = match self {
@@ -669,8 +691,11 @@ impl<'tcx> UpvarSubsts<'tcx> {
         tupled_upvars_ty.expect_ty().tuple_fields()
     }
 
+    /// Returns a tuple type containing the types of paths captured by a closure/generator.
+    /// Returns Err(ErrorReported) if a type error prevented us from figuring out
+    /// the types of the upvars for this closure/generator.
     #[inline]
-    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
+    pub fn tupled_upvars_ty(self) -> Result<Ty<'tcx>, ErrorReported> {
         match self {
             UpvarSubsts::Closure(substs) => substs.as_closure().tupled_upvars_ty(),
             UpvarSubsts::Generator(substs) => substs.as_generator().tupled_upvars_ty(),

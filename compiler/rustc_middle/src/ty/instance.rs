@@ -506,9 +506,9 @@ fn polymorphize<'tcx>(
     // the unpolymorphized upvar closure would result in a polymorphized closure producing
     // multiple mono items (and eventually symbol clashes).
     let upvars_ty = if tcx.is_closure(def_id) {
-        Some(substs.as_closure().tupled_upvars_ty())
+        substs.as_closure().tupled_upvars_ty().ok()
     } else if tcx.type_of(def_id).is_generator() {
-        Some(substs.as_generator().tupled_upvars_ty())
+        substs.as_generator().tupled_upvars_ty().ok()
     } else {
         None
     };

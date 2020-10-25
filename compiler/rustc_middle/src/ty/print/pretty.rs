@@ -664,7 +664,11 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print_def_path(did, substs));
                     p!(" upvar_tys=(");
                     if !substs.as_generator().is_valid() {
-                        p!("unavailable");
+                        if substs.as_generator().tupled_upvars_ty().is_err() {
+                            p!("err");
+                        } else {
+                            p!("unavailable");
+                        }
                     } else {
                         self = self.comma_sep(substs.as_generator().upvar_tys())?;
                     }
@@ -699,7 +703,13 @@ pub trait PrettyPrinter<'tcx>:
                 } else {
                     p!(print_def_path(did, substs));
                     if !substs.as_closure().is_valid() {
-                        p!(" closure_substs=(unavailable)");
+                        p!(" closure_substs=(");
+                        if substs.as_closure().tupled_upvars_ty().is_err() {
+                            p!("err");
+                        } else {
+                            p!("unavailable");
+                        }
+                        p!(")");
                     } else {
                         p!(" closure_kind_ty=", print(substs.as_closure().kind_ty()));
                         p!(

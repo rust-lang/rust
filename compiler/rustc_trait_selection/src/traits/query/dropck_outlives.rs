@@ -110,7 +110,12 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // check if *any* of those are trivial.
         ty::Tuple(ref tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t.expect_ty())),
         ty::Closure(_, ref substs) => {
-            trivial_dropck_outlives(tcx, substs.as_closure().tupled_upvars_ty())
+            if let Ok(tupled_tys) = substs.as_closure().tupled_upvars_ty() {
+                trivial_dropck_outlives(tcx, tupled_tys)
+            } else {
+                // Same as the error case above
+                true
+            }
         }
 
         ty::Adt(def, _) => {

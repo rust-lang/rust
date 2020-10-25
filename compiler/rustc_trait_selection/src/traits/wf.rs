@@ -593,7 +593,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // only inspects the upvar types).
                     walker.skip_current_subtree(); // subtree handled below
                     // FIXME(eddyb) add the type to `walker` instead of recursing.
-                    self.compute(substs.as_closure().tupled_upvars_ty().into());
+                    if let Ok(tupled_tys) = substs.as_closure().tupled_upvars_ty() {
+                        self.compute(tupled_tys.into());
+                    }
                 }
 
                 ty::FnPtr(_) => {

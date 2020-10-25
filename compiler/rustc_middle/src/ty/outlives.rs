@@ -96,14 +96,16 @@ fn compute_components(
             }
 
             ty::Closure(_, ref substs) => {
-                let tupled_ty = substs.as_closure().tupled_upvars_ty();
-                compute_components(tcx, tupled_ty, out, visited);
+                if let Ok(tupled_ty) = substs.as_closure().tupled_upvars_ty() {
+                    compute_components(tcx, tupled_ty, out, visited);
+                }
             }
 
             ty::Generator(_, ref substs, _) => {
                 // Same as the closure case
-                let tupled_ty = substs.as_generator().tupled_upvars_ty();
-                compute_components(tcx, tupled_ty, out, visited);
+                if let Ok(tupled_ty) = substs.as_generator().tupled_upvars_ty() {
+                    compute_components(tcx, tupled_ty, out, visited);
+                }
 
                 // We ignore regions in the generator interior as we don't
                 // want these to affect region inference
