@@ -1,8 +1,10 @@
 use crate::utils::{
-    eq_expr_value, implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then,
+    eq_expr_value, higher, implements_trait, in_macro, is_copy, is_expn_of, multispan_sugg, snippet, span_lint,
+    span_lint_and_then,
 };
+use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind};
+use rustc_hir::{BinOp, BinOpKind, BorrowKind, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -22,6 +24,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # let x = 1;
     /// if x + 1 == x + 1 {}
+    /// ```
+    /// or
+    /// ```rust
+    /// # let a = 3;
+    /// # let b = 4;
+    /// assert_eq!(a, a);
     /// ```
     pub EQ_OP,
     correctness,
@@ -52,9 +60,34 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 
+const ASSERT_MACRO_NAMES: [&str; 4] = ["assert_eq", "assert_ne", "debug_assert_eq", "debug_assert_ne"];
+
 impl<'tcx> LateLintPass<'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+        if let ExprKind::Block(ref block, _) = e.kind {
+            for stmt in block.stmts {
+                for amn in &ASSERT_MACRO_NAMES {
+                    if_chain! {
+                        if is_expn_of(stmt.span, amn).is_some();
+                        if let StmtKind::Semi(ref matchexpr) = stmt.kind;
+                        if let Some(macro_args) = higher::extract_assert_macro_args(matchexpr);
+                        if macro_args.len() == 2;
+                        let (lhs, rhs) = (macro_args[0], macro_args[1]);
+                        if eq_expr_value(cx, lhs, rhs);
+
+                        then {
+                            span_lint(
+                                cx,
+                                EQ_OP,
+                                lhs.span.to(rhs.span),
+                                &format!("identical args used in this `{}!` macro call", amn),
+                            );
+                        }
+                    }
+                }
+            }
+        }
         if let ExprKind::Binary(op, ref left, ref right) = e.kind {
             if e.span.from_expansion() {
                 return;

@@ -21,10 +21,10 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v2.0.0
+      uses: actions/checkout@v2.3.3
 
     - name: Checkout
-      uses: actions/checkout@v2.0.0
+      uses: actions/checkout@v2.3.3
       with:
         ref: ${{ env.TARGET_BRANCH }}
         path: 'out'
@@ -34,10 +34,10 @@ jobs:
       if: startswith(github.ref, 'refs/tags/')
       run: |
         TAG=$(basename ${{ github.ref }})
-        echo "::set-env name=TAG_NAME::$TAG"
+        echo "TAG_NAME=$TAG" >> $GITHUB_ENV
     - name: Set beta to true
       if: github.ref == 'refs/heads/beta'
-      run: echo "::set-env name=BETA::true"
+      run: echo "BETA=true" >> $GITHUB_ENV
 
     - name: Use scripts and templates from master branch
       run: |

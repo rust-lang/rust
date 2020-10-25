@@ -98,7 +98,11 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** This can always be rewritten with `&` and `*`.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:**
+    /// - `mem::transmute` in statics and constants is stable from Rust 1.46.0,
+    /// while dereferencing raw pointer is not stable yet.
+    /// If you need to do this in those places,
+    /// you would have to use `transmute` instead.
     ///
     /// **Example:**
     /// ```rust,ignore

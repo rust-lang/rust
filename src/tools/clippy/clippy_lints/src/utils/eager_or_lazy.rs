@@ -82,7 +82,7 @@ fn identify_some_pure_patterns(expr: &Expr<'_>) -> bool {
 /// Identify some potentially computationally expensive patterns.
 /// This function is named so to stress that its implementation is non-exhaustive.
 /// It returns FNs and FPs.
-fn identify_some_potentially_expensive_patterns<'a, 'tcx>(cx: &'a LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn identify_some_potentially_expensive_patterns<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
     // Searches an expression for method calls or function calls that aren't ctors
     struct FunCallFinder<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
