@@ -10,15 +10,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let Coverage { kind, code_region } = coverage;
         match kind {
             CoverageKind::Counter { function_source_hash, id } => {
-                let covmap_updated = if let Some(code_region) = code_region {
-                    // Note: Some counters do not have code regions, but may still be referenced from
-                    // expressions.
-                    bx.add_coverage_counter(self.instance, function_source_hash, id, code_region)
-                } else {
-                    bx.set_function_source_hash(self.instance, function_source_hash)
-                };
+                if bx.set_function_source_hash(self.instance, function_source_hash) {
+                    // If `set_function_source_hash()` returned true, the coverage map is enabled,
+                    // so continue adding the counter.
+                    if let Some(code_region) = code_region {
+                        // Note: Some counters do not have code regions, but may still be referenced
+                        // from expressions. In that case, don't add the counter to the coverage map,
+                        // but do inject the counter intrinsic.
+                        bx.add_coverage_counter(self.instance, id, code_region);
+                    }
 
-                if covmap_updated {
                     let coverageinfo = bx.tcx().coverageinfo(self.instance.def_id());
 
                     let fn_name = bx.create_pgo_func_name_var(self.instance);

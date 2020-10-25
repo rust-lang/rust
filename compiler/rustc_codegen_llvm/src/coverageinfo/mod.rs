@@ -82,21 +82,19 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn add_coverage_counter(
         &mut self,
         instance: Instance<'tcx>,
-        function_source_hash: u64,
         id: CounterValueReference,
         region: CodeRegion,
     ) -> bool {
         if let Some(coverage_context) = self.coverage_context() {
             debug!(
-                "adding counter to coverage_map: instance={:?}, function_source_hash={}, id={:?}, \
-                at {:?}",
-                instance, function_source_hash, id, region,
+                "adding counter to coverage_map: instance={:?}, id={:?}, region={:?}",
+                instance, id, region,
             );
             let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
             coverage_map
                 .entry(instance)
                 .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-                .add_counter(function_source_hash, id, region);
+                .add_counter(id, region);
             true
         } else {
             false

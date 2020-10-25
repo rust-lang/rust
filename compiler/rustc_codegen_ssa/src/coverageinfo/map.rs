@@ -52,11 +52,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
         }
     }
 
-    /// Although every function should have at least one `Counter`, the `Counter` isn't required to
-    /// have a `CodeRegion`. (The `CodeRegion` may be associated only with `Expressions`.) This
-    /// method supports the ability to ensure the `function_source_hash` is set from `Counters` that
-    /// do not trigger the call to `add_counter()` because they don't have an associated
-    /// `CodeRegion` to add.
+    /// Sets the function source hash value. If called multiple times for the same function, all
+    /// calls should have the same hash value.
     pub fn set_function_source_hash(&mut self, source_hash: u64) {
         if self.source_hash == 0 {
             self.source_hash = source_hash;
@@ -66,14 +63,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     /// Adds a code region to be counted by an injected counter intrinsic.
-    /// The source_hash (computed during coverage instrumentation) should also be provided, and
-    /// should be the same for all counters in a given function.
-    pub fn add_counter(&mut self, source_hash: u64, id: CounterValueReference, region: CodeRegion) {
-        if self.source_hash == 0 {
-            self.source_hash = source_hash;
-        } else {
-            debug_assert_eq!(source_hash, self.source_hash);
-        }
+    pub fn add_counter(&mut self, id: CounterValueReference, region: CodeRegion) {
         self.counters[id].replace(region).expect_none("add_counter called with duplicate `id`");
     }
 
