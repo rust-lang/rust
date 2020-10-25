@@ -341,8 +341,6 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
 
 impl Clean<Item> for hir::Crate<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        // TODO: use tcx.crate_name instead
-        let name = None;
         let attrs = self.item.attrs.clean(cx);
 
         // Get _all_ the items!
@@ -385,7 +383,7 @@ impl Clean<Item> for hir::Crate<'_> {
 
         let id = hir::CRATE_HIR_ID;
         Item {
-            name,
+            name: Some(cx.tcx.crate_name.clean(cx)),
             attrs,
             source: span.clean(cx),
             visibility: Visibility::Public,
