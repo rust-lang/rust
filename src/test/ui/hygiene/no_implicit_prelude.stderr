@@ -1,8 +1,8 @@
 error: cannot find macro `panic` in this scope
   --> $DIR/no_implicit_prelude.rs:16:9
    |
-LL |         assert_eq!(0, 0);
-   |         ^^^^^^^^^^^^^^^^^
+LL |         assert!(true);
+   |         ^^^^^^^^^^^^^^
    |
    = note: consider importing one of these items:
            core::panic
