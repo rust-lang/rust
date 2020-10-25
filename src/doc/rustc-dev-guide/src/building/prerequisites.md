@@ -23,8 +23,23 @@ See [this section for more info][sysllvm].
 
 ### Windows
 
+* Install [winget](https://github.com/microsoft/winget-cli)
+
+`winget` is a Windows package manager. It will make package installation easy
+on Windows.
+
+Run the following in a terminal:
+
+```powershell
+winget install python
+winget install cmake
+```
+
+If any of those is installed already, winget will detect it.
+Then edit your systems `PATH` variable and add: `C:\Program Files\CMake\bin`.
+
 For more information about building on Windows,
-see [the Rust README](https://github.com/rust-lang/rust#msvc).
+see [the `rust-lang/rust` README](https://github.com/rust-lang/rust#building-on-windows).
 
 ## Hardware
 
@@ -45,20 +60,3 @@ Follow the installation given in the [Rust book][install] to install a working
 `rustc` and the necessary C/++ toolchain on your platform.
 
 [install]: https://doc.rust-lang.org/book/ch01-01-installation.html
-
-## Platform specific instructions
-
-### Windows
-
-* Install [winget](https://github.com/microsoft/winget-cli)
-
-Run the following in a terminal:
-
-```
-winget install python
-winget install cmake
-```
-
-If any of those is installed already, winget will detect it.
-
-Edit your systems `PATH` variable and add: `C:\Program Files\CMake\bin`.
