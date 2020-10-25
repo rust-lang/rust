@@ -2644,6 +2644,13 @@ vec![
         module: "unused_unit",
     },
     Lint {
+        name: "unusual_byte_groupings",
+        group: "style",
+        desc: "binary or hex literals that aren\'t grouped by four",
+        deprecation: None,
+        module: "literal_representation",
+    },
+    Lint {
         name: "unwrap_in_result",
         group: "restriction",
         desc: "functions of type `Result<..>` or `Option`<...> that contain `expect()` or `unwrap()`",
