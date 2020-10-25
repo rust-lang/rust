@@ -368,7 +368,7 @@ impl LiteralDigitGrouping {
 
         let first = groups.next().expect("At least one group");
 
-        if (radix == Radix::Binary || radix == Radix::Hexadecimal) && groups.any(|i| i != 4 || i != 2) {
+        if (radix == Radix::Binary || radix == Radix::Hexadecimal) && groups.any(|i| i != 4 && i != 2) {
             return Err(WarningType::UnusualByteGrouping);
         }
 
