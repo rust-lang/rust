@@ -17,6 +17,10 @@ mod entry;
 pub use entry::{Entry, OccupiedEntry, VacantEntry};
 use Entry::*;
 
+/// Minimum number of elements in nodes that are not a root.
+/// We might temporarily have fewer elements during methods.
+pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
+
 /// A map based on a B-Tree.
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
@@ -1094,13 +1098,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
             // Check if right-most child is underfull.
             let mut last_edge = internal.last_edge();
             let right_child_len = last_edge.reborrow().descend().len();
-            if right_child_len < node::MIN_LEN {
+            if right_child_len < MIN_LEN {
                 // We need to steal.
                 let mut last_kv = match last_edge.left_kv() {
                     Ok(left) => left,
                     Err(_) => unreachable!(),
                 };
-                last_kv.bulk_steal_left(node::MIN_LEN - right_child_len);
+                last_kv.bulk_steal_left(MIN_LEN - right_child_len);
                 last_edge = last_kv.right_edge();
             }
 
