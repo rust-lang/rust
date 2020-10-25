@@ -262,6 +262,15 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
             // TODO: this should also take the span into account (inner or outer)
             ItemKind::Mod(ref mod_) => NotInlined(mod_.clean(cx)),
             ItemKind::ForeignMod(ref mod_) => NotInlined(mod_.clean(cx)),
+            ItemKind::GlobalAsm(..) => MaybeInlined::InlinedWithoutOriginal(vec![]), // not handled
+            ItemKind::TyAlias(ty, ref generics) => {
+                let rustdoc_ty = ty.clean(cx);
+                let item_type = rustdoc_ty.def_id().and_then(|did| inline::build_ty(cx, did));
+                NotInlined(TypedefItem(
+                    Typedef { type_: rustdoc_ty, generics: generics.clean(cx), item_type },
+                    false,
+                ))
+            }
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -2063,19 +2072,6 @@ impl Clean<String> for Symbol {
     #[inline]
     fn clean(&self, _: &DocContext<'_>) -> String {
         self.to_string()
-    }
-}
-
-impl Clean<Item> for doctree::Typedef<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let type_ = self.ty.clean(cx);
-        let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            TypedefItem(Typedef { type_, generics: self.gen.clean(cx), item_type }, false),
-            cx,
-        )
     }
 }
 

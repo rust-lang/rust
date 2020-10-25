@@ -39,13 +39,6 @@ crate struct Variant<'hir> {
     crate def: &'hir hir::VariantData<'hir>,
 }
 
-crate struct Typedef<'hir> {
-    crate ty: &'hir hir::Ty<'hir>,
-    crate gen: &'hir hir::Generics<'hir>,
-    crate name: Symbol,
-    crate id: hir::HirId,
-}
-
 crate struct OpaqueTy<'hir> {
     crate opaque_ty: &'hir hir::OpaqueTy<'hir>,
     crate name: Symbol,
