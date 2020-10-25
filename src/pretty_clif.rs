@@ -262,7 +262,7 @@ pub(crate) fn write_clif_file<'tcx>(
         writeln!(file, "set enable_simd")?;
         writeln!(file, "target {} haswell", target_triple)?;
         writeln!(file, "")?;
-        file.write(clif.as_bytes())?;
+        file.write_all(clif.as_bytes())?;
     };
     if let Err(err) = res {
         tcx.sess.warn(&format!("err writing clif file: {}", err));
