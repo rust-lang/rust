@@ -83,10 +83,14 @@
 #include "llvm/Transforms/Scalar/SROA.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/Utils/LCSSA.h"
+#include "llvm/Transforms/Utils/LowerInvoke.h"
 
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
 #include "llvm/Transforms/Scalar/LoopDeletion.h"
 #include "llvm/Transforms/Scalar/LoopRotation.h"
+#include "llvm/Transforms/Scalar/DCE.h"
+
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "CacheUtility.h"
 
@@ -294,6 +298,23 @@ static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function*
       }
     }
 
+    // Todo consider more general method for selects
+    if (auto SI = dyn_cast<SelectInst>(next.first)) {
+      if (auto C1 = dyn_cast<ConstantInt>(SI->getTrueValue())) {
+        // if negative or below 0xFFF this cannot possibly represent
+        // a real pointer, so ignore this case by setting to 0
+        if (C1->isNegative() || C1->getLimitedValue() <= 0xFFF) {
+          if (auto C2 = dyn_cast<ConstantInt>(SI->getFalseValue())) {
+            if (C2->isNegative() || C2->getLimitedValue() <= 0xFFF) {
+              B.SetInsertPoint(next.second);
+              B.CreateStore(ConstantInt::get(T, 0), AI);
+              continue;
+            }
+          }
+        }
+      }
+    }
+
     if (auto PN = dyn_cast<PHINode>(next.first)) {
       for(size_t i=0; i<PN->getNumIncomingValues(); i++) {
         todo.push_back({PN->getIncomingValue(i), PN->getIncomingBlock(i)->getTerminator()});
@@ -320,6 +341,26 @@ static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function*
           continue;
         }
       }
+    }
+
+    if (auto LI = dyn_cast<LoadInst>(next.first)) {
+      bool success = false;
+      for(Instruction* prev = LI->getPrevNode(); prev != nullptr; prev = prev->getPrevNode()) {
+        if (auto CI = dyn_cast<CallInst>(prev)) {
+          if (auto F = CI->getCalledFunction()) {
+            if (F->getName() == "posix_memalign" && CI->getArgOperand(0) == LI->getOperand(0)) {
+              B.SetInsertPoint(next.second);
+              B.CreateStore(CI->getArgOperand(2), AI);
+              success = true;
+              break;
+            }
+          }
+        }
+        if (prev->mayWriteToMemory()) {
+          break;
+        }
+      }
+      if (success) continue;
     }
     EmitFailure("DynamicReallocSize", Loc->getDebugLoc(), Loc,
                 "could not statically determine size of realloc ", *Loc, " - because of - ", *next.first);
@@ -573,41 +614,41 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   }
 
   if (EnzymePreopt) {
-    if (EnzymeInline) {
-      {
-        DominatorTree DT(*NewF);
-        PromoteMemoryToRegister(*NewF, DT);
-      }
-
-      {
-        FunctionAnalysisManager AM;
-        AM.registerPass([] { return AAManager(); });
-        AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-        AM.registerPass([] { return AssumptionAnalysis(); });
-        AM.registerPass([] { return TargetLibraryAnalysis(); });
-        AM.registerPass([] { return TargetIRAnalysis(); });
-        AM.registerPass([] { return MemorySSAAnalysis(); });
-        AM.registerPass([] { return DominatorTreeAnalysis(); });
-        AM.registerPass([] { return MemoryDependenceAnalysis(); });
-        AM.registerPass([] { return LoopAnalysis(); });
-        AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
-        AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-        AM.registerPass([] { return LazyValueAnalysis(); });
-#if LLVM_VERSION_MAJOR > 10
-        AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-#if LLVM_VERSION_MAJOR <= 7
-        GVN().run(*NewF, AM);
-        SROA().run(*NewF, AM);
-#endif
-      }
+    {
+      FunctionAnalysisManager AM;
+      AM.registerPass([] { return TargetLibraryAnalysis(); });
+      LowerInvokePass().run(*NewF, AM);
+      llvm::EliminateUnreachableBlocks(*NewF);
     }
-  
+
     {
       DominatorTree DT(*NewF);
       PromoteMemoryToRegister(*NewF, DT);
+    }
+
+    {
+      FunctionAnalysisManager AM;
+      AM.registerPass([] { return AAManager(); });
+      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
+      AM.registerPass([] { return AssumptionAnalysis(); });
+      AM.registerPass([] { return TargetLibraryAnalysis(); });
+      AM.registerPass([] { return TargetIRAnalysis(); });
+      AM.registerPass([] { return MemorySSAAnalysis(); });
+      AM.registerPass([] { return DominatorTreeAnalysis(); });
+      AM.registerPass([] { return MemoryDependenceAnalysis(); });
+      AM.registerPass([] { return LoopAnalysis(); });
+      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
+      AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
+      AM.registerPass([] { return LazyValueAnalysis(); });
+#if LLVM_VERSION_MAJOR > 10
+      AM.registerPass([] { return PassInstrumentationAnalysis(); });
+#endif
+#if LLVM_VERSION_MAJOR <= 7
+      GVN().run(*NewF, AM);
+#endif
+      SROA().run(*NewF, AM);
     }
 
     ReplaceReallocs(NewF);
