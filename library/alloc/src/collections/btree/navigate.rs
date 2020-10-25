@@ -1,7 +1,5 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
-use core::intrinsics;
-use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::RangeBounds;
 use core::ptr;
@@ -304,37 +302,6 @@ macro_rules! def_next_kv_uncheched_dealloc {
 def_next_kv_uncheched_dealloc! {unsafe fn next_kv_unchecked_dealloc: right_kv}
 def_next_kv_uncheched_dealloc! {unsafe fn next_back_kv_unchecked_dealloc: left_kv}
 
-/// This replaces the value behind the `v` unique reference by calling the
-/// relevant function.
-///
-/// If a panic occurs in the `change` closure, the entire process will be aborted.
-#[inline]
-fn take_mut<T>(v: &mut T, change: impl FnOnce(T) -> T) {
-    replace(v, |value| (change(value), ()))
-}
-
-/// This replaces the value behind the `v` unique reference by calling the
-/// relevant function, and returns a result obtained along the way.
-///
-/// If a panic occurs in the `change` closure, the entire process will be aborted.
-#[inline]
-fn replace<T, R>(v: &mut T, change: impl FnOnce(T) -> (T, R)) -> R {
-    struct PanicGuard;
-    impl Drop for PanicGuard {
-        fn drop(&mut self) {
-            intrinsics::abort()
-        }
-    }
-    let guard = PanicGuard;
-    let value = unsafe { ptr::read(v) };
-    let (new_value, ret) = change(value);
-    unsafe {
-        ptr::write(v, new_value);
-    }
-    mem::forget(guard);
-    ret
-}
-
 impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge> {
     /// Moves the leaf edge handle to the next leaf edge and returns references to the
     /// key and value in between.
@@ -342,7 +309,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// # Safety
     /// There must be another KV in the direction travelled.
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        replace(self, |leaf_edge| {
+        super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_kv();
             let kv = unsafe { unwrap_unchecked(kv.ok()) };
             (kv.next_leaf_edge(), kv.into_kv())
@@ -355,7 +322,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// # Safety
     /// There must be another KV in the direction travelled.
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        replace(self, |leaf_edge| {
+        super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_back_kv();
             let kv = unsafe { unwrap_unchecked(kv.ok()) };
             (kv.next_back_leaf_edge(), kv.into_kv())
@@ -370,7 +337,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     /// # Safety
     /// There must be another KV in the direction travelled.
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = replace(self, |leaf_edge| {
+        let kv = super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_kv();
             let kv = unsafe { unwrap_unchecked(kv.ok()) };
             (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
@@ -385,7 +352,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     /// # Safety
     /// There must be another KV in the direction travelled.
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = replace(self, |leaf_edge| {
+        let kv = super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_back_kv();
             let kv = unsafe { unwrap_unchecked(kv.ok()) };
             (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
@@ -401,7 +368,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     /// # Safety
     /// There must be another KV in the direction travelled.
     pub unsafe fn move_next_unchecked(&mut self) {
-        take_mut(self, |leaf_edge| {
+        super::mem::take_mut(self, |leaf_edge| {
             let kv = leaf_edge.next_kv();
             let kv = unsafe { unwrap_unchecked(kv.ok()) };
             kv.next_leaf_edge()
@@ -423,7 +390,7 @@ impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     /// call this method again subject to its safety conditions, or call counterpart
     /// `next_back_unchecked` subject to its safety conditions.
     pub unsafe fn next_unchecked(&mut self) -> (K, V) {
-        replace(self, |leaf_edge| {
+        super::mem::replace(self, |leaf_edge| {
             let kv = unsafe { next_kv_unchecked_dealloc(leaf_edge) };
             let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
             let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
@@ -444,7 +411,7 @@ impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     /// call this method again subject to its safety conditions, or call counterpart
     /// `next_unchecked` subject to its safety conditions.
     pub unsafe fn next_back_unchecked(&mut self) -> (K, V) {
-        replace(self, |leaf_edge| {
+        super::mem::replace(self, |leaf_edge| {
             let kv = unsafe { next_back_kv_unchecked_dealloc(leaf_edge) };
             let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
             let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
