@@ -1170,7 +1170,7 @@ pub fn promote_candidates<'tcx>(
         let mut scope = body.source_scopes[candidate.source_info(body).scope].clone();
         scope.parent_scope = None;
 
-        let mut promoted = Body::new(
+        let promoted = Body::new(
             body.source, // `promoted` gets filled in below
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
@@ -1181,7 +1181,6 @@ pub fn promote_candidates<'tcx>(
             body.span,
             body.generator_kind,
         );
-        promoted.ignore_interior_mut_in_const_validation = true;
 
         let promoter = Promoter {
             promoted,
