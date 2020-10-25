@@ -347,6 +347,7 @@ impl Clean<Item> for hir::Crate<'_> {
 
         // Get _all_ the items!
         let items = self.items.clean(cx).into_iter().flatten();
+        let items = items.chain(self.item.module.item_ids.clean(cx).into_iter().flatten());
         let items = items.chain(self.exported_macros.clean(cx));
         let items = items.chain(self.trait_items.clean(cx));
         let items = items.chain(self.impl_items.clean(cx));
@@ -360,7 +361,6 @@ impl Clean<Item> for hir::Crate<'_> {
                 })
                 .flatten(),
         );
-        let items = items.chain(self.modules.clean(cx).into_iter().flatten());
         let items = items.chain(self.proc_macros.iter().map(|hir_id| {
             let _def_id = hir_id.owner.local_def_index;
             // TODO: look how `rustc_metadata::rmeta::encoder` does this
@@ -415,12 +415,6 @@ impl Clean<ItemKind> for hir::ForeignMod<'_> {
 impl Clean<Vec<Item>> for hir::ItemId {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         cx.tcx.hir().item(self.id).clean(cx)
-    }
-}
-
-impl Clean<Vec<Item>> for hir::ModuleItems {
-    fn clean(&self, _cx: &DocContext<'_>) -> Vec<Item> {
-        unimplemented!()
     }
 }
 
