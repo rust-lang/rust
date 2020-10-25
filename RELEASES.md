@@ -15,6 +15,9 @@ Compiler
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
 - [Added tier 2\* support for  `aarch64-unknown-linux-musl`.][76420]
 
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
 Libraries
 ---------
 - [`io::Write` is now implemented for `&ChildStdin` `&Sink`, `&Stdout`,
