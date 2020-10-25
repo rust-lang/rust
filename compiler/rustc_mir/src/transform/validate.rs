@@ -5,13 +5,17 @@ use crate::dataflow::{Analysis, ResultsCursor};
 use crate::util::storage::AlwaysLiveLocals;
 
 use super::MirPass;
-use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{
+    interpret::Scalar,
+    visit::{PlaceContext, Visitor},
+};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
     SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
 };
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_target::abi::Size;
 
 #[derive(Copy, Clone, Debug)]
 enum EdgeKind {
@@ -346,7 +350,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                for (_, target) in targets.iter() {
+
+                let target_width = self.tcx.sess.target.pointer_width;
+
+                let size = Size::from_bits(match switch_ty.kind() {
+                    ty::Uint(uint) => uint.normalize(target_width).bit_width().unwrap(),
+                    ty::Int(int) => int.normalize(target_width).bit_width().unwrap(),
+                    ty::Char => 32,
+                    ty::Bool => 1,
+                    other => bug!("unhandled type: {:?}", other),
+                });
+
+                for (value, target) in targets.iter() {
+                    if Scalar::<()>::try_from_uint(value, size).is_none() {
+                        self.fail(
+                            location,
+                            format!("the value {:#x} is not a proper {:?}", value, switch_ty),
+                        )
+                    }
+
                     self.check_edge(location, target, EdgeKind::Normal);
                 }
                 self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
