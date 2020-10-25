@@ -1632,6 +1632,7 @@ Released 2018-09-13
 [`assign_ops`]: https://rust-lang.github.io/rust-clippy/master/index.html#assign_ops
 [`async_yields_async`]: https://rust-lang.github.io/rust-clippy/master/index.html#async_yields_async
 [`await_holding_lock`]: https://rust-lang.github.io/rust-clippy/master/index.html#await_holding_lock
+[`await_holding_refcell_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#await_holding_refcell_ref
 [`bad_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#bad_bit_mask
 [`bind_instead_of_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#bind_instead_of_map
 [`blacklisted_name`]: https://rust-lang.github.io/rust-clippy/master/index.html#blacklisted_name

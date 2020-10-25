@@ -62,10 +62,17 @@ vec![
     },
     Lint {
         name: "await_holding_lock",
-        group: "pedantic",
+        group: "correctness",
         desc: "Inside an async function, holding a MutexGuard while calling await",
         deprecation: None,
-        module: "await_holding_lock",
+        module: "await_holding_invalid",
+    },
+    Lint {
+        name: "await_holding_refcell_ref",
+        group: "correctness",
+        desc: "Inside an async function, holding a RefCell ref while calling await",
+        deprecation: None,
+        module: "await_holding_invalid",
     },
     Lint {
         name: "bad_bit_mask",
