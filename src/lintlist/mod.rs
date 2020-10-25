@@ -1503,6 +1503,13 @@ vec![
         module: "mut_mut",
     },
     Lint {
+        name: "mut_mutex_lock",
+        group: "style",
+        desc: "`&mut Mutex::lock` does unnecessary locking",
+        deprecation: None,
+        module: "mut_mutex_lock",
+    },
+    Lint {
         name: "mut_range_bound",
         group: "complexity",
         desc: "for loop over a range where one of the bounds is a mutable variable",
