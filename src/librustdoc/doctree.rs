@@ -31,22 +31,6 @@ crate struct Static<'hir> {
 }
 
 #[derive(Debug)]
-crate struct Impl<'hir> {
-    crate unsafety: hir::Unsafety,
-    crate polarity: hir::ImplPolarity,
-    crate defaultness: hir::Defaultness,
-    crate constness: hir::Constness,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate trait_: &'hir Option<hir::TraitRef<'hir>>,
-    crate for_: &'hir hir::Ty<'hir>,
-    crate items: Vec<&'hir hir::ImplItem<'hir>>,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
-    crate vis: &'hir hir::Visibility<'hir>,
-    crate id: hir::HirId,
-}
-
-#[derive(Debug)]
 crate struct Import<'hir> {
     crate name: Symbol,
     crate id: hir::HirId,

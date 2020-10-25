@@ -313,7 +313,7 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 generics: generics.clean(cx),
                 bounds: bounds.clean(cx),
             })),
-            _ => unimplemented!(),
+            ItemKind::Impl { .. } => return clean_impl(self, cx),
         };
 
         let build_item = |kind| Item {
@@ -2060,57 +2060,66 @@ impl Clean<ImplPolarity> for ty::ImplPolarity {
     }
 }
 
-impl Clean<Vec<Item>> for doctree::Impl<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        let mut ret = Vec::new();
-        let trait_ = self.trait_.clean(cx);
-        let items = self.items.iter().map(|ii| ii.clean(cx)).collect::<Vec<_>>();
-        let def_id = cx.tcx.hir().local_def_id(self.id);
-
-        // If this impl block is an implementation of the Deref trait, then we
-        // need to try inlining the target's inherent impl blocks as well.
-        if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
-            build_deref_target_impls(cx, &items, &mut ret);
+fn clean_impl(item: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
+    let (unsafety, of_trait, self_ty, items, generics) = match item.kind {
+        hir::ItemKind::Impl { unsafety, ref of_trait, self_ty, items, ref generics, .. } => {
+            (unsafety, of_trait, self_ty, items, generics)
         }
+        _ => unreachable!(),
+    };
 
-        let provided: FxHashSet<String> = trait_
-            .def_id()
-            .map(|did| {
-                cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect()
-            })
-            .unwrap_or_default();
-
-        let for_ = self.for_.clean(cx);
-        let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
-            DefKind::TyAlias => Some(cx.tcx.type_of(did).clean(cx)),
-            _ => None,
-        });
-        let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| Item {
-            name: None,
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: def_id.to_def_id(),
-            visibility: self.vis.clean(cx),
-            stability: cx.stability(self.id),
-            deprecation: cx.deprecation(self.id).clean(cx),
-            kind: ImplItem(Impl {
-                unsafety: self.unsafety,
-                generics: self.generics.clean(cx),
-                provided_trait_methods: provided.clone(),
-                trait_,
-                for_,
-                items,
-                polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
-                synthetic: false,
-                blanket_impl: None,
-            }),
-        };
-        if let Some(type_alias) = type_alias {
-            ret.push(make_item(trait_.clone(), type_alias, items.clone()));
-        }
-        ret.push(make_item(trait_, for_, items));
-        ret
+    // Don't duplicate impls when implementing a trait, we'll pick
+    // them up regardless of where they're located.
+    if of_trait.is_some() {
+        return vec![];
     }
+
+    let mut ret = Vec::new();
+    let trait_ = of_trait.clean(cx);
+    let items: Vec<_> = items.iter().map(|ii| cx.tcx.hir().impl_item(ii.id).clean(cx)).collect();
+    let def_id = cx.tcx.hir().local_def_id(item.hir_id);
+
+    // If this impl block is an implementation of the Deref trait, then we
+    // need to try inlining the target's inherent impl blocks as well.
+    if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
+        build_deref_target_impls(cx, &items, &mut ret);
+    }
+
+    let provided: FxHashSet<String> = trait_
+        .def_id()
+        .map(|did| cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect())
+        .unwrap_or_default();
+
+    let for_ = self_ty.clean(cx);
+    let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
+        DefKind::TyAlias => Some(cx.tcx.type_of(did).clean(cx)),
+        _ => None,
+    });
+    let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| Item {
+        name: None,
+        attrs: item.attrs.clean(cx),
+        source: item.span.clean(cx),
+        def_id: def_id.to_def_id(),
+        visibility: item.vis.clean(cx),
+        stability: cx.stability(item.hir_id),
+        deprecation: cx.deprecation(item.hir_id).clean(cx),
+        kind: ImplItem(Impl {
+            unsafety,
+            generics: generics.clean(cx),
+            provided_trait_methods: provided.clone(),
+            trait_,
+            for_,
+            items,
+            polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
+            synthetic: false,
+            blanket_impl: None,
+        }),
+    };
+    if let Some(type_alias) = type_alias {
+        ret.push(make_item(trait_.clone(), type_alias, items.clone()));
+    }
+    ret.push(make_item(trait_, for_, items));
+    ret
 }
 
 fn clean_extern_crate(
