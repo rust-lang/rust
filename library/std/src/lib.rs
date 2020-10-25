@@ -206,6 +206,7 @@
 #![needs_panic_runtime]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
+#![cfg_attr(not(bootstrap), feature(rustc_allow_const_fn_unstable))]
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),

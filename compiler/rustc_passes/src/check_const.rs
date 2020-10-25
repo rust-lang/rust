@@ -87,7 +87,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
         let is_feature_allowed = |feature_gate| {
             // All features require that the corresponding gate be enabled,
-            // even if the function has `#[allow_internal_unstable(the_gate)]`.
+            // even if the function has `#[rustc_allow_const_fn_unstable(the_gate)]`.
             if !tcx.features().enabled(feature_gate) {
                 return false;
             }
@@ -105,8 +105,8 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             }
 
             // However, we cannot allow stable `const fn`s to use unstable features without an explicit
-            // opt-in via `allow_internal_unstable`.
-            attr::allow_internal_unstable(&tcx.sess, &tcx.get_attrs(def_id))
+            // opt-in via `rustc_allow_const_fn_unstable`.
+            attr::rustc_allow_const_fn_unstable(&tcx.sess, &tcx.get_attrs(def_id))
                 .map_or(false, |mut features| features.any(|name| name == feature_gate))
         };
 

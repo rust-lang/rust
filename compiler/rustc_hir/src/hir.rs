@@ -1101,11 +1101,11 @@ pub enum StmtKind<'hir> {
     Semi(&'hir Expr<'hir>),
 }
 
-impl StmtKind<'hir> {
-    pub fn attrs(&self) -> &'hir [Attribute] {
+impl<'hir> StmtKind<'hir> {
+    pub fn attrs(&self, get_item: impl FnOnce(ItemId) -> &'hir Item<'hir>) -> &'hir [Attribute] {
         match *self {
             StmtKind::Local(ref l) => &l.attrs,
-            StmtKind::Item(_) => &[],
+            StmtKind::Item(ref item_id) => &get_item(*item_id).attrs,
             StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => &e.attrs,
         }
     }

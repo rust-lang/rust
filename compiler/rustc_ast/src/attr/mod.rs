@@ -629,7 +629,8 @@ impl HasAttrs for StmtKind {
         match *self {
             StmtKind::Local(ref local) => local.attrs(),
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
-            StmtKind::Empty | StmtKind::Item(..) => &[],
+            StmtKind::Item(ref item) => item.attrs(),
+            StmtKind::Empty => &[],
             StmtKind::MacCall(ref mac) => mac.attrs.attrs(),
         }
     }
@@ -638,7 +639,8 @@ impl HasAttrs for StmtKind {
         match self {
             StmtKind::Local(local) => local.visit_attrs(f),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
-            StmtKind::Empty | StmtKind::Item(..) => {}
+            StmtKind::Item(item) => item.visit_attrs(f),
+            StmtKind::Empty => {}
             StmtKind::MacCall(mac) => {
                 mac.attrs.visit_attrs(f);
             }

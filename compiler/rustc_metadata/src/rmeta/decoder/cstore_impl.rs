@@ -8,6 +8,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
@@ -485,6 +486,10 @@ impl CrateStore for CStore {
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> DefKey {
         self.get_crate_data(def.krate).def_key(def.index)
+    }
+
+    fn def_kind(&self, def: DefId) -> DefKind {
+        self.get_crate_data(def.krate).def_kind(def.index)
     }
 
     fn def_path(&self, def: DefId) -> DefPath {

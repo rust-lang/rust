@@ -894,6 +894,7 @@ symbols! {
         rustc,
         rustc_allocator,
         rustc_allocator_nounwind,
+        rustc_allow_const_fn_unstable,
         rustc_args_required_const,
         rustc_attrs,
         rustc_builtin_macro,

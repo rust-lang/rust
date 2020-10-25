@@ -14,4 +14,4 @@ To see it for a different target, add the `--target` flag:
 $ rustc +nightly -Z unstable-options --target=wasm32-unknown-unknown --print target-spec-json
 ```
 
-To use a custom target, see [`xargo`](https://github.com/japaric/xargo).
+To use a custom target, see the (unstable) [`build-std` feature](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) of `cargo`.

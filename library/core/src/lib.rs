@@ -63,6 +63,7 @@
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
+#![cfg_attr(not(bootstrap), feature(rustc_allow_const_fn_unstable))]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]

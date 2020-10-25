@@ -50,10 +50,15 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
     {
         if let Some(root) = &self.root {
             let root_node = root.node_as_ref();
+
             assert!(root_node.ascend().is_err());
             root_node.assert_back_pointers();
-            root_node.assert_ascending();
-            assert_eq!(self.length, root_node.assert_and_add_lengths());
+
+            let counted = root_node.assert_ascending();
+            assert_eq!(self.length, counted);
+            assert_eq!(self.length, root_node.calc_length());
+
+            root_node.assert_min_len(if root_node.height() > 0 { 1 } else { 0 });
         } else {
             assert_eq!(self.length, 0);
         }
@@ -72,6 +77,18 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
             root.node_as_ref().dump_keys()
         } else {
             String::from("not yet allocated")
+        }
+    }
+}
+
+impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
+    pub fn assert_min_len(self, min_len: usize) {
+        assert!(self.len() >= min_len, "{} < {}", self.len(), min_len);
+        if let node::ForceResult::Internal(node) = self.force() {
+            for idx in 0..=node.len() {
+                let edge = unsafe { Handle::new_edge(node, idx) };
+                edge.descend().assert_min_len(MIN_LEN);
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
-use super::node::{self, ForceResult::*, Root};
-use super::search::{self, SearchResult::*};
+use super::map::MIN_LEN;
+use super::node::{ForceResult::*, Root};
+use super::search::{search_node, SearchResult::*};
 use core::borrow::Borrow;
 
 impl<K, V> Root<K, V> {
@@ -20,7 +21,7 @@ impl<K, V> Root<K, V> {
             let mut right_node = right_root.node_as_mut();
 
             loop {
-                let mut split_edge = match search::search_node(left_node, key) {
+                let mut split_edge = match search_node(left_node, key) {
                     // key is going to the right tree
                     Found(handle) => handle.left_edge(),
                     GoDown(handle) => handle,
@@ -65,9 +66,9 @@ impl<K, V> Root<K, V> {
                     cur_node = last_kv.merge().descend();
                 } else {
                     let right_len = last_kv.reborrow().right_edge().descend().len();
-                    // `MINLEN + 1` to avoid readjust if merge happens on the next level.
-                    if right_len < node::MIN_LEN + 1 {
-                        last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                    // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
+                    if right_len < MIN_LEN + 1 {
+                        last_kv.bulk_steal_left(MIN_LEN + 1 - right_len);
                     }
                     cur_node = last_kv.right_edge().descend();
                 }
@@ -91,8 +92,9 @@ impl<K, V> Root<K, V> {
                     cur_node = first_kv.merge().descend();
                 } else {
                     let left_len = first_kv.reborrow().left_edge().descend().len();
-                    if left_len < node::MIN_LEN + 1 {
-                        first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
+                    // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
+                    if left_len < MIN_LEN + 1 {
+                        first_kv.bulk_steal_right(MIN_LEN + 1 - left_len);
                     }
                     cur_node = first_kv.left_edge().descend();
                 }
