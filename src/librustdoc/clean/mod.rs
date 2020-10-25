@@ -232,25 +232,31 @@ impl Clean<ExternalCrate> for CrateNum {
 impl Clean<ItemEnum> for hir::ItemKind<'_> {
     fn clean(&self, _cx: &DocContext<'_>) -> ItemEnum {
         match self {
-            ExternalCrate(name) => 
+            ExternalCrate(name) =>
         }
     }
 }
 */
 
-impl Clean<Item> for hir::Item<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
+enum CleanedModule {
+    Module(ItemKind),
+    Inlined(Vec<Item>),
+}
+
+impl Clean<Vec<Item>> for hir::Item<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         use hir::ItemKind;
 
         let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
         let name = cx.tcx.item_name(def_id).clean(cx);
-        let inner = match self.kind {
+        let kind = match self.kind {
             // TODO: should store Symbol, not String
-            ItemKind::ExternCrate(renamed) => ExternCrateItem(name.clone(), renamed.clean(cx)),
-            ItemKind::Use(path, kind) => {
-                unimplemented!()
-            }
-                /*
+            ItemKind::ExternCrate(renamed) => match clean_extern_crate(self, renamed, cx) {
+                CleanedModule::Module(inner) => inner,
+                CleanedModule::Inlined(items) => return items,
+            },
+            ItemKind::Use(path, kind) => unimplemented!(),
+            /*
                 ImportItem(Import {
                 kind: kind.clean(cx),
                 source: path.clean(cx),
@@ -259,16 +265,16 @@ impl Clean<Item> for hir::Item<'_> {
             _ => unimplemented!(),
         };
 
-        Item {
+        vec![Item {
             def_id,
-            inner,
+            kind,
             name: Some(name),
             source: cx.tcx.def_span(def_id).clean(cx),
             attrs: self.attrs.clean(cx), // should this use tcx.attrs instead?
             visibility: self.vis.clean(cx), // TODO: use tcx.visibility once #78077 lands
             stability: cx.tcx.lookup_stability(def_id).copied(),
             deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
-        }
+        }]
     }
 }
 
@@ -279,17 +285,22 @@ impl Clean<Item> for hir::Crate<'_> {
         let attrs = self.item.attrs.clean(cx);
 
         // Get _all_ the items!
-        let mut items = self.items.clean(cx);
-        items.extend(self.exported_macros.clean(cx));
-        items.extend(self.trait_items.clean(cx));
-        items.extend(self.impl_items.clean(cx));
+        let items = self.items.clean(cx).into_iter().flatten();
+        let items = items.chain(self.exported_macros.clean(cx));
+        let items = items.chain(self.trait_items.clean(cx));
+        let items = items.chain(self.impl_items.clean(cx));
         // NOTE: bodies intentionally skipped
 
-        items.extend(self.trait_impls.iter().flat_map(|(_trait, impls)| {
-            impls.into_iter().map(|&impl_| cx.tcx.hir().item(impl_).clean(cx))
-        }));
-        items.extend(self.modules.clean(cx).into_iter().flatten());
-        items.extend(self.proc_macros.iter().map(|hir_id| {
+        let items = items.chain(
+            self.trait_impls
+                .iter()
+                .flat_map(|(_trait, impls)| {
+                    impls.into_iter().map(|&impl_| cx.tcx.hir().item(impl_).clean(cx))
+                })
+                .flatten(),
+        );
+        let items = items.chain(self.modules.clean(cx).into_iter().flatten());
+        let items = items.chain(self.proc_macros.iter().map(|hir_id| {
             let _def_id = hir_id.owner.local_def_index;
             // TODO: look how `rustc_metadata::rmeta::encoder` does this
             unimplemented!()
@@ -320,7 +331,7 @@ impl Clean<Item> for hir::Crate<'_> {
             stability: cx.stability(id),
             deprecation: cx.deprecation(id).clean(cx),
             def_id: cx.tcx.hir().local_def_id(id).to_def_id(),
-            kind: ModuleItem(Module { is_crate: true, items }),
+            kind: ModuleItem(Module { is_crate: true, items: items.collect() }),
         }
     }
 }
@@ -2226,45 +2237,40 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
     }
 }
 
-impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        let please_inline = self.vis.node.is_pub()
-            && self.attrs.iter().any(|a| {
-                a.has_name(sym::doc)
-                    && match a.meta_item_list() {
-                        Some(l) => attr::list_contains_name(&l, sym::inline),
-                        None => false,
-                    }
-            });
+fn clean_extern_crate(
+    item: &hir::Item<'_>,
+    renamed: Option<Symbol>,
+    cx: &DocContext<'_>,
+) -> CleanedModule {
+    let please_inline = item.vis.node.is_pub()
+        && item.attrs.iter().any(|a| {
+            a.has_name(sym::doc)
+                && match a.meta_item_list() {
+                    Some(l) => attr::list_contains_name(&l, sym::inline),
+                    None => false,
+                }
+        });
+    let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+    let name = cx.tcx.item_name(def_id);
 
-        if please_inline {
-            let mut visited = FxHashSet::default();
+    if please_inline {
+        let mut visited = FxHashSet::default();
 
-            let res = Res::Def(DefKind::Mod, DefId { krate: self.cnum, index: CRATE_DEF_INDEX });
+        let res = Res::Def(DefKind::Mod, def_id);
 
-            if let Some(items) = inline::try_inline(
-                cx,
-                cx.tcx.parent_module(self.hir_id).to_def_id(),
-                res,
-                self.name,
-                Some(self.attrs),
-                &mut visited,
-            ) {
-                return items;
-            }
+        if let Some(items) = inline::try_inline(
+            cx,
+            cx.tcx.parent_module(item.hir_id).to_def_id(),
+            res,
+            name,
+            Some(item.attrs),
+            &mut visited,
+        ) {
+            return CleanedModule::Inlined(items);
         }
-
-        vec![Item {
-            name: None,
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: DefId { krate: self.cnum, index: CRATE_DEF_INDEX },
-            visibility: self.vis.clean(cx),
-            stability: None,
-            deprecation: None,
-            kind: ExternCrateItem(self.name.clean(cx), self.path.clone()),
-        }]
     }
+
+    CleanedModule::Module(ExternCrateItem(name.clean(cx), renamed.clean(cx)))
 }
 
 impl Clean<Vec<Item>> for doctree::Import<'_> {

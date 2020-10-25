@@ -7,8 +7,6 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::{self, Span, Symbol};
 
 use rustc_hir as hir;
-use rustc_hir::def_id::CrateNum;
-use rustc_hir::HirId;
 
 #[derive(Debug, Clone, Copy)]
 crate enum StructType {
@@ -125,17 +123,10 @@ crate struct Impl<'hir> {
 }
 
 crate struct ForeignItem<'hir> {
+    crate vis: &'hir hir::Visibility<'hir>,
     crate id: hir::HirId,
     crate name: Symbol,
     crate kind: &'hir hir::ForeignItemKind<'hir>,
-}
-
-crate struct ExternCrate<'hir> {
-    crate name: Symbol,
-    crate hir_id: HirId,
-    crate cnum: CrateNum,
-    crate path: Option<String>,
-    crate vis: &'hir hir::Visibility<'hir>,
     crate attrs: &'hir [ast::Attribute],
     crate span: Span,
 }
