@@ -2090,25 +2090,25 @@ fn const_evaluatable_predicates_of<'tcx>(
     if let hir::Node::Item(item) = node {
         if let hir::ItemKind::Impl { ref of_trait, ref self_ty, .. } = item.kind {
             if let Some(of_trait) = of_trait {
-                warn!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+                debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
                 collector.visit_trait_ref(of_trait);
             }
 
-            warn!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+            debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
             collector.visit_ty(self_ty);
         }
     }
 
     if let Some(generics) = node.generics() {
-        warn!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
+        debug!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
         collector.visit_generics(generics);
     }
 
     if let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id) {
-        warn!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
+        debug!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
         collector.visit_fn_decl(fn_sig.decl);
     }
-    warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
+    debug!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
 
     collector.preds
 }
