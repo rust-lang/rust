@@ -49,15 +49,36 @@ LL | };
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:39:29
+  --> $DIR/promote-not.rs:40:29
+   |
+LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
+   |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
+LL | };
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:45:29
    |
 LL |     let _val: &'static _ = &(Cell::new(1), 2).0;
+   |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |               |
+   |               type annotation requires that borrow lasts for `'static`
+LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:46:29
+   |
+LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
    |               ----------    ^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
    |               |
    |               type annotation requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0716`.
