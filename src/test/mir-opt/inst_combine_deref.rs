@@ -1,4 +1,4 @@
-// compile-flags: -O -Zunsound-mir-opts
+// compile-flags: -O
 // EMIT_MIR inst_combine_deref.simple_opt.InstCombine.diff
 fn simple_opt() -> u64 {
     let x = 5;
