@@ -1205,10 +1205,6 @@ impl EncodeContext<'a, 'tcx> {
         def_id: DefId,
         attrs: &'_ [ast::Attribute],
         ident: Ident,
-        should_encode_item_type: bool,
-        should_encode_fn_sig: bool,
-        should_encode_variances: bool,
-        should_encode_generics_explicit_predicates_inferred_outlives: bool,
     ) {
         record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
@@ -1217,69 +1213,17 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
-        if should_encode_item_type {
-            self.encode_item_type(def_id);
-        }
         self.encode_inherent_implementations(def_id);
-        if should_encode_fn_sig {
-            record!(self.tables.fn_sig[def_id] <- self.tcx.fn_sig(def_id));
-        }
-        if should_encode_variances {
-            self.encode_variances_of(def_id);
-        }
-        if should_encode_generics_explicit_predicates_inferred_outlives {
-            self.encode_generics(def_id);
-            self.encode_explicit_predicates(def_id);
-            self.encode_inferred_outlives(def_id);
-        }
     }
 
     fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item<'tcx>) {
+        let tcx = self.tcx;
+
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
 
         // Must be at top of function, so ident span encoding happens early
         // Otherwise later operations panic with 'Missing ident span ...'
-        self.encode_info_for_item_foreign_item_common(
-            def_id,
-            item.attrs,
-            item.ident,
-            matches!(
-                item.kind,
-                hir::ItemKind::Static(..)
-                | hir::ItemKind::Const(..)
-                | hir::ItemKind::Fn(..)
-                | hir::ItemKind::TyAlias(..)
-                | hir::ItemKind::OpaqueTy(..)
-                | hir::ItemKind::Enum(..)
-                | hir::ItemKind::Struct(..)
-                | hir::ItemKind::Union(..)
-                | hir::ItemKind::Impl { .. }
-            ),
-            matches!(item.kind, hir::ItemKind::Fn(..)),
-            matches!(
-                item.kind,
-                hir::ItemKind::Enum(..)
-                    | hir::ItemKind::Struct(..)
-                    | hir::ItemKind::Union(..)
-                    | hir::ItemKind::Fn(..)
-            ),
-            matches!(
-                item.kind,
-                hir::ItemKind::Static(..)
-                | hir::ItemKind::Const(..)
-                | hir::ItemKind::Fn(..)
-                | hir::ItemKind::TyAlias(..)
-                | hir::ItemKind::Enum(..)
-                | hir::ItemKind::Struct(..)
-                | hir::ItemKind::Union(..)
-                | hir::ItemKind::Impl { .. }
-                | hir::ItemKind::OpaqueTy(..)
-                | hir::ItemKind::Trait(..)
-                | hir::ItemKind::TraitAlias(..)
-            ),
-        );
-
-        let tcx = self.tcx;
+        self.encode_info_for_item_foreign_item_common(def_id, item.attrs, item.ident);
 
         record!(self.tables.kind[def_id] <- match item.kind {
             hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
@@ -1426,10 +1370,50 @@ impl EncodeContext<'a, 'tcx> {
             }
             _ => {}
         }
+        match item.kind {
+            hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Impl { .. } => self.encode_item_type(def_id),
+            _ => {}
+        }
+        if let hir::ItemKind::Fn(..) = item.kind {
+            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+        }
         if let hir::ItemKind::Impl { .. } = item.kind {
             if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
                 record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
             }
+        }
+        match item.kind {
+            hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Fn(..) => self.encode_variances_of(def_id),
+            _ => {}
+        }
+        match item.kind {
+            hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Impl { .. }
+            | hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::Trait(..)
+            | hir::ItemKind::TraitAlias(..) => {
+                self.encode_generics(def_id);
+                self.encode_explicit_predicates(def_id);
+                self.encode_inferred_outlives(def_id);
+            }
+            _ => {}
         }
         match item.kind {
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
@@ -1730,17 +1714,11 @@ impl EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_foreign_item(&mut self, def_id: DefId, nitem: &hir::ForeignItem<'_>) {
+        let tcx = self.tcx;
+
         debug!("EncodeContext::encode_info_for_foreign_item({:?})", def_id);
 
-        self.encode_info_for_item_foreign_item_common(
-            def_id,
-            nitem.attrs,
-            nitem.ident,
-            true,
-            matches!(nitem.kind, hir::ForeignItemKind::Fn(..)),
-            matches!(nitem.kind, hir::ForeignItemKind::Fn(..)),
-            true,
-        );
+        self.encode_info_for_item_foreign_item_common(def_id, nitem.attrs, nitem.ident);
 
         record!(self.tables.kind[def_id] <- match nitem.kind {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
@@ -1759,6 +1737,14 @@ impl EncodeContext<'a, 'tcx> {
             hir::ForeignItemKind::Static(_, hir::Mutability::Not) => EntryKind::ForeignImmStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         });
+        self.encode_item_type(def_id);
+        if let hir::ForeignItemKind::Fn(..) = nitem.kind {
+            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
+            self.encode_variances_of(def_id);
+        }
+        self.encode_generics(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
     }
 }
 
