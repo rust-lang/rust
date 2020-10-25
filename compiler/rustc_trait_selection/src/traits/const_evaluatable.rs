@@ -571,15 +571,15 @@ pub fn walk_abstract_const<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     ct: AbstractConst<'tcx>,
     mut f: F,
-) -> ControlFlow<(), ()>
+) -> ControlFlow<()>
 where
-    F: FnMut(Node<'tcx>) -> ControlFlow<(), ()>,
+    F: FnMut(Node<'tcx>) -> ControlFlow<()>,
 {
     fn recurse<'tcx>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
-        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<(), ()>,
-    ) -> ControlFlow<(), ()> {
+        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<()>,
+    ) -> ControlFlow<()> {
         let root = ct.root();
         f(root)?;
         match root {

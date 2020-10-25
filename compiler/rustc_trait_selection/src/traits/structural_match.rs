@@ -135,7 +135,7 @@ impl Search<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<(), ()> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
         debug!("Search visiting ty: {:?}", ty);
 
         let (adt_def, substs) = match *ty.kind() {

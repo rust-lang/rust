@@ -800,18 +800,18 @@ fn check_where_clauses<'tcx, 'fcx>(
                 params: FxHashSet<u32>,
             }
             impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<(), ()> {
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
                     if let ty::Param(param) = t.kind() {
                         self.params.insert(param.index);
                     }
                     t.super_visit_with(self)
                 }
 
-                fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<(), ()> {
+                fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<()> {
                     ControlFlow::BREAK
                 }
 
-                fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<(), ()> {
+                fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
                     if let ty::ConstKind::Param(param) = c.val {
                         self.params.insert(param.index);
                     }

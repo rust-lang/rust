@@ -693,12 +693,12 @@ impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ControlFlow<(), ()> {
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ControlFlow<()> {
         t.as_ref().skip_binder().visit_with(self);
         ControlFlow::CONTINUE
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<(), ()> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<()> {
         match *r {
             // ignore bound regions, keep visiting
             ty::ReLateBound(_, _) => ControlFlow::CONTINUE,
@@ -709,7 +709,7 @@ where
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<(), ()> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
         // We're only interested in types involving regions
         if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
             return ControlFlow::CONTINUE;

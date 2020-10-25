@@ -559,7 +559,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
 struct ContainsRegion;
 
 impl TypeVisitor<'_> for ContainsRegion {
-    fn visit_region(&mut self, _: ty::Region<'_>) -> ControlFlow<(), ()> {
+    fn visit_region(&mut self, _: ty::Region<'_>) -> ControlFlow<()> {
         ControlFlow::BREAK
     }
 }

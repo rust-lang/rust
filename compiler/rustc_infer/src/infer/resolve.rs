@@ -123,7 +123,7 @@ impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<(), ()> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
             if let ty::Infer(infer_ty) = *t.kind() {
