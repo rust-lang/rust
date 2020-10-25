@@ -62,12 +62,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[phiload:.+]] = phi double* [ null, %entry ], [ %[[loadi1_realloccast:.+]], %while.body.i.i.i ]
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %while.body.i.i.i ], [ 0, %entry ]
 ; CHECK-NEXT:   %load.i1 = phi double [ %x.promoted, %entry ], [ %add10.i.i.i, %while.body.i.i.i ]
-; CHECK-NEXT:   %[[tiv:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %[[prevc:.+]] = bitcast double* %[[phiload]] to i8*
 ; CHECK-NEXT:   %[[shl:.+]] = mul nuw nsw i64 8, %iv.next
 ; CHECK-NEXT:   %[[loadi1_realloccache:.+]] = call i8* @realloc(i8* %[[prevc]], i64 %[[shl]])
 ; CHECK-NEXT:   %[[loadi1_realloccast]] = bitcast i8* %[[loadi1_realloccache]] to double*
+; CHECK-NEXT:   %[[tiv:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %[[tostore:.+]] = fmul fast double %load.i1, 0xBFF3333333333332
 ; CHECK-NEXT:   %[[storeplace:.+]] = getelementptr inbounds double, double* %[[loadi1_realloccast]], i64 %iv
 ; CHECK-NEXT:   store double %[[tostore]], double* %[[storeplace]], align 8, !invariant.group !0

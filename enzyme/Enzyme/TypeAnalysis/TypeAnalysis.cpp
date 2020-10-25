@@ -1983,7 +1983,11 @@ void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
     for(auto& val : call.arg_operands()) {
       args.push_back(val);
     }
+    #if LLVM_VERSION_MAJOR >= 11
     CallInst* tmpCall = B.CreateCall(call.getFunctionType(), call.getCalledOperand(), args);
+    #else
+    CallInst* tmpCall = B.CreateCall(call.getFunctionType(), call.getCalledValue(), args);
+    #endif
     analysis[tmpCall] = analysis[&call];
     visitCallInst(*tmpCall);
     analysis[&call] = analysis[tmpCall];

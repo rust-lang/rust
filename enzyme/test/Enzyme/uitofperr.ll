@@ -173,16 +173,16 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %0 = phi i8* [ null, %entry ], [ %_realloccache, %while ]
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %while ]
 ; CHECK-NEXT:   %1 = phi double [ 1.000000e+00, %entry ], [ %add, %while ]
-; CHECK-NEXT:   %2 = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %3 = shl nuw nsw i64 %iv.next, 3
-; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %3) #4
+; CHECK-NEXT:   %[[torealloc:.+]] = shl nuw nsw i64 %iv.next, 3
+; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %[[torealloc]]) #4
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
-; CHECK-NEXT:   %4 = getelementptr inbounds double, double* %_realloccast, i64 %iv
-; CHECK-NEXT:   store double %1, double* %4, align 8, !invariant.group !8
+; CHECK-NEXT:   %[[gep:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %iv
+; CHECK-NEXT:   store double %1, double* %[[gep]], align 8, !invariant.group !8
+; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %mul2 = fmul fast double %mul, %1
 ; CHECK-NEXT:   %add = fadd fast double %mul2, %1
-; CHECK-NEXT:   %nexti = add nuw nsw i32 %2, 1
+; CHECK-NEXT:   %nexti = add nuw nsw i32 %[[trunc]], 1
 ; CHECK-NEXT:   %conv = sitofp i32 %nexti to double
 ; CHECK-NEXT:   %mul.us.i.i.i = fmul fast double %conv, %t
 ; CHECK-NEXT:   %cmp = fcmp fast ugt double %mul.us.i.i.i, 0x3CB0000000000000

@@ -126,26 +126,12 @@ attributes #9 = { nounwind }
 
 ; CHECK: define internal void @diffe_Z10reduce_maxPdi(double* nocapture readonly %vec, double* nocapture %"vec'", double* %end, double* %"end'", double %differeturn) 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %end1 = bitcast double* %end to i8*
-; CHECK-NEXT:   %sub.ptr.rhs.cast.i480 = ptrtoint double* %vec to i64
-; CHECK-NEXT:   %0 = sub i64 0, %sub.ptr.rhs.cast.i480
-; CHECK-NEXT:   %uglygep = getelementptr i8, i8* %end1, i64 %0
-; CHECK-NEXT:   %uglygep2 = ptrtoint i8* %uglygep to i64
-; CHECK-NEXT:   %1 = lshr i64 %uglygep2, 3
-; CHECK-NEXT:   %2 = add nuw{{( nsw)?}} i64 %1, 1
-; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %2, 8
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %[[malloccache:.+]] = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond13
 
 ; CHECK: for.cond13:                                       ; preds = %for.cond13, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond13 ], [ 0, %entry ]
-; CHECK-NEXT:   %3 = phi double* [ %"incdec.ptr.i445'ipg", %for.cond13 ], [ %"vec'", %entry ]
-; CHECK-NEXT:   %4 = getelementptr inbounds double*, double** %[[malloccache]], i64 %iv
-; CHECK-NEXT:   store double* %3, double** %4, align 8, !invariant.group !6
-; CHECK-NEXT:   %scevgep = getelementptr double, double* %vec, i64 %iv
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %"incdec.ptr.i445'ipg" = getelementptr inbounds double, double* %3, i32 1
+; CHECK-NEXT:   %scevgep = getelementptr double, double* %vec, i64 %iv
 ; CHECK-NEXT:   %cmp.i432 = icmp ne double* %scevgep, %end
 ; CHECK-NEXT:   br i1 %cmp.i432, label %for.cond13, label %endloop
 
@@ -158,21 +144,19 @@ attributes #9 = { nounwind }
 ; CHECK-NEXT:   %d0diffeadd = fdiv fast double %differeturn, %conv
 ; CHECK-NEXT:   br label %invertfor.cond13
 
-; CHECK: invertentry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
+; CHECK: invertentry:                                      ; preds = %invertfor.cond13
 ; CHECK-NEXT:   ret void
 
-; CHECK: invertfor.cond13: 
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %1, %endloop ], [ %10, %incinvertfor.cond13 ]
-; CHECK-NEXT:   %5 = getelementptr inbounds double*, double** %_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %6 = load double*, double** %5, align 8, !invariant.group !6
-; CHECK-NEXT:   %7 = load double, double* %6, align 8
-; CHECK-NEXT:   %8 = fadd fast double %7, %d0diffeadd
-; CHECK-NEXT:   store double %8, double* %6, align 8
-; CHECK-NEXT:   %9 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %9, label %invertentry, label %incinvertfor.cond13
+; CHECK: invertfor.cond13:                                 ; preds = %endloop, %incinvertfor.cond13
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %endloop ], [ %3, %incinvertfor.cond13 ]
+; CHECK-NEXT:   %"scevgep'ipg_unwrap" = getelementptr double, double* %"vec'", i64 %"iv'ac.0"
+; CHECK-NEXT:   %0 = load double, double* %"scevgep'ipg_unwrap", align 8
+; CHECK-NEXT:   %1 = fadd fast double %0, %d0diffeadd
+; CHECK-NEXT:   store double %1, double* %"scevgep'ipg_unwrap", align 8
+; CHECK-NEXT:   %2 = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %2, label %invertentry, label %incinvertfor.cond13
 
-; CHECK: incinvertfor.cond13:
-; CHECK-NEXT:   %10 = add nsw i64 %"iv'ac.0", -1
+; CHECK: incinvertfor.cond13:                              ; preds = %invertfor.cond13
+; CHECK-NEXT:   %3 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.cond13
 ; CHECK-NEXT: }

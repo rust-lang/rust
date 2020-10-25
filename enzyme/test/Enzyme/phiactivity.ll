@@ -43,13 +43,13 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %[[prevalloc:.+]] = phi i8* [ null, %entry ], [ %_realloccache, %while ]
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %while ]
 ; CHECK-NEXT:   %[[mphi:.+]] = phi double [ 1.000000e+00, %entry ], [ %mul2, %while ]
-; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %[[size:.+]] = shl nuw nsw i64 %iv.next, 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[prevalloc]], i64 %[[size]])
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
 ; CHECK-NEXT:   %[[loc1:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %iv
 ; CHECK-NEXT:   store double %[[mphi]], double* %[[loc1]], align 8, !invariant.group !0
+; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %inc = add nuw nsw i32 %[[trunc]], 1
 ; CHECK-NEXT:   %mul2 = fmul fast double %[[mphi]], %t
 ; CHECK-NEXT:   %conv = sitofp i32 %inc to double

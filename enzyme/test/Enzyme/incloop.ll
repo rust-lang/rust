@@ -164,8 +164,8 @@ attributes #8 = { noreturn nounwind }
 
 ; CHECK: for.body:                                         ; preds = %for.body, %for.body.preheader
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %for.body.preheader ]
-; CHECK-NEXT:   %6 = mul nuw nsw i64 %0, %iv
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
+; CHECK-NEXT:   %6 = mul nuw nsw i64 %0, %iv
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %a, i64 %6
 ; CHECK-NEXT:   %7 = load double, double* %arrayidx, align 8, !tbaa !2
 ; CHECK-NEXT:   store double 0.000000e+00, double* %arrayidx, align 8, !tbaa !2

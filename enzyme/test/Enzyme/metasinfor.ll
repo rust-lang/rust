@@ -83,8 +83,8 @@ attributes #8 = { noreturn nounwind }
 ; TODO THIS LOOP SHOULD BE KILLED
 ; CHECK: for.cond:                                         ; preds = %for.cond, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %for.cond ]
-; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
+; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %cmp = icmp ugt i32 %[[trunc]], %n
 ; CHECK-NEXT:   br i1 %cmp, label %invertfor.cond, label %for.cond
 
