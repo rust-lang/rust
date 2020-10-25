@@ -12,6 +12,16 @@ use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::*;
 
+// When evaluating an expression operand to determine if it references a `Counter` or an
+// `Expression`, the range of counter or expression IDs must be known in order to answer the
+// question: "Does this ID fall inside the range of counters," for example. If "yes," the ID refers
+// to a counter, otherwise the ID refers to an expression.
+//
+// But in situations where the range is not currently known, the only fallback is to assume a
+// specific range limit. `MAX_COUNTER_GUARD` enforces a limit on the number of counters, and
+// therefore a limit on the range of counter IDs.
+pub(crate) const MAX_COUNTER_GUARD: u32 = (u32::MAX / 2) + 1;
+
 /// Manages the counter and expression indexes/IDs to generate `CoverageKind` components for MIR
 /// `Coverage` statements.
 pub(crate) struct CoverageCounters {
@@ -95,6 +105,7 @@ impl CoverageCounters {
     /// Counter IDs start from one and go up.
     fn next_counter(&mut self) -> CounterValueReference {
         assert!(self.next_counter_id < u32::MAX - self.num_expressions);
+        assert!(self.next_counter_id <= MAX_COUNTER_GUARD);
         let next = self.next_counter_id;
         self.next_counter_id += 1;
         CounterValueReference::from(next)

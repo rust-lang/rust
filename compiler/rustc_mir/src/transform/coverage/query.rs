@@ -1,3 +1,5 @@
+use super::counters;
+
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{Coverage, CoverageInfo, Location};
@@ -32,21 +34,16 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// safeguard, with `add_missing_operands` set to `true`, to find any other counter or expression
 /// IDs referenced by expression operands, if not already seen.
 ///
-/// Ideally, every expression operand in the MIR will have a corresponding Counter or Expression,
-/// but since current or future MIR optimizations can theoretically optimize out segments of a
-/// MIR, it may not be possible to guarantee this, so the second pass ensures the `CoverageInfo`
-/// counts include all referenced IDs.
+/// Ideally, each operand ID in a MIR `CoverageKind::Expression` will have a separate MIR `Coverage`
+/// statement for the `Counter` or `Expression` with the referenced ID. but since current or future
+/// MIR optimizations can theoretically optimize out segments of a MIR, it may not be possible to
+/// guarantee this, so the second pass ensures the `CoverageInfo` counts include all referenced IDs.
 struct CoverageVisitor {
     info: CoverageInfo,
     add_missing_operands: bool,
 }
 
 impl CoverageVisitor {
-    // If an expression operand is encountered with an ID outside the range of known counters and
-    // expressions, the only way to determine if the ID is a counter ID or an expression ID is to
-    // assume a maximum possible counter ID value.
-    const MAX_COUNTER_GUARD: u32 = (u32::MAX / 2) + 1;
-
     #[inline(always)]
     fn update_num_counters(&mut self, counter_id: u32) {
         self.info.num_counters = std::cmp::max(self.info.num_counters, counter_id + 1);
@@ -62,7 +59,10 @@ impl CoverageVisitor {
         if operand_id >= self.info.num_counters {
             let operand_as_expression_index = u32::MAX - operand_id;
             if operand_as_expression_index >= self.info.num_expressions {
-                if operand_id <= Self::MAX_COUNTER_GUARD {
+                if operand_id <= counters::MAX_COUNTER_GUARD {
+                    // Since the complete range of counter and expression IDs is not known here, the
+                    // only way to determine if the ID is a counter ID or an expression ID is to
+                    // assume a maximum possible counter ID value.
                     self.update_num_counters(operand_id)
                 } else {
                     self.update_num_expressions(operand_id)

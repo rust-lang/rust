@@ -85,23 +85,9 @@ impl From<CounterValueReference> for ExpressionOperandId {
     }
 }
 
-impl From<&mut CounterValueReference> for ExpressionOperandId {
-    #[inline]
-    fn from(v: &mut CounterValueReference) -> ExpressionOperandId {
-        ExpressionOperandId::from(v.as_u32())
-    }
-}
-
 impl From<InjectedExpressionId> for ExpressionOperandId {
     #[inline]
     fn from(v: InjectedExpressionId) -> ExpressionOperandId {
-        ExpressionOperandId::from(v.as_u32())
-    }
-}
-
-impl From<&mut InjectedExpressionId> for ExpressionOperandId {
-    #[inline]
-    fn from(v: &mut InjectedExpressionId) -> ExpressionOperandId {
         ExpressionOperandId::from(v.as_u32())
     }
 }

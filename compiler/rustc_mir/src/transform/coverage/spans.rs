@@ -388,8 +388,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         bcb_data
             .basic_blocks
             .iter()
-            .map(|bbref| {
-                let bb = *bbref;
+            .flat_map(|&bb| {
                 let data = &self.mir_body[bb];
                 data.statements
                     .iter()
@@ -404,7 +403,6 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                             .map(|span| CoverageSpan::for_terminator(span, bcb, bb)),
                     )
             })
-            .flatten()
             .collect()
     }
 
@@ -733,7 +731,7 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
         // However, in other cases, a visible `CoverageSpan` is not wanted, but the `Goto`
         // block must still be counted (for example, to contribute its count to an `Expression`
         // that reports the execution count for some other block). In these cases, the code region
-        // is set to `None`.
+        // is set to `None`. (See `Instrumentor::is_code_region_redundant()`.)
         TerminatorKind::Goto { .. } => {
             Some(function_source_span(terminator.source_info.span.shrink_to_hi(), body_span))
         }
