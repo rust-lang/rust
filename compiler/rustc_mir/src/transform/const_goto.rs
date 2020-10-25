@@ -57,8 +57,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
             // We only apply this optimization if the last statement is a const assignment
             let last_statement = self.body.basic_blocks()[location.block].statements.last()?;
 
-            if let Some((place, Rvalue::Use(op))) = last_statement.kind.as_assign() {
-                let _const = op.constant()?;
+            if let (place, Rvalue::Use(Operand::Constant(_const))) =
+                last_statement.kind.as_assign()?
+            {
                 // We found a constant being assigned to `place`.
                 // Now check that the target of this Goto switches on this place.
                 let target_bb = &self.body.basic_blocks()[target];
