@@ -171,7 +171,6 @@ mod checked_conversions;
 mod cognitive_complexity;
 mod collapsible_if;
 mod comparison_chain;
-mod comparison_to_empty;
 mod copies;
 mod copy_iterator;
 mod create_dir;
@@ -524,7 +523,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &cognitive_complexity::COGNITIVE_COMPLEXITY,
         &collapsible_if::COLLAPSIBLE_IF,
         &comparison_chain::COMPARISON_CHAIN,
-        &comparison_to_empty::COMPARISON_TO_EMPTY,
+        &len_zero::COMPARISON_TO_EMPTY,
         &copies::IFS_SAME_COND,
         &copies::IF_SAME_THEN_ELSE,
         &copies::MATCH_SAME_ARMS,
@@ -1141,7 +1140,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
     store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
     store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
-    store.register_late_pass(|| box comparison_to_empty::ComparisonToEmpty);
 
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
@@ -1302,7 +1300,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&bytecount::NAIVE_BYTECOUNT),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
-        LintId::of(&comparison_to_empty::COMPARISON_TO_EMPTY),
+        LintId::of(&len_zero::COMPARISON_TO_EMPTY),
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
@@ -1559,7 +1557,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
-        LintId::of(&comparison_to_empty::COMPARISON_TO_EMPTY),
+        LintId::of(&len_zero::COMPARISON_TO_EMPTY),
         LintId::of(&doc::MISSING_SAFETY_DOC),
         LintId::of(&doc::NEEDLESS_DOCTEST_MAIN),
         LintId::of(&enum_variants::ENUM_VARIANT_NAMES),
