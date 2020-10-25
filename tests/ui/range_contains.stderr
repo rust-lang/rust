@@ -1,0 +1,76 @@
+error: manual `Range::contains` implementation
+  --> $DIR/range_contains.rs:12:5
+   |
+LL |     x >= 8 && x < 12;
+   |     ^^^^^^^^^^^^^^^^ help: use: `(8..12).contains(&x)`
+   |
+   = note: `-D clippy::manual-range-contains` implied by `-D warnings`
+
+error: manual `Range::contains` implementation
+  --> $DIR/range_contains.rs:13:5
+   |
+LL |     x < 42 && x >= 21;
+   |     ^^^^^^^^^^^^^^^^^ help: use: `(21..42).contains(&x)`
+
+error: manual `Range::contains` implementation
+  --> $DIR/range_contains.rs:14:5
+   |
+LL |     100 > x && 1 <= x;
+   |     ^^^^^^^^^^^^^^^^^ help: use: `(1..100).contains(&x)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:17:5
+   |
+LL |     x >= 9 && x <= 99;
+   |     ^^^^^^^^^^^^^^^^^ help: use: `(9..=99).contains(&x)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:18:5
+   |
+LL |     x <= 33 && x >= 1;
+   |     ^^^^^^^^^^^^^^^^^ help: use: `(1..=33).contains(&x)`
+
+error: manual `RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:19:5
+   |
+LL |     999 >= x && 1 <= x;
+   |     ^^^^^^^^^^^^^^^^^^ help: use: `(1..=999).contains(&x)`
+
+error: manual `!Range::contains` implementation
+  --> $DIR/range_contains.rs:22:5
+   |
+LL |     x < 8 || x >= 12;
+   |     ^^^^^^^^^^^^^^^^ help: use: `!(8..12).contains(&x)`
+
+error: manual `!Range::contains` implementation
+  --> $DIR/range_contains.rs:23:5
+   |
+LL |     x >= 42 || x < 21;
+   |     ^^^^^^^^^^^^^^^^^ help: use: `!(21..42).contains(&x)`
+
+error: manual `!Range::contains` implementation
+  --> $DIR/range_contains.rs:24:5
+   |
+LL |     100 <= x || 1 > x;
+   |     ^^^^^^^^^^^^^^^^^ help: use: `!(1..100).contains(&x)`
+
+error: manual `!RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:27:5
+   |
+LL |     x < 9 || x > 99;
+   |     ^^^^^^^^^^^^^^^ help: use: `!(9..=99).contains(&x)`
+
+error: manual `!RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:28:5
+   |
+LL |     x > 33 || x < 1;
+   |     ^^^^^^^^^^^^^^^ help: use: `!(1..=33).contains(&x)`
+
+error: manual `!RangeInclusive::contains` implementation
+  --> $DIR/range_contains.rs:29:5
+   |
+LL |     999 < x || 1 > x;
+   |     ^^^^^^^^^^^^^^^^ help: use: `!(1..=999).contains(&x)`
+
+error: aborting due to 12 previous errors
+
