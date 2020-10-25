@@ -280,6 +280,12 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 generics: generics.clean(cx),
                 variants_stripped: false,
             })),
+            ItemKind::Struct(ref variant_data, ref generics) => NotInlined(StructItem(Struct {
+                struct_type: doctree::struct_type_from_def(&variant_data),
+                generics: generics.clean(cx),
+                fields: variant_data.fields().clean(cx),
+                fields_stripped: false,
+            })),
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -1893,22 +1899,6 @@ impl Clean<Visibility> for ty::Visibility {
                 Visibility::Restricted(module, cx.tcx.def_path(module))
             }
         }
-    }
-}
-
-impl Clean<Item> for doctree::Struct<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            StructItem(Struct {
-                struct_type: self.struct_type,
-                generics: self.generics.clean(cx),
-                fields: self.fields.clean(cx),
-                fields_stripped: false,
-            }),
-            cx,
-        )
     }
 }
 

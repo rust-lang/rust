@@ -18,14 +18,6 @@ crate enum StructType {
     Unit,
 }
 
-crate struct Struct<'hir> {
-    crate id: hir::HirId,
-    crate struct_type: StructType,
-    crate name: Symbol,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate fields: &'hir [hir::StructField<'hir>],
-}
-
 #[derive(Debug)]
 crate struct Static<'hir> {
     crate type_: &'hir hir::Ty<'hir>,
