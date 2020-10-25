@@ -83,11 +83,5 @@ error: digits of hex or binary literal not grouped by four
 LL |     let fail25 = 0b01_100_101;
    |                  ^^^^^^^^^^^^ help: consider: `0b0110_0101`
 
-error: digits of hex or binary literal not grouped by four
-  --> $DIR/literals.rs:39:16
-   |
-LL |     let ok26 = 0x6_A0_BF;
-   |                ^^^^^^^^^ help: consider: `0x0006_A0BF`
-
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 
