@@ -2051,12 +2051,11 @@ fn check_for_mutation<'tcx>(
         span_low: None,
         span_high: None,
     };
-    let def_id = body.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            def_id.expect_local(),
+            body.hir_id.owner,
             cx.param_env,
             cx.typeck_results(),
         )
