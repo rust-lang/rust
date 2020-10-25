@@ -309,6 +309,10 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                     is_auto: is_auto.clean(cx),
                 }))
             }
+            ItemKind::TraitAlias(ref generics, bounds) => NotInlined(TraitAliasItem(TraitAlias {
+                generics: generics.clean(cx),
+                bounds: bounds.clean(cx),
+            })),
             _ => unimplemented!(),
         };
 
@@ -1139,20 +1143,6 @@ impl Clean<FnRetTy> for hir::FnRetTy<'_> {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,
         }
-    }
-}
-
-impl Clean<Item> for doctree::TraitAlias<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            TraitAliasItem(TraitAlias {
-                generics: self.generics.clean(cx),
-                bounds: self.bounds.clean(cx),
-            }),
-            cx,
-        )
     }
 }
 

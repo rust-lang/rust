@@ -30,13 +30,6 @@ crate struct Static<'hir> {
     crate span: Span,
 }
 
-crate struct TraitAlias<'hir> {
-    crate name: Symbol,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate bounds: &'hir [hir::GenericBound<'hir>],
-    crate id: hir::HirId,
-}
-
 #[derive(Debug)]
 crate struct Impl<'hir> {
     crate unsafety: hir::Unsafety,
