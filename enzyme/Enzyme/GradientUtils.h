@@ -119,6 +119,7 @@ public:
 
   llvm::DebugLoc getNewFromOriginal(const llvm::DebugLoc L) const {
     if (L.get() == nullptr) return nullptr;
+    if (!oldFunc->getSubprogram()) return L;
     assert(originalToNewFn.hasMD());
     auto opt = originalToNewFn.getMappedMD(L.getAsMDNode());
     if (!opt.hasValue())
@@ -454,7 +455,15 @@ public:
         ATA(new ActivityAnalyzer(AA_, TLI_, constantvalues_, activevals_,
                                  ActiveReturn)),
         OrigLI(OrigDT), AA(AA_), TA(TA_) {
+    if (oldFunc_->getSubprogram()) {
+      assert(originalToNewFn_.hasMD());
+    }
+
     originalToNewFn.getMDMap() = originalToNewFn_.getMDMap();
+
+    if (oldFunc_->getSubprogram()) {
+      assert(originalToNewFn.hasMD());
+    }
 #if LLVM_VERSION_MAJOR <= 6
     OrigPDT.recalculate(*oldFunc_);
 #endif
