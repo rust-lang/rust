@@ -27,13 +27,6 @@ path = "src/main.rs"
 name = "clippy-driver"
 path = "src/driver.rs"
 
-[target.'cfg(NOT_A_PLATFORM)'.dependencies]
-rustc_data_structures = { path = "/home/urcra/rust/compiler/rustc_data_structures" }
-rustc_driver = { path = "/home/urcra/rust/compiler/rustc_driver" }
-rustc_errors = { path = "/home/urcra/rust/compiler/rustc_errors" }
-rustc_interface = { path = "/home/urcra/rust/compiler/rustc_interface" }
-rustc_middle = { path = "/home/urcra/rust/compiler/rustc_middle" }
-
 [dependencies]
 # begin automatic update
 clippy_lints = { version = "0.0.212", path = "clippy_lints" }
