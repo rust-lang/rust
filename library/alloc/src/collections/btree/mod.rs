@@ -1,5 +1,6 @@
 mod borrow;
 pub mod map;
+mod merge_iter;
 mod navigate;
 mod node;
 mod remove;
