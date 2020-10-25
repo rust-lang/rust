@@ -630,7 +630,11 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
       FunctionAnalysisManager AM;
       AM.registerPass([] { return TargetLibraryAnalysis(); });
       LowerInvokePass().run(*NewF, AM);
+#if LLVM_VERSION_MAJOR >= 9
       llvm::EliminateUnreachableBlocks(*NewF);
+#else
+      removeUnreachableBlocks(*NewF);
+#endif
     }
 
     {

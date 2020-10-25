@@ -11,7 +11,7 @@ entry:
   br i1 true, label %good, label %bad
 
 bad:
-  %badload = load i64, i64* %subptr
+  %badload = load i64, i64* %subptr, align 4
   unreachable
 
 good:

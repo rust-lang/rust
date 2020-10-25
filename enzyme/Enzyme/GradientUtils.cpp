@@ -1323,7 +1323,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *op0 = arg->getOperand(0);
     Value *op1 = arg->getOperand(1);
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 11
     auto result = bb.CreateShuffleVector(
         invertPointerM(op0, bb), invertPointerM(op1, bb),
         arg->getShuffleMaskForBitcode(), arg->getName() + "'ipsv");

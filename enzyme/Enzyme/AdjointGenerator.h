@@ -571,7 +571,7 @@ public:
 
   void visitExtractElementInst(llvm::ExtractElementInst &EEI) {
     eraseIfUnused(EEI);
-    if (gutils->isConstantValue(&EEI))
+    if (gutils->isConstantInstruction(&EEI))
       return;
     if (Mode == DerivativeMode::Forward)
       return;
@@ -592,7 +592,7 @@ public:
 
   void visitInsertElementInst(llvm::InsertElementInst &IEI) {
     eraseIfUnused(IEI);
-    if (gutils->isConstantValue(&IEI))
+    if (gutils->isConstantInstruction(&IEI))
       return;
     if (Mode == DerivativeMode::Forward)
       return;
@@ -637,7 +637,7 @@ public:
 
   void visitShuffleVectorInst(llvm::ShuffleVectorInst &SVI) {
     eraseIfUnused(SVI);
-    if (gutils->isConstantValue(&SVI))
+    if (gutils->isConstantInstruction(&SVI))
       return;
     if (Mode == DerivativeMode::Forward)
       return;
@@ -667,7 +667,7 @@ public:
 
   void visitExtractValueInst(llvm::ExtractValueInst &EVI) {
     eraseIfUnused(EVI);
-    if (gutils->isConstantValue(&EVI))
+    if (gutils->isConstantInstruction(&EVI))
       return;
     if (EVI.getType()->isPointerTy())
       return;
