@@ -39,15 +39,6 @@ crate struct Variant<'hir> {
     crate def: &'hir hir::VariantData<'hir>,
 }
 
-crate struct Function<'hir> {
-    crate decl: &'hir hir::FnDecl<'hir>,
-    crate id: hir::HirId,
-    crate name: Symbol,
-    crate header: hir::FnHeader,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate body: hir::BodyId,
-}
-
 crate struct Typedef<'hir> {
     crate ty: &'hir hir::Ty<'hir>,
     crate gen: &'hir hir::Generics<'hir>,

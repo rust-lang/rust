@@ -256,6 +256,7 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 value: print_evaluated_const(cx, def_id),
                 is_literal: is_literal_expr(cx, body_id.hir_id),
             })),
+            ItemKind::Fn(ref sig, ref generics, body) => NotInlined(clean_function(self, sig, &generics, body, cx)),
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -962,32 +963,26 @@ impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::Bo
     }
 }
 
-impl Clean<Item> for doctree::Function<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let (generics, decl) =
-            enter_impl_trait(cx, || (self.generics.clean(cx), (self.decl, self.body).clean(cx)));
+fn clean_function(item: &hir::Item<'_>, sig: &hir::FnSig<'_>, generics: &hir::Generics<'_>, body: hir::BodyId, cx: &DocContext<'_>) -> ItemKind {
+    let (generics, decl) =
+        enter_impl_trait(cx, || (generics.clean(cx), (sig.decl, body).clean(cx)));
 
-        let did = cx.tcx.hir().local_def_id(self.id).to_def_id();
-        let constness = if is_const_fn(cx.tcx, did) && !is_unstable_const_fn(cx.tcx, did).is_some()
-        {
-            hir::Constness::Const
-        } else {
-            hir::Constness::NotConst
-        };
-        let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-        Item::from_def_id_and_parts(
-            did,
-            Some(self.name),
-            FunctionItem(Function {
-                decl,
-                generics,
-                header: hir::FnHeader { constness, ..self.header },
-                all_types,
-                ret_types,
-            }),
-            cx,
-        )
-    }
+    let did = cx.tcx.hir().local_def_id(item.hir_id);
+    let constness = if is_const_fn(cx.tcx, did.to_def_id())
+        && !is_unstable_const_fn(cx.tcx, did.to_def_id()).is_some()
+    {
+        hir::Constness::Const
+    } else {
+        hir::Constness::NotConst
+    };
+    let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
+    FunctionItem(Function {
+        decl,
+        generics,
+        header: hir::FnHeader { constness, ..sig.header },
+        all_types,
+        ret_types,
+    })
 }
 
 impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
