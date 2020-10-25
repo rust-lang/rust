@@ -407,20 +407,51 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
+    ///
+    /// This is the main specialization step. It expands the pattern
+    /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
+    /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
+    /// Returns `None` if the pattern does not have the given constructor.
+    ///
+    /// OTOH, slice patterns with a subslice pattern (tail @ ..) can be expanded into multiple
+    /// different patterns.
+    /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
+    /// fields filled with wild patterns.
+    ///
+    /// This is roughly the inverse of `Constructor::apply`.
     fn specialize_constructor(
         &self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
-        constructor: &Constructor<'tcx>,
+        ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
         is_my_head_ctor: bool,
     ) -> Option<PatStack<'p, 'tcx>> {
-        let new_fields = specialize_one_pattern(
-            cx,
+        // We return `None` if `ctor` is not covered by `self.head()`. If `ctor` is known to be
+        // derived from `self.head()`, or if `self.head()` is a wildcard, then we don't need to
+        // check; otherwise, we compute the constructor of `self.head()` and check for constructor
+        // inclusion.
+        // Note that this shortcut is also necessary for correctness: a pattern should always be
+        // specializable with its own constructor, even in cases where we refuse to inspect values like
+        // opaque constants.
+        if !self.head().is_wildcard() && !is_my_head_ctor {
+            // `unwrap` is safe because `pat` is not a wildcard.
+            let head_ctor = pat_constructor(cx.tcx, cx.param_env, self.head()).unwrap();
+            if !ctor.is_covered_by(cx, &head_ctor, self.head().ty) {
+                return None;
+            }
+        }
+        let new_fields = ctor_wild_subpatterns.replace_with_pattern_arguments(self.head());
+
+        debug!(
+            "specialize_constructor({:#?}, {:#?}, {:#?}) = {:#?}",
             self.head(),
-            constructor,
+            ctor,
             ctor_wild_subpatterns,
-            is_my_head_ctor,
-        )?;
+            new_fields
+        );
+
+        // We pop the head pattern and push the new fields extracted from the arguments of
+        // `self.head()`.
         Some(new_fields.push_on_patstack(&self.0[1..]))
     }
 }
@@ -971,7 +1002,7 @@ impl Slice {
 /// the constructor. See also `Fields`.
 ///
 /// `pat_constructor` retrieves the constructor corresponding to a pattern.
-/// `specialize_one_pattern` returns the list of fields corresponding to a pattern, given a
+/// `specialize_constructor` returns the list of fields corresponding to a pattern, given a
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
@@ -1195,7 +1226,7 @@ impl<'tcx> Constructor<'tcx> {
     /// Apply a constructor to a list of patterns, yielding a new pattern. `pats`
     /// must have as many elements as this constructor's arity.
     ///
-    /// This is roughly the inverse of `specialize_one_pattern`.
+    /// This is roughly the inverse of `specialize_constructor`.
     ///
     /// Examples:
     /// `self`: `Constructor::Single`
@@ -2606,47 +2637,4 @@ fn pat_constructor<'tcx>(
         }
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
-}
-
-/// This is the main specialization step. It expands the pattern
-/// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
-/// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
-/// Returns `None` if the pattern does not have the given constructor.
-///
-/// OTOH, slice patterns with a subslice pattern (tail @ ..) can be expanded into multiple
-/// different patterns.
-/// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
-/// fields filled with wild patterns.
-///
-/// This is roughly the inverse of `Constructor::apply`.
-fn specialize_one_pattern<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    pat: &'p Pat<'tcx>,
-    ctor: &Constructor<'tcx>,
-    ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    is_its_own_ctor: bool, // Whether `ctor` is known to be derived from `pat`
-) -> Option<Fields<'p, 'tcx>> {
-    if pat.is_wildcard() {
-        return Some(ctor_wild_subpatterns.clone());
-    }
-
-    // We return `None` if `ctor` is not covered by `pat`. If `ctor` is known to be derived from
-    // `pat` then we don't need to check; otherwise, we compute the constructor of `pat` and check
-    // for constructor inclusion.
-    // Note that this shortcut is also necessary for correctness: a pattern should always be
-    // specializable with its own constructor, even in cases where we refuse to inspect values like
-    // opaque constants.
-    if !is_its_own_ctor {
-        // `unwrap` is safe because `pat` is not a wildcard.
-        let pat_ctor = pat_constructor(cx.tcx, cx.param_env, pat).unwrap();
-        if !ctor.is_covered_by(cx, &pat_ctor, pat.ty) {
-            return None;
-        }
-    }
-
-    let fields = ctor_wild_subpatterns.replace_with_pattern_arguments(pat);
-
-    debug!("specialize({:#?}, {:#?}, {:#?}) = {:#?}", pat, ctor, ctor_wild_subpatterns, fields);
-
-    Some(fields)
 }
