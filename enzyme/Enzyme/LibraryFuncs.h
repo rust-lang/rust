@@ -32,6 +32,8 @@
 /// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isAllocationFunction(const llvm::Function &F,
                                         const llvm::TargetLibraryInfo &TLI) {
+  if (F.getName() == "calloc")
+    return true;
   if (F.getName() == "__rust_alloc" || F.getName() == "__rust_alloc_zeroed")
     return true;                                  
   using namespace llvm;
@@ -190,8 +192,12 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   }
 
   llvm::LibFunc libfunc;
-  bool res = TLI.getLibFunc(allocationfn, libfunc);
-  assert(res && "ought find known allocation fn");
+  if (allocationfn.getName() == "calloc") {
+    libfunc = LibFunc_malloc;
+  } else {
+    bool res = TLI.getLibFunc(allocationfn, libfunc);
+    assert(res && "ought find known allocation fn");
+  }
 
   llvm::LibFunc freefunc;
 

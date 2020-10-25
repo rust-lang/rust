@@ -2331,10 +2331,15 @@ Function *CreatePrimalAndGradient(
     if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) {
       auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
       std::vector<BasicBlock *> toRemove;
-      for (auto next : successors(&oBB)) {
-        auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));
-        toRemove.push_back(sucBB);
+      if (auto II = dyn_cast<InvokeInst>(oBB.getTerminator())) {
+        toRemove.push_back(cast<BasicBlock>(gutils->getNewFromOriginal(II->getNormalDest())));
+      } else {
+        for (auto next : successors(&oBB)) {
+          auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));
+          toRemove.push_back(sucBB);
+        }
       }
+
       for (auto sucBB : toRemove) {
         sucBB->removePredecessor(newBB);
       }
