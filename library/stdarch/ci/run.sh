@@ -13,6 +13,8 @@ set -ex
 RUSTFLAGS="$RUSTFLAGS -D warnings "
 
 case ${TARGET} in
+    *-pc-windows-msvc)
+        ;;
     # On 32-bit use a static relocation model which avoids some extra
     # instructions when dealing with static data, notably allowing some
     # instruction assertion checks to pass below the 20 instruction limit. If

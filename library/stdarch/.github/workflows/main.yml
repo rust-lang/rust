@@ -96,10 +96,11 @@ jobs:
 
         # Windows targets
         - x86_64-pc-windows-msvc
+        - i686-pc-windows-msvc
         # FIXME: Disassembly not implemented for the # following targets:
         # - x86_64-pc-windows-gnu:
         # - i686-pc-windows-gnu:
-        # - i686-pc-windows-msvc:
+        # - aarch64-pc-windows-msvc:
 
         include:
         - target: i686-unknown-linux-gnu
@@ -136,6 +137,8 @@ jobs:
         - target: x86_64-apple-darwin
           os: macos-latest
         - target: x86_64-pc-windows-msvc
+          os: windows-latest
+        - target: i686-pc-windows-msvc
           os: windows-latest
         - target: i586-unknown-linux-gnu
           os: ubuntu-latest

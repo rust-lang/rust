@@ -32,62 +32,71 @@ fn normalize(mut symbol: &str) -> String {
     while symbol.starts_with('_') {
         symbol.remove(0);
     }
+    // Windows/x86 has a suffix such as @@4.
+    if let Some(idx) = symbol.find("@@") {
+        symbol = (&symbol[..idx]).to_string();
+    }
     symbol
 }
 
 pub(crate) fn disassemble_myself() -> HashSet<Function> {
     let me = env::current_exe().expect("failed to get current exe");
 
-    let disassembly =
-        if cfg!(target_arch = "x86_64") && cfg!(target_os = "windows") && cfg!(target_env = "msvc")
-        {
-            let mut cmd = cc::windows_registry::find("x86_64-pc-windows-msvc", "dumpbin.exe")
-                .expect("failed to find `dumpbin` tool");
-            let output = cmd
-                .arg("/DISASM")
-                .arg(&me)
-                .output()
-                .expect("failed to execute dumpbin");
-            println!(
-                "{}\n{}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr)
-            );
-            assert!(output.status.success());
-            // Windows does not return valid UTF-8 output:
-            String::from_utf8_lossy(Vec::leak(output.stdout))
-        } else if cfg!(target_os = "windows") {
-            panic!("disassembly unimplemented")
-        } else if cfg!(target_os = "macos") {
-            let output = Command::new("otool")
-                .arg("-vt")
-                .arg(&me)
-                .output()
-                .expect("failed to execute otool");
-            println!(
-                "{}\n{}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr)
-            );
-            assert!(output.status.success());
-
-            String::from_utf8_lossy(Vec::leak(output.stdout))
+    let disassembly = if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
+        let target = if cfg!(target_arch = "x86_64") {
+            "x86_64-pc-windows-msvc"
+        } else if cfg!(target_arch = "x86") {
+            "i686-pc-windows-msvc"
         } else {
-            let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
-            let output = Command::new(objdump.clone())
-                .arg("--disassemble")
-                .arg(&me)
-                .output()
-                .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={}", objdump));
-            println!(
-                "{}\n{}",
-                output.status,
-                String::from_utf8_lossy(&output.stderr)
-            );
-            assert!(output.status.success());
-
-            String::from_utf8_lossy(Vec::leak(output.stdout))
+            panic!("disassembly unimplemented")
         };
+        let mut cmd = cc::windows_registry::find(target, "dumpbin.exe")
+            .expect("failed to find `dumpbin` tool");
+        let output = cmd
+            .arg("/DISASM")
+            .arg(&me)
+            .output()
+            .expect("failed to execute dumpbin");
+        println!(
+            "{}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.status.success());
+        // Windows does not return valid UTF-8 output:
+        String::from_utf8_lossy(Vec::leak(output.stdout))
+    } else if cfg!(target_os = "windows") {
+        panic!("disassembly unimplemented")
+    } else if cfg!(target_os = "macos") {
+        let output = Command::new("otool")
+            .arg("-vt")
+            .arg(&me)
+            .output()
+            .expect("failed to execute otool");
+        println!(
+            "{}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.status.success());
+
+        String::from_utf8_lossy(Vec::leak(output.stdout))
+    } else {
+        let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
+        let output = Command::new(objdump.clone())
+            .arg("--disassemble")
+            .arg(&me)
+            .output()
+            .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={}", objdump));
+        println!(
+            "{}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.status.success());
+
+        String::from_utf8_lossy(Vec::leak(output.stdout))
+    };
 
     parse(&disassembly)
 }
