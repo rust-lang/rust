@@ -506,8 +506,18 @@ impl<T: Ord> Ord for Reverse<T> {
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
-/// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
+/// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering based on the top-to-bottom declaration order of the struct's members.
 /// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
+///
+/// ## Lexicographical comparison
+///
+/// Lexicographical comparison is an operation with the following properties:
+///  - Two sequences are compared element by element.
+///  - The first mismatching element defines which sequence is lexicographically less or greater than the other.
+///  - If one sequence is a prefix of another, the shorter sequence is lexicographically less than the other.
+///  - If two sequence have equivalent elements and are of the same length, then the sequences are lexicographically equal.
+///  - An empty sequence is lexicographically less than any non-empty sequence.
+///  - Two empty sequences are lexicographically equal.
 ///
 /// ## How can I implement `Ord`?
 ///
