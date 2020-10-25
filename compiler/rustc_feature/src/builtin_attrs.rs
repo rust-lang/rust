@@ -380,6 +380,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "allow_internal_unstable side-steps feature gating and stability checks",
     ),
     gated!(
+        rustc_allow_const_fn_unstable, AssumedUsed, template!(Word, List: "feat1, feat2, ..."),
+        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
+    ),
+    gated!(
         allow_internal_unsafe, Normal, template!(Word),
         "allow_internal_unsafe side-steps the unsafe_code lint",
     ),

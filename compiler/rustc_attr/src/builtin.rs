@@ -1013,13 +1013,28 @@ pub fn allow_internal_unstable<'a>(
     sess: &'a Session,
     attrs: &'a [Attribute],
 ) -> Option<impl Iterator<Item = Symbol> + 'a> {
-    let attrs = sess.filter_by_name(attrs, sym::allow_internal_unstable);
+    allow_unstable(sess, attrs, sym::allow_internal_unstable)
+}
+
+pub fn rustc_allow_const_fn_unstable<'a>(
+    sess: &'a Session,
+    attrs: &'a [Attribute],
+) -> Option<impl Iterator<Item = Symbol> + 'a> {
+    allow_unstable(sess, attrs, sym::rustc_allow_const_fn_unstable)
+}
+
+fn allow_unstable<'a>(
+    sess: &'a Session,
+    attrs: &'a [Attribute],
+    symbol: Symbol,
+) -> Option<impl Iterator<Item = Symbol> + 'a> {
+    let attrs = sess.filter_by_name(attrs, symbol);
     let list = attrs
         .filter_map(move |attr| {
             attr.meta_item_list().or_else(|| {
                 sess.diagnostic().span_err(
                     attr.span,
-                    "`allow_internal_unstable` expects a list of feature names",
+                    &format!("`{}` expects a list of feature names", symbol.to_ident_string()),
                 );
                 None
             })
@@ -1029,8 +1044,10 @@ pub fn allow_internal_unstable<'a>(
     Some(list.into_iter().filter_map(move |it| {
         let name = it.ident().map(|ident| ident.name);
         if name.is_none() {
-            sess.diagnostic()
-                .span_err(it.span(), "`allow_internal_unstable` expects feature names");
+            sess.diagnostic().span_err(
+                it.span(),
+                &format!("`{}` expects feature names", symbol.to_ident_string()),
+            );
         }
         name
     }))

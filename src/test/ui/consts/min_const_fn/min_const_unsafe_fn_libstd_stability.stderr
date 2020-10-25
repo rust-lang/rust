@@ -24,9 +24,9 @@ help: if it is not part of the public API, make this function unstably const
    |
 LL | #[rustc_const_unstable(feature = "...", issue = "...")]
    |
-help: otherwise `#[allow_internal_unstable]` can be used to bypass stability checks
+help: otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
    |
-LL | #[allow_internal_unstable(const_fn_floating_point_arithmetic)]
+LL | #[rustc_allow_const_fn_unstable(const_fn_floating_point_arithmetic)]
    |
 
 error: `foo2_gated` is not yet stable as a const fn

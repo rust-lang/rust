@@ -85,6 +85,10 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_export_name(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::rustc_args_required_const) {
                 self.check_rustc_args_required_const(&attr, span, target, item)
+            } else if self.tcx.sess.check_name(attr, sym::allow_internal_unstable) {
+                self.check_allow_internal_unstable(&attr, span, target, &attrs)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_allow_const_fn_unstable) {
+                self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -718,6 +722,55 @@ impl CheckAttrVisitor<'tcx> {
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }
         }
+    }
+
+    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
+    fn check_allow_internal_unstable(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+        attrs: &[Attribute],
+    ) -> bool {
+        debug!("Checking target: {:?}", target);
+        if target == Target::Fn {
+            for attr in attrs {
+                if self.tcx.sess.is_proc_macro_attr(attr) {
+                    debug!("Is proc macro attr");
+                    return true;
+                }
+            }
+            debug!("Is not proc macro attr");
+        }
+        self.tcx
+            .sess
+            .struct_span_err(attr.span, "attribute should be applied to a macro")
+            .span_label(*span, "not a macro")
+            .emit();
+        false
+    }
+
+    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
+    fn check_rustc_allow_const_fn_unstable(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
+        if let Target::Fn | Target::Method(_) = target {
+            if self.tcx.is_const_fn_raw(self.tcx.hir().local_def_id(hir_id)) {
+                return true;
+            }
+        }
+        self.tcx
+            .sess
+            .struct_span_err(attr.span, "attribute should be applied to `const fn`")
+            .span_label(*span, "not a `const fn`")
+            .emit();
+        false
     }
 }
 
