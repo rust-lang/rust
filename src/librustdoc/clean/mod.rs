@@ -261,6 +261,7 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
             }
             // TODO: this should also take the span into account (inner or outer)
             ItemKind::Mod(ref mod_) => NotInlined(mod_.clean(cx)),
+            ItemKind::ForeignMod(ref mod_) => NotInlined(mod_.clean(cx)),
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -357,6 +358,12 @@ impl Clean<ItemKind> for hir::Mod<'_> {
             is_crate: false,
             items: self.item_ids.clean(cx).into_iter().flatten().collect(),
         })
+    }
+}
+
+impl Clean<ItemKind> for hir::ForeignMod<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> ItemKind {
+        ModuleItem(Module { is_crate: false, items: self.items.clean(cx) })
     }
 }
 
@@ -2275,11 +2282,11 @@ fn clean_import(
     MaybeInlined::NotInlined(ImportItem(kind))
 }
 
-impl Clean<Item> for doctree::ForeignItem<'_> {
+impl Clean<Item> for hir::ForeignItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let kind = match self.kind {
             hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
-                let abi = cx.tcx.hir().get_foreign_abi(self.id);
+                let abi = cx.tcx.hir().get_foreign_abi(self.hir_id);
                 let (generics, decl) =
                     enter_impl_trait(cx, || (generics.clean(cx), (&**decl, &names[..]).clean(cx)));
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
@@ -2296,15 +2303,13 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
                     ret_types,
                 })
             }
-            hir::ForeignItemKind::Static(ref ty, mutbl) => ForeignStaticItem(Static {
-                type_: ty.clean(cx),
-                mutability: *mutbl,
-                expr: String::new(),
-            }),
+            hir::ForeignItemKind::Static(ref ty, mutability) => {
+                ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: String::new() })
+            }
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        Item::from_hir_id_and_parts(self.id, Some(self.name), kind, cx)
+        Item::from_hir_id_and_parts(self.hir_id, Some(self.ident.name), kind, cx)
     }
 }
 

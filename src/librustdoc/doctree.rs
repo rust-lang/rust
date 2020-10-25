@@ -98,15 +98,6 @@ crate struct Impl<'hir> {
     crate id: hir::HirId,
 }
 
-crate struct ForeignItem<'hir> {
-    crate vis: &'hir hir::Visibility<'hir>,
-    crate id: hir::HirId,
-    crate name: Symbol,
-    crate kind: &'hir hir::ForeignItemKind<'hir>,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
-}
-
 #[derive(Debug)]
 crate struct Import<'hir> {
     crate name: Symbol,
