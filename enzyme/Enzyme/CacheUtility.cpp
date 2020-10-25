@@ -114,20 +114,20 @@ void CacheUtility::erase(Instruction *I) {
 
 // Create a new canonical induction variable of Type Ty for Loop L
 // Return the variable and the increment instruction
-static std::pair<PHINode *, Instruction *> InsertNewCanonicalIV(Loop *L,
-                                                                Type *Ty) {
+std::pair<PHINode *, Instruction *> InsertNewCanonicalIV(Loop *L,
+                                                                Type *Ty, std::string name) {
   assert(L);
   assert(Ty);
 
   BasicBlock *Header = L->getHeader();
   assert(Header);
   IRBuilder<> B(&Header->front());
-  PHINode *CanonicalIV = B.CreatePHI(Ty, 1, "iv");
+  PHINode *CanonicalIV = B.CreatePHI(Ty, 1, name);
 
   B.SetInsertPoint(Header->getFirstNonPHIOrDbg());
   Instruction *Inc =
       cast<Instruction>(B.CreateAdd(CanonicalIV, ConstantInt::get(Ty, 1),
-                                    "iv.next", /*NUW*/ true, /*NSW*/ true));
+                                    name + ".next", /*NUW*/ true, /*NSW*/ true));
 
   for (BasicBlock *Pred : predecessors(Header)) {
     assert(Pred);
@@ -143,7 +143,7 @@ static std::pair<PHINode *, Instruction *> InsertNewCanonicalIV(Loop *L,
 // Attempt to rewrite all phinode's in the loop in terms of the
 // induction variable
 void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
-                        MustExitScalarEvolution &SE, CacheUtility &gutils) {
+                        MustExitScalarEvolution &SE, std::function<void(Instruction*)> eraser) {
   assert(Header);
   assert(CanonicalIV);
   SmallVector<Instruction *, 8> IVsToRemove;
@@ -198,7 +198,7 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
   }
 
   for (Instruction *PN : IVsToRemove) {
-    gutils.erase(PN);
+    eraser(PN);
   }
 }
 
@@ -411,7 +411,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
   assert(CanonicalIV);
   loopContexts[L].var = CanonicalIV;
   loopContexts[L].incvar = pair.second;
-  RemoveRedundantIVs(loopContexts[L].header, CanonicalIV, SE, *this);
+  RemoveRedundantIVs(loopContexts[L].header, CanonicalIV, SE, [&](Instruction* I) { erase(I); });
   CanonicalizeLatches(L, loopContexts[L].header, loopContexts[L].preheader,
                       CanonicalIV, SE, *this, pair.second,
                       getLatches(L, loopContexts[L].exitBlocks));

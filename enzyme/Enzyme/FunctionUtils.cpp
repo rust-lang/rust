@@ -88,6 +88,8 @@
 #include "llvm/Transforms/Scalar/LoopDeletion.h"
 #include "llvm/Transforms/Scalar/LoopRotation.h"
 
+#include "CacheUtility.h"
+
 #define DEBUG_TYPE "enzyme"
 using namespace llvm;
 
@@ -464,6 +466,20 @@ static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
   }
 }
 
+void CanonicalizeLoops(Function* F, TargetLibraryInfo &TLI) {
+
+  DominatorTree DT(*F);
+  LoopInfo LI(DT);
+  AssumptionCache AC(*F);
+  MustExitScalarEvolution SE(*F, TLI, AC, DT, LI);
+  for(auto& L : LI) {
+    auto pair = InsertNewCanonicalIV(L, Type::getInt64Ty(F->getContext()), "tiv");
+    PHINode *CanonicalIV = pair.first;
+    assert(CanonicalIV);
+    RemoveRedundantIVs(L->getHeader(), CanonicalIV, SE, [&](Instruction* I) { I->eraseFromParent(); });
+  }
+}
+
 Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
                              bool topLevel) {
   static std::map<std::pair<Function *, bool>, Function *> cache;
@@ -675,6 +691,8 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     AA.addAAResult(*BAA);
     AA.addAAResult(*(new TypeBasedAAResult()));
   }
+
+  CanonicalizeLoops(NewF, TLI);
 
   if (EnzymePrint)
     llvm::errs() << "after simplification :\n" << *NewF << "\n";
