@@ -35,7 +35,7 @@ static inline bool isAllocationFunction(const llvm::Function &F,
   if (F.getName() == "calloc")
     return true;
   if (F.getName() == "__rust_alloc" || F.getName() == "__rust_alloc_zeroed")
-    return true;                                  
+    return true;
   using namespace llvm;
   llvm::LibFunc libfunc;
   if (!TLI.getLibFunc(F, libfunc))
@@ -187,7 +187,8 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   using namespace llvm;
   assert(isAllocationFunction(allocationfn, TLI));
 
-  if (allocationfn.getName() == "__rust_alloc" || allocationfn.getName() == "__rust_alloc_zeroed") {
+  if (allocationfn.getName() == "__rust_alloc" ||
+      allocationfn.getName() == "__rust_alloc_zeroed") {
     llvm_unreachable("todo - hook in rust allocation fns");
   }
 

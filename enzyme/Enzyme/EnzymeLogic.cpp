@@ -2332,7 +2332,8 @@ Function *CreatePrimalAndGradient(
       auto newBB = cast<BasicBlock>(gutils->getNewFromOriginal(&oBB));
       std::vector<BasicBlock *> toRemove;
       if (auto II = dyn_cast<InvokeInst>(oBB.getTerminator())) {
-        toRemove.push_back(cast<BasicBlock>(gutils->getNewFromOriginal(II->getNormalDest())));
+        toRemove.push_back(
+            cast<BasicBlock>(gutils->getNewFromOriginal(II->getNormalDest())));
       } else {
         for (auto next : successors(&oBB)) {
           auto sucBB = cast<BasicBlock>(gutils->getNewFromOriginal(next));

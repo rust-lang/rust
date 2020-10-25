@@ -28,8 +28,8 @@
 #include "llvm/ADT/SmallPtrSet.h"
 
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/Type.h"
@@ -456,8 +456,8 @@ llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
                                                     unsigned dstalign,
                                                     unsigned srcalign);
 
-/// Create function to computer nearest power of two 
-llvm::Value *nextPowerOfTwo(llvm::IRBuilder<> &B, llvm::Value* V);
+/// Create function to computer nearest power of two
+llvm::Value *nextPowerOfTwo(llvm::IRBuilder<> &B, llvm::Value *V);
 
 /// Insert into a map
 template <typename K, typename V>

@@ -47,7 +47,6 @@
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
-
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 
 #if LLVM_VERSION_MAJOR > 6
@@ -86,9 +85,9 @@
 #include "llvm/Transforms/Utils/LowerInvoke.h"
 
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
+#include "llvm/Transforms/Scalar/DCE.h"
 #include "llvm/Transforms/Scalar/LoopDeletion.h"
 #include "llvm/Transforms/Scalar/LoopRotation.h"
-#include "llvm/Transforms/Scalar/DCE.h"
 
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
@@ -248,17 +247,20 @@ static inline void UpgradeAllocasToMallocs(Function *NewF, bool topLevel) {
 
 // Create a stack variable containing the size of the allocation
 // error if not possible (e.g. not local)
-static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function* NewF, IntegerType* T, const std::map<CallInst*, Value*> &reallocSizes) {
-  IRBuilder <> B(&*NewF->getEntryBlock().begin());
-  AllocaInst* AI = B.CreateAlloca(T);
+static inline AllocaInst *
+OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
+                  const std::map<CallInst *, Value *> &reallocSizes) {
+  IRBuilder<> B(&*NewF->getEntryBlock().begin());
+  AllocaInst *AI = B.CreateAlloca(T);
 
-  std::set< std::pair<Value*, Instruction*> > seen;
-  std::deque< std::pair<Value*, Instruction*> > todo = { {Ptr, Loc} };
+  std::set<std::pair<Value *, Instruction *>> seen;
+  std::deque<std::pair<Value *, Instruction *>> todo = {{Ptr, Loc}};
 
-  while(todo.size()) {
+  while (todo.size()) {
     auto next = todo.front();
     todo.pop_front();
-    if (seen.count(next)) continue;
+    if (seen.count(next))
+      continue;
     seen.insert(next);
 
     if (auto CI = dyn_cast<CastInst>(next.first)) {
@@ -272,14 +274,13 @@ static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function*
       B.CreateStore(ConstantInt::get(T, 0), AI);
       continue;
     }
-    
+
     if (auto CE = dyn_cast<ConstantExpr>(next.first)) {
       if (CE->isCast()) {
         todo.push_back({CE->getOperand(0), next.second});
         continue;
       }
     }
-
 
     if (auto C = dyn_cast<Constant>(next.first)) {
       if (C->isNullValue()) {
@@ -316,12 +317,13 @@ static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function*
     }
 
     if (auto PN = dyn_cast<PHINode>(next.first)) {
-      for(size_t i=0; i<PN->getNumIncomingValues(); i++) {
-        todo.push_back({PN->getIncomingValue(i), PN->getIncomingBlock(i)->getTerminator()});
+      for (size_t i = 0; i < PN->getNumIncomingValues(); i++) {
+        todo.push_back({PN->getIncomingValue(i),
+                        PN->getIncomingBlock(i)->getTerminator()});
       }
       continue;
     }
-    
+
     if (auto CI = dyn_cast<CallInst>(next.first)) {
       if (auto F = CI->getCalledFunction()) {
         if (F->getName() == "malloc") {
@@ -331,7 +333,8 @@ static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function*
         }
         if (F->getName() == "calloc") {
           B.SetInsertPoint(next.second);
-          B.CreateStore(B.CreateMul(CI->getArgOperand(0),CI->getArgOperand(1)), AI);
+          B.CreateStore(B.CreateMul(CI->getArgOperand(0), CI->getArgOperand(1)),
+                        AI);
           continue;
         }
         if (F->getName() == "realloc") {
@@ -345,10 +348,12 @@ static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function*
 
     if (auto LI = dyn_cast<LoadInst>(next.first)) {
       bool success = false;
-      for(Instruction* prev = LI->getPrevNode(); prev != nullptr; prev = prev->getPrevNode()) {
+      for (Instruction *prev = LI->getPrevNode(); prev != nullptr;
+           prev = prev->getPrevNode()) {
         if (auto CI = dyn_cast<CallInst>(prev)) {
           if (auto F = CI->getCalledFunction()) {
-            if (F->getName() == "posix_memalign" && CI->getArgOperand(0) == LI->getOperand(0)) {
+            if (F->getName() == "posix_memalign" &&
+                CI->getArgOperand(0) == LI->getOperand(0)) {
               B.SetInsertPoint(next.second);
               B.CreateStore(CI->getArgOperand(2), AI);
               success = true;
@@ -360,20 +365,22 @@ static inline AllocaInst* OldAllocationSize(Value* Ptr, CallInst* Loc, Function*
           break;
         }
       }
-      if (success) continue;
+      if (success)
+        continue;
     }
     EmitFailure("DynamicReallocSize", Loc->getDebugLoc(), Loc,
-                "could not statically determine size of realloc ", *Loc, " - because of - ", *next.first);
+                "could not statically determine size of realloc ", *Loc,
+                " - because of - ", *next.first);
     llvm_unreachable("DynamicReallocSize");
   }
   return AI;
 }
 
-/// Calls to realloc with an appropriate implementation 
+/// Calls to realloc with an appropriate implementation
 static inline void ReplaceReallocs(Function *NewF) {
   std::vector<CallInst *> ToConvert;
-  std::map<CallInst*, Value*> reallocSizes;
-  IntegerType* T;
+  std::map<CallInst *, Value *> reallocSizes;
+  IntegerType *T;
 
   for (auto &BB : *NewF) {
     for (auto &I : BB) {
@@ -381,7 +388,7 @@ static inline void ReplaceReallocs(Function *NewF) {
         if (auto F = CI->getCalledFunction()) {
           if (F->getName() == "realloc") {
             ToConvert.push_back(CI);
-            IRBuilder <> B(CI->getNextNode());
+            IRBuilder<> B(CI->getNextNode());
             T = cast<IntegerType>(CI->getArgOperand(1)->getType());
             reallocSizes[CI] = B.CreatePHI(T, 0);
           }
@@ -390,26 +397,27 @@ static inline void ReplaceReallocs(Function *NewF) {
     }
   }
 
-  std::vector<AllocaInst*> memoryLocations;
+  std::vector<AllocaInst *> memoryLocations;
 
   for (auto CI : ToConvert) {
-    AllocaInst* AI = OldAllocationSize(CI->getArgOperand(0), CI, NewF, T, reallocSizes);
+    AllocaInst *AI =
+        OldAllocationSize(CI->getArgOperand(0), CI, NewF, T, reallocSizes);
 
-    BasicBlock* resize = BasicBlock::Create(CI->getContext(),
-                                             "resize" + CI->getName(), NewF);
+    BasicBlock *resize =
+        BasicBlock::Create(CI->getContext(), "resize" + CI->getName(), NewF);
     assert(resize->getParent() == NewF);
 
-    BasicBlock* splitParent = CI->getParent();
-    BasicBlock* nextBlock = splitParent->splitBasicBlock(CI);
+    BasicBlock *splitParent = CI->getParent();
+    BasicBlock *nextBlock = splitParent->splitBasicBlock(CI);
 
     splitParent->getTerminator()->eraseFromParent();
-    IRBuilder <>B(splitParent);
+    IRBuilder<> B(splitParent);
 
-    Value* p = CI->getArgOperand(0);
-    Value* req = CI->getArgOperand(1);
-    Value* old = B.CreateLoad(AI);
+    Value *p = CI->getArgOperand(0);
+    Value *req = CI->getArgOperand(1);
+    Value *old = B.CreateLoad(AI);
 
-    Value* cmp = B.CreateICmpULE(req, old);
+    Value *cmp = B.CreateICmpULE(req, old);
     // if (req < old)
     B.CreateCondBr(cmp, nextBlock, resize);
 
@@ -418,10 +426,12 @@ static inline void ReplaceReallocs(Function *NewF) {
     //    void* next = malloc(newsize);
     //    memcpy(next, p, newsize);
     //    free(p);
-    //    return { next, newsize }; 
-    
-    Value* newsize = nextPowerOfTwo(B, req);
-    CallInst* next = cast<CallInst>(CallInst::CreateMalloc(resize, newsize->getType(), Type::getInt8Ty(CI->getContext()), newsize, nullptr, (Function*)nullptr, ""));
+    //    return { next, newsize };
+
+    Value *newsize = nextPowerOfTwo(B, req);
+    CallInst *next = cast<CallInst>(CallInst::CreateMalloc(
+        resize, newsize->getType(), Type::getInt8Ty(CI->getContext()), newsize,
+        nullptr, (Function *)nullptr, ""));
     resize->getInstList().push_back(next);
     B.SetInsertPoint(resize);
 
@@ -429,16 +439,15 @@ static inline void ReplaceReallocs(Function *NewF) {
 
     Value *nargs[] = {next, p, old, volatile_arg};
 
-    Type *tys[] = {next->getType(), p->getType(),
-                    old->getType()};
+    Type *tys[] = {next->getType(), p->getType(), old->getType()};
 
-    auto memcpyF = Intrinsic::getDeclaration(
-        NewF->getParent(), Intrinsic::memcpy, tys);
+    auto memcpyF =
+        Intrinsic::getDeclaration(NewF->getParent(), Intrinsic::memcpy, tys);
 
     auto mem = cast<CallInst>(B.CreateCall(memcpyF, nargs));
     mem->setCallingConv(memcpyF->getCallingConv());
 
-    CallInst* freeCall = cast<CallInst>(CallInst::CreateFree(p, resize));
+    CallInst *freeCall = cast<CallInst>(CallInst::CreateFree(p, resize));
     resize->getInstList().push_back(freeCall);
     B.SetInsertPoint(resize);
 
@@ -448,14 +457,14 @@ static inline void ReplaceReallocs(Function *NewF) {
     //   return { p, old }
     B.SetInsertPoint(&*nextBlock->begin());
 
-    PHINode* retPtr = B.CreatePHI(CI->getType(), 2);
+    PHINode *retPtr = B.CreatePHI(CI->getType(), 2);
     retPtr->addIncoming(p, splitParent);
     retPtr->addIncoming(next, resize);
     CI->replaceAllUsesWith(retPtr);
     std::string nam = CI->getName().str();
     CI->setName("");
     retPtr->setName(nam);
-    Value* nextSize = B.CreateSelect(cmp, old, req);
+    Value *nextSize = B.CreateSelect(cmp, old, req);
     reallocSizes[CI]->replaceAllUsesWith(nextSize);
     cast<PHINode>(reallocSizes[CI])->eraseFromParent();
     reallocSizes[CI] = nextSize;
@@ -466,7 +475,7 @@ static inline void ReplaceReallocs(Function *NewF) {
   }
 
   DominatorTree DT(*NewF);
-  PromoteMemToReg(memoryLocations, DT, /*AC*/nullptr);
+  PromoteMemToReg(memoryLocations, DT, /*AC*/ nullptr);
 }
 
 /// Perform recursive inlinining on NewF up to the given limit
@@ -507,17 +516,19 @@ static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
   }
 }
 
-void CanonicalizeLoops(Function* F, TargetLibraryInfo &TLI) {
+void CanonicalizeLoops(Function *F, TargetLibraryInfo &TLI) {
 
   DominatorTree DT(*F);
   LoopInfo LI(DT);
   AssumptionCache AC(*F);
   MustExitScalarEvolution SE(*F, TLI, AC, DT, LI);
-  for(auto& L : LI) {
-    auto pair = InsertNewCanonicalIV(L, Type::getInt64Ty(F->getContext()), "tiv");
+  for (auto &L : LI) {
+    auto pair =
+        InsertNewCanonicalIV(L, Type::getInt64Ty(F->getContext()), "tiv");
     PHINode *CanonicalIV = pair.first;
     assert(CanonicalIV);
-    RemoveRedundantIVs(L->getHeader(), CanonicalIV, SE, [&](Instruction* I) { I->eraseFromParent(); });
+    RemoveRedundantIVs(L->getHeader(), CanonicalIV, SE,
+                       [&](Instruction *I) { I->eraseFromParent(); });
   }
 }
 
@@ -563,12 +574,13 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   }
 
   SmallVector<ReturnInst *, 4> Returns;
-  //if (auto SP = F->getSubProgram()) {
+  // if (auto SP = F->getSubProgram()) {
   //  VMap[SP] = DISubprogram::get(SP);
   //}
 
-  CloneFunctionInto(NewF, F, VMap, /*ModuleLevelChanges*/F->getSubprogram() != nullptr, Returns, "",
-                    nullptr);
+  CloneFunctionInto(NewF, F, VMap,
+                    /*ModuleLevelChanges*/ F->getSubprogram() != nullptr,
+                    Returns, "", nullptr);
   NewF->setAttributes(F->getAttributes());
 
   if (EnzymePreopt) {

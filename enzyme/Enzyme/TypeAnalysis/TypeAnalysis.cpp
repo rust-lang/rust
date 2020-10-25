@@ -45,8 +45,8 @@
 #include "../Utils.h"
 #include "TypeAnalysis.h"
 
-#include "../LibraryFuncs.h"
 #include "../FunctionUtils.h"
+#include "../LibraryFuncs.h"
 
 #include "TBAA.h"
 
@@ -55,16 +55,17 @@ llvm::cl::opt<bool> PrintType("enzyme-print-type", cl::init(false), cl::Hidden,
 
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
-    : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(), fntypeinfo(fn), interprocedural(TA), direction(direction),
-      Invalid(false), DT(*fn.Function) {
-      
+    : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(),
+      fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
+      DT(*fn.Function) {
 
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 
   // Add all instructions in the function
   for (BasicBlock &BB : *fntypeinfo.Function) {
-    if (notForAnalysis.count(&BB)) continue;
+    if (notForAnalysis.count(&BB))
+      continue;
     for (Instruction &I : BB) {
       workList.push_back(&I);
     }
@@ -289,7 +290,8 @@ void TypeAnalyzer::addToWorkList(Value *Val) {
   if (auto I = dyn_cast<Instruction>(Val)) {
     if (fntypeinfo.Function != I->getParent()->getParent())
       return;
-    if (notForAnalysis.count(I->getParent())) return;
+    if (notForAnalysis.count(I->getParent()))
+      return;
     if (fntypeinfo.Function != I->getParent()->getParent()) {
       llvm::errs() << "function: " << *fntypeinfo.Function << "\n";
       llvm::errs() << "instf: " << *I->getParent()->getParent() << "\n";
@@ -686,7 +688,7 @@ void TypeAnalyzer::run() {
   // only analyze any call instances after all other potential
   // updates have been done. This is to minimize the number
   // of expensive interprocedural analyses
-  std::deque<Instruction*> pendingCalls;
+  std::deque<Instruction *> pendingCalls;
 
   do {
 
@@ -1527,10 +1529,12 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
       // legal to subtract unrelated pointer
       if (AnalysisRet[{}] == BaseType::Integer) {
         if (direction & UP)
-          updateAnalysis(I.getOperand(0), TypeTree(AnalysisRHS[{}]).PurgeAnything().Only(-1),
+          updateAnalysis(I.getOperand(0),
+                         TypeTree(AnalysisRHS[{}]).PurgeAnything().Only(-1),
                          &I);
         if (direction & UP)
-          updateAnalysis(I.getOperand(1), TypeTree(AnalysisLHS[{}]).PurgeAnything().Only(-1),
+          updateAnalysis(I.getOperand(1),
+                         TypeTree(AnalysisLHS[{}]).PurgeAnything().Only(-1),
                          &I);
       }
       break;
@@ -1577,9 +1581,9 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
       for (int i = 0; i < 2; ++i) {
         if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
           if (CI->isNegative() || CI->isZero() || CI->isOne()) {
-            // If add/sub with zero or a negative number, the result is equal to the
-            // type of the other operand (and we don't need to assume this was
-            // an "anything")
+            // If add/sub with zero or a negative number, the result is equal to
+            // the type of the other operand (and we don't need to assume this
+            // was an "anything")
             Result = getAnalysis(I.getOperand(1 - i)).Data0();
           }
         }
@@ -1974,32 +1978,33 @@ void analyzeFuncTypes(RT (*fn)(Args...), CallInst &call, TypeAnalyzer &TA) {
   FunctionArgumentIterator<Args...>::analyzeFuncTypesHelper(0, call, TA);
 }
 
-
 void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
-    TypeTree Result;
+  TypeTree Result;
 
-    IRBuilder <>B(&call);
-    std::vector<Value*> args;
-    for(auto& val : call.arg_operands()) {
-      args.push_back(val);
+  IRBuilder<> B(&call);
+  std::vector<Value *> args;
+  for (auto &val : call.arg_operands()) {
+    args.push_back(val);
+  }
+#if LLVM_VERSION_MAJOR >= 11
+  CallInst *tmpCall =
+      B.CreateCall(call.getFunctionType(), call.getCalledOperand(), args);
+#else
+  CallInst *tmpCall =
+      B.CreateCall(call.getFunctionType(), call.getCalledValue(), args);
+#endif
+  analysis[tmpCall] = analysis[&call];
+  visitCallInst(*tmpCall);
+  analysis[&call] = analysis[tmpCall];
+  analysis.erase(tmpCall);
+
+  for (auto &a : workList) {
+    if (a == tmpCall) {
+      a = &call;
     }
-    #if LLVM_VERSION_MAJOR >= 11
-    CallInst* tmpCall = B.CreateCall(call.getFunctionType(), call.getCalledOperand(), args);
-    #else
-    CallInst* tmpCall = B.CreateCall(call.getFunctionType(), call.getCalledValue(), args);
-    #endif
-    analysis[tmpCall] = analysis[&call];
-    visitCallInst(*tmpCall);
-    analysis[&call] = analysis[tmpCall];
-    analysis.erase(tmpCall);
+  }
 
-    for(auto &a : workList) {
-      if (a == tmpCall) {
-        a = &call;
-      }
-    }
-
-    tmpCall->eraseFromParent();
+  tmpCall->eraseFromParent();
 }
 
 void TypeAnalyzer::visitCallInst(CallInst &call) {

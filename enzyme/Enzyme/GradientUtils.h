@@ -118,8 +118,10 @@ public:
   }
 
   llvm::DebugLoc getNewFromOriginal(const llvm::DebugLoc L) const {
-    if (L.get() == nullptr) return nullptr;
-    if (!oldFunc->getSubprogram()) return L;
+    if (L.get() == nullptr)
+      return nullptr;
+    if (!oldFunc->getSubprogram())
+      return L;
     assert(originalToNewFn.hasMD());
     auto opt = originalToNewFn.getMappedMD(L.getAsMDNode());
     if (!opt.hasValue())

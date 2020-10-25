@@ -131,7 +131,7 @@ public:
   std::deque<llvm::Value *> workList;
 
 private:
-  llvm::SmallPtrSet<llvm::BasicBlock*, 4> notForAnalysis;
+  llvm::SmallPtrSet<llvm::BasicBlock *, 4> notForAnalysis;
   /// Tell TypeAnalyzer to reanalyze this value
   void addToWorkList(llvm::Value *val);
 

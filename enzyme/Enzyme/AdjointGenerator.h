@@ -802,7 +802,8 @@ public:
     assert(BB2);
 
     Builder2.SetInsertPoint(BB2);
-    Builder2.SetCurrentDebugLocation(gutils->getNewFromOriginal(Builder2.getCurrentDebugLocation()));
+    Builder2.SetCurrentDebugLocation(
+        gutils->getNewFromOriginal(Builder2.getCurrentDebugLocation()));
     Builder2.setFastMathFlags(getFast());
   }
 
@@ -1232,7 +1233,7 @@ public:
                   "failed to deduce type of copy ", MTI);
 
       TR.firstPointer(size, orig_op0, /*errifnotfound*/ true,
-                                 /*pointerIntSame*/ true);
+                      /*pointerIntSame*/ true);
       llvm_unreachable("bad mti");
     }
   known:;
@@ -1951,7 +1952,8 @@ public:
         augmentcall =
             BuilderZ.CreateCall(kmpc->getFunctionType(), kmpc, pre_args);
         augmentcall->setCallingConv(call.getCallingConv());
-        augmentcall->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
+        augmentcall->setDebugLoc(
+            gutils->getNewFromOriginal(call.getDebugLoc()));
         if (tapeIdx.hasValue()) {
           tape = (tapeIdx.getValue() == -1)
                      ? augmentcall
@@ -2226,8 +2228,10 @@ public:
           Value *ptrshadow =
               gutils->invertPointerM(call.getArgOperand(0), Builder2);
           Builder2.CreateCall(
-              called, std::vector<Value *>({ptrshadow, gutils->getNewFromOriginal(call.getArgOperand(1)),
-                                            gutils->getNewFromOriginal(call.getArgOperand(2))}));
+              called,
+              std::vector<Value *>(
+                  {ptrshadow, gutils->getNewFromOriginal(call.getArgOperand(1)),
+                   gutils->getNewFromOriginal(call.getArgOperand(2))}));
           val = Builder2.CreateLoad(ptrshadow);
           val = gutils->cacheForReverse(Builder2, val,
                                         getIndex(orig, CacheType::Shadow));
@@ -2237,7 +2241,8 @@ public:
           auto val_arg =
               ConstantInt::get(Type::getInt8Ty(call.getContext()), 0);
           auto len_arg = Builder2.CreateZExtOrTrunc(
-              gutils->getNewFromOriginal(call.getArgOperand(2)), Type::getInt64Ty(call.getContext()));
+              gutils->getNewFromOriginal(call.getArgOperand(2)),
+              Type::getInt64Ty(call.getContext()));
           auto volatile_arg = ConstantInt::getFalse(call.getContext());
 
 #if LLVM_VERSION_MAJOR == 6
@@ -2267,12 +2272,13 @@ public:
           getReverseBuilder(Builder2);
           Value *tofree = gutils->lookupM(val, Builder2, ValueToValueMapTy(),
                                           /*tryLegalRecompute*/ false);
-          auto freeCall = cast<CallInst>(CallInst::CreateFree(tofree, Builder2.GetInsertBlock()));
+          auto freeCall = cast<CallInst>(
+              CallInst::CreateFree(tofree, Builder2.GetInsertBlock()));
           Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
         }
       }
 
-      //CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
+      // CallInst *const op = cast<CallInst>(gutils->getNewFromOriginal(&call));
       // TODO enable this if we need to free the memory
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
@@ -2290,13 +2296,14 @@ public:
         //}
       } else {
         IRBuilder<> Builder2(gutils->getNewFromOriginal(&call)->getNextNode());
-        auto load = Builder2.CreateLoad(gutils->getNewFromOriginal(call.getOperand(0)), "posix_preread");
+        auto load = Builder2.CreateLoad(
+            gutils->getNewFromOriginal(call.getOperand(0)), "posix_preread");
         Builder2.SetInsertPoint(&call);
         getReverseBuilder(Builder2);
-        auto freeCall = cast<CallInst>(CallInst::CreateFree(gutils->lookupM(load, Builder2,
-                                             ValueToValueMapTy(),
-                                             /*tryLegal*/ false),
-                             Builder2.GetInsertBlock()));
+        auto freeCall = cast<CallInst>(CallInst::CreateFree(
+            gutils->lookupM(load, Builder2, ValueToValueMapTy(),
+                            /*tryLegal*/ false),
+            Builder2.GetInsertBlock()));
         Builder2.GetInsertBlock()->getInstList().push_back(freeCall);
       }
 
@@ -2620,7 +2627,8 @@ public:
 
         augmentcall = BuilderZ.CreateCall(FT, newcalled, pre_args);
         augmentcall->setCallingConv(orig->getCallingConv());
-        augmentcall->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+        augmentcall->setDebugLoc(
+            gutils->getNewFromOriginal(orig->getDebugLoc()));
 
         if (!augmentcall->getType()->isVoidTy())
           augmentcall->setName(orig->getName() + "_augmented");
