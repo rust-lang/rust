@@ -540,7 +540,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 }
                 Ok(true)
             }
-            ty::Ref(..) => {
+            ty::Ref(_, ty, mutbl) => {
+                if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) && *mutbl == hir::Mutability::Mut {
+                    // A mutable reference inside a const? That does not seem right (except of it is
+                    // a ZST).
+                    let layout = self.ecx.layout_of(ty)?;
+                    if !layout.is_zst() {
+                        throw_validation_failure!(self.path, { "mutable reference in a `const`" });
+                    }
+                }
                 self.check_safe_pointer(value, "reference")?;
                 Ok(true)
             }
