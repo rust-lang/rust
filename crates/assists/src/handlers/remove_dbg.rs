@@ -93,8 +93,9 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
     if macro_contents.len() < 2 {
         return false;
     }
+    let mut macro_contents = macro_contents.into_iter().peekable();
     let mut unpaired_brackets_in_contents = Vec::new();
-    for element in macro_contents {
+    while let Some(element) = macro_contents.next() {
         match element.kind() {
             T!['('] | T!['['] | T!['{'] => unpaired_brackets_in_contents.push(element),
             T![')'] => {
@@ -118,12 +119,13 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
             symbol_kind => {
                 let symbol_not_in_bracket = unpaired_brackets_in_contents.is_empty();
                 if symbol_not_in_bracket
-                    // paths
-                    && symbol_kind != SyntaxKind::COLON
-                    // field/method access
-                    && symbol_kind != SyntaxKind::DOT
-                    // try operator
-                    && symbol_kind != SyntaxKind::QUESTION
+                    && symbol_kind != SyntaxKind::COLON // paths
+                    && (symbol_kind != SyntaxKind::DOT // field/method access
+                        || macro_contents // range expressions consist of two SyntaxKind::Dot in macro invocations
+                            .peek()
+                            .map(|element| element.kind() == SyntaxKind::DOT)
+                            .unwrap_or(false))
+                    && symbol_kind != SyntaxKind::QUESTION // try operator
                     && (symbol_kind.is_punct() || symbol_kind == SyntaxKind::AS_KW)
                 {
                     return true;
@@ -347,7 +349,6 @@ fn main() {
     }
 
     #[test]
-    #[ignore] // FIXME: we encounter SyntaxKind::DOT instead of SyntaxKind::DOT2 causing this to fail
     fn test_remove_dbg_range_expr() {
         check_assist(
             remove_dbg,
