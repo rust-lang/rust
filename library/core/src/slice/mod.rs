@@ -15,6 +15,7 @@ use crate::num::NonZeroUsize;
 use crate::ops::{FnMut, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
+use crate::pin::Pin;
 use crate::ptr;
 use crate::result::Result;
 use crate::result::Result::{Err, Ok};
@@ -305,6 +306,65 @@ impl<T> [T] {
         I: SliceIndex<Self>,
     {
         index.get_mut(self)
+    }
+
+    /// Returns a pinned reference to an element or subslice depending on the
+    /// type of index (see [`get`]) or `None` if the index is out of bounds.
+    ///
+    /// [`get`]: #method.get
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_get_pin)]
+    /// use std::pin::Pin;
+    ///
+    /// let v = vec![0, 1, 2].into_boxed_slice();
+    /// let pinned = Pin::from(v);
+    ///
+    /// let x: Option<Pin<&i32>> = pinned.as_ref().get_pin_ref(1);
+    /// assert_eq!(&1, &*x.unwrap());
+    /// ```
+    #[unstable(feature = "slice_get_pin", issue = "none")]
+    #[inline]
+    pub fn get_pin_ref<I>(self: Pin<&Self>, index: I) -> Option<Pin<&I::Output>>
+    where
+        I: SliceIndex<Self>,
+    {
+        // SAFETY: `x` is guaranteed to be pinned because it comes from `self`
+        // which is pinned.
+        unsafe { self.get_ref().get(index).map(|x| Pin::new_unchecked(x)) }
+    }
+
+    /// Returns a pinned mutable reference to an element or subslice depending on the
+    /// type of index (see [`get`]) or `None` if the index is out of bounds.
+    ///
+    /// [`get`]: #method.get
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_get_pin)]
+    /// use std::pin::Pin;
+    ///
+    /// let v = vec![0, 1, 2].into_boxed_slice();
+    /// let mut pinned = Pin::from(v);
+    ///
+    /// if let Some(mut elem) = pinned.as_mut().get_pin_mut(1) {
+    ///     elem.set(10);
+    /// }
+    /// assert_eq!(&*pinned, &[0, 10, 2]);
+    /// ```
+    #[unstable(feature = "slice_get_pin", issue = "none")]
+    #[inline]
+    pub fn get_pin_mut<I>(self: Pin<&mut Self>, index: I) -> Option<Pin<&mut I::Output>>
+    where
+        I: SliceIndex<Self>,
+    {
+        // SAFETY: `get_unchecked_mut` is never used to move the slice inside `self` (`SliceIndex`
+        // is sealed and all `SliceIndex::get_mut` implementations never move elements).
+        // `x` is guaranteed to be pinned because it comes from `self` which is pinned.
+        unsafe { self.get_unchecked_mut().get_mut(index).map(|x| Pin::new_unchecked(x)) }
     }
 
     /// Returns a reference to an element or subslice, without doing bounds
