@@ -263,13 +263,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                         // This helps to prevent users from accidentally exploiting UB that they
                         // caused (by somehow getting a mutable reference in a `const`).
                         if ref_mutability == Mutability::Mut {
-                            match referenced_ty.kind() {
+                            /*match referenced_ty.kind() {
                                 ty::Array(_, n) if n.eval_usize(*tcx, self.ecx.param_env) == 0 => {}
                                 ty::Slice(_)
                                     if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)?
                                         == 0 => {}
                                 _ => mutable_memory_in_const(tcx, "`&mut`"),
-                            }
+                            }*/
                         } else {
                             // A shared reference. We cannot check `freeze` here due to references
                             // like `&dyn Trait` that are actually immutable.  We do check for

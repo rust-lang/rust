@@ -28,7 +28,7 @@ const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
 
 // Make sure we also catch mutable references.
 const BLUNT: &mut i32 = &mut 42;
-//~^ ERROR: mutable memory (`&mut`) is not allowed in constant
+//~^ ERROR: it is undefined behavior to use this value
 
 fn main() {
     unsafe {
