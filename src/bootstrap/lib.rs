@@ -534,7 +534,7 @@ impl Build {
 
     /// Gets the space-separated set of activated features for the standard
     /// library.
-    fn std_features(&self) -> String {
+    fn std_features(&self, target: TargetSelection) -> String {
         let mut features = "panic-unwind".to_string();
 
         if self.config.llvm_libunwind {
@@ -543,7 +543,7 @@ impl Build {
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
-        if self.config.profiler {
+        if self.config.profiler_enabled(target) {
             features.push_str(" profiler");
         }
         features
@@ -1105,7 +1105,7 @@ impl Build {
     /// Returns a Vec of all the dependencies of the given root crate,
     /// including transitive dependencies and the root itself. Only includes
     /// "local" crates (those in the local source tree, not from a registry).
-    fn in_tree_crates(&self, root: &str) -> Vec<&Crate> {
+    fn in_tree_crates(&self, root: &str, target: Option<TargetSelection>) -> Vec<&Crate> {
         let mut ret = Vec::new();
         let mut list = vec![INTERNER.intern_str(root)];
         let mut visited = HashSet::new();
@@ -1122,7 +1122,10 @@ impl Build {
                 // metadata::build.
                 if visited.insert(dep)
                     && dep != "build_helper"
-                    && (dep != "profiler_builtins" || self.config.profiler)
+                    && (dep != "profiler_builtins"
+                        || target
+                            .map(|t| self.config.profiler_enabled(t))
+                            .unwrap_or(self.config.any_profiler_enabled()))
                     && (dep != "rustc_codegen_llvm" || self.config.llvm_enabled())
                 {
                     list.push(*dep);
