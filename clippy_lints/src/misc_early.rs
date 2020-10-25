@@ -231,7 +231,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);
-    ///
     /// // Bad
     /// match t {
     ///     TupleStruct(0, .., _) => (),

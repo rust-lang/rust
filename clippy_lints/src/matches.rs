@@ -36,7 +36,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # fn bar(stool: &str) {}
     /// # let x = Some("abc");
-    ///
     /// // Bad
     /// match x {
     ///     Some(ref foo) => bar(foo),
@@ -239,7 +238,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # enum Foo { A(usize), B(usize) }
     /// # let x = Foo::B(1);
-    ///
     /// // Bad
     /// match x {
     ///     Foo::A(_) => {},
