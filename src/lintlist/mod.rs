@@ -2140,6 +2140,13 @@ vec![
         module: "single_component_path_imports",
     },
     Lint {
+        name: "single_element_loop",
+        group: "complexity",
+        desc: "there is no reason to have a single element loop",
+        deprecation: None,
+        module: "loops",
+    },
+    Lint {
         name: "single_match",
         group: "style",
         desc: "a `match` statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`",
