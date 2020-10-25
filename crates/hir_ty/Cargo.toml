@@ -17,7 +17,7 @@ ena = "0.14.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 scoped-tls = "1"
-chalk-solve = "0.34"
+chalk-solve = { version = "0.34", default-features = false }
 chalk-ir = "0.34"
 chalk-recursive = "0.34"
 
