@@ -156,6 +156,16 @@ getGuaranteedUnreachable(llvm::Function *F) {
       continue;
     }
 
+    // Assume resumes don't happen
+    // TODO consider EH
+    if (llvm::isa<llvm::ResumeInst>(next->getTerminator())) {
+      knownUnreachables.insert(next);
+      for (llvm::BasicBlock *Pred : predecessors(next)) {
+        todo.push_back(Pred);
+      }
+      continue;
+    }
+
     bool unreachable = true;
     for (llvm::BasicBlock *Succ : llvm::successors(next)) {
       if (knownUnreachables.find(Succ) == knownUnreachables.end()) {

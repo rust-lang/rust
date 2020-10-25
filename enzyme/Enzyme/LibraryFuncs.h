@@ -32,6 +32,8 @@
 /// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isAllocationFunction(const llvm::Function &F,
                                         const llvm::TargetLibraryInfo &TLI) {
+  if (F.getName() == "__rust_alloc" || F.getName() == "__rust_alloc_zeroed")
+    return true;                                  
   using namespace llvm;
   llvm::LibFunc libfunc;
   if (!TLI.getLibFunc(F, libfunc))
@@ -103,6 +105,8 @@ static inline bool isDeallocationFunction(const llvm::Function &F,
   llvm::LibFunc libfunc;
   if (!TLI.getLibFunc(F, libfunc)) {
     if (F.getName() == "free")
+      return true;
+    if (F.getName() == "__rust_dealloc")
       return true;
     return false;
   }
@@ -180,6 +184,10 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
                     const llvm::TargetLibraryInfo &TLI) {
   using namespace llvm;
   assert(isAllocationFunction(allocationfn, TLI));
+
+  if (allocationfn.getName() == "__rust_alloc" || allocationfn.getName() == "__rust_alloc_zeroed") {
+    llvm_unreachable("todo - hook in rust allocation fns");
+  }
 
   llvm::LibFunc libfunc;
   bool res = TLI.getLibFunc(allocationfn, libfunc);

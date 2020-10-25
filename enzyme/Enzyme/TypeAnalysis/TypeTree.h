@@ -757,7 +757,21 @@ public:
         continue;
 
       const auto &Seq = pair.first;
+
       if (Seq.size() > 0) {
+        // check pointer abilities from before
+        {
+          std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
+          auto found = mapping.find(tmp);
+          if (found != mapping.end()) {
+            if (!(found->second == BaseType::Pointer ||
+                  found->second == BaseType::Anything)) {
+                LegalOr = false;
+                return changed;
+            }
+          }
+        }
+        
         // if there's an existing ending -1 that clobbers, don't insert
         {
           std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
@@ -777,6 +791,17 @@ public:
               found->second = CT;
               changed = true;
               continue;
+            }
+
+            if (PointerIntSame && (
+              (CT == BaseType::Pointer && found->second == BaseType::Integer) ||
+              (CT == BaseType::Integer && found->second == BaseType::Pointer))) {
+              continue;
+            }
+
+            if (CT != BaseType::Anything && found->second != BaseType::Anything) {
+              LegalOr = false;
+              return changed;
             }
           }
         }
@@ -800,6 +825,17 @@ public:
               found->second = CT;
               changed = true;
               continue;
+            }
+            
+            if (PointerIntSame && (
+              (CT == BaseType::Pointer && found->second == BaseType::Integer) ||
+              (CT == BaseType::Integer && found->second == BaseType::Pointer))) {
+              continue;
+            }
+
+            if (CT != BaseType::Anything && found->second != BaseType::Anything) {
+              LegalOr = false;
+              return changed;
             }
           }
         }

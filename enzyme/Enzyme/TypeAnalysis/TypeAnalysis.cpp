@@ -46,6 +46,7 @@
 #include "TypeAnalysis.h"
 
 #include "../LibraryFuncs.h"
+#include "../FunctionUtils.h"
 
 #include "TBAA.h"
 
@@ -54,14 +55,16 @@ llvm::cl::opt<bool> PrintType("enzyme-print-type", cl::init(false), cl::Hidden,
 
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
-    : intseen(), fntypeinfo(fn), interprocedural(TA), direction(direction),
+    : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(), fntypeinfo(fn), interprocedural(TA), direction(direction),
       Invalid(false), DT(*fn.Function) {
+      
 
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 
   // Add all instructions in the function
   for (BasicBlock &BB : *fntypeinfo.Function) {
+    if (notForAnalysis.count(&BB)) continue;
     for (Instruction &I : BB) {
       workList.push_back(&I);
     }
@@ -286,6 +289,7 @@ void TypeAnalyzer::addToWorkList(Value *Val) {
   if (auto I = dyn_cast<Instruction>(Val)) {
     if (fntypeinfo.Function != I->getParent()->getParent())
       return;
+    if (notForAnalysis.count(I->getParent())) return;
     if (fntypeinfo.Function != I->getParent()->getParent()) {
       llvm::errs() << "function: " << *fntypeinfo.Function << "\n";
       llvm::errs() << "instf: " << *I->getParent()->getParent() << "\n";
@@ -359,6 +363,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
   // If this is a deinite ptr type and we find instead this is an integer, error
   // early This is unlikely to occur in real codes and a very good way to
   // identify TypeAnalysis bugs
+  /*
   if (pointerUse && Data.Inner0() == BaseType::Integer) {
     if (direction != BOTH) {
       Invalid = true;
@@ -371,6 +376,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
       llvm::errs() << " + " << *Origin << "\n";
     assert(0 && "illegal ptr update");
   }
+  */
 
   // Attempt to update the underlying analysis
   bool LegalOr = true;
@@ -1080,7 +1086,8 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
   // than assuming it could be anything (per null)
   if (bos.size() > 0 && UniqueValues.size() == 1 &&
       isa<ConstantInt>(UniqueValues[0]) &&
-      cast<ConstantInt>(UniqueValues[0])->isZero()) {
+      (cast<ConstantInt>(UniqueValues[0])->isZero() ||
+       cast<ConstantInt>(UniqueValues[0])->isOne())) {
     PhiTypes = TypeTree(BaseType::Integer).Only(-1);
   }
   for (BinaryOperator *bo : bos) {
@@ -1106,10 +1113,16 @@ void TypeAnalyzer::visitTruncInst(TruncInst &I) {
 }
 
 void TypeAnalyzer::visitZExtInst(ZExtInst &I) {
-  if (direction & DOWN)
-    updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
-  if (direction & UP)
+  if (direction & DOWN) {
+    if (cast<IntegerType>(I.getOperand(0)->getType())->getBitWidth() == 1) {
+      updateAnalysis(&I, TypeTree(BaseType::Anything).Only(-1), &I);
+    } else {
+      updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+    }
+  }
+  if (direction & UP) {
     updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
+  }
 }
 
 void TypeAnalyzer::visitSExtInst(SExtInst &I) {
@@ -1181,8 +1194,13 @@ void TypeAnalyzer::visitPtrToIntInst(PtrToIntInst &I) {
 
 void TypeAnalyzer::visitIntToPtrInst(IntToPtrInst &I) {
   // Note it is illegal to assume here that either is a pointer or an int
-  if (direction & DOWN)
-    updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+  if (direction & DOWN) {
+    if (isa<ConstantInt>(I.getOperand(0))) {
+      updateAnalysis(&I, TypeTree(BaseType::Anything).Only(-1), &I);
+    } else {
+      updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+    }
+  }
   if (direction & UP)
     updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
@@ -1558,7 +1576,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
                I.getOpcode() == BinaryOperator::Sub) {
       for (int i = 0; i < 2; ++i) {
         if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
-          if (CI->isNegative() || CI->isZero()) {
+          if (CI->isNegative() || CI->isZero() || CI->isOne()) {
             // If add/sub with zero or a negative number, the result is equal to the
             // type of the other operand (and we don't need to assume this was
             // an "anything")
