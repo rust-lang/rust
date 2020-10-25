@@ -237,6 +237,7 @@ enum MaybeInlined {
 impl Clean<Vec<Item>> for hir::Item<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         use hir::ItemKind;
+        use MaybeInlined::NotInlined;
 
         let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
         let name = cx.tcx.item_name(def_id).clean(cx);
@@ -244,6 +245,18 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
             // TODO: should store Symbol, not String
             ItemKind::ExternCrate(renamed) => clean_extern_crate(self, renamed, cx),
             ItemKind::Use(path, kind) => clean_import(self, path, kind, cx),
+            ItemKind::Static(ty, mutability, body_id) => NotInlined(StaticItem(Static {
+                type_: ty.clean(cx),
+                mutability,
+                expr: print_const_expr(cx, body_id),
+            })),
+            ItemKind::Const(ty, body_id) => unimplemented!(),
+            ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
+                struct_type: doctree::struct_type_from_def(&variant_data),
+                generics: generics.clean(cx),
+                fields: variant_data.fields().clean(cx),
+                fields_stripped: false,
+            })),
             _ => unimplemented!(),
         };
 
@@ -333,64 +346,6 @@ impl Clean<Vec<Item>> for hir::ModuleItems {
         unimplemented!()
     }
 }
-
-/*
-impl Clean<Item> for doctree::Module<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        // maintain a stack of mod ids, for doc comment path resolution
-        // but we also need to resolve the module's own docs based on whether its docs were written
-        // inside or outside the module, so check for that
-        let attrs = self.attrs.clean(cx);
-
-        let mut items: Vec<Item> = vec![];
-        items.extend(self.extern_crates.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.structs.iter().map(|x| x.clean(cx)));
-        items.extend(self.unions.iter().map(|x| x.clean(cx)));
-        items.extend(self.enums.iter().map(|x| x.clean(cx)));
-        items.extend(self.fns.iter().map(|x| x.clean(cx)));
-        items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
-        items.extend(self.mods.iter().map(|x| x.clean(cx)));
-        items.extend(self.typedefs.iter().map(|x| x.clean(cx)));
-        items.extend(self.opaque_tys.iter().map(|x| x.clean(cx)));
-        items.extend(self.statics.iter().map(|x| x.clean(cx)));
-        items.extend(self.constants.iter().map(|x| x.clean(cx)));
-        items.extend(self.traits.iter().map(|x| x.clean(cx)));
-        items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.macros.iter().map(|x| x.clean(cx)));
-        items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
-        items.extend(self.trait_aliases.iter().map(|x| x.clean(cx)));
-
-        // determine if we should display the inner contents or
-        // the outer `mod` item for the source code.
-        let span = {
-            let sm = cx.sess().source_map();
-            let outer = sm.lookup_char_pos(self.where_outer.lo());
-            let inner = sm.lookup_char_pos(self.where_inner.lo());
-            if outer.file.start_pos == inner.file.start_pos {
-                // mod foo { ... }
-                self.where_outer
-            } else {
-                // mod foo; (and a separate SourceFile for the contents)
-                self.where_inner
-            }
-        };
-
-        let what_rustc_thinks = Item::from_hir_id_and_parts(
-            self.id,
-            self.name,
-            ModuleItem(Module { is_crate: self.is_crate, items }),
-            cx,
-        );
-        Item {
-            name: Some(what_rustc_thinks.name.unwrap_or_default()),
-            attrs,
-            source: span.clean(cx),
-            ..what_rustc_thinks
-        }
-    }
-}
-*/
 
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &DocContext<'_>) -> Attributes {
@@ -1907,22 +1862,6 @@ impl Clean<Item> for doctree::Struct<'_> {
     }
 }
 
-impl Clean<Item> for doctree::Union<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            UnionItem(Union {
-                struct_type: self.struct_type,
-                generics: self.generics.clean(cx),
-                fields: self.fields.clean(cx),
-                fields_stripped: false,
-            }),
-            cx,
-        )
-    }
-}
-
 impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
@@ -2128,22 +2067,6 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
             (self.generic_params.clean(cx), (&*self.decl, &self.param_names[..]).clean(cx))
         });
         BareFunctionDecl { unsafety: self.unsafety, abi: self.abi, decl, generic_params }
-    }
-}
-
-impl Clean<Item> for doctree::Static<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        debug!("cleaning static {}: {:?}", self.name.clean(cx), self);
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            StaticItem(Static {
-                type_: self.type_.clean(cx),
-                mutability: self.mutability,
-                expr: print_const_expr(cx, self.expr),
-            }),
-            cx,
-        )
     }
 }
 
