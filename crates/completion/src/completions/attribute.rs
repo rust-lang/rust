@@ -7,12 +7,12 @@ use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind};
 
 use crate::{
-    completion_context::CompletionContext,
-    completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
+    context::CompletionContext,
     generated_lint_completions::{CLIPPY_LINTS, FEATURES},
+    item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
 };
 
-pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if ctx.mod_declaration_under_caret.is_some() {
         return None;
     }
@@ -262,9 +262,9 @@ const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Ord", dependencies: &["PartialOrd", "Eq", "PartialEq"] },
 ];
 
-pub(super) struct LintCompletion {
-    pub(super) label: &'static str,
-    pub(super) description: &'static str,
+pub(crate) struct LintCompletion {
+    pub(crate) label: &'static str,
+    pub(crate) description: &'static str,
 }
 
 #[rustfmt::skip]

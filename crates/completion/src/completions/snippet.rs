@@ -1,8 +1,8 @@
 //! This file provides snippet completions, like `pd` => `eprintln!(...)`.
 
 use crate::{
-    completion_config::SnippetCap, completion_item::Builder, CompletionContext, CompletionItem,
-    CompletionItemKind, CompletionKind, Completions,
+    config::SnippetCap, item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
+    CompletionKind, Completions,
 };
 
 fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
@@ -11,7 +11,7 @@ fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str)
         .kind(CompletionItemKind::Snippet)
 }
 
-pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path && ctx.function_syntax.is_some()) {
         return;
     }
@@ -24,7 +24,7 @@ pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
     snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
 }
 
-pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_new_item {
         return;
     }

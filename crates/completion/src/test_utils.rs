@@ -8,7 +8,7 @@ use stdx::{format_to, trim_indent};
 use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::{assert_eq_text, RangeOrOffset};
 
-use crate::{completion_item::CompletionKind, CompletionConfig, CompletionItem};
+use crate::{item::CompletionKind, CompletionConfig, CompletionItem};
 
 /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
@@ -32,10 +32,8 @@ pub(crate) fn do_completion_with_config(
     code: &str,
     kind: CompletionKind,
 ) -> Vec<CompletionItem> {
-    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(config, code)
-        .into_iter()
-        .filter(|c| c.completion_kind == kind)
-        .collect();
+    let mut kind_completions: Vec<CompletionItem> =
+        get_all_items(config, code).into_iter().filter(|c| c.completion_kind == kind).collect();
     kind_completions.sort_by(|l, r| l.label().cmp(r.label()));
     kind_completions
 }
@@ -49,10 +47,8 @@ pub(crate) fn completion_list_with_config(
     code: &str,
     kind: CompletionKind,
 ) -> String {
-    let mut kind_completions: Vec<CompletionItem> = get_all_completion_items(config, code)
-        .into_iter()
-        .filter(|c| c.completion_kind == kind)
-        .collect();
+    let mut kind_completions: Vec<CompletionItem> =
+        get_all_items(config, code).into_iter().filter(|c| c.completion_kind == kind).collect();
     kind_completions.sort_by_key(|c| c.label().to_owned());
     let label_width = kind_completions
         .iter()
@@ -121,10 +117,7 @@ pub(crate) fn check_pattern_is_not_applicable(code: &str, check: fn(SyntaxElemen
     assert!(!check(NodeOrToken::Token(token)));
 }
 
-pub(crate) fn get_all_completion_items(
-    config: CompletionConfig,
-    code: &str,
-) -> Vec<CompletionItem> {
+pub(crate) fn get_all_items(config: CompletionConfig, code: &str) -> Vec<CompletionItem> {
     let (db, position) = position(code);
     crate::completions(&db, &config, position).unwrap().into()
 }

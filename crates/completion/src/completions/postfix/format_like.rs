@@ -15,8 +15,8 @@
 //   + `loge` -> `log::error!(...)`
 
 use crate::{
-    complete_postfix::postfix_snippet, completion_config::SnippetCap,
-    completion_context::CompletionContext, completion_item::Completions,
+    completions::postfix::postfix_snippet, config::SnippetCap, context::CompletionContext,
+    item::Completions,
 };
 use syntax::ast::{self, AstToken};
 
@@ -33,7 +33,7 @@ static KINDS: &[(&str, &str)] = &[
     ("loge", "log::error!"),
 ];
 
-pub(super) fn add_format_like_completions(
+pub(crate) fn add_format_like_completions(
     acc: &mut Completions,
     ctx: &CompletionContext,
     dot_receiver: &ast::Expr,

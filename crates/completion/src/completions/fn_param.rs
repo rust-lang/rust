@@ -12,7 +12,7 @@ use crate::{CompletionContext, CompletionItem, CompletionKind, Completions};
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
-pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_param {
         return;
     }

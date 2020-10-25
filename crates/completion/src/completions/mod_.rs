@@ -7,13 +7,10 @@ use rustc_hash::FxHashSet;
 
 use crate::{CompletionItem, CompletionItemKind};
 
-use super::{
-    completion_context::CompletionContext, completion_item::CompletionKind,
-    completion_item::Completions,
-};
+use crate::{context::CompletionContext, item::CompletionKind, item::Completions};
 
 /// Complete mod declaration, i.e. `mod <|> ;`
-pub(super) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let mod_under_caret = match &ctx.mod_declaration_under_caret {
         Some(mod_under_caret) if mod_under_caret.item_list().is_some() => return None,
         Some(mod_under_caret) => mod_under_caret,

@@ -7,7 +7,7 @@ use test_utils::mark;
 
 use crate::{CompletionContext, Completions};
 
-pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_qual {
         Some(path) => path.clone(),
         None => return,
@@ -369,11 +369,11 @@ struct S;
 
 mod m {
     impl super::S {
-        pub(super) fn public_method() { }
+        pub(crate) fn public_method() { }
         fn private_method() { }
-        pub(super) type PublicType = u32;
+        pub(crate) type PublicType = u32;
         type PrivateType = u32;
-        pub(super) const PUBLIC_CONST: u32 = 1;
+        pub(crate) const PUBLIC_CONST: u32 = 1;
         const PRIVATE_CONST: u32 = 1;
     }
 }
@@ -381,9 +381,9 @@ mod m {
 fn foo() { let _ = S::<|> }
 "#,
             expect![[r#"
-                ct PUBLIC_CONST    pub(super) const PUBLIC_CONST: u32 = 1;
-                ta PublicType      pub(super) type PublicType = u32;
-                fn public_method() pub(super) fn public_method()
+                ct PUBLIC_CONST    pub(crate) const PUBLIC_CONST: u32 = 1;
+                ta PublicType      pub(crate) type PublicType = u32;
+                fn public_method() pub(crate) fn public_method()
             "#]],
         );
     }

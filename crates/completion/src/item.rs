@@ -6,7 +6,7 @@ use hir::{Documentation, Mutability};
 use syntax::TextRange;
 use text_edit::TextEdit;
 
-use crate::completion_config::SnippetCap;
+use crate::config::SnippetCap;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a

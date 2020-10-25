@@ -6,7 +6,7 @@ use test_utils::mark;
 
 use crate::{CompletionContext, Completions};
 
-pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
         return;
     }

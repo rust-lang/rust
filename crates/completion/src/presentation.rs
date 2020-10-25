@@ -11,8 +11,8 @@ use crate::{
     CompletionScore,
     RootDatabase,
     {
-        completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
-        CompletionKind, Completions,
+        item::Builder, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
+        Completions,
     },
 };
 
@@ -20,7 +20,7 @@ impl Completions {
     pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &Type) {
         let is_deprecated = is_deprecated(field, ctx.db);
         let name = field.name(ctx.db);
-        let mut completion_item =
+        let mut item =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
                 .kind(CompletionItemKind::Field)
                 .detail(ty.display(ctx.db).to_string())
@@ -28,10 +28,10 @@ impl Completions {
                 .set_deprecated(is_deprecated);
 
         if let Some(score) = compute_score(ctx, &ty, &name.to_string()) {
-            completion_item = completion_item.set_score(score);
+            item = item.set_score(score);
         }
 
-        completion_item.add_to(self);
+        item.add_to(self);
     }
 
     pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
@@ -98,12 +98,11 @@ impl Completions {
             _ => None,
         };
 
-        let mut completion_item =
-            CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
+        let mut item = CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(ctx.db);
             if !ty.is_unknown() {
-                completion_item = completion_item.detail(ty.display(ctx.db).to_string());
+                item = item.detail(ty.display(ctx.db).to_string());
             }
         };
 
@@ -114,7 +113,7 @@ impl Completions {
                 if let Some(score) =
                     compute_score_from_active(&active_type, &active_name, &ty, &local_name)
                 {
-                    completion_item = completion_item.set_score(score);
+                    item = item.set_score(score);
                 }
                 ref_match = refed_type_matches(&active_type, &active_name, &ty, &local_name);
             }
@@ -130,7 +129,7 @@ impl Completions {
                 };
                 if has_non_default_type_params {
                     mark::hit!(inserts_angle_brackets_for_generics);
-                    completion_item = completion_item
+                    item = item
                         .lookup_by(local_name.clone())
                         .label(format!("{}<…>", local_name))
                         .insert_snippet(cap, format!("{}<$0>", local_name));
@@ -138,7 +137,7 @@ impl Completions {
             }
         }
 
-        completion_item.kind(kind).set_documentation(docs).set_ref_match(ref_match).add_to(self)
+        item.kind(kind).set_documentation(docs).set_ref_match(ref_match).add_to(self)
     }
 
     pub(crate) fn add_macro(
@@ -506,7 +505,7 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, check_edit_with_config, do_completion, get_all_completion_items},
+        test_utils::{check_edit, check_edit_with_config, do_completion, get_all_items},
         CompletionConfig, CompletionKind, CompletionScore,
     };
 
@@ -524,7 +523,7 @@ mod tests {
             }
         }
 
-        let mut completions = get_all_completion_items(CompletionConfig::default(), ra_fixture);
+        let mut completions = get_all_items(CompletionConfig::default(), ra_fixture);
         completions.sort_by_key(|it| (Reverse(it.score()), it.label().to_string()));
         let actual = completions
             .into_iter()
@@ -661,7 +660,7 @@ fn main() { let _: m::Spam = S<|> }
     }
 
     #[test]
-    fn sets_deprecated_flag_in_completion_items() {
+    fn sets_deprecated_flag_in_items() {
         check(
             r#"
 #[deprecated]
