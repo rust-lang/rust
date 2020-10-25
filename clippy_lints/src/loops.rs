@@ -3001,7 +3001,14 @@ impl IterFunction {
             IterFunctionKind::IntoIter => String::new(),
             IterFunctionKind::Len => String::from(".count()"),
             IterFunctionKind::IsEmpty => String::from(".next().is_none()"),
-            IterFunctionKind::Contains(span) => format!(".any(|x| x == {})", snippet(cx, *span, "..")),
+            IterFunctionKind::Contains(span) => {
+                let s = snippet(cx, *span, "..");
+                if let Some(stripped) = s.strip_prefix('&') {
+                    format!(".any(|x| x == {})", stripped)
+                } else {
+                    format!(".any(|x| x == *{})", s)
+                }
+            },
         }
     }
     fn get_suggestion_text(&self) -> &'static str {
