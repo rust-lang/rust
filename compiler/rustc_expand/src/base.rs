@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
-use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -257,6 +257,9 @@ pub enum ExpandResult<T, U> {
 
 // `meta_item` is the attribute, and `item` is the item being modified.
 pub trait MultiItemModifier {
+    fn krate(&self) -> Option<CrateNum> {
+        None
+    }
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,

@@ -8,6 +8,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, ErrorReported};
 use rustc_lexer::is_ident;
 use rustc_parse::nt_to_tokenstream;
+use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -63,10 +64,14 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct ProcMacroDerive {
+    pub krate: CrateNum,
     pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
 }
 
 impl MultiItemModifier for ProcMacroDerive {
+    fn krate(&self) -> Option<CrateNum> {
+        Some(self.krate)
+    }
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,

@@ -772,7 +772,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 (
                     trait_name,
-                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive { client })),
+                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive {
+                        client,
+                        krate: self.cnum,
+                    })),
                     helper_attrs,
                 )
             }
