@@ -4,7 +4,7 @@ use hir::{HasVisibility, Type};
 use rustc_hash::FxHashSet;
 use test_utils::mark;
 
-use crate::{context::CompletionContext, item::Completions};
+use crate::{context::CompletionContext, Completions};
 
 /// Complete dot accesses, i.e. fields or methods.
 pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {

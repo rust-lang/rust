@@ -16,7 +16,7 @@
 
 use crate::{
     completions::postfix::postfix_snippet, config::SnippetCap, context::CompletionContext,
-    item::Completions,
+    Completions,
 };
 use syntax::ast::{self, AstToken};
 

@@ -57,7 +57,8 @@ impl Completions {
         let kind = match resolution {
             ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::Module,
             ScopeDef::ModuleDef(Function(func)) => {
-                return self.add_function(ctx, *func, Some(local_name));
+                self.add_function(ctx, *func, Some(local_name));
+                return;
             }
             ScopeDef::ModuleDef(Adt(hir::Adt::Struct(_))) => CompletionItemKind::Struct,
             // FIXME: add CompletionItemKind::Union
@@ -65,7 +66,8 @@ impl Completions {
             ScopeDef::ModuleDef(Adt(hir::Adt::Enum(_))) => CompletionItemKind::Enum,
 
             ScopeDef::ModuleDef(EnumVariant(var)) => {
-                return self.add_enum_variant(ctx, *var, Some(local_name));
+                self.add_enum_variant(ctx, *var, Some(local_name));
+                return;
             }
             ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::Const,
             ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::Static,
@@ -77,13 +79,14 @@ impl Completions {
             // (does this need its own kind?)
             ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => CompletionItemKind::TypeParam,
             ScopeDef::MacroDef(mac) => {
-                return self.add_macro(ctx, Some(local_name), *mac);
+                self.add_macro(ctx, Some(local_name), *mac);
+                return;
             }
             ScopeDef::Unknown => {
-                return self.add(
-                    CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
-                        .kind(CompletionItemKind::UnresolvedReference),
-                );
+                CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
+                    .kind(CompletionItemKind::UnresolvedReference)
+                    .add_to(self);
+                return;
             }
         };
 
@@ -189,7 +192,7 @@ impl Completions {
             }
         };
 
-        self.add(builder);
+        self.add(builder.build());
     }
 
     pub(crate) fn add_function(
@@ -241,7 +244,7 @@ impl Completions {
 
         builder = builder.add_call_parens(ctx, name, Params::Named(params));
 
-        self.add(builder)
+        self.add(builder.build())
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {

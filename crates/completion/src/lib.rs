@@ -14,10 +14,7 @@ mod completions;
 use ide_db::base_db::FilePosition;
 use ide_db::RootDatabase;
 
-use crate::{
-    context::CompletionContext,
-    item::{CompletionKind, Completions},
-};
+use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
 pub use crate::{
     config::CompletionConfig,

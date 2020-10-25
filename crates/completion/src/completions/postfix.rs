@@ -13,8 +13,8 @@ use self::format_like::add_format_like_completions;
 use crate::{
     config::SnippetCap,
     context::CompletionContext,
-    item::{Builder, CompletionKind, Completions},
-    CompletionItem, CompletionItemKind,
+    item::{Builder, CompletionKind},
+    CompletionItem, CompletionItemKind, Completions,
 };
 
 pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
