@@ -271,6 +271,10 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                     false,
                 ))
             }
+            ItemKind::OpaqueTy(ref ty) => NotInlined(OpaqueTyItem(OpaqueTy {
+                bounds: ty.bounds.clean(cx),
+                generics: ty.generics.clean(cx),
+            })),
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -2072,20 +2076,6 @@ impl Clean<String> for Symbol {
     #[inline]
     fn clean(&self, _: &DocContext<'_>) -> String {
         self.to_string()
-    }
-}
-
-impl Clean<Item> for doctree::OpaqueTy<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            OpaqueTyItem(OpaqueTy {
-                bounds: self.opaque_ty.bounds.clean(cx),
-                generics: self.opaque_ty.generics.clean(cx),
-            }),
-            cx,
-        )
     }
 }
 

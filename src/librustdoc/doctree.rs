@@ -39,12 +39,6 @@ crate struct Variant<'hir> {
     crate def: &'hir hir::VariantData<'hir>,
 }
 
-crate struct OpaqueTy<'hir> {
-    crate opaque_ty: &'hir hir::OpaqueTy<'hir>,
-    crate name: Symbol,
-    crate id: hir::HirId,
-}
-
 #[derive(Debug)]
 crate struct Static<'hir> {
     crate type_: &'hir hir::Ty<'hir>,
