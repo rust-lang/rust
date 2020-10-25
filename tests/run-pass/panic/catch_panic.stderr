@@ -8,7 +8,7 @@ Caught panic message (String): Hello from panic: 2
 thread 'main' panicked at 'Box<Any>', $DIR/catch_panic.rs:LL:27
 Failed to get caught panic message.
 thread 'main' panicked at 'Hello from panic: core', $DIR/catch_panic.rs:LL:27
-Caught panic message (String): Hello from panic: core
+Caught panic message (&str): Hello from panic: core
 thread 'main' panicked at 'Hello from panic: 5', $DIR/catch_panic.rs:LL:26
 Caught panic message (String): Hello from panic: 5
 thread 'main' panicked at 'Hello from panic: 6', $DIR/catch_panic.rs:LL:26
@@ -16,13 +16,13 @@ Caught panic message (String): Hello from panic: 6
 thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4', $DIR/catch_panic.rs:LL:33
 Caught panic message (String): index out of bounds: the len is 3 but the index is 4
 thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:LL:33
-Caught panic message (String): attempt to divide by zero
+Caught panic message (&str): attempt to divide by zero
 thread 'main' panicked at 'align_offset: align is not a power-of-two', $LOC
-Caught panic message (String): align_offset: align is not a power-of-two
+Caught panic message (&str): align_offset: align is not a power-of-two
 thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:LL:29
 Caught panic message (&str): assertion failed: false
 thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:LL:29
 Caught panic message (&str): assertion failed: false
 thread 'main' panicked at 'called `Option::unwrap()` on a `None` value', $LOC
-Caught panic message (String): called `Option::unwrap()` on a `None` value
+Caught panic message (&str): called `Option::unwrap()` on a `None` value
 Success!

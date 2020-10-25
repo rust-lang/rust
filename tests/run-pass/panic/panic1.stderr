@@ -1,23 +1,23 @@
 thread 'main' panicked at 'panicking from libstd', $DIR/panic1.rs:8:5
 stack backtrace:
    0: std::rt::begin_panic
-RUSTLIB/std/src/panicking.rs:505:12
+             at RUSTLIB/$FILE:LL:COL
    1: main
              at $DIR/panic1.rs:8:5
    2: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
-RUSTLIB/core/src/ops/function.rs:227:5
+             at RUSTLIB/$FILE:LL:COL
    3: std::rt::lang_start::{closure#0}
-RUSTLIB/std/src/rt.rs:66:18
+             at RUSTLIB/$FILE:LL:COL
    4: std::ops::function::impls::call_once
-RUSTLIB/core/src/ops/function.rs:259:13
+             at RUSTLIB/$FILE:LL:COL
    5: std::panicking::r#try::do_call
-RUSTLIB/std/src/panicking.rs:381:40
+             at RUSTLIB/$FILE:LL:COL
    6: std::panicking::r#try
-RUSTLIB/std/src/panicking.rs:345:19
+             at RUSTLIB/$FILE:LL:COL
    7: std::panic::catch_unwind
-RUSTLIB/std/src/panic.rs:382:14
+             at RUSTLIB/$FILE:LL:COL
    8: std::rt::lang_start_internal
-RUSTLIB/std/src/rt.rs:51:25
+             at RUSTLIB/$FILE:LL:COL
    9: std::rt::lang_start
-RUSTLIB/std/src/rt.rs:65:5
+             at RUSTLIB/$FILE:LL:COL
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
