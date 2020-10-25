@@ -16,6 +16,28 @@ license = "MIT OR Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
 edition = "2018"
 
+[target.'cfg(NOT_A_PLATFORM)'.dependencies]
+rustc_ast = { path = "/home/urcra/rust/compiler/rustc_ast" }
+rustc_ast_pretty = { path = "/home/urcra/rust/compiler/rustc_ast_pretty" }
+rustc_attr = { path = "/home/urcra/rust/compiler/rustc_attr" }
+rustc_data_structures = { path = "/home/urcra/rust/compiler/rustc_data_structures" }
+rustc_errors = { path = "/home/urcra/rust/compiler/rustc_errors" }
+rustc_hir = { path = "/home/urcra/rust/compiler/rustc_hir" }
+rustc_hir_pretty = { path = "/home/urcra/rust/compiler/rustc_hir_pretty" }
+rustc_index = { path = "/home/urcra/rust/compiler/rustc_index" }
+rustc_infer = { path = "/home/urcra/rust/compiler/rustc_infer" }
+rustc_lexer = { path = "/home/urcra/rust/compiler/rustc_lexer" }
+rustc_lint = { path = "/home/urcra/rust/compiler/rustc_lint" }
+rustc_middle = { path = "/home/urcra/rust/compiler/rustc_middle" }
+rustc_mir = { path = "/home/urcra/rust/compiler/rustc_mir" }
+rustc_parse = { path = "/home/urcra/rust/compiler/rustc_parse" }
+rustc_parse_format = { path = "/home/urcra/rust/compiler/rustc_parse_format" }
+rustc_session = { path = "/home/urcra/rust/compiler/rustc_session" }
+rustc_span = { path = "/home/urcra/rust/compiler/rustc_span" }
+rustc_target = { path = "/home/urcra/rust/compiler/rustc_target" }
+rustc_trait_selection = { path = "/home/urcra/rust/compiler/rustc_trait_selection" }
+rustc_typeck = { path = "/home/urcra/rust/compiler/rustc_typeck" }
+
 [dependencies]
 cargo_metadata = "0.12"
 if_chain = "1.0.0"

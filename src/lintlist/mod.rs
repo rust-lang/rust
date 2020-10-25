@@ -292,6 +292,13 @@ vec![
         module: "comparison_chain",
     },
     Lint {
+        name: "comparison_to_empty",
+        group: "style",
+        desc: "default lint description",
+        deprecation: None,
+        module: "comparison_to_empty",
+    },
+    Lint {
         name: "copy_iterator",
         group: "pedantic",
         desc: "implementing `Iterator` on a `Copy` type",
