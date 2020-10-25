@@ -9,7 +9,7 @@ Language
 
 Compiler
 --------
-- [Stabilised the `-C link=<yes|no>`][76158] Which tells `rustc` whether to link
+- [Stabilised the `-C link-self-contained=<yes|no>`][76158] Which tells `rustc` whether to link
   its own libraries or to rely on a external linker. (supported only on
   `windows-gnu`, `linux-musl`, and `wasi` platforms.)
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
