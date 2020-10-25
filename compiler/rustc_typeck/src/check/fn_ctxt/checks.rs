@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{self, MultiSpan, Span};
-use rustc_trait_selection::traits::{self, ObligationCauseCode};
+use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
 use std::mem::replace;
 use std::slice;
@@ -758,13 +758,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
-        if let Some(span_semi) = self.could_remove_semicolon(blk, expected_ty) {
-            err.span_suggestion(
-                span_semi,
-                "consider removing this semicolon",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+        if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
+            if let StatementAsExpression::NeedsBoxing = boxed {
+                err.span_suggestion_verbose(
+                    span_semi,
+                    "consider removing this semicolon and boxing the expression",
+                    String::new(),
+                    Applicability::HasPlaceholders,
+                );
+            } else {
+                err.span_suggestion_short(
+                    span_semi,
+                    "consider removing this semicolon",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
 
