@@ -9,20 +9,20 @@
    4: main
              at $DIR/backtrace-std.rs:21
    5: <fn() as std::ops::FnOnce<()>>::call_once - shim(fn())
-RUSTLIB/core/src/ops/function.rs:227
+             at RUSTLIB/core/src/ops/function.rs:LL
    6: std::sys_common::backtrace::__rust_begin_short_backtrace
-RUSTLIB/std/src/sys_common/backtrace.rs:125
+             at RUSTLIB/std/src/sys_common/backtrace.rs:LL
    7: std::rt::lang_start::{closure#0}
-RUSTLIB/std/src/rt.rs:66
+             at RUSTLIB/std/src/rt.rs:LL
    8: std::ops::function::impls::call_once
-RUSTLIB/core/src/ops/function.rs:259
+             at RUSTLIB/core/src/ops/function.rs:LL
    9: std::panicking::r#try::do_call
-RUSTLIB/std/src/panicking.rs:381
+             at RUSTLIB/std/src/panicking.rs:LL
   10: std::panicking::r#try
-RUSTLIB/std/src/panicking.rs:345
+             at RUSTLIB/std/src/panicking.rs:LL
   11: std::panic::catch_unwind
-RUSTLIB/std/src/panic.rs:382
+             at RUSTLIB/std/src/panic.rs:LL
   12: std::rt::lang_start_internal
-RUSTLIB/std/src/rt.rs:51
+             at RUSTLIB/std/src/rt.rs:LL
   13: std::rt::lang_start
-RUSTLIB/std/src/rt.rs:65
+             at RUSTLIB/std/src/rt.rs:LL
