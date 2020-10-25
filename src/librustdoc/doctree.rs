@@ -26,19 +26,6 @@ crate struct Struct<'hir> {
     crate fields: &'hir [hir::StructField<'hir>],
 }
 
-crate struct Enum<'hir> {
-    crate variants: Vec<Variant<'hir>>,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate id: hir::HirId,
-    crate name: Symbol,
-}
-
-crate struct Variant<'hir> {
-    crate name: Symbol,
-    crate id: hir::HirId,
-    crate def: &'hir hir::VariantData<'hir>,
-}
-
 #[derive(Debug)]
 crate struct Static<'hir> {
     crate type_: &'hir hir::Ty<'hir>,

@@ -275,6 +275,11 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 bounds: ty.bounds.clean(cx),
                 generics: ty.generics.clean(cx),
             })),
+            ItemKind::Enum(ref def, ref generics) => NotInlined(EnumItem(Enum {
+                variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
+                generics: generics.clean(cx),
+                variants_stripped: false,
+            })),
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -1917,31 +1922,10 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     }
 }
 
-impl Clean<Item> for doctree::Enum<'_> {
+impl Clean<Item> for hir::Variant<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            EnumItem(Enum {
-                variants: self.variants.iter().map(|v| v.clean(cx)).collect(),
-                generics: self.generics.clean(cx),
-                variants_stripped: false,
-            }),
-            cx,
-        )
-    }
-}
-
-impl Clean<Item> for doctree::Variant<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let what_rustc_thinks = Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            VariantItem(Variant { kind: self.def.clean(cx) }),
-            cx,
-        );
-        // don't show `pub` for variants, which are always public
-        Item { visibility: Inherited, ..what_rustc_thinks }
+        let kind = VariantItem(Variant { kind: self.data.clean(cx) });
+        Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx)
     }
 }
 
