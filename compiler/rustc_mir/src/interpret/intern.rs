@@ -2,6 +2,17 @@
 //!
 //! After a const evaluation has computed a value, before we destroy the const evaluator's session
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
+//!
+//! In principle, this is not very complicated: we recursively walk the final value, follow all the
+//! pointers, and move all reachable allocations to the global `tcx` memory. The only complication
+//! is picking the right mutability for the allocations in a `static` initializer: we want to make
+//! as many allocations as possible immutable so LLVM can put them into read-only memory. At the
+//! same time, we need to make memory that could be mutated by the program mutable to avoid
+//! incorrect compilations. To achieve this, we do a type-based traversal of the final value,
+//! tracking mutable and shared references and `UnsafeCell` to determine the current mutability.
+//! (In principle, we could skip this type-based part for `const` and promoteds, as they need to be
+//! always immutable. At least for `const` however we use this opportunity to reject any `const`
+//! that contains allocations whose mutability we cannot identify.)
 
 use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
