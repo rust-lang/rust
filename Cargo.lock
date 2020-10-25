@@ -1968,6 +1968,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "measureme"
+version = "9.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22bf8d885d073610aee20e7fa205c4341ed32a761dbde96da5fd96301a8d3e82"
+dependencies = [
+ "parking_lot 0.11.0",
+ "rustc-hash",
+ "smallvec 1.4.2",
+]
+
+[[package]]
 name = "memchr"
 version = "2.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3099,7 +3110,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme",
+ "measureme 0.7.1",
  "parking_lot 0.11.0",
  "rustc-ap-rustc_graphviz",
  "rustc-ap-rustc_index",
@@ -3501,7 +3512,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "libc",
- "measureme",
+ "measureme 9.0.0",
  "rustc-demangle",
  "rustc_ast",
  "rustc_attr",
@@ -3567,7 +3578,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme",
+ "measureme 9.0.0",
  "parking_lot 0.11.0",
  "rustc-hash",
  "rustc-rayon",
@@ -3872,7 +3883,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "chalk-ir",
- "measureme",
+ "measureme 9.0.0",
  "polonius-engine",
  "rustc-rayon-core",
  "rustc_apfloat",
