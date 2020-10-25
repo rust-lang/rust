@@ -284,7 +284,7 @@
 //!       disjunction over every range. This is a bit more tricky to deal with: essentially we need
 //!       to form equivalence classes of subranges of the constructor range for which the behaviour
 //!       of the matrix `P` and new pattern `p` are the same. This is described in more
-//!       detail in `split_grouped_constructors`.
+//!       detail in `Constructor::split`.
 //!     + If some constructors are missing from the matrix, it turns out we don't need to do
 //!       anything special (because we know none of the integers are actually wildcards: i.e., we
 //!       can't span wildcards using ranges).
@@ -409,7 +409,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
         is_my_head_ctor: bool,
@@ -581,7 +581,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Matrix<'p, 'tcx> {
@@ -832,6 +832,139 @@ impl Slice {
     fn arity(self) -> u64 {
         self.pattern_kind().arity()
     }
+
+    /// The exhaustiveness-checking paper does not include any details on
+    /// checking variable-length slice patterns. However, they are matched
+    /// by an infinite collection of fixed-length array patterns.
+    ///
+    /// Checking the infinite set directly would take an infinite amount
+    /// of time. However, it turns out that for each finite set of
+    /// patterns `P`, all sufficiently large array lengths are equivalent:
+    ///
+    /// Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
+    /// to exactly the subset `Pₜ` of `P` can be transformed to a slice
+    /// `sₘ` for each sufficiently-large length `m` that applies to exactly
+    /// the same subset of `P`.
+    ///
+    /// Because of that, each witness for reachability-checking from one
+    /// of the sufficiently-large lengths can be transformed to an
+    /// equally-valid witness from any other length, so we only have
+    /// to check slice lengths from the "minimal sufficiently-large length"
+    /// and below.
+    ///
+    /// Note that the fact that there is a *single* `sₘ` for each `m`
+    /// not depending on the specific pattern in `P` is important: if
+    /// you look at the pair of patterns
+    ///     `[true, ..]`
+    ///     `[.., false]`
+    /// Then any slice of length ≥1 that matches one of these two
+    /// patterns can be trivially turned to a slice of any
+    /// other length ≥1 that matches them and vice-versa - for
+    /// but the slice from length 2 `[false, true]` that matches neither
+    /// of these patterns can't be turned to a slice from length 1 that
+    /// matches neither of these patterns, so we have to consider
+    /// slices from length 2 there.
+    ///
+    /// Now, to see that that length exists and find it, observe that slice
+    /// patterns are either "fixed-length" patterns (`[_, _, _]`) or
+    /// "variable-length" patterns (`[_, .., _]`).
+    ///
+    /// For fixed-length patterns, all slices with lengths *longer* than
+    /// the pattern's length have the same outcome (of not matching), so
+    /// as long as `L` is greater than the pattern's length we can pick
+    /// any `sₘ` from that length and get the same result.
+    ///
+    /// For variable-length patterns, the situation is more complicated,
+    /// because as seen above the precise value of `sₘ` matters.
+    ///
+    /// However, for each variable-length pattern `p` with a prefix of length
+    /// `plₚ` and suffix of length `slₚ`, only the first `plₚ` and the last
+    /// `slₚ` elements are examined.
+    ///
+    /// Therefore, as long as `L` is positive (to avoid concerns about empty
+    /// types), all elements after the maximum prefix length and before
+    /// the maximum suffix length are not examined by any variable-length
+    /// pattern, and therefore can be added/removed without affecting
+    /// them - creating equivalent patterns from any sufficiently-large
+    /// length.
+    ///
+    /// Of course, if fixed-length patterns exist, we must be sure
+    /// that our length is large enough to miss them all, so
+    /// we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
+    ///
+    /// for example, with the above pair of patterns, all elements
+    /// but the first and last can be added/removed, so any
+    /// witness of length ≥2 (say, `[false, false, true]`) can be
+    /// turned to a witness from any other length ≥2.
+    fn split<'p, 'tcx>(
+        self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        matrix: &Matrix<'p, 'tcx>,
+    ) -> SmallVec<[Constructor<'tcx>; 1]> {
+        let (array_len, self_prefix, self_suffix) = match self {
+            Slice { array_len, kind: VarLen(self_prefix, self_suffix) } => {
+                (array_len, self_prefix, self_suffix)
+            }
+            _ => return smallvec![Slice(self)],
+        };
+
+        let head_ctors =
+            matrix.heads().filter_map(|pat| pat_constructor(cx.tcx, cx.param_env, pat));
+
+        let mut max_prefix_len = self_prefix;
+        let mut max_suffix_len = self_suffix;
+        let mut max_fixed_len = 0;
+
+        for ctor in head_ctors {
+            if let Slice(slice) = ctor {
+                match slice.pattern_kind() {
+                    FixedLen(len) => {
+                        max_fixed_len = cmp::max(max_fixed_len, len);
+                    }
+                    VarLen(prefix, suffix) => {
+                        max_prefix_len = cmp::max(max_prefix_len, prefix);
+                        max_suffix_len = cmp::max(max_suffix_len, suffix);
+                    }
+                }
+            }
+        }
+
+        // For diagnostics, we keep the prefix and suffix lengths separate, so in the case
+        // where `max_fixed_len + 1` is the largest, we adapt `max_prefix_len` accordingly,
+        // so that `L = max_prefix_len + max_suffix_len`.
+        if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
+            // The subtraction can't overflow thanks to the above check.
+            // The new `max_prefix_len` is also guaranteed to be larger than its previous
+            // value.
+            max_prefix_len = max_fixed_len + 1 - max_suffix_len;
+        }
+
+        match array_len {
+            Some(len) => {
+                let kind = if max_prefix_len + max_suffix_len < len {
+                    VarLen(max_prefix_len, max_suffix_len)
+                } else {
+                    FixedLen(len)
+                };
+                smallvec![Slice(Slice { array_len, kind })]
+            }
+            None => {
+                // `ctor` originally covered the range `(self_prefix +
+                // self_suffix..infinity)`. We now split it into two: lengths smaller than
+                // `max_prefix_len + max_suffix_len` are treated independently as
+                // fixed-lengths slices, and lengths above are captured by a final VarLen
+                // constructor.
+                let smaller_lengths =
+                    (self_prefix + self_suffix..max_prefix_len + max_suffix_len).map(FixedLen);
+                let final_slice = VarLen(max_prefix_len, max_suffix_len);
+                smaller_lengths
+                    .chain(Some(final_slice))
+                    .map(|kind| Slice { array_len, kind })
+                    .map(Slice)
+                    .collect()
+            }
+        }
+    }
 }
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
@@ -957,6 +1090,45 @@ impl<'tcx> Constructor<'tcx> {
             // This constructor is never covered by anything else
             NonExhaustive => vec![NonExhaustive],
             Opaque => bug!("unexpected opaque ctor {:?} found in all_ctors", self),
+        }
+    }
+
+    /// Some constructors (namely IntRange and Slice) actually stand for a set of actual
+    /// constructors (integers and fixed-sized slices). When specializing for these
+    /// constructors, we want to be specialising for the actual underlying constructors.
+    /// Naively, we would simply return the list of constructors they correspond to. We instead are
+    /// more clever: if there are constructors that we know will behave the same wrt the current
+    /// matrix, we keep them grouped. For example, all slices of a sufficiently large length
+    /// will either be all useful or all non-useful with a given matrix.
+    ///
+    /// See the branches for details on how the splitting is done.
+    ///
+    /// This function may discard some irrelevant constructors if this preserves behavior and
+    /// diagnostics. Eg. for the `_` case, we ignore the constructors already present in the
+    /// matrix, unless all of them are.
+    ///
+    /// `hir_id` is `None` when we're evaluating the wildcard pattern. In that case we do not want
+    /// to lint for overlapping ranges.
+    fn split<'p>(
+        self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'tcx>,
+        matrix: &Matrix<'p, 'tcx>,
+        hir_id: Option<HirId>,
+    ) -> SmallVec<[Self; 1]> {
+        debug!("Constructor::split({:#?}, {:#?})", self, matrix);
+
+        match self {
+            // Fast-track if the range is trivial. In particular, we don't do the overlapping
+            // ranges check.
+            IntRange(ctor_range)
+                if ctor_range.treat_exhaustively(cx.tcx) && !ctor_range.is_singleton() =>
+            {
+                ctor_range.split(cx, pcx, matrix, hir_id)
+            }
+            Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(cx, matrix),
+            // Any other constructor can be used unchanged.
+            _ => smallvec![self],
         }
     }
 
@@ -1492,7 +1664,7 @@ impl<'tcx> Witness<'tcx> {
 /// Invariant: this returns an empty `Vec` if and only if the type is uninhabited (as determined by
 /// `cx.is_uninhabited()`).
 fn all_constructors<'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+    cx: &MatchCheckCtxt<'a, 'tcx>,
     pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
@@ -1837,6 +2009,153 @@ impl<'tcx> IntRange<'tcx> {
         // This is a brand new pattern, so we don't reuse `self.span`.
         Pat { ty: self.ty, span: DUMMY_SP, kind: Box::new(kind) }
     }
+
+    /// For exhaustive integer matching, some constructors are grouped within other constructors
+    /// (namely integer typed values are grouped within ranges). However, when specialising these
+    /// constructors, we want to be specialising for the underlying constructors (the integers), not
+    /// the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
+    /// mean creating a separate constructor for every single value in the range, which is clearly
+    /// impractical. However, observe that for some ranges of integers, the specialisation will be
+    /// identical across all values in that range (i.e., there are equivalence classes of ranges of
+    /// constructors based on their `U(S(c, P), S(c, p))` outcome). These classes are grouped by
+    /// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
+    /// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
+    /// change.
+    /// Our solution, therefore, is to split the range constructor into subranges at every single point
+    /// the group of intersecting patterns changes (using the method described below).
+    /// And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
+    /// on actual integers. The nice thing about this is that the number of subranges is linear in the
+    /// number of rows in the matrix (i.e., the number of cases in the `match` statement), so we don't
+    /// need to be worried about matching over gargantuan ranges.
+    ///
+    /// Essentially, given the first column of a matrix representing ranges, looking like the following:
+    ///
+    /// |------|  |----------| |-------|    ||
+    ///    |-------| |-------|            |----| ||
+    ///       |---------|
+    ///
+    /// We split the ranges up into equivalence classes so the ranges are no longer overlapping:
+    ///
+    /// |--|--|||-||||--||---|||-------|  |-|||| ||
+    ///
+    /// The logic for determining how to split the ranges is fairly straightforward: we calculate
+    /// boundaries for each interval range, sort them, then create constructors for each new interval
+    /// between every pair of boundary points. (This essentially sums up to performing the intuitive
+    /// merging operation depicted above.)
+    fn split<'p>(
+        self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'tcx>,
+        matrix: &Matrix<'p, 'tcx>,
+        hir_id: Option<HirId>,
+    ) -> SmallVec<[Constructor<'tcx>; 1]> {
+        let ty = pcx.ty;
+
+        /// Represents a border between 2 integers. Because the intervals spanning borders
+        /// must be able to cover every integer, we need to be able to represent
+        /// 2^128 + 1 such borders.
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+        enum Border {
+            JustBefore(u128),
+            AfterMax,
+        }
+
+        // A function for extracting the borders of an integer interval.
+        fn range_borders(r: IntRange<'_>) -> impl Iterator<Item = Border> {
+            let (lo, hi) = r.range.into_inner();
+            let from = Border::JustBefore(lo);
+            let to = match hi.checked_add(1) {
+                Some(m) => Border::JustBefore(m),
+                None => Border::AfterMax,
+            };
+            vec![from, to].into_iter()
+        }
+
+        // Collect the span and range of all the intersecting ranges to lint on likely
+        // incorrect range patterns. (#63987)
+        let mut overlaps = vec![];
+        // `borders` is the set of borders between equivalence classes: each equivalence
+        // class lies between 2 borders.
+        let row_borders = matrix
+            .patterns
+            .iter()
+            .flat_map(|row| {
+                IntRange::from_pat(cx.tcx, cx.param_env, row.head()).map(|r| (r, row.len()))
+            })
+            .flat_map(|(range, row_len)| {
+                let intersection = self.intersection(cx.tcx, &range);
+                let should_lint = self.suspicious_intersection(&range);
+                if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
+                    // FIXME: for now, only check for overlapping ranges on simple range
+                    // patterns. Otherwise with the current logic the following is detected
+                    // as overlapping:
+                    //   match (10u8, true) {
+                    //    (0 ..= 125, false) => {}
+                    //    (126 ..= 255, false) => {}
+                    //    (0 ..= 255, true) => {}
+                    //  }
+                    overlaps.push(range.clone());
+                }
+                intersection
+            })
+            .flat_map(range_borders);
+        let self_borders = range_borders(self.clone());
+        let mut borders: Vec<_> = row_borders.chain(self_borders).collect();
+        borders.sort_unstable();
+
+        self.lint_overlapping_patterns(cx.tcx, hir_id, ty, overlaps);
+
+        // We're going to iterate through every adjacent pair of borders, making sure that
+        // each represents an interval of nonnegative length, and convert each such
+        // interval into a constructor.
+        borders
+            .array_windows()
+            .filter_map(|&pair| match pair {
+                [Border::JustBefore(n), Border::JustBefore(m)] => {
+                    if n < m {
+                        Some(n..=(m - 1))
+                    } else {
+                        None
+                    }
+                }
+                [Border::JustBefore(n), Border::AfterMax] => Some(n..=u128::MAX),
+                [Border::AfterMax, _] => None,
+            })
+            .map(|range| IntRange { range, ty, span: pcx.span })
+            .map(IntRange)
+            .collect()
+    }
+
+    fn lint_overlapping_patterns(
+        self,
+        tcx: TyCtxt<'tcx>,
+        hir_id: Option<HirId>,
+        ty: Ty<'tcx>,
+        overlaps: Vec<IntRange<'tcx>>,
+    ) {
+        if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
+            tcx.struct_span_lint_hir(
+                lint::builtin::OVERLAPPING_PATTERNS,
+                hir_id,
+                self.span,
+                |lint| {
+                    let mut err = lint.build("multiple patterns covering the same range");
+                    err.span_label(self.span, "overlapping patterns");
+                    for int_range in overlaps {
+                        // Use the real type for user display of the ranges:
+                        err.span_label(
+                            int_range.span,
+                            &format!(
+                                "this range overlaps on `{}`",
+                                IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
+                            ),
+                        );
+                    }
+                    err.emit();
+                },
+            );
+        }
+    }
 }
 
 /// Ignore spans when comparing, they don't carry semantic information as they are only for lints.
@@ -1906,7 +2225,7 @@ impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
 crate fn is_useful<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
     witness_preference: WitnessPreference,
@@ -1993,30 +2312,23 @@ crate fn is_useful<'p, 'tcx>(
 
     let ret = if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
-        split_grouped_constructors(
-            cx.tcx,
-            cx.param_env,
-            pcx,
-            vec![constructor],
-            matrix,
-            pcx.span,
-            Some(hir_id),
-        )
-        .into_iter()
-        .map(|c| {
-            is_useful_specialized(
-                cx,
-                matrix,
-                v,
-                c,
-                pcx.ty,
-                witness_preference,
-                hir_id,
-                is_under_guard,
-            )
-        })
-        .find(|result| result.is_useful())
-        .unwrap_or(NotUseful)
+        constructor
+            .split(cx, pcx, matrix, Some(hir_id))
+            .into_iter()
+            .map(|c| {
+                is_useful_specialized(
+                    cx,
+                    matrix,
+                    v,
+                    c,
+                    pcx.ty,
+                    witness_preference,
+                    hir_id,
+                    is_under_guard,
+                )
+            })
+            .find(|result| result.is_useful())
+            .unwrap_or(NotUseful)
     } else {
         debug!("is_useful - expanding wildcard");
 
@@ -2045,8 +2357,9 @@ crate fn is_useful<'p, 'tcx>(
 
         if missing_ctors.is_empty() {
             let (all_ctors, _) = missing_ctors.into_inner();
-            split_grouped_constructors(cx.tcx, cx.param_env, pcx, all_ctors, matrix, DUMMY_SP, None)
+            all_ctors
                 .into_iter()
+                .flat_map(|ctor| ctor.split(cx, pcx, matrix, None))
                 .map(|c| {
                     is_useful_specialized(
                         cx,
@@ -2119,7 +2432,7 @@ crate fn is_useful<'p, 'tcx>(
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
 fn is_useful_specialized<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
     ctor: Constructor<'tcx>,
@@ -2200,303 +2513,6 @@ fn pat_constructor<'tcx>(
     }
 }
 
-/// For exhaustive integer matching, some constructors are grouped within other constructors
-/// (namely integer typed values are grouped within ranges). However, when specialising these
-/// constructors, we want to be specialising for the underlying constructors (the integers), not
-/// the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
-/// mean creating a separate constructor for every single value in the range, which is clearly
-/// impractical. However, observe that for some ranges of integers, the specialisation will be
-/// identical across all values in that range (i.e., there are equivalence classes of ranges of
-/// constructors based on their `is_useful_specialized` outcome). These classes are grouped by
-/// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
-/// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
-/// change.
-/// Our solution, therefore, is to split the range constructor into subranges at every single point
-/// the group of intersecting patterns changes (using the method described below).
-/// And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
-/// on actual integers. The nice thing about this is that the number of subranges is linear in the
-/// number of rows in the matrix (i.e., the number of cases in the `match` statement), so we don't
-/// need to be worried about matching over gargantuan ranges.
-///
-/// Essentially, given the first column of a matrix representing ranges, looking like the following:
-///
-/// |------|  |----------| |-------|    ||
-///    |-------| |-------|            |----| ||
-///       |---------|
-///
-/// We split the ranges up into equivalence classes so the ranges are no longer overlapping:
-///
-/// |--|--|||-||||--||---|||-------|  |-|||| ||
-///
-/// The logic for determining how to split the ranges is fairly straightforward: we calculate
-/// boundaries for each interval range, sort them, then create constructors for each new interval
-/// between every pair of boundary points. (This essentially sums up to performing the intuitive
-/// merging operation depicted above.)
-///
-/// `hir_id` is `None` when we're evaluating the wildcard pattern, do not lint for overlapping in
-/// ranges that case.
-///
-/// This also splits variable-length slices into fixed-length slices.
-fn split_grouped_constructors<'p, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    pcx: PatCtxt<'tcx>,
-    ctors: Vec<Constructor<'tcx>>,
-    matrix: &Matrix<'p, 'tcx>,
-    span: Span,
-    hir_id: Option<HirId>,
-) -> Vec<Constructor<'tcx>> {
-    let ty = pcx.ty;
-    let mut split_ctors = Vec::with_capacity(ctors.len());
-    debug!("split_grouped_constructors({:#?}, {:#?})", matrix, ctors);
-
-    for ctor in ctors.into_iter() {
-        match ctor {
-            IntRange(ctor_range) if ctor_range.treat_exhaustively(tcx) => {
-                // Fast-track if the range is trivial. In particular, don't do the overlapping
-                // ranges check.
-                if ctor_range.is_singleton() {
-                    split_ctors.push(IntRange(ctor_range));
-                    continue;
-                }
-
-                /// Represents a border between 2 integers. Because the intervals spanning borders
-                /// must be able to cover every integer, we need to be able to represent
-                /// 2^128 + 1 such borders.
-                #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-                enum Border {
-                    JustBefore(u128),
-                    AfterMax,
-                }
-
-                // A function for extracting the borders of an integer interval.
-                fn range_borders(r: IntRange<'_>) -> impl Iterator<Item = Border> {
-                    let (lo, hi) = r.range.into_inner();
-                    let from = Border::JustBefore(lo);
-                    let to = match hi.checked_add(1) {
-                        Some(m) => Border::JustBefore(m),
-                        None => Border::AfterMax,
-                    };
-                    vec![from, to].into_iter()
-                }
-
-                // Collect the span and range of all the intersecting ranges to lint on likely
-                // incorrect range patterns. (#63987)
-                let mut overlaps = vec![];
-                // `borders` is the set of borders between equivalence classes: each equivalence
-                // class lies between 2 borders.
-                let row_borders = matrix
-                    .patterns
-                    .iter()
-                    .flat_map(|row| {
-                        IntRange::from_pat(tcx, param_env, row.head()).map(|r| (r, row.len()))
-                    })
-                    .flat_map(|(range, row_len)| {
-                        let intersection = ctor_range.intersection(tcx, &range);
-                        let should_lint = ctor_range.suspicious_intersection(&range);
-                        if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
-                            // FIXME: for now, only check for overlapping ranges on simple range
-                            // patterns. Otherwise with the current logic the following is detected
-                            // as overlapping:
-                            //   match (10u8, true) {
-                            //    (0 ..= 125, false) => {}
-                            //    (126 ..= 255, false) => {}
-                            //    (0 ..= 255, true) => {}
-                            //  }
-                            overlaps.push(range.clone());
-                        }
-                        intersection
-                    })
-                    .flat_map(range_borders);
-                let ctor_borders = range_borders(ctor_range.clone());
-                let mut borders: Vec<_> = row_borders.chain(ctor_borders).collect();
-                borders.sort_unstable();
-
-                lint_overlapping_patterns(tcx, hir_id, ctor_range, ty, overlaps);
-
-                // We're going to iterate through every adjacent pair of borders, making sure that
-                // each represents an interval of nonnegative length, and convert each such
-                // interval into a constructor.
-                split_ctors.extend(
-                    borders
-                        .array_windows()
-                        .filter_map(|&pair| match pair {
-                            [Border::JustBefore(n), Border::JustBefore(m)] => {
-                                if n < m {
-                                    Some(IntRange { range: n..=(m - 1), ty, span })
-                                } else {
-                                    None
-                                }
-                            }
-                            [Border::JustBefore(n), Border::AfterMax] => {
-                                Some(IntRange { range: n..=u128::MAX, ty, span })
-                            }
-                            [Border::AfterMax, _] => None,
-                        })
-                        .map(IntRange),
-                );
-            }
-            Slice(Slice { array_len, kind: VarLen(self_prefix, self_suffix) }) => {
-                // The exhaustiveness-checking paper does not include any details on
-                // checking variable-length slice patterns. However, they are matched
-                // by an infinite collection of fixed-length array patterns.
-                //
-                // Checking the infinite set directly would take an infinite amount
-                // of time. However, it turns out that for each finite set of
-                // patterns `P`, all sufficiently large array lengths are equivalent:
-                //
-                // Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
-                // to exactly the subset `Pₜ` of `P` can be transformed to a slice
-                // `sₘ` for each sufficiently-large length `m` that applies to exactly
-                // the same subset of `P`.
-                //
-                // Because of that, each witness for reachability-checking from one
-                // of the sufficiently-large lengths can be transformed to an
-                // equally-valid witness from any other length, so we only have
-                // to check slice lengths from the "minimal sufficiently-large length"
-                // and below.
-                //
-                // Note that the fact that there is a *single* `sₘ` for each `m`
-                // not depending on the specific pattern in `P` is important: if
-                // you look at the pair of patterns
-                //     `[true, ..]`
-                //     `[.., false]`
-                // Then any slice of length ≥1 that matches one of these two
-                // patterns can be trivially turned to a slice of any
-                // other length ≥1 that matches them and vice-versa - for
-                // but the slice from length 2 `[false, true]` that matches neither
-                // of these patterns can't be turned to a slice from length 1 that
-                // matches neither of these patterns, so we have to consider
-                // slices from length 2 there.
-                //
-                // Now, to see that that length exists and find it, observe that slice
-                // patterns are either "fixed-length" patterns (`[_, _, _]`) or
-                // "variable-length" patterns (`[_, .., _]`).
-                //
-                // For fixed-length patterns, all slices with lengths *longer* than
-                // the pattern's length have the same outcome (of not matching), so
-                // as long as `L` is greater than the pattern's length we can pick
-                // any `sₘ` from that length and get the same result.
-                //
-                // For variable-length patterns, the situation is more complicated,
-                // because as seen above the precise value of `sₘ` matters.
-                //
-                // However, for each variable-length pattern `p` with a prefix of length
-                // `plₚ` and suffix of length `slₚ`, only the first `plₚ` and the last
-                // `slₚ` elements are examined.
-                //
-                // Therefore, as long as `L` is positive (to avoid concerns about empty
-                // types), all elements after the maximum prefix length and before
-                // the maximum suffix length are not examined by any variable-length
-                // pattern, and therefore can be added/removed without affecting
-                // them - creating equivalent patterns from any sufficiently-large
-                // length.
-                //
-                // Of course, if fixed-length patterns exist, we must be sure
-                // that our length is large enough to miss them all, so
-                // we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
-                //
-                // for example, with the above pair of patterns, all elements
-                // but the first and last can be added/removed, so any
-                // witness of length ≥2 (say, `[false, false, true]`) can be
-                // turned to a witness from any other length ≥2.
-
-                let mut max_prefix_len = self_prefix;
-                let mut max_suffix_len = self_suffix;
-                let mut max_fixed_len = 0;
-
-                let head_ctors =
-                    matrix.heads().filter_map(|pat| pat_constructor(tcx, param_env, pat));
-                for ctor in head_ctors {
-                    if let Slice(slice) = ctor {
-                        match slice.pattern_kind() {
-                            FixedLen(len) => {
-                                max_fixed_len = cmp::max(max_fixed_len, len);
-                            }
-                            VarLen(prefix, suffix) => {
-                                max_prefix_len = cmp::max(max_prefix_len, prefix);
-                                max_suffix_len = cmp::max(max_suffix_len, suffix);
-                            }
-                        }
-                    }
-                }
-
-                // For diagnostics, we keep the prefix and suffix lengths separate, so in the case
-                // where `max_fixed_len + 1` is the largest, we adapt `max_prefix_len` accordingly,
-                // so that `L = max_prefix_len + max_suffix_len`.
-                if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
-                    // The subtraction can't overflow thanks to the above check.
-                    // The new `max_prefix_len` is also guaranteed to be larger than its previous
-                    // value.
-                    max_prefix_len = max_fixed_len + 1 - max_suffix_len;
-                }
-
-                match array_len {
-                    Some(len) => {
-                        let kind = if max_prefix_len + max_suffix_len < len {
-                            VarLen(max_prefix_len, max_suffix_len)
-                        } else {
-                            FixedLen(len)
-                        };
-                        split_ctors.push(Slice(Slice { array_len, kind }));
-                    }
-                    None => {
-                        // `ctor` originally covered the range `(self_prefix +
-                        // self_suffix..infinity)`. We now split it into two: lengths smaller than
-                        // `max_prefix_len + max_suffix_len` are treated independently as
-                        // fixed-lengths slices, and lengths above are captured by a final VarLen
-                        // constructor.
-                        split_ctors.extend(
-                            (self_prefix + self_suffix..max_prefix_len + max_suffix_len)
-                                .map(|len| Slice(Slice { array_len, kind: FixedLen(len) })),
-                        );
-                        split_ctors.push(Slice(Slice {
-                            array_len,
-                            kind: VarLen(max_prefix_len, max_suffix_len),
-                        }));
-                    }
-                }
-            }
-            // Any other constructor can be used unchanged.
-            _ => split_ctors.push(ctor),
-        }
-    }
-
-    debug!("split_grouped_constructors(..)={:#?}", split_ctors);
-    split_ctors
-}
-
-fn lint_overlapping_patterns<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_id: Option<HirId>,
-    ctor_range: IntRange<'tcx>,
-    ty: Ty<'tcx>,
-    overlaps: Vec<IntRange<'tcx>>,
-) {
-    if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
-        tcx.struct_span_lint_hir(
-            lint::builtin::OVERLAPPING_PATTERNS,
-            hir_id,
-            ctor_range.span,
-            |lint| {
-                let mut err = lint.build("multiple patterns covering the same range");
-                err.span_label(ctor_range.span, "overlapping patterns");
-                for int_range in overlaps {
-                    // Use the real type for user display of the ranges:
-                    err.span_label(
-                        int_range.span,
-                        &format!(
-                            "this range overlaps on `{}`",
-                            IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
-                        ),
-                    );
-                }
-                err.emit();
-            },
-        );
-    }
-}
-
 /// This is the main specialization step. It expands the pattern
 /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
 /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
@@ -2509,7 +2525,7 @@ fn lint_overlapping_patterns<'tcx>(
 ///
 /// This is roughly the inverse of `Constructor::apply`.
 fn specialize_one_pattern<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    cx: &MatchCheckCtxt<'p, 'tcx>,
     pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &Fields<'p, 'tcx>,
