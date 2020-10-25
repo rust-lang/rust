@@ -250,7 +250,12 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 mutability,
                 expr: print_const_expr(cx, body_id),
             })),
-            ItemKind::Const(ty, body_id) => unimplemented!(),
+            ItemKind::Const(ty, body_id) => NotInlined(ConstantItem(Constant {
+                type_: ty.clean(cx),
+                expr: print_const_expr(cx, body_id),
+                value: print_evaluated_const(cx, def_id),
+                is_literal: is_literal_expr(cx, body_id.hir_id),
+            })),
             ItemKind::Union(ref variant_data, ref generics) => NotInlined(UnionItem(Union {
                 struct_type: doctree::struct_type_from_def(&variant_data),
                 generics: generics.clean(cx),
@@ -2067,24 +2072,6 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
             (self.generic_params.clean(cx), (&*self.decl, &self.param_names[..]).clean(cx))
         });
         BareFunctionDecl { unsafety: self.unsafety, abi: self.abi, decl, generic_params }
-    }
-}
-
-impl Clean<Item> for doctree::Constant<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let def_id = cx.tcx.hir().local_def_id(self.id).to_def_id();
-
-        Item::from_def_id_and_parts(
-            def_id,
-            Some(self.name),
-            ConstantItem(Constant {
-                type_: self.type_.clean(cx),
-                expr: print_const_expr(cx, self.expr),
-                value: print_evaluated_const(cx, def_id),
-                is_literal: is_literal_expr(cx, self.expr.hir_id),
-            }),
-            cx,
-        )
     }
 }
 

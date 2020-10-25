@@ -26,14 +26,6 @@ crate struct Struct<'hir> {
     crate fields: &'hir [hir::StructField<'hir>],
 }
 
-crate struct Union<'hir> {
-    crate id: hir::HirId,
-    crate struct_type: StructType,
-    crate name: Symbol,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate fields: &'hir [hir::StructField<'hir>],
-}
-
 crate struct Enum<'hir> {
     crate variants: Vec<Variant<'hir>>,
     crate generics: &'hir hir::Generics<'hir>,
@@ -79,13 +71,6 @@ crate struct Static<'hir> {
     crate vis: &'hir hir::Visibility<'hir>,
     crate id: hir::HirId,
     crate span: Span,
-}
-
-crate struct Constant<'hir> {
-    crate type_: &'hir hir::Ty<'hir>,
-    crate expr: hir::BodyId,
-    crate name: Symbol,
-    crate id: hir::HirId,
 }
 
 crate struct Trait<'hir> {
