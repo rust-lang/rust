@@ -2527,9 +2527,9 @@ fn pat_constructor<'tcx>(
 fn specialize_one_pattern<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     pat: &'p Pat<'tcx>,
-    constructor: &Constructor<'tcx>,
+    ctor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    is_its_own_ctor: bool, // Whether `constructor` is known to be derived from `pat`
+    is_its_own_ctor: bool, // Whether `ctor` is known to be derived from `pat`
 ) -> Option<Fields<'p, 'tcx>> {
     if pat.is_wildcard() {
         return Some(ctor_wild_subpatterns.clone());
@@ -2539,57 +2539,34 @@ fn specialize_one_pattern<'p, 'tcx>(
     // `unwrap` is safe because `pat` is not a wildcard.
     let pat_ctor = pat_constructor(cx.tcx, cx.param_env, pat).unwrap();
 
-    let result = match (constructor, &pat_ctor, pat.kind.as_ref()) {
-        (Single, Single, PatKind::Leaf { subpatterns }) => {
-            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
-        }
-        (Single, Single, PatKind::Deref { subpattern }) => {
-            Some(Fields::from_single_pattern(subpattern))
-        }
-        (Variant(_), Variant(_), _) if constructor != &pat_ctor => None,
-        (Variant(_), Variant(_), PatKind::Variant { subpatterns, .. }) => {
-            Some(ctor_wild_subpatterns.replace_with_fieldpats(subpatterns))
-        }
+    let ctor_covered_by_pat = match (ctor, &pat_ctor) {
+        (Single, Single) => true,
+        (Variant(ctor_id), Variant(pat_id)) => ctor_id == pat_id,
 
-        (IntRange(ctor_range), IntRange(pat_range), _) => {
-            ctor_range.intersection(cx.tcx, &pat_range)?;
-            // Constructor splitting should ensure that all intersections we encounter
-            // are actually inclusions.
-            assert!(ctor_range.is_subrange(&pat_range));
-            Some(Fields::empty())
+        (IntRange(ctor_range), IntRange(pat_range)) => {
+            if ctor_range.intersection(cx.tcx, pat_range).is_some() {
+                // Constructor splitting should ensure that all intersections we encounter
+                // are actually inclusions.
+                assert!(ctor_range.is_subrange(pat_range));
+                true
+            } else {
+                false
+            }
         }
-        (FloatRange(ctor_from, ctor_to, ctor_end), FloatRange(pat_from, pat_to, pat_end), _) => {
+        (FloatRange(ctor_from, ctor_to, ctor_end), FloatRange(pat_from, pat_to, pat_end)) => {
             let to = compare_const_vals(cx.tcx, ctor_to, pat_to, cx.param_env, ty)?;
             let from = compare_const_vals(cx.tcx, ctor_from, pat_from, cx.param_env, ty)?;
-            let intersects = (from == Ordering::Greater || from == Ordering::Equal)
-                && (to == Ordering::Less || (pat_end == ctor_end && to == Ordering::Equal));
-            if intersects { Some(Fields::empty()) } else { None }
+            (from == Ordering::Greater || from == Ordering::Equal)
+                && (to == Ordering::Less || (pat_end == ctor_end && to == Ordering::Equal))
         }
-        (Str(ctor_val), Str(pat_val), _) => {
+        (Str(ctor_val), Str(pat_val)) => {
             // FIXME: there's probably a more direct way of comparing for equality
             let comparison = compare_const_vals(cx.tcx, ctor_val, pat_val, cx.param_env, ty)?;
-            if comparison == Ordering::Equal { Some(Fields::empty()) } else { None }
+            comparison == Ordering::Equal
         }
 
-        (Slice(ctor_slice), Slice(pat_slice), _)
-            if !pat_slice.pattern_kind().covers_length(ctor_slice.arity()) =>
-        {
-            None
-        }
-        (
-            Slice(ctor_slice),
-            Slice(_),
-            PatKind::Array { prefix, suffix, .. } | PatKind::Slice { prefix, suffix, .. },
-        ) => {
-            // Number of subpatterns for the constructor
-            let ctor_arity = ctor_slice.arity();
-
-            // Replace the prefix and the suffix with the given patterns, leaving wildcards in
-            // the middle if there was a subslice pattern `..`.
-            let prefix = prefix.iter().enumerate();
-            let suffix =
-                suffix.iter().enumerate().map(|(i, p)| (ctor_arity as usize - suffix.len() + i, p));
-            Some(ctor_wild_subpatterns.replace_fields_indexed(prefix.chain(suffix)))
+        (Slice(ctor_slice), Slice(pat_slice)) => {
+            pat_slice.pattern_kind().covers_length(ctor_slice.arity())
         }
 
         // Only a wildcard pattern can match an opaque constant, unless we're specializing the
@@ -2611,23 +2588,38 @@ fn specialize_one_pattern<'p, 'tcx>(
         //     (FOO, false) => {}
         // }
         // ```
-        (Opaque, Opaque, _) if is_its_own_ctor => Some(Fields::empty()),
+        (Opaque, Opaque) if is_its_own_ctor => true,
         // We are trying to inspect an opaque constant. Thus we skip the row.
-        (Opaque, _, _) | (_, Opaque, _) => None,
+        (Opaque, _) | (_, Opaque) => false,
         // Only a wildcard pattern can match the special extra constructor.
-        (NonExhaustive, _, _) => None,
+        (NonExhaustive, _) => false,
 
-        _ => bug!("trying to specialize pattern {:?} with constructor {:?}", pat, constructor),
+        _ => bug!("trying to specialize pattern {:?} with constructor {:?}", pat, ctor),
     };
 
-    debug!(
-        "specialize({:#?}, {:#?}, {:#?}) = {:#?}",
-        pat, constructor, ctor_wild_subpatterns, result
-    );
-
-    if let Some(fields) = &result {
-        debug_assert_eq!(fields.len(), ctor_wild_subpatterns.len());
+    if !ctor_covered_by_pat {
+        return None;
     }
 
-    result
+    let fields = match pat.kind.as_ref() {
+        PatKind::Deref { subpattern } => Fields::from_single_pattern(subpattern),
+        PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
+            ctor_wild_subpatterns.replace_with_fieldpats(subpatterns)
+        }
+        PatKind::Array { prefix, suffix, .. } | PatKind::Slice { prefix, suffix, .. } => {
+            // Number of subpatterns for the constructor
+            let ctor_arity = ctor_wild_subpatterns.len();
+
+            // Replace the prefix and the suffix with the given patterns, leaving wildcards in
+            // the middle if there was a subslice pattern `..`.
+            let prefix = prefix.iter().enumerate();
+            let suffix = suffix.iter().enumerate().map(|(i, p)| (ctor_arity - suffix.len() + i, p));
+            ctor_wild_subpatterns.replace_fields_indexed(prefix.chain(suffix))
+        }
+        _ => ctor_wild_subpatterns.clone(),
+    };
+
+    debug!("specialize({:#?}, {:#?}, {:#?}) = {:#?}", pat, ctor, ctor_wild_subpatterns, fields);
+
+    Some(fields)
 }
