@@ -758,9 +758,7 @@ impl EncodeContext<'a, 'tcx> {
             // FIXME(eddyb) is this ever used?
             self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        self.encode_bounds(def_id);
         self.encode_optimized_mir(def_id.expect_local());
         self.encode_promoted_mir(def_id.expect_local());
     }
@@ -789,9 +787,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        self.encode_bounds(def_id);
         self.encode_optimized_mir(def_id.expect_local());
         self.encode_promoted_mir(def_id.expect_local());
     }
@@ -868,9 +864,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        self.encode_bounds(def_id);
     }
 
     fn encode_struct_ctor(&mut self, adt_def: &ty::AdtDef, def_id: DefId) {
@@ -896,9 +890,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        self.encode_bounds(def_id);
         self.encode_optimized_mir(def_id.expect_local());
         self.encode_promoted_mir(def_id.expect_local());
     }
@@ -908,14 +900,11 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.generics[def_id] <- self.tcx.generics_of(def_id));
     }
 
-    fn encode_explicit_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_explicit_predicates({:?})", def_id);
+    fn encode_bounds(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_bounds({:?})", def_id);
+        self.encode_generics(def_id);
         record!(self.tables.explicit_predicates[def_id] <-
             self.tcx.explicit_predicates_of(def_id));
-    }
-
-    fn encode_inferred_outlives(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_inferred_outlives({:?})", def_id);
         let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
         if !inferred_outlives.is_empty() {
             record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
@@ -1013,9 +1002,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        self.encode_bounds(def_id);
 
         // This should be kept in sync with `PrefetchVisitor.visit_trait_item`.
         self.encode_optimized_mir(def_id.expect_local());
@@ -1086,9 +1073,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        self.encode_bounds(def_id);
 
         // The following part should be kept in sync with `PrefetchVisitor.visit_impl_item`.
 
@@ -1409,9 +1394,7 @@ impl EncodeContext<'a, 'tcx> {
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => {
-                self.encode_generics(def_id);
-                self.encode_explicit_predicates(def_id);
-                self.encode_inferred_outlives(def_id);
+                self.encode_bounds(def_id);
             }
             _ => {}
         }
@@ -1501,9 +1484,7 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
         record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
         self.encode_item_type(def_id.to_def_id());
-        self.encode_generics(def_id.to_def_id());
-        self.encode_explicit_predicates(def_id.to_def_id());
-        self.encode_inferred_outlives(def_id.to_def_id());
+        self.encode_bounds(def_id.to_def_id());
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -1742,9 +1723,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        self.encode_bounds(def_id);
     }
 }
 
