@@ -29,6 +29,7 @@
 #include "LibraryFuncs.h"
 
 #include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -45,6 +46,7 @@
 #include "llvm/Analysis/MemoryDependenceAnalysis.h"
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+
 
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 
@@ -504,7 +506,11 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   }
 
   SmallVector<ReturnInst *, 4> Returns;
-  CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
+  //if (auto SP = F->getSubProgram()) {
+  //  VMap[SP] = DISubprogram::get(SP);
+  //}
+
+  CloneFunctionInto(NewF, F, VMap, /*ModuleLevelChanges*/F->getSubprogram() != nullptr, Returns, "",
                     nullptr);
   NewF->setAttributes(F->getAttributes());
 
@@ -793,8 +799,10 @@ Function *CloneFunctionWithReturns(
   SmallVector<ReturnInst *, 4> Returns;
   CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
                     nullptr);
-  if (VMapO)
+  if (VMapO) {
     VMapO->insert(VMap.begin(), VMap.end());
+    VMapO->getMDMap() = VMap.getMDMap();
+  }
 
   bool hasPtrInput = false;
   unsigned ii = 0, jj = 0;

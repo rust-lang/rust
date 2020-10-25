@@ -1230,8 +1230,8 @@ public:
       EmitFailure("CannotDeduceType", MTI.getDebugLoc(), &MTI,
                   "failed to deduce type of copy ", MTI);
 
-      LLVM_DEBUG(TR.firstPointer(size, orig_op0, /*errifnotfound*/ true,
-                                 /*pointerIntSame*/ true););
+      TR.firstPointer(size, orig_op0, /*errifnotfound*/ true,
+                                 /*pointerIntSame*/ true);
       llvm_unreachable("bad mti");
     }
   known:;
@@ -1454,7 +1454,7 @@ public:
           cal->setAttributes(II.getAttributes());
           cal->setCallingConv(II.getCallingConv());
           cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(II.getDebugLoc());
+          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
 
           Value *dif0 = Builder2.CreateBinOp(
               Instruction::FDiv,
@@ -1577,7 +1577,7 @@ public:
           cal->setAttributes(II.getAttributes());
           cal->setCallingConv(II.getCallingConv());
           cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(II.getDebugLoc());
+          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
 
           Value *dif0 = Builder2.CreateFMul(vdiff, lookup(cal, Builder2));
           addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
@@ -1595,7 +1595,7 @@ public:
           cal->setAttributes(II.getAttributes());
           cal->setCallingConv(II.getCallingConv());
           cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(II.getDebugLoc());
+          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
 
           Value *dif0 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, lookup(cal, Builder2)),
@@ -1620,7 +1620,7 @@ public:
           cal->setAttributes(II.getAttributes());
           cal->setCallingConv(II.getCallingConv());
           cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(II.getDebugLoc());
+          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
           Value *dif0 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, cal),
               Builder2.CreateSIToFP(lookup(op1, Builder2), op0->getType()));
@@ -1651,7 +1651,7 @@ public:
           cal->setAttributes(II.getAttributes());
           cal->setCallingConv(II.getCallingConv());
           cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(II.getDebugLoc());
+          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
 
           Value *dif0 = Builder2.CreateFMul(Builder2.CreateFMul(vdiff, cal),
                                             lookup(op1, Builder2));
@@ -1673,7 +1673,7 @@ public:
             cal->setAttributes(II.getAttributes());
             cal->setCallingConv(II.getCallingConv());
             cal->setTailCallKind(II.getTailCallKind());
-            cal->setDebugLoc(II.getDebugLoc());
+            cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
           }
 
           Value *args[] = {
@@ -1950,7 +1950,7 @@ public:
         augmentcall =
             BuilderZ.CreateCall(kmpc->getFunctionType(), kmpc, pre_args);
         augmentcall->setCallingConv(call.getCallingConv());
-        augmentcall->setDebugLoc(call.getDebugLoc());
+        augmentcall->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
         if (tapeIdx.hasValue()) {
           tape = (tapeIdx.getValue() == -1)
                      ? augmentcall
@@ -2018,7 +2018,7 @@ public:
         CallInst *diffes =
             Builder2.CreateCall(kmpc->getFunctionType(), kmpc, args);
         diffes->setCallingConv(call.getCallingConv());
-        diffes->setDebugLoc(call.getDebugLoc());
+        diffes->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
 
       } else {
         assert(0 && "openmp indirect unhandled");
@@ -2225,8 +2225,8 @@ public:
           Value *ptrshadow =
               gutils->invertPointerM(call.getArgOperand(0), Builder2);
           Builder2.CreateCall(
-              called, std::vector<Value *>({ptrshadow, call.getArgOperand(1),
-                                            call.getArgOperand(2)}));
+              called, std::vector<Value *>({ptrshadow, gutils->getNewFromOriginal(call.getArgOperand(1)),
+                                            gutils->getNewFromOriginal(call.getArgOperand(2))}));
           val = Builder2.CreateLoad(ptrshadow);
           val = gutils->cacheForReverse(Builder2, val,
                                         getIndex(orig, CacheType::Shadow));
@@ -2236,7 +2236,7 @@ public:
           auto val_arg =
               ConstantInt::get(Type::getInt8Ty(call.getContext()), 0);
           auto len_arg = Builder2.CreateZExtOrTrunc(
-              call.getArgOperand(2), Type::getInt64Ty(call.getContext()));
+              gutils->getNewFromOriginal(call.getArgOperand(2)), Type::getInt64Ty(call.getContext()));
           auto volatile_arg = ConstantInt::getFalse(call.getContext());
 
 #if LLVM_VERSION_MAJOR == 6
@@ -2289,7 +2289,7 @@ public:
         //}
       } else {
         IRBuilder<> Builder2(gutils->getNewFromOriginal(&call)->getNextNode());
-        auto load = Builder2.CreateLoad(gutils->getNewFromOriginal(call.getOperand(0)));
+        auto load = Builder2.CreateLoad(gutils->getNewFromOriginal(call.getOperand(0)), "posix_preread");
         Builder2.SetInsertPoint(&call);
         getReverseBuilder(Builder2);
         auto freeCall = cast<CallInst>(CallInst::CreateFree(gutils->lookupM(load, Builder2,
@@ -2619,7 +2619,7 @@ public:
 
         augmentcall = BuilderZ.CreateCall(FT, newcalled, pre_args);
         augmentcall->setCallingConv(orig->getCallingConv());
-        augmentcall->setDebugLoc(orig->getDebugLoc());
+        augmentcall->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
 
         if (!augmentcall->getType()->isVoidTy())
           augmentcall->setName(orig->getName() + "_augmented");
@@ -2775,7 +2775,7 @@ public:
           Mode != DerivativeMode::Forward) {
         auto tapep = BuilderZ.CreatePointerCast(
             tape, PointerType::getUnqual(fnandtapetype->tapeType));
-        auto truetape = BuilderZ.CreateLoad(tapep);
+        auto truetape = BuilderZ.CreateLoad(tapep, "tapeld");
         truetape->setMetadata("enzyme_mustcache",
                               MDNode::get(truetape->getContext(), {}));
 
@@ -2916,7 +2916,7 @@ public:
 
     CallInst *diffes = Builder2.CreateCall(FT, newcalled, args);
     diffes->setCallingConv(orig->getCallingConv());
-    diffes->setDebugLoc(orig->getDebugLoc());
+    diffes->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
 
     unsigned structidx = retUsed ? 1 : 0;
     if (subdretptr)

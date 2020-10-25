@@ -246,6 +246,7 @@ public:
 
   void visitIPOCall(llvm::CallInst &call, llvm::Function &fn);
 
+  void visitInvokeInst(llvm::InvokeInst &call);
   void visitCallInst(llvm::CallInst &call);
 
   void visitMemTransferInst(llvm::MemTransferInst &MTI);

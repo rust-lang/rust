@@ -347,8 +347,8 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       if (directions == DOWN && !isa<PHINode>(I)) {
         if (isValueInactiveFromUsers(TR, I)) {
           if (printconst)
-            llvm::errs() << " constant instruction from users "
-                            "instruction "
+            llvm::errs() << " constant instruction[" << directions <<
+                            "] from users instruction "
                          << *I << "\n";
           ConstantInstructions.insert(I);
           return true;
@@ -359,8 +359,8 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
         DownHypothesis->ConstantInstructions.insert(I);
         if (DownHypothesis->isValueInactiveFromUsers(TR, I)) {
           if (printconst)
-            llvm::errs() << " constant instruction from users "
-                            "instruction "
+            llvm::errs() << " constant instruction[" << directions <<
+                            "] from users instruction "
                          << *I << "\n";
           ConstantInstructions.insert(I);
           insertConstantsFrom(*DownHypothesis);

@@ -272,6 +272,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     toreturn->setVolatile(load->isVolatile());
     toreturn->setOrdering(load->getOrdering());
     toreturn->setSyncScopeID(load->getSyncScopeID());
+    toreturn->setDebugLoc(getNewFromOriginal(load->getDebugLoc()));
     toreturn->setMetadata(LLVMContext::MD_tbaa,
                           load->getMetadata(LLVMContext::MD_tbaa));
     toreturn->setMetadata("enzyme_unwrapped",
@@ -316,7 +317,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     toreturn->setAttributes(op->getAttributes());
     toreturn->setCallingConv(op->getCallingConv());
     toreturn->setTailCallKind(op->getTailCallKind());
-    toreturn->setDebugLoc(op->getDebugLoc());
+    toreturn->setDebugLoc(getNewFromOriginal(op->getDebugLoc()));
     return toreturn;
   } else if (auto phi = dyn_cast<PHINode>(val)) {
     if (phi->getNumIncomingValues() == 1) {
@@ -1114,7 +1115,6 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
       constant_values, nonconstant_values, returnvals, returnValue,
       "diffe" + todiff->getName(), &originalToNew,
       /*diffeReturnArg*/ diffeReturnArg, additionalArg);
-
   auto res = new DiffeGradientUtils(
       newFunc, todiff, TLI, TA, AA, invertedPointers, constant_values,
       nonconstant_values, /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
@@ -1326,7 +1326,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     #if LLVM_VERSION_MAJOR >= 10
     auto result = bb.CreateShuffleVector(
         invertPointerM(op0, bb), invertPointerM(op1, bb),
-        arg->getShuffleMask(), arg->getName() + "'ipsv");
+        arg->getShuffleMaskForBitcode(), arg->getName() + "'ipsv");
     #else
     auto result = bb.CreateShuffleVector(
         invertPointerM(op0, bb), invertPointerM(op1, bb),

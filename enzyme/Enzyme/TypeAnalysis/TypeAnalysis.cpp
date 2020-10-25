@@ -680,7 +680,7 @@ void TypeAnalyzer::run() {
   // only analyze any call instances after all other potential
   // updates have been done. This is to minimize the number
   // of expensive interprocedural analyses
-  std::deque<CallInst *> pendingCalls;
+  std::deque<Instruction*> pendingCalls;
 
   do {
 
@@ -688,6 +688,10 @@ void TypeAnalyzer::run() {
       auto todo = workList.front();
       workList.pop_front();
       if (auto ci = dyn_cast<CallInst>(todo)) {
+        pendingCalls.push_back(ci);
+        continue;
+      }
+      if (auto ci = dyn_cast<InvokeInst>(todo)) {
         pendingCalls.push_back(ci);
         continue;
       }
@@ -712,6 +716,10 @@ void TypeAnalyzer::run() {
       auto todo = workList.front();
       workList.pop_front();
       if (auto ci = dyn_cast<CallInst>(todo)) {
+        pendingCalls.push_back(ci);
+        continue;
+      }
+      if (auto ci = dyn_cast<InvokeInst>(todo)) {
         pendingCalls.push_back(ci);
         continue;
       }
@@ -1501,10 +1509,10 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
       // legal to subtract unrelated pointer
       if (AnalysisRet[{}] == BaseType::Integer) {
         if (direction & UP)
-          updateAnalysis(I.getOperand(0), TypeTree(AnalysisRHS[{}]).Only(-1),
+          updateAnalysis(I.getOperand(0), TypeTree(AnalysisRHS[{}]).PurgeAnything().Only(-1),
                          &I);
         if (direction & UP)
-          updateAnalysis(I.getOperand(1), TypeTree(AnalysisLHS[{}]).Only(-1),
+          updateAnalysis(I.getOperand(1), TypeTree(AnalysisLHS[{}]).PurgeAnything().Only(-1),
                          &I);
       }
       break;
@@ -1550,8 +1558,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
                I.getOpcode() == BinaryOperator::Sub) {
       for (int i = 0; i < 2; ++i) {
         if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
-          if (CI->isNegative()) {
-            // If add/sub with a negative number, the result is equal to the
+          if (CI->isNegative() || CI->isZero()) {
+            // If add/sub with zero or a negative number, the result is equal to the
             // type of the other operand (and we don't need to assume this was
             // an "anything")
             Result = getAnalysis(I.getOperand(1 - i)).Data0();
@@ -1946,6 +1954,30 @@ template <typename RT, typename... Args>
 void analyzeFuncTypes(RT (*fn)(Args...), CallInst &call, TypeAnalyzer &TA) {
   TypeHandler<RT>::analyzeType(&call, call, TA);
   FunctionArgumentIterator<Args...>::analyzeFuncTypesHelper(0, call, TA);
+}
+
+
+void TypeAnalyzer::visitInvokeInst(InvokeInst &call) {
+    TypeTree Result;
+
+    IRBuilder <>B(&call);
+    std::vector<Value*> args;
+    for(auto& val : call.arg_operands()) {
+      args.push_back(val);
+    }
+    CallInst* tmpCall = B.CreateCall(call.getFunctionType(), call.getCalledOperand(), args);
+    analysis[tmpCall] = analysis[&call];
+    visitCallInst(*tmpCall);
+    analysis[&call] = analysis[tmpCall];
+    analysis.erase(tmpCall);
+
+    for(auto &a : workList) {
+      if (a == tmpCall) {
+        a = &call;
+      }
+    }
+
+    tmpCall->eraseFromParent();
 }
 
 void TypeAnalyzer::visitCallInst(CallInst &call) {

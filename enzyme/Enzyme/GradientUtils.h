@@ -117,6 +117,16 @@ public:
     return f->second;
   }
 
+  llvm::DebugLoc getNewFromOriginal(const llvm::DebugLoc L) const {
+    if (L.get() == nullptr) return nullptr;
+    assert(originalToNewFn.hasMD());
+    auto opt = originalToNewFn.getMappedMD(L.getAsMDNode());
+    if (!opt.hasValue())
+      return L;
+    assert(opt.hasValue());
+    return llvm::DebugLoc(cast<MDNode>(*opt.getPointer()));
+  }
+
   Value *getNewFromOriginal(const Value *originst) const {
     assert(originst);
     auto f = originalToNewFn.find(originst);
@@ -319,7 +329,8 @@ public:
     cast<CallInst>(anti)->setAttributes(orig->getAttributes());
     cast<CallInst>(anti)->setCallingConv(orig->getCallingConv());
     cast<CallInst>(anti)->setTailCallKind(orig->getTailCallKind());
-    cast<CallInst>(anti)->setDebugLoc(orig->getDebugLoc());
+    cast<CallInst>(anti)->setDebugLoc(getNewFromOriginal(orig->getDebugLoc()));
+
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
                                        Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
@@ -443,6 +454,7 @@ public:
         ATA(new ActivityAnalyzer(AA_, TLI_, constantvalues_, activevals_,
                                  ActiveReturn)),
         OrigLI(OrigDT), AA(AA_), TA(TA_) {
+    originalToNewFn.getMDMap() = originalToNewFn_.getMDMap();
 #if LLVM_VERSION_MAJOR <= 6
     OrigPDT.recalculate(*oldFunc_);
 #endif
@@ -1132,6 +1144,7 @@ public:
         LLVMContext::MD_dereferenceable,
         MDNode::get(forfree->getContext(),
                     {ConstantAsMetadata::get(byteSizeOfType)}));
+    forfree->setName("forfreegutils.h");
     unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
     if ((bsize & (bsize - 1)) == 0) {
 #if LLVM_VERSION_MAJOR >= 10

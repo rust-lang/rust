@@ -22,7 +22,7 @@ float __enzyme_autodiff(void*, float, int);
 float foo(float inp, int n) {
   float* x[10];
   for(int i=0; i<10; i++) {
-    posix_memalign((void**)&x[i], 8, 8);
+    posix_memalign((void**)&x[i], 8, 8*(i+1));
     *x[i] = inp;
   }
   float res = *x[10-1];

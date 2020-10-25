@@ -65,6 +65,12 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
       uint64_t Fromsize = (DL.getTypeSizeInBits(From) + 7) / 8;
       uint64_t Tosize = (DL.getTypeSizeInBits(To) + 7) / 8;
 
+      // Case where pair.first[0] == -1
+      if (Fromsize == 0 || Tosize == 0) {
+        SubResult.insert(pair.first, pair.second);
+        goto add;
+      }
+
       // If the sizes are the same, whatever the original one is okay [ since
       // tomemory[ i*sizeof(from) ] indeed the start of an object of type to
       // since tomemory is "aligned" to type to
@@ -79,9 +85,6 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
         SubResult.insert(pair.first, pair.second);
         goto add;
       } else {
-        // Case where pair.first[0] == -1
-        if (Fromsize == 0 || Tosize == 0)
-          continue;
 
         if (Fromsize < Tosize) {
           if (Tosize % Fromsize == 0) {

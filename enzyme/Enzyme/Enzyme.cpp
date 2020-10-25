@@ -321,6 +321,7 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
   CallInst *diffret = cast<CallInst>(Builder.CreateCall(newFunc, args));
   diffret->setCallingConv(CI->getCallingConv());
   diffret->setDebugLoc(CI->getDebugLoc());
+
   if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy()) {
     unsigned idxs[] = {0};
     auto diffreti = Builder.CreateExtractValue(diffret, idxs);

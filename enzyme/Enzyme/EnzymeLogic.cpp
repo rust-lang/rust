@@ -1382,7 +1382,6 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   }
 
   gutils->eraseFictiousPHIs();
-
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
     llvm::errs() << *gutils->oldFunc << "\n";
     llvm::errs() << *gutils->newFunc << "\n";
@@ -1670,7 +1669,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       rep->setAttributes(user->getAttributes());
       rep->setCallingConv(user->getCallingConv());
       rep->setTailCallKind(user->getTailCallKind());
-      rep->setDebugLoc(user->getDebugLoc());
+      rep->setDebugLoc(gutils->getNewFromOriginal(user->getDebugLoc()));
       assert(user);
       std::vector<ExtractValueInst *> torep;
       for (auto u : user->users()) {
@@ -1773,7 +1772,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
   // Ensure phi values have their derivatives propagated
   for (auto I = oBB->begin(), E = oBB->end(); I != E; ++I) {
     if (PHINode *orig = dyn_cast<PHINode>(&*I)) {
-      if (gutils->isConstantValue(orig))
+      if (gutils->isConstantInstruction(orig))
         continue;
 
       size_t size = 1;
@@ -2241,7 +2240,7 @@ Function *CreatePrimalAndGradient(
       // additionalValue->getType()); auto tapep = additionalValue;
       auto tapep = BuilderZ.CreatePointerCast(
           additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
-      LoadInst *truetape = BuilderZ.CreateLoad(tapep);
+      LoadInst *truetape = BuilderZ.CreateLoad(tapep, "truetape");
       truetape->setMetadata("enzyme_mustcache",
                             MDNode::get(truetape->getContext(), {}));
 
@@ -2369,6 +2368,7 @@ Function *CreatePrimalAndGradient(
       maker.visit(&*I);
       assert(oBB.rend() == E);
     }
+
     createInvertedTerminator(TR, gutils, constant_args, &oBB, retAlloca,
                              dretAlloca,
                              0 + (additionalArg ? 1 : 0) +
