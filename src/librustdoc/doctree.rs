@@ -30,17 +30,6 @@ crate struct Static<'hir> {
     crate span: Span,
 }
 
-crate struct Trait<'hir> {
-    crate is_auto: hir::IsAuto,
-    crate unsafety: hir::Unsafety,
-    crate name: Symbol,
-    crate items: Vec<&'hir hir::TraitItem<'hir>>,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate bounds: &'hir [hir::GenericBound<'hir>],
-    crate attrs: &'hir [ast::Attribute],
-    crate id: hir::HirId,
-}
-
 crate struct TraitAlias<'hir> {
     crate name: Symbol,
     crate generics: &'hir hir::Generics<'hir>,

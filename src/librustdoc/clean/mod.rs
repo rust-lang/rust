@@ -292,6 +292,23 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 fields: variant_data.fields().clean(cx),
                 fields_stripped: false,
             })),
+            ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
+                let attrs = self.attrs.clean(cx);
+                let is_spotlight = attrs.has_doc_flag(sym::spotlight);
+                NotInlined(TraitItem(Trait {
+                    auto: is_auto.clean(cx),
+                    unsafety,
+                    items: item_ids
+                        .iter()
+                        .map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx))
+                        .collect(),
+                    generics: generics.clean(cx),
+                    bounds: bounds.clean(cx),
+                    is_spotlight,
+                    // TODO: this is redundant with `auto`
+                    is_auto: is_auto.clean(cx),
+                }))
+            }
             _ => unimplemented!(),
         };
 
@@ -1122,26 +1139,6 @@ impl Clean<FnRetTy> for hir::FnRetTy<'_> {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,
         }
-    }
-}
-
-impl Clean<Item> for doctree::Trait<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let attrs = self.attrs.clean(cx);
-        let is_spotlight = attrs.has_doc_flag(sym::spotlight);
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            TraitItem(Trait {
-                unsafety: self.unsafety,
-                items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
-                generics: self.generics.clean(cx),
-                bounds: self.bounds.clean(cx),
-                is_spotlight,
-                is_auto: self.is_auto.clean(cx),
-            }),
-            cx,
-        )
     }
 }
 
