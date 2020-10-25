@@ -5,13 +5,14 @@ LL | async fn make_u32() -> u32 {
    |                        --- the `Output` of this `async fn`'s found opaque type
 ...
 LL |         take_u32(x)
-   |                  ^
-   |                  |
-   |                  expected `u32`, found opaque type
-   |                  help: consider using `.await` here: `x.await`
+   |                  ^ expected `u32`, found opaque type
    |
    = note:     expected type `u32`
            found opaque type `impl Future`
+help: consider `await`ing on the `Future`
+   |
+LL |         take_u32(x.await)
+   |                   ^^^^^^
 
 error: aborting due to previous error
 

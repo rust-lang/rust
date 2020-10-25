@@ -340,11 +340,24 @@ impl ObligationCauseCode<'_> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(ObligationCauseCode<'_>, 32);
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum StatementAsExpression {
+    CorrectType,
+    NeedsBoxing,
+}
+
+impl<'tcx> ty::Lift<'tcx> for StatementAsExpression {
+    type Lifted = StatementAsExpression;
+    fn lift_to_tcx(self, _tcx: TyCtxt<'tcx>) -> Option<StatementAsExpression> {
+        Some(self)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct MatchExpressionArmCause<'tcx> {
     pub arm_span: Span,
     pub scrut_span: Span,
-    pub semi_span: Option<Span>,
+    pub semi_span: Option<(Span, StatementAsExpression)>,
     pub source: hir::MatchSource,
     pub prior_arms: Vec<Span>,
     pub last_ty: Ty<'tcx>,
@@ -357,7 +370,7 @@ pub struct IfExpressionCause {
     pub then: Span,
     pub else_sp: Span,
     pub outer: Option<Span>,
-    pub semicolon: Option<Span>,
+    pub semicolon: Option<(Span, StatementAsExpression)>,
     pub opt_suggest_box_span: Option<Span>,
 }
 

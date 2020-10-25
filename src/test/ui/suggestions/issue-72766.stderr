@@ -2,13 +2,14 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
   --> $DIR/issue-72766.rs:14:5
    |
 LL |     SadGirl {}.call()?;
-   |     ^^^^^^^^^^^^^^^^^^
-   |     |
-   |     the `?` operator cannot be applied to type `impl Future`
-   |     help: consider using `.await` here: `SadGirl {}.call().await?`
+   |     ^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
    = help: the trait `Try` is not implemented for `impl Future`
    = note: required by `into_result`
+help: consider `await`ing on the `Future`
+   |
+LL |     SadGirl {}.call().await?;
+   |                      ^^^^^^
 
 error: aborting due to previous error
 
