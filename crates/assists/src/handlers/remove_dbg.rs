@@ -118,9 +118,13 @@ fn needs_parentheses_around_macro_contents(macro_contents: Vec<SyntaxElement>) -
             symbol_kind => {
                 let symbol_not_in_bracket = unpaired_brackets_in_contents.is_empty();
                 if symbol_not_in_bracket
+                    // paths
                     && symbol_kind != SyntaxKind::COLON
+                    // field/method access
                     && symbol_kind != SyntaxKind::DOT
-                    && symbol_kind.is_punct()
+                    // try operator
+                    && symbol_kind != SyntaxKind::QUESTION
+                    && (symbol_kind.is_punct() || symbol_kind == SyntaxKind::AS_KW)
                 {
                     return true;
                 }
@@ -298,6 +302,62 @@ fn main() {
     let x = square(5 + 10);
     println!("{}", x);
 }"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_try_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(result?).foo();"#,
+            r#"let res = result?.foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_await_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(fut.await).foo();"#,
+            r#"let res = fut.await.foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_as_cast() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(3 as usize).foo();"#,
+            r#"let res = (3 as usize).foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_index_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(array[3]).foo();"#,
+            r#"let res = array[3].foo();"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(tuple.3).foo();"#,
+            r#"let res = tuple.3.foo();"#,
+        );
+    }
+
+    #[test]
+    #[ignore] // FIXME: we encounter SyntaxKind::DOT instead of SyntaxKind::DOT2 causing this to fail
+    fn test_remove_dbg_range_expr() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo..bar).foo();"#,
+            r#"let res = (foo..bar).foo();"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(foo..=bar).foo();"#,
+            r#"let res = (foo..=bar).foo();"#,
         );
     }
 }
