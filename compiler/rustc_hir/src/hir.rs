@@ -486,6 +486,8 @@ impl Generics<'hir> {
 #[derive(HashStable_Generic)]
 pub enum SyntheticTyParamKind {
     ImplTrait,
+    // Created by the `#[rustc_synthetic]` attribute.
+    FromAttr,
 }
 
 /// A where-clause in a definition.
