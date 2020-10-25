@@ -242,7 +242,6 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
         let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
         let name = cx.tcx.item_name(def_id).clean(cx);
         let maybe_inlined = match self.kind {
-            // TODO: should store Symbol, not String
             ItemKind::ExternCrate(renamed) => clean_extern_crate(self, renamed, cx),
             ItemKind::Use(path, kind) => clean_import(self, path, kind, cx),
             ItemKind::Static(ty, mutability, body_id) => NotInlined(StaticItem(Static {
@@ -305,7 +304,7 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                     generics: generics.clean(cx),
                     bounds: bounds.clean(cx),
                     is_spotlight,
-                    // TODO: this is redundant with `auto`
+                    // FIXME: this is redundant with `auto`
                     is_auto: is_auto.clean(cx),
                 }))
             }
@@ -321,8 +320,8 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
             kind,
             name: Some(name),
             source: cx.tcx.def_span(def_id).clean(cx),
-            attrs: self.attrs.clean(cx), // should this use tcx.attrs instead?
-            visibility: self.vis.clean(cx), // TODO: use tcx.visibility once #78077 lands
+            attrs: self.attrs.clean(cx), // TODO: should this use tcx.attrs instead?
+            visibility: self.vis.clean(cx), // TODO: should this use tcx.visibility instead?
             stability: cx.tcx.lookup_stability(def_id).copied(),
             deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
         };
@@ -2268,7 +2267,7 @@ impl Clean<Item> for hir::MacroDef<'_> {
         let matchers = tts.chunks(4).map(|arm| arm[0].span());
 
         Item {
-            name: Some(self.ident.name.to_string()), // TODO: this should store a Symbol
+            name: Some(self.ident.name.to_string()),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             visibility: Public,
