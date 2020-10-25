@@ -67,12 +67,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    intern_const_alloc_recursive(
-        ecx,
-        intern_kind,
-        ret,
-        body.ignore_interior_mut_in_const_validation,
-    );
+    intern_const_alloc_recursive(ecx, intern_kind, ret);
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -373,7 +368,13 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             // Since evaluation had no errors, valiate the resulting constant:
             let validation = try {
                 // FIXME do not validate promoteds until a decision on
-                // https://github.com/rust-lang/rust/issues/67465 is made
+                // https://github.com/rust-lang/rust/issues/67465 and
+                // https://github.com/rust-lang/rust/issues/67534 is made.
+                // Promoteds can contain unexpected `UnsafeCell` and reference `static`s, but their
+                // otherwise restricted form ensures that this is still sound. We just lose the
+                // extra safety net of some of the dynamic checks. They can also contain invalid
+                // values, but since we do not usually check intermediate results of a computation
+                // for validity, it might be surprising to do that here.
                 if cid.promoted.is_none() {
                     let mut ref_tracking = RefTracking::new(mplace);
                     let mut inner = false;
