@@ -119,6 +119,8 @@ pub enum CtfeValidationMode {
     Regular,
     /// Validation of a `const`. `inner` says if this is an inner, indirect allocation (as opposed
     /// to the top-level const allocation).
+    /// Being an inner allocation makes a difference because the top-level allocation of a `const`
+    /// is copied for each use, but the inner allocations are implicitly shared.
     Const { inner: bool },
 }
 
@@ -541,8 +543,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::Ref(_, ty, mutbl) => {
-                if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) && *mutbl == hir::Mutability::Mut {
-                    // A mutable reference inside a const? That does not seem right (except of it is
+                if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
+                    && *mutbl == hir::Mutability::Mut
+                {
+                    // A mutable reference inside a const? That does not seem right (except if it is
                     // a ZST).
                     let layout = self.ecx.layout_of(ty)?;
                     if !layout.is_zst() {
