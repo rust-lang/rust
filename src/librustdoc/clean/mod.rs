@@ -228,19 +228,10 @@ impl Clean<ExternalCrate> for CrateNum {
     }
 }
 
-/*
-impl Clean<ItemEnum> for hir::ItemKind<'_> {
-    fn clean(&self, _cx: &DocContext<'_>) -> ItemEnum {
-        match self {
-            ExternalCrate(name) =>
-        }
-    }
-}
-*/
-
-enum CleanedModule {
-    Module(ItemKind),
-    Inlined(Vec<Item>),
+enum MaybeInlined {
+    NotInlined(ItemKind),
+    InlinedWithoutOriginal(Vec<Item>),
+    InlinedWithOriginal(Vec<Item>, ItemKind),
 }
 
 impl Clean<Vec<Item>> for hir::Item<'_> {
@@ -249,23 +240,14 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
 
         let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
         let name = cx.tcx.item_name(def_id).clean(cx);
-        let kind = match self.kind {
+        let maybe_inlined = match self.kind {
             // TODO: should store Symbol, not String
-            ItemKind::ExternCrate(renamed) => match clean_extern_crate(self, renamed, cx) {
-                CleanedModule::Module(inner) => inner,
-                CleanedModule::Inlined(items) => return items,
-            },
-            ItemKind::Use(path, kind) => unimplemented!(),
-            /*
-                ImportItem(Import {
-                kind: kind.clean(cx),
-                source: path.clean(cx),
-            }),
-            */
+            ItemKind::ExternCrate(renamed) => clean_extern_crate(self, renamed, cx),
+            ItemKind::Use(path, kind) => clean_import(self, path, kind, cx),
             _ => unimplemented!(),
         };
 
-        vec![Item {
+        let build_item = |kind| Item {
             def_id,
             kind,
             name: Some(name),
@@ -274,7 +256,17 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
             visibility: self.vis.clean(cx), // TODO: use tcx.visibility once #78077 lands
             stability: cx.tcx.lookup_stability(def_id).copied(),
             deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
-        }]
+        };
+
+        match maybe_inlined {
+            MaybeInlined::NotInlined(inner) => vec![build_item(inner)],
+            MaybeInlined::InlinedWithoutOriginal(items) => items,
+            MaybeInlined::InlinedWithOriginal(mut items, inner) => {
+                let current = build_item(inner);
+                items.push(current);
+                items
+            }
+        }
     }
 }
 
@@ -2241,7 +2233,7 @@ fn clean_extern_crate(
     item: &hir::Item<'_>,
     renamed: Option<Symbol>,
     cx: &DocContext<'_>,
-) -> CleanedModule {
+) -> MaybeInlined {
     let please_inline = item.vis.node.is_pub()
         && item.attrs.iter().any(|a| {
             a.has_name(sym::doc)
@@ -2266,102 +2258,91 @@ fn clean_extern_crate(
             Some(item.attrs),
             &mut visited,
         ) {
-            return CleanedModule::Inlined(items);
+            return MaybeInlined::InlinedWithoutOriginal(items);
         }
     }
 
-    CleanedModule::Module(ExternCrateItem(name.clean(cx), renamed.clean(cx)))
+    MaybeInlined::NotInlined(ExternCrateItem(name.clean(cx), renamed.clean(cx)))
 }
 
-impl Clean<Vec<Item>> for doctree::Import<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        // We need this comparison because some imports (for std types for example)
-        // are "inserted" as well but directly by the compiler and they should not be
-        // taken into account.
-        if self.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports) {
-            return Vec::new();
-        }
-
-        // We consider inlining the documentation of `pub use` statements, but we
-        // forcefully don't inline if this is not public or if the
-        // #[doc(no_inline)] attribute is present.
-        // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-        let mut denied = !self.vis.node.is_pub()
-            || self.attrs.iter().any(|a| {
-                a.has_name(sym::doc)
-                    && match a.meta_item_list() {
-                        Some(l) => {
-                            attr::list_contains_name(&l, sym::no_inline)
-                                || attr::list_contains_name(&l, sym::hidden)
-                        }
-                        None => false,
-                    }
-            });
-        // Also check whether imports were asked to be inlined, in case we're trying to re-export a
-        // crate in Rust 2018+
-        let please_inline = self.attrs.lists(sym::doc).has_word(sym::inline);
-        let path = self.path.clean(cx);
-        let inner = if self.glob {
-            if !denied {
-                let mut visited = FxHashSet::default();
-                if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited) {
-                    return items;
-                }
-            }
-            Import::new_glob(resolve_use_source(cx, path), true)
-        } else {
-            let name = self.name;
-            if !please_inline {
-                if let Res::Def(DefKind::Mod, did) = path.res {
-                    if !did.is_local() && did.index == CRATE_DEF_INDEX {
-                        // if we're `pub use`ing an extern crate root, don't inline it unless we
-                        // were specifically asked for it
-                        denied = true;
-                    }
-                }
-            }
-            if !denied {
-                let mut visited = FxHashSet::default();
-
-                if let Some(mut items) = inline::try_inline(
-                    cx,
-                    cx.tcx.parent_module(self.id).to_def_id(),
-                    path.res,
-                    name,
-                    Some(self.attrs),
-                    &mut visited,
-                ) {
-                    items.push(Item {
-                        name: None,
-                        attrs: self.attrs.clean(cx),
-                        source: self.span.clean(cx),
-                        def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
-                        visibility: self.vis.clean(cx),
-                        stability: None,
-                        deprecation: None,
-                        kind: ImportItem(Import::new_simple(
-                            self.name.clean(cx),
-                            resolve_use_source(cx, path),
-                            false,
-                        )),
-                    });
-                    return items;
-                }
-            }
-            Import::new_simple(name.clean(cx), resolve_use_source(cx, path), true)
-        };
-
-        vec![Item {
-            name: None,
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: DefId::local(CRATE_DEF_INDEX),
-            visibility: self.vis.clean(cx),
-            stability: None,
-            deprecation: None,
-            kind: ImportItem(inner),
-        }]
+fn clean_import(
+    item: &hir::Item<'_>,
+    path: &hir::Path<'_>,
+    kind: hir::UseKind,
+    cx: &DocContext<'_>,
+) -> MaybeInlined {
+    // We need this comparison because some imports (for std types for example)
+    // are "inserted" as well but directly by the compiler and they should not be
+    // taken into account.
+    if item.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports)
+        // Ignore ListStem; rustdoc doesn't care about it
+        || kind == hir::UseKind::ListStem
+    {
+        return MaybeInlined::InlinedWithoutOriginal(Vec::new());
     }
+
+    // We consider inlining the documentation of `pub use` statements, but we
+    // forcefully don't inline if this is not public or if the
+    // #[doc(no_inline)] attribute is present.
+    // Don't inline doc(hidden) imports so they can be stripped at a later stage.
+    let mut denied = !item.vis.node.is_pub()
+        || item.attrs.iter().any(|a| {
+            a.has_name(sym::doc)
+                && match a.meta_item_list() {
+                    Some(l) => {
+                        attr::list_contains_name(&l, sym::no_inline)
+                            || attr::list_contains_name(&l, sym::hidden)
+                    }
+                    None => false,
+                }
+        });
+    // Also check whether imports were asked to be inlined, in case we're trying to re-export a
+    // crate in Rust 2018+
+    let please_inline = item.attrs.lists(sym::doc).has_word(sym::inline);
+    let path = path.clean(cx);
+    let kind = if kind == hir::UseKind::Glob {
+        if !denied {
+            let mut visited = FxHashSet::default();
+            if let Some(items) = inline::try_inline_glob(cx, path.res, &mut visited) {
+                return MaybeInlined::InlinedWithoutOriginal(items);
+            }
+        }
+        Import::new_glob(resolve_use_source(cx, path), true)
+    } else {
+        let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let name = cx.tcx.item_name(def_id);
+        if !please_inline {
+            if let Res::Def(DefKind::Mod, did) = path.res {
+                if !did.is_local() && did.index == CRATE_DEF_INDEX {
+                    // if we're `pub use`ing an extern crate root, don't inline it unless we
+                    // were specifically asked for it
+                    denied = true;
+                }
+            }
+        }
+        if !denied {
+            let mut visited = FxHashSet::default();
+
+            if let Some(items) = inline::try_inline(
+                cx,
+                cx.tcx.parent_module(item.hir_id).to_def_id(),
+                path.res,
+                name,
+                Some(item.attrs),
+                &mut visited,
+            ) {
+                let kind = ImportItem(Import::new_simple(
+                    name.clean(cx),
+                    resolve_use_source(cx, path),
+                    false,
+                ));
+                return MaybeInlined::InlinedWithOriginal(items, kind);
+            }
+        }
+        Import::new_simple(name.clean(cx), resolve_use_source(cx, path), true)
+    };
+
+    MaybeInlined::NotInlined(ImportItem(kind))
 }
 
 impl Clean<Item> for doctree::ForeignItem<'_> {
