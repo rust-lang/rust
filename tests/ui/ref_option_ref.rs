@@ -1,6 +1,11 @@
 #![allow(unused)]
 #![warn(clippy::ref_option_ref)]
 
+// This lint is not tagged as run-rustfix because automatically
+// changing the type of a variable would also means changing
+// all usages of this variable to match and This is not handled
+// by this lint.
+
 static THRESHOLD: i32 = 10;
 static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
 const CONST_THRESHOLD: &i32 = &10;
