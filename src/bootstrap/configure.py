@@ -65,7 +65,7 @@ v("llvm-cflags", "llvm.cflags", "build LLVM with these extra compiler flags")
 v("llvm-cxxflags", "llvm.cxxflags", "build LLVM with these extra compiler flags")
 v("llvm-ldflags", "llvm.ldflags", "build LLVM with these extra linker flags")
 
-o("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
+v("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
 
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.

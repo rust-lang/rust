@@ -10,6 +10,7 @@ use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use crate::cache::{Interned, INTERNER};
 use crate::flags::Flags;
@@ -65,7 +66,7 @@ pub struct Config {
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub test_compare_mode: bool,
-    pub llvm_libunwind: bool,
+    pub llvm_libunwind: Option<LlvmLibunwind>,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -175,6 +176,32 @@ pub struct Config {
     pub initial_rustc: PathBuf,
     pub initial_rustfmt: Option<PathBuf>,
     pub out: PathBuf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LlvmLibunwind {
+    No,
+    InTree,
+    System,
+}
+
+impl Default for LlvmLibunwind {
+    fn default() -> Self {
+        Self::No
+    }
+}
+
+impl FromStr for LlvmLibunwind {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "no" => Ok(Self::No),
+            "in-tree" => Ok(Self::InTree),
+            "system" => Ok(Self::System),
+            invalid => Err(format!("Invalid value '{}' for rust.llvm-libunwind config.", invalid)),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -457,7 +484,7 @@ struct Rust {
     remap_debuginfo: Option<bool>,
     jemalloc: Option<bool>,
     test_compare_mode: Option<bool>,
-    llvm_libunwind: Option<bool>,
+    llvm_libunwind: Option<String>,
     control_flow_guard: Option<bool>,
     new_symbol_mangling: Option<bool>,
 }
@@ -799,7 +826,9 @@ impl Config {
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
-            set(&mut config.llvm_libunwind, rust.llvm_libunwind);
+            config.llvm_libunwind = rust
+                .llvm_libunwind
+                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel);
             set(&mut config.rust_dist_src, rust.dist_src);

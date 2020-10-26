@@ -121,7 +121,7 @@ use std::os::windows::fs::symlink_file;
 use build_helper::{mtime, output, run, run_suppressed, t, try_run, try_run_suppressed};
 use filetime::FileTime;
 
-use crate::config::TargetSelection;
+use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{exe, libdir, CiEnv};
 
 mod builder;
@@ -540,8 +540,10 @@ impl Build {
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
 
-        if self.config.llvm_libunwind {
-            features.push_str(" llvm-libunwind");
+        match self.config.llvm_libunwind.unwrap_or_default() {
+            LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
+            LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
+            LlvmLibunwind::No => {}
         }
         if self.config.backtrace {
             features.push_str(" backtrace");

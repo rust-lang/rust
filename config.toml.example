@@ -527,7 +527,8 @@ changelog-seen = 2
 #test-compare-mode = false
 
 # Use LLVM libunwind as the implementation for Rust's unwinder.
-#llvm-libunwind = false
+# Accepted values are 'in-tree' (formerly true), 'system' or 'no' (formerly false).
+#llvm-libunwind = 'no'
 
 # Enable Windows Control Flow Guard checks in the standard library.
 # This only applies from stage 1 onwards, and only for Windows targets.
