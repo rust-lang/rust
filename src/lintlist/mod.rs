@@ -294,9 +294,9 @@ vec![
     Lint {
         name: "comparison_to_empty",
         group: "style",
-        desc: "default lint description",
+        desc: "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead",
         deprecation: None,
-        module: "comparison_to_empty",
+        module: "len_zero",
     },
     Lint {
         name: "copy_iterator",
