@@ -10,12 +10,29 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 pub(crate) struct Checksums {
+    cache_path: Option<PathBuf>,
     collected: Mutex<HashMap<PathBuf, String>>,
 }
 
 impl Checksums {
-    pub(crate) fn new() -> Self {
-        Checksums { collected: Mutex::new(HashMap::new()) }
+    pub(crate) fn new() -> Result<Self, Box<dyn Error>> {
+        let cache_path = std::env::var_os("BUILD_MANIFEST_CHECKSUM_CACHE").map(PathBuf::from);
+
+        let mut collected = HashMap::new();
+        if let Some(path) = &cache_path {
+            if path.is_file() {
+                collected = serde_json::from_slice(&std::fs::read(path)?)?;
+            }
+        }
+
+        Ok(Checksums { cache_path, collected: Mutex::new(collected) })
+    }
+
+    pub(crate) fn store_cache(&self) -> Result<(), Box<dyn Error>> {
+        if let Some(path) = &self.cache_path {
+            std::fs::write(path, &serde_json::to_vec(&self.collected)?)?;
+        }
+        Ok(())
     }
 
     pub(crate) fn fill_missing_checksums(&mut self, manifest: &mut Manifest) {
@@ -27,10 +44,14 @@ impl Checksums {
     }
 
     fn find_missing_checksums(&mut self, manifest: &mut Manifest) -> HashSet<PathBuf> {
+        let collected = self.collected.lock().unwrap();
         let mut need_checksums = HashSet::new();
         crate::manifest::visit_file_hashes(manifest, |file_hash| {
             if let FileHash::Missing(path) = file_hash {
-                need_checksums.insert(path.clone());
+                let path = std::fs::canonicalize(path).unwrap();
+                if !collected.contains_key(&path) {
+                    need_checksums.insert(path);
+                }
             }
         });
         need_checksums
@@ -40,7 +61,8 @@ impl Checksums {
         let collected = self.collected.lock().unwrap();
         crate::manifest::visit_file_hashes(manifest, |file_hash| {
             if let FileHash::Missing(path) = file_hash {
-                match collected.get(path) {
+                let path = std::fs::canonicalize(path).unwrap();
+                match collected.get(&path) {
                     Some(hash) => *file_hash = FileHash::Present(hash.clone()),
                     None => panic!("missing hash for file {}", path.display()),
                 }

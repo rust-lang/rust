@@ -238,7 +238,7 @@ fn main() {
 
     Builder {
         versions: Versions::new(&channel, &input).unwrap(),
-        checksums: Checksums::new(),
+        checksums: t!(Checksums::new()),
         shipped_files: HashSet::new(),
 
         input,
@@ -275,6 +275,8 @@ impl Builder {
         if let Some(path) = std::env::var_os("BUILD_MANIFEST_SHIPPED_FILES_PATH") {
             self.write_shipped_files(&Path::new(&path));
         }
+
+        t!(self.checksums.store_cache());
     }
 
     /// If a tool does not pass its tests, don't ship it.
