@@ -213,13 +213,13 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
 #[cfg(test)]
 /// This impl is only used by printing logic, so any error returned is always
 /// of kind `Other`, and should be ignored.
-impl Write for Box<dyn (::realstd::io::Write) + Send> {
+impl Write for dyn ::realstd::io::LocalOutput {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        (**self).write(buf).map_err(|_| ErrorKind::Other.into())
+        (*self).write(buf).map_err(|_| ErrorKind::Other.into())
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        (**self).flush().map_err(|_| ErrorKind::Other.into())
+        (*self).flush().map_err(|_| ErrorKind::Other.into())
     }
 }
 

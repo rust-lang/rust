@@ -18,14 +18,14 @@ use crate::thread::LocalKey;
 
 thread_local! {
     /// Used by the test crate to capture the output of the print! and println! macros.
-    static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
+    static LOCAL_STDOUT: RefCell<Option<Box<dyn LocalOutput>>> = {
         RefCell::new(None)
     }
 }
 
 thread_local! {
     /// Used by the test crate to capture the output of the eprint! and eprintln! macros, and panics.
-    static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
+    static LOCAL_STDERR: RefCell<Option<Box<dyn LocalOutput>>> = {
         RefCell::new(None)
     }
 }
@@ -888,6 +888,18 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
+/// A writer than can be cloned to new threads.
+#[unstable(
+    feature = "set_stdio",
+    reason = "this trait may disappear completely or be replaced \
+                     with a more general mechanism",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub trait LocalOutput: Write + Send {
+    fn clone_box(&self) -> Box<dyn LocalOutput>;
+}
+
 /// Resets the thread-local stderr handle to the specified writer
 ///
 /// This will replace the current thread's stderr handle, returning the old
@@ -903,7 +915,7 @@ impl fmt::Debug for StderrLock<'_> {
     issue = "none"
 )]
 #[doc(hidden)]
-pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
+pub fn set_panic(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutput>> {
     use crate::mem;
     if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
         // LOCAL_STDERR is definitely None since LOCAL_STREAMS is false.
@@ -934,7 +946,7 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
     issue = "none"
 )]
 #[doc(hidden)]
-pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
+pub fn set_print(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutput>> {
     use crate::mem;
     if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
         // LOCAL_STDOUT is definitely None since LOCAL_STREAMS is false.
@@ -950,6 +962,22 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
     s
 }
 
+pub(crate) fn clone_io() -> (Option<Box<dyn LocalOutput>>, Option<Box<dyn LocalOutput>>) {
+    // Don't waste time when LOCAL_{STDOUT,STDERR} are definitely None.
+    if !LOCAL_STREAMS.load(Ordering::Relaxed) {
+        return (None, None);
+    }
+
+    LOCAL_STDOUT.with(|stdout| {
+        LOCAL_STDERR.with(|stderr| {
+            (
+                stdout.borrow().as_ref().map(|o| o.clone_box()),
+                stderr.borrow().as_ref().map(|o| o.clone_box()),
+            )
+        })
+    })
+}
+
 /// Write `args` to output stream `local_s` if possible, `global_s`
 /// otherwise. `label` identifies the stream in a panic message.
 ///
@@ -962,7 +990,7 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
     args: fmt::Arguments<'_>,
-    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write + Send>>>>,
+    local_s: &'static LocalKey<RefCell<Option<Box<dyn LocalOutput>>>>,
     global_s: fn() -> T,
     label: &str,
 ) where

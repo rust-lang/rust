@@ -457,10 +457,15 @@ impl Builder {
         let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
+        let (stdout, stderr) = crate::io::clone_io();
+
         let main = move || {
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
+
+            crate::io::set_print(stdout);
+            crate::io::set_panic(stderr);
 
             // SAFETY: the stack guard passed is the one for the current thread.
             // This means the current thread's stack and the new thread's stack
