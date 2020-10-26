@@ -102,7 +102,7 @@ declare_clippy_lint! {
     /// ```
     pub COMPARISON_TO_EMPTY,
     style,
-    "default lint description"
+    "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead"
 }
 
 
