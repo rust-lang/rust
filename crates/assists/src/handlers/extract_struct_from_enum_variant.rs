@@ -37,6 +37,12 @@ pub(crate) fn extract_struct_from_enum_variant(
         ast::StructKind::Tuple(field_list) => field_list,
         _ => return None,
     };
+
+    // skip 1-tuple variants
+    if field_list.fields().count() == 1 {
+        return None;
+    }
+
     let variant_name = variant.name()?.to_string();
     let variant_hir = ctx.sema.to_def(&variant)?;
     if existing_struct_def(ctx.db(), &variant_name, &variant_hir) {
@@ -233,17 +239,6 @@ enum A { One(One) }"#,
     }
 
     #[test]
-    fn test_extract_struct_one_field() {
-        check_assist(
-            extract_struct_from_enum_variant,
-            "enum A { <|>One(u32) }",
-            r#"struct One(pub u32);
-
-enum A { One(One) }"#,
-        );
-    }
-
-    #[test]
     fn test_extract_struct_pub_visibility() {
         check_assist(
             extract_struct_from_enum_variant,
@@ -323,5 +318,10 @@ fn another_fn() {
             r#"struct One;
         enum A { <|>One(u8) }"#,
         );
+    }
+
+    #[test]
+    fn test_extract_not_applicable_one_field() {
+        check_not_applicable(r"enum A { <|>One(u32) }");
     }
 }
