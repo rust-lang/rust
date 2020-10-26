@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed: cannot satisfy `the constant `use_dyn::<{_: usize}>::{constant#0}` can be evaluated`
-  --> $DIR/object-safety-ok-infer-err.rs:19:5
+  --> $DIR/object-safety-ok-infer-err.rs:20:5
    |
 LL | fn use_dyn<const N: usize>(v: &dyn Foo<N>) where [u8; N + 1]: Sized {
    |                                                       ----- required by this bound in `use_dyn`

@@ -16,6 +16,7 @@ fn use_dyn<const N: usize>(v: &dyn Foo<N>) where [u8; N + 1]: Sized {
 }
 
 fn main() {
+    // FIXME(const_evaluatable_checked): Improve the error message here.
     use_dyn(&());
     //~^ ERROR type annotations needed
 }
