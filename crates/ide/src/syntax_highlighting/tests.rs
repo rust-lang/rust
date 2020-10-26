@@ -150,6 +150,9 @@ fn main() {
 
     let a = |x| x;
     let bar = Foo::baz;
+
+    let baz = -42;
+    let baz = -baz;
 }
 
 enum Option<T> {
