@@ -3,6 +3,7 @@ use crate::middle::cstore::CrateStore;
 use crate::ty::{fast_reject, TyCtxt};
 
 use rustc_ast as ast;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -41,6 +42,7 @@ pub struct StableHashingContext<'a> {
     // `CachingSourceMapView`, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
     caching_source_map: Option<CachingSourceMapView<'a>>,
+    expn_id_cache: Vec<Option<Fingerprint>>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -88,6 +90,7 @@ impl<'a> StableHashingContext<'a> {
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
+            expn_id_cache: Default::default(),
         }
     }
 
@@ -247,6 +250,10 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         byte: BytePos,
     ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
         self.source_map().byte_pos_to_line_and_col(byte)
+    }
+
+    fn expn_id_cache(&mut self) -> &mut Vec<Option<Fingerprint>> {
+        &mut self.expn_id_cache
     }
 }
 

@@ -48,7 +48,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::Hash;
@@ -1831,6 +1830,7 @@ pub trait HashStableContext {
         &mut self,
         byte: BytePos,
     ) -> Option<(Lrc<SourceFile>, usize, BytePos)>;
+    fn expn_id_cache(&mut self) -> &mut Vec<Option<Fingerprint>>;
 }
 
 impl<CTX> HashStable<CTX> for Span
@@ -1910,13 +1910,6 @@ impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
 
 impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        // Since the same expansion context is usually referenced many
-        // times, we cache a stable hash of it and hash that instead of
-        // recursing every time.
-        thread_local! {
-            static CACHE: RefCell<Vec<Option<Fingerprint>>> = Default::default();
-        }
-
         const TAG_ROOT: u8 = 0;
         const TAG_NOT_ROOT: u8 = 1;
 
@@ -1928,7 +1921,7 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
         TAG_NOT_ROOT.hash_stable(ctx, hasher);
         let index = self.as_u32() as usize;
 
-        let res = CACHE.with(|cache| cache.borrow().get(index).copied().flatten());
+        let res = ctx.expn_id_cache().get(index).copied().flatten();
 
         if let Some(res) = res {
             res.hash_stable(ctx, hasher);
@@ -1939,13 +1932,11 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
             self.expn_data().hash_stable(ctx, &mut sub_hasher);
             let sub_hash: Fingerprint = sub_hasher.finish();
 
-            CACHE.with(|cache| {
-                let mut cache = cache.borrow_mut();
-                if cache.len() < new_len {
-                    cache.resize(new_len, None);
-                }
-                cache[index].replace(sub_hash).expect_none("Cache slot was filled");
-            });
+            let cache = ctx.expn_id_cache();
+            if cache.len() < new_len {
+                cache.resize(new_len, None);
+            }
+            cache[index].replace(sub_hash).expect_none("Cache slot was filled");
             sub_hash.hash_stable(ctx, hasher);
         }
     }
