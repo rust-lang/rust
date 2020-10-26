@@ -52,7 +52,7 @@ fn update_limit(
                         IntErrorKind::Empty => "`limit` must be a non-negative integer",
                         IntErrorKind::InvalidDigit => "not a valid integer",
                         IntErrorKind::NegOverflow => {
-                            bug!("`limit` should never negatively underflow")
+                            bug!("`limit` should never negatively overflow")
                         }
                         IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
