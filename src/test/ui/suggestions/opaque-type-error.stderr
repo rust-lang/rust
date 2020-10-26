@@ -16,6 +16,12 @@ LL | |     }.await
    = note:     expected type `impl Future` (opaque type at <$DIR/opaque-type-error.rs:8:19>)
            found opaque type `impl Future` (opaque type at <$DIR/opaque-type-error.rs:12:19>)
    = note: distinct uses of `impl Trait` result in different opaque types
+help: consider `await`ing on both `Future`s
+   |
+LL |         thing_one().await
+LL |     } else {
+LL |         thing_two().await
+   |
 
 error: aborting due to previous error
 

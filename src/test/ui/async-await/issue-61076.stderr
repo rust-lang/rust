@@ -2,25 +2,27 @@ error[E0277]: the `?` operator can only be applied to values that implement `Try
   --> $DIR/issue-61076.rs:42:5
    |
 LL |     foo()?;
-   |     ^^^^^^
-   |     |
-   |     the `?` operator cannot be applied to type `impl Future`
-   |     help: consider using `.await` here: `foo().await?`
+   |     ^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
    = help: the trait `Try` is not implemented for `impl Future`
    = note: required by `into_result`
+help: consider `await`ing on the `Future`
+   |
+LL |     foo().await?;
+   |          ^^^^^^
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/issue-61076.rs:56:5
    |
 LL |     t?;
-   |     ^^
-   |     |
-   |     the `?` operator cannot be applied to type `T`
-   |     help: consider using `.await` here: `t.await?`
+   |     ^^ the `?` operator cannot be applied to type `T`
    |
    = help: the trait `Try` is not implemented for `T`
    = note: required by `into_result`
+help: consider `await`ing on the `Future`
+   |
+LL |     t.await?;
+   |      ^^^^^^
 
 error[E0609]: no field `0` on type `impl Future`
   --> $DIR/issue-61076.rs:58:26
@@ -51,6 +53,10 @@ LL |         Tuple(_) => {}
    |
    = note: expected opaque type `impl Future`
                    found struct `Tuple`
+help: consider `await`ing on the `Future`
+   |
+LL |     match tuple().await {
+   |                  ^^^^^^
 
 error: aborting due to 6 previous errors
 
