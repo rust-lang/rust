@@ -917,54 +917,71 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 self.suggest_using_enum_variant(err, source, def_id, span);
             }
             (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
-                if let Some((ctor_def, ctor_vis, fields)) =
-                    self.r.struct_constructors.get(&def_id).cloned()
-                {
-                    let accessible_ctor =
-                        self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
-                    if is_expected(ctor_def) && !accessible_ctor {
-                        let mut better_diag = false;
-                        if let PathSource::TupleStruct(_, pattern_spans) = source {
-                            if pattern_spans.len() > 0 && fields.len() == pattern_spans.len() {
-                                let non_visible_spans: Vec<Span> = fields
-                                    .iter()
-                                    .zip(pattern_spans.iter())
-                                    .filter_map(|(vis, span)| {
-                                        match self
-                                            .r
-                                            .is_accessible_from(*vis, self.parent_scope.module)
-                                        {
-                                            true => None,
-                                            false => Some(*span),
-                                        }
-                                    })
-                                    .collect();
-                                // Extra check to be sure
-                                if non_visible_spans.len() > 0 {
-                                    let mut m: rustc_span::MultiSpan =
-                                        non_visible_spans.clone().into();
-                                    non_visible_spans.into_iter().for_each(|s| {
-                                        m.push_span_label(s, "private field".to_string())
-                                    });
-                                    err.span_note(
-                                        m,
-                                        "constructor is not visible here due to private fields",
-                                    );
-                                    better_diag = true;
-                                }
-                            }
-                        }
+                let (ctor_def, ctor_vis, fields) =
+                    if let Some(struct_ctor) = self.r.struct_constructors.get(&def_id).cloned() {
+                        struct_ctor
+                    } else {
+                        bad_struct_syntax_suggestion(def_id);
+                        return true;
+                    };
 
-                        if !better_diag {
-                            err.span_label(
-                                span,
-                                "constructor is not visible here due to private fields".to_string(),
-                            );
-                        }
-                    }
-                } else {
-                    bad_struct_syntax_suggestion(def_id);
+                let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
+                if !is_expected(ctor_def) || is_accessible {
+                    return true;
                 }
+
+                let field_spans = match source {
+                    // e.g. `if let Enum::TupleVariant(field1, field2) = _`
+                    PathSource::TupleStruct(_, pattern_spans) => {
+                        err.set_primary_message(
+                            "cannot match against a tuple struct which contains private fields",
+                        );
+
+                        // Use spans of the tuple struct pattern.
+                        Some(Vec::from(pattern_spans))
+                    }
+                    // e.g. `let _ = Enum::TupleVariant(field1, field2);`
+                    _ if source.is_call() => {
+                        err.set_primary_message(
+                            "cannot initialize a tuple struct which contains private fields",
+                        );
+
+                        // Use spans of the tuple struct definition.
+                        self.r
+                            .field_names
+                            .get(&def_id)
+                            .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
+                    }
+                    _ => None,
+                };
+
+                if let Some(spans) =
+                    field_spans.filter(|spans| spans.len() > 0 && fields.len() == spans.len())
+                {
+                    let non_visible_spans: Vec<Span> = fields
+                        .iter()
+                        .zip(spans.iter())
+                        .filter(|(vis, _)| {
+                            !self.r.is_accessible_from(**vis, self.parent_scope.module)
+                        })
+                        .map(|(_, span)| *span)
+                        .collect();
+
+                    if non_visible_spans.len() > 0 {
+                        let mut m: rustc_span::MultiSpan = non_visible_spans.clone().into();
+                        non_visible_spans
+                            .into_iter()
+                            .for_each(|s| m.push_span_label(s, "private field".to_string()));
+                        err.span_note(m, "constructor is not visible here due to private fields");
+                    }
+
+                    return true;
+                }
+
+                err.span_label(
+                    span,
+                    "constructor is not visible here due to private fields".to_string(),
+                );
             }
             (
                 Res::Def(

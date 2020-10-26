@@ -1,0 +1,15 @@
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/issue-75906.rs:11:13
+   |
+LL |     let y = Bar(12);
+   |             ^^^
+   |
+note: constructor is not visible here due to private fields
+  --> $DIR/issue-75906.rs:4:20
+   |
+LL |     pub struct Bar(u8);
+   |                    ^^ private field
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.

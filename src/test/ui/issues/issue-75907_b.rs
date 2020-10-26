@@ -7,5 +7,5 @@ use a::{make_bar, Bar};
 
 fn main() {
     let Bar(x, y, z) = make_bar();
-    //~^ ERROR expected tuple struct
+    //~^ ERROR cannot match against a tuple struct which contains private fields
 }

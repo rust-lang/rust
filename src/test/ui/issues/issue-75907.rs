@@ -13,6 +13,6 @@ use foo::{make_bar, Bar, Foo};
 
 fn main() {
     let Bar(x, y, Foo(z)) = make_bar();
-    //~^ ERROR expected tuple struct
-    //~| ERROR expected tuple struct
+    //~^ ERROR cannot match against a tuple struct which contains private fields
+    //~| ERROR cannot match against a tuple struct which contains private fields
 }
