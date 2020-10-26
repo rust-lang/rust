@@ -84,11 +84,11 @@ error[E0107]: wrong number of const arguments: expected 0, found 1
 LL |     let _x : Box<Bar>;
    |                  ^^^ unexpected const argument
 
-error[E0107]: wrong number of type arguments: expected 1, found 0
+error[E0107]: wrong number of type arguments: expected at least 1, found 0
   --> $DIR/privacy-ns2.rs:41:14
    |
 LL |     let _x : Box<Bar>;
-   |              ^^^^^^^^ expected 1 type argument
+   |              ^^^^^^^^ expected at least 1 type argument
 
 error[E0107]: wrong number of const arguments: expected 0, found 1
   --> $DIR/privacy-ns2.rs:49:17
@@ -96,11 +96,11 @@ error[E0107]: wrong number of const arguments: expected 0, found 1
 LL |     let _x: Box<Bar>;
    |                 ^^^ unexpected const argument
 
-error[E0107]: wrong number of type arguments: expected 1, found 0
+error[E0107]: wrong number of type arguments: expected at least 1, found 0
   --> $DIR/privacy-ns2.rs:49:13
    |
 LL |     let _x: Box<Bar>;
-   |             ^^^^^^^^ expected 1 type argument
+   |             ^^^^^^^^ expected at least 1 type argument
 
 error: aborting due to 10 previous errors
 

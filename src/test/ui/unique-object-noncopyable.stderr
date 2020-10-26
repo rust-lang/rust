@@ -1,27 +1,30 @@
 error[E0599]: no method named `clone` found for struct `Box<dyn Foo>` in the current scope
   --> $DIR/unique-object-noncopyable.rs:24:16
    |
-LL | trait Foo {
-   | ---------
-   | |
-   | doesn't satisfy `dyn Foo: Clone`
-   | doesn't satisfy `dyn Foo: Sized`
+LL |   trait Foo {
+   |   ---------
+   |   |
+   |   doesn't satisfy `dyn Foo: Clone`
+   |   doesn't satisfy `dyn Foo: Sized`
 ...
-LL |     let _z = y.clone();
-   |                ^^^^^ method not found in `Box<dyn Foo>`
-   | 
-  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   |
-LL | pub struct Box<T: ?Sized>(Unique<T>);
-   | ------------------------------------- doesn't satisfy `Box<dyn Foo>: Clone`
+LL |       let _z = y.clone();
+   |                  ^^^^^ method not found in `Box<dyn Foo>`
    | 
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
-LL |     fn clone(&self) -> Self;
-   |        -----
-   |        |
-   |        the method is available for `Arc<Box<dyn Foo>>` here
-   |        the method is available for `Rc<Box<dyn Foo>>` here
+LL |       fn clone(&self) -> Self;
+   |          -----
+   |          |
+   |          the method is available for `Arc<Box<dyn Foo>>` here
+   |          the method is available for `Rc<Box<dyn Foo>>` here
+   | 
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+LL | / pub struct Box<
+LL | |     T: ?Sized,
+LL | |     #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global,
+LL | | >(Unique<T>, A);
+   | |________________- doesn't satisfy `Box<dyn Foo>: Clone`
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
            `dyn Foo: Sized`

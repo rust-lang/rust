@@ -2,9 +2,10 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/impl-foreign-for-fundamental[foreign].rs:10:1
    |
 LL | impl Remote for Box<i32> {
-   | ^^^^^^^^^^^^^^^^--------
-   | |               |
-   | |               `i32` is not defined in the current crate
+   | ^^^^^------^^^^^--------
+   | |    |          |
+   | |    |          `i32` is not defined in the current crate
+   | |    `std::alloc::Global` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
@@ -13,9 +14,10 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
   --> $DIR/impl-foreign-for-fundamental[foreign].rs:14:1
    |
 LL | impl<T> Remote for Box<Rc<T>> {
-   | ^^^^^^^^^^^^^^^^^^^----------
-   | |                  |
-   | |                  `Rc` is not defined in the current crate
+   | ^^^^^^^^------^^^^^----------
+   | |       |          |
+   | |       |          `Rc` is not defined in the current crate
+   | |       `std::alloc::Global` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

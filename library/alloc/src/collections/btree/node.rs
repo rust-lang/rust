@@ -120,7 +120,7 @@ struct BoxedNode<K, V> {
 
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Box::into_unique(node) }
+        BoxedNode { ptr: Box::into_unique(node).0 }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {

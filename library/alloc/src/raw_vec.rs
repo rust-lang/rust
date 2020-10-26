@@ -6,7 +6,7 @@ use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
-use core::ptr::{NonNull, Unique};
+use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
 use crate::alloc::{handle_alloc_error, AllocRef, Global, Layout};
@@ -111,40 +111,6 @@ impl<T> RawVec<T, Global> {
     pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
         unsafe { Self::from_raw_parts_in(ptr, capacity, Global) }
     }
-
-    /// Converts a `Box<[T]>` into a `RawVec<T>`.
-    pub fn from_box(slice: Box<[T]>) -> Self {
-        unsafe {
-            let mut slice = ManuallyDrop::new(slice);
-            RawVec::from_raw_parts(slice.as_mut_ptr(), slice.len())
-        }
-    }
-
-    /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
-    ///
-    /// Note that this will correctly reconstitute any `cap` changes
-    /// that may have been performed. (See description of type for details.)
-    ///
-    /// # Safety
-    ///
-    /// * `len` must be greater than or equal to the most recently requested capacity, and
-    /// * `len` must be less than or equal to `self.capacity()`.
-    ///
-    /// Note, that the requested capacity and `self.capacity()` could differ, as
-    /// an allocator could overallocate and return a greater memory block than requested.
-    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>]> {
-        // Sanity-check one half of the safety requirement (we cannot check the other half).
-        debug_assert!(
-            len <= self.capacity(),
-            "`len` must be smaller than or equal to `self.capacity()`"
-        );
-
-        let me = ManuallyDrop::new(self);
-        unsafe {
-            let slice = slice::from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
-            Box::from_raw(slice)
-        }
-    }
 }
 
 impl<T, A: AllocRef> RawVec<T, A> {
@@ -169,6 +135,40 @@ impl<T, A: AllocRef> RawVec<T, A> {
     #[inline]
     pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
         Self::allocate_in(capacity, AllocInit::Zeroed, alloc)
+    }
+
+    /// Converts a `Box<[T]>` into a `RawVec<T>`.
+    pub fn from_box(slice: Box<[T], A>) -> Self {
+        unsafe {
+            let (slice, alloc) = Box::into_raw_with_alloc(slice);
+            RawVec::from_raw_parts_in(slice.as_mut_ptr(), slice.len(), alloc)
+        }
+    }
+
+    /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
+    ///
+    /// Note that this will correctly reconstitute any `cap` changes
+    /// that may have been performed. (See description of type for details.)
+    ///
+    /// # Safety
+    ///
+    /// * `len` must be greater than or equal to the most recently requested capacity, and
+    /// * `len` must be less than or equal to `self.capacity()`.
+    ///
+    /// Note, that the requested capacity and `self.capacity()` could differ, as
+    /// an allocator could overallocate and return a greater memory block than requested.
+    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {
+        // Sanity-check one half of the safety requirement (we cannot check the other half).
+        debug_assert!(
+            len <= self.capacity(),
+            "`len` must be smaller than or equal to `self.capacity()`"
+        );
+
+        let me = ManuallyDrop::new(self);
+        unsafe {
+            let slice = slice::from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
+            Box::from_raw_in(slice, ptr::read(&me.alloc))
+        }
     }
 
     fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {

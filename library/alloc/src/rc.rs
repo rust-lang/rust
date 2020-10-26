@@ -1034,7 +1034,7 @@ impl<T: ?Sized> Rc<T> {
 
     fn from_box(v: Box<T>) -> Rc<T> {
         unsafe {
-            let box_unique = Box::into_unique(v);
+            let (box_unique, alloc) = Box::into_unique(v);
             let bptr = box_unique.as_ptr();
 
             let value_size = size_of_val(&*bptr);
@@ -1048,7 +1048,7 @@ impl<T: ?Sized> Rc<T> {
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique);
+            box_free(box_unique, alloc);
 
             Self::from_ptr(ptr)
         }
