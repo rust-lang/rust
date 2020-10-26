@@ -211,6 +211,7 @@ impl AbstractConst<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         let inner = tcx.mir_abstract_const_opt_const_arg(def)?;
+        debug!("AbstractConst::new({:?}) = {:?}", def, inner);
         Ok(inner.map(|inner| AbstractConst { inner, substs }))
     }
 
