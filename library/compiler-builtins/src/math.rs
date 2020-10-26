@@ -92,6 +92,10 @@ no_mangle! {
 // only for the thumb*-none-eabi* targets
 #[cfg(all(target_arch = "arm", target_os = "none"))]
 no_mangle! {
+    fn fmin(x: f64, y: f64) -> f64;
+    fn fminf(x: f32, y: f32) -> f32;
+    fn fmax(x: f64, y: f64) -> f64;
+    fn fmaxf(x: f32, y: f32) -> f32;
     // `f64 % f64`
     fn fmod(x: f64, y: f64) -> f64;
     // `f32 % f32`
