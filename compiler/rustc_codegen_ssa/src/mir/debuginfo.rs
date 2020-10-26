@@ -83,10 +83,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn dbg_loc(&self, source_info: mir::SourceInfo) -> Option<Bx::DILocation> {
+        let (dbg_scope, inlined_at, span) = self.adjusted_span_and_dbg_scope(source_info)?;
+        Some(self.cx.dbg_loc(dbg_scope, inlined_at, span))
+    }
+
+    fn adjusted_span_and_dbg_scope(
+        &self,
+        source_info: mir::SourceInfo,
+    ) -> Option<(Bx::DIScope, Option<Bx::DILocation>, Span)> {
         let span = self.adjust_span_for_debugging(source_info.span);
         let scope = &self.debug_context.as_ref()?.scopes[source_info.scope];
-        let dbg_scope = scope.adjust_dbg_scope_for_span(self.cx, span);
-        Some(self.cx.dbg_loc(dbg_scope, scope.inlined_at, span))
+        Some((scope.adjust_dbg_scope_for_span(self.cx, span), scope.inlined_at, span))
     }
 
     /// In order to have a good line stepping behavior in debugger, we overwrite debug
@@ -148,18 +155,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let name = kw::Invalid;
                 let decl = &self.mir.local_decls[local];
                 let dbg_var = if full_debug_info {
-                    self.debug_context.as_ref().map(|debug_context| {
-                        // FIXME(eddyb) is this `+ 1` needed at all?
-                        let kind = VariableKind::ArgumentVariable(arg_index + 1);
+                    self.adjusted_span_and_dbg_scope(decl.source_info).map(
+                        |(dbg_scope, _, span)| {
+                            // FIXME(eddyb) is this `+ 1` needed at all?
+                            let kind = VariableKind::ArgumentVariable(arg_index + 1);
 
-                        let arg_ty = self.monomorphize(&decl.ty);
+                            let arg_ty = self.monomorphize(&decl.ty);
 
-                        let span = self.adjust_span_for_debugging(decl.source_info.span);
-                        let scope = &debug_context.scopes[decl.source_info.scope];
-                        let dbg_scope = scope.adjust_dbg_scope_for_span(self.cx, span);
-
-                        self.cx.create_dbg_var(name, arg_ty, dbg_scope, kind, span)
-                    })
+                            self.cx.create_dbg_var(name, arg_ty, dbg_scope, kind, span)
+                        },
+                    )
                 } else {
                     None
                 };
@@ -313,15 +318,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut per_local = IndexVec::from_elem(vec![], &self.mir.local_decls);
         for var in &self.mir.var_debug_info {
             let dbg_scope_and_span = if full_debug_info {
-                self.debug_context.as_ref().map(|debug_context| {
-                    let span = self.adjust_span_for_debugging(var.source_info.span);
-                    let scope = &debug_context.scopes[var.source_info.scope];
-                    (scope.adjust_dbg_scope_for_span(self.cx, span), span)
-                })
+                self.adjusted_span_and_dbg_scope(var.source_info)
             } else {
                 None
             };
-            let dbg_var = dbg_scope_and_span.map(|(dbg_scope, span)| {
+            let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
                 let place = var.place;
                 let var_ty = self.monomorphized_place_ty(place.as_ref());
                 let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
