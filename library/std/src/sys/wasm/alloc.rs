@@ -24,26 +24,34 @@ static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::DLMALLOC_INIT;
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        DLMALLOC.malloc(layout.size(), layout.align())
+        unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        DLMALLOC.calloc(layout.size(), layout.align())
+        unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // Calling free() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        DLMALLOC.free(ptr, layout.size(), layout.align())
+        unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size)
+        unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
     }
 }
 
