@@ -195,6 +195,13 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4f32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v4f32")]
     fn vminq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctpop.v8i8")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctpop.v8i8")]
+    fn vcnt_s8_(a: int8x8_t) -> int8x8_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctpop.v16i8")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctpop.v16i8")]
+    fn vcntq_s8_(a: int8x16_t) -> int8x16_t;
 }
 
 #[cfg(target_arch = "arm")]
@@ -1861,6 +1868,61 @@ pub unsafe fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmax))]
 pub unsafe fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     vmaxq_f32_(a, b)
+}
+
+/// Population count per byte.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+pub unsafe fn vcnt_s8(a: int8x8_t) -> int8x8_t {
+    vcnt_s8_(a)
+}
+/// Population count per byte.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+pub unsafe fn vcntq_s8(a: int8x16_t) -> int8x16_t {
+    vcntq_s8_(a)
+}
+/// Population count per byte.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+pub unsafe fn vcnt_u8(a: uint8x8_t) -> uint8x8_t {
+    transmute(vcnt_s8_(transmute(a)))
+}
+/// Population count per byte.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+pub unsafe fn vcntq_u8(a: uint8x16_t) -> uint8x16_t {
+    transmute(vcntq_s8_(transmute(a)))
+}
+/// Population count per byte.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+pub unsafe fn vcnt_p8(a: poly8x8_t) -> poly8x8_t {
+    transmute(vcnt_s8_(transmute(a)))
+}
+/// Population count per byte.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcnt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(cnt))]
+pub unsafe fn vcntq_p8(a: poly8x16_t) -> poly8x16_t {
+    transmute(vcntq_s8_(transmute(a)))
 }
 
 #[cfg(test)]
@@ -4355,6 +4417,69 @@ mod tests {
         let b = f32x4::new(0., 3., 2., 8.);
         let e = f32x4::new(1., 3., 3., 8.);
         let r: f32x4 = transmute(vmaxq_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcnt_s8() {
+        let a: i8x8 = transmute(u8x8::new(
+            0b11001000, 0b11111111, 0b00000000, 0b11011111, 0b10000001, 0b10101001, 0b00001000,
+            0b00111111,
+        ));
+        let e = i8x8::new(3, 8, 0, 7, 2, 4, 1, 6);
+        let r: i8x8 = transmute(vcnt_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcntq_s8() {
+        let a: i8x16 = transmute(u8x16::new(
+            0b11001000, 0b11111111, 0b00000000, 0b11011111, 0b10000001, 0b10101001, 0b00001000,
+            0b00111111, 0b11101110, 0b00000000, 0b11111111, 0b00100001, 0b11111111, 0b10010111,
+            0b11100000, 0b00010000,
+        ));
+        let e = i8x16::new(3, 8, 0, 7, 2, 4, 1, 6, 6, 0, 8, 2, 8, 5, 3, 1);
+        let r: i8x16 = transmute(vcntq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcnt_u8() {
+        let a = u8x8::new(
+            0b11001000, 0b11111111, 0b00000000, 0b11011111, 0b10000001, 0b10101001, 0b00001000,
+            0b00111111,
+        );
+        let e = u8x8::new(3, 8, 0, 7, 2, 4, 1, 6);
+        let r: u8x8 = transmute(vcnt_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcntq_u8() {
+        let a = u8x16::new(
+            0b11001000, 0b11111111, 0b00000000, 0b11011111, 0b10000001, 0b10101001, 0b00001000,
+            0b00111111, 0b11101110, 0b00000000, 0b11111111, 0b00100001, 0b11111111, 0b10010111,
+            0b11100000, 0b00010000,
+        );
+        let e = u8x16::new(3, 8, 0, 7, 2, 4, 1, 6, 6, 0, 8, 2, 8, 5, 3, 1);
+        let r: u8x16 = transmute(vcntq_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcnt_p8() {
+        let a = u8x8::new(
+            0b11001000, 0b11111111, 0b00000000, 0b11011111, 0b10000001, 0b10101001, 0b00001000,
+            0b00111111,
+        );
+        let e = u8x8::new(3, 8, 0, 7, 2, 4, 1, 6);
+        let r: u8x8 = transmute(vcnt_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcntq_p8() {
+        let a = u8x16::new(
+            0b11001000, 0b11111111, 0b00000000, 0b11011111, 0b10000001, 0b10101001, 0b00001000,
+            0b00111111, 0b11101110, 0b00000000, 0b11111111, 0b00100001, 0b11111111, 0b10010111,
+            0b11100000, 0b00010000,
+        );
+        let e = u8x16::new(3, 8, 0, 7, 2, 4, 1, 6, 6, 0, 8, 2, 8, 5, 3, 1);
+        let r: u8x16 = transmute(vcntq_p8(transmute(a)));
         assert_eq!(r, e);
     }
 }
