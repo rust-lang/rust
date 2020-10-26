@@ -11,7 +11,7 @@
           debug un => _1;                  // in scope 1 at $DIR/union.rs:13:9: 13:11
           scope 2 {
           }
-          scope 3 {
+          scope 3 (inlined std::mem::drop::<u32>) { // at $DIR/union.rs:15:5: 15:27
               debug _x => _4;              // in scope 3 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
           }
       }

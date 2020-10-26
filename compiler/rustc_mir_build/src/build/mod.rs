@@ -334,7 +334,7 @@ struct Builder<'a, 'tcx> {
 
     /// The vector of all scopes that we have created thus far;
     /// we track this for debuginfo later.
-    source_scopes: IndexVec<SourceScope, SourceScopeData>,
+    source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
     source_scope: SourceScope,
 
     /// The guard-context: each time we build the guard expression for

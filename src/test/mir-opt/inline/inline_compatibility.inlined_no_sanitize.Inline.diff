@@ -4,7 +4,7 @@
   fn inlined_no_sanitize() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:24:37: 24:37
       let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:25:5: 25:18
-+     scope 1 {
++     scope 1 (inlined no_sanitize) {      // at $DIR/inline-compatibility.rs:25:5: 25:18
 +     }
   
       bb0: {

@@ -6,9 +6,9 @@ fn a(_1: &mut [T]) -> &mut [T] {
     let mut _2: &mut [T];                // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
     let mut _3: &mut [T];                // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
     let mut _4: &mut [T];                // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:6
-    scope 1 {
+    scope 1 (inlined <[T] as AsMut<[T]>>::as_mut) { // at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
         debug self => _4;                // in scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-        let mut _5: &mut [T];            // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
+        let mut _5: &mut [T];            // in scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
     }
 
     bb0: {

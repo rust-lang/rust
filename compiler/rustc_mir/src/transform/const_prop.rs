@@ -313,7 +313,7 @@ struct ConstPropagator<'mir, 'tcx> {
     param_env: ParamEnv<'tcx>,
     // FIXME(eddyb) avoid cloning these two fields more than once,
     // by accessing them through `ecx` instead.
-    source_scopes: IndexVec<SourceScope, SourceScopeData>,
+    source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.

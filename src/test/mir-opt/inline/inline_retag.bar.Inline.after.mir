@@ -14,11 +14,11 @@ fn bar() -> bool {
         debug f => _1;                   // in scope 1 at $DIR/inline-retag.rs:11:9: 11:10
         let mut _9: &i32;                // in scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         let mut _10: &i32;               // in scope 1 at $DIR/inline-retag.rs:12:7: 12:9
-        scope 2 {
+        scope 2 (inlined foo) {          // at $DIR/inline-retag.rs:12:5: 12:15
             debug x => _3;               // in scope 2 at $DIR/inline-retag.rs:16:8: 16:9
             debug y => _6;               // in scope 2 at $DIR/inline-retag.rs:16:17: 16:18
-            let mut _11: i32;            // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
-            let mut _12: i32;            // in scope 2 at $DIR/inline-retag.rs:12:5: 12:15
+            let mut _11: i32;            // in scope 2 at $DIR/inline-retag.rs:17:5: 17:7
+            let mut _12: i32;            // in scope 2 at $DIR/inline-retag.rs:17:11: 17:13
         }
     }
 

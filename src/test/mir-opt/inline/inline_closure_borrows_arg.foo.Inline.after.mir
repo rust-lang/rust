@@ -9,18 +9,18 @@ fn foo(_1: T, _2: &i32) -> i32 {
     let mut _5: (&i32, &i32);            // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
     let mut _6: &i32;                    // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:7: 16:8
     let mut _7: &i32;                    // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:10: 16:11
+    let mut _8: &i32;                    // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
     let mut _9: &i32;                    // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
-    let mut _10: &i32;                   // in scope 0 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
     scope 1 {
         debug x => _3;                   // in scope 1 at $DIR/inline-closure-borrows-arg.rs:12:9: 12:10
-        scope 2 {
-            debug r => _9;               // in scope 2 at $DIR/inline-closure-borrows-arg.rs:12:14: 12:15
-            debug _s => _10;             // in scope 2 at $DIR/inline-closure-borrows-arg.rs:12:23: 12:25
-            let _8: &i32;                // in scope 2 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        scope 2 (inlined foo::<T>::{closure#0}) { // at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+            debug r => _8;               // in scope 2 at $DIR/inline-closure-borrows-arg.rs:12:14: 12:15
+            debug _s => _9;              // in scope 2 at $DIR/inline-closure-borrows-arg.rs:12:23: 12:25
+            let _10: &i32;               // in scope 2 at $DIR/inline-closure-borrows-arg.rs:13:13: 13:21
+            scope 3 {
+                debug variable => _10;   // in scope 3 at $DIR/inline-closure-borrows-arg.rs:13:13: 13:21
+            }
         }
-    }
-    scope 3 {
-        debug variable => _8;            // in scope 3 at $DIR/inline-closure-borrows-arg.rs:13:13: 13:21
     }
 
     bb0: {
@@ -34,16 +34,16 @@ fn foo(_1: T, _2: &i32) -> i32 {
         _7 = &(*_2);                     // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:10: 16:11
         (_5.0: &i32) = move _6;          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         (_5.1: &i32) = move _7;          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        StorageLive(_8);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        _8 = move (_5.0: &i32);          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         StorageLive(_9);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
-        _9 = move (_5.0: &i32);          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
-        StorageLive(_10);                // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
-        _10 = move (_5.1: &i32);         // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
-        StorageLive(_8);                 // scope 2 at $DIR/inline-closure-borrows-arg.rs:13:13: 13:21
-        _8 = _9;                         // scope 2 at $DIR/inline-closure-borrows-arg.rs:13:24: 13:27
-        _0 = (*_9);                      // scope 3 at $DIR/inline-closure-borrows-arg.rs:14:9: 14:18
-        StorageDead(_8);                 // scope 2 at $DIR/inline-closure-borrows-arg.rs:15:5: 15:6
-        StorageDead(_10);                // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        _9 = move (_5.1: &i32);          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        StorageLive(_10);                // scope 2 at $DIR/inline-closure-borrows-arg.rs:13:13: 13:21
+        _10 = _8;                        // scope 2 at $DIR/inline-closure-borrows-arg.rs:13:24: 13:27
+        _0 = (*_8);                      // scope 3 at $DIR/inline-closure-borrows-arg.rs:14:9: 14:18
+        StorageDead(_10);                // scope 2 at $DIR/inline-closure-borrows-arg.rs:15:5: 15:6
         StorageDead(_9);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        StorageDead(_8);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         StorageDead(_7);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:11: 16:12
         StorageDead(_6);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:11: 16:12
         StorageDead(_5);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:11: 16:12

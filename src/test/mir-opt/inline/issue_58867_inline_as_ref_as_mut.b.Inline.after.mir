@@ -6,10 +6,10 @@ fn b(_1: &mut Box<T>) -> &mut T {
     let mut _2: &mut T;                  // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
     let mut _3: &mut T;                  // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
     let mut _4: &mut std::boxed::Box<T>; // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:6
-    scope 1 {
+    scope 1 (inlined <Box<T> as AsMut<T>>::as_mut) { // at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         debug self => _4;                // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        let mut _5: &mut T;              // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
-        let mut _6: &mut T;              // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
+        let mut _5: &mut T;              // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        let mut _6: &mut T;              // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
     }
 
     bb0: {

@@ -58,39 +58,39 @@
                   scope 5 {
                       debug arg0 => _36;   // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                       debug arg1 => _37;   // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                      scope 6 {
+                      scope 6 (inlined ArgumentV1::new::<&i32>) { // at $SRC_DIR/std/src/macros.rs:LL:COL
                           debug x => _39;  // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
                           debug f => _40;  // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _46: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
-                          let mut _47: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
-                          let mut _48: &core::fmt::Opaque; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
-                          let mut _49: &&i32; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _46: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          let mut _47: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          let mut _48: &core::fmt::Opaque; // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          let mut _49: &&i32; // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          scope 7 {
+                          }
                       }
-                      scope 8 {
+                      scope 8 (inlined ArgumentV1::new::<&i32>) { // at $SRC_DIR/std/src/macros.rs:LL:COL
                           debug x => _42;  // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
                           debug f => _43;  // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _50: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
-                          let mut _51: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
-                          let mut _52: &core::fmt::Opaque; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
-                          let mut _53: &&i32; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _50: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          let mut _51: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          let mut _52: &core::fmt::Opaque; // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          let mut _53: &&i32; // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          scope 9 {
+                          }
                       }
                   }
-                  scope 10 {
+                  scope 10 (inlined Arguments::new_v1) { // at $SRC_DIR/std/src/macros.rs:LL:COL
                       debug pieces => _23; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
                       debug args => _27;   // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                      let mut _54: &[&str]; // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
-                      let mut _55: std::option::Option<&[std::fmt::rt::v1::Argument]>; // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
-                      let mut _56: &[std::fmt::ArgumentV1]; // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+                      let mut _54: &[&str]; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                      let mut _55: std::option::Option<&[std::fmt::rt::v1::Argument]>; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                      let mut _56: &[std::fmt::ArgumentV1]; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
                   }
               }
           }
       }
       scope 2 {
           debug v => _4;                   // in scope 2 at $DIR/issue-73223.rs:3:14: 3:15
-      }
-      scope 7 {
-      }
-      scope 9 {
       }
   
       bb0: {

@@ -4,7 +4,7 @@
   fn inlined_target_feature() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:13:40: 13:40
       let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:14:5: 14:21
-+     scope 1 {
++     scope 1 (inlined target_feature) {   // at $DIR/inline-compatibility.rs:14:5: 14:21
 +     }
   
       bb0: {

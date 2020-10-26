@@ -28,7 +28,7 @@
 //! utilizing a cache. The way to get a shared metadata node when needed is
 //! thus to just call the corresponding function in this module:
 //!
-//!     let file_metadata = file_metadata(crate_context, path);
+//!     let file_metadata = file_metadata(cx, file);
 //!
 //! The function will take care of probing the cache for an existing node for
 //! that exact file path.

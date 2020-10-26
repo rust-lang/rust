@@ -5,9 +5,9 @@ fn test2(_1: &dyn X) -> bool {
     let mut _0: bool;                    // return place in scope 0 at $DIR/inline-trait-method_2.rs:4:24: 4:28
     let mut _2: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
     let mut _3: &dyn X;                  // in scope 0 at $DIR/inline-trait-method_2.rs:5:10: 5:11
-    scope 1 {
+    scope 1 (inlined test) {             // at $DIR/inline-trait-method_2.rs:5:5: 5:12
         debug x => _2;                   // in scope 1 at $DIR/inline-trait-method_2.rs:9:9: 9:10
-        let mut _4: &dyn X;              // in scope 1 at $DIR/inline-trait-method_2.rs:5:5: 5:12
+        let mut _4: &dyn X;              // in scope 1 at $DIR/inline-trait-method_2.rs:10:5: 10:6
     }
 
     bb0: {

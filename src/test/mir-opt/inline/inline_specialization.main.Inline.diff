@@ -7,7 +7,7 @@
       scope 1 {
           debug x => _1;                   // in scope 1 at $DIR/inline-specialization.rs:5:9: 5:10
       }
-+     scope 2 {
++     scope 2 (inlined <Vec<()> as Foo>::bar) { // at $DIR/inline-specialization.rs:5:13: 5:38
 +     }
   
       bb0: {

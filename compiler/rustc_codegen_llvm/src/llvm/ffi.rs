@@ -5,8 +5,9 @@ use rustc_codegen_ssa::coverageinfo::map as coverage_map;
 
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DINameSpace, DISPFlags, DIScope,
-    DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind,
+    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
+    DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
+    DebugEmissionKind,
 };
 
 use libc::{c_char, c_int, c_uint, size_t};
@@ -794,6 +795,7 @@ pub mod debuginfo {
     pub struct DIBuilder<'a>(InvariantOpaque<'a>);
 
     pub type DIDescriptor = Metadata;
+    pub type DILocation = Metadata;
     pub type DIScope = DIDescriptor;
     pub type DIFile = DIScope;
     pub type DILexicalBlock = DIScope;
@@ -1854,7 +1856,7 @@ extern "C" {
         ScopeLine: c_uint,
         Flags: DIFlags,
         SPFlags: DISPFlags,
-        Fn: &'a Value,
+        MaybeFn: Option<&'a Value>,
         TParam: &'a DIArray,
         Decl: Option<&'a DIDescriptor>,
     ) -> &'a DISubprogram;
@@ -2005,7 +2007,7 @@ extern "C" {
         VarInfo: &'a DIVariable,
         AddrOps: *const i64,
         AddrOpsCount: c_uint,
-        DL: &'a Value,
+        DL: &'a DILocation,
         InsertAtEnd: &'a BasicBlock,
     ) -> &'a Value;
 
@@ -2093,8 +2095,8 @@ extern "C" {
         Line: c_uint,
         Column: c_uint,
         Scope: &'a DIScope,
-        InlinedAt: Option<&'a Metadata>,
-    ) -> &'a Value;
+        InlinedAt: Option<&'a DILocation>,
+    ) -> &'a DILocation;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
 

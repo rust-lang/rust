@@ -1,6 +1,5 @@
 use super::BackendTypes;
 use crate::mir::debuginfo::{FunctionDebugContext, VariableKind};
-use rustc_hir::def_id::CrateNum;
 use rustc_middle::mir;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_span::{SourceFile, Span, Symbol};
@@ -19,14 +18,29 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         instance: Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: Self::Function,
-        mir: &mir::Body<'_>,
-    ) -> Option<FunctionDebugContext<Self::DIScope>>;
+        mir: &mir::Body<'tcx>,
+    ) -> Option<FunctionDebugContext<Self::DIScope, Self::DILocation>>;
+
+    // FIXME(eddyb) find a common convention for all of the debuginfo-related
+    // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
+    fn dbg_scope_fn(
+        &self,
+        instance: Instance<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        maybe_definition_llfn: Option<Self::Function>,
+    ) -> Self::DIScope;
+
+    fn dbg_loc(
+        &self,
+        scope: Self::DIScope,
+        inlined_at: Option<Self::DILocation>,
+        span: Span,
+    ) -> Self::DILocation;
 
     fn extend_scope_to_file(
         &self,
         scope_metadata: Self::DIScope,
         file: &SourceFile,
-        defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
 
@@ -34,7 +48,6 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn create_dbg_var(
         &self,
-        dbg_context: &FunctionDebugContext<Self::DIScope>,
         variable_name: Symbol,
         variable_type: Ty<'tcx>,
         scope_metadata: Self::DIScope,
@@ -49,14 +62,13 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
     fn dbg_var_addr(
         &mut self,
         dbg_var: Self::DIVariable,
-        scope_metadata: Self::DIScope,
+        dbg_loc: Self::DILocation,
         variable_alloca: Self::Value,
         direct_offset: Size,
         // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
         indirect_offsets: &[Size],
-        span: Span,
     );
-    fn set_source_location(&mut self, scope: Self::DIScope, span: Span);
+    fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation);
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
     fn set_var_name(&mut self, value: Self::Value, name: &str);
 }
