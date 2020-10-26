@@ -1,0 +1,53 @@
+{
+    // source for rustc_* is not included in the rust-src component; disable the errors about this
+    "rust-analyzer.diagnostics.disabled": ["unresolved-extern-crate"],
+    "rust-analyzer.cargo.loadOutDirsFromCheck": true,
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        //"./build_sysroot/sysroot_src/src/libstd/Cargo.toml",
+        {
+            "roots": [
+                "./example/mini_core.rs",
+                "./example/mini_core_hello_world.rs",
+                "./example/mod_bench.rs"
+            ],
+            "crates": [
+                {
+                    "root_module": "./example/mini_core.rs",
+                    "edition": "2018",
+                    "deps": [],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./example/mini_core_hello_world.rs",
+                    "edition": "2018",
+                    "deps": [{ "crate": 0, "name": "mini_core" }],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./example/mod_bench.rs",
+                    "edition": "2018",
+                    "deps": [],
+                    "cfg": [],
+                },
+            ]
+        },
+        {
+            "roots": ["./scripts/filter_profile.rs"],
+            "crates": [
+                {
+                    "root_module": "./scripts/filter_profile.rs",
+                    "edition": "2018",
+                    "deps": [{ "crate": 1, "name": "std" }],
+                    "cfg": [],
+                },
+                {
+                    "root_module": "./build_sysroot/sysroot_src/library/std/src/lib.rs",
+                    "edition": "2018",
+                    "deps": [],
+                    "cfg": [],
+                },
+            ]
+        }
+    ]
+}

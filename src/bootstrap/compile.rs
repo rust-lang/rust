@@ -640,6 +640,144 @@ impl Step for RustcLink {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CodegenBackend {
+    pub target: TargetSelection,
+    pub compiler: Compiler,
+    pub backend: Interned<String>,
+}
+
+impl Step for CodegenBackend {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    // Only the backends specified in the `codegen-backends` entry of `config.toml` are built.
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("compiler/rustc_codegen_cranelift")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        for &backend in &run.builder.config.rust_codegen_backends {
+            if backend == "llvm" {
+                continue; // Already built as part of rustc
+            }
+
+            run.builder.ensure(CodegenBackend {
+                target: run.target,
+                compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+                backend,
+            });
+        }
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let compiler = self.compiler;
+        let target = self.target;
+        let backend = self.backend;
+
+        builder.ensure(Rustc { compiler, target });
+
+        if builder.config.keep_stage.contains(&compiler.stage) {
+            builder.info(
+                "Warning: Using a potentially old codegen backend. \
+                This may not behave well.",
+            );
+            // Codegen backends are linked separately from this step today, so we don't do
+            // anything here.
+            return;
+        }
+
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
+            builder.ensure(CodegenBackend { compiler: compiler_to_use, target, backend });
+            return;
+        }
+
+        let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
+
+        let mut cargo =
+            builder.cargo(compiler, Mode::Codegen, SourceType::Submodule, target, "build");
+        cargo
+            .arg("--manifest-path")
+            .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
+        rustc_cargo_env(builder, &mut cargo, target);
+
+        let tmp_stamp = out_dir.join(".tmp.stamp");
+
+        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
+        if builder.config.dry_run {
+            return;
+        }
+        let mut files = files.into_iter().filter(|f| {
+            let filename = f.file_name().unwrap().to_str().unwrap();
+            is_dylib(filename) && filename.contains("rustc_codegen_")
+        });
+        let codegen_backend = match files.next() {
+            Some(f) => f,
+            None => panic!("no dylibs built for codegen backend?"),
+        };
+        if let Some(f) = files.next() {
+            panic!(
+                "codegen backend built two dylibs:\n{}\n{}",
+                codegen_backend.display(),
+                f.display()
+            );
+        }
+        let stamp = codegen_backend_stamp(builder, compiler, target, backend);
+        let codegen_backend = codegen_backend.to_str().unwrap();
+        t!(fs::write(&stamp, &codegen_backend));
+    }
+}
+
+/// Creates the `codegen-backends` folder for a compiler that's about to be
+/// assembled as a complete compiler.
+///
+/// This will take the codegen artifacts produced by `compiler` and link them
+/// into an appropriate location for `target_compiler` to be a functional
+/// compiler.
+fn copy_codegen_backends_to_sysroot(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target_compiler: Compiler,
+) {
+    let target = target_compiler.host;
+
+    // Note that this step is different than all the other `*Link` steps in
+    // that it's not assembling a bunch of libraries but rather is primarily
+    // moving the codegen backend into place. The codegen backend of rustc is
+    // not linked into the main compiler by default but is rather dynamically
+    // selected at runtime for inclusion.
+    //
+    // Here we're looking for the output dylib of the `CodegenBackend` step and
+    // we're copying that into the `codegen-backends` folder.
+    let dst = builder.sysroot_codegen_backends(target_compiler);
+    t!(fs::create_dir_all(&dst));
+
+    if builder.config.dry_run {
+        return;
+    }
+
+    for backend in builder.config.rust_codegen_backends.iter() {
+        if backend == "llvm" {
+            continue; // Already built as part of rustc
+        }
+
+        let stamp = codegen_backend_stamp(builder, compiler, target, *backend);
+        let dylib = t!(fs::read_to_string(&stamp));
+        let file = Path::new(&dylib);
+        let filename = file.file_name().unwrap().to_str().unwrap();
+        // change `librustc_codegen_cranelift-xxxxxx.so` to
+        // `librustc_codegen_cranelift-release.so`
+        let target_filename = {
+            let dash = filename.find('-').unwrap();
+            let dot = filename.find('.').unwrap();
+            format!("{}-{}{}", &filename[..dash], builder.rust_release(), &filename[dot..])
+        };
+        builder.copy(&file, &dst.join(target_filename));
+    }
+}
+
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 pub fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
@@ -654,6 +792,19 @@ pub fn librustc_stamp(
     target: TargetSelection,
 ) -> PathBuf {
     builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc.stamp")
+}
+
+/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
+/// compiler for the specified target and backend.
+fn codegen_backend_stamp(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+    backend: Interned<String>,
+) -> PathBuf {
+    builder
+        .cargo_out(compiler, Mode::Codegen, target)
+        .join(format!(".librustc_codegen_{}.stamp", backend))
 }
 
 pub fn compiler_file(
@@ -782,6 +933,18 @@ impl Step for Assemble {
         // when not performing a full bootstrap).
         builder.ensure(Rustc { compiler: build_compiler, target: target_compiler.host });
 
+        for &backend in builder.config.rust_codegen_backends.iter() {
+            if backend == "llvm" {
+                continue; // Already built as part of rustc
+            }
+
+            builder.ensure(CodegenBackend {
+                compiler: build_compiler,
+                target: target_compiler.host,
+                backend,
+            });
+        }
+
         let lld_install = if builder.config.lld_enabled {
             Some(builder.ensure(native::Lld { target: target_compiler.host }))
         } else {
@@ -803,6 +966,8 @@ impl Step for Assemble {
                 builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }
         }
+
+        copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
         let libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
         if let Some(lld_install) = lld_install {
