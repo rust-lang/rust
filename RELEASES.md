@@ -22,7 +22,7 @@ Libraries
 ---------
 - [`io::Write` is now implemented for `&ChildStdin` `&Sink`, `&Stdout`,
   and `&Stderr`.][76275]
-- [All arrays now implement `TryFrom<Vec<T>>`.][76310]
+- [All arrays of any length now implement `TryFrom<Vec<T>>`.][76310]
 - [The `matches!` macro now supports having a trailing comma.][74880]
 - [`Vec<A>` now implements `PartialEq<[B]>` where `A: PartialEq<B>`.][74194]
 - [Nearly all of `Cell`'s panicking functions now use the `#[track_caller]`
