@@ -9,8 +9,8 @@ Language
 
 Compiler
 --------
-- [Stabilised the `-C link-self-contained=<yes|no>`][76158] Which tells `rustc` whether to link
-  its own C runtime and libraries or to rely on a external linker to find them. (supported only on
+- [Stabilised the `-C link-self-contained=<yes|no>`.][76158] This tells `rustc` whether to link
+  its own C runtime and libraries or to rely on a external linker to find them. (Supported only on
   `windows-gnu`, `linux-musl`, and `wasi` platforms.)
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
 - [Added tier 2\* support for `aarch64-unknown-linux-musl`.][76420]
@@ -52,14 +52,14 @@ Cargo
 
 Misc
 ----
-- [You can now link to different items in `rustdoc` using the intra-doc link
+- [You can now link to items in `rustdoc` using the intra-doc link
   syntax.][74430] E.g. ``/// Uses [`std::future`]`` will automatically generate
   a link to `std::future`'s documentation. See ["Linking to items by
   name"][intradoc-links] for more information.
 - [You can now specify `#[doc(alias = "<alias>")]` on items to add search aliases
   when searching through `rustdoc`'s UI.][75740]
 - [You can now use `rustup install <major>.<minor>` to specify installing the
-  latest available patch of that minor version of the toolchain.][76107] E.g.
+  latest available patch of the specified minor version of the toolchain.][76107] E.g.
   `rustup install 1.45` would install `1.45.2`, and `1.46` would install `1.46.0`.
 
 Compatibility Notes
@@ -70,7 +70,7 @@ Compatibility Notes
   declared on the trait when checking that they implement the trait.][27675]
 - [When trait bounds on associated types or opaque types are ambiguous, the
   compiler no longer makes an arbitrary choice on which bound to use.][54121]
-- [Fixed recursive nonterminals not being expended in macros during
+- [Fixed recursive nonterminals not being expanded in macros during
   pretty-print/reparse check.][77153] This may cause errors if your macro wasn't
   correctly handling recursive nonterminal tokens.
 - [`&mut` references to non zero-sized types are no longer promoted.][75585]
