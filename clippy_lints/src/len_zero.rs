@@ -105,7 +105,6 @@ declare_clippy_lint! {
     "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead"
 }
 
-
 declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMPTY]);
 
 impl<'tcx> LateLintPass<'tcx> for LenZero {
@@ -298,13 +297,7 @@ fn check_len(
     }
 }
 
-fn check_empty_expr(
-    cx: &LateContext<'_>,
-    span: Span,
-    lit1: &Expr<'_>,
-    lit2: &Expr<'_>,
-    op: &str
-) {
+fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Expr<'_>, op: &str) {
     if (is_empty_array(lit2) || is_empty_string(lit2)) && has_is_empty(cx, lit1) {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
