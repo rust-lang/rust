@@ -36,6 +36,8 @@ pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple}
 #[doc(hidden)]
 pub mod rt {
     pub mod v1;
+    #[cfg(not(bootstrap))]
+    pub mod v2;
 }
 
 /// The type returned by formatter methods.
@@ -254,6 +256,7 @@ pub struct ArgumentV1<'a> {
 // first argument. The read_volatile here ensures that we can safely ready out a
 // usize from the passed reference and that this address does not point at a
 // non-usize taking function.
+#[cfg(bootstrap)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
     // SAFETY: ptr is a reference
@@ -276,12 +279,14 @@ impl<'a> ArgumentV1<'a> {
         unsafe { ArgumentV1 { formatter: mem::transmute(f), value: mem::transmute(x) } }
     }
 
+    #[cfg(bootstrap)]
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn from_usize(x: &usize) -> ArgumentV1<'_> {
         ArgumentV1::new(x, USIZE_MARKER)
     }
 
+    #[cfg(bootstrap)]
     fn as_usize(&self) -> Option<usize> {
         if self.formatter as usize == USIZE_MARKER as usize {
             // SAFETY: The `formatter` field is only set to USIZE_MARKER if
@@ -310,6 +315,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(bootstrap)]
     pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments { pieces, fmt: None, args }
     }
@@ -323,6 +329,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(bootstrap)]
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
@@ -339,20 +346,35 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn estimated_capacity(&self) -> usize {
-        let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
-
-        if self.args.is_empty() {
-            pieces_length
-        } else if self.pieces[0] == "" && pieces_length < 16 {
-            // If the format string starts with an argument,
-            // don't preallocate anything, unless length
-            // of pieces is significant.
-            0
-        } else {
-            // There are some arguments, so any additional push
-            // will reallocate the string. To avoid that,
-            // we're "pre-doubling" the capacity here.
-            pieces_length.checked_mul(2).unwrap_or(0)
+        #[cfg(bootstrap)]
+        {
+            0 // don't care, this is going away in a few weeks anyway.
+        }
+        #[cfg(not(bootstrap))]
+        {
+            if let Some(s) = self.as_str() {
+                s.len()
+            } else {
+                let str_length: usize = self
+                    .commands
+                    .iter()
+                    .filter_map(|c| match c {
+                        rt::v2::Cmd::Str(s) => Some(s.len()),
+                        _ => None,
+                    })
+                    .sum();
+                if !matches!(self.commands.first(), Some(rt::v2::Cmd::Str(_))) && str_length < 16 {
+                    // If the format string starts with an argument,
+                    // don't preallocate anything, unless length
+                    // of pieces is significant.
+                    0
+                } else {
+                    // There are some arguments, so any additional push
+                    // will reallocate the string. To avoid that,
+                    // we're "pre-doubling" the capacity here.
+                    str_length.checked_mul(2).unwrap_or(0)
+                }
+            }
         }
     }
 }
@@ -382,14 +404,21 @@ impl<'a> Arguments<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
+    /// Commands to execute to display this fmt::Arguments.
+    #[cfg(not(bootstrap))]
+    commands: &'a [rt::v2::Cmd<'a>],
+
     // Format string pieces to print.
+    #[cfg(bootstrap)]
     pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
+    #[cfg(bootstrap)]
     fmt: Option<&'a [rt::v1::Argument]>,
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
+    #[cfg(bootstrap)]
     args: &'a [ArgumentV1<'a>],
 }
 
@@ -426,6 +455,13 @@ impl<'a> Arguments<'a> {
     #[unstable(feature = "fmt_as_str", issue = "74442")]
     #[inline]
     pub fn as_str(&self) -> Option<&'static str> {
+        #[cfg(not(bootstrap))]
+        match self.commands {
+            [] => Some(""),
+            [rt::v2::Cmd::Str(s)] => Some(s),
+            _ => None,
+        }
+        #[cfg(bootstrap)]
         match (self.pieces, self.args) {
             ([], []) => Some(""),
             ([s], []) => Some(s),
@@ -1056,6 +1092,44 @@ pub trait UpperExp {
 ///
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(bootstrap))]
+pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
+    let mut formatter = Formatter {
+        flags: 0,
+        width: None,
+        precision: None,
+        buf: output,
+        align: rt::v2::Alignment::Unknown,
+        fill: ' ',
+    };
+
+    for cmd in args.commands {
+        match cmd {
+            rt::v2::Cmd::Str(s) => formatter.buf.write_str(s)?,
+            rt::v2::Cmd::SetFlags { fill, flags, align } => {
+                formatter.fill = *fill;
+                formatter.flags = *flags;
+                formatter.align = *align;
+            }
+            rt::v2::Cmd::SetPrecision(p) => formatter.precision = Some(*p),
+            rt::v2::Cmd::SetWidth(w) => formatter.width = Some(*w),
+            rt::v2::Cmd::Format(arg) => {
+                (arg.formatter)(arg.value, &mut formatter)?;
+                formatter.fill = ' ';
+                formatter.flags = 0;
+                formatter.align = rt::v2::Alignment::Unknown;
+                formatter.precision = None;
+                formatter.width = None;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// V1 implementation of fmt::write.
+#[cfg(bootstrap)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter {
         flags: 0,
@@ -1096,6 +1170,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
+#[cfg(bootstrap)]
 fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
@@ -1110,10 +1185,12 @@ fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>])
     (value.formatter)(value.value, fmt)
 }
 
+#[cfg(bootstrap)]
 fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
     match *cnt {
         rt::v1::Count::Is(n) => Some(n),
         rt::v1::Count::Implied => None,
+        #[cfg(bootstrap)]
         rt::v1::Count::Param(i) => args[i].as_usize(),
     }
 }

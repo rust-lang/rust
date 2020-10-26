@@ -39,6 +39,7 @@ pub enum Count {
     /// Specified with a literal number, stores the value
     Is(usize),
     /// Specified using `$` and `*` syntaxes, stores the index into `args`
+    #[cfg(bootstrap)]
     Param(usize),
     /// Not specified
     Implied,
