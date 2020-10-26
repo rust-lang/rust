@@ -84,6 +84,10 @@ fn foo<'a, T>() -> T {
     foo::<'a, i32>()
 }
 
+fn never() -> ! {
+    loop {}
+}
+
 use ops::Fn;
 fn baz<F: Fn() -> ()>(f: F) {
     f()
@@ -153,6 +157,8 @@ fn main() {
 
     let baz = -42;
     let baz = -baz;
+
+    let _ = !true;
 }
 
 enum Option<T> {

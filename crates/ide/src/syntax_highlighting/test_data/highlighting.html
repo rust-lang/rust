@@ -110,6 +110,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="function">foo</span><span class="operator">::</span><span class="punctuation">&lt;</span><span class="lifetime">'a</span><span class="punctuation">,</span> <span class="builtin_type">i32</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span>
 <span class="punctuation">}</span>
 
+<span class="keyword">fn</span> <span class="function declaration">never</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">!</span> <span class="punctuation">{</span>
+    <span class="keyword control">loop</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+<span class="punctuation">}</span>
+
 <span class="keyword">use</span> <span class="module">ops</span><span class="operator">::</span><span class="trait">Fn</span><span class="punctuation">;</span>
 <span class="keyword">fn</span> <span class="function declaration">baz</span><span class="punctuation">&lt;</span><span class="type_param declaration">F</span><span class="punctuation">:</span> <span class="trait">Fn</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="value_param declaration callable">f</span><span class="punctuation">:</span> <span class="type_param">F</span><span class="punctuation">)</span> <span class="punctuation">{</span>
     <span class="value_param callable">f</span><span class="punctuation">(</span><span class="punctuation">)</span>
@@ -179,6 +183,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="numeric_literal">-</span><span class="numeric_literal">42</span><span class="punctuation">;</span>
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="operator">-</span><span class="variable">baz</span><span class="punctuation">;</span>
+
+    <span class="keyword">let</span> <span class="punctuation">_</span> <span class="operator">=</span> <span class="operator">!</span><span class="bool_literal">true</span><span class="punctuation">;</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">enum</span> <span class="enum declaration">Option</span><span class="punctuation">&lt;</span><span class="type_param declaration">T</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
