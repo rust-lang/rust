@@ -2103,13 +2103,8 @@ pub struct ArrayChunks<'a, T: 'a, const N: usize> {
 impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
     #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
-        let len = slice.len() / N;
-        let (fst, snd) = slice.split_at(len * N);
-        // SAFETY: We cast a slice of `len * N` elements into
-        // a slice of `len` many `N` elements chunks.
-        let array_slice: &[[T; N]] = unsafe { from_raw_parts(fst.as_ptr().cast(), len) };
-
-        Self { iter: array_slice.iter(), rem: snd }
+        let (array_slice, rem) = slice.as_chunks();
+        Self { iter: array_slice.iter(), rem }
     }
 
     /// Returns the remainder of the original slice that is not going to be
@@ -2230,14 +2225,8 @@ pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
 impl<'a, T, const N: usize> ArrayChunksMut<'a, T, N> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T]) -> Self {
-        let len = slice.len() / N;
-        let (fst, snd) = slice.split_at_mut(len * N);
-        // SAFETY: We cast a slice of `len * N` elements into
-        // a slice of `len` many `N` elements chunks.
-        unsafe {
-            let array_slice: &mut [[T; N]] = from_raw_parts_mut(fst.as_mut_ptr().cast(), len);
-            Self { iter: array_slice.iter_mut(), rem: snd }
-        }
+        let (array_slice, rem) = slice.as_chunks_mut();
+        Self { iter: array_slice.iter_mut(), rem }
     }
 
     /// Returns the remainder of the original slice that is not going to be

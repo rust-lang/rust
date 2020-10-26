@@ -882,6 +882,36 @@ impl<T> [T] {
         ChunksExactMut::new(self, chunk_size)
     }
 
+    /// Splits the slice into a slice of `N`-element arrays,
+    /// starting at the beginning of the slice,
+    /// and a remainder slice with length strictly less than `N`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// error before this method gets stabilized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_as_chunks)]
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let (chunks, remainder) = slice.as_chunks();
+    /// assert_eq!(chunks, &[['l', 'o'], ['r', 'e']]);
+    /// assert_eq!(remainder, &['m']);
+    /// ```
+    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[inline]
+    pub fn as_chunks<const N: usize>(&self) -> (&[[T; N]], &[T]) {
+        assert_ne!(N, 0);
+        let len = self.len() / N;
+        let (multiple_of_n, remainder) = self.split_at(len * N);
+        // SAFETY: We cast a slice of `len * N` elements into
+        // a slice of `len` many `N` elements chunks.
+        let array_slice: &[[T; N]] = unsafe { from_raw_parts(multiple_of_n.as_ptr().cast(), len) };
+        (array_slice, remainder)
+    }
+
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
     /// beginning of the slice.
     ///
@@ -914,6 +944,43 @@ impl<T> [T] {
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
         assert_ne!(N, 0);
         ArrayChunks::new(self)
+    }
+
+    /// Splits the slice into a slice of `N`-element arrays,
+    /// starting at the beginning of the slice,
+    /// and a remainder slice with length strictly less than `N`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// error before this method gets stabilized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_as_chunks)]
+    /// let v = &mut [0, 0, 0, 0, 0];
+    /// let mut count = 1;
+    ///
+    /// let (chunks, remainder) = v.as_chunks_mut();
+    /// remainder[0] = 9;
+    /// for chunk in chunks {
+    ///     *chunk = [count; 2];
+    ///     count += 1;
+    /// }
+    /// assert_eq!(v, &[1, 1, 2, 2, 9]);
+    /// ```
+    #[unstable(feature = "slice_as_chunks", issue = "74985")]
+    #[inline]
+    pub fn as_chunks_mut<const N: usize>(&mut self) -> (&mut [[T; N]], &mut [T]) {
+        assert_ne!(N, 0);
+        let len = self.len() / N;
+        let (multiple_of_n, remainder) = self.split_at_mut(len * N);
+        let array_slice: &mut [[T; N]] =
+            // SAFETY: We cast a slice of `len * N` elements into
+            // a slice of `len` many `N` elements chunks.
+            unsafe { from_raw_parts_mut(multiple_of_n.as_mut_ptr().cast(), len) };
+        (array_slice, remainder)
     }
 
     /// Returns an iterator over `N` elements of the slice at a time, starting at the
