@@ -691,3 +691,20 @@ mod tr {
         "#]],
     );
 }
+
+#[test]
+fn cfg_the_entire_crate() {
+    check(
+        r#"
+//- /main.rs
+#![cfg(never)]
+
+pub struct S;
+pub enum E {}
+pub fn f() {}
+    "#,
+        expect![[r#"
+            crate
+        "#]],
+    );
+}
