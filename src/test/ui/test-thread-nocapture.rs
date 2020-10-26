@@ -3,6 +3,7 @@
 // run-flags: --test-threads=1 --nocapture
 // check-run-results
 // exec-env:RUST_BACKTRACE=0
+// ignore-emscripten no threads support
 
 #[test]
 fn thready_pass() {
