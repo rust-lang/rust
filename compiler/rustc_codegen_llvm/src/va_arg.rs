@@ -173,26 +173,24 @@ pub(super) fn emit_va_arg(
     // is lacking in some instances, so we should only use it as a fallback.
     let target = &bx.cx.tcx.sess.target;
     let arch = &bx.cx.tcx.sess.target.arch;
-    match (&**arch, target.options.is_like_windows) {
+    match &**arch {
         // Windows x86
-        ("x86", true) => {
+        "x86" if target.options.is_like_windows => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), false)
         }
         // Generic x86
-        ("x86", _) => {
-            emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), true)
-        }
+        "x86" => emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), true),
         // Windows AArch64
-        ("aarch64", true) => {
+        "aarch64" if target.options.is_like_windows => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
         }
-        // iOS AArch64
-        ("aarch64", _) if target.target_os == "ios" => {
+        // macOS / iOS AArch64
+        "aarch64" if target.options.is_like_osx => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
         }
-        ("aarch64", _) => emit_aapcs_va_arg(bx, addr, target_ty),
+        "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
         // Windows x86_64
-        ("x86_64", true) => {
+        "x86_64" if target.options.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
             let indirect: bool = target_ty_size > 8 || !target_ty_size.is_power_of_two();
             emit_ptr_va_arg(bx, addr, target_ty, indirect, Align::from_bytes(8).unwrap(), false)

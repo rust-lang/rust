@@ -334,26 +334,15 @@ impl<'tcx> TyCtxt<'tcx> {
         debug!("note_and_explain_type_err err={:?} cause={:?}", err, cause);
         match err {
             Sorts(values) => {
-                let expected_str = values.expected.sort_string(self);
-                let found_str = values.found.sort_string(self);
-                if expected_str == found_str && expected_str == "closure" {
-                    db.note("no two closures, even if identical, have the same type");
-                    db.help("consider boxing your closure and/or using it as a trait object");
-                }
-                if expected_str == found_str && expected_str == "opaque type" {
-                    // Issue #63167
-                    db.note("distinct uses of `impl Trait` result in different opaque types");
-                    let e_str = values.expected.to_string();
-                    let f_str = values.found.to_string();
-                    if e_str == f_str && &e_str == "impl std::future::Future" {
-                        // FIXME: use non-string based check.
-                        db.help(
-                            "if both `Future`s have the same `Output` type, consider \
-                                 `.await`ing on both of them",
-                        );
-                    }
-                }
                 match (values.expected.kind(), values.found.kind()) {
+                    (ty::Closure(..), ty::Closure(..)) => {
+                        db.note("no two closures, even if identical, have the same type");
+                        db.help("consider boxing your closure and/or using it as a trait object");
+                    }
+                    (ty::Opaque(..), ty::Opaque(..)) => {
+                        // Issue #63167
+                        db.note("distinct uses of `impl Trait` result in different opaque types");
+                    }
                     (ty::Float(_), ty::Infer(ty::IntVar(_))) => {
                         if let Ok(
                             // Issue #53280
@@ -382,12 +371,12 @@ impl<'tcx> TyCtxt<'tcx> {
                         }
                         db.note(
                             "a type parameter was expected, but a different one was found; \
-                                 you might be missing a type parameter or trait bound",
+                             you might be missing a type parameter or trait bound",
                         );
                         db.note(
                             "for more information, visit \
-                                 https://doc.rust-lang.org/book/ch10-02-traits.html\
-                                 #traits-as-parameters",
+                             https://doc.rust-lang.org/book/ch10-02-traits.html\
+                             #traits-as-parameters",
                         );
                     }
                     (ty::Projection(_), ty::Projection(_)) => {
@@ -471,8 +460,8 @@ impl<T> Trait<T> for X {
                         }
                         db.note(
                             "for more information, visit \
-                                 https://doc.rust-lang.org/book/ch10-02-traits.html\
-                                 #traits-as-parameters",
+                             https://doc.rust-lang.org/book/ch10-02-traits.html\
+                             #traits-as-parameters",
                         );
                     }
                     (ty::Param(p), ty::Closure(..) | ty::Generator(..)) => {

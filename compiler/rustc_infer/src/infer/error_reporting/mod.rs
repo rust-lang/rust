@@ -50,10 +50,10 @@ use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
 use crate::infer;
-use crate::infer::OriginalQueryValues;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+    StatementAsExpression,
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -64,7 +64,6 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::ParamEnvAnd;
 use rustc_middle::ty::{
     self,
     subst::{Subst, SubstsRef},
@@ -688,13 +687,36 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     };
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer_error_span, msg);
-                    if let Some(sp) = semi_span {
-                        err.span_suggestion_short(
-                            sp,
-                            "consider removing this semicolon",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
+                    if let Some((sp, boxed)) = semi_span {
+                        if let (StatementAsExpression::NeedsBoxing, [.., prior_arm]) =
+                            (boxed, &prior_arms[..])
+                        {
+                            err.multipart_suggestion(
+                                "consider removing this semicolon and boxing the expressions",
+                                vec![
+                                    (prior_arm.shrink_to_lo(), "Box::new(".to_string()),
+                                    (prior_arm.shrink_to_hi(), ")".to_string()),
+                                    (arm_span.shrink_to_lo(), "Box::new(".to_string()),
+                                    (arm_span.shrink_to_hi(), ")".to_string()),
+                                    (sp, String::new()),
+                                ],
+                                Applicability::HasPlaceholders,
+                            );
+                        } else if matches!(boxed, StatementAsExpression::NeedsBoxing) {
+                            err.span_suggestion_short(
+                                sp,
+                                "consider removing this semicolon and boxing the expressions",
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            err.span_suggestion_short(
+                                sp,
+                                "consider removing this semicolon",
+                                String::new(),
+                                Applicability::MachineApplicable,
+                            );
+                        }
                     }
                     if let Some(ret_sp) = opt_suggest_box_span {
                         // Get return type span and point to it.
@@ -717,13 +739,27 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if let Some(sp) = outer {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
-                if let Some(sp) = semicolon {
-                    err.span_suggestion_short(
-                        sp,
-                        "consider removing this semicolon",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
+                if let Some((sp, boxed)) = semicolon {
+                    if matches!(boxed, StatementAsExpression::NeedsBoxing) {
+                        err.multipart_suggestion(
+                            "consider removing this semicolon and boxing the expression",
+                            vec![
+                                (then.shrink_to_lo(), "Box::new(".to_string()),
+                                (then.shrink_to_hi(), ")".to_string()),
+                                (else_sp.shrink_to_lo(), "Box::new(".to_string()),
+                                (else_sp.shrink_to_hi(), ")".to_string()),
+                                (sp, String::new()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_suggestion_short(
+                            sp,
+                            "consider removing this semicolon",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 }
                 if let Some(ret_sp) = opt_suggest_box_span {
                     self.suggest_boxing_for_return_impl_trait(
@@ -1602,6 +1638,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Mismatch::Variable(exp_found) => Some(exp_found),
             Mismatch::Fixed(_) => None,
         };
+        let exp_found = match terr {
+            // `terr` has more accurate type information than `exp_found` in match expressions.
+            ty::error::TypeError::Sorts(terr)
+                if exp_found.map_or(false, |ef| terr.found == ef.found) =>
+            {
+                Some(*terr)
+            }
+            _ => exp_found,
+        };
+        debug!("exp_found {:?} terr {:?}", exp_found, terr);
         if let Some(exp_found) = exp_found {
             self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
             self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
@@ -1623,19 +1669,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.note_error_origin(diag, cause, exp_found);
     }
 
-    fn suggest_await_on_expect_found(
-        &self,
-        cause: &ObligationCause<'tcx>,
-        exp_span: Span,
-        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
-        diag: &mut DiagnosticBuilder<'tcx>,
-    ) {
-        debug!(
-            "suggest_await_on_expect_found: exp_span={:?}, expected_ty={:?}, found_ty={:?}",
-            exp_span, exp_found.expected, exp_found.found
-        );
-
-        if let ty::Opaque(def_id, _) = *exp_found.expected.kind() {
+    fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
             let item_def_id = self
@@ -1646,36 +1681,120 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .unwrap()
                 .def_id;
 
-            let projection_ty = self.tcx.projection_ty_from_predicates((def_id, item_def_id));
-            if let Some(projection_ty) = projection_ty {
-                let projection_query = self.canonicalize_query(
-                    &ParamEnvAnd { param_env: self.tcx.param_env(def_id), value: projection_ty },
-                    &mut OriginalQueryValues::default(),
-                );
-                if let Ok(resp) = self.tcx.normalize_projection_ty(projection_query) {
-                    let normalized_ty = resp.value.value.normalized_ty;
-                    debug!("suggest_await_on_expect_found: normalized={:?}", normalized_ty);
-                    if ty::TyS::same_type(normalized_ty, exp_found.found) {
-                        let span = if let ObligationCauseCode::Pattern {
-                            span,
-                            origin_expr: _,
-                            root_ty: _,
-                        } = cause.code
-                        {
-                            // scrutinee's span
-                            span.unwrap_or(exp_span)
-                        } else {
-                            exp_span
-                        };
-                        diag.span_suggestion_verbose(
-                            span.shrink_to_hi(),
-                            "consider awaiting on the future",
-                            ".await".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
+            let bounds = self.tcx.explicit_item_bounds(*def_id);
+
+            for (predicate, _) in bounds {
+                let predicate = predicate.subst(self.tcx, substs);
+                if let ty::PredicateAtom::Projection(projection_predicate) =
+                    predicate.skip_binders()
+                {
+                    if projection_predicate.projection_ty.item_def_id == item_def_id {
+                        // We don't account for multiple `Future::Output = Ty` contraints.
+                        return Some(projection_predicate.ty);
                     }
                 }
             }
+        }
+        None
+    }
+
+    /// A possible error is to forget to add `.await` when using futures:
+    ///
+    /// ```
+    /// async fn make_u32() -> u32 {
+    ///     22
+    /// }
+    ///
+    /// fn take_u32(x: u32) {}
+    ///
+    /// async fn foo() {
+    ///     let x = make_u32();
+    ///     take_u32(x);
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the found type `T` implements `Future<Output=U>` where `U` is the
+    /// expected type. If this is the case, and we are inside of an async body, it suggests adding
+    /// `.await` to the tail of the expression.
+    fn suggest_await_on_expect_found(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut DiagnosticBuilder<'tcx>,
+    ) {
+        debug!(
+            "suggest_await_on_expect_found: exp_span={:?}, expected_ty={:?}, found_ty={:?}",
+            exp_span, exp_found.expected, exp_found.found,
+        );
+
+        if let ObligationCauseCode::CompareImplMethodObligation { .. } = &cause.code {
+            return;
+        }
+
+        match (
+            self.get_impl_future_output_ty(exp_found.expected),
+            self.get_impl_future_output_ty(exp_found.found),
+        ) {
+            (Some(exp), Some(found)) if ty::TyS::same_type(exp, found) => match &cause.code {
+                ObligationCauseCode::IfExpression(box IfExpressionCause { then, .. }) => {
+                    diag.multipart_suggestion(
+                        "consider `await`ing on both `Future`s",
+                        vec![
+                            (then.shrink_to_hi(), ".await".to_string()),
+                            (exp_span.shrink_to_hi(), ".await".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
+                    prior_arms,
+                    ..
+                }) => {
+                    if let [.., arm_span] = &prior_arms[..] {
+                        diag.multipart_suggestion(
+                            "consider `await`ing on both `Future`s",
+                            vec![
+                                (arm_span.shrink_to_hi(), ".await".to_string()),
+                                (exp_span.shrink_to_hi(), ".await".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        diag.help("consider `await`ing on both `Future`s");
+                    }
+                }
+                _ => {
+                    diag.help("consider `await`ing on both `Future`s");
+                }
+            },
+            (_, Some(ty)) if ty::TyS::same_type(exp_found.expected, ty) => {
+                let span = match cause.code {
+                    // scrutinee's span
+                    ObligationCauseCode::Pattern { span: Some(span), .. } => span,
+                    _ => exp_span,
+                };
+                diag.span_suggestion_verbose(
+                    span.shrink_to_hi(),
+                    "consider `await`ing on the `Future`",
+                    ".await".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            (Some(ty), _) if ty::TyS::same_type(ty, exp_found.found) => {
+                let span = match cause.code {
+                    // scrutinee's span
+                    ObligationCauseCode::Pattern { span: Some(span), .. } => span,
+                    _ => exp_span,
+                };
+                diag.span_suggestion_verbose(
+                    span.shrink_to_hi(),
+                    "consider `await`ing on the `Future`",
+                    ".await".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {}
         }
     }
 

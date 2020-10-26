@@ -21,7 +21,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::fmt;
 
@@ -2114,10 +2114,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if self.predicate_may_hold(&try_obligation) && impls_future {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
                         if snippet.ends_with('?') {
-                            err.span_suggestion(
-                                span,
-                                "consider using `.await` here",
-                                format!("{}.await?", snippet.trim_end_matches('?')),
+                            err.span_suggestion_verbose(
+                                span.with_hi(span.hi() - BytePos(1)).shrink_to_hi(),
+                                "consider `await`ing on the `Future`",
+                                ".await".to_string(),
                                 Applicability::MaybeIncorrect,
                             );
                         }

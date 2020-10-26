@@ -9,6 +9,7 @@ use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+    StatementAsExpression,
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -188,11 +189,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             } else {
-                let (arm_span, semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
-                    self.find_block_span(blk, prior_arm_ty)
-                } else {
-                    (arm.body.span, None)
-                };
+                let (arm_span, semi_span) =
+                    self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
                 let (span, code) = match i {
                     // The reason for the first arm to fail is not that the match arms diverge,
                     // but rather that there's a prior obligation that doesn't hold.
@@ -240,6 +238,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.diverges.set(scrut_diverges | all_arms_diverge);
 
         coercion.complete(self)
+    }
+
+    fn get_appropriate_arm_semicolon_removal_span(
+        &self,
+        arms: &'tcx [hir::Arm<'tcx>],
+        i: usize,
+        prior_arm_ty: Option<Ty<'tcx>>,
+        arm_ty: Ty<'tcx>,
+    ) -> (Span, Option<(Span, StatementAsExpression)>) {
+        let arm = &arms[i];
+        let (arm_span, mut semi_span) = if let hir::ExprKind::Block(blk, _) = &arm.body.kind {
+            self.find_block_span(blk, prior_arm_ty)
+        } else {
+            (arm.body.span, None)
+        };
+        if semi_span.is_none() && i > 0 {
+            if let hir::ExprKind::Block(blk, _) = &arms[i - 1].body.kind {
+                let (_, semi_span_prev) = self.find_block_span(blk, Some(arm_ty));
+                semi_span = semi_span_prev;
+            }
+        }
+        (arm_span, semi_span)
     }
 
     /// When the previously checked expression (the scrutinee) diverges,
@@ -514,7 +534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         block: &'tcx hir::Block<'tcx>,
         expected_ty: Option<Ty<'tcx>>,
-    ) -> (Span, Option<Span>) {
+    ) -> (Span, Option<(Span, StatementAsExpression)>) {
         if let Some(expr) = &block.expr {
             (expr.span, None)
         } else if let Some(stmt) = block.stmts.last() {

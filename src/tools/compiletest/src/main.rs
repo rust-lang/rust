@@ -35,7 +35,7 @@ pub mod runtest;
 pub mod util;
 
 fn main() {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let config = parse_config(env::args().collect());
 
