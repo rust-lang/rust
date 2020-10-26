@@ -16,7 +16,6 @@ cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
-libc = { version = "0.2.79", default-features = false, features = ['rustc-dep-of-std'] }
 compiler_builtins = { version = "0.1.35" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
@@ -31,6 +30,12 @@ version = "0.20"
 optional = true
 default-features = false
 features = ['read_core', 'elf', 'macho', 'pe']
+[dependencies.libc]
+version = "0.2"
+default-features = false
+features = ['rustc-dep-of-std']
+git = "https://github.com/lzutao/rust-libc"
+branch = "i78184"
 
 [dev-dependencies]
 rand = "0.7"
