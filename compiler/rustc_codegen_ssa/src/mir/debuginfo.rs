@@ -60,7 +60,9 @@ impl<'tcx, S: Copy, L: Copy> DebugScope<S, L> {
         span: Span,
     ) -> S {
         // FIXME(eddyb) this should never be `None`.
-        let dbg_scope = self.dbg_scope.unwrap();
+        let dbg_scope = self
+            .dbg_scope
+            .unwrap_or_else(|| bug!("`dbg_scope` is only `None` during initialization"));
 
         let pos = span.lo();
         if pos < self.file_start_pos || pos >= self.file_end_pos {
