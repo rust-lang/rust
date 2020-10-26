@@ -277,9 +277,11 @@ pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 pub use self::stdio::{_eprint, _print};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
-pub use self::stdio::{set_panic, set_print};
+pub use self::stdio::{set_panic, set_print, LocalOutput};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, empty, repeat, sink, Empty, Repeat, Sink};
+
+pub(crate) use self::stdio::clone_io;
 
 mod buffered;
 mod cursor;
