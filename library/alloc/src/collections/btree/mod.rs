@@ -1,5 +1,6 @@
 mod borrow;
 pub mod map;
+mod mem;
 mod navigate;
 mod node;
 mod remove;

@@ -207,25 +207,25 @@ class StdRefCellProvider:
         yield "borrow", self.borrow
 
 
-# Yields children (in a provider's sense of the word) for a tree headed by a BoxedNode.
+# Yields children (in a provider's sense of the word) for a tree headed by a node.
 # In particular, yields each key/value pair in the node and in any child nodes.
-def children_of_node(boxed_node, height):
+def children_of_node(node_ptr, height):
     def cast_to_internal(node):
         internal_type_name = node.type.target().name.replace("LeafNode", "InternalNode", 1)
         internal_type = lookup_type(internal_type_name)
         return node.cast(internal_type.pointer())
 
-    node_ptr = unwrap_unique_or_non_null(boxed_node["ptr"])
     leaf = node_ptr.dereference()
     keys = leaf["keys"]
     vals = leaf["vals"]
     edges = cast_to_internal(node_ptr)["edges"] if height > 0 else None
-    length = int(leaf["len"])
+    length = leaf["len"]
 
     for i in xrange(0, length + 1):
         if height > 0:
             boxed_child_node = edges[i]["value"]["value"]
-            for child in children_of_node(boxed_child_node, height - 1):
+            child_node = unwrap_unique_or_non_null(boxed_child_node["ptr"])
+            for child in children_of_node(child_node, height - 1):
                 yield child
         if i < length:
             # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
@@ -240,9 +240,12 @@ def children_of_map(map):
         root = map["root"]
         if root.type.name.startswith("core::option::Option<"):
             root = root.cast(gdb.lookup_type(root.type.name[21:-1]))
-        boxed_root_node = root["node"]
+        node_ptr = root["node"]
+        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+            node_ptr = node_ptr["ptr"]
+        node_ptr = unwrap_unique_or_non_null(node_ptr)
         height = root["height"]
-        for child in children_of_node(boxed_root_node, height):
+        for child in children_of_node(node_ptr, height):
             yield child
 
 
