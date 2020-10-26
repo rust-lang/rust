@@ -70,7 +70,7 @@ fn string_literal_contents(item: &ast::String) -> Option<String> {
 /// Parser for a format-like string. It is more allowing in terms of string contents,
 /// as we expect variable placeholders to be filled with expressions.
 #[derive(Debug)]
-pub struct FormatStrParser {
+pub(crate) struct FormatStrParser {
     input: String,
     output: String,
     extracted_expressions: Vec<String>,

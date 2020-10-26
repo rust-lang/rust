@@ -45,11 +45,11 @@ impl Builder {
 }
 
 impl Completions {
-    pub fn add(&mut self, item: CompletionItem) {
+    pub(crate) fn add(&mut self, item: CompletionItem) {
         self.buf.push(item.into())
     }
 
-    pub fn add_all<I>(&mut self, items: I)
+    pub(crate) fn add_all<I>(&mut self, items: I)
     where
         I: IntoIterator,
         I::Item: Into<CompletionItem>,
