@@ -4,6 +4,5 @@ fn main() {
     if Some(x) = foo {} //~ ERROR cannot find value `x` in this scope
     if Some(foo) = bar {} //~ ERROR mismatched types
     if 3 = foo {} //~ ERROR mismatched types
-    //~^ ERROR mismatched types
     if Some(3) = foo {} //~ ERROR mismatched types
 }
