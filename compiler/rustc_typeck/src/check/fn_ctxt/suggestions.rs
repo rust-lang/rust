@@ -3,7 +3,6 @@ use crate::astconv::AstConv;
 
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits;
 
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -13,7 +12,6 @@ use rustc_hir::{ExprKind, ItemKind, Node};
 use rustc_infer::infer;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::kw;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 use std::iter;
 
@@ -429,87 +427,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
                 false
-            }
-        }
-    }
-
-    /// A possible error is to forget to add `.await` when using futures:
-    ///
-    /// ```
-    /// async fn make_u32() -> u32 {
-    ///     22
-    /// }
-    ///
-    /// fn take_u32(x: u32) {}
-    ///
-    /// async fn foo() {
-    ///     let x = make_u32();
-    ///     take_u32(x);
-    /// }
-    /// ```
-    ///
-    /// This routine checks if the found type `T` implements `Future<Output=U>` where `U` is the
-    /// expected type. If this is the case, and we are inside of an async body, it suggests adding
-    /// `.await` to the tail of the expression.
-    pub(in super::super) fn suggest_missing_await(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr<'_>,
-        expected: Ty<'tcx>,
-        found: Ty<'tcx>,
-    ) {
-        debug!("suggest_missing_await: expr={:?} expected={:?}, found={:?}", expr, expected, found);
-        // `.await` is not permitted outside of `async` bodies, so don't bother to suggest if the
-        // body isn't `async`.
-        let item_id = self.tcx().hir().get_parent_node(self.body_id);
-        if let Some(body_id) = self.tcx().hir().maybe_body_owned_by(item_id) {
-            let body = self.tcx().hir().body(body_id);
-            if let Some(hir::GeneratorKind::Async(_)) = body.generator_kind {
-                let sp = expr.span;
-                // Check for `Future` implementations by constructing a predicate to
-                // prove: `<T as Future>::Output == U`
-                let future_trait = self.tcx.require_lang_item(LangItem::Future, Some(sp));
-                let item_def_id = self
-                    .tcx
-                    .associated_items(future_trait)
-                    .in_definition_order()
-                    .next()
-                    .unwrap()
-                    .def_id;
-                // `<T as Future>::Output`
-                let projection_ty = ty::ProjectionTy {
-                    // `T`
-                    substs: self
-                        .tcx
-                        .mk_substs_trait(found, self.fresh_substs_for_item(sp, item_def_id)),
-                    // `Future::Output`
-                    item_def_id,
-                };
-
-                let predicate = ty::PredicateAtom::Projection(ty::ProjectionPredicate {
-                    projection_ty,
-                    ty: expected,
-                })
-                .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
-                let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
-
-                debug!("suggest_missing_await: trying obligation {:?}", obligation);
-
-                if self.infcx.predicate_may_hold(&obligation) {
-                    debug!("suggest_missing_await: obligation held: {:?}", obligation);
-                    if let Ok(code) = self.sess().source_map().span_to_snippet(sp) {
-                        err.span_suggestion(
-                            sp,
-                            "consider using `.await` here",
-                            format!("{}.await", code),
-                            Applicability::MaybeIncorrect,
-                        );
-                    } else {
-                        debug!("suggest_missing_await: no snippet for {:?}", sp);
-                    }
-                } else {
-                    debug!("suggest_missing_await: obligation did not hold: {:?}", obligation)
-                }
             }
         }
     }

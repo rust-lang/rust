@@ -33,7 +33,9 @@ use rustc_span::{self, BytePos, MultiSpan, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCauseCode, TraitEngine, TraitEngineExt};
+use rustc_trait_selection::traits::{
+    self, ObligationCauseCode, StatementAsExpression, TraitEngine, TraitEngineExt,
+};
 
 use std::collections::hash_map::Entry;
 use std::slice;
@@ -1061,7 +1063,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
-    ) -> Option<Span> {
+    ) -> Option<(Span, StatementAsExpression)> {
         // Be helpful when the user wrote `{... expr;}` and
         // taking the `;` off is enough to fix the error.
         let last_stmt = blk.stmts.last()?;
@@ -1070,13 +1072,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
-        if matches!(last_expr_ty.kind(), ty::Error(_))
-            || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err()
+        let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
+            (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
+                debug!(
+                    "both opaque, likely future {:?} {:?} {:?} {:?}",
+                    last_def_id, last_bounds, exp_def_id, exp_bounds
+                );
+                let last_hir_id = self.tcx.hir().local_def_id_to_hir_id(last_def_id.expect_local());
+                let exp_hir_id = self.tcx.hir().local_def_id_to_hir_id(exp_def_id.expect_local());
+                match (
+                    &self.tcx.hir().expect_item(last_hir_id).kind,
+                    &self.tcx.hir().expect_item(exp_hir_id).kind,
+                ) {
+                    (
+                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
+                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
+                    ) if last_bounds.iter().zip(exp_bounds.iter()).all(|(left, right)| {
+                        match (left, right) {
+                            (
+                                hir::GenericBound::Trait(tl, ml),
+                                hir::GenericBound::Trait(tr, mr),
+                            ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
+                                && ml == mr =>
+                            {
+                                true
+                            }
+                            (
+                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
+                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
+                            ) if langl == langr => {
+                                // FIXME: consider the bounds!
+                                debug!("{:?} {:?}", argsl, argsr);
+                                true
+                            }
+                            _ => false,
+                        }
+                    }) =>
+                    {
+                        StatementAsExpression::NeedsBoxing
+                    }
+                    _ => StatementAsExpression::CorrectType,
+                }
+            }
+            _ => StatementAsExpression::CorrectType,
+        };
+        if (matches!(last_expr_ty.kind(), ty::Error(_))
+            || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err())
+            && matches!(needs_box, StatementAsExpression::CorrectType)
         {
             return None;
         }
         let original_span = original_sp(last_stmt.span, blk.span);
-        Some(original_span.with_lo(original_span.hi() - BytePos(1)))
+        Some((original_span.with_lo(original_span.hi() - BytePos(1)), needs_box))
     }
 
     // Instantiates the given path, which must refer to an item with the given
