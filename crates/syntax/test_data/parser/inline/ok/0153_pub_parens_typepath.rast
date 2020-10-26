@@ -1,0 +1,54 @@
+SOURCE_FILE@0..53
+  STRUCT@0..25
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..8
+      IDENT@7..8 "B"
+    TUPLE_FIELD_LIST@8..24
+      L_PAREN@8..9 "("
+      TUPLE_FIELD@9..23
+        VISIBILITY@9..12
+          PUB_KW@9..12 "pub"
+        WHITESPACE@12..13 " "
+        PAREN_TYPE@13..23
+          L_PAREN@13..14 "("
+          PATH_TYPE@14..22
+            PATH@14..22
+              PATH@14..19
+                PATH_SEGMENT@14..19
+                  SUPER_KW@14..19 "super"
+              COLON2@19..21 "::"
+              PATH_SEGMENT@21..22
+                NAME_REF@21..22
+                  IDENT@21..22 "A"
+          R_PAREN@22..23 ")"
+      R_PAREN@23..24 ")"
+    SEMICOLON@24..25 ";"
+  WHITESPACE@25..26 "\n"
+  STRUCT@26..52
+    STRUCT_KW@26..32 "struct"
+    WHITESPACE@32..33 " "
+    NAME@33..34
+      IDENT@33..34 "B"
+    TUPLE_FIELD_LIST@34..51
+      L_PAREN@34..35 "("
+      TUPLE_FIELD@35..50
+        VISIBILITY@35..38
+          PUB_KW@35..38 "pub"
+        WHITESPACE@38..39 " "
+        TUPLE_TYPE@39..50
+          L_PAREN@39..40 "("
+          PATH_TYPE@40..48
+            PATH@40..48
+              PATH@40..45
+                PATH_SEGMENT@40..45
+                  CRATE_KW@40..45 "crate"
+              COLON2@45..47 "::"
+              PATH_SEGMENT@47..48
+                NAME_REF@47..48
+                  IDENT@47..48 "A"
+          COMMA@48..49 ","
+          R_PAREN@49..50 ")"
+      R_PAREN@50..51 ")"
+    SEMICOLON@51..52 ";"
+  WHITESPACE@52..53 "\n"

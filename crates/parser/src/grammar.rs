@@ -184,7 +184,11 @@ fn opt_visibility(p: &mut Parser) -> bool {
                     // pub(self) struct S;
                     // pub(self) struct S;
                     // pub(self) struct S;
-                    T![crate] | T![self] | T![super] => {
+
+                    // test pub_parens_typepath
+                    // struct B(pub (super::A));
+                    // struct B(pub (crate::A,));
+                    T![crate] | T![self] | T![super] if p.nth(2) != T![:] => {
                         p.bump_any();
                         p.bump_any();
                         p.expect(T![')']);
