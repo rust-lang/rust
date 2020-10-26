@@ -344,6 +344,18 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // The type table might not have information for this expression
         // if it is in a malformed scope. (#66387)
         if let Some(ty) = self.fcx.typeck_results.borrow().expr_ty_opt(expr) {
+            if guard_borrowing_from_pattern {
+                // Match guards create references to all the bindings in the pattern that are used
+                // in the guard, e.g. `y if is_even(y) => ...` becomes `is_even(*r_y)` where `r_y`
+                // is a reference to `y`, so we must record a reference to the type of the binding.
+                let tcx = self.fcx.tcx;
+                let ref_ty = tcx.mk_ref(
+                    // Use `ReErased` as `resolve_interior` is going to replace all the regions anyway.
+                    tcx.mk_region(ty::RegionKind::ReErased),
+                    ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
+                );
+                self.record(ref_ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
+            }
             self.record(ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
         } else {
             self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
