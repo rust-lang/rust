@@ -20,6 +20,7 @@
                     "E0061",
                 ),
             ),
+            code_description: None,
             source: Some(
                 "rustc",
             ),
@@ -45,6 +46,7 @@
                 ],
             ),
             tags: None,
+            data: None,
         },
         fixes: [],
     },
