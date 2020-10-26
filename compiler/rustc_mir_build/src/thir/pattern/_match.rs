@@ -1309,11 +1309,6 @@ impl<'tcx> Constructor<'tcx> {
 
         Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
     }
-
-    /// Like `apply`, but where all the subpatterns are wildcards `_`.
-    fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        self.apply(cx, ty, Fields::wildcards(cx, self, ty))
-    }
 }
 
 /// Some fields need to be explicitly hidden away in certain cases; see the comment above the
@@ -1649,35 +1644,15 @@ impl<'tcx> Usefulness<'tcx> {
         }
     }
 
-    fn apply_wildcard(self, ty: Ty<'tcx>) -> Self {
-        match self {
-            UsefulWithWitness(witnesses) => {
-                let wild = Pat::wildcard_from_ty(ty);
-                UsefulWithWitness(
-                    witnesses
-                        .into_iter()
-                        .map(|mut witness| {
-                            witness.0.push(wild.clone());
-                            witness
-                        })
-                        .collect(),
-                )
-            }
-            x => x,
-        }
-    }
-
-    fn apply_missing_ctors(
+    fn apply_wildcard<'p>(
         self,
-        cx: &MatchCheckCtxt<'_, 'tcx>,
-        ty: Ty<'tcx>,
-        missing_ctors: &MissingConstructors<'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'tcx>,
+        missing_ctors: MissingConstructors<'tcx>,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => {
-                let new_patterns: Vec<_> =
-                    missing_ctors.iter().map(|ctor| ctor.apply_wildcards(cx, ty)).collect();
-                // Add the new patterns to each witness
+                let new_patterns = missing_ctors.report_patterns(cx, pcx);
                 UsefulWithWitness(
                     witnesses
                         .into_iter()
@@ -2270,11 +2245,21 @@ impl<'tcx> std::cmp::PartialEq for IntRange<'tcx> {
 struct MissingConstructors<'tcx> {
     all_ctors: Vec<Constructor<'tcx>>,
     used_ctors: Vec<Constructor<'tcx>>,
+    is_top_level: bool,
 }
 
 impl<'tcx> MissingConstructors<'tcx> {
-    fn new(all_ctors: Vec<Constructor<'tcx>>, used_ctors: Vec<Constructor<'tcx>>) -> Self {
-        MissingConstructors { all_ctors, used_ctors }
+    fn new<'p>(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'tcx>,
+        matrix: &Matrix<'p, 'tcx>,
+        is_top_level: bool,
+    ) -> Self {
+        let used_ctors: Vec<Constructor<'_>> =
+            matrix.head_ctors(cx).cloned().filter(|c| !c.is_wildcard()).collect();
+        let all_ctors = all_constructors(cx, pcx);
+
+        MissingConstructors { all_ctors, used_ctors, is_top_level }
     }
 
     fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
@@ -2284,15 +2269,63 @@ impl<'tcx> MissingConstructors<'tcx> {
     fn is_empty(&self) -> bool {
         self.iter().next().is_none()
     }
-    /// Whether this contains all the constructors for the given type or only a
-    /// subset.
-    fn all_ctors_are_missing(&self) -> bool {
-        self.used_ctors.is_empty()
-    }
 
     /// Iterate over all_ctors \ used_ctors
     fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
         self.all_ctors.iter().flat_map(move |req_ctor| req_ctor.subtract_ctors(&self.used_ctors))
+    }
+
+    /// List the patterns corresponding to the missing constructors. In some cases, instead of
+    /// listing all constructors of a given type, we prefer to simply report a wildcard.
+    fn report_patterns<'p>(
+        &self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'tcx>,
+    ) -> SmallVec<[Pat<'tcx>; 1]> {
+        // There are 2 ways we can report a witness here.
+        // Commonly, we can report all the "free"
+        // constructors as witnesses, e.g., if we have:
+        //
+        // ```
+        //     enum Direction { N, S, E, W }
+        //     let Direction::N = ...;
+        // ```
+        //
+        // we can report 3 witnesses: `S`, `E`, and `W`.
+        //
+        // However, there is a case where we don't want
+        // to do this and instead report a single `_` witness:
+        // if the user didn't actually specify a constructor
+        // in this arm, e.g., in
+        //
+        // ```
+        //     let x: (Direction, Direction, bool) = ...;
+        //     let (_, _, false) = x;
+        // ```
+        //
+        // we don't want to show all 16 possible witnesses
+        // `(<direction-1>, <direction-2>, true)` - we are
+        // satisfied with `(_, _, true)`. In this case,
+        // `used_ctors` is empty.
+        // The exception is: if we are at the top-level, for example in an empty match, we
+        // sometimes prefer reporting the list of constructors instead of just `_`.
+        let report_when_all_missing = self.is_top_level && !IntRange::is_integral(pcx.ty);
+        if self.used_ctors.is_empty() && !report_when_all_missing {
+            // All constructors are unused. Report only a wildcard
+            // rather than each individual constructor.
+            smallvec![Pat::wildcard_from_ty(pcx.ty)]
+        } else {
+            // Construct for each missing constructor a "wild" version of this
+            // constructor, that matches everything that can be built with
+            // it. For example, if `ctor` is a `Constructor::Variant` for
+            // `Option::Some`, we get the pattern `Some(_)`.
+            self.iter()
+                .map(|missing_ctor| {
+                    let fields = Fields::wildcards(cx, &missing_ctor, pcx.ty);
+                    missing_ctor.apply(cx, pcx.ty, fields)
+                })
+                .collect()
+        }
     }
 }
 
@@ -2434,14 +2467,6 @@ crate fn is_useful<'p, 'tcx>(
     } else {
         debug!("is_useful - expanding wildcard");
 
-        let used_ctors: Vec<Constructor<'_>> =
-            matrix.head_ctors(cx).cloned().filter(|c| !c.is_wildcard()).collect();
-        debug!("is_useful_used_ctors = {:#?}", used_ctors);
-        // `all_ctors` are all the constructors for the given type, which
-        // should all be represented (or caught with the wild pattern `_`).
-        let all_ctors = all_constructors(cx, pcx);
-        debug!("is_useful_all_ctors = {:#?}", all_ctors);
-
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
         // from the first column.
@@ -2453,7 +2478,7 @@ crate fn is_useful<'p, 'tcx>(
         // Missing constructors are those that are not matched by any non-wildcard patterns in the
         // current column. We only fully construct them on-demand, because they're rarely used and
         // can be big.
-        let missing_ctors = MissingConstructors::new(all_ctors, used_ctors);
+        let missing_ctors = MissingConstructors::new(cx, pcx, matrix, is_top_level);
 
         debug!("is_useful_missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
 
@@ -2485,49 +2510,7 @@ crate fn is_useful<'p, 'tcx>(
             let usefulness =
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
 
-            // In this case, there's at least one "free"
-            // constructor that is only matched against by
-            // wildcard patterns.
-            //
-            // There are 2 ways we can report a witness here.
-            // Commonly, we can report all the "free"
-            // constructors as witnesses, e.g., if we have:
-            //
-            // ```
-            //     enum Direction { N, S, E, W }
-            //     let Direction::N = ...;
-            // ```
-            //
-            // we can report 3 witnesses: `S`, `E`, and `W`.
-            //
-            // However, there is a case where we don't want
-            // to do this and instead report a single `_` witness:
-            // if the user didn't actually specify a constructor
-            // in this arm, e.g., in
-            //
-            // ```
-            //     let x: (Direction, Direction, bool) = ...;
-            //     let (_, _, false) = x;
-            // ```
-            //
-            // we don't want to show all 16 possible witnesses
-            // `(<direction-1>, <direction-2>, true)` - we are
-            // satisfied with `(_, _, true)`. In this case,
-            // `used_ctors` is empty.
-            // The exception is: if we are at the top-level, for example in an empty match, we
-            // sometimes prefer reporting the list of constructors instead of just `_`.
-            let report_ctors_rather_than_wildcard = is_top_level && !IntRange::is_integral(pcx.ty);
-            if missing_ctors.all_ctors_are_missing() && !report_ctors_rather_than_wildcard {
-                // All constructors are unused. Add a wild pattern
-                // rather than each individual constructor.
-                usefulness.apply_wildcard(pcx.ty)
-            } else {
-                // Construct for each missing constructor a "wild" version of this
-                // constructor, that matches everything that can be built with
-                // it. For example, if `ctor` is a `Constructor::Variant` for
-                // `Option::Some`, we get the pattern `Some(_)`.
-                usefulness.apply_missing_ctors(cx, pcx.ty, &missing_ctors)
-            }
+            usefulness.apply_wildcard(cx, pcx, missing_ctors)
         }
     };
     debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
