@@ -417,7 +417,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     /// This is roughly the inverse of `Constructor::apply`.
     fn specialize_constructor(
         &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
         is_my_head_ctor: bool,
@@ -428,7 +428,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         // Note that this shortcut is also necessary for correctness: a pattern should always be
         // specializable with its own constructor, even in cases where we refuse to inspect values like
         // opaque constants.
-        if !is_my_head_ctor && !ctor.is_covered_by(cx, self.head_ctor(cx), self.head().ty) {
+        if !is_my_head_ctor && !ctor.is_covered_by(pcx, self.head_ctor(pcx.cx)) {
             return None;
         }
         let new_fields = ctor_wild_subpatterns.replace_with_pattern_arguments(self.head());
@@ -593,7 +593,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
         constructor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Matrix<'p, 'tcx> {
@@ -616,7 +616,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                     .iter()
                     .filter_map(|&i| {
                         self.patterns[i].specialize_constructor(
-                            cx,
+                            pcx,
                             constructor,
                             ctor_wild_subpatterns,
                             false,
@@ -632,7 +632,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                         cache: SpecializationCache::Incompatible
                     }
                     .specialize_constructor(
-                        cx,
+                        pcx,
                         constructor,
                         ctor_wild_subpatterns
                     )
@@ -643,7 +643,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 .patterns
                 .iter()
                 .filter_map(|r| {
-                    r.specialize_constructor(cx, constructor, ctor_wild_subpatterns, false)
+                    r.specialize_constructor(pcx, constructor, ctor_wild_subpatterns, false)
                 })
                 .collect(),
         }
@@ -914,11 +914,7 @@ impl Slice {
     /// but the first and last can be added/removed, so any
     /// witness of length ≥2 (say, `[false, false, true]`) can be
     /// turned to a witness from any other length ≥2.
-    fn split<'p, 'tcx>(
-        self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        matrix: &Matrix<'p, 'tcx>,
-    ) -> SmallVec<[Constructor<'tcx>; 1]> {
+    fn split<'p, 'tcx>(self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         let (array_len, self_prefix, self_suffix) = match self {
             Slice { array_len, kind: VarLen(self_prefix, self_suffix) } => {
                 (array_len, self_prefix, self_suffix)
@@ -926,7 +922,7 @@ impl Slice {
             _ => return smallvec![Slice(self)],
         };
 
-        let head_ctors = matrix.head_ctors(cx).filter(|c| !c.is_wildcard());
+        let head_ctors = pcx.matrix.head_ctors(pcx.cx).filter(|c| !c.is_wildcard());
 
         let mut max_prefix_len = self_prefix;
         let mut max_suffix_len = self_suffix;
@@ -1136,24 +1132,18 @@ impl<'tcx> Constructor<'tcx> {
     ///
     /// `hir_id` is `None` when we're evaluating the wildcard pattern. In that case we do not want
     /// to lint for overlapping ranges.
-    fn split<'p>(
-        &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        pcx: PatCtxt<'tcx>,
-        matrix: &Matrix<'p, 'tcx>,
-        hir_id: Option<HirId>,
-    ) -> SmallVec<[Self; 1]> {
-        debug!("Constructor::split({:#?}, {:#?})", self, matrix);
+    fn split<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, hir_id: Option<HirId>) -> SmallVec<[Self; 1]> {
+        debug!("Constructor::split({:#?}, {:#?})", self, pcx.matrix);
 
         match self {
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
             IntRange(ctor_range)
-                if ctor_range.treat_exhaustively(cx.tcx) && !ctor_range.is_singleton() =>
+                if ctor_range.treat_exhaustively(pcx.cx.tcx) && !ctor_range.is_singleton() =>
             {
-                ctor_range.split(cx, pcx, matrix, hir_id)
+                ctor_range.split(pcx, hir_id)
             }
-            Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(cx, matrix),
+            Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(pcx),
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
         }
@@ -1162,12 +1152,7 @@ impl<'tcx> Constructor<'tcx> {
     /// Returns whether `self` is covered by `other`, ie whether `self` is a subset of `other`. For
     /// the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
-    fn is_covered_by<'p>(
-        &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        other: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> bool {
+    fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Constructor<'tcx>) -> bool {
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -1178,7 +1163,7 @@ impl<'tcx> Constructor<'tcx> {
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
             (IntRange(self_range), IntRange(other_range)) => {
-                if self_range.intersection(cx.tcx, other_range).is_some() {
+                if self_range.intersection(pcx.cx.tcx, other_range).is_some() {
                     // Constructor splitting should ensure that all intersections we encounter
                     // are actually inclusions.
                     assert!(self_range.is_subrange(other_range));
@@ -1192,8 +1177,8 @@ impl<'tcx> Constructor<'tcx> {
                 FloatRange(other_from, other_to, other_end),
             ) => {
                 match (
-                    compare_const_vals(cx.tcx, self_to, other_to, cx.param_env, ty),
-                    compare_const_vals(cx.tcx, self_from, other_from, cx.param_env, ty),
+                    compare_const_vals(pcx.cx.tcx, self_to, other_to, pcx.cx.param_env, pcx.ty),
+                    compare_const_vals(pcx.cx.tcx, self_from, other_from, pcx.cx.param_env, pcx.ty),
                 ) {
                     (Some(to), Some(from)) => {
                         (from == Ordering::Greater || from == Ordering::Equal)
@@ -1205,7 +1190,8 @@ impl<'tcx> Constructor<'tcx> {
             }
             (Str(self_val), Str(other_val)) => {
                 // FIXME: there's probably a more direct way of comparing for equality
-                match compare_const_vals(cx.tcx, self_val, other_val, cx.param_env, ty) {
+                match compare_const_vals(pcx.cx.tcx, self_val, other_val, pcx.cx.param_env, pcx.ty)
+                {
                     Some(comparison) => comparison == Ordering::Equal,
                     None => false,
                 }
@@ -1239,23 +1225,18 @@ impl<'tcx> Constructor<'tcx> {
     /// `ty`: `Option<bool>`
     /// `pats`: `[false]`
     /// returns `Some(false)`
-    fn apply<'p>(
-        &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        ty: Ty<'tcx>,
-        fields: Fields<'p, 'tcx>,
-    ) -> Pat<'tcx> {
+    fn apply<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, fields: Fields<'p, 'tcx>) -> Pat<'tcx> {
         let mut subpatterns = fields.all_patterns();
 
         let pat = match self {
-            Single | Variant(_) => match ty.kind() {
+            Single | Variant(_) => match pcx.ty.kind() {
                 ty::Adt(..) | ty::Tuple(..) => {
                     let subpatterns = subpatterns
                         .enumerate()
                         .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
                         .collect();
 
-                    if let ty::Adt(adt, substs) = ty.kind() {
+                    if let ty::Adt(adt, substs) = pcx.ty.kind() {
                         if adt.is_enum() {
                             PatKind::Variant {
                                 adt_def: adt,
@@ -1271,7 +1252,7 @@ impl<'tcx> Constructor<'tcx> {
                     }
                 }
                 ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
-                ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
+                ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, pcx.ty),
                 _ => PatKind::Wild,
             },
             Slice(slice) => match slice.pattern_kind() {
@@ -1295,19 +1276,19 @@ impl<'tcx> Constructor<'tcx> {
                     } else {
                         subpatterns.collect()
                     };
-                    let wild = Pat::wildcard_from_ty(ty);
+                    let wild = Pat::wildcard_from_ty(pcx.ty);
                     PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
             },
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
-            IntRange(range) => return range.to_pat(cx.tcx),
+            IntRange(range) => return range.to_pat(pcx.cx.tcx),
             NonExhaustive => PatKind::Wild,
             Opaque => bug!("we should not try to apply an opaque constructor"),
             Wildcard => bug!("we should not try to apply a wildcard constructor"),
         };
 
-        Pat { ty, span: DUMMY_SP, kind: Box::new(pat) }
+        Pat { ty: pcx.ty, span: DUMMY_SP, kind: Box::new(pat) }
     }
 }
 
@@ -1385,11 +1366,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     }
 
     /// Creates a new list of wildcard fields for a given constructor.
-    fn wildcards(
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        constructor: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Self {
+    fn wildcards(pcx: PatCtxt<'_, 'p, 'tcx>, constructor: &Constructor<'tcx>) -> Self {
+        let ty = pcx.ty;
+        let cx = pcx.cx;
         let wildcard_from_ty = |ty| &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
 
         let ret = match constructor {
@@ -1628,16 +1607,15 @@ impl<'tcx> Usefulness<'tcx> {
 
     fn apply_constructor<'p>(
         self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => UsefulWithWitness(
                 witnesses
                     .into_iter()
-                    .map(|witness| witness.apply_constructor(cx, &ctor, ty, ctor_wild_subpatterns))
+                    .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
                     .collect(),
             ),
             x => x,
@@ -1646,13 +1624,12 @@ impl<'tcx> Usefulness<'tcx> {
 
     fn apply_wildcard<'p>(
         self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        pcx: PatCtxt<'tcx>,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
         missing_ctors: MissingConstructors<'tcx>,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => {
-                let new_patterns = missing_ctors.report_patterns(cx, pcx);
+                let new_patterns = missing_ctors.report_patterns(pcx);
                 UsefulWithWitness(
                     witnesses
                         .into_iter()
@@ -1677,9 +1654,14 @@ crate enum WitnessPreference {
     LeaveOutWitness,
 }
 
-#[derive(Copy, Clone, Debug)]
-struct PatCtxt<'tcx> {
+#[derive(Copy, Clone)]
+struct PatCtxt<'a, 'p, 'tcx> {
+    cx: &'a MatchCheckCtxt<'p, 'tcx>,
+    /// Current state of the matrix.
+    matrix: &'a Matrix<'p, 'tcx>,
+    /// Type of the current column under investigation.
     ty: Ty<'tcx>,
+    /// Span of the current pattern under investigation.
     span: Span,
 }
 
@@ -1740,17 +1722,16 @@ impl<'tcx> Witness<'tcx> {
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
     fn apply_constructor<'p>(
         mut self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
         let pat = {
             let len = self.0.len();
             let arity = ctor_wild_subpatterns.len();
             let pats = self.0.drain((len - arity)..).rev();
-            let fields = ctor_wild_subpatterns.replace_fields(cx, pats);
-            ctor.apply(cx, ty, fields)
+            let fields = ctor_wild_subpatterns.replace_fields(pcx.cx, pats);
+            ctor.apply(pcx, fields)
         };
 
         self.0.push(pat);
@@ -1768,11 +1749,9 @@ impl<'tcx> Witness<'tcx> {
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
 /// Invariant: this returns an empty `Vec` if and only if the type is uninhabited (as determined by
 /// `cx.is_uninhabited()`).
-fn all_constructors<'a, 'tcx>(
-    cx: &MatchCheckCtxt<'a, 'tcx>,
-    pcx: PatCtxt<'tcx>,
-) -> Vec<Constructor<'tcx>> {
+fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
+    let cx = pcx.cx;
     let make_range = |start, end| {
         IntRange(
             // `unwrap()` is ok because we know the type is an integer.
@@ -2122,9 +2101,7 @@ impl<'tcx> IntRange<'tcx> {
     /// merging operation depicted above.)
     fn split<'p>(
         &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        pcx: PatCtxt<'tcx>,
-        matrix: &Matrix<'p, 'tcx>,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
         hir_id: Option<HirId>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
         let ty = pcx.ty;
@@ -2152,14 +2129,15 @@ impl<'tcx> IntRange<'tcx> {
         // Collect the span and range of all the intersecting ranges to lint on likely
         // incorrect range patterns. (#63987)
         let mut overlaps = vec![];
-        let row_len = matrix.patterns.get(0).map(|r| r.len()).unwrap_or(0);
+        let row_len = pcx.matrix.patterns.get(0).map(|r| r.len()).unwrap_or(0);
         // `borders` is the set of borders between equivalence classes: each equivalence
         // class lies between 2 borders.
-        let row_borders = matrix
-            .head_ctors(cx)
+        let row_borders = pcx
+            .matrix
+            .head_ctors(pcx.cx)
             .filter_map(|ctor| IntRange::from_ctor(ctor))
             .filter_map(|range| {
-                let intersection = self.intersection(cx.tcx, &range);
+                let intersection = self.intersection(pcx.cx.tcx, &range);
                 let should_lint = self.suspicious_intersection(&range);
                 if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
                     // FIXME: for now, only check for overlapping ranges on simple range
@@ -2179,7 +2157,7 @@ impl<'tcx> IntRange<'tcx> {
         let mut borders: Vec<_> = row_borders.chain(self_borders).collect();
         borders.sort_unstable();
 
-        self.lint_overlapping_patterns(cx.tcx, hir_id, ty, overlaps);
+        self.lint_overlapping_patterns(pcx.cx.tcx, hir_id, ty, overlaps);
 
         // We're going to iterate through every adjacent pair of borders, making sure that
         // each represents an interval of nonnegative length, and convert each such
@@ -2249,15 +2227,10 @@ struct MissingConstructors<'tcx> {
 }
 
 impl<'tcx> MissingConstructors<'tcx> {
-    fn new<'p>(
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        pcx: PatCtxt<'tcx>,
-        matrix: &Matrix<'p, 'tcx>,
-        is_top_level: bool,
-    ) -> Self {
+    fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>, is_top_level: bool) -> Self {
         let used_ctors: Vec<Constructor<'_>> =
-            matrix.head_ctors(cx).cloned().filter(|c| !c.is_wildcard()).collect();
-        let all_ctors = all_constructors(cx, pcx);
+            pcx.matrix.head_ctors(pcx.cx).cloned().filter(|c| !c.is_wildcard()).collect();
+        let all_ctors = all_constructors(pcx);
 
         MissingConstructors { all_ctors, used_ctors, is_top_level }
     }
@@ -2277,11 +2250,7 @@ impl<'tcx> MissingConstructors<'tcx> {
 
     /// List the patterns corresponding to the missing constructors. In some cases, instead of
     /// listing all constructors of a given type, we prefer to simply report a wildcard.
-    fn report_patterns<'p>(
-        &self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        pcx: PatCtxt<'tcx>,
-    ) -> SmallVec<[Pat<'tcx>; 1]> {
+    fn report_patterns<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Pat<'tcx>; 1]> {
         // There are 2 ways we can report a witness here.
         // Commonly, we can report all the "free"
         // constructors as witnesses, e.g., if we have:
@@ -2321,8 +2290,8 @@ impl<'tcx> MissingConstructors<'tcx> {
             // `Option::Some`, we get the pattern `Some(_)`.
             self.iter()
                 .map(|missing_ctor| {
-                    let fields = Fields::wildcards(cx, &missing_ctor, pcx.ty);
-                    missing_ctor.apply(cx, pcx.ty, fields)
+                    let fields = Fields::wildcards(pcx, &missing_ctor);
+                    missing_ctor.apply(pcx, fields)
                 })
                 .collect()
         }
@@ -2440,28 +2409,17 @@ crate fn is_useful<'p, 'tcx>(
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
     let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
-    let pcx = PatCtxt { ty, span: v.head().span };
+    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span };
 
-    debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
+    debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
 
     let constructor = v.head_ctor(cx);
     let ret = if !constructor.is_wildcard() {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
         constructor
-            .split(cx, pcx, matrix, Some(hir_id))
+            .split(pcx, Some(hir_id))
             .into_iter()
-            .map(|c| {
-                is_useful_specialized(
-                    cx,
-                    matrix,
-                    v,
-                    c,
-                    pcx.ty,
-                    witness_preference,
-                    hir_id,
-                    is_under_guard,
-                )
-            })
+            .map(|c| is_useful_specialized(pcx, v, c, witness_preference, hir_id, is_under_guard))
             .find(|result| result.is_useful())
             .unwrap_or(NotUseful)
     } else {
@@ -2478,7 +2436,7 @@ crate fn is_useful<'p, 'tcx>(
         // Missing constructors are those that are not matched by any non-wildcard patterns in the
         // current column. We only fully construct them on-demand, because they're rarely used and
         // can be big.
-        let missing_ctors = MissingConstructors::new(cx, pcx, matrix, is_top_level);
+        let missing_ctors = MissingConstructors::new(pcx, is_top_level);
 
         debug!("is_useful_missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
 
@@ -2486,31 +2444,22 @@ crate fn is_useful<'p, 'tcx>(
             let (all_ctors, _) = missing_ctors.into_inner();
             all_ctors
                 .into_iter()
-                .flat_map(|ctor| ctor.split(cx, pcx, matrix, None))
+                .flat_map(|ctor| ctor.split(pcx, None))
                 .map(|c| {
-                    is_useful_specialized(
-                        cx,
-                        matrix,
-                        v,
-                        c,
-                        pcx.ty,
-                        witness_preference,
-                        hir_id,
-                        is_under_guard,
-                    )
+                    is_useful_specialized(pcx, v, c, witness_preference, hir_id, is_under_guard)
                 })
                 .find(|result| result.is_useful())
                 .unwrap_or(NotUseful)
         } else {
             let ctor_wild_subpatterns = Fields::empty();
-            let matrix = matrix.specialize_constructor(cx, &constructor, &ctor_wild_subpatterns);
+            let matrix = matrix.specialize_constructor(pcx, &constructor, &ctor_wild_subpatterns);
             // Unwrap is ok: v can always be specialized with its own constructor.
             let v =
-                v.specialize_constructor(cx, &constructor, &ctor_wild_subpatterns, true).unwrap();
+                v.specialize_constructor(pcx, &constructor, &ctor_wild_subpatterns, true).unwrap();
             let usefulness =
                 is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
 
-            usefulness.apply_wildcard(cx, pcx, missing_ctors)
+            usefulness.apply_wildcard(pcx, missing_ctors)
         }
     };
     debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
@@ -2520,23 +2469,21 @@ crate fn is_useful<'p, 'tcx>(
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
 fn is_useful_specialized<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    matrix: &Matrix<'p, 'tcx>,
+    pcx: PatCtxt<'_, 'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
     ctor: Constructor<'tcx>,
-    ty: Ty<'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
     is_under_guard: bool,
 ) -> Usefulness<'tcx> {
-    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, ty);
+    debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, pcx.ty);
 
     // We cache the result of `Fields::wildcards` because it is used a lot.
-    let ctor_wild_subpatterns = Fields::wildcards(cx, &ctor, ty);
-    let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
-    v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns, true)
-        .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false))
-        .map(|u| u.apply_constructor(cx, &ctor, ty, &ctor_wild_subpatterns))
+    let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
+    let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
+    v.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns, true)
+        .map(|v| is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false))
+        .map(|u| u.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns))
         .unwrap_or(NotUseful)
 }
 
