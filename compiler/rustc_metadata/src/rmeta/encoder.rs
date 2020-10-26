@@ -1013,8 +1013,15 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_inferred_outlives(def_id);
 
         // This should be kept in sync with `PrefetchVisitor.visit_trait_item`.
-        self.encode_optimized_mir(def_id.expect_local());
-        self.encode_promoted_mir(def_id.expect_local());
+        match trait_item.kind {
+            ty::AssocKind::Type => {}
+            ty::AssocKind::Const | ty::AssocKind::Fn => {
+                if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id.expect_local()) {
+                    self.encode_optimized_mir(def_id.expect_local());
+                    self.encode_promoted_mir(def_id.expect_local());
+                }
+            }
+        }
     }
 
     fn metadata_output_only(&self) -> bool {
