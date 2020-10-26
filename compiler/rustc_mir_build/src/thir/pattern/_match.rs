@@ -1285,7 +1285,9 @@ impl<'tcx> Constructor<'tcx> {
             IntRange(range) => return range.to_pat(pcx.cx.tcx),
             NonExhaustive => PatKind::Wild,
             Opaque => bug!("we should not try to apply an opaque constructor"),
-            Wildcard => bug!("we should not try to apply a wildcard constructor"),
+            Wildcard => bug!(
+                "trying to apply a wildcard constructor; this should have been done in `apply_constructors`"
+            ),
         };
 
         Pat { ty: pcx.ty, span: DUMMY_SP, kind: Box::new(pat) }
@@ -1610,27 +1612,13 @@ impl<'tcx> Usefulness<'tcx> {
         pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    ) -> Self {
-        match self {
-            UsefulWithWitness(witnesses) => UsefulWithWitness(
-                witnesses
-                    .into_iter()
-                    .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
-                    .collect(),
-            ),
-            x => x,
-        }
-    }
-
-    fn apply_wildcard<'p>(
-        self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        missing_ctors: MissingConstructors<'tcx>,
+        is_top_level: bool,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => {
-                let new_patterns = missing_ctors.report_patterns(pcx);
-                UsefulWithWitness(
+                let new_witnesses = if ctor.is_wildcard() {
+                    let missing_ctors = MissingConstructors::new(pcx, is_top_level);
+                    let new_patterns = missing_ctors.report_patterns(pcx);
                     witnesses
                         .into_iter()
                         .flat_map(|witness| {
@@ -1640,8 +1628,14 @@ impl<'tcx> Usefulness<'tcx> {
                                 witness
                             })
                         })
-                        .collect(),
-                )
+                        .collect()
+                } else {
+                    witnesses
+                        .into_iter()
+                        .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
+                        .collect()
+                };
+                UsefulWithWitness(new_witnesses)
             }
             x => x,
         }
@@ -2419,7 +2413,17 @@ crate fn is_useful<'p, 'tcx>(
         constructor
             .split(pcx, Some(hir_id))
             .into_iter()
-            .map(|c| is_useful_specialized(pcx, v, c, witness_preference, hir_id, is_under_guard))
+            .map(|c| {
+                is_useful_specialized(
+                    pcx,
+                    v,
+                    &c,
+                    witness_preference,
+                    hir_id,
+                    is_under_guard,
+                    is_top_level,
+                )
+            })
             .find(|result| result.is_useful())
             .unwrap_or(NotUseful)
     } else {
@@ -2446,20 +2450,31 @@ crate fn is_useful<'p, 'tcx>(
                 .into_iter()
                 .flat_map(|ctor| ctor.split(pcx, None))
                 .map(|c| {
-                    is_useful_specialized(pcx, v, c, witness_preference, hir_id, is_under_guard)
+                    is_useful_specialized(
+                        pcx,
+                        v,
+                        &c,
+                        witness_preference,
+                        hir_id,
+                        is_under_guard,
+                        is_top_level,
+                    )
                 })
                 .find(|result| result.is_useful())
                 .unwrap_or(NotUseful)
         } else {
-            let ctor_wild_subpatterns = Fields::empty();
-            let matrix = matrix.specialize_constructor(pcx, &constructor, &ctor_wild_subpatterns);
-            // Unwrap is ok: v can always be specialized with its own constructor.
-            let v =
-                v.specialize_constructor(pcx, &constructor, &ctor_wild_subpatterns, true).unwrap();
-            let usefulness =
-                is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-
-            usefulness.apply_wildcard(pcx, missing_ctors)
+            // Some constructors are missing, thus we can specialize with the wildcard constructor,
+            // which will stand for those constructors that are missing, and behaves like any of
+            // them.
+            is_useful_specialized(
+                pcx,
+                v,
+                constructor,
+                witness_preference,
+                hir_id,
+                is_under_guard,
+                is_top_level,
+            )
         }
     };
     debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
@@ -2471,20 +2486,22 @@ crate fn is_useful<'p, 'tcx>(
 fn is_useful_specialized<'p, 'tcx>(
     pcx: PatCtxt<'_, 'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
-    ctor: Constructor<'tcx>,
+    ctor: &Constructor<'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
     is_under_guard: bool,
+    is_top_level: bool,
 ) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, pcx.ty);
 
     // We cache the result of `Fields::wildcards` because it is used a lot.
-    let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-    let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
-    v.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns, true)
-        .map(|v| is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false))
-        .map(|u| u.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns))
-        .unwrap_or(NotUseful)
+    let ctor_wild_subpatterns = Fields::wildcards(pcx, ctor);
+    let matrix = pcx.matrix.specialize_constructor(pcx, ctor, &ctor_wild_subpatterns);
+    // Unwrap is ok: v can always be specialized with its own constructor.
+    let v = v.specialize_constructor(pcx, ctor, &ctor_wild_subpatterns, true).unwrap();
+    let usefulness =
+        is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
+    usefulness.apply_constructor(pcx, ctor, &ctor_wild_subpatterns, is_top_level)
 }
 
 /// Determines the constructor that the given pattern can be specialized to.
