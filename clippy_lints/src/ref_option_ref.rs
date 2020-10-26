@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
                     "since & implements Copy trait, &Option<&T> can be simplifyied into Option<&T>",
                     "try",
                     format!("Option<{}>", &snippet(cx, inner_ty.span, "..")),
-                    Applicability::Unspecified,
+                    Applicability::MaybeIncorrect,
                 );
             }
         }
