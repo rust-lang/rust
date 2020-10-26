@@ -412,7 +412,7 @@ where
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `HashSet<K,V>`. The collection may reserve more space to avoid
+    /// in the given `HashSet<K, V>`. The collection may reserve more space to avoid
     /// frequent reallocations.
     ///
     /// # Errors
@@ -918,7 +918,7 @@ where
     /// ```
     /// use std::collections::HashSet;
     ///
-    /// let xs = [1,2,3,4,5,6];
+    /// let xs = [1, 2, 3, 4, 5, 6];
     /// let mut set: HashSet<i32> = xs.iter().cloned().collect();
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
