@@ -1398,7 +1398,7 @@ impl Type {
         };
 
         let canonical_ty = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
-        method_resolution::implements_trait(
+        method_resolution::implements_trait_unique(
             &canonical_ty,
             db,
             self.ty.environment.clone(),

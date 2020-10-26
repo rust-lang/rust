@@ -740,6 +740,19 @@ pub fn implements_trait(
     solution.is_some()
 }
 
+pub fn implements_trait_unique(
+    ty: &Canonical<Ty>,
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    krate: CrateId,
+    trait_: TraitId,
+) -> bool {
+    let goal = generic_implements_goal(db, env, trait_, ty.clone());
+    let solution = db.trait_solve(krate, goal);
+
+    matches!(solution, Some(crate::traits::Solution::Unique(_)))
+}
+
 /// This creates Substs for a trait with the given Self type and type variables
 /// for all other parameters, to query Chalk with it.
 fn generic_implements_goal(
