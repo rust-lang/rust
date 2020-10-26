@@ -3,7 +3,6 @@
 fn change_loop_body() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/while_let_loops.rs:5:27: 5:27
     let mut _1: i32;                     // in scope 0 at $DIR/while_let_loops.rs:6:9: 6:15
-    let mut _2: std::option::Option<u32>; // in scope 0 at $DIR/while_let_loops.rs:7:28: 7:32
     scope 1 {
         debug _x => _1;                  // in scope 1 at $DIR/while_let_loops.rs:6:9: 6:15
     }
@@ -11,10 +10,7 @@ fn change_loop_body() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/while_let_loops.rs:6:9: 6:15
         _1 = const 0_i32;                // scope 0 at $DIR/while_let_loops.rs:6:18: 6:19
-        StorageLive(_2);                 // scope 1 at $DIR/while_let_loops.rs:7:28: 7:32
-        discriminant(_2) = 0;            // scope 1 at $DIR/while_let_loops.rs:7:28: 7:32
         _0 = const ();                   // scope 1 at $DIR/while_let_loops.rs:7:5: 10:6
-        StorageDead(_2);                 // scope 1 at $DIR/while_let_loops.rs:10:5: 10:6
         StorageDead(_1);                 // scope 0 at $DIR/while_let_loops.rs:11:1: 11:2
         return;                          // scope 0 at $DIR/while_let_loops.rs:11:2: 11:2
     }

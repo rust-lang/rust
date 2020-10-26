@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0
 
 #![crate_type = "lib"]
 #![feature(naked_functions)]

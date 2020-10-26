@@ -1,6 +1,5 @@
 // ignore-tidy-linelength
-// compile-flags:-Zprint-mono-items=eager
-// compile-flags:-Zinline-in-all-cgus
+// compile-flags:-Zprint-mono-items=eager -Zinline-in-all-cgus -Zmir-opt-level=0
 
 #![deny(dead_code)]
 #![feature(start)]
