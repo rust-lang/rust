@@ -332,6 +332,10 @@ impl Mode {
     pub fn is_tool(&self) -> bool {
         matches!(self, Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd)
     }
+
+    pub fn must_support_dlopen(&self) -> bool {
+        matches!(self, Mode::Std | Mode::Codegen)
+    }
 }
 
 impl Build {
