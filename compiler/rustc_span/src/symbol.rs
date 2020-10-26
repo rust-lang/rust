@@ -467,6 +467,7 @@ symbols! {
         encode,
         env,
         eq,
+        ermsb_target_feature,
         err,
         exact_div,
         except,

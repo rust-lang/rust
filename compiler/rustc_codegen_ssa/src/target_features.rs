@@ -63,6 +63,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("bmi1", None),
     ("bmi2", None),
     ("cmpxchg16b", Some(sym::cmpxchg16b_target_feature)),
+    ("ermsb", Some(sym::ermsb_target_feature)),
     ("f16c", Some(sym::f16c_target_feature)),
     ("fma", None),
     ("fxsr", None),
