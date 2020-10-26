@@ -3,7 +3,7 @@
 use crate::{CompletionContext, Completions};
 
 /// Completes constats and paths in patterns.
-pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_pat_binding_or_const {
         return;
     }

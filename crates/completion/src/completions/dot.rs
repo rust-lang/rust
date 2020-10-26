@@ -4,10 +4,10 @@ use hir::{HasVisibility, Type};
 use rustc_hash::FxHashSet;
 use test_utils::mark;
 
-use crate::{completion_context::CompletionContext, completion_item::Completions};
+use crate::{context::CompletionContext, Completions};
 
 /// Complete dot accesses, i.e. fields or methods.
-pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     let dot_receiver = match &ctx.dot_receiver {
         Some(expr) => expr,
         _ => return,
@@ -141,7 +141,7 @@ mod inner {
         private_field: u32,
         pub pub_field: u32,
         pub(crate) crate_field: u32,
-        pub(super) super_field: u32,
+        pub(crate) super_field: u32,
     }
 }
 fn foo(a: inner::A) { a.<|> }
@@ -159,13 +159,13 @@ struct A {}
 mod m {
     impl super::A {
         fn private_method(&self) {}
-        pub(super) fn the_method(&self) {}
+        pub(crate) fn the_method(&self) {}
     }
 }
 fn foo(a: A) { a.<|> }
 "#,
             expect![[r#"
-                me the_method() pub(super) fn the_method(&self)
+                me the_method() pub(crate) fn the_method(&self)
             "#]],
         );
     }

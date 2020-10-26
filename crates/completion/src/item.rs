@@ -6,7 +6,7 @@ use hir::{Documentation, Mutability};
 use syntax::TextRange;
 use text_edit::TextEdit;
 
-use crate::completion_config::SnippetCap;
+use crate::config::SnippetCap;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
@@ -272,10 +272,6 @@ pub(crate) struct Builder {
 }
 
 impl Builder {
-    pub(crate) fn add_to(self, acc: &mut Completions) {
-        acc.add(self.build())
-    }
-
     pub(crate) fn build(self) -> CompletionItem {
         let label = self.label;
         let text_edit = match self.text_edit {
@@ -374,30 +370,5 @@ impl Builder {
 impl<'a> Into<CompletionItem> for Builder {
     fn into(self) -> CompletionItem {
         self.build()
-    }
-}
-
-/// Represents an in-progress set of completions being built.
-#[derive(Debug, Default)]
-pub struct Completions {
-    buf: Vec<CompletionItem>,
-}
-
-impl Completions {
-    pub fn add(&mut self, item: impl Into<CompletionItem>) {
-        self.buf.push(item.into())
-    }
-    pub fn add_all<I>(&mut self, items: I)
-    where
-        I: IntoIterator,
-        I::Item: Into<CompletionItem>,
-    {
-        items.into_iter().for_each(|item| self.add(item.into()))
-    }
-}
-
-impl Into<Vec<CompletionItem>> for Completions {
-    fn into(self) -> Vec<CompletionItem> {
-        self.buf
     }
 }

@@ -2,7 +2,7 @@
 
 use crate::{CompletionContext, Completions};
 
-pub(super) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &CompletionContext) {
     // Show only macros in top level.
     if ctx.is_new_item {
         ctx.scope.process_all_names(&mut |name, res| {

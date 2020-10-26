@@ -20,7 +20,7 @@ pub fn generate_lint_completions(mode: Mode) -> Result<()> {
 
     let ts_clippy = generate_descriptor_clippy(&Path::new("./target/clippy_lints.json"))?;
     let ts = quote! {
-        use crate::complete_attribute::LintCompletion;
+        use crate::completions::attribute::LintCompletion;
         #ts_features
         #ts_clippy
     };

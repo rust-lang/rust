@@ -11,13 +11,13 @@ use text_edit::TextEdit;
 
 use self::format_like::add_format_like_completions;
 use crate::{
-    completion_config::SnippetCap,
-    completion_context::CompletionContext,
-    completion_item::{Builder, CompletionKind, Completions},
-    CompletionItem, CompletionItemKind,
+    config::SnippetCap,
+    context::CompletionContext,
+    item::{Builder, CompletionKind},
+    CompletionItem, CompletionItemKind, Completions,
 };
 
-pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_postfix_completions {
         return;
     }

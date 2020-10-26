@@ -5,7 +5,7 @@ use test_utils::mark;
 
 use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
 
-pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     // complete keyword "crate" in use stmt
     let source_range = ctx.source_range();
 
@@ -39,7 +39,7 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     }
 }
 
-pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
+pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.token.kind() == SyntaxKind::COMMENT {
         mark::hit!(no_keyword_completion_in_comments);
         return;

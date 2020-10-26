@@ -7,12 +7,13 @@ use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind};
 
 use crate::{
-    completion_context::CompletionContext,
-    completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
+    context::CompletionContext,
     generated_lint_completions::{CLIPPY_LINTS, FEATURES},
+    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    Completions,
 };
 
-pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if ctx.mod_declaration_under_caret.is_some() {
         return None;
     }
@@ -60,7 +61,7 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
         }
 
         if attribute.kind() == ast::AttrKind::Inner || !attr_completion.prefer_inner {
-            acc.add(item);
+            acc.add(item.build());
         }
     }
 }
@@ -152,21 +153,15 @@ fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input:
                 label.push_str(", ");
                 label.push_str(dependency);
             }
-            acc.add(
-                CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label)
-                    .kind(CompletionItemKind::Attribute),
-            );
+            CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label)
+                .kind(CompletionItemKind::Attribute)
+                .add_to(acc)
         }
 
         for custom_derive_name in get_derive_names_in_scope(ctx).difference(&existing_derives) {
-            acc.add(
-                CompletionItem::new(
-                    CompletionKind::Attribute,
-                    ctx.source_range(),
-                    custom_derive_name,
-                )
-                .kind(CompletionItemKind::Attribute),
-            );
+            CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), custom_derive_name)
+                .kind(CompletionItemKind::Attribute)
+                .add_to(acc)
         }
     }
 }
@@ -182,15 +177,14 @@ fn complete_lint(
             .into_iter()
             .filter(|completion| !existing_lints.contains(completion.label))
         {
-            acc.add(
-                CompletionItem::new(
-                    CompletionKind::Attribute,
-                    ctx.source_range(),
-                    lint_completion.label,
-                )
-                .kind(CompletionItemKind::Attribute)
-                .detail(lint_completion.description),
-            );
+            CompletionItem::new(
+                CompletionKind::Attribute,
+                ctx.source_range(),
+                lint_completion.label,
+            )
+            .kind(CompletionItemKind::Attribute)
+            .detail(lint_completion.description)
+            .add_to(acc)
         }
     }
 }
@@ -262,9 +256,9 @@ const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Ord", dependencies: &["PartialOrd", "Eq", "PartialEq"] },
 ];
 
-pub(super) struct LintCompletion {
-    pub(super) label: &'static str,
-    pub(super) description: &'static str,
+pub(crate) struct LintCompletion {
+    pub(crate) label: &'static str,
+    pub(crate) description: &'static str,
 }
 
 #[rustfmt::skip]

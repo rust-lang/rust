@@ -1,39 +1,23 @@
 //! `completions` crate provides utilities for generating completions of user input.
 
-mod completion_config;
-mod completion_item;
-mod completion_context;
-mod presentation;
+mod config;
+mod item;
+mod context;
 mod patterns;
 mod generated_lint_completions;
 #[cfg(test)]
 mod test_utils;
 
-mod complete_attribute;
-mod complete_dot;
-mod complete_record;
-mod complete_pattern;
-mod complete_fn_param;
-mod complete_keyword;
-mod complete_snippet;
-mod complete_qualified_path;
-mod complete_unqualified_path;
-mod complete_postfix;
-mod complete_macro_in_item_position;
-mod complete_trait_impl;
-mod complete_mod;
+mod completions;
 
 use ide_db::base_db::FilePosition;
 use ide_db::RootDatabase;
 
-use crate::{
-    completion_context::CompletionContext,
-    completion_item::{CompletionKind, Completions},
-};
+use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
 pub use crate::{
-    completion_config::CompletionConfig,
-    completion_item::{CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat},
+    config::CompletionConfig,
+    item::{CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat},
 };
 
 //FIXME: split the following feature into fine-grained features.
@@ -118,28 +102,28 @@ pub fn completions(
     }
 
     let mut acc = Completions::default();
-    complete_attribute::complete_attribute(&mut acc, &ctx);
-    complete_fn_param::complete_fn_param(&mut acc, &ctx);
-    complete_keyword::complete_expr_keyword(&mut acc, &ctx);
-    complete_keyword::complete_use_tree_keyword(&mut acc, &ctx);
-    complete_snippet::complete_expr_snippet(&mut acc, &ctx);
-    complete_snippet::complete_item_snippet(&mut acc, &ctx);
-    complete_qualified_path::complete_qualified_path(&mut acc, &ctx);
-    complete_unqualified_path::complete_unqualified_path(&mut acc, &ctx);
-    complete_dot::complete_dot(&mut acc, &ctx);
-    complete_record::complete_record(&mut acc, &ctx);
-    complete_pattern::complete_pattern(&mut acc, &ctx);
-    complete_postfix::complete_postfix(&mut acc, &ctx);
-    complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
-    complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
-    complete_mod::complete_mod(&mut acc, &ctx);
+    completions::attribute::complete_attribute(&mut acc, &ctx);
+    completions::fn_param::complete_fn_param(&mut acc, &ctx);
+    completions::keyword::complete_expr_keyword(&mut acc, &ctx);
+    completions::keyword::complete_use_tree_keyword(&mut acc, &ctx);
+    completions::snippet::complete_expr_snippet(&mut acc, &ctx);
+    completions::snippet::complete_item_snippet(&mut acc, &ctx);
+    completions::qualified_path::complete_qualified_path(&mut acc, &ctx);
+    completions::unqualified_path::complete_unqualified_path(&mut acc, &ctx);
+    completions::dot::complete_dot(&mut acc, &ctx);
+    completions::record::complete_record(&mut acc, &ctx);
+    completions::pattern::complete_pattern(&mut acc, &ctx);
+    completions::postfix::complete_postfix(&mut acc, &ctx);
+    completions::macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
+    completions::trait_impl::complete_trait_impl(&mut acc, &ctx);
+    completions::mod_::complete_mod(&mut acc, &ctx);
 
     Some(acc)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::completion_config::CompletionConfig;
+    use crate::config::CompletionConfig;
     use crate::test_utils;
 
     struct DetailAndDocumentation<'a> {

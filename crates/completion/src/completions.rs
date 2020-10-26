@@ -1,5 +1,18 @@
-//! This modules takes care of rendering various definitions as completion items.
-//! It also handles scoring (sorting) completions.
+//! This module defines an accumulator for completions which are going to be presented to user.
+
+pub(crate) mod attribute;
+pub(crate) mod dot;
+pub(crate) mod record;
+pub(crate) mod pattern;
+pub(crate) mod fn_param;
+pub(crate) mod keyword;
+pub(crate) mod snippet;
+pub(crate) mod qualified_path;
+pub(crate) mod unqualified_path;
+pub(crate) mod postfix;
+pub(crate) mod macro_in_item_position;
+pub(crate) mod trait_impl;
+pub(crate) mod mod_;
 
 use hir::{HasAttrs, HasSource, HirDisplay, ModPath, Mutability, ScopeDef, StructKind, Type};
 use itertools::Itertools;
@@ -7,20 +20,47 @@ use syntax::{ast::NameOwner, display::*};
 use test_utils::mark;
 
 use crate::{
-    // display::{const_label, function_declaration, macro_label, type_label},
-    CompletionScore,
-    RootDatabase,
-    {
-        completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
-        CompletionKind, Completions,
-    },
+    item::Builder, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
+    CompletionScore, RootDatabase,
 };
 
+/// Represents an in-progress set of completions being built.
+#[derive(Debug, Default)]
+pub struct Completions {
+    buf: Vec<CompletionItem>,
+}
+
+impl Into<Vec<CompletionItem>> for Completions {
+    fn into(self) -> Vec<CompletionItem> {
+        self.buf
+    }
+}
+
+impl Builder {
+    /// Convenience method, which allows to add a freshly created completion into accumulator
+    /// without binding it to the variable.
+    pub(crate) fn add_to(self, acc: &mut Completions) {
+        acc.add(self.build())
+    }
+}
+
 impl Completions {
+    pub(crate) fn add(&mut self, item: CompletionItem) {
+        self.buf.push(item.into())
+    }
+
+    pub(crate) fn add_all<I>(&mut self, items: I)
+    where
+        I: IntoIterator,
+        I::Item: Into<CompletionItem>,
+    {
+        items.into_iter().for_each(|item| self.add(item.into()))
+    }
+
     pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &Type) {
         let is_deprecated = is_deprecated(field, ctx.db);
         let name = field.name(ctx.db);
-        let mut completion_item =
+        let mut item =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
                 .kind(CompletionItemKind::Field)
                 .detail(ty.display(ctx.db).to_string())
@@ -28,10 +68,10 @@ impl Completions {
                 .set_deprecated(is_deprecated);
 
         if let Some(score) = compute_score(ctx, &ty, &name.to_string()) {
-            completion_item = completion_item.set_score(score);
+            item = item.set_score(score);
         }
 
-        completion_item.add_to(self);
+        item.add_to(self);
     }
 
     pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
@@ -57,7 +97,8 @@ impl Completions {
         let kind = match resolution {
             ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::Module,
             ScopeDef::ModuleDef(Function(func)) => {
-                return self.add_function(ctx, *func, Some(local_name));
+                self.add_function(ctx, *func, Some(local_name));
+                return;
             }
             ScopeDef::ModuleDef(Adt(hir::Adt::Struct(_))) => CompletionItemKind::Struct,
             // FIXME: add CompletionItemKind::Union
@@ -65,7 +106,8 @@ impl Completions {
             ScopeDef::ModuleDef(Adt(hir::Adt::Enum(_))) => CompletionItemKind::Enum,
 
             ScopeDef::ModuleDef(EnumVariant(var)) => {
-                return self.add_enum_variant(ctx, *var, Some(local_name));
+                self.add_enum_variant(ctx, *var, Some(local_name));
+                return;
             }
             ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::Const,
             ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::Static,
@@ -77,13 +119,14 @@ impl Completions {
             // (does this need its own kind?)
             ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => CompletionItemKind::TypeParam,
             ScopeDef::MacroDef(mac) => {
-                return self.add_macro(ctx, Some(local_name), *mac);
+                self.add_macro(ctx, Some(local_name), *mac);
+                return;
             }
             ScopeDef::Unknown => {
-                return self.add(
-                    CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
-                        .kind(CompletionItemKind::UnresolvedReference),
-                );
+                CompletionItem::new(CompletionKind::Reference, ctx.source_range(), local_name)
+                    .kind(CompletionItemKind::UnresolvedReference)
+                    .add_to(self);
+                return;
             }
         };
 
@@ -98,12 +141,11 @@ impl Completions {
             _ => None,
         };
 
-        let mut completion_item =
-            CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
+        let mut item = CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(ctx.db);
             if !ty.is_unknown() {
-                completion_item = completion_item.detail(ty.display(ctx.db).to_string());
+                item = item.detail(ty.display(ctx.db).to_string());
             }
         };
 
@@ -114,7 +156,7 @@ impl Completions {
                 if let Some(score) =
                     compute_score_from_active(&active_type, &active_name, &ty, &local_name)
                 {
-                    completion_item = completion_item.set_score(score);
+                    item = item.set_score(score);
                 }
                 ref_match = refed_type_matches(&active_type, &active_name, &ty, &local_name);
             }
@@ -130,7 +172,7 @@ impl Completions {
                 };
                 if has_non_default_type_params {
                     mark::hit!(inserts_angle_brackets_for_generics);
-                    completion_item = completion_item
+                    item = item
                         .lookup_by(local_name.clone())
                         .label(format!("{}<…>", local_name))
                         .insert_snippet(cap, format!("{}<$0>", local_name));
@@ -138,7 +180,7 @@ impl Completions {
             }
         }
 
-        completion_item.kind(kind).set_documentation(docs).set_ref_match(ref_match).add_to(self)
+        item.kind(kind).set_documentation(docs).set_ref_match(ref_match).add_to(self)
     }
 
     pub(crate) fn add_macro(
@@ -190,7 +232,7 @@ impl Completions {
             }
         };
 
-        self.add(builder);
+        self.add(builder.build());
     }
 
     pub(crate) fn add_function(
@@ -242,7 +284,7 @@ impl Completions {
 
         builder = builder.add_call_parens(ctx, name, Params::Named(params));
 
-        self.add(builder)
+        self.add(builder.build())
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
@@ -506,7 +548,7 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, check_edit_with_config, do_completion, get_all_completion_items},
+        test_utils::{check_edit, check_edit_with_config, do_completion, get_all_items},
         CompletionConfig, CompletionKind, CompletionScore,
     };
 
@@ -524,7 +566,7 @@ mod tests {
             }
         }
 
-        let mut completions = get_all_completion_items(CompletionConfig::default(), ra_fixture);
+        let mut completions = get_all_items(CompletionConfig::default(), ra_fixture);
         completions.sort_by_key(|it| (Reverse(it.score()), it.label().to_string()));
         let actual = completions
             .into_iter()
@@ -661,7 +703,7 @@ fn main() { let _: m::Spam = S<|> }
     }
 
     #[test]
-    fn sets_deprecated_flag_in_completion_items() {
+    fn sets_deprecated_flag_in_items() {
         check(
             r#"
 #[deprecated]
