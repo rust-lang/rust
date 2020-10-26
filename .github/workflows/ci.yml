@@ -50,6 +50,9 @@ jobs:
             env:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             os: ubuntu-latest-xl
+          - name: dist-x86_64-freebsd
+            os: ubuntu-latest-xl
+            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -635,7 +638,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
+          - name: dist-x86_64-freebsd
             os: ubuntu-latest-xl
             env: {}
     timeout-minutes: 600

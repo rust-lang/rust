@@ -288,6 +288,8 @@ jobs:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             <<: *job-linux-xl
 
+          - name: dist-x86_64-freebsd
+            <<: *job-linux-xl
   auto:
     <<: *base-ci-job
     name: auto
@@ -679,7 +681,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - *dist-x86_64-linux
+          - name: dist-x86_64-freebsd
+            <<: *job-linux-xl
 
   master:
     name: master
