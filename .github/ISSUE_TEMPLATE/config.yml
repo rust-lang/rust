@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Rust Programming Language Forum
+  - name: Question
     url: https://users.rust-lang.org
-    about: Please ask and answer questions about Rust here.
+    about: Please ask and answer questions about Rust on the user forum.
+  - name: Feature Request
+    url: https://internals.rust-lang.org/
+    about: Please discuss language feature requests on the internals forum.
