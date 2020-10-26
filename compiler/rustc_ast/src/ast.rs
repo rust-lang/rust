@@ -2635,6 +2635,7 @@ impl Default for FnHeader {
     }
 }
 
+/// Represents a concrete type and contains information specific to the type of the item.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
