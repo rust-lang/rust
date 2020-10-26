@@ -1636,7 +1636,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 data.name != kw::Empty && data.name != kw::UnderscoreLifetime
             }
 
-            ty::ReLateBound(_, ty::BoundRegion { kind: br })
+            ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
@@ -1715,7 +1715,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
                     return Ok(self);
                 }
             }
-            ty::ReLateBound(_, ty::BoundRegion { kind: br })
+            ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
@@ -1821,7 +1821,8 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                     ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
                 }
             };
-            self.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { kind }))
+            self.tcx
+                .mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
         });
         start_or_continue(&mut self, "", "> ")?;
 
@@ -1865,7 +1866,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         struct LateBoundRegionNameCollector<'a>(&'a mut FxHashSet<Symbol>);
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) = *r {
+                if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
                     self.0.insert(name);
                 }
                 r.super_visit_with(self)

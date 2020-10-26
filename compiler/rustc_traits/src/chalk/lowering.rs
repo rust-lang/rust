@@ -434,17 +434,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
             ReEarlyBound(_) => {
                 panic!("Should have already been substituted.");
             }
-            ReLateBound(db, br) => match br.kind {
-                ty::BoundRegionKind::BrAnon(var) => {
-                    chalk_ir::LifetimeData::BoundVar(chalk_ir::BoundVar::new(
-                        chalk_ir::DebruijnIndex::new(db.as_u32()),
-                        var as usize,
-                    ))
-                    .intern(interner)
-                }
-                ty::BoundRegionKind::BrNamed(_def_id, _name) => unimplemented!(),
-                ty::BrEnv => unimplemented!(),
-            },
+            ReLateBound(db, br) => chalk_ir::LifetimeData::BoundVar(chalk_ir::BoundVar::new(
+                chalk_ir::DebruijnIndex::new(db.as_u32()),
+                br.var.as_usize(),
+            ))
+            .intern(interner),
             ReFree(_) => unimplemented!(),
             ReStatic => chalk_ir::LifetimeData::Static.intern(interner),
             ReVar(_) => unimplemented!(),
@@ -467,7 +461,10 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
         let kind = match self.data(interner) {
             chalk_ir::LifetimeData::BoundVar(var) => ty::RegionKind::ReLateBound(
                 ty::DebruijnIndex::from_u32(var.debruijn.depth()),
-                ty::BoundRegion { kind: ty::BrAnon(var.index as u32) },
+                ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(var.index),
+                    kind: ty::BrAnon(var.index as u32),
+                },
             ),
             chalk_ir::LifetimeData::InferenceVar(_var) => unimplemented!(),
             chalk_ir::LifetimeData::Placeholder(p) => {
@@ -900,7 +897,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
                     },
                 },
 
-                ty::BrEnv => unimplemented!(),
+                ty::BoundRegionKind::BrEnv => unimplemented!(),
             },
 
             ty::ReEarlyBound(_re) => {
@@ -948,7 +945,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
             ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
                     Some(idx) => {
-                        let new_br = ty::BoundRegion { kind: ty::BrAnon(*idx) };
+                        let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx) };
                         return self.tcx.mk_region(RegionKind::ReLateBound(*index, new_br));
                     }
                     None => panic!("Missing `BrNamed`."),
@@ -1031,12 +1028,16 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
             // This covers any region variables in a goal, right?
             ty::ReEarlyBound(_re) => match self.named_regions.get(&_re.def_id) {
                 Some(idx) => {
-                    let br = ty::BoundRegion { kind: ty::BrAnon(*idx) };
+                    let br = ty::BoundRegion {
+                        var: ty::BoundVar::from_u32(*idx),
+                        kind: ty::BrAnon(*idx),
+                    };
                     self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br))
                 }
                 None => {
                     let idx = self.named_regions.len() as u32;
-                    let br = ty::BoundRegion { kind: ty::BrAnon(idx) };
+                    let br =
+                        ty::BoundRegion { var: ty::BoundVar::from_u32(idx), kind: ty::BrAnon(idx) };
                     self.named_regions.insert(_re.def_id, idx);
                     self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br))
                 }

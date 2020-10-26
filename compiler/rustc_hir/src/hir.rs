@@ -402,7 +402,7 @@ pub enum TraitBoundModifier {
 /// `typeck::collect::compute_bounds` matches these against
 /// the "special" built-in traits (see `middle::lang_items`) and
 /// detects `Copy`, `Send` and `Sync`.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
@@ -2556,7 +2556,7 @@ pub enum UseKind {
 /// that the `ref_id` is for. Note that `ref_id`'s value is not the `HirId` of the
 /// trait being referred to but just a unique `HirId` that serves as a key
 /// within the resolution map.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub struct TraitRef<'hir> {
     pub path: &'hir Path<'hir>,
     // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
@@ -2575,7 +2575,7 @@ impl TraitRef<'_> {
     }
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub struct PolyTraitRef<'hir> {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],

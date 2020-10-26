@@ -543,10 +543,33 @@ impl<'tcx> Predicate<'tcx> {
         // substitution code expects equal binding levels in the values
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
-        let substs = trait_ref.skip_binder().substs;
-        let pred = self.kind().skip_binder();
-        let new = pred.subst(tcx, substs);
-        tcx.reuse_or_mk_predicate(self, ty::Binder::bind(new, tcx))
+
+        // Working through the second example:
+        // trait_ref: for<'x> T: Foo1<'^0.0>; substs: [T, '^0.0]
+        // predicate: for<'b> Self: Bar1<'a, '^0.0>; substs: [Self, 'a, '^0.0]
+        // We want to end up with:
+        //     for<'x, 'b> T: Bar1<'^0.0, '^0.1>
+        // To do this:
+        // 1) We must shift all bound vars in predicate by the length
+        //    of trait ref's bound vars. So, we would end up with predicate like
+        //    Self: Bar1<'a, '^0.1>
+        // 2) We can then apply the trait substs to this, ending up with
+        //    T: Bar1<'^0.0, '^0.1>
+        // 3) Finally, to create the final bound vars, we concatenate the bound
+        //    vars of the trait ref with those of the predicate:
+        //    ['x, 'b]
+        let bound_pred = self.kind();
+        let pred_bound_vars = bound_pred.bound_vars();
+        let trait_bound_vars = trait_ref.bound_vars();
+        // 1) Self: Bar1<'a, '^0.0> -> Self: Bar1<'a, '^0.1>
+        let shifted_pred =
+            tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
+        // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
+        let new = shifted_pred.subst(tcx, trait_ref.skip_binder().substs);
+        // 3) ['x] + ['b] -> ['x, 'b]
+        let bound_vars =
+            tcx.mk_bound_variable_kinds(trait_bound_vars.iter().chain(pred_bound_vars));
+        tcx.reuse_or_mk_predicate(self, ty::Binder::bind_with_vars(new, bound_vars))
     }
 }
 

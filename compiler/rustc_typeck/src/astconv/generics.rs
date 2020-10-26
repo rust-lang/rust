@@ -166,7 +166,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
-        arg_count: GenericArgCountResult,
+        arg_count: &GenericArgCountResult,
         ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
     ) -> SubstsRef<'tcx> {
         // Collect the segments of the path; we need to substitute arguments

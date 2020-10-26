@@ -596,24 +596,38 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let closure_sig = substs.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
-                let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-                ty::Binder::fuse(closure_ty, inputs_and_output, |closure_ty, inputs_and_output| {
-                    // The "inputs" of the closure in the
-                    // signature appear as a tuple.  The MIR side
-                    // flattens this tuple.
-                    let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
-                    assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                    let inputs = match tuplized_inputs[0].kind() {
-                        ty::Tuple(inputs) => inputs,
-                        _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
-                    };
+                let bound_vars = tcx.mk_bound_variable_kinds(
+                    inputs_and_output
+                        .bound_vars()
+                        .iter()
+                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+                );
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    kind: ty::BrEnv,
+                };
+                let env_region = ty::ReLateBound(ty::INNERMOST, br);
+                let closure_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
+                // The "inputs" of the closure in the
+                // signature appear as a tuple.  The MIR side
+                // flattens this tuple.
+                let (&output, tuplized_inputs) =
+                    inputs_and_output.skip_binder().split_last().unwrap();
+                assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
+                let inputs = match tuplized_inputs[0].kind() {
+                    ty::Tuple(inputs) => inputs,
+                    _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
+                };
+
+                ty::Binder::bind_with_vars(
                     tcx.mk_type_list(
                         iter::once(closure_ty)
                             .chain(inputs.iter().map(|k| k.expect_ty()))
                             .chain(iter::once(output)),
-                    )
-                })
+                    ),
+                    bound_vars,
+                )
             }
 
             DefiningTy::Generator(def_id, substs, movability) => {

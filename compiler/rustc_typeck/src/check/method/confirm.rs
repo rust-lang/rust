@@ -381,7 +381,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             parent_substs,
             false,
             None,
-            arg_count_correct,
+            &arg_count_correct,
             &mut MethodSubstsCtxt { cfcx: self, pick, seg },
         )
     }
