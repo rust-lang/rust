@@ -1341,6 +1341,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gsgdt"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cb4a3313cdc3c65906272ddd8987c7291ff6df4b5c9997c1232b6acd1ceab24"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "handlebars"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3923,6 +3932,7 @@ name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
  "either",
+ "gsgdt",
  "itertools 0.9.0",
  "polonius-engine",
  "regex",
@@ -5252,7 +5262,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.0",
  "regex",
  "serde",
  "serde_json",

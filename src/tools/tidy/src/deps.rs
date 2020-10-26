@@ -104,6 +104,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "getopts",
     "getrandom",
     "gimli",
+    "gsgdt",
     "hashbrown",
     "hermit-abi",
     "humantime",
