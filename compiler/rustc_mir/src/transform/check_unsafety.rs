@@ -236,10 +236,14 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     UnsafetyViolationDetails::DerefOfRawPointer,
                 ),
                 ty::Adt(adt, _) if adt.is_union() => {
-                    let assign_to_field = context
-                        == PlaceContext::MutatingUse(MutatingUseContext::Store)
-                        || context == PlaceContext::MutatingUse(MutatingUseContext::Drop)
-                        || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput);
+                    let assign_to_field = matches!(
+                        context,
+                        PlaceContext::MutatingUse(
+                            MutatingUseContext::Store
+                                | MutatingUseContext::Drop
+                                | MutatingUseContext::AsmOutput
+                        )
+                    );
                     // If there is a `Deref` further along the projection chain, this is *not* an
                     // assignment to a union field. In that case the union field is just read to
                     // obtain the pointer/reference.
