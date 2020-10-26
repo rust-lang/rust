@@ -14,6 +14,8 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 pub mod alloc;
 pub mod args;
 #[path = "../unsupported/cmath.rs"]
