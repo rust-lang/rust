@@ -709,7 +709,16 @@ pub(crate) fn call_hierarchy_item(
     let detail = target.description.clone();
     let kind = symbol_kind(target.kind);
     let (uri, range, selection_range) = location_info(snap, target)?;
-    Ok(lsp_types::CallHierarchyItem { name, kind, tags: None, detail, uri, range, selection_range })
+    Ok(lsp_types::CallHierarchyItem {
+        name,
+        kind,
+        tags: None,
+        detail,
+        uri,
+        range,
+        selection_range,
+        data: None,
+    })
 }
 
 pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {

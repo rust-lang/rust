@@ -20,6 +20,7 @@
                     "unused_variables",
                 ),
             ),
+            code_description: None,
             source: Some(
                 "rustc",
             ),
@@ -30,6 +31,7 @@
                     Unnecessary,
                 ],
             ),
+            data: None,
         },
         fixes: [
             CodeAction {

@@ -75,12 +75,11 @@ export async function sendRequestWithRetry<TParam, TRet>(
                 log.warn("LSP request timed out", { method: reqType.method, param, error });
                 throw error;
             }
-
-            if (error.code === lc.ErrorCodes.RequestCancelled) {
+            if (error.code === lc.LSPErrorCodes.RequestCancelled) {
                 throw error;
             }
 
-            if (error.code !== lc.ErrorCodes.ContentModified) {
+            if (error.code !== lc.LSPErrorCodes.ContentModified) {
                 log.warn("LSP request failed", { method: reqType.method, param, error });
                 throw error;
             }

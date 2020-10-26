@@ -20,6 +20,7 @@
                     "trivially_copy_pass_by_ref",
                 ),
             ),
+            code_description: None,
             source: Some(
                 "clippy",
             ),
@@ -61,6 +62,7 @@
                 ],
             ),
             tags: None,
+            data: None,
         },
         fixes: [],
     },
