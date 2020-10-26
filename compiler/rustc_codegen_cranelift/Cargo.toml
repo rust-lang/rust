@@ -1,0 +1,76 @@
+[package]
+name = "rustc_codegen_cranelift"
+version = "0.1.0"
+authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+# These have to be in sync with each other
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind"] }
+cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
+cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
+cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
+cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
+target-lexicon = "0.11.0"
+gimli = { version = "0.22.0", default-features = false, features = ["write"]}
+object = { version = "0.21.1", default-features = false, features = ["std", "read_core", "write", "coff", "elf", "macho", "pe"] }
+
+ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
+indexmap = "1.0.2"
+libloading = { version = "0.6.0", optional = true }
+
+# Uncomment to use local checkout of cranelift
+#[patch."https://github.com/bytecodealliance/wasmtime/"]
+#cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
+#cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
+#cranelift-module = { path = "../wasmtime/cranelift/module" }
+#cranelift-simplejit = { path = "../wasmtime/cranelift/simplejit" }
+#cranelift-object = { path = "../wasmtime/cranelift/object" }
+
+#[patch.crates-io]
+#gimli = { path = "../" }
+
+[features]
+default = ["jit", "inline_asm"]
+jit = ["cranelift-simplejit", "libloading"]
+inline_asm = []
+
+[profile.dev]
+# By compiling dependencies with optimizations, performing tests gets much faster.
+opt-level = 3
+
+[profile.dev.package.rustc_codegen_cranelift]
+# Disabling optimizations for cg_clif itself makes compilation after a change faster.
+opt-level = 0
+
+[profile.release.package.rustc_codegen_cranelift]
+incremental = true
+
+# Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
+# execution time of build scripts is so fast that optimizing them slows down the total build time.
+[profile.dev.build-override]
+opt-level = 0
+debug = false
+
+[profile.release.build-override]
+opt-level = 0
+debug = false
+
+[profile.dev.package.cranelift-codegen-meta]
+opt-level = 0
+debug = false
+
+[profile.release.package.cranelift-codegen-meta]
+opt-level = 0
+debug = false
+
+[profile.dev.package.syn]
+opt-level = 0
+debug = false
+
+[profile.release.package.syn]
+opt-level = 0
+debug = false

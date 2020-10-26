@@ -1,0 +1,123 @@
+From f6befc4bb51d84f5f1cf35938a168c953d421350 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sun, 24 Nov 2019 15:10:23 +0100
+Subject: [PATCH] [core] Disable not compiling tests
+
+---
+ library/core/tests/Cargo.toml         | 8 ++++++++
+ library/core/tests/num/flt2dec/mod.rs | 1 -
+ library/core/tests/num/int_macros.rs  | 2 ++
+ library/core/tests/num/uint_macros.rs | 2 ++
+ library/core/tests/ptr.rs             | 2 ++
+ library/core/tests/slice.rs           | 2 ++
+ 6 files changed, 16 insertions(+), 1 deletion(-)
+ create mode 100644 library/core/tests/Cargo.toml
+
+diff --git a/library/core/tests/Cargo.toml b/library/core/tests/Cargo.toml
+new file mode 100644
+index 0000000..46fd999
+--- /dev/null
++++ b/library/core/tests/Cargo.toml
+@@ -0,0 +1,8 @@
++[package]
++name = "core"
++version = "0.0.0"
++edition = "2018"
++
++[lib]
++name = "coretests"
++path = "lib.rs"
+diff --git a/library/core/tests/num/flt2dec/mod.rs b/library/core/tests/num/flt2dec/mod.rs
+index a35897e..f0bf645 100644
+--- a/library/core/tests/num/flt2dec/mod.rs
++++ b/library/core/tests/num/flt2dec/mod.rs
+@@ -13,7 +13,6 @@ mod strategy {
+     mod dragon;
+     mod grisu;
+ }
+-mod random;
+ 
+ pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
+     match decode(v).1 {
+diff --git a/library/core/tests/num/int_macros.rs b/library/core/tests/num/int_macros.rs
+index 0475aeb..9558198 100644
+--- a/library/core/tests/num/int_macros.rs
++++ b/library/core/tests/num/int_macros.rs
+@@ -88,6 +88,7 @@ mod tests {
+                 assert_eq!(x.trailing_ones(), 0);
+             }
+ 
++            /*
+             #[test]
+             fn test_rotate() {
+                 assert_eq!(A.rotate_left(6).rotate_right(2).rotate_right(4), A);
+@@ -112,6 +113,7 @@ mod tests {
+                 assert_eq!(B.rotate_left(64), B);
+                 assert_eq!(C.rotate_left(64), C);
+             }
++            */
+ 
+             #[test]
+             fn test_swap_bytes() {
+diff --git a/library/core/tests/num/uint_macros.rs b/library/core/tests/num/uint_macros.rs
+index 04ed14f..a6e372e 100644
+--- a/library/core/tests/num/uint_macros.rs
++++ b/library/core/tests/num/uint_macros.rs
+@@ -52,6 +52,7 @@ mod tests {
+                 assert_eq!(x.trailing_ones(), 0);
+             }
+ 
++            /*
+             #[test]
+             fn test_rotate() {
+                 assert_eq!(A.rotate_left(6).rotate_right(2).rotate_right(4), A);
+@@ -76,6 +77,7 @@ mod tests {
+                 assert_eq!(B.rotate_left(64), B);
+                 assert_eq!(C.rotate_left(64), C);
+             }
++            */
+ 
+             #[test]
+             fn test_swap_bytes() {
+diff --git a/library/core/tests/ptr.rs b/library/core/tests/ptr.rs
+index 1a6be3a..42dbd59 100644
+--- a/library/core/tests/ptr.rs
++++ b/library/core/tests/ptr.rs
+@@ -250,6 +250,7 @@ fn test_unsized_nonnull() {
+     assert!(ys == zs);
+ }
+ 
++/*
+ #[test]
+ #[allow(warnings)]
+ // Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
+@@ -289,6 +290,7 @@ fn write_unaligned_drop() {
+     }
+     DROPS.with(|d| assert_eq!(*d.borrow(), [0]));
+ }
++*/
+ 
+ #[test]
+ fn align_offset_zst() {
+diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
+index 6609bc3..241b497 100644
+--- a/library/core/tests/slice.rs
++++ b/library/core/tests/slice.rs
+@@ -1209,6 +1209,7 @@ fn brute_force_rotate_test_1() {
+     }
+ }
+ 
++/*
+ #[test]
+ #[cfg(not(target_arch = "wasm32"))]
+ fn sort_unstable() {
+@@ -1394,6 +1395,7 @@ fn partition_at_index() {
+     v.select_nth_unstable(0);
+     assert!(v == [0xDEADBEEF]);
+ }
++*/
+ 
+ #[test]
+ #[should_panic(expected = "index 0 greater than length of slice")]
+--
+2.21.0 (Apple Git-122)
