@@ -3118,7 +3118,7 @@ fn lint_search_is_some<'tcx>(
                     cx,
                     SEARCH_IS_SOME,
                     method_span.with_hi(expr.span.hi()),
-                    &msg,
+                    msg,
                     "try this",
                     format!("contains({})", find_arg),
                     applicability,
