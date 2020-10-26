@@ -54,6 +54,13 @@ fn powerpc64_linux() {
 #[test]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn x86_all() {
+    // the below is the set of features we can test at runtime, but don't actually
+    // use to gate anything and are thus not part of the X86_ALLOWED_FEATURES list
+
+    println!("abm: {:?}", is_x86_feature_detected!("abm")); // this is a synonym for lzcnt but we test it anyways
+    println!("mmx: {:?}", is_x86_feature_detected!("mmx"));
+    println!("tsc: {:?}", is_x86_feature_detected!("tsc"));
+
     // the below is in alphabetical order and matches
     // the order of X86_ALLOWED_FEATURES in rustc_codegen_ssa's target_features.rs
 

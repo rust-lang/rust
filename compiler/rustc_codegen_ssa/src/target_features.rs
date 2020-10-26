@@ -55,7 +55,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aes", None),
     ("avx", None),
     ("avx2", None),
-    ("avx512bf16", Some(sym::avx512_target_feature)),
+    //("avx512bf16", Some(sym::avx512_target_feature)), // this seems to be unsupported by the supported build with external LLVM 8, LLVM 9 should be sufficient though
     ("avx512bitalg", Some(sym::avx512_target_feature)),
     ("avx512bw", Some(sym::avx512_target_feature)),
     ("avx512cd", Some(sym::avx512_target_feature)),
@@ -70,7 +70,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("avx512vbmi2", Some(sym::avx512_target_feature)),
     ("avx512vl", Some(sym::avx512_target_feature)),
     ("avx512vnni", Some(sym::avx512_target_feature)),
-    ("avx512vp2intersect", Some(sym::avx512_target_feature)),
+    //("avx512vp2intersect", Some(sym::avx512_target_feature)), // this seems to be unsupported by the supported build with external LLVM 8, LLVM 9 should be sufficient though
     ("avx512vpclmulqdq", Some(sym::avx512_target_feature)),
     ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
     ("bmi1", None),
