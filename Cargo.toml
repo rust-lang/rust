@@ -77,6 +77,13 @@ object.debug = 0
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "src/tools/cargo" }
 
+[patch.crates-io.libc]
+version = "0.2"
+default-features = false
+features = ['rustc-dep-of-std']
+git = "https://github.com/lzutao/rust-libc"
+branch = "i78184"
+
 [patch."https://github.com/rust-lang/rustfmt"]
 # Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
 # that we're shipping as well (to ensure that the rustfmt in RLS and the
