@@ -50,14 +50,17 @@ The following previously stable methods are now `const fn`'s:
 Cargo
 -----
 
-Misc
-----
+Rustdoc
+-------
 - [You can now link to items in `rustdoc` using the intra-doc link
   syntax.][74430] E.g. ``/// Uses [`std::future`]`` will automatically generate
   a link to `std::future`'s documentation. See ["Linking to items by
   name"][intradoc-links] for more information.
 - [You can now specify `#[doc(alias = "<alias>")]` on items to add search aliases
   when searching through `rustdoc`'s UI.][75740]
+  
+Rustup
+------
 - [You can now use `rustup install <major>.<minor>` to specify installing the
   latest available patch of the specified minor version of the toolchain.][76107] E.g.
   `rustup install 1.45` would install `1.45.2`, and `1.46` would install `1.46.0`.
@@ -78,8 +81,8 @@ Compatibility Notes
   in places where they have no effect.][73461]
 - [Updated `_mm256_extract_epi8` and `_mm256_extract_epi16` signatures in
   `arch::{x86, x86_64}` to return `i32` to match the vendor signatures.][73166]
-
-
+- [`mem::uninitialized` will now panic if any inner types inside a struct or enum
+  disallow zero-initialization].[71274]
 
 Internal Only
 -------------
@@ -88,7 +91,8 @@ Internal Only
   your `config.toml`.
 
 [27675]: https://github.com/rust-lang/rust/issues/27675/
-[54121]: https://github.com/rust-lang/rust/issues/54121/
+[54121]: https://github.com/rust-lang/rust/issues/54121/  
+[71274]: https://github.com/rust-lang/rust/pull/71274/
 [77386]: https://github.com/rust-lang/rust/pull/77386/
 [77153]: https://github.com/rust-lang/rust/pull/77153/
 [77055]: https://github.com/rust-lang/rust/pull/77055/
