@@ -218,15 +218,18 @@ impl DefCollector<'_> {
         let item_tree = self.db.item_tree(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
-        ModCollector {
+        let mut root_collector = ModCollector {
             def_collector: &mut *self,
             macro_depth: 0,
             module_id,
             file_id: file_id.into(),
             item_tree: &item_tree,
             mod_dir: ModDir::root(),
+        };
+        if item_tree.top_level_attrs().cfg().map_or(true, |cfg| root_collector.is_cfg_enabled(&cfg))
+        {
+            root_collector.collect(item_tree.top_level_items());
         }
-        .collect(item_tree.top_level_items());
 
         // main name resolution fixed-point loop.
         let mut i = 0;
