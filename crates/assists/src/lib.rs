@@ -200,7 +200,6 @@ mod handlers {
             move_guard::move_guard_to_arm_body,
             qualify_path::qualify_path,
             raw_string::add_hash,
-            raw_string::make_raw_string,
             raw_string::make_usual_string,
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
@@ -211,13 +210,15 @@ mod handlers {
             replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
-            replace_string_with_char::replace_string_with_char,
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
             unwrap_block::unwrap_block,
             // These are manually sorted for better priorities
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
+            //
+            replace_string_with_char::replace_string_with_char,
+            raw_string::make_raw_string,
             // Are you sure you want to add new assist here, and not to the
             // sorted list above?
         ]
