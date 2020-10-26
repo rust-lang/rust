@@ -57,7 +57,9 @@ where
     }
 
     // Graph label
-    let label = get_graph_label(tcx, body);
+    let mut label = String::from("");
+    // FIXME: remove this unwrap
+    write_graph_label(tcx, body, &mut label).unwrap();
     let g = mir_fn_to_generic_graph(tcx, body, subgraph);
     let settings = GraphvizSettings {
         graph_attrs: Some(graph_attrs.join(" ")),
@@ -71,42 +73,47 @@ where
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn get_graph_label<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> String {
+fn write_graph_label<'tcx, W: std::fmt::Write>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'_>,
+    w: &mut W,
+) -> std::fmt::Result {
     let def_id = body.source.def_id();
-    let mut label: Vec<String> = Vec::new();
 
-    label.push(format!("fn {}(", dot::escape_html(&tcx.def_path_str(def_id))));
+    write!(w, "fn {}(", dot::escape_html(&tcx.def_path_str(def_id)))?;
 
     // fn argument types.
     for (i, arg) in body.args_iter().enumerate() {
         if i > 0 {
-            label.push(", ".to_owned());
+            write!(w, ", ")?;
         }
-        label.push(format!("{:?}: {}", Place::from(arg), escape(&body.local_decls[arg].ty)));
+        write!(w, "{:?}: {}", Place::from(arg), escape(&body.local_decls[arg].ty))?;
     }
 
-    label.push(format!(") -&gt; {}", escape(&body.return_ty())));
-    label.push(r#"<br align="left"/>"#.to_owned());
+    write!(w, ") -&gt; {}", escape(&body.return_ty()))?;
+    write!(w, r#"<br align="left"/>"#)?;
 
     for local in body.vars_and_temps_iter() {
         let decl = &body.local_decls[local];
 
-        label.push("let ".to_owned());
+        write!(w, "let ")?;
         if decl.mutability == Mutability::Mut {
-            label.push("mut ".to_owned());
+            write!(w, "mut ")?;
         }
 
-        label.push(format!(r#"{:?}: {};<br align="left"/>"#, Place::from(local), escape(&decl.ty)));
+        write!(w, r#"{:?}: {};<br align="left"/>"#, Place::from(local), escape(&decl.ty))?;
     }
 
     for var_debug_info in &body.var_debug_info {
-        label.push(format!(
+        write!(
+            w,
             r#"debug {} =&gt; {};<br align="left"/>"#,
             var_debug_info.name,
             escape(&var_debug_info.place)
-        ));
+        )?;
     }
-    label.join("")
+
+    Ok(())
 }
 
 fn escape<T: Debug>(t: &T) -> String {
