@@ -82,7 +82,7 @@ Compatibility Notes
 - [Updated `_mm256_extract_epi8` and `_mm256_extract_epi16` signatures in
   `arch::{x86, x86_64}` to return `i32` to match the vendor signatures.][73166]
 - [`mem::uninitialized` will now panic if any inner types inside a struct or enum
-  disallow zero-initialization].[71274]
+  disallow zero-initialization.][71274]
 
 Internal Only
 -------------
