@@ -594,7 +594,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     {
         if self.watcher_offset.is_none() {
             assert!(!self.done);
-            if self.nodes.len() > 100 {
+            if false && self.nodes.len() > 100 {
                 self.watcher_offset = Some(processor.register_variable_watcher());
             }
             if let Some(outcome) = self.process_obligations_simple(processor, do_completed) {
