@@ -63,7 +63,12 @@ pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, No
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
 
-#[stable(feature = "int_error_matching", since = "1.47.0")]
+#[unstable(
+    feature = "int_error_matching",
+    reason = "it can be useful to match errors when making error messages \
+              for integer parsing",
+    issue = "22639"
+)]
 pub use error::IntErrorKind;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
@@ -831,7 +836,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 
     let (is_positive, digits) = match src[0] {
         b'+' | b'-' if src[1..].is_empty() => {
-            return Err(PIE { kind: InvalidDigit(src[0] as char) });
+            return Err(PIE { kind: InvalidDigit });
         }
         b'+' => (true, &src[1..]),
         b'-' if is_signed_ty => (false, &src[1..]),
@@ -844,7 +849,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         for &c in digits {
             let x = match (c as char).to_digit(radix) {
                 Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit(c as char) }),
+                None => return Err(PIE { kind: InvalidDigit }),
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
@@ -860,7 +865,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         for &c in digits {
             let x = match (c as char).to_digit(radix) {
                 Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit(c as char) }),
+                None => return Err(PIE { kind: InvalidDigit }),
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,

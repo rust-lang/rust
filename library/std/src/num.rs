@@ -22,7 +22,12 @@ pub use core::num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, 
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use core::num::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
-#[stable(feature = "int_error_matching", since = "1.47.0")]
+#[unstable(
+    feature = "int_error_matching",
+    reason = "it can be useful to match errors when making error messages \
+              for integer parsing",
+    issue = "22639"
+)]
 pub use core::num::IntErrorKind;
 
 #[cfg(test)]
