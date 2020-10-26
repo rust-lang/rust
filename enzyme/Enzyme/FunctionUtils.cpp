@@ -368,6 +368,8 @@ OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
       if (success)
         continue;
     }
+    llvm::errs() << *NewF->getParent() << "\n";
+    llvm::errs() << *NewF << "\n";
     EmitFailure("DynamicReallocSize", Loc->getDebugLoc(), Loc,
                 "could not statically determine size of realloc ", *Loc,
                 " - because of - ", *next.first);

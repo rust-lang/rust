@@ -169,6 +169,17 @@ bool is_value_needed_in_reverse(
           II->getIntrinsicID() == Intrinsic::stackrestore) {
         continue;
       }
+      if (II->getIntrinsicID() == Intrinsic::fma) {
+        bool needed = false;
+        if (II->getArgOperand(0) == inst &&
+            !gutils->isConstantValue(II->getArgOperand(1)))
+          needed = true;
+        if (II->getArgOperand(1) == inst &&
+            !gutils->isConstantValue(II->getArgOperand(0)))
+          needed = true;
+        if (!needed)
+          continue;
+      }
     }
 
     if (auto op = dyn_cast<BinaryOperator>(user)) {

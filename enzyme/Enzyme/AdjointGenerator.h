@@ -196,6 +196,12 @@ public:
     }
 
     bool constantval = gutils->isConstantValue(&LI);
+    // even if this is an active value if it has no active users
+    // (e.g. potential but unused active pointer), it does not
+    // need an adjoint here
+    if (!constantval) {
+      constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &LI);
+    }
 #if LLVM_VERSION_MAJOR >= 10
     auto alignment = LI.getAlign();
 #else
@@ -296,7 +302,7 @@ public:
     if (Mode == DerivativeMode::Forward)
       return;
 
-    if (gutils->isConstantInstruction(&LI))
+    if (constantval)
       return;
 
     if (nonmarkedglobals_inactiveloads) {
@@ -1362,6 +1368,7 @@ public:
       case Intrinsic::nearbyint:
       case Intrinsic::round:
       case Intrinsic::sqrt:
+      case Intrinsic::fma:
         return;
       default:
         if (gutils->isConstantInstruction(&II))
@@ -1532,6 +1539,26 @@ public:
           Value *dif1 = Builder2.CreateSelect(
               cmp, ConstantFP::get(orig_ops[0]->getType(), 0), vdiff);
           addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
+        }
+        return;
+      }
+
+      case Intrinsic::fma: {
+        if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
+          Value *dif0 = Builder2.CreateFMul(
+              vdiff, lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
+          addToDiffe(orig_ops[0], dif0, Builder2,
+                     II.getType()->getScalarType());
+        }
+        if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
+          Value *dif1 = Builder2.CreateFMul(
+              vdiff, lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2));
+          addToDiffe(orig_ops[1], dif1, Builder2,
+                     II.getType()->getScalarType());
+        }
+        if (vdiff && !gutils->isConstantValue(orig_ops[2])) {
+          addToDiffe(orig_ops[2], vdiff, Builder2,
+                     II.getType()->getScalarType());
         }
         return;
       }
@@ -2263,7 +2290,11 @@ public:
           // inst->getAlignment()));
           memset->addParamAttr(0, Attribute::NonNull);
         } else {
-          val = gutils->cacheForReverse(Builder2, nullptr,
+          PHINode *toReplace = Builder2.CreatePHI(
+              cast<PointerType>(call.getArgOperand(0)->getType())
+                  ->getElementType(),
+              1, orig->getName() + "_psxtmp");
+          val = gutils->cacheForReverse(Builder2, toReplace,
                                         getIndex(orig, CacheType::Shadow));
         }
 

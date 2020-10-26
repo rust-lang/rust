@@ -1076,7 +1076,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
 #else
     if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue())) {
 #endif
-      if (iasm->getAsmString() == "cpuid") {
+      if (StringRef(iasm->getAsmString()).contains("cpuid")) {
         if (printconst)
           llvm::errs() << " constant instruction from known cpuid instruction "
                        << *inst << "\n";
@@ -1245,8 +1245,10 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
 /// Is the value free of any active uses
 bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
                                                 llvm::Value *val) {
-  // Must be an analyzer only searching down
-  assert(directions == DOWN);
+  assert(directions & DOWN);
+  // Must be an analyzer only searching down, unless used outside
+  // assert(directions == DOWN);
+
   // To ensure we can call down
 
   if (printconst)

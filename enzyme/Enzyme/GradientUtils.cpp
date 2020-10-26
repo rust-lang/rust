@@ -371,6 +371,7 @@ endCheck:
 
 Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                                       int idx) {
+  assert(malloc);
   assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
 
   if (tape) {
@@ -1174,6 +1175,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 #endif
       }
 
+      llvm::errs() << *oldFunc << "\n";
+      llvm::errs() << *newFunc << "\n";
       llvm::errs() << *arg << "\n";
       assert(0 && "cannot compute with global variable that doesn't have "
                   "marked shadow global");

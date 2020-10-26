@@ -139,9 +139,11 @@ private:
   /// Is the instruction guaranteed to be inactive because of its operands
   bool isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Value *val);
 
+public:
   /// Is the value free of any active uses
   bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val);
 
+private:
   /// Is the value potentially actively returned or stored
   bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val);
   /// StoredOrReturnedCache acts as an inductive cache of results for
