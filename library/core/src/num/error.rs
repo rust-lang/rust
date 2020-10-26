@@ -97,7 +97,7 @@ pub enum IntErrorKind {
     /// Among other causes, this variant will be constructed when parsing a string that
     /// contains a non-asci char.
     ///
-    /// This variant is also constructed when a `+` or `-` is misplaced within a sting
+    /// This variant is also constructed when a `+` or `-` is misplaced within a string
     /// either on its own or in the middle of a number.
     #[stable(feature = "int_error_matching", since = "1.47.0")]
     InvalidDigit(#[stable(feature = "int_error_matching", since = "1.47.0")] char),
