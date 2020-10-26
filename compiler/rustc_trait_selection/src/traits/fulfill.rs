@@ -1,7 +1,7 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar, WatcherOffset};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::obligation_forest::ProcessResult;
-use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
+use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
 use rustc_infer::traits::{TraitEngine, TraitEngineExt as _, TraitObligation};

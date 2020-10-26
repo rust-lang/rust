@@ -226,6 +226,8 @@ pub struct ObligationForest<O: ForestObligation> {
     done: bool,
     /// Reusable vector for storing unblocked nodes whose watch should be removed.
     temp_unblocked_nodes: Vec<O::Variable>,
+
+    reused_node_vec: Vec<NodeIndex>,
 }
 
 /// Helper struct for use with `BinaryHeap` to process nodes in the order that they were added to
@@ -390,6 +392,10 @@ enum NodeState {
 
 #[derive(Debug)]
 pub struct Outcome<O, E> {
+    /// Obligations that were completely evaluated, including all
+    /// (transitive) subobligations. Only computed if requested.
+    pub completed: Option<Vec<O>>,
+
     /// Backtrace of obligations that were found to be in error.
     pub errors: Vec<Error<O, E>>,
 }
@@ -426,6 +432,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             temp_unblocked_nodes: Default::default(),
             watcher_offset: None,
             done: false,
+            reused_node_vec: Vec::new(),
         }
     }
 
@@ -545,7 +552,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             .map(|&index| Error { error: error.clone(), backtrace: self.error_at(index) })
             .collect();
 
-        self.compress(|_| assert!(false));
+        let successful_obligations = self.compress(DoCompleted::Yes);
+        assert!(successful_obligations.unwrap().is_empty());
         errors
     }
 
@@ -576,7 +584,11 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// be called in a loop until `outcome.stalled` is false.
     ///
     /// This _cannot_ be unrolled (presently, at least).
-    pub fn process_obligations<P>(&mut self, processor: &mut P) -> Outcome<O, P::Error>
+    pub fn process_obligations<P>(
+        &mut self,
+        processor: &mut P,
+        do_completed: DoCompleted,
+    ) -> Outcome<O, P::Error>
     where
         P: ObligationProcessor<Obligation = O>,
     {
@@ -965,7 +977,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     where
         P: ObligationProcessor<Obligation = O>,
     {
-        let mut stack = vec![];
+        let mut stack = mem::take(&mut self.reused_node_vec);
 
         let success_or_waiting_nodes = mem::take(&mut self.success_or_waiting_nodes);
         for &index in &success_or_waiting_nodes {
