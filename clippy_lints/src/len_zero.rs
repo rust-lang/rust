@@ -304,7 +304,7 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
             cx,
             COMPARISON_TO_EMPTY,
             span,
-            &format!("comparison to empty slice"),
+            "comparison to empty slice",
             &format!("using `{}is_empty` is clearer and more explicit", op),
             format!(
                 "{}{}.is_empty()",
