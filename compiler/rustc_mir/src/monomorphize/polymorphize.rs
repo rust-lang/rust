@@ -69,7 +69,10 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     debug!("unused_generic_params: (after default) unused_parameters={:?}", unused_parameters);
 
     // Visit MIR and accumululate used generic parameters.
-    let body = tcx.optimized_mir(def_id);
+    let body = match tcx.hir().body_const_context(def_id.expect_local()) {
+        None => tcx.optimized_mir(def_id),
+        Some(_) => tcx.mir_for_ctfe(def_id),
+    };
     let mut vis = MarkUsedGenericParams { tcx, def_id, unused_parameters: &mut unused_parameters };
     vis.visit_body(body);
     debug!("unused_generic_params: (after visitor) unused_parameters={:?}", unused_parameters);

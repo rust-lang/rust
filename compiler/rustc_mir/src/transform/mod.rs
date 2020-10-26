@@ -71,6 +71,8 @@ pub(crate) fn provide(providers: &mut Providers) {
         },
         mir_promoted,
         mir_drops_elaborated_and_const_checked,
+        mir_for_ctfe,
+        mir_for_ctfe_of_const_arg,
         optimized_mir,
         optimized_mir_of_const_arg,
         is_mir_available,
@@ -319,6 +321,63 @@ fn mir_promoted(
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
+fn mir_for_ctfe<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
+    let did = def_id.expect_local();
+    if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
+        tcx.mir_for_ctfe_of_const_arg(def)
+    } else {
+        tcx.arena.alloc(inner_mir_for_ctfe(tcx, ty::WithOptConstParam::unknown(did)))
+    }
+}
+
+fn mir_for_ctfe_of_const_arg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (did, param_did): (LocalDefId, DefId),
+) -> &'tcx Body<'tcx> {
+    tcx.arena.alloc(inner_mir_for_ctfe(
+        tcx,
+        ty::WithOptConstParam { did, const_param_did: Some(param_did) },
+    ))
+}
+
+fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
+    // FIXME: don't duplicate this between the optimized_mir/mir_for_ctfe queries
+    if tcx.is_constructor(def.did.to_def_id()) {
+        // There's no reason to run all of the MIR passes on constructors when
+        // we can just output the MIR we want directly. This also saves const
+        // qualification and borrow checking the trouble of special casing
+        // constructors.
+        return shim::build_adt_ctor(tcx, def.did.to_def_id());
+    }
+
+    assert_ne!(
+        tcx.hir().body_const_context(def.did),
+        None,
+        "mir_for_ctfe should not be used for runtime functions"
+    );
+
+    let mut body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
+
+    #[rustfmt::skip]
+    let optimizations: &[&dyn MirPass<'_>] = &[
+        &const_prop::ConstProp,
+    ];
+
+    #[rustfmt::skip]
+    run_passes(
+        tcx,
+        &mut body,
+        MirPhase::Optimization,
+        &[
+            optimizations,
+        ],
+    );
+
+    debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
+
+    body
+}
+
 fn mir_drops_elaborated_and_const_checked<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
@@ -484,6 +543,17 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) 
         return shim::build_adt_ctor(tcx, def.did.to_def_id());
     }
 
+    match tcx.hir().body_const_context(def.did) {
+        Some(hir::ConstContext::ConstFn) => {
+            if let Some((did, param_did)) = def.to_global().as_const_arg() {
+                tcx.ensure().mir_for_ctfe_of_const_arg((did, param_did))
+            } else {
+                tcx.ensure().mir_for_ctfe(def.did)
+            }
+        }
+        None => {}
+        Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
+    }
     let mut body = tcx.mir_drops_elaborated_and_const_checked(def).steal();
     run_optimization_passes(tcx, &mut body);
 

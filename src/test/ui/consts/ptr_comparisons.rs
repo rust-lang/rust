@@ -66,6 +66,7 @@ const _: *const u8 =
 //~^ NOTE
     unsafe { std::ptr::raw_const!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
 //~^ ERROR any use of this value will cause an error
+//~| NOTE
 
 const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
 //~^ ERROR any use of this value will cause an error

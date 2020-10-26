@@ -273,7 +273,11 @@ pub fn write_mir_pretty<'tcx>(
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
-        let body = &tcx.optimized_mir(def_id);
+        let body = match tcx.hir().body_const_context(def_id.expect_local()) {
+            // FIXME: print both MIRs for `const fn`?
+            None | Some(rustc_hir::ConstContext::ConstFn) => tcx.optimized_mir(def_id),
+            Some(_) => tcx.mir_for_ctfe(def_id),
+        };
 
         if first {
             first = false;

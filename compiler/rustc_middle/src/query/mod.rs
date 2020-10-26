@@ -312,6 +312,20 @@ rustc_queries! {
             desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
+        query mir_for_ctfe(
+            key: DefId
+        ) -> &'tcx mir::Body<'tcx> {
+            desc { |tcx| "caching mir for `{}` for CTFE", tcx.def_path_str(key) }
+            cache_on_disk_if { key.is_local() }
+        }
+
+        query mir_for_ctfe_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
+            desc {
+                |tcx| "MIR for CTFE of the const argument `{}`",
+                tcx.def_path_str(key.0.to_def_id())
+            }
+        }
+
         query mir_promoted(key: ty::WithOptConstParam<LocalDefId>) ->
             (
                 &'tcx Steal<mir::Body<'tcx>>,
@@ -331,6 +345,9 @@ rustc_queries! {
             desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
+
+        // FIXME: now that we have `mir_for_ctfe_of_const_arg` can we get
+        // rid of this query?
         query optimized_mir_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
             desc {
                 |tcx| "optimizing MIR for the const argument `{}`",
