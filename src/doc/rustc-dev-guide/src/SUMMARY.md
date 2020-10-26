@@ -20,7 +20,7 @@
 - [The compiler testing framework](./tests/intro.md)
     - [Running tests](./tests/running.md)
     - [Adding new tests](./tests/adding.md)
-    - [Using `compiletest` + commands to control test execution](./compiletest.md)
+    - [Using `compiletest` commands to control test execution](./compiletest.md)
 - [Debugging the Compiler](./compiler-debugging.md)
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
