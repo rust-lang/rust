@@ -92,7 +92,7 @@ pub enum IntErrorKind {
     /// Among other causes, this variant will be constructed when parsing an empty string.
     #[stable(feature = "int_error_matching", since = "1.47.0")]
     Empty,
-    /// Contains an digit invalid in its context.
+    /// Contains an invalid digit in its context.
     ///
     /// Among other causes, this variant will be constructed when parsing a string that
     /// contains a non-asci char.
