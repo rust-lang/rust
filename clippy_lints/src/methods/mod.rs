@@ -1383,6 +1383,27 @@ declare_clippy_lint! {
     "using unnecessary lazy evaluation, which can be replaced with simpler eager evaluation"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.map(_).collect::<Result<(),_>()`.
+    ///
+    /// **Why is this bad?** Using `try_for_each` instead is more readable and idiomatic.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// (0..3).map(|t| Err(t)).collect::<Result<(), _>>();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// (0..3).try_for_each(|t| Err(t));
+    /// ```
+    pub MAP_COLLECT_RESULT_UNIT,
+    style,
+    "using `.map(_).collect::<Result<(),_>()`, which can be replaced with `try_for_each`"
+}
+
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
@@ -1433,6 +1454,7 @@ declare_lint_pass!(Methods => [
     FILETYPE_IS_FILE,
     OPTION_AS_REF_DEREF,
     UNNECESSARY_LAZY_EVALUATIONS,
+    MAP_COLLECT_RESULT_UNIT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1515,6 +1537,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["unwrap_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "unwrap_or"),
             ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "get_or_insert"),
             ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "ok_or"),
+            ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
             _ => {},
         }
 
@@ -3498,6 +3521,42 @@ fn lint_option_as_ref_deref<'tcx>(
             hint,
             Applicability::MachineApplicable,
         );
+    }
+}
+
+fn lint_map_collect(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    map_args: &[hir::Expr<'_>],
+    collect_args: &[hir::Expr<'_>],
+) {
+    if_chain! {
+        // called on Iterator
+        if let [map_expr] = collect_args;
+        if match_trait_method(cx, map_expr, &paths::ITERATOR);
+        // return of collect `Result<(),_>`
+        let collect_ret_ty = cx.typeck_results().expr_ty(expr);
+        if is_type_diagnostic_item(cx, collect_ret_ty, sym!(result_type));
+        if let ty::Adt(_, substs) = collect_ret_ty.kind();
+        if let Some(result_t) = substs.types().next();
+        if result_t.is_unit();
+        // get parts for snippet
+        if let [iter, map_fn] = map_args;
+        then {
+            span_lint_and_sugg(
+                cx,
+                MAP_COLLECT_RESULT_UNIT,
+                expr.span,
+                "`.map().collect()` can be replaced with `.try_for_each()`",
+                "try this",
+                format!(
+                    "{}.try_for_each({})",
+                    snippet(cx, iter.span, ".."),
+                    snippet(cx, map_fn.span, "..")
+                ),
+                Applicability::MachineApplicable,
+            );
+        }
     }
 }
 
