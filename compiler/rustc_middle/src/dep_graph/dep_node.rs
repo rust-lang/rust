@@ -308,8 +308,23 @@ impl DepNodeExt for DepNode {
     }
 }
 
+impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for () {
+    #[inline(always)]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
+
+    fn to_fingerprint(&self, _: TyCtxt<'tcx>) -> Fingerprint {
+        Fingerprint::ZERO
+    }
+
+    fn recover(_: TyCtxt<'tcx>, _: &DepNode) -> Option<Self> {
+        Some(())
+    }
+}
+
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
-    #[inline]
+    #[inline(always)]
     fn can_reconstruct_query_key() -> bool {
         true
     }
@@ -338,7 +353,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
-    #[inline]
+    #[inline(always)]
     fn can_reconstruct_query_key() -> bool {
         true
     }
@@ -357,7 +372,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
-    #[inline]
+    #[inline(always)]
     fn can_reconstruct_query_key() -> bool {
         true
     }
@@ -377,7 +392,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
-    #[inline]
+    #[inline(always)]
     fn can_reconstruct_query_key() -> bool {
         false
     }
@@ -402,7 +417,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
-    #[inline]
+    #[inline(always)]
     fn can_reconstruct_query_key() -> bool {
         false
     }
