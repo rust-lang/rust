@@ -5,6 +5,8 @@ fn main() {
     match lorem {
         true =>
             foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
-        false => println!("{}", sit),
+        false => {
+            println!("{}", sit)
+        }
     }
 }

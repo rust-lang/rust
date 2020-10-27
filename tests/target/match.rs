@@ -166,9 +166,15 @@ fn issue355() {
         a => println!("a", b),
         b => vec![1, 2],
         c => vec![3; 4],
-        d => println!("a", b),
-        e => vec![1, 2],
-        f => vec![3; 4],
+        d => {
+            println!("a", b)
+        }
+        e => {
+            vec![1, 2]
+        }
+        f => {
+            vec![3; 4]
+        }
         h => println!("a", b), // h comment
         i => vec![1, 2],       // i comment
         j => vec![3; 4],       // j comment

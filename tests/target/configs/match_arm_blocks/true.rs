@@ -6,6 +6,8 @@ fn main() {
         true => {
             foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
         }
-        false => println!("{}", sit),
+        false => {
+            println!("{}", sit)
+        }
     }
 }

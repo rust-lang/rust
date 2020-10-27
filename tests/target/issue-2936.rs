@@ -11,7 +11,9 @@ impl Something for AStruct {
                 let err: &CStr = match err.kind {
                     ParseErrorKind::Custom(StyleParseErrorKind::MediaQueryExpectedFeatureName(
                         ..,
-                    )) => cstr!("PEMQExpectedFeatureName"),
+                    )) => {
+                        cstr!("PEMQExpectedFeatureName")
+                    }
                 };
             }
         };
