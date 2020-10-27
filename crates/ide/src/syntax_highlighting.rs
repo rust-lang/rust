@@ -562,6 +562,9 @@ fn highlight_element(
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HighlightTag::Macro.into()
             }
+            T![!] if element.parent().and_then(ast::NeverType::cast).is_some() => {
+                HighlightTag::BuiltinType.into()
+            }
             T![*] if element.parent().and_then(ast::PtrType::cast).is_some() => {
                 HighlightTag::Keyword.into()
             }
