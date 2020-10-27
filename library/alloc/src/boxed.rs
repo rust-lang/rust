@@ -724,15 +724,10 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
         // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
         // raw pointer for the type system. Turning it directly into a raw pointer would not be
         // recognized as "releasing" the unique pointer to permit aliased raw accesses,
-        // so all raw pointer methods have to leak the box. Turning *that* to a raw pointer
+        // so all raw pointer methods have to go through `Box::leak`. Turning *that* to a raw pointer
         // behaves correctly.
-        let b = mem::ManuallyDrop::new(b);
-
-        // The box is unitiliazed later when moving out the allocator. The pointer is stored
-        // beforehand.
-        let ptr = b.0;
         let alloc = unsafe { ptr::read(&b.1) };
-        (ptr, alloc)
+        (Unique::from(Box::leak(b)), alloc)
     }
 
     /// Returns a reference to the underlying allocator.
