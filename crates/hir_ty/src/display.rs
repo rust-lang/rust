@@ -390,11 +390,27 @@ impl HirDisplay for ApplicationTy {
                 };
                 let trait_ = f.db.trait_data(trait_);
                 let type_alias = f.db.type_alias_data(type_alias);
-                write!(f, "{}::{}", trait_.name, type_alias.name)?;
-                if self.parameters.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
-                    write!(f, ">")?;
+
+                // Use placeholder associated types when the target is source code (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
+                if f.display_target.is_source_code() || self.parameters.len() > 1 {
+                    write!(f, "{}::{}", trait_.name, type_alias.name)?;
+                    if self.parameters.len() > 0 {
+                        write!(f, "<")?;
+                        f.write_joined(&*self.parameters.0, ", ")?;
+                        write!(f, ">")?;
+                    }
+                } else {
+                    if self.parameters.len() == 1 {
+                        write!(
+                            f,
+                            "<{} as {}>::{}",
+                            self.parameters.as_single().display(f.db),
+                            trait_.name,
+                            type_alias.name
+                        )?;
+                    } else {
+                        write!(f, "{}::{}", trait_.name, type_alias.name)?;
+                    }
                 }
             }
             TypeCtor::ForeignType(type_alias) => {
