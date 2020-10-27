@@ -80,7 +80,7 @@ For this, it is important to have the following in your `settings.json` file:
     "rust-analyzer.serverPath": "rust-analyzer"
 }
 ```
-After I am done with the fix, I use `cargo xtask install --client-code` to try the new extension for real.
+After I am done with the fix, I use `cargo xtask install --client` to try the new extension for real.
 
 If I need to fix something in the `rust-analyzer` crate, I feel sad because it's on the boundary between the two processes, and working there is slow.
 I usually just `cargo xtask install --server` and poke changes from my live environment.
