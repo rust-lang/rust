@@ -123,6 +123,17 @@ fn lint_unneeded_unit_return(cx: &EarlyContext<'_>, ty: &ast::Ty, span: Span) {
         fn_source
             .rfind("->")
             .map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
+                let mut rpos = rpos;
+                let chars: Vec<char> = fn_source.chars().collect();
+                while rpos > 1 {
+                    if let Some(c) = chars.get(rpos - 1) {
+                        if c.is_whitespace() {
+                            rpos -= 1;
+                            continue;
+                        }
+                    }
+                    break;
+                }
                 (
                     #[allow(clippy::cast_possible_truncation)]
                     ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
