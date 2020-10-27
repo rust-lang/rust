@@ -717,7 +717,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
 
     ar: String = (String::new(), parse_string, [UNTRACKED],
@@ -814,7 +814,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
 }
 
@@ -825,7 +825,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
 
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (space separated)"),
@@ -904,6 +904,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
+    function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "whether each function should go in its own section"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
