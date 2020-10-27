@@ -58,12 +58,6 @@ Rustdoc
   name"][intradoc-links] for more information.
 - [You can now specify `#[doc(alias = "<alias>")]` on items to add search aliases
   when searching through `rustdoc`'s UI.][75740]
-  
-Rustup
-------
-- [You can now use `rustup install <major>.<minor>` to specify installing the
-  latest available patch of the specified minor version of the toolchain.][76107] E.g.
-  `rustup install 1.45` would install `1.45.2`, and `1.46` would install `1.46.0`.
 
 Compatibility Notes
 -------------------
@@ -83,6 +77,9 @@ Compatibility Notes
   `arch::{x86, x86_64}` to return `i32` to match the vendor signatures.][73166]
 - [`mem::uninitialized` will now panic if any inner types inside a struct or enum
   disallow zero-initialization.][71274]
+- [`#[target_feature]` will now error if used in a place where it has no effect.][78143]
+
+[78143]: https://github.com/rust-lang/rust/issues/78143
 
 Internal Only
 -------------
@@ -99,7 +96,6 @@ Internal Only
 [76275]: https://github.com/rust-lang/rust/pull/76275/
 [76310]: https://github.com/rust-lang/rust/pull/76310/
 [76420]: https://github.com/rust-lang/rust/pull/76420/
-[76107]: https://github.com/rust-lang/rust/pull/76107/
 [76158]: https://github.com/rust-lang/rust/pull/76158/
 [75857]: https://github.com/rust-lang/rust/pull/75857/
 [75585]: https://github.com/rust-lang/rust/pull/75585/
