@@ -119,6 +119,11 @@ impl OptimizationFinder<'b, 'tcx> {
     }
 
     fn find_deref_of_address(&mut self, rvalue: &Rvalue<'tcx>, location: Location) -> Option<()> {
+        // FIXME(#78192): This optimization can result in unsoundness.
+        if !self.tcx.sess.opts.debugging_opts.unsound_mir_opts {
+            return None;
+        }
+
         // Look for the sequence
         //
         // _2 = &_1;

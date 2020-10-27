@@ -19,7 +19,7 @@
                                            // + span: $DIR/ref_deref.rs:5:6: 5:10
                                            // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ ref_deref[317d]::main), const_param_did: None }, [], Some(promoted[0])) }
           _2 = _4;                         // scope 0 at $DIR/ref_deref.rs:5:6: 5:10
--         _1 = (*_4);                      // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
+-         _1 = (*_2);                      // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
 +         _1 = const 4_i32;                // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
           StorageDead(_2);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
           StorageDead(_1);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
