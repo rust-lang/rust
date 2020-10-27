@@ -9,9 +9,9 @@ Language
 
 Compiler
 --------
-- [Stabilised the `-C link-self-contained=<yes|no>`.][76158] This tells `rustc` whether to link
-  its own C runtime and libraries or to rely on a external linker to find them. (Supported only on
-  `windows-gnu`, `linux-musl`, and `wasi` platforms.)
+- [Stabilised the `-C link-self-contained=<yes|no>` compiler flag.][76158] This tells
+  `rustc` whether to link its own C runtime and libraries or to rely on a external 
+  linker to find them. (Supported only on `windows-gnu`, `linux-musl`, and `wasi` platforms.)
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
 - [Added tier 2\* support for `aarch64-unknown-linux-musl`.][76420]
 
