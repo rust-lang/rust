@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-33884.rs:8:22
+  --> $DIR/issue-33884.rs:6:22
    |
 LL |     stream.write_fmt(format!("message received"))
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Arguments`, found struct `String`

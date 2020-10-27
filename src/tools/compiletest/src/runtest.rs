@@ -1790,8 +1790,7 @@ impl<'test> TestCx<'test> {
 
         let (dylib, crate_type) = if aux_props.no_prefer_dynamic {
             (true, None)
-        } else if self.config.target.contains("cloudabi")
-            || self.config.target.contains("emscripten")
+        } else if self.config.target.contains("emscripten")
             || (self.config.target.contains("musl")
                 && !aux_props.force_host
                 && !self.config.host.contains("musl"))

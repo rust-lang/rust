@@ -173,7 +173,6 @@ pub fn check(path: &Path, bad: &mut bool) {
             // parser to tidy.
             !file.ancestors().any(|a| {
                 a.ends_with("src/test") ||
-                    a.ends_with("library/std/src/sys/cloudabi") ||
                     a.ends_with("src/doc/book")
             });
 

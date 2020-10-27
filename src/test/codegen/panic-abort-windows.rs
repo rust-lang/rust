@@ -1,6 +1,5 @@
 // This test is for *-windows-msvc only.
 // ignore-android
-// ignore-cloudabi
 // ignore-dragonfly
 // ignore-emscripten
 // ignore-freebsd

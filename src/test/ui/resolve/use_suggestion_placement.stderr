@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Path` in this scope
-  --> $DIR/use_suggestion_placement.rs:17:16
+  --> $DIR/use_suggestion_placement.rs:15:16
    |
 LL |     type Bar = Path;
    |                ^^^^ not found in this scope
@@ -10,7 +10,7 @@ LL |     use std::path::Path;
    |
 
 error[E0425]: cannot find value `A` in this scope
-  --> $DIR/use_suggestion_placement.rs:22:13
+  --> $DIR/use_suggestion_placement.rs:20:13
    |
 LL |     let _ = A;
    |             ^ not found in this scope
@@ -21,7 +21,7 @@ LL | use m::A;
    |
 
 error[E0412]: cannot find type `HashMap` in this scope
-  --> $DIR/use_suggestion_placement.rs:27:23
+  --> $DIR/use_suggestion_placement.rs:25:23
    |
 LL |     type Dict<K, V> = HashMap<K, V>;
    |                       ^^^^^^^ not found in this scope

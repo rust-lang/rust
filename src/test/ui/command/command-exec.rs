@@ -3,7 +3,6 @@
 #![allow(stable_features)]
 // ignore-windows - this is a unix-specific test
 // ignore-pretty issue #37199
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 

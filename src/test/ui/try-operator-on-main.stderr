@@ -1,5 +1,5 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
-  --> $DIR/try-operator-on-main.rs:9:5
+  --> $DIR/try-operator-on-main.rs:7:5
    |
 LL | / fn main() {
 LL | |     // error for a `Try` type on a non-`Try` fn
@@ -15,7 +15,7 @@ LL | | }
    = note: required by `from_error`
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
-  --> $DIR/try-operator-on-main.rs:12:5
+  --> $DIR/try-operator-on-main.rs:10:5
    |
 LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`
@@ -24,7 +24,7 @@ LL |     ()?;
    = note: required by `into_result`
 
 error[E0277]: the trait bound `(): Try` is not satisfied
-  --> $DIR/try-operator-on-main.rs:15:25
+  --> $DIR/try-operator-on-main.rs:13:25
    |
 LL |     try_trait_generic::<()>();
    |                         ^^ the trait `Try` is not implemented for `()`
@@ -33,7 +33,7 @@ LL | fn try_trait_generic<T: Try>() -> T {
    |                         --- required by this bound in `try_trait_generic`
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
-  --> $DIR/try-operator-on-main.rs:22:5
+  --> $DIR/try-operator-on-main.rs:20:5
    |
 LL |     ()?;
    |     ^^^ the `?` operator cannot be applied to type `()`

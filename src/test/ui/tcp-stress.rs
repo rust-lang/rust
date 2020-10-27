@@ -1,6 +1,5 @@
 // run-pass
 // ignore-android needs extra network permissions
-// ignore-cloudabi no global network namespace access
 // ignore-emscripten no threads or sockets support
 // ignore-netbsd system ulimit (Too many open files)
 // ignore-openbsd system ulimit (Too many open files)

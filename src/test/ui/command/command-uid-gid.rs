@@ -1,6 +1,5 @@
 // run-pass
 // ignore-android
-// ignore-cloudabi
 // ignore-emscripten
 // ignore-sgx
 
