@@ -52,7 +52,7 @@ use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::Hash;
-use std::ops::{Add, Sub};
+use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -1426,16 +1426,16 @@ impl SourceFile {
         if line_index >= 0 { Some(line_index as usize) } else { None }
     }
 
-    pub fn line_bounds(&self, line_index: usize) -> (BytePos, BytePos) {
+    pub fn line_bounds(&self, line_index: usize) -> Range<BytePos> {
         if self.is_empty() {
-            return (self.start_pos, self.end_pos);
+            return self.start_pos..self.end_pos;
         }
 
         assert!(line_index < self.lines.len());
         if line_index == (self.lines.len() - 1) {
-            (self.lines[line_index], self.end_pos)
+            self.lines[line_index]..self.end_pos
         } else {
-            (self.lines[line_index], self.lines[line_index + 1])
+            self.lines[line_index]..self.lines[line_index + 1]
         }
     }
 
