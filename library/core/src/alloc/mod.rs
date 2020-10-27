@@ -12,7 +12,7 @@ pub use self::layout::Layout;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[rustc_deprecated(
     since = "1.51.0",
-    reason = "use LayoutError instead",
+    reason = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
 #[allow(deprecated, deprecated_in_future)]
