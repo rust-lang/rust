@@ -83,10 +83,7 @@ impl std::fmt::Debug for AttributeGate {
 
 impl AttributeGate {
     fn is_deprecated(&self) -> bool {
-        match *self {
-            Self::Gated(Stability::Deprecated(_, _), ..) => true,
-            _ => false,
-        }
+        matches!(*self, Self::Gated(Stability::Deprecated(_, _), ..))
     }
 }
 

@@ -474,31 +474,19 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_indirect(&self) -> bool {
-        match self.mode {
-            PassMode::Indirect(..) => true,
-            _ => false,
-        }
+        matches!(self.mode, PassMode::Indirect(..))
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        match self.mode {
-            PassMode::Indirect(_, None) => true,
-            _ => false,
-        }
+        matches!(self.mode, PassMode::Indirect(_, None))
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        match self.mode {
-            PassMode::Indirect(_, Some(_)) => true,
-            _ => false,
-        }
+        matches!(self.mode, PassMode::Indirect(_, Some(_)))
     }
 
     pub fn is_ignore(&self) -> bool {
-        match self.mode {
-            PassMode::Ignore => true,
-            _ => false,
-        }
+        matches!(self.mode, PassMode::Ignore)
     }
 }
 

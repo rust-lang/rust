@@ -24,10 +24,8 @@ where
     C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     ret.extend_integer_width_to(32);
-    if ret.layout.is_aggregate() {
-        if !unwrap_trivial_aggregate(cx, ret) {
-            ret.make_indirect();
-        }
+    if ret.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, ret) {
+        ret.make_indirect();
     }
 }
 
@@ -37,10 +35,8 @@ where
     C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout,
 {
     arg.extend_integer_width_to(32);
-    if arg.layout.is_aggregate() {
-        if !unwrap_trivial_aggregate(cx, arg) {
-            arg.make_indirect_byval();
-        }
+    if arg.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, arg) {
+        arg.make_indirect_byval();
     }
 }
 

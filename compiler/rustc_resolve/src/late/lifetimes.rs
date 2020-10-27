@@ -351,10 +351,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
 /// We have to account for this when computing the index of the other generic parameters.
 /// This function returns whether there is such an implicit parameter defined on the given item.
 fn sub_items_have_self_param(node: &hir::ItemKind<'_>) -> bool {
-    match *node {
-        hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => true,
-        _ => false,
-    }
+    matches!(*node, hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..))
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
@@ -417,10 +414,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
                 // Impls permit `'_` to be used and it is equivalent to "some fresh lifetime name".
                 // This is not true for other kinds of items.x
-                let track_lifetime_uses = match item.kind {
-                    hir::ItemKind::Impl { .. } => true,
-                    _ => false,
-                };
+                let track_lifetime_uses = matches!(item.kind, hir::ItemKind::Impl { .. });
                 // These kinds of items have only early-bound lifetime parameters.
                 let mut index = if sub_items_have_self_param(&item.kind) {
                     1 // Self comes before lifetimes
@@ -970,10 +964,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
         let trait_ref_hack = take(&mut self.trait_ref_hack);
         if !trait_ref_hack
-            || trait_ref.bound_generic_params.iter().any(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => true,
-                _ => false,
-            })
+            || trait_ref
+                .bound_generic_params
+                .iter()
+                .any(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
         {
             if trait_ref_hack {
                 struct_span_err!(
@@ -1384,18 +1378,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 if in_band {
                     Some(param.span)
+                } else if generics.params.len() == 1 {
+                    // if sole lifetime, remove the entire `<>` brackets
+                    Some(generics.span)
                 } else {
-                    if generics.params.len() == 1 {
-                        // if sole lifetime, remove the entire `<>` brackets
-                        Some(generics.span)
+                    // if removing within `<>` brackets, we also want to
+                    // delete a leading or trailing comma as appropriate
+                    if i >= generics.params.len() - 1 {
+                        Some(generics.params[i - 1].span.shrink_to_hi().to(param.span))
                     } else {
-                        // if removing within `<>` brackets, we also want to
-                        // delete a leading or trailing comma as appropriate
-                        if i >= generics.params.len() - 1 {
-                            Some(generics.params[i - 1].span.shrink_to_hi().to(param.span))
-                        } else {
-                            Some(param.span.to(generics.params[i + 1].span.shrink_to_lo()))
-                        }
+                        Some(param.span.to(generics.params[i + 1].span.shrink_to_lo()))
                     }
                 }
             } else {
@@ -2047,10 +2039,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         //
         // This is intended to leave room for us to implement the
         // correct behavior in the future.
-        let has_lifetime_parameter = generic_args.args.iter().any(|arg| match arg {
-            GenericArg::Lifetime(_) => true,
-            _ => false,
-        });
+        let has_lifetime_parameter =
+            generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
 
         // Resolve lifetimes found in the type `XX` from `Item = XX` bindings.
         for b in generic_args.bindings {

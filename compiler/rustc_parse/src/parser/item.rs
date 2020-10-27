@@ -376,21 +376,19 @@ impl<'a> Parser<'a> {
                     format!(" {} ", kw),
                     Applicability::MachineApplicable,
                 );
+            } else if let Ok(snippet) = self.span_to_snippet(ident_sp) {
+                err.span_suggestion(
+                    full_sp,
+                    "if you meant to call a macro, try",
+                    format!("{}!", snippet),
+                    // this is the `ambiguous` conditional branch
+                    Applicability::MaybeIncorrect,
+                );
             } else {
-                if let Ok(snippet) = self.span_to_snippet(ident_sp) {
-                    err.span_suggestion(
-                        full_sp,
-                        "if you meant to call a macro, try",
-                        format!("{}!", snippet),
-                        // this is the `ambiguous` conditional branch
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    err.help(
-                        "if you meant to call a macro, remove the `pub` \
-                                  and add a trailing `!` after the identifier",
-                    );
-                }
+                err.help(
+                    "if you meant to call a macro, remove the `pub` \
+                              and add a trailing `!` after the identifier",
+                );
             }
             Err(err)
         } else if self.look_ahead(1, |t| *t == token::Lt) {
@@ -982,10 +980,7 @@ impl<'a> Parser<'a> {
                 if token.is_keyword(kw::Move) {
                     return true;
                 }
-                match token.kind {
-                    token::BinOp(token::Or) | token::OrOr => true,
-                    _ => false,
-                }
+                matches!(token.kind, token::BinOp(token::Or) | token::OrOr)
             })
         } else {
             false

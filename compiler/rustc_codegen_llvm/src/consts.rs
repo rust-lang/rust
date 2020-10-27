@@ -397,10 +397,8 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
 
             // As an optimization, all shared statics which do not have interior
             // mutability are placed into read-only memory.
-            if !is_mutable {
-                if self.type_is_freeze(ty) {
-                    llvm::LLVMSetGlobalConstant(g, llvm::True);
-                }
+            if !is_mutable && self.type_is_freeze(ty) {
+                llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
 
             debuginfo::create_global_var_metadata(&self, def_id, g);

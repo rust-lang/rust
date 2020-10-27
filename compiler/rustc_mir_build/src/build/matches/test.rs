@@ -250,15 +250,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         place,
                         ty,
                     );
+                } else if let [success, fail] = *make_target_blocks(self) {
+                    assert_eq!(value.ty, ty);
+                    let expect = self.literal_operand(test.span, value);
+                    let val = Operand::Copy(place);
+                    self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
                 } else {
-                    if let [success, fail] = *make_target_blocks(self) {
-                        assert_eq!(value.ty, ty);
-                        let expect = self.literal_operand(test.span, value);
-                        let val = Operand::Copy(place);
-                        self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
-                    } else {
-                        bug!("`TestKind::Eq` should have two target blocks");
-                    }
+                    bug!("`TestKind::Eq` should have two target blocks");
                 }
             }
 

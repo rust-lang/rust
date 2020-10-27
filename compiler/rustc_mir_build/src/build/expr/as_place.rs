@@ -262,10 +262,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::Call { .. } => {
                 // these are not places, so we need to make a temporary.
-                debug_assert!(match Category::of(&expr.kind) {
-                    Some(Category::Place) => false,
-                    _ => true,
-                });
+                debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
                 let temp =
                     unpack!(block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
                 block.and(PlaceBuilder::from(temp))

@@ -639,13 +639,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
         if !self.is_beginning_of_line() {
             self.break_offset(n, off)
-        } else {
-            if off != 0 && self.last_token().is_hardbreak_tok() {
-                // We do something pretty sketchy here: tuck the nonzero
-                // offset-adjustment we were going to deposit along with the
-                // break into the previous hardbreak.
-                self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
-            }
+        } else if off != 0 && self.last_token().is_hardbreak_tok() {
+            // We do something pretty sketchy here: tuck the nonzero
+            // offset-adjustment we were going to deposit along with the
+            // break into the previous hardbreak.
+            self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
         }
     }
 

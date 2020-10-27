@@ -901,38 +901,36 @@ pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         )
                         .emit();
                     }
-                } else {
-                    if let Some(meta_item) = item.meta_item() {
-                        if meta_item.has_name(sym::align) {
-                            if let MetaItemKind::NameValue(ref value) = meta_item.kind {
-                                recognised = true;
-                                let mut err = struct_span_err!(
-                                    diagnostic,
-                                    item.span(),
-                                    E0693,
-                                    "incorrect `repr(align)` attribute format"
-                                );
-                                match value.kind {
-                                    ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
-                                        err.span_suggestion(
-                                            item.span(),
-                                            "use parentheses instead",
-                                            format!("align({})", int),
-                                            Applicability::MachineApplicable,
-                                        );
-                                    }
-                                    ast::LitKind::Str(s, _) => {
-                                        err.span_suggestion(
-                                            item.span(),
-                                            "use parentheses instead",
-                                            format!("align({})", s),
-                                            Applicability::MachineApplicable,
-                                        );
-                                    }
-                                    _ => {}
+                } else if let Some(meta_item) = item.meta_item() {
+                    if meta_item.has_name(sym::align) {
+                        if let MetaItemKind::NameValue(ref value) = meta_item.kind {
+                            recognised = true;
+                            let mut err = struct_span_err!(
+                                diagnostic,
+                                item.span(),
+                                E0693,
+                                "incorrect `repr(align)` attribute format"
+                            );
+                            match value.kind {
+                                ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
+                                    err.span_suggestion(
+                                        item.span(),
+                                        "use parentheses instead",
+                                        format!("align({})", int),
+                                        Applicability::MachineApplicable,
+                                    );
                                 }
-                                err.emit();
+                                ast::LitKind::Str(s, _) => {
+                                    err.span_suggestion(
+                                        item.span(),
+                                        "use parentheses instead",
+                                        format!("align({})", s),
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                                _ => {}
                             }
+                            err.emit();
                         }
                     }
                 }

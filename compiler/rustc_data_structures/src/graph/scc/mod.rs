@@ -307,10 +307,7 @@ where
     fn walk_unvisited_node(&mut self, depth: usize, node: G::Node) -> WalkReturn<S> {
         debug!("walk_unvisited_node(depth = {:?}, node = {:?})", depth, node);
 
-        debug_assert!(match self.node_states[node] {
-            NodeState::NotVisited => true,
-            _ => false,
-        });
+        debug_assert!(matches!(self.node_states[node], NodeState::NotVisited));
 
         // Push `node` onto the stack.
         self.node_states[node] = NodeState::BeingVisited { depth };

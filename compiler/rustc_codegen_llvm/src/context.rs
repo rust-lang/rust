@@ -122,10 +122,10 @@ pub unsafe fn create_module(
     if llvm_util::get_major_version() < 9 {
         target_data_layout = strip_function_ptr_alignment(target_data_layout);
     }
-    if llvm_util::get_major_version() < 10 {
-        if sess.target.arch == "x86" || sess.target.arch == "x86_64" {
-            target_data_layout = strip_x86_address_spaces(target_data_layout);
-        }
+    if llvm_util::get_major_version() < 10
+        && (sess.target.arch == "x86" || sess.target.arch == "x86_64")
+    {
+        target_data_layout = strip_x86_address_spaces(target_data_layout);
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
@@ -864,7 +864,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         // user defined names
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
-        name.push_str(".");
+        name.push('.');
         base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }

@@ -136,10 +136,7 @@ impl Emitter for JsonEmitter {
     }
 
     fn should_show_explain(&self) -> bool {
-        match self.json_rendered {
-            HumanReadableErrorType::Short(_) => false,
-            _ => true,
-        }
+        !matches!(self.json_rendered, HumanReadableErrorType::Short(_))
     }
 }
 

@@ -199,10 +199,8 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool 
             _ => {}
         }
     }
-    if !sess.target.options.executables {
-        if crate_type == CrateType::Executable {
-            return true;
-        }
+    if !sess.target.options.executables && crate_type == CrateType::Executable {
+        return true;
     }
 
     false
