@@ -13,7 +13,7 @@ Term                                           | Meaning
 <span id="cfg">control-flow graph</span>       |  A representation of the control-flow of a program; see [the background chapter for more](./background.html#cfg)
 <span id="ctfe">CTFE</span>                    |  Short for Compile-Time Function Evaluation, this is the ability of the compiler to evaluate `const fn`s at compile time. This is part of the compiler's constant evaluation system. ([see more](../const-eval.html))
 <span id="cx">cx</span>                        |  We tend to use "cx" as an abbreviation for context. See also `tcx`, `infcx`, etc.
-<span id="ctxt">ctxt</span>                    |  We also use "ctxt" as an abbreviation for context, e.g. [`TyCtxt`](TyCtxt). See also [cx](#cx) or [tcx](#tcx).
+<span id="ctxt">ctxt</span>                    |  We also use "ctxt" as an abbreviation for context, e.g. [`TyCtxt`](#TyCtxt). See also [cx](#cx) or [tcx](#tcx).
 <span id="dag">DAG</span>                      |  A directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](../queries/incremental-compilation.html))
 <span id="data-flow">data-flow analysis</span> |  A static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./background.html#dataflow).
 <span id="debruijn">DeBruijn Index</span>      |  A technique for describing which binder a variable is bound by using only integers. It has the benefit that it is invariant under variable renaming. ([see more](./background.md#what-is-a-debruijn-index))
@@ -75,12 +75,12 @@ Term                                           | Meaning
 <span id="tag">Tag</span>                      |  The "tag" of an enum/generator encodes the [discriminant](#discriminant) of the active variant/state.  Tags can either be "direct" (simply storing the discriminant in a field) or use a ["niche"](#niche).
 <span id="tcx">tcx</span>                      |  The "typing context", main data structure of the compiler. ([see more](../ty.html))
 <span id="lifetime-tcx">`'tcx`</span>          |  The lifetime of the allocation arena. ([see more](../ty.html))
-<span id="tyctxt">TyCtxt</span>                 |  The data structure often referred to as [tcx](#tcx) in code
 <span id="token">token</span>                  |  The smallest unit of parsing. Tokens are produced after lexing ([see more](../the-parser.html)).
 <span id="tls">[TLS]</span>                    |  Thread-Local Storage. Variables may be defined so that each thread has its own copy (rather than all threads sharing the variable). This has some interactions with LLVM. Not all platforms support TLS.
 <span id="trait-ref">trait reference</span>    |  The name of a trait along with a suitable set of input type/lifetimes. ([see more](../traits/goals-and-clauses.html#trait-ref))
 <span id="trans">trans</span>                  |  The code to translate MIR into LLVM IR. Renamed to codegen.
 <span id="ty">ty</span>                        |  The internal representation of a type. ([see more](../ty.html))
+<span id="tyctxt">TyCtxt</span>                |  The data structure often referred to as [tcx](#tcx) in code
 <span id="ufcs">UFCS</span>                    |  Short for Universal Function Call Syntax, this is an unambiguous syntax for calling a method. ([see more](../type-checking.html))
 <span id="ut">uninhabited type</span>          |  A type which has _no_ values. This is not the same as a ZST, which has exactly 1 value. An example of an uninhabited type is `enum Foo {}`, which has no variants, and so, can never be created. The compiler can treat code that deals with uninhabited types as dead code, since there is no such value to be manipulated. `!` (the never type) is an uninhabited type. Uninhabited types are also called "empty types".
 <span id="upvar">upvar</span>                  |  A variable captured by a closure from outside the closure.
