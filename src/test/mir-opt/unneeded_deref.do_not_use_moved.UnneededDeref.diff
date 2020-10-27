@@ -1,0 +1,35 @@
+- // MIR for `do_not_use_moved` before UnneededDeref
++ // MIR for `do_not_use_moved` after UnneededDeref
+  
+  fn do_not_use_moved(_1: T) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/unneeded_deref.rs:110:24: 110:25
+      let mut _0: ();                      // return place in scope 0 at $DIR/unneeded_deref.rs:110:30: 110:30
+      let _2: T;                           // in scope 0 at $DIR/unneeded_deref.rs:111:9: 111:10
+      scope 1 {
+          debug b => _2;                   // in scope 1 at $DIR/unneeded_deref.rs:111:9: 111:10
+          let _3: &T;                      // in scope 1 at $DIR/unneeded_deref.rs:112:9: 112:10
+          scope 2 {
+              debug z => _3;               // in scope 2 at $DIR/unneeded_deref.rs:112:9: 112:10
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/unneeded_deref.rs:111:9: 111:10
+          _2 = move _1;                    // scope 0 at $DIR/unneeded_deref.rs:111:13: 111:14
+          StorageLive(_3);                 // scope 1 at $DIR/unneeded_deref.rs:112:9: 112:10
+          _3 = &_2;                        // scope 1 at $DIR/unneeded_deref.rs:112:13: 112:15
+          _0 = const ();                   // scope 0 at $DIR/unneeded_deref.rs:110:30: 113:2
+          StorageDead(_3);                 // scope 1 at $DIR/unneeded_deref.rs:113:1: 113:2
+          drop(_2) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/unneeded_deref.rs:113:1: 113:2
+      }
+  
+      bb1: {
+          StorageDead(_2);                 // scope 0 at $DIR/unneeded_deref.rs:113:1: 113:2
+          return;                          // scope 0 at $DIR/unneeded_deref.rs:113:2: 113:2
+      }
+  
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $DIR/unneeded_deref.rs:110:1: 113:2
+      }
+  }
+  

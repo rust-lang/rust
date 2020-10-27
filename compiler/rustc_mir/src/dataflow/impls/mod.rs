@@ -20,12 +20,14 @@ use super::on_lookup_result_bits;
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::framework::SwitchIntEdgeEffects;
 
+mod available_locals;
 mod borrowed_locals;
 pub(super) mod borrows;
 mod init_locals;
 mod liveness;
 mod storage_liveness;
 
+pub use self::available_locals::{AvailableLocals, LocalWithLocationIndex};
 pub use self::borrowed_locals::{MaybeBorrowedLocals, MaybeMutBorrowedLocals};
 pub use self::borrows::Borrows;
 pub use self::init_locals::MaybeInitializedLocals;

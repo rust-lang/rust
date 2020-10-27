@@ -412,6 +412,9 @@ pub trait GenKill<T> {
             self.kill(elem);
         }
     }
+
+    /// Returns whether `elem` is alive
+    fn is_alive(&self, elem: T) -> bool;
 }
 
 /// Stores a transfer function for a gen/kill problem.
@@ -450,6 +453,10 @@ impl<T: Idx> GenKill<T> for GenKillSet<T> {
         self.kill.insert(elem);
         self.gen.remove(elem);
     }
+
+    fn is_alive(&self, elem: T) -> bool {
+        self.gen.contains(elem) && !self.kill.contains(elem)
+    }
 }
 
 impl<T: Idx> GenKill<T> for BitSet<T> {
@@ -460,6 +467,10 @@ impl<T: Idx> GenKill<T> for BitSet<T> {
     fn kill(&mut self, elem: T) {
         self.remove(elem);
     }
+
+    fn is_alive(&self, elem: T) -> bool {
+        self.contains(elem)
+    }
 }
 
 impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
@@ -469,6 +480,10 @@ impl<T: Idx> GenKill<T> for lattice::Dual<BitSet<T>> {
 
     fn kill(&mut self, elem: T) {
         self.0.remove(elem);
+    }
+
+    fn is_alive(&self, elem: T) -> bool {
+        self.0.contains(elem)
     }
 }
 

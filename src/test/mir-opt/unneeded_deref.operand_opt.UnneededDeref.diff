@@ -1,0 +1,71 @@
+- // MIR for `operand_opt` before UnneededDeref
++ // MIR for `operand_opt` after UnneededDeref
+  
+  fn operand_opt(_1: Option<T>) -> bool {
+      debug input => _1;                   // in scope 0 at $DIR/unneeded_deref.rs:142:25: 142:30
+      let mut _0: bool;                    // return place in scope 0 at $DIR/unneeded_deref.rs:142:46: 142:50
+      let _2: bool;                        // in scope 0 at $DIR/unneeded_deref.rs:143:9: 143:10
+      let mut _3: &std::option::Option<T>; // in scope 0 at $DIR/unneeded_deref.rs:143:13: 143:18
+      let mut _5: &std::option::Option<T>; // in scope 0 at $DIR/unneeded_deref.rs:144:13: 144:18
+      let mut _6: bool;                    // in scope 0 at $DIR/unneeded_deref.rs:145:5: 145:6
+      let mut _7: bool;                    // in scope 0 at $DIR/unneeded_deref.rs:145:10: 145:11
+      let mut _10: isize;                  // in scope 0 at $DIR/unneeded_deref.rs:143:13: 143:28
+      let mut _11: isize;                  // in scope 0 at $DIR/unneeded_deref.rs:144:13: 144:28
+      scope 1 {
+          debug x => _2;                   // in scope 1 at $DIR/unneeded_deref.rs:143:9: 143:10
+          let _4: bool;                    // in scope 1 at $DIR/unneeded_deref.rs:144:9: 144:10
+          scope 2 {
+              debug y => _4;               // in scope 2 at $DIR/unneeded_deref.rs:144:9: 144:10
+          }
+          scope 4 (inlined Option::<T>::is_some) { // at $DIR/unneeded_deref.rs:144:13: 144:28
+              debug self => _5;            // in scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+              let mut _9: isize;           // in scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+          }
+      }
+      scope 3 (inlined Option::<T>::is_some) { // at $DIR/unneeded_deref.rs:143:13: 143:28
+          debug self => _3;                // in scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+          let mut _8: isize;               // in scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/unneeded_deref.rs:143:9: 143:10
+          StorageLive(_3);                 // scope 0 at $DIR/unneeded_deref.rs:143:13: 143:18
+          _3 = &_1;                        // scope 0 at $DIR/unneeded_deref.rs:143:13: 143:18
+-         _8 = discriminant((*_3));        // scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
++         _8 = discriminant(_1);           // scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+          StorageLive(_10);                // scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+          _10 = move _8;                   // scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+          _2 = Eq(_10, const 1_isize);     // scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+          StorageDead(_10);                // scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+          goto -> bb1;                     // scope 3 at $DIR/unneeded_deref.rs:143:13: 143:28
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 0 at $DIR/unneeded_deref.rs:143:27: 143:28
+          StorageLive(_4);                 // scope 1 at $DIR/unneeded_deref.rs:144:9: 144:10
+          StorageLive(_5);                 // scope 1 at $DIR/unneeded_deref.rs:144:13: 144:18
+          _5 = &_1;                        // scope 1 at $DIR/unneeded_deref.rs:144:13: 144:18
+-         _9 = discriminant((*_5));        // scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
++         _9 = discriminant(_1);           // scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+          StorageLive(_11);                // scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+          _11 = move _9;                   // scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+          _4 = Eq(_11, const 1_isize);     // scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+          StorageDead(_11);                // scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+          goto -> bb2;                     // scope 4 at $DIR/unneeded_deref.rs:144:13: 144:28
+      }
+  
+      bb2: {
+          StorageDead(_5);                 // scope 1 at $DIR/unneeded_deref.rs:144:27: 144:28
+          StorageLive(_6);                 // scope 2 at $DIR/unneeded_deref.rs:145:5: 145:6
+          _6 = _2;                         // scope 2 at $DIR/unneeded_deref.rs:145:5: 145:6
+          StorageLive(_7);                 // scope 2 at $DIR/unneeded_deref.rs:145:10: 145:11
+          _7 = _4;                         // scope 2 at $DIR/unneeded_deref.rs:145:10: 145:11
+          _0 = Eq(move _6, move _7);       // scope 2 at $DIR/unneeded_deref.rs:145:5: 145:11
+          StorageDead(_7);                 // scope 2 at $DIR/unneeded_deref.rs:145:10: 145:11
+          StorageDead(_6);                 // scope 2 at $DIR/unneeded_deref.rs:145:10: 145:11
+          StorageDead(_4);                 // scope 1 at $DIR/unneeded_deref.rs:146:1: 146:2
+          StorageDead(_2);                 // scope 0 at $DIR/unneeded_deref.rs:146:1: 146:2
+          return;                          // scope 0 at $DIR/unneeded_deref.rs:146:2: 146:2
+      }
+  }
+  

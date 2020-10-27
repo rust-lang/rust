@@ -1,0 +1,254 @@
+- // MIR for `very_deep_opt` before UnneededDeref
++ // MIR for `very_deep_opt` after UnneededDeref
+  
+  fn very_deep_opt() -> (u64, u64, u64, u64, u64, u64, u64, u64, u64) {
+      let mut _0: (u64, u64, u64, u64, u64, u64, u64, u64, u64); // return place in scope 0 at $DIR/unneeded_deref.rs:78:23: 78:68
+      let _1: u64;                         // in scope 0 at $DIR/unneeded_deref.rs:79:9: 79:11
+      let mut _28: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:6: 106:8
+      let mut _29: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:10: 106:12
+      let mut _30: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:14: 106:16
+      let mut _31: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:18: 106:20
+      let mut _32: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:22: 106:24
+      let mut _33: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:26: 106:28
+      let mut _34: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:30: 106:32
+      let mut _35: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:34: 106:36
+      let mut _36: u64;                    // in scope 0 at $DIR/unneeded_deref.rs:106:38: 106:40
+      scope 1 {
+          debug x1 => _1;                  // in scope 1 at $DIR/unneeded_deref.rs:79:9: 79:11
+          let _2: u64;                     // in scope 1 at $DIR/unneeded_deref.rs:80:9: 80:11
+          scope 2 {
+              debug x2 => _2;              // in scope 2 at $DIR/unneeded_deref.rs:80:9: 80:11
+              let _3: u64;                 // in scope 2 at $DIR/unneeded_deref.rs:81:9: 81:11
+              scope 3 {
+                  debug x3 => _3;          // in scope 3 at $DIR/unneeded_deref.rs:81:9: 81:11
+                  let _4: u64;             // in scope 3 at $DIR/unneeded_deref.rs:82:9: 82:11
+                  scope 4 {
+                      debug x4 => _4;      // in scope 4 at $DIR/unneeded_deref.rs:82:9: 82:11
+                      let _5: u64;         // in scope 4 at $DIR/unneeded_deref.rs:83:9: 83:11
+                      scope 5 {
+                          debug x5 => _5;  // in scope 5 at $DIR/unneeded_deref.rs:83:9: 83:11
+                          let _6: u64;     // in scope 5 at $DIR/unneeded_deref.rs:84:9: 84:11
+                          scope 6 {
+                              debug x6 => _6; // in scope 6 at $DIR/unneeded_deref.rs:84:9: 84:11
+                              let _7: u64; // in scope 6 at $DIR/unneeded_deref.rs:85:9: 85:11
+                              scope 7 {
+                                  debug x7 => _7; // in scope 7 at $DIR/unneeded_deref.rs:85:9: 85:11
+                                  let _8: u64; // in scope 7 at $DIR/unneeded_deref.rs:86:9: 86:11
+                                  scope 8 {
+                                      debug x8 => _8; // in scope 8 at $DIR/unneeded_deref.rs:86:9: 86:11
+                                      let _9: u64; // in scope 8 at $DIR/unneeded_deref.rs:87:9: 87:11
+                                      scope 9 {
+                                          debug x9 => _9; // in scope 9 at $DIR/unneeded_deref.rs:87:9: 87:11
+                                          let _10: &u64; // in scope 9 at $DIR/unneeded_deref.rs:88:9: 88:11
+                                          scope 10 {
+                                              debug y1 => _10; // in scope 10 at $DIR/unneeded_deref.rs:88:9: 88:11
+                                              let _11: &u64; // in scope 10 at $DIR/unneeded_deref.rs:89:9: 89:11
+                                              scope 11 {
+                                                  debug y2 => _11; // in scope 11 at $DIR/unneeded_deref.rs:89:9: 89:11
+                                                  let _12: &u64; // in scope 11 at $DIR/unneeded_deref.rs:90:9: 90:11
+                                                  scope 12 {
+                                                      debug y3 => _12; // in scope 12 at $DIR/unneeded_deref.rs:90:9: 90:11
+                                                      let _13: &u64; // in scope 12 at $DIR/unneeded_deref.rs:91:9: 91:11
+                                                      scope 13 {
+                                                          debug y4 => _13; // in scope 13 at $DIR/unneeded_deref.rs:91:9: 91:11
+                                                          let _14: &u64; // in scope 13 at $DIR/unneeded_deref.rs:92:9: 92:11
+                                                          scope 14 {
+                                                              debug y5 => _14; // in scope 14 at $DIR/unneeded_deref.rs:92:9: 92:11
+                                                              let _15: &u64; // in scope 14 at $DIR/unneeded_deref.rs:93:9: 93:11
+                                                              scope 15 {
+                                                                  debug y6 => _15; // in scope 15 at $DIR/unneeded_deref.rs:93:9: 93:11
+                                                                  let _16: &u64; // in scope 15 at $DIR/unneeded_deref.rs:94:9: 94:11
+                                                                  scope 16 {
+                                                                      debug y7 => _16; // in scope 16 at $DIR/unneeded_deref.rs:94:9: 94:11
+                                                                      let _17: &u64; // in scope 16 at $DIR/unneeded_deref.rs:95:9: 95:11
+                                                                      scope 17 {
+                                                                          debug y8 => _17; // in scope 17 at $DIR/unneeded_deref.rs:95:9: 95:11
+                                                                          let _18: &u64; // in scope 17 at $DIR/unneeded_deref.rs:96:9: 96:11
+                                                                          scope 18 {
+                                                                              debug y9 => _18; // in scope 18 at $DIR/unneeded_deref.rs:96:9: 96:11
+                                                                              let _19: u64; // in scope 18 at $DIR/unneeded_deref.rs:97:9: 97:11
+                                                                              scope 19 {
+                                                                                  debug z1 => _19; // in scope 19 at $DIR/unneeded_deref.rs:97:9: 97:11
+                                                                                  let _20: u64; // in scope 19 at $DIR/unneeded_deref.rs:98:9: 98:11
+                                                                                  scope 20 {
+                                                                                      debug z2 => _20; // in scope 20 at $DIR/unneeded_deref.rs:98:9: 98:11
+                                                                                      let _21: u64; // in scope 20 at $DIR/unneeded_deref.rs:99:9: 99:11
+                                                                                      scope 21 {
+                                                                                          debug z3 => _21; // in scope 21 at $DIR/unneeded_deref.rs:99:9: 99:11
+                                                                                          let _22: u64; // in scope 21 at $DIR/unneeded_deref.rs:100:9: 100:11
+                                                                                          scope 22 {
+                                                                                              debug z4 => _22; // in scope 22 at $DIR/unneeded_deref.rs:100:9: 100:11
+                                                                                              let _23: u64; // in scope 22 at $DIR/unneeded_deref.rs:101:9: 101:11
+                                                                                              scope 23 {
+                                                                                                  debug z5 => _23; // in scope 23 at $DIR/unneeded_deref.rs:101:9: 101:11
+                                                                                                  let _24: u64; // in scope 23 at $DIR/unneeded_deref.rs:102:9: 102:11
+                                                                                                  scope 24 {
+                                                                                                      debug z6 => _24; // in scope 24 at $DIR/unneeded_deref.rs:102:9: 102:11
+                                                                                                      let _25: u64; // in scope 24 at $DIR/unneeded_deref.rs:103:9: 103:11
+                                                                                                      scope 25 {
+                                                                                                          debug z7 => _25; // in scope 25 at $DIR/unneeded_deref.rs:103:9: 103:11
+                                                                                                          let _26: u64; // in scope 25 at $DIR/unneeded_deref.rs:104:9: 104:11
+                                                                                                          scope 26 {
+                                                                                                              debug z8 => _26; // in scope 26 at $DIR/unneeded_deref.rs:104:9: 104:11
+                                                                                                              let _27: u64; // in scope 26 at $DIR/unneeded_deref.rs:105:9: 105:11
+                                                                                                              scope 27 {
+                                                                                                                  debug z9 => _27; // in scope 27 at $DIR/unneeded_deref.rs:105:9: 105:11
+                                                                                                              }
+                                                                                                          }
+                                                                                                      }
+                                                                                                  }
+                                                                                              }
+                                                                                          }
+                                                                                      }
+                                                                                  }
+                                                                              }
+                                                                          }
+                                                                      }
+                                                                  }
+                                                              }
+                                                          }
+                                                      }
+                                                  }
+                                              }
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/unneeded_deref.rs:79:9: 79:11
+          _1 = const 1_u64;                // scope 0 at $DIR/unneeded_deref.rs:79:14: 79:15
+          StorageLive(_2);                 // scope 1 at $DIR/unneeded_deref.rs:80:9: 80:11
+          _2 = const 2_u64;                // scope 1 at $DIR/unneeded_deref.rs:80:14: 80:15
+          StorageLive(_3);                 // scope 2 at $DIR/unneeded_deref.rs:81:9: 81:11
+          _3 = const 3_u64;                // scope 2 at $DIR/unneeded_deref.rs:81:14: 81:15
+          StorageLive(_4);                 // scope 3 at $DIR/unneeded_deref.rs:82:9: 82:11
+          _4 = const 4_u64;                // scope 3 at $DIR/unneeded_deref.rs:82:14: 82:15
+          StorageLive(_5);                 // scope 4 at $DIR/unneeded_deref.rs:83:9: 83:11
+          _5 = const 5_u64;                // scope 4 at $DIR/unneeded_deref.rs:83:14: 83:15
+          StorageLive(_6);                 // scope 5 at $DIR/unneeded_deref.rs:84:9: 84:11
+          _6 = const 6_u64;                // scope 5 at $DIR/unneeded_deref.rs:84:14: 84:15
+          StorageLive(_7);                 // scope 6 at $DIR/unneeded_deref.rs:85:9: 85:11
+          _7 = const 7_u64;                // scope 6 at $DIR/unneeded_deref.rs:85:14: 85:15
+          StorageLive(_8);                 // scope 7 at $DIR/unneeded_deref.rs:86:9: 86:11
+          _8 = const 8_u64;                // scope 7 at $DIR/unneeded_deref.rs:86:14: 86:15
+          StorageLive(_9);                 // scope 8 at $DIR/unneeded_deref.rs:87:9: 87:11
+          _9 = const 9_u64;                // scope 8 at $DIR/unneeded_deref.rs:87:14: 87:15
+          StorageLive(_10);                // scope 9 at $DIR/unneeded_deref.rs:88:9: 88:11
+          _10 = &_1;                       // scope 9 at $DIR/unneeded_deref.rs:88:14: 88:17
+          StorageLive(_11);                // scope 10 at $DIR/unneeded_deref.rs:89:9: 89:11
+          _11 = &_2;                       // scope 10 at $DIR/unneeded_deref.rs:89:14: 89:17
+          StorageLive(_12);                // scope 11 at $DIR/unneeded_deref.rs:90:9: 90:11
+          _12 = &_3;                       // scope 11 at $DIR/unneeded_deref.rs:90:14: 90:17
+          StorageLive(_13);                // scope 12 at $DIR/unneeded_deref.rs:91:9: 91:11
+          _13 = &_4;                       // scope 12 at $DIR/unneeded_deref.rs:91:14: 91:17
+          StorageLive(_14);                // scope 13 at $DIR/unneeded_deref.rs:92:9: 92:11
+          _14 = &_5;                       // scope 13 at $DIR/unneeded_deref.rs:92:14: 92:17
+          StorageLive(_15);                // scope 14 at $DIR/unneeded_deref.rs:93:9: 93:11
+          _15 = &_6;                       // scope 14 at $DIR/unneeded_deref.rs:93:14: 93:17
+          StorageLive(_16);                // scope 15 at $DIR/unneeded_deref.rs:94:9: 94:11
+          _16 = &_7;                       // scope 15 at $DIR/unneeded_deref.rs:94:14: 94:17
+          StorageLive(_17);                // scope 16 at $DIR/unneeded_deref.rs:95:9: 95:11
+          _17 = &_8;                       // scope 16 at $DIR/unneeded_deref.rs:95:14: 95:17
+          StorageLive(_18);                // scope 17 at $DIR/unneeded_deref.rs:96:9: 96:11
+          _18 = &_9;                       // scope 17 at $DIR/unneeded_deref.rs:96:14: 96:17
+          StorageLive(_19);                // scope 18 at $DIR/unneeded_deref.rs:97:9: 97:11
+-         _19 = (*_10);                    // scope 18 at $DIR/unneeded_deref.rs:97:14: 97:17
++         _19 = _1;                        // scope 18 at $DIR/unneeded_deref.rs:97:14: 97:17
+          StorageLive(_20);                // scope 19 at $DIR/unneeded_deref.rs:98:9: 98:11
+-         _20 = (*_11);                    // scope 19 at $DIR/unneeded_deref.rs:98:14: 98:17
++         _20 = _2;                        // scope 19 at $DIR/unneeded_deref.rs:98:14: 98:17
+          StorageLive(_21);                // scope 20 at $DIR/unneeded_deref.rs:99:9: 99:11
+-         _21 = (*_12);                    // scope 20 at $DIR/unneeded_deref.rs:99:14: 99:17
++         _21 = _3;                        // scope 20 at $DIR/unneeded_deref.rs:99:14: 99:17
+          StorageLive(_22);                // scope 21 at $DIR/unneeded_deref.rs:100:9: 100:11
+-         _22 = (*_13);                    // scope 21 at $DIR/unneeded_deref.rs:100:14: 100:17
++         _22 = _4;                        // scope 21 at $DIR/unneeded_deref.rs:100:14: 100:17
+          StorageLive(_23);                // scope 22 at $DIR/unneeded_deref.rs:101:9: 101:11
+-         _23 = (*_14);                    // scope 22 at $DIR/unneeded_deref.rs:101:14: 101:17
++         _23 = _5;                        // scope 22 at $DIR/unneeded_deref.rs:101:14: 101:17
+          StorageLive(_24);                // scope 23 at $DIR/unneeded_deref.rs:102:9: 102:11
+-         _24 = (*_15);                    // scope 23 at $DIR/unneeded_deref.rs:102:14: 102:17
++         _24 = _6;                        // scope 23 at $DIR/unneeded_deref.rs:102:14: 102:17
+          StorageLive(_25);                // scope 24 at $DIR/unneeded_deref.rs:103:9: 103:11
+-         _25 = (*_16);                    // scope 24 at $DIR/unneeded_deref.rs:103:14: 103:17
++         _25 = _7;                        // scope 24 at $DIR/unneeded_deref.rs:103:14: 103:17
+          StorageLive(_26);                // scope 25 at $DIR/unneeded_deref.rs:104:9: 104:11
+-         _26 = (*_17);                    // scope 25 at $DIR/unneeded_deref.rs:104:14: 104:17
++         _26 = _8;                        // scope 25 at $DIR/unneeded_deref.rs:104:14: 104:17
+          StorageLive(_27);                // scope 26 at $DIR/unneeded_deref.rs:105:9: 105:11
+-         _27 = (*_18);                    // scope 26 at $DIR/unneeded_deref.rs:105:14: 105:17
++         _27 = _9;                        // scope 26 at $DIR/unneeded_deref.rs:105:14: 105:17
+          StorageLive(_28);                // scope 27 at $DIR/unneeded_deref.rs:106:6: 106:8
+          _28 = _19;                       // scope 27 at $DIR/unneeded_deref.rs:106:6: 106:8
+          StorageLive(_29);                // scope 27 at $DIR/unneeded_deref.rs:106:10: 106:12
+          _29 = _20;                       // scope 27 at $DIR/unneeded_deref.rs:106:10: 106:12
+          StorageLive(_30);                // scope 27 at $DIR/unneeded_deref.rs:106:14: 106:16
+          _30 = _21;                       // scope 27 at $DIR/unneeded_deref.rs:106:14: 106:16
+          StorageLive(_31);                // scope 27 at $DIR/unneeded_deref.rs:106:18: 106:20
+          _31 = _22;                       // scope 27 at $DIR/unneeded_deref.rs:106:18: 106:20
+          StorageLive(_32);                // scope 27 at $DIR/unneeded_deref.rs:106:22: 106:24
+          _32 = _23;                       // scope 27 at $DIR/unneeded_deref.rs:106:22: 106:24
+          StorageLive(_33);                // scope 27 at $DIR/unneeded_deref.rs:106:26: 106:28
+          _33 = _24;                       // scope 27 at $DIR/unneeded_deref.rs:106:26: 106:28
+          StorageLive(_34);                // scope 27 at $DIR/unneeded_deref.rs:106:30: 106:32
+          _34 = _25;                       // scope 27 at $DIR/unneeded_deref.rs:106:30: 106:32
+          StorageLive(_35);                // scope 27 at $DIR/unneeded_deref.rs:106:34: 106:36
+          _35 = _26;                       // scope 27 at $DIR/unneeded_deref.rs:106:34: 106:36
+          StorageLive(_36);                // scope 27 at $DIR/unneeded_deref.rs:106:38: 106:40
+          _36 = _27;                       // scope 27 at $DIR/unneeded_deref.rs:106:38: 106:40
+          (_0.0: u64) = move _28;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.1: u64) = move _29;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.2: u64) = move _30;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.3: u64) = move _31;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.4: u64) = move _32;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.5: u64) = move _33;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.6: u64) = move _34;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.7: u64) = move _35;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          (_0.8: u64) = move _36;          // scope 27 at $DIR/unneeded_deref.rs:106:5: 106:41
+          StorageDead(_36);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_35);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_34);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_33);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_32);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_31);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_30);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_29);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_28);                // scope 27 at $DIR/unneeded_deref.rs:106:40: 106:41
+          StorageDead(_27);                // scope 26 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_26);                // scope 25 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_25);                // scope 24 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_24);                // scope 23 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_23);                // scope 22 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_22);                // scope 21 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_21);                // scope 20 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_20);                // scope 19 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_19);                // scope 18 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_18);                // scope 17 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_17);                // scope 16 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_16);                // scope 15 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_15);                // scope 14 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_14);                // scope 13 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_13);                // scope 12 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_12);                // scope 11 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_11);                // scope 10 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_10);                // scope 9 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_9);                 // scope 8 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_8);                 // scope 7 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_7);                 // scope 6 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_6);                 // scope 5 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_5);                 // scope 4 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_4);                 // scope 3 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_3);                 // scope 2 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_2);                 // scope 1 at $DIR/unneeded_deref.rs:107:1: 107:2
+          StorageDead(_1);                 // scope 0 at $DIR/unneeded_deref.rs:107:1: 107:2
+          return;                          // scope 0 at $DIR/unneeded_deref.rs:107:2: 107:2
+      }
+  }
+  

@@ -46,6 +46,7 @@ pub mod simplify_branches;
 pub mod simplify_comparison_integral;
 pub mod simplify_try;
 pub mod uninhabited_enum_branching;
+pub mod unneeded_deref;
 pub mod unreachable_prop;
 pub mod validate;
 
@@ -395,6 +396,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
         &multiple_return_terminators::MultipleReturnTerminators,
         &instcombine::InstCombine,
+        &unneeded_deref::UnneededDeref,
         &const_prop::ConstProp,
         &simplify_branches::SimplifyBranches::new("after-const-prop"),
         &early_otherwise_branch::EarlyOtherwiseBranch,

@@ -7,6 +7,7 @@ use crate::mir::*;
 use crate::ty::subst::Subst;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_target::abi::VariantIdx;
 
 #[derive(Copy, Clone, Debug, TypeFoldable)]
@@ -207,6 +208,21 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::NullaryOp(NullOp::Box, _) => RvalueInitializationState::Shallow,
             _ => RvalueInitializationState::Deep,
         }
+    }
+
+    /// Returns all locals that participate in the Rvalue
+    pub fn participating_locals(&self, location: Location) -> impl Iterator<Item = Local> {
+        struct LocalVisitor(Vec<Local>);
+
+        impl<'tcx> Visitor<'tcx> for LocalVisitor {
+            fn visit_local(&mut self, local: &Local, _: PlaceContext, _: Location) {
+                self.0.push(*local);
+            }
+        }
+
+        let mut visitor = LocalVisitor(vec![]);
+        visitor.visit_rvalue(self, location);
+        visitor.0.into_iter()
     }
 }
 

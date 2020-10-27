@@ -2395,7 +2395,7 @@ impl<'tcx> UserTypeProjections {
 
 /// Encodes the effect of a user-supplied type annotation on the
 /// subcomponents of a pattern. The effect is determined by applying the
-/// given list of proejctions to some underlying base type. Often,
+/// given list of projections to some underlying base type. Often,
 /// the projection element list `projs` is empty, in which case this
 /// directly encodes a type in `base`. But in the case of complex patterns with
 /// subpatterns and bindings, we want to apply only a *part* of the type to a variable,

@@ -1,0 +1,64 @@
+- // MIR for `do_not_opt_different_bbs` before UnneededDeref
++ // MIR for `do_not_opt_different_bbs` after UnneededDeref
+  
+  fn do_not_opt_different_bbs(_1: bool) -> u64 {
+      debug input => _1;                   // in scope 0 at $DIR/unneeded_deref.rs:134:29: 134:34
+      let mut _0: u64;                     // return place in scope 0 at $DIR/unneeded_deref.rs:134:45: 134:48
+      let _2: u64;                         // in scope 0 at $DIR/unneeded_deref.rs:135:9: 135:10
+      let mut _4: bool;                    // in scope 0 at $DIR/unneeded_deref.rs:136:16: 136:21
+      let _5: &u64;                        // in scope 0 at $DIR/unneeded_deref.rs:136:36: 136:39
+      let _6: u64;                         // in scope 0 at $DIR/unneeded_deref.rs:136:37: 136:39
+      scope 1 {
+          debug x => _2;                   // in scope 1 at $DIR/unneeded_deref.rs:135:9: 135:10
+          let _3: &u64;                    // in scope 1 at $DIR/unneeded_deref.rs:136:9: 136:10
+          let mut _8: &u64;                // in scope 1 at $DIR/unneeded_deref.rs:136:36: 136:39
+          scope 2 {
+              debug y => _3;               // in scope 2 at $DIR/unneeded_deref.rs:136:9: 136:10
+              let _7: u64;                 // in scope 2 at $DIR/unneeded_deref.rs:137:9: 137:10
+              scope 3 {
+                  debug z => _7;           // in scope 3 at $DIR/unneeded_deref.rs:137:9: 137:10
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/unneeded_deref.rs:135:9: 135:10
+          _2 = const 5_u64;                // scope 0 at $DIR/unneeded_deref.rs:135:13: 135:14
+          StorageLive(_3);                 // scope 1 at $DIR/unneeded_deref.rs:136:9: 136:10
+          StorageLive(_4);                 // scope 1 at $DIR/unneeded_deref.rs:136:16: 136:21
+          _4 = _1;                         // scope 1 at $DIR/unneeded_deref.rs:136:16: 136:21
+          switchInt(_4) -> [false: bb1, otherwise: bb2]; // scope 1 at $DIR/unneeded_deref.rs:136:13: 136:41
+      }
+  
+      bb1: {
+          StorageLive(_5);                 // scope 1 at $DIR/unneeded_deref.rs:136:36: 136:39
+          _8 = const do_not_opt_different_bbs::promoted[0]; // scope 1 at $DIR/unneeded_deref.rs:136:36: 136:39
+                                           // ty::Const
+                                           // + ty: &u64
+                                           // + val: Unevaluated(WithOptConstParam { did: DefId(0:17 ~ unneeded_deref[317d]::do_not_opt_different_bbs), const_param_did: None }, [], Some(promoted[0]))
+                                           // mir::Constant
+                                           // + span: $DIR/unneeded_deref.rs:136:36: 136:39
+                                           // + literal: Const { ty: &u64, val: Unevaluated(WithOptConstParam { did: DefId(0:17 ~ unneeded_deref[317d]::do_not_opt_different_bbs), const_param_did: None }, [], Some(promoted[0])) }
+          _5 = _8;                         // scope 1 at $DIR/unneeded_deref.rs:136:36: 136:39
+          _3 = _5;                         // scope 1 at $DIR/unneeded_deref.rs:136:36: 136:39
+          StorageDead(_5);                 // scope 1 at $DIR/unneeded_deref.rs:136:40: 136:41
+          goto -> bb3;                     // scope 1 at $DIR/unneeded_deref.rs:136:13: 136:41
+      }
+  
+      bb2: {
+          _3 = &_2;                        // scope 1 at $DIR/unneeded_deref.rs:136:24: 136:26
+          goto -> bb3;                     // scope 1 at $DIR/unneeded_deref.rs:136:13: 136:41
+      }
+  
+      bb3: {
+          StorageDead(_4);                 // scope 1 at $DIR/unneeded_deref.rs:136:41: 136:42
+          StorageLive(_7);                 // scope 2 at $DIR/unneeded_deref.rs:137:9: 137:10
+          _7 = (*_3);                      // scope 2 at $DIR/unneeded_deref.rs:137:13: 137:15
+          _0 = _7;                         // scope 3 at $DIR/unneeded_deref.rs:138:5: 138:6
+          StorageDead(_7);                 // scope 2 at $DIR/unneeded_deref.rs:139:1: 139:2
+          StorageDead(_3);                 // scope 1 at $DIR/unneeded_deref.rs:139:1: 139:2
+          StorageDead(_2);                 // scope 0 at $DIR/unneeded_deref.rs:139:1: 139:2
+          return;                          // scope 0 at $DIR/unneeded_deref.rs:139:2: 139:2
+      }
+  }
+  
