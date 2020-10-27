@@ -1261,6 +1261,36 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         Ref { value: f(orig.value), borrow: orig.borrow }
     }
 
+    /// Makes a new `Ref` for an optional component of the borrowed data.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `Ref::try_map(...)`. A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_try_map)]
+    ///
+    /// use std::cell::{RefCell, Ref};
+    ///
+    /// let c = RefCell::new(vec![1, 2, 3]);
+    /// let b1: Ref<Vec<u32>> = c.borrow();
+    /// let b2: Option<Ref<u32>> = Ref::try_map(b1, |v| v.get(1));
+    /// assert_eq!(b2.as_deref(), Some(&2))
+    /// ```
+    #[unstable(feature = "cell_try_map", reason = "recently added", issue = "none")]
+    #[inline]
+    pub fn try_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Option<Ref<'b, U>>
+    where
+        F: FnOnce(&T) -> Option<&U>,
+    {
+        let value = f(orig.value)?;
+        Some(Ref { value, borrow: orig.borrow })
+    }
+
     /// Splits a `Ref` into multiple `Ref`s for different components of the
     /// borrowed data.
     ///
@@ -1370,6 +1400,46 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         // FIXME(nll-rfc#40): fix borrow-check
         let RefMut { value, borrow } = orig;
         RefMut { value: f(value), borrow }
+    }
+
+    /// Makes a new `RefMut` for an optional component of the borrowed data.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RefMut::try_map(...)`. A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_try_map)]
+    ///
+    /// use std::cell::{RefCell, RefMut};
+    ///
+    /// let c = RefCell::new(vec![1, 2, 3]);
+    ///
+    /// {
+    ///     let b1: RefMut<Vec<u32>> = c.borrow_mut();
+    ///     let mut b2: Option<RefMut<u32>> = RefMut::try_map(b1, |v| v.get_mut(1));
+    ///
+    ///     if let Some(mut b2) = b2 {
+    ///         *b2 += 2;
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(*c.borrow(), vec![1, 4, 3]);
+    /// ```
+    #[unstable(feature = "cell_try_map", reason = "recently added", issue = "none")]
+    #[inline]
+    pub fn try_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Option<RefMut<'b, U>>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+    {
+        // FIXME(nll-rfc#40): fix borrow-check
+        let RefMut { value, borrow } = orig;
+        let value = f(value)?;
+        Some(RefMut { value, borrow })
     }
 
     /// Splits a `RefMut` into multiple `RefMut`s for different components of the
