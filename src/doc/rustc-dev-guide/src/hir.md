@@ -87,7 +87,7 @@ Most of the time when you are working with the HIR, you will do so via
 the **HIR Map**, accessible in the tcx via [`tcx.hir()`] (and defined in
 the [`hir::map`] module). The [HIR map] contains a [number of methods] to
 convert between IDs of various kinds and to lookup data associated
-with an HIR node.
+with a HIR node.
 
 [`tcx.hir()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.hir
 [`hir::map`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/index.html
@@ -96,7 +96,7 @@ with an HIR node.
 
 For example, if you have a [`DefId`], and you would like to convert it
 to a [`NodeId`], you can use
-[`tcx.hir.as_local_node_id(def_id)`][as_local_node_id]. This returns
+[`tcx.hir().as_local_node_id(def_id)`][as_local_node_id]. This returns
 an `Option<NodeId>` – this will be `None` if the def-id refers to
 something outside of the current crate (since then it has no HIR
 node), but otherwise returns `Some(n)` where `n` is the node-id of the
@@ -105,13 +105,13 @@ definition.
 [`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
 [as_local_node_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.as_local_node_id
 
-Similarly, you can use [`tcx.hir.find(n)`][find] to lookup the node for a
+Similarly, you can use [`tcx.hir().find(n)`][find] to lookup the node for a
 [`NodeId`]. This returns a `Option<Node<'tcx>>`, where [`Node`] is an enum
 defined in the map; by matching on this you can find out what sort of
 node the node-id referred to and also get a pointer to the data
 itself. Often, you know what sort of node `n` is – e.g. if you know
 that `n` must be some HIR expression, you can do
-[`tcx.hir.expect_expr(n)`][expect_expr], which will extract and return the
+[`tcx.hir().expect_expr(n)`][expect_expr], which will extract and return the
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
 [find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.find
@@ -120,7 +120,7 @@ that `n` must be some HIR expression, you can do
 [Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Expr.html
 
 Finally, you can use the HIR map to find the parents of nodes, via
-calls like [`tcx.hir.get_parent_node(n)`][get_parent_node].
+calls like [`tcx.hir().get_parent_node(n)`][get_parent_node].
 
 [get_parent_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.get_parent_node
 
