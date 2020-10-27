@@ -633,11 +633,9 @@ impl<'a> CrateLocator<'a> {
             }
         }
 
-        if self.exact_paths.is_empty() {
-            if self.crate_name != root.name() {
-                info!("Rejecting via crate name");
-                return None;
-            }
+        if self.exact_paths.is_empty() && self.crate_name != root.name() {
+            info!("Rejecting via crate name");
+            return None;
         }
 
         if root.triple() != &self.triple {

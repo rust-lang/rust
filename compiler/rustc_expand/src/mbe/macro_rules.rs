@@ -1036,17 +1036,16 @@ fn token_can_be_followed_by_any(tok: &mbe::TokenTree) -> bool {
 /// a fragment specifier (indeed, these fragments can be followed by
 /// ANYTHING without fear of future compatibility hazards).
 fn frag_can_be_followed_by_any(kind: NonterminalKind) -> bool {
-    match kind {
+    matches!(
+        kind,
         NonterminalKind::Item           // always terminated by `}` or `;`
         | NonterminalKind::Block        // exactly one token tree
         | NonterminalKind::Ident        // exactly one token tree
         | NonterminalKind::Literal      // exactly one token tree
         | NonterminalKind::Meta         // exactly one token tree
         | NonterminalKind::Lifetime     // exactly one token tree
-        | NonterminalKind::TT => true,  // exactly one token tree
-
-        _ => false,
-    }
+        | NonterminalKind::TT // exactly one token tree
+    )
 }
 
 enum IsInFollow {

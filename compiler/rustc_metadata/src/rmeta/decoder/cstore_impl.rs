@@ -220,10 +220,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
-        let r = match *cdata.extern_crate.borrow() {
-            Some(extern_crate) if !extern_crate.is_direct() => true,
-            _ => false,
-        };
+        let r = matches!(*cdata.extern_crate.borrow(), Some(extern_crate) if !extern_crate.is_direct());
         r
     }
 
@@ -254,9 +251,11 @@ pub fn provide(providers: &mut Providers) {
             }
             _ => false,
         },
-        is_statically_included_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(NativeLibKind::StaticBundle | NativeLibKind::StaticNoBundle) => true,
-            _ => false,
+        is_statically_included_foreign_item: |tcx, id| {
+            matches!(
+                tcx.native_library_kind(id),
+                Some(NativeLibKind::StaticBundle | NativeLibKind::StaticNoBundle)
+            )
         },
         native_library_kind: |tcx, id| {
             tcx.native_libraries(id.krate)

@@ -1219,9 +1219,11 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 .maybe_typeck_results
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id)),
         };
-        let def = def.filter(|(kind, _)| match kind {
-            DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static => true,
-            _ => false,
+        let def = def.filter(|(kind, _)| {
+            matches!(
+                kind,
+                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static
+            )
         });
         if let Some((kind, def_id)) = def {
             let is_local_static =

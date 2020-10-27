@@ -262,10 +262,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode, itctx)
         };
 
-        let has_lifetimes = generic_args.args.iter().any(|arg| match arg {
-            GenericArg::Lifetime(_) => true,
-            _ => false,
-        });
+        let has_lifetimes =
+            generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
         let first_generic_span = generic_args
             .args
             .iter()

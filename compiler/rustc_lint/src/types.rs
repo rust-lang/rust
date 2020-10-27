@@ -544,15 +544,15 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
         }
 
         fn is_comparison(binop: hir::BinOp) -> bool {
-            match binop.node {
+            matches!(
+                binop.node,
                 hir::BinOpKind::Eq
-                | hir::BinOpKind::Lt
-                | hir::BinOpKind::Le
-                | hir::BinOpKind::Ne
-                | hir::BinOpKind::Ge
-                | hir::BinOpKind::Gt => true,
-                _ => false,
-            }
+                    | hir::BinOpKind::Lt
+                    | hir::BinOpKind::Le
+                    | hir::BinOpKind::Ne
+                    | hir::BinOpKind::Ge
+                    | hir::BinOpKind::Gt
+            )
         }
     }
 }
@@ -1233,15 +1233,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn is_internal_abi(&self, abi: SpecAbi) -> bool {
-        if let SpecAbi::Rust
-        | SpecAbi::RustCall
-        | SpecAbi::RustIntrinsic
-        | SpecAbi::PlatformIntrinsic = abi
-        {
-            true
-        } else {
-            false
-        }
+        matches!(
+            abi,
+            SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustIntrinsic | SpecAbi::PlatformIntrinsic
+        )
     }
 }
 

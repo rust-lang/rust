@@ -752,14 +752,11 @@ impl UnusedDelimLint for UnusedParens {
                     && value.attrs.is_empty()
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr
-                        || match inner.kind {
-                            ast::ExprKind::Binary(
+                        || !matches!(inner.kind, ast::ExprKind::Binary(
                                 rustc_span::source_map::Spanned { node, .. },
                                 _,
                                 _,
-                            ) if node.lazy() => false,
-                            _ => true,
-                        })
+                            ) if node.lazy()))
                 {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
                 }

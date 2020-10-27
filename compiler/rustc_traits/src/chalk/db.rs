@@ -342,29 +342,29 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 }
                 (ty::Bool, Scalar(Bool)) => true,
                 (ty::Char, Scalar(Char)) => true,
-                (ty::Int(ty1), Scalar(Int(ty2))) => match (ty1, ty2) {
+                (ty::Int(ty1), Scalar(Int(ty2))) => matches!(
+                    (ty1, ty2),
                     (ast::IntTy::Isize, chalk_ir::IntTy::Isize)
-                    | (ast::IntTy::I8, chalk_ir::IntTy::I8)
-                    | (ast::IntTy::I16, chalk_ir::IntTy::I16)
-                    | (ast::IntTy::I32, chalk_ir::IntTy::I32)
-                    | (ast::IntTy::I64, chalk_ir::IntTy::I64)
-                    | (ast::IntTy::I128, chalk_ir::IntTy::I128) => true,
-                    _ => false,
-                },
-                (ty::Uint(ty1), Scalar(Uint(ty2))) => match (ty1, ty2) {
+                        | (ast::IntTy::I8, chalk_ir::IntTy::I8)
+                        | (ast::IntTy::I16, chalk_ir::IntTy::I16)
+                        | (ast::IntTy::I32, chalk_ir::IntTy::I32)
+                        | (ast::IntTy::I64, chalk_ir::IntTy::I64)
+                        | (ast::IntTy::I128, chalk_ir::IntTy::I128)
+                ),
+                (ty::Uint(ty1), Scalar(Uint(ty2))) => matches!(
+                    (ty1, ty2),
                     (ast::UintTy::Usize, chalk_ir::UintTy::Usize)
-                    | (ast::UintTy::U8, chalk_ir::UintTy::U8)
-                    | (ast::UintTy::U16, chalk_ir::UintTy::U16)
-                    | (ast::UintTy::U32, chalk_ir::UintTy::U32)
-                    | (ast::UintTy::U64, chalk_ir::UintTy::U64)
-                    | (ast::UintTy::U128, chalk_ir::UintTy::U128) => true,
-                    _ => false,
-                },
-                (ty::Float(ty1), Scalar(Float(ty2))) => match (ty1, ty2) {
+                        | (ast::UintTy::U8, chalk_ir::UintTy::U8)
+                        | (ast::UintTy::U16, chalk_ir::UintTy::U16)
+                        | (ast::UintTy::U32, chalk_ir::UintTy::U32)
+                        | (ast::UintTy::U64, chalk_ir::UintTy::U64)
+                        | (ast::UintTy::U128, chalk_ir::UintTy::U128)
+                ),
+                (ty::Float(ty1), Scalar(Float(ty2))) => matches!(
+                    (ty1, ty2),
                     (ast::FloatTy::F32, chalk_ir::FloatTy::F32)
-                    | (ast::FloatTy::F64, chalk_ir::FloatTy::F64) => true,
-                    _ => false,
-                },
+                        | (ast::FloatTy::F64, chalk_ir::FloatTy::F64)
+                ),
                 (&ty::Tuple(..), Tuple(..)) => true,
                 (&ty::Array(..), Array) => true,
                 (&ty::Slice(..), Slice) => true,
