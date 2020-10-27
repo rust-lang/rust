@@ -25,8 +25,7 @@ Libraries
 - [All arrays of any length now implement `TryFrom<Vec<T>>`.][76310]
 - [The `matches!` macro now supports having a trailing comma.][74880]
 - [`Vec<A>` now implements `PartialEq<[B]>` where `A: PartialEq<B>`.][74194]
-- [Nearly all of `Cell`'s panicking functions now use the `#[track_caller]`
-  attribute.][77055]
+- [The `RefCell::{replace, replace_with, clone}` methods now all use `#[track_caller]`.][77055]
 
 Stabilized APIs
 ---------------
@@ -61,8 +60,9 @@ Rustdoc
 
 Compatibility Notes
 -------------------
-- [`const fn`s are now implicitly promoted to `const`.][75502] Meaning that it
-  will only warn if your code fails `const` evaluation, and not produce an error.
+- [Promotion of references to `'static` lifetime inside `const fn` now follows the
+  same rules as inside a `fn` body.][75502] In particular, `&foo()` will not be
+  promoted to `'static` lifetime any more inside `const fn`s.
 - [Associated type bindings on trait objects are now verified to meet the bounds
   declared on the trait when checking that they implement the trait.][27675]
 - [When trait bounds on associated types or opaque types are ambiguous, the
