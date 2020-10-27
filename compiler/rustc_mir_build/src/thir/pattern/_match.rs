@@ -293,7 +293,7 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::OnceCell;
 use rustc_index::vec::Idx;
 
@@ -401,48 +401,17 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         }
     }
 
-    /// This computes `S(constructor, self)`. See top of the file for explanations.
+    /// This computes `S(self.head_ctor(), self)`. See top of the file for explanations.
     ///
-    /// This is the main specialization step. It expands the pattern
-    /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
-    /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
-    /// Returns `None` if the pattern does not have the given constructor.
-    ///
-    /// OTOH, slice patterns with a subslice pattern (tail @ ..) can be expanded into multiple
-    /// different patterns.
     /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
     /// fields filled with wild patterns.
     ///
     /// This is roughly the inverse of `Constructor::apply`.
-    fn specialize_constructor(
-        &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        ctor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-        is_my_head_ctor: bool,
-    ) -> Option<PatStack<'p, 'tcx>> {
-        // We return `None` if `ctor` is not covered by `self.head()`. If `ctor` is known to be
-        // derived from `self.head()`, then we don't need to check; otherwise, we check for
-        // constructor inclusion.
-        // Note that this shortcut is also necessary for correctness: a pattern should always be
-        // specializable with its own constructor, even in cases where we refuse to inspect values like
-        // opaque constants.
-        if !is_my_head_ctor && !ctor.is_covered_by(pcx, self.head_ctor(pcx.cx)) {
-            return None;
-        }
-        let new_fields = ctor_wild_subpatterns.replace_with_pattern_arguments(self.head());
-
-        debug!(
-            "specialize_constructor({:#?}, {:#?}, {:#?}) = {:#?}",
-            self.head(),
-            ctor,
-            ctor_wild_subpatterns,
-            new_fields
-        );
-
+    fn pop_head_constructor(&self, ctor_wild_subpatterns: &Fields<'p, 'tcx>) -> PatStack<'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        Some(new_fields.push_on_patstack(&self.pats[1..]))
+        let new_fields = ctor_wild_subpatterns.replace_with_pattern_arguments(self.head());
+        new_fields.push_on_patstack(&self.pats[1..])
     }
 }
 
@@ -467,36 +436,15 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
     }
 }
 
-/// Depending on the match patterns, the specialization process might be able to use a fast path.
-/// Tracks whether we can use the fast path and the lookup table needed in those cases.
-#[derive(Clone, Debug, PartialEq)]
-enum SpecializationCache {
-    /// Patterns consist of only enum variants.
-    /// Variant patterns does not intersect with each other (in contrast to range patterns),
-    /// so it is possible to precompute the result of `Matrix::specialize_constructor` at a
-    /// lower computational complexity.
-    /// `lookup` is responsible for holding the precomputed result of
-    /// specialization, while `wilds` is used for two purposes: the first one is
-    /// the precomputed result of specialization with a wildcard, and the second is to be used as a
-    /// fallback for `Matrix::specialize_constructor` when it tries to apply a constructor that
-    /// has not been seen in the `Matrix`. See `update_cache` for further explanations.
-    Variants { lookup: FxHashMap<DefId, SmallVec<[usize; 1]>>, wilds: SmallVec<[usize; 1]> },
-    /// Does not belong to the cases above, use the slow path.
-    Incompatible,
-}
-
 /// A 2D matrix.
 #[derive(Clone, PartialEq)]
 crate struct Matrix<'p, 'tcx> {
     patterns: Vec<PatStack<'p, 'tcx>>,
-    cache: SpecializationCache,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     crate fn empty() -> Self {
-        // Use `SpecializationCache::Incompatible` as a placeholder; we will initialize it on the
-        // first call to `push`. See the first half of `update_cache`.
-        Matrix { patterns: vec![], cache: SpecializationCache::Incompatible }
+        Matrix { patterns: vec![] }
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
@@ -509,70 +457,6 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         } else {
             self.patterns.push(row);
-            self.update_cache(self.patterns.len() - 1);
-        }
-    }
-
-    fn update_cache(&mut self, idx: usize) {
-        let row = &self.patterns[idx];
-        // We don't know which kind of cache could be used until we see the first row; therefore an
-        // empty `Matrix` is initialized with `SpecializationCache::Empty`, then the cache is
-        // assigned the appropriate variant below on the first call to `push`.
-        if self.patterns.is_empty() {
-            self.cache = if row.is_empty() {
-                SpecializationCache::Incompatible
-            } else {
-                match *row.head().kind {
-                    PatKind::Variant { .. } => SpecializationCache::Variants {
-                        lookup: FxHashMap::default(),
-                        wilds: SmallVec::new(),
-                    },
-                    // Note: If the first pattern is a wildcard, then all patterns after that is not
-                    // useful. The check is simple enough so we treat it as the same as unsupported
-                    // patterns.
-                    _ => SpecializationCache::Incompatible,
-                }
-            };
-        }
-        // Update the cache.
-        match &mut self.cache {
-            SpecializationCache::Variants { ref mut lookup, ref mut wilds } => {
-                let head = row.head();
-                match *head.kind {
-                    _ if head.is_wildcard() => {
-                        // Per rule 1.3 in the top-level comments, a wildcard pattern is included in
-                        // the result of `specialize_constructor` for *any* `Constructor`.
-                        // We push the wildcard pattern to the precomputed result for constructors
-                        // that we have seen before; results for constructors we have not yet seen
-                        // defaults to `wilds`, which is updated right below.
-                        for (_, v) in lookup.iter_mut() {
-                            v.push(idx);
-                        }
-                        // Per rule 2.1 and 2.2 in the top-level comments, only wildcard patterns
-                        // are included in the result of specialization with a wildcard.
-                        // What we do here is to track the wildcards we have seen; so in addition to
-                        // acting as the precomputed result of specialization with a wildcard, `wilds` also
-                        // serves as the default value of `specialize_constructor` for constructors
-                        // that are not in `lookup`.
-                        wilds.push(idx);
-                    }
-                    PatKind::Variant { adt_def, variant_index, .. } => {
-                        // Handle the cases of rule 1.1 and 1.2 in the top-level comments.
-                        // A variant pattern can only be included in the results of
-                        // `specialize_constructor` for a particular constructor, therefore we are
-                        // using a HashMap to track that.
-                        lookup
-                            .entry(adt_def.variants[variant_index].def_id)
-                            // Default to `wilds` for absent keys. See above for an explanation.
-                            .or_insert_with(|| wilds.clone())
-                            .push(idx);
-                    }
-                    _ => {
-                        self.cache = SpecializationCache::Incompatible;
-                    }
-                }
-            }
-            SpecializationCache::Incompatible => {}
         }
     }
 
@@ -593,59 +477,14 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     fn specialize_constructor(
         &self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
-        constructor: &Constructor<'tcx>,
+        ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Matrix<'p, 'tcx> {
-        match &self.cache {
-            SpecializationCache::Variants { lookup, wilds } => {
-                let cached = if let Constructor::Variant(id) = constructor {
-                    lookup
-                        .get(id)
-                        // Default to `wilds` for absent keys. See `update_cache` for an explanation.
-                        .unwrap_or(&wilds)
-                } else if let Wildcard = constructor {
-                    &wilds
-                } else {
-                    bug!(
-                        "unexpected constructor encountered while dealing with matrix cache: {:?}",
-                        constructor
-                    );
-                };
-                let result: Self = cached
-                    .iter()
-                    .filter_map(|&i| {
-                        self.patterns[i].specialize_constructor(
-                            pcx,
-                            constructor,
-                            ctor_wild_subpatterns,
-                            false,
-                        )
-                    })
-                    .collect();
-                // When debug assertions are enabled, check the results against the "slow path"
-                // result.
-                debug_assert_eq!(
-                    result,
-                    Matrix {
-                        patterns: self.patterns.clone(),
-                        cache: SpecializationCache::Incompatible
-                    }
-                    .specialize_constructor(
-                        pcx,
-                        constructor,
-                        ctor_wild_subpatterns
-                    )
-                );
-                result
-            }
-            SpecializationCache::Incompatible => self
-                .patterns
-                .iter()
-                .filter_map(|r| {
-                    r.specialize_constructor(pcx, constructor, ctor_wild_subpatterns, false)
-                })
-                .collect(),
-        }
+        self.patterns
+            .iter()
+            .filter(|r| ctor.is_covered_by(pcx, r.head_ctor(pcx.cx)))
+            .map(|r| r.pop_head_constructor(ctor_wild_subpatterns))
+            .collect()
     }
 }
 
@@ -2442,8 +2281,7 @@ crate fn is_useful<'p, 'tcx>(
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
-            // Unwrap is ok: v can always be specialized with its own constructor.
-            let v = v.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns, true).unwrap();
+            let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             let usefulness =
                 is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, is_top_level)
