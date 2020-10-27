@@ -359,6 +359,18 @@ impl<'a> Parser<'a> {
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
         let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
+            // When parsing const expressions, stop parsing when encountering `>`.
+            (
+                Some(
+                    AssocOp::ShiftRight
+                    | AssocOp::Greater
+                    | AssocOp::GreaterEqual
+                    | AssocOp::AssignOp(token::BinOpToken::Shr),
+                ),
+                _,
+            ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
+                return None;
+            }
             (Some(op), _) => (op, self.token.span),
             (None, Some((Ident { name: sym::and, span }, false))) => {
                 self.error_bad_logical_op("and", "&&", "conjunction");
@@ -1715,7 +1727,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let pat = self.parse_top_pat(GateOr::No)?;
         self.expect(&token::Eq)?;
-        let expr = self.with_res(Restrictions::NO_STRUCT_LITERAL, |this| {
+        let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         })?;
         let span = lo.to(expr.span);

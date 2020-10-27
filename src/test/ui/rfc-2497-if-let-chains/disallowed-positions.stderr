@@ -1,8 +1,13 @@
-error: expected one of `,` or `>`, found `&&`
-  --> $DIR/disallowed-positions.rs:236:14
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/disallowed-positions.rs:236:9
    |
 LL |         true && let 1 = 1
-   |              ^^ expected one of `,` or `>`
+   |         ^^^^^^^^^^^^^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |         { true && let 1 = 1 }
+   |         ^                   ^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:32:9
@@ -499,6 +504,15 @@ LL |         true && let 1 = 1
    = note: only supported directly in conditions of `if`- and `while`-expressions
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
+error: `let` expressions are not supported here
+  --> $DIR/disallowed-positions.rs:236:17
+   |
+LL |         true && let 1 = 1
+   |                 ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/disallowed-positions.rs:20:12
    |
@@ -961,7 +975,7 @@ LL |         let 0 = 0?;
    = help: the trait `Try` is not implemented for `{integer}`
    = note: required by `into_result`
 
-error: aborting due to 103 previous errors; 2 warnings emitted
+error: aborting due to 104 previous errors; 2 warnings emitted
 
 Some errors have detailed explanations: E0277, E0308, E0600, E0614.
 For more information about an error, try `rustc --explain E0277`.
