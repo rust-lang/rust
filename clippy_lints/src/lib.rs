@@ -892,6 +892,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
         &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
         &utils::internal_lints::DEFAULT_LINT,
+        &utils::internal_lints::INVALID_PATHS,
         &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
         &utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
         &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
@@ -919,6 +920,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
     store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
     store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
+    store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
     store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
     store.register_late_pass(|| box utils::author::Author);
     let vec_box_size_threshold = conf.vec_box_size_threshold;
@@ -1280,6 +1282,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS),
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
         LintId::of(&utils::internal_lints::DEFAULT_LINT),
+        LintId::of(&utils::internal_lints::INVALID_PATHS),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
         LintId::of(&utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM),
         LintId::of(&utils::internal_lints::OUTER_EXPN_EXPN_DATA),

@@ -1,7 +1,8 @@
-use crate::utils::{match_qpath, paths, span_lint_and_then, sugg};
+use crate::utils::{match_def_path, paths, span_lint_and_then, sugg};
 use if_chain::if_chain;
 use rustc_ast::util::parser::AssocOp;
 use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -76,7 +77,8 @@ impl<'tcx> LateLintPass<'tcx> for FloatEqualityWithoutAbs {
 
             // right hand side matches either f32::EPSILON or f64::EPSILON
             if let ExprKind::Path(ref epsilon_path) = rhs.kind;
-            if match_qpath(epsilon_path, &paths::F32_EPSILON) || match_qpath(epsilon_path, &paths::F64_EPSILON);
+            if let Res::Def(DefKind::AssocConst, def_id) = cx.qpath_res(epsilon_path, rhs.hir_id);
+            if match_def_path(cx, def_id, &paths::F32_EPSILON) || match_def_path(cx, def_id, &paths::F64_EPSILON);
 
             // values of the substractions on the left hand side are of the type float
             let t_val_l = cx.typeck_results().expr_ty(val_l);
