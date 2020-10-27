@@ -1502,7 +1502,7 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_foreign_modules(&mut self) -> Lazy<[ForeignModule]> {
         empty_proc_macro!(self);
         let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
-        self.lazy(foreign_modules.iter().cloned())
+        self.lazy(foreign_modules.iter().map(|(_, m)| m).cloned())
     }
 
     fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable) {

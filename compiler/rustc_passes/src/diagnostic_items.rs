@@ -102,7 +102,7 @@ fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     tcx.hir().krate().visit_all_item_likes(&mut collector);
     // FIXME(visit_all_item_likes): Foreign items are not visited
     // here, so we have to manually look at them for now.
-    for foreign_module in tcx.foreign_modules(LOCAL_CRATE) {
+    for (_, foreign_module) in tcx.foreign_modules(LOCAL_CRATE).iter() {
         for &foreign_item in foreign_module.foreign_items.iter() {
             match tcx.hir().get(tcx.hir().local_def_id_to_hir_id(foreign_item.expect_local())) {
                 hir::Node::ForeignItem(item) => {

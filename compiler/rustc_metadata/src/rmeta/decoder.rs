@@ -1414,12 +1414,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_foreign_modules(&self, tcx: TyCtxt<'tcx>) -> &'tcx [ForeignModule] {
+    fn get_foreign_modules(&self, tcx: TyCtxt<'tcx>) -> Lrc<FxHashMap<DefId, ForeignModule>> {
         if self.root.is_proc_macro_crate() {
             // Proc macro crates do not have any *target* foreign modules.
-            &[]
+            Lrc::new(FxHashMap::default())
         } else {
-            tcx.arena.alloc_from_iter(self.root.foreign_modules.decode((self, tcx.sess)))
+            let modules: FxHashMap<DefId, ForeignModule> =
+                self.root.foreign_modules.decode((self, tcx.sess)).map(|m| (m.def_id, m)).collect();
+            Lrc::new(modules)
         }
     }
 

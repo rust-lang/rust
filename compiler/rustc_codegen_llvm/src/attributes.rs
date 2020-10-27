@@ -378,8 +378,8 @@ pub fn provide_both(providers: &mut Providers) {
             .collect::<FxHashMap<_, _>>();
 
         let mut ret = FxHashMap::default();
-        for lib in tcx.foreign_modules(cnum).iter() {
-            let module = def_id_to_native_lib.get(&lib.def_id).and_then(|s| s.wasm_import_module);
+        for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
+            let module = def_id_to_native_lib.get(&def_id).and_then(|s| s.wasm_import_module);
             let module = match module {
                 Some(s) => s,
                 None => continue,
