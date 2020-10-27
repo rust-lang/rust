@@ -240,6 +240,7 @@ pub fn is_whitespace(c: char) -> bool {
 
     matches!(
         c,
+        // Usual ASCII suspects
         '\u{0009}'   // \t
         | '\u{000A}' // \n
         | '\u{000B}' // vertical tab

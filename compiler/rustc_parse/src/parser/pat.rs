@@ -160,7 +160,7 @@ impl<'a> Parser<'a> {
             | token::Comma // e.g. `let (a |,)`.
             | token::CloseDelim(token::Bracket) // e.g. `let [a | ]`.
             | token::CloseDelim(token::Paren) // e.g. `let (a | )`.
-            | token::CloseDelim(token::Brace)
+            | token::CloseDelim(token::Brace) // e.g. `let A { f: a | }`.
             )
         });
         match (is_end_ahead, &self.token.kind) {
@@ -768,11 +768,12 @@ impl<'a> Parser<'a> {
         && !self.token.is_path_segment_keyword() // Avoid e.g. `Self` as it is a path.
         // Avoid `in`. Due to recovery in the list parser this messes with `for ( $pat in $expr )`.
         && !self.token.is_keyword(kw::In)
+        // Try to do something more complex?
         && self.look_ahead(1, |t| !matches!(t.kind, token::OpenDelim(token::Paren) // A tuple struct pattern.
             | token::OpenDelim(token::Brace) // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::ModSep // A tuple / struct variant pattern.
-            | token::Not))
+            | token::Not)) // A macro expanding to a pattern.
     }
 
     /// Parses `ident` or `ident @ pat`.
