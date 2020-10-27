@@ -4,22 +4,19 @@
 //! via `x.py dist hash-and-sign`; the cmdline arguments are set up
 //! by rustbuild (in `src/bootstrap/dist.rs`).
 
+mod checksum;
 mod manifest;
 mod versions;
 
-use crate::manifest::{Component, FileHash, Manifest, Package, Rename, Target};
+use crate::checksum::Checksums;
+use crate::manifest::{Component, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use rayon::prelude::*;
-use sha2::Digest;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
-use std::error::Error;
 use std::fs::{self, File};
-use std::io::{self, BufReader, Read, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
-use std::time::Instant;
 
 static HOSTS: &[&str] = &[
     "aarch64-apple-darwin",
@@ -186,6 +183,7 @@ macro_rules! t {
 
 struct Builder {
     versions: Versions,
+    checksums: Checksums,
     shipped_files: HashSet<String>,
 
     input: PathBuf,
@@ -240,6 +238,7 @@ fn main() {
 
     Builder {
         versions: Versions::new(&channel, &input).unwrap(),
+        checksums: t!(Checksums::new()),
         shipped_files: HashSet::new(),
 
         input,
@@ -276,6 +275,8 @@ impl Builder {
         if let Some(path) = std::env::var_os("BUILD_MANIFEST_SHIPPED_FILES_PATH") {
             self.write_shipped_files(&Path::new(&path));
         }
+
+        t!(self.checksums.store_cache());
     }
 
     /// If a tool does not pass its tests, don't ship it.
@@ -321,7 +322,7 @@ impl Builder {
         self.add_renames_to(&mut manifest);
         manifest.pkg.insert("rust".to_string(), self.rust_package(&manifest));
 
-        self.fill_missing_hashes(&mut manifest);
+        self.checksums.fill_missing_checksums(&mut manifest);
 
         manifest
     }
@@ -595,41 +596,6 @@ impl Builder {
         assert!(t!(child.wait()).success());
     }
 
-    fn fill_missing_hashes(&self, manifest: &mut Manifest) {
-        // First collect all files that need hashes
-        let mut need_hashes = HashSet::new();
-        crate::manifest::visit_file_hashes(manifest, |file_hash| {
-            if let FileHash::Missing(path) = file_hash {
-                need_hashes.insert(path.clone());
-            }
-        });
-
-        let collected = Mutex::new(HashMap::new());
-        let collection_start = Instant::now();
-        println!(
-            "collecting hashes for {} tarballs across {} threads",
-            need_hashes.len(),
-            rayon::current_num_threads().min(need_hashes.len()),
-        );
-        need_hashes.par_iter().for_each(|path| match fetch_hash(path) {
-            Ok(hash) => {
-                collected.lock().unwrap().insert(path, hash);
-            }
-            Err(err) => eprintln!("error while fetching the hash for {}: {}", path.display(), err),
-        });
-        let collected = collected.into_inner().unwrap();
-        println!("collected {} hashes in {:.2?}", collected.len(), collection_start.elapsed());
-
-        crate::manifest::visit_file_hashes(manifest, |file_hash| {
-            if let FileHash::Missing(path) = file_hash {
-                match collected.get(path) {
-                    Some(hash) => *file_hash = FileHash::Present(hash.clone()),
-                    None => panic!("missing hash for file {}", path.display()),
-                }
-            }
-        })
-    }
-
     fn write_channel_files(&mut self, channel_name: &str, manifest: &Manifest) {
         self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
         self.write(&manifest.date, channel_name, "-date.txt");
@@ -659,11 +625,4 @@ impl Builder {
 
         t!(std::fs::write(path, content.as_bytes()));
     }
-}
-
-fn fetch_hash(path: &Path) -> Result<String, Box<dyn Error>> {
-    let mut file = BufReader::new(File::open(path)?);
-    let mut sha256 = sha2::Sha256::default();
-    std::io::copy(&mut file, &mut sha256)?;
-    Ok(hex::encode(sha256.finalize()))
 }
