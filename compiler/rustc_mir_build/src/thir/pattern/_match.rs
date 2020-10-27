@@ -608,46 +608,6 @@ impl SliceKind {
             VarLen(prefix, suffix) => prefix + suffix <= other_len,
         }
     }
-
-    /// Returns a collection of slices that spans the values covered by `self`, subtracted by the
-    /// values covered by `other`: i.e., `self \ other` (in set notation).
-    fn subtract(self, other: Self) -> SmallVec<[Self; 1]> {
-        // Remember, `VarLen(i, j)` covers the union of `FixedLen` from `i + j` to infinity.
-        // Naming: we remove the "neg" constructors from the "pos" ones.
-        match self {
-            FixedLen(pos_len) => {
-                if other.covers_length(pos_len) {
-                    smallvec![]
-                } else {
-                    smallvec![self]
-                }
-            }
-            VarLen(pos_prefix, pos_suffix) => {
-                let pos_len = pos_prefix + pos_suffix;
-                match other {
-                    FixedLen(neg_len) => {
-                        if neg_len < pos_len {
-                            smallvec![self]
-                        } else {
-                            (pos_len..neg_len)
-                                .map(FixedLen)
-                                // We know that `neg_len + 1 >= pos_len >= pos_suffix`.
-                                .chain(Some(VarLen(neg_len + 1 - pos_suffix, pos_suffix)))
-                                .collect()
-                        }
-                    }
-                    VarLen(neg_prefix, neg_suffix) => {
-                        let neg_len = neg_prefix + neg_suffix;
-                        if neg_len <= pos_len {
-                            smallvec![]
-                        } else {
-                            (pos_len..neg_len).map(FixedLen).collect()
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 /// A constructor for array and slice patterns.
@@ -662,7 +622,7 @@ struct Slice {
 impl Slice {
     /// Returns what patterns this constructor covers: either fixed-length patterns or
     /// variable-length patterns.
-    fn pattern_kind(self) -> SliceKind {
+    fn kind(self) -> SliceKind {
         match self {
             Slice { array_len: Some(len), kind: VarLen(prefix, suffix) }
                 if prefix + suffix == len =>
@@ -673,20 +633,8 @@ impl Slice {
         }
     }
 
-    /// Returns what values this constructor covers: either values of only one given length, or
-    /// values of length above a given length.
-    /// This is different from `pattern_kind()` because in some cases the pattern only takes into
-    /// account a subset of the entries of the array, but still only captures values of a given
-    /// length.
-    fn value_kind(self) -> SliceKind {
-        match self {
-            Slice { array_len: Some(len), kind: VarLen(_, _) } => FixedLen(len),
-            _ => self.kind,
-        }
-    }
-
     fn arity(self) -> u64 {
-        self.pattern_kind().arity()
+        self.kind().arity()
     }
 
     /// The exhaustiveness-checking paper does not include any details on
@@ -768,7 +716,7 @@ impl Slice {
 
         for ctor in head_ctors {
             if let Slice(slice) = ctor {
-                match slice.pattern_kind() {
+                match slice.kind() {
                     FixedLen(len) => {
                         max_fixed_len = cmp::max(max_fixed_len, len);
                     }
@@ -816,6 +764,11 @@ impl Slice {
             }
         }
     }
+
+    /// See `Constructor::is_covered_by`
+    fn is_covered_by(self, other: Self) -> bool {
+        other.kind().covers_length(self.arity())
+    }
 }
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
@@ -861,6 +814,20 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    fn as_intrange(&self) -> Option<&IntRange<'tcx>> {
+        match self {
+            IntRange(range) => Some(range),
+            _ => None,
+        }
+    }
+
+    fn as_slice(&self) -> Option<Slice> {
+        match self {
+            Slice(slice) => Some(*slice),
+            _ => None,
+        }
+    }
+
     fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match *self {
             Variant(id) => adt.variant_index_with_id(id),
@@ -869,94 +836,6 @@ impl<'tcx> Constructor<'tcx> {
                 VariantIdx::new(0)
             }
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
-        }
-    }
-
-    // Returns the set of constructors covered by `self` but not by
-    // anything in `other_ctors`.
-    fn subtract_ctors(&self, other_ctors: &Vec<Constructor<'tcx>>) -> Vec<Constructor<'tcx>> {
-        if other_ctors.is_empty() {
-            return vec![self.clone()];
-        }
-
-        match self {
-            // Those constructors can only match themselves.
-            Single | Variant(_) | Str(..) | FloatRange(..) => {
-                if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
-            }
-            &Slice(slice) => {
-                let mut other_slices = other_ctors
-                    .iter()
-                    .filter_map(|c: &Constructor<'_>| match c {
-                        Slice(slice) => Some(*slice),
-                        _ => bug!("bad slice pattern constructor {:?}", c),
-                    })
-                    .map(Slice::value_kind);
-
-                match slice.value_kind() {
-                    FixedLen(self_len) => {
-                        if other_slices.any(|other_slice| other_slice.covers_length(self_len)) {
-                            vec![]
-                        } else {
-                            vec![Slice(slice)]
-                        }
-                    }
-                    kind @ VarLen(..) => {
-                        let mut remaining_slices = vec![kind];
-
-                        // For each used slice, subtract from the current set of slices.
-                        for other_slice in other_slices {
-                            remaining_slices = remaining_slices
-                                .into_iter()
-                                .flat_map(|remaining_slice| remaining_slice.subtract(other_slice))
-                                .collect();
-
-                            // If the constructors that have been considered so far already cover
-                            // the entire range of `self`, no need to look at more constructors.
-                            if remaining_slices.is_empty() {
-                                break;
-                            }
-                        }
-
-                        remaining_slices
-                            .into_iter()
-                            .map(|kind| Slice { array_len: slice.array_len, kind })
-                            .map(Slice)
-                            .collect()
-                    }
-                }
-            }
-            IntRange(self_range) => {
-                let mut remaining_ranges = vec![self_range.clone()];
-                for other_ctor in other_ctors {
-                    if let IntRange(other_range) = other_ctor {
-                        if other_range == self_range {
-                            // If the `self` range appears directly in a `match` arm, we can
-                            // eliminate it straight away.
-                            remaining_ranges = vec![];
-                        } else {
-                            // Otherwise explicitly compute the remaining ranges.
-                            remaining_ranges = other_range.subtract_from(remaining_ranges);
-                        }
-
-                        // If the ranges that have been considered so far already cover the entire
-                        // range of values, we can return early.
-                        if remaining_ranges.is_empty() {
-                            break;
-                        }
-                    }
-                }
-
-                // Convert the ranges back into constructors.
-                remaining_ranges.into_iter().map(IntRange).collect()
-            }
-            // This constructor is never covered by anything else
-            NonExhaustive => vec![NonExhaustive],
-            // This constructor is only covered by `Single`s
-            Unlistable if other_ctors.iter().any(|c| *c == Single) => vec![],
-            Unlistable => vec![Unlistable],
-            Opaque => bug!("found unexpected opaque ctor in all_ctors"),
-            Wildcard => bug!("found unexpected wildcard ctor in all_ctors"),
         }
     }
 
@@ -1003,13 +882,10 @@ impl<'tcx> Constructor<'tcx> {
         // current column. We only fully construct them on-demand, because they're rarely used and
         // can be big.
         let missing_ctors = MissingConstructors::new(pcx);
-
-        if missing_ctors.is_empty() {
+        if missing_ctors.is_empty(pcx) {
             // All the constructors are present in the matrix, so we just go through them all.
             // We must also split them first.
-            // Since `all_ctors` never contains wildcards, this won't recurse more than once.
-            let (all_ctors, _) = missing_ctors.into_inner();
-            all_ctors.into_iter().flat_map(|ctor| ctor.split(pcx, None)).collect()
+            missing_ctors.all_ctors
         } else {
             // Some constructors are missing, thus we can specialize with the wildcard constructor,
             // which will stand for those constructors that are missing, and behaves like any of
@@ -1021,7 +897,7 @@ impl<'tcx> Constructor<'tcx> {
     /// Returns whether `self` is covered by `other`, ie whether `self` is a subset of `other`. For
     /// the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
-    fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Constructor<'tcx>) -> bool {
+    fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -1032,14 +908,7 @@ impl<'tcx> Constructor<'tcx> {
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
             (IntRange(self_range), IntRange(other_range)) => {
-                if self_range.intersection(pcx.cx.tcx, other_range).is_some() {
-                    // Constructor splitting should ensure that all intersections we encounter
-                    // are actually inclusions.
-                    assert!(self_range.is_subrange(other_range));
-                    true
-                } else {
-                    false
-                }
+                self_range.is_covered_by(pcx, other_range)
             }
             (
                 FloatRange(self_from, self_to, self_end),
@@ -1066,9 +935,7 @@ impl<'tcx> Constructor<'tcx> {
                 }
             }
 
-            (Slice(self_slice), Slice(other_slice)) => {
-                other_slice.pattern_kind().covers_length(self_slice.arity())
-            }
+            (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
             // We are trying to inspect an opaque constant. Thus we skip the row.
             (Opaque, _) | (_, Opaque) => false,
@@ -1081,6 +948,39 @@ impl<'tcx> Constructor<'tcx> {
             (Unlistable, _) => false,
 
             _ => bug!("trying to compare incompatible constructors {:?} and {:?}", self, other),
+        }
+    }
+
+    /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
+    /// assumed to be built from `matrix.head_ctors()`, and `self` is assumed to have been split.
+    fn is_covered_by_any<'p>(
+        &self,
+        pcx: PatCtxt<'_, 'p, 'tcx>,
+        used_ctors: &[Constructor<'tcx>],
+    ) -> bool {
+        if used_ctors.is_empty() {
+            return false;
+        }
+
+        match self {
+            // `used_ctors` cannot contain anything else than `Single`s.
+            Single => !used_ctors.is_empty(),
+            Variant(_) => used_ctors.iter().any(|c| c == self),
+            IntRange(range) => used_ctors
+                .iter()
+                .filter_map(|c| c.as_intrange())
+                .any(|other| range.is_covered_by(pcx, other)),
+            Slice(slice) => used_ctors
+                .iter()
+                .filter_map(|c| c.as_slice())
+                .any(|other| slice.is_covered_by(other)),
+            // This constructor is never covered by anything else
+            NonExhaustive => false,
+            // This constructor is only covered by `Single`s
+            Unlistable => used_ctors.iter().any(|c| *c == Single),
+            Str(..) | FloatRange(..) | Opaque | Wildcard => {
+                bug!("found unexpected ctor in all_ctors: {:?}", self)
+            }
         }
     }
 
@@ -1129,7 +1029,7 @@ impl<'tcx> Constructor<'tcx> {
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, pcx.ty),
                 _ => PatKind::Wild,
             },
-            Slice(slice) => match slice.pattern_kind() {
+            Slice(slice) => match slice.kind() {
                 FixedLen(_) => {
                     PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
                 }
@@ -1827,13 +1727,6 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn from_ctor<'a>(ctor: &'a Constructor<'tcx>) -> Option<&'a IntRange<'tcx>> {
-        match ctor {
-            IntRange(range) => Some(range),
-            _ => None,
-        }
-    }
-
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
         match *ty.kind() {
@@ -1843,35 +1736,6 @@ impl<'tcx> IntRange<'tcx> {
             }
             _ => 0,
         }
-    }
-
-    /// Returns a collection of ranges that spans the values covered by `ranges`, subtracted
-    /// by the values covered by `self`: i.e., `ranges \ self` (in set notation).
-    fn subtract_from(&self, ranges: Vec<IntRange<'tcx>>) -> Vec<IntRange<'tcx>> {
-        let mut remaining_ranges = vec![];
-        let ty = self.ty;
-        let span = self.span;
-        let (lo, hi) = self.boundaries();
-        for subrange in ranges {
-            let (subrange_lo, subrange_hi) = subrange.range.into_inner();
-            if lo > subrange_hi || subrange_lo > hi {
-                // The pattern doesn't intersect with the subrange at all,
-                // so the subrange remains untouched.
-                remaining_ranges.push(IntRange { range: subrange_lo..=subrange_hi, ty, span });
-            } else {
-                if lo > subrange_lo {
-                    // The pattern intersects an upper section of the
-                    // subrange, so a lower section will remain.
-                    remaining_ranges.push(IntRange { range: subrange_lo..=(lo - 1), ty, span });
-                }
-                if hi < subrange_hi {
-                    // The pattern intersects a lower section of the
-                    // subrange, so an upper section will remain.
-                    remaining_ranges.push(IntRange { range: (hi + 1)..=subrange_hi, ty, span });
-                }
-            }
-        }
-        remaining_ranges
     }
 
     fn is_subrange(&self, other: &Self) -> bool {
@@ -2000,7 +1864,7 @@ impl<'tcx> IntRange<'tcx> {
         let row_borders = pcx
             .matrix
             .head_ctors(pcx.cx)
-            .filter_map(|ctor| IntRange::from_ctor(ctor))
+            .filter_map(|ctor| ctor.as_intrange())
             .filter_map(|range| {
                 let intersection = self.intersection(pcx.cx.tcx, &range);
                 let should_lint = self.suspicious_intersection(&range);
@@ -2075,6 +1939,18 @@ impl<'tcx> IntRange<'tcx> {
             );
         }
     }
+
+    /// See `Constructor::is_covered_by`
+    fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
+        if self.intersection(pcx.cx.tcx, other).is_some() {
+            // Constructor splitting should ensure that all intersections we encounter are actually
+            // inclusions.
+            assert!(self.is_subrange(other));
+            true
+        } else {
+            false
+        }
+    }
 }
 
 /// Ignore spans when comparing, they don't carry semantic information as they are only for lints.
@@ -2085,8 +1961,9 @@ impl<'tcx> std::cmp::PartialEq for IntRange<'tcx> {
 }
 
 // A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
+#[derive(Debug)]
 struct MissingConstructors<'tcx> {
-    all_ctors: Vec<Constructor<'tcx>>,
+    all_ctors: SmallVec<[Constructor<'tcx>; 1]>,
     used_ctors: Vec<Constructor<'tcx>>,
 }
 
@@ -2094,22 +1971,23 @@ impl<'tcx> MissingConstructors<'tcx> {
     fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
         let used_ctors: Vec<Constructor<'_>> =
             pcx.matrix.head_ctors(pcx.cx).cloned().filter(|c| !c.is_wildcard()).collect();
-        let all_ctors = all_constructors(pcx);
+        // Since `all_ctors` never contains wildcards, this won't recurse further.
+        let all_ctors =
+            all_constructors(pcx).into_iter().flat_map(|ctor| ctor.split(pcx, None)).collect();
 
         MissingConstructors { all_ctors, used_ctors }
     }
 
-    fn into_inner(self) -> (Vec<Constructor<'tcx>>, Vec<Constructor<'tcx>>) {
-        (self.all_ctors, self.used_ctors)
-    }
-
-    fn is_empty(&self) -> bool {
-        self.iter().next().is_none()
+    fn is_empty<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> bool {
+        self.iter(pcx).next().is_none()
     }
 
     /// Iterate over all_ctors \ used_ctors
-    fn iter<'a>(&'a self) -> impl Iterator<Item = Constructor<'tcx>> + Captures<'a> {
-        self.all_ctors.iter().flat_map(move |req_ctor| req_ctor.subtract_ctors(&self.used_ctors))
+    fn iter<'a, 'p>(
+        &'a self,
+        pcx: PatCtxt<'a, 'p, 'tcx>,
+    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
+        self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.used_ctors))
     }
 
     /// List the patterns corresponding to the missing constructors. In some cases, instead of
@@ -2156,20 +2034,13 @@ impl<'tcx> MissingConstructors<'tcx> {
             // constructor, that matches everything that can be built with
             // it. For example, if `ctor` is a `Constructor::Variant` for
             // `Option::Some`, we get the pattern `Some(_)`.
-            self.iter()
+            self.iter(pcx)
                 .map(|missing_ctor| {
                     let fields = Fields::wildcards(pcx, &missing_ctor);
                     missing_ctor.apply(pcx, fields)
                 })
                 .collect()
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctors: Vec<_> = self.iter().collect();
-        write!(f, "{:?}", ctors)
     }
 }
 
