@@ -70,6 +70,20 @@ use std::hash::Hash;
 
 pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 
+/// This struct stores metadata about each DepKind.
+///
+/// Information is retrieved by indexing the `DEP_KINDS` array using the integer value
+/// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
+/// jump table instead of large matches.
+pub struct DepKindStruct {}
+
+impl std::ops::Deref for DepKind {
+    type Target = DepKindStruct;
+    fn deref(&self) -> &DepKindStruct {
+        &DEP_KINDS[*self as usize]
+    }
+}
+
 // erase!() just makes tokens go away. It's used to specify which macro argument
 // is repeated (i.e., which sub-expression of the macro we are in) but don't need
 // to actually use any of the arguments.
@@ -103,6 +117,35 @@ macro_rules! contains_eval_always_attr {
     ($($attr:ident $(($($attr_args:tt)*))* ),*) => ({$(is_eval_always_attr!($attr) | )* false});
 }
 
+#[allow(non_upper_case_globals)]
+pub mod dep_kind {
+    use super::*;
+
+    // We use this for most things when incr. comp. is turned off.
+    pub const Null: DepKindStruct = DepKindStruct {};
+
+    // Represents metadata from an extern crate.
+    pub const CrateMetadata: DepKindStruct = DepKindStruct {};
+
+    pub const TraitSelect: DepKindStruct = DepKindStruct {};
+
+    pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {};
+
+    macro_rules! define_query_dep_kinds {
+        ($(
+            [$($attrs:tt)*]
+            $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
+        ,)*) => (
+            $(pub const $variant: DepKindStruct = {
+                DepKindStruct {
+                }
+            };)*
+        );
+    }
+
+    rustc_dep_node_append!([define_query_dep_kinds!][]);
+}
+
 macro_rules! define_dep_nodes {
     (<$tcx:tt>
     $(
@@ -110,7 +153,10 @@ macro_rules! define_dep_nodes {
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+        static DEP_KINDS: &[DepKindStruct] = &[ $(dep_kind::$variant),* ];
+
+        /// This enum serves as an index into the `DEP_KINDS` array.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
         #[allow(non_camel_case_types)]
         pub enum DepKind {
             $($variant),*
