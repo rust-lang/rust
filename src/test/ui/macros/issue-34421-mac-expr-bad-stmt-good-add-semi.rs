@@ -1,8 +1,9 @@
+// check-pass
+
 macro_rules! make_item {
     ($a:ident) => {
         struct $a;
-    }; //~^ ERROR expected expression
-       //~| ERROR expected expression
+    };
 }
 
 fn a() {
