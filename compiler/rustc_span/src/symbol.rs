@@ -796,6 +796,8 @@ symbols! {
         plugin_registrar,
         plugins,
         pointer,
+        pointer_trait,
+        pointer_trait_fmt,
         poll,
         position,
         post_dash_lto: "post-lto",

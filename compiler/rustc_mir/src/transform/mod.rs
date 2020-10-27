@@ -27,6 +27,7 @@ pub mod dest_prop;
 pub mod dump_mir;
 pub mod early_otherwise_branch;
 pub mod elaborate_drops;
+pub mod function_item_references;
 pub mod generator;
 pub mod inline;
 pub mod instcombine;
@@ -266,6 +267,7 @@ fn mir_const<'tcx>(
             // MIR-level lints.
             &check_packed_ref::CheckPackedRef,
             &check_const_item_mutation::CheckConstItemMutation,
+            &function_item_references::FunctionItemReferences,
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck,

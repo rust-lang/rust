@@ -2648,6 +2648,36 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `function_item_references` lint detects function references that are
+    /// formatted with [`fmt::Pointer`] or transmuted.
+    ///
+    /// [`fmt::Pointer`]: https://doc.rust-lang.org/std/fmt/trait.Pointer.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn foo() { }
+    ///
+    /// fn main() {
+    ///     println!("{:p}", &foo);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Taking a reference to a function may be mistaken as a way to obtain a
+    /// pointer to that function. This can give unexpected results when
+    /// formatting the reference as a pointer or transmuting it. This lint is
+    /// issued when function references are formatted as pointers, passed as
+    /// arguments bound by [`fmt::Pointer`] or transmuted.
+    pub FUNCTION_ITEM_REFERENCES,
+    Warn,
+    "suggest casting to a function pointer when attempting to take references to function items",
+}
+
+declare_lint! {
     /// The `uninhabited_static` lint detects uninhabited statics.
     ///
     /// ### Example
@@ -2762,6 +2792,7 @@ declare_lint_pass! {
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         UNINHABITED_STATIC,
+        FUNCTION_ITEM_REFERENCES,
     ]
 }
 
