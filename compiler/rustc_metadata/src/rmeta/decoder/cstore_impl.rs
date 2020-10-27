@@ -270,9 +270,10 @@ pub fn provide(providers: &mut Providers) {
                         None => return false,
                     };
                     let map = tcx.foreign_modules(id.krate);
-                    let module =
-                        tcx.prof.generic_activity("finding_foreign_module").run(|| map.get(&fm_id));
-                    module.expect("failed to find foreign module").foreign_items.contains(&id)
+                    map.get(&fm_id)
+                        .expect("failed to find foreign module")
+                        .foreign_items
+                        .contains(&id)
                 })
                 .map(|l| l.kind)
         },
