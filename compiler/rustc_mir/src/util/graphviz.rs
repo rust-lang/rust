@@ -60,14 +60,14 @@ where
     let mut label = String::from("");
     // FIXME: remove this unwrap
     write_graph_label(tcx, body, &mut label).unwrap();
-    let g = mir_fn_to_generic_graph(tcx, body, subgraph);
+    let g = mir_fn_to_generic_graph(tcx, body);
     let settings = GraphvizSettings {
         graph_attrs: Some(graph_attrs.join(" ")),
         node_attrs: Some(content_attrs.join(" ")),
         edge_attrs: Some(content_attrs.join(" ")),
         graph_label: Some(label),
     };
-    g.to_dot(w, &settings)
+    g.to_dot(w, &settings, subgraph)
 }
 
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that

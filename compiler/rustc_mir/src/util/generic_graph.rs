@@ -1,13 +1,12 @@
-use gsgdt::{Edge, Graph, GraphKind, Node, NodeStyle};
+use gsgdt::{Edge, Graph, Node, NodeStyle};
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
 /// Convert an MIR function into a gsgdt Graph
-pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>, subgraph: bool) -> Graph {
+pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Graph {
     let def_id = body.source.def_id();
-    let kind = if subgraph { GraphKind::Subgraph } else { GraphKind::Digraph };
     let def_name = graphviz_safe_def_name(def_id);
     let graph_name = format!("Mir_{}", def_name);
     let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
@@ -33,7 +32,7 @@ pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>, subgrap
         }
     }
 
-    Graph::new(graph_name, kind, nodes, edges)
+    Graph::new(graph_name, nodes, edges)
 }
 
 fn bb_to_graph_node(block: BasicBlock, body: &Body<'_>, dark_mode: bool) -> Node {

@@ -1342,9 +1342,9 @@ dependencies = [
 
 [[package]]
 name = "gsgdt"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cb4a3313cdc3c65906272ddd8987c7291ff6df4b5c9997c1232b6acd1ceab24"
+checksum = "a0d876ce7262df96262a2a19531da6ff9a86048224d49580a585fc5c04617825"
 dependencies = [
  "serde",
 ]
