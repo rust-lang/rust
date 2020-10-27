@@ -27,11 +27,14 @@ pub use self::diagnostics::*;
 pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::borrow::Cow;
+use std::collections::hash_map::Entry;
+use std::hash::BuildHasherDefault;
 use std::mem;
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_attr as attr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -1463,6 +1466,41 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
         }
     }
     None
+}
+
+/// returns list of all pairs (a, b) from `exprs` such that `eq(a, b)`
+/// `hash` must be comformed with `eq`
+pub fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Vec<(&T, &T)>
+where
+    Hash: Fn(&T) -> u64,
+    Eq: Fn(&T, &T) -> bool,
+{
+    if exprs.len() == 2 && eq(&exprs[0], &exprs[1]) {
+        return vec![(&exprs[0], &exprs[1])];
+    }
+
+    let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
+
+    let mut map: FxHashMap<_, Vec<&_>> =
+        FxHashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
+
+    for expr in exprs {
+        match map.entry(hash(expr)) {
+            Entry::Occupied(mut o) => {
+                for o in o.get() {
+                    if eq(o, expr) {
+                        match_expr_list.push((o, expr));
+                    }
+                }
+                o.get_mut().push(expr);
+            },
+            Entry::Vacant(v) => {
+                v.insert(vec![expr]);
+            },
+        }
+    }
+
+    match_expr_list
 }
 
 #[macro_export]
