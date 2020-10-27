@@ -851,8 +851,8 @@ impl<'a> Builder<'a> {
             }
             rustflags.env("RUSTFLAGS_BOOTSTRAP");
             if cmd == "clippy" {
-                // clippy overwrites any sysroot we pass on the command line.
-                // Tell it to use the appropriate sysroot instead.
+                // clippy overwrites sysroot if we pass it to cargo.
+                // Pass it directly to clippy instead.
                 // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
                 // so it has no way of knowing the sysroot.
                 rustflags.arg("--sysroot");
@@ -867,8 +867,7 @@ impl<'a> Builder<'a> {
                 // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
                 let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
                 let output = host_version.and_then(|output| {
-                    if output.status.success()
-                    {
+                    if output.status.success() {
                         Ok(output)
                     } else {
                         Err(())

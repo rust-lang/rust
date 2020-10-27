@@ -16,12 +16,23 @@ pub struct Std {
 
 /// Returns args for the subcommand itself (not for cargo)
 fn args(builder: &Builder<'_>) -> Vec<String> {
+    fn strings<'a>(arr: &'a [&str]) -> impl Iterator<Item = String> + 'a {
+        arr.iter().copied().map(String::from)
+    }
+
     if let Subcommand::Clippy { fix, .. } = builder.config.cmd {
-        let mut args = vec!["--".to_owned(), "--cap-lints".to_owned(), "warn".to_owned()];
+        let mut args = vec![];
         if fix {
-            args.insert(0, "--fix".to_owned());
-            args.insert(0, "-Zunstable-options".to_owned());
+            #[rustfmt::skip]
+            args.extend(strings(&[
+                "--fix", "-Zunstable-options",
+                // FIXME: currently, `--fix` gives an error while checking tests for libtest,
+                // possibly because libtest is not yet built in the sysroot.
+                // As a workaround, avoid checking tests and benches when passed --fix.
+                "--lib", "--bins", "--examples",
+            ]));
         }
+        args.extend(strings(&["--", "--cap-lints", "warn"]));
         args
     } else {
         vec![]
