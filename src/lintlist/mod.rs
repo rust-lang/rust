@@ -1174,6 +1174,13 @@ vec![
         module: "manual_non_exhaustive",
     },
     Lint {
+        name: "manual_ok_or",
+        group: "pedantic",
+        desc: "finds patterns that can be encoded more concisely with `Option::ok_or`",
+        deprecation: None,
+        module: "manual_ok_or",
+    },
+    Lint {
         name: "manual_range_contains",
         group: "style",
         desc: "manually reimplementing {`Range`, `RangeInclusive`}`::contains`",
