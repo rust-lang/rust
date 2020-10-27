@@ -80,6 +80,11 @@ pub struct DepKindStruct {
     /// When their result is needed, it is recomputed. They are useful for fine-grained
     /// dependency tracking, and caching within one compiler invocation.
     pub(super) is_anon: bool,
+
+    /// Eval-always queries do not track their dependencies, and are always recomputed, even if
+    /// their inputs have not changed since the last compiler invocation. The result is still
+    /// cached within one compiler invocation.
+    pub(super) is_eval_always: bool,
 }
 
 impl std::ops::Deref for DepKind {
@@ -127,14 +132,15 @@ pub mod dep_kind {
     use super::*;
 
     // We use this for most things when incr. comp. is turned off.
-    pub const Null: DepKindStruct = DepKindStruct { is_anon: false };
+    pub const Null: DepKindStruct = DepKindStruct { is_anon: false, is_eval_always: false };
 
     // Represents metadata from an extern crate.
-    pub const CrateMetadata: DepKindStruct = DepKindStruct { is_anon: false };
+    pub const CrateMetadata: DepKindStruct = DepKindStruct { is_anon: false, is_eval_always: true };
 
-    pub const TraitSelect: DepKindStruct = DepKindStruct { is_anon: true };
+    pub const TraitSelect: DepKindStruct = DepKindStruct { is_anon: true, is_eval_always: false };
 
-    pub const CompileCodegenUnit: DepKindStruct = DepKindStruct { is_anon: false };
+    pub const CompileCodegenUnit: DepKindStruct =
+        DepKindStruct { is_anon: false, is_eval_always: false };
 
     macro_rules! define_query_dep_kinds {
         ($(
@@ -143,9 +149,11 @@ pub mod dep_kind {
         ,)*) => (
             $(pub const $variant: DepKindStruct = {
                 const is_anon: bool = contains_anon_attr!($($attrs)*);
+                const is_eval_always: bool = contains_eval_always_attr!($($attrs)*);
 
                 DepKindStruct {
                     is_anon,
+                    is_eval_always,
                 }
             };)*
         );
@@ -188,14 +196,6 @@ macro_rules! define_dep_nodes {
 
                             true
                         }
-                    )*
-                }
-            }
-
-            pub fn is_eval_always(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => { contains_eval_always_attr!($($attrs)*) }
                     )*
                 }
             }

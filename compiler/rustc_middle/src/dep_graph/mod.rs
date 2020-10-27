@@ -26,8 +26,9 @@ pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<
 impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
 
+    #[inline(always)]
     fn is_eval_always(&self) -> bool {
-        DepKind::is_eval_always(self)
+        self.is_eval_always
     }
 
     fn has_params(&self) -> bool {
