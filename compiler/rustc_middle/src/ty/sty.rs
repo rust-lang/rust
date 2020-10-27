@@ -5,6 +5,8 @@
 use self::InferTy::*;
 use self::TyKind::*;
 
+use either::Either;
+
 use crate::infer::canonical::Canonical;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
@@ -388,9 +390,17 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.split().parent_substs
     }
 
+    /// Returns an iterator over the list of types of captured paths by the closure.
+    /// In case there was a type error in figuring out the types of the captured path, an
+    /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        self.tupled_upvars_ty().tuple_fields()
+        match self.tupled_upvars_ty().kind() {
+            TyKind::Error(_) => Either::Left(std::iter::empty()),
+            TyKind::Tuple(..) => Either::Right(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
+            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
+        }
     }
 
     /// Returns the tuple type representing the upvars for this closure.
@@ -515,9 +525,17 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         self.split().witness.expect_ty()
     }
 
+    /// Returns an iterator over the list of types of captured paths by the generator.
+    /// In case there was a type error in figuring out the types of the captured path, an
+    /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        self.tupled_upvars_ty().tuple_fields()
+        match self.tupled_upvars_ty().kind() {
+            TyKind::Error(_) => Either::Left(std::iter::empty()),
+            TyKind::Tuple(..) => Either::Right(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
+            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
+        }
     }
 
     /// Returns the tuple type representing the upvars for this generator.
@@ -660,13 +678,15 @@ pub enum UpvarSubsts<'tcx> {
 }
 
 impl<'tcx> UpvarSubsts<'tcx> {
+    /// Returns an iterator over the list of types of captured paths by the closure/generator.
+    /// In case there was a type error in figuring out the types of the captured path, an
+    /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        let tupled_upvars_ty = match self {
-            UpvarSubsts::Closure(substs) => substs.as_closure().split().tupled_upvars_ty,
-            UpvarSubsts::Generator(substs) => substs.as_generator().split().tupled_upvars_ty,
-        };
-        tupled_upvars_ty.expect_ty().tuple_fields()
+        match self {
+            UpvarSubsts::Closure(substs) => Either::Left(substs.as_closure().upvar_tys()),
+            UpvarSubsts::Generator(substs) => Either::Right(substs.as_generator().upvar_tys()),
+        }
     }
 
     #[inline]

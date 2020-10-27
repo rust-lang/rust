@@ -3883,6 +3883,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "chalk-ir",
+ "either",
  "measureme 9.0.0",
  "polonius-engine",
  "rustc-rayon-core",
