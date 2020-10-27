@@ -5,8 +5,6 @@
 use self::InferTy::*;
 use self::TyKind::*;
 
-use either::Either;
-
 use crate::infer::canonical::Canonical;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
@@ -396,11 +394,13 @@ impl<'tcx> ClosureSubsts<'tcx> {
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self.tupled_upvars_ty().kind() {
-            TyKind::Error(_) => Either::Left(std::iter::empty()),
-            TyKind::Tuple(..) => Either::Right(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Error(_) => None,
+            TyKind::Tuple(..) => Some(self.tupled_upvars_ty().tuple_fields()),
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
+        .into_iter()
+        .flatten()
     }
 
     /// Returns the tuple type representing the upvars for this closure.
@@ -531,11 +531,13 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self.tupled_upvars_ty().kind() {
-            TyKind::Error(_) => Either::Left(std::iter::empty()),
-            TyKind::Tuple(..) => Either::Right(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Error(_) => None,
+            TyKind::Tuple(..) => Some(self.tupled_upvars_ty().tuple_fields()),
             TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
             ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
+        .into_iter()
+        .flatten()
     }
 
     /// Returns the tuple type representing the upvars for this generator.
@@ -683,10 +685,19 @@ impl<'tcx> UpvarSubsts<'tcx> {
     /// empty iterator is returned.
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        match self {
-            UpvarSubsts::Closure(substs) => Either::Left(substs.as_closure().upvar_tys()),
-            UpvarSubsts::Generator(substs) => Either::Right(substs.as_generator().upvar_tys()),
+        let tupled_tys = match self {
+            UpvarSubsts::Closure(substs) => substs.as_closure().tupled_upvars_ty(),
+            UpvarSubsts::Generator(substs) => substs.as_generator().tupled_upvars_ty(),
+        };
+
+        match tupled_tys.kind() {
+            TyKind::Error(_) => None,
+            TyKind::Tuple(..) => Some(self.tupled_upvars_ty().tuple_fields()),
+            TyKind::Infer(_) => bug!("upvar_tys called before capture types are inferred"),
+            ty => bug!("Unexpected representation of upvar types tuple {:?}", ty),
         }
+        .into_iter()
+        .flatten()
     }
 
     #[inline]
