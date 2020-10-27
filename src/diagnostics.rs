@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::fmt;
+use std::num::NonZeroU64;
 
 use log::trace;
 
@@ -41,6 +42,7 @@ impl MachineStopType for TerminationInfo {}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
+    CreatedPointerTag(NonZeroU64),
     PoppedPointerTag(Item),
     CreatedCallId(CallId),
     CreatedAlloc(AllocId),
@@ -266,6 +268,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             for e in diagnostics.drain(..) {
                 use NonHaltingDiagnostic::*;
                 let msg = match e {
+                    CreatedPointerTag(tag) =>
+                        format!("created tag {:?}", tag),
                     PoppedPointerTag(item) =>
                         format!("popped tracked tag for item {:?}", item),
                     CreatedCallId(id) =>
