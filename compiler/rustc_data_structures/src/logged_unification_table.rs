@@ -106,9 +106,6 @@ where
     where
         K::Value: ut::UnifyValue<Error = ut::NoError>,
     {
-        if self.storage.unify_log.needs_log(vid) {
-            self.storage.modified_set.set(&mut self.undo_log, vid);
-        }
         let vid = vid.into();
         let mut relations = self.relations();
         debug_assert!(relations.find(vid) == vid);
@@ -131,10 +128,7 @@ where
         vid: I,
         value: K::Value,
     ) -> Result<(), <K::Value as ut::UnifyValue>::Error> {
-        let vid = self.find(vid).into();
-        if self.storage.unify_log.needs_log(vid) {
-            self.storage.modified_set.set(&mut self.undo_log, vid);
-        }
+        let vid = self.find(vid);
         self.relations().unify_var_value(vid, value)
     }
 
@@ -148,11 +142,6 @@ where
 
         relations.unify_var_var(a, b)?;
 
-        if a == relations.find(a) {
-            self.storage.unify_log.unify(&mut self.undo_log, a.into(), b.into());
-        } else {
-            self.storage.unify_log.unify(&mut self.undo_log, b.into(), a.into());
-        }
         Ok(())
     }
 
