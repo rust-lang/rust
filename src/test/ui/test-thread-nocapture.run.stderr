@@ -1,0 +1,2 @@
+thread 'main' panicked at 'explicit panic', $DIR/test-thread-nocapture.rs:30:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

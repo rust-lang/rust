@@ -115,6 +115,11 @@ impl Write for Sink {
         Ok(())
     }
 }
+impl io::LocalOutput for Sink {
+    fn clone_box(&self) -> Box<dyn io::LocalOutput> {
+        Box::new(Self(self.0.clone()))
+    }
+}
 
 /// Like a `thread::Builder::spawn` followed by a `join()`, but avoids the need
 /// for `'static` bounds.
