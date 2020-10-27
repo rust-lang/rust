@@ -73,7 +73,7 @@ LL |     let a = pat_macro!();
    |             ^^^^^^^^^^^^
    |
    = note: expanding `pat_macro! {  }`
-   = note: to `pat_macro ! (A { a : a, b : 0, c : _, .. }) ;`
+   = note: to `pat_macro ! (A { a : a, b : 0, c : _, .. })`
    = note: expanding `pat_macro! { A { a : a, b : 0, c : _, .. } }`
    = note: to `A { a: a, b: 0, c: _, .. }`
 

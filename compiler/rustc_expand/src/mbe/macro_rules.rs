@@ -151,9 +151,9 @@ impl<'a> ParserAnyMacro<'a> {
         // We allow semicolons at the end of expressions -- e.g., the semicolon in
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
         // but `m!()` is allowed in expression positions (cf. issue #34706).
-        if kind == AstFragmentKind::Expr && parser.token == token::Semi {
+        /*if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             parser.bump();
-        }
+        }*/
 
         // Make sure we don't have any tokens left to parse so we don't silently drop anything.
         let path = ast::Path::from_ident(macro_ident.with_span_pos(site_span));

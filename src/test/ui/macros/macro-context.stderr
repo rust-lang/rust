@@ -9,11 +9,11 @@ LL |     let a: m!();
    |
    = note: the usage of `m!` is likely invalid in type context
 
-error: macro expansion ignores token `typeof` and any following
-  --> $DIR/macro-context.rs:3:17
+error: macro expansion ignores token `;` and any following
+  --> $DIR/macro-context.rs:3:15
    |
 LL |     () => ( i ; typeof );
-   |                 ^^^^^^
+   |               ^
 ...
 LL |     let i = m!();
    |             ---- caused by the macro expansion here

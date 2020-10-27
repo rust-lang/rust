@@ -1,10 +1,17 @@
-error: type `fn() -> u32 {foo::bar::f}` is private
-  --> $DIR/intercrate.rs:10:16
+error: macro expansion ignores token `;` and any following
+  --> $DIR/auxiliary/intercrate.rs:8:16
+   |
+LL |             f();
+   |                ^
+   | 
+  ::: $DIR/intercrate.rs:10:16
    |
 LL |     assert_eq!(intercrate::foo::m!(), 1);
-   |                ^^^^^^^^^^^^^^^^^^^^^ private type
+   |                ---------------------- help: you might be missing a semicolon here: `;`
+   |                |
+   |                caused by the macro expansion here
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: the usage of `m!` is likely invalid in expression context
 
 error: aborting due to previous error
 

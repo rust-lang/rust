@@ -125,7 +125,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
         let old_offset = index;
         macro_rules! err {
             ($error_len: expr) => {
-                return Err(Utf8Error { valid_up_to: old_offset, error_len: $error_len });
+                return Err(Utf8Error { valid_up_to: old_offset, error_len: $error_len })
             };
         }
 
