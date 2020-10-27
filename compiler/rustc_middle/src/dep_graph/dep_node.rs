@@ -88,12 +88,31 @@ pub struct DepKindStruct {
     /// their inputs have not changed since the last compiler invocation. The result is still
     /// cached within one compiler invocation.
     pub(super) is_eval_always: bool,
+
+    /// Whether the query key can be recovered from the hashed fingerprint.
+    /// See [DepNodeParams] trait for the behaviour of each key type.
+    // FIXME: Make this a simple boolean once DepNodeParams::can_reconstruct_query_key
+    // can be made a specialized associated const.
+    can_reconstruct_query_key: fn() -> bool,
 }
 
 impl std::ops::Deref for DepKind {
     type Target = DepKindStruct;
     fn deref(&self) -> &DepKindStruct {
         &DEP_KINDS[*self as usize]
+    }
+}
+
+impl DepKind {
+    #[inline(always)]
+    pub fn can_reconstruct_query_key(&self) -> bool {
+        // Only fetch the DepKindStruct once.
+        let data: &DepKindStruct = &**self;
+        if data.is_anon {
+            return false;
+        }
+
+        (data.can_reconstruct_query_key)()
     }
 }
 
@@ -133,20 +152,41 @@ macro_rules! contains_eval_always_attr {
 #[allow(non_upper_case_globals)]
 pub mod dep_kind {
     use super::*;
+    use crate::ty::query::query_keys;
 
     // We use this for most things when incr. comp. is turned off.
-    pub const Null: DepKindStruct =
-        DepKindStruct { has_params: false, is_anon: false, is_eval_always: false };
+    pub const Null: DepKindStruct = DepKindStruct {
+        has_params: false,
+        is_anon: false,
+        is_eval_always: false,
+
+        can_reconstruct_query_key: || true,
+    };
 
     // Represents metadata from an extern crate.
-    pub const CrateMetadata: DepKindStruct =
-        DepKindStruct { has_params: true, is_anon: false, is_eval_always: true };
+    pub const CrateMetadata: DepKindStruct = DepKindStruct {
+        has_params: true,
+        is_anon: false,
+        is_eval_always: true,
 
-    pub const TraitSelect: DepKindStruct =
-        DepKindStruct { has_params: false, is_anon: true, is_eval_always: false };
+        can_reconstruct_query_key: || true,
+    };
 
-    pub const CompileCodegenUnit: DepKindStruct =
-        DepKindStruct { has_params: true, is_anon: false, is_eval_always: false };
+    pub const TraitSelect: DepKindStruct = DepKindStruct {
+        has_params: false,
+        is_anon: true,
+        is_eval_always: false,
+
+        can_reconstruct_query_key: || false,
+    };
+
+    pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {
+        has_params: true,
+        is_anon: false,
+        is_eval_always: false,
+
+        can_reconstruct_query_key: || false,
+    };
 
     macro_rules! define_query_dep_kinds {
         ($(
@@ -158,10 +198,18 @@ pub mod dep_kind {
                 const is_anon: bool = contains_anon_attr!($($attrs)*);
                 const is_eval_always: bool = contains_eval_always_attr!($($attrs)*);
 
+                #[inline(always)]
+                fn can_reconstruct_query_key() -> bool {
+                    !is_anon &&
+                    <query_keys::$variant<'_> as DepNodeParams<TyCtxt<'_>>>
+                        ::can_reconstruct_query_key()
+                }
+
                 DepKindStruct {
                     has_params,
                     is_anon,
                     is_eval_always,
+                    can_reconstruct_query_key,
                 }
             };)*
         );
@@ -184,29 +232,6 @@ macro_rules! define_dep_nodes {
         #[allow(non_camel_case_types)]
         pub enum DepKind {
             $($variant),*
-        }
-
-        impl DepKind {
-            #[allow(unreachable_code)]
-            pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
-                if self.is_anon {
-                    return false;
-                }
-
-                match *self {
-                    $(
-                        DepKind :: $variant => {
-                            // tuple args
-                            $({
-                                return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
-                                    ::can_reconstruct_query_key();
-                            })*
-
-                            true
-                        }
-                    )*
-                }
-            }
         }
 
         pub struct DepConstructor;

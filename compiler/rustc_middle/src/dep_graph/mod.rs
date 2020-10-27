@@ -27,6 +27,11 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
     const NULL: Self = DepKind::Null;
 
     #[inline(always)]
+    fn can_reconstruct_query_key(&self) -> bool {
+        DepKind::can_reconstruct_query_key(self)
+    }
+
+    #[inline(always)]
     fn is_eval_always(&self) -> bool {
         self.is_eval_always
     }
@@ -82,10 +87,6 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             let icx = if let Some(icx) = icx { icx } else { return };
             op(icx.task_deps)
         })
-    }
-
-    fn can_reconstruct_query_key(&self) -> bool {
-        DepKind::can_reconstruct_query_key(self)
     }
 }
 
