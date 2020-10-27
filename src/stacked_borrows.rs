@@ -168,6 +168,9 @@ impl GlobalState {
 
     fn new_ptr(&mut self) -> PtrId {
         let id = self.next_ptr_id;
+        if Some(id) == self.tracked_pointer_tag {
+            register_diagnostic(NonHaltingDiagnostic::CreatedPointerTag(id));
+        }
         self.next_ptr_id = NonZeroU64::new(id.get() + 1).unwrap();
         id
     }
