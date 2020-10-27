@@ -2,7 +2,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, crate_num: CrateNum) {
@@ -16,36 +16,17 @@ struct InherentOverlapChecker<'tcx> {
 }
 
 impl InherentOverlapChecker<'tcx> {
-    /// Checks whether any associated items in impls 1 and 2 share the same identifier and
+    /// Returns the associated items in impls 1 and 2 that share the same identifier and
     /// namespace.
-    fn impls_have_common_items(&self, impl1: DefId, impl2: DefId) -> bool {
-        let impl_items1 = self.tcx.associated_items(impl1);
-        let impl_items2 = self.tcx.associated_items(impl2);
-
-        for item1 in impl_items1.in_definition_order() {
-            let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).any(|item2| {
-                // Symbols and namespace match, compare hygienically.
-                item1.kind.namespace() == item2.kind.namespace()
-                    && item1.ident.normalize_to_macros_2_0()
-                        == item2.ident.normalize_to_macros_2_0()
-            });
-
-            if collision {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    fn check_for_common_items_in_impls(
+    fn impls_have_common_items(
         &self,
         impl1: DefId,
         impl2: DefId,
-        overlap: traits::OverlapResult<'_>,
-    ) {
+    ) -> Vec<(&'tcx ty::AssocItem, &'tcx ty::AssocItem)> {
         let impl_items1 = self.tcx.associated_items(impl1);
         let impl_items2 = self.tcx.associated_items(impl2);
+
+        let mut collisions = vec![];
 
         for item1 in impl_items1.in_definition_order() {
             let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).find(|item2| {
@@ -56,37 +37,54 @@ impl InherentOverlapChecker<'tcx> {
             });
 
             if let Some(item2) = collision {
-                let name = item1.ident.normalize_to_macros_2_0();
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    self.tcx.span_of_impl(item1.def_id).unwrap(),
-                    E0592,
-                    "duplicate definitions with name `{}`",
-                    name
-                );
-                err.span_label(
-                    self.tcx.span_of_impl(item1.def_id).unwrap(),
-                    format!("duplicate definitions for `{}`", name),
-                );
-                err.span_label(
-                    self.tcx.span_of_impl(item2.def_id).unwrap(),
-                    format!("other definition for `{}`", name),
-                );
-
-                for cause in &overlap.intercrate_ambiguity_causes {
-                    cause.add_intercrate_ambiguity_hint(&mut err);
-                }
-
-                if overlap.involves_placeholder {
-                    traits::add_placeholder_note(&mut err);
-                }
-
-                err.emit();
+                collisions.push((item1, item2));
             }
+        }
+
+        collisions
+    }
+
+    fn check_for_common_items_in_impls(
+        &self,
+        collisions: Vec<(&'tcx ty::AssocItem, &'tcx ty::AssocItem)>,
+        overlap: traits::OverlapResult<'_>,
+    ) {
+        for (item1, item2) in collisions {
+            let name = item1.ident.normalize_to_macros_2_0();
+            let mut err = struct_span_err!(
+                self.tcx.sess,
+                self.tcx.span_of_impl(item1.def_id).unwrap(),
+                E0592,
+                "duplicate definitions with name `{}`",
+                name
+            );
+            err.span_label(
+                self.tcx.span_of_impl(item1.def_id).unwrap(),
+                format!("duplicate definitions for `{}`", name),
+            );
+            err.span_label(
+                self.tcx.span_of_impl(item2.def_id).unwrap(),
+                format!("other definition for `{}`", name),
+            );
+
+            for cause in &overlap.intercrate_ambiguity_causes {
+                cause.add_intercrate_ambiguity_hint(&mut err);
+            }
+
+            if overlap.involves_placeholder {
+                traits::add_placeholder_note(&mut err);
+            }
+
+            err.emit();
         }
     }
 
-    fn check_for_overlapping_inherent_impls(&self, impl1_def_id: DefId, impl2_def_id: DefId) {
+    fn check_for_overlapping_inherent_impls(
+        &self,
+        impl1_def_id: DefId,
+        impl2_def_id: DefId,
+        collisions: Vec<(&'tcx ty::AssocItem, &'tcx ty::AssocItem)>,
+    ) {
         traits::overlapping_impls(
             self.tcx,
             impl1_def_id,
@@ -94,11 +92,8 @@ impl InherentOverlapChecker<'tcx> {
             // We go ahead and just skip the leak check for
             // inherent impls without warning.
             SkipLeakCheck::Yes,
-            |overlap| {
-                self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
-                false
-            },
-            || true,
+            |overlap| self.check_for_common_items_in_impls(collisions, overlap),
+            || (),
         );
     }
 }
@@ -115,8 +110,13 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
 
                 for (i, &impl1_def_id) in impls.iter().enumerate() {
                     for &impl2_def_id in &impls[(i + 1)..] {
-                        if self.impls_have_common_items(impl1_def_id, impl2_def_id) {
-                            self.check_for_overlapping_inherent_impls(impl1_def_id, impl2_def_id);
+                        let collisions = self.impls_have_common_items(impl1_def_id, impl2_def_id);
+                        if collisions.len() > 0 {
+                            self.check_for_overlapping_inherent_impls(
+                                impl1_def_id,
+                                impl2_def_id,
+                                collisions,
+                            );
                         }
                     }
                 }
