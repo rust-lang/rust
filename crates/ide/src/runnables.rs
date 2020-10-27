@@ -253,7 +253,7 @@ const RUSTDOC_FENCE: &str = "```";
 const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
     &["", "rust", "should_panic", "edition2015", "edition2018"];
 
-fn has_runnable_doc_test<T: DocCommentsOwner>(def: &T) -> bool {
+fn has_runnable_doc_test(def: &dyn DocCommentsOwner) -> bool {
     def.doc_comment_text().map_or(false, |comments_text| {
         let mut in_code_block = false;
 
