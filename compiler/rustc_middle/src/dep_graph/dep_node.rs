@@ -94,6 +94,9 @@ pub struct DepKindStruct {
     // FIXME: Make this a simple boolean once DepNodeParams::can_reconstruct_query_key
     // can be made a specialized associated const.
     can_reconstruct_query_key: fn() -> bool,
+
+    /// Invoke a query to put the on-disk cached value in memory.
+    pub(super) try_load_from_on_disk_cache: fn(TyCtxt<'_>, &DepNode),
 }
 
 impl std::ops::Deref for DepKind {
@@ -152,7 +155,8 @@ macro_rules! contains_eval_always_attr {
 #[allow(non_upper_case_globals)]
 pub mod dep_kind {
     use super::*;
-    use crate::ty::query::query_keys;
+    use crate::ty::query::{queries, query_keys};
+    use rustc_query_system::query::QueryDescription;
 
     // We use this for most things when incr. comp. is turned off.
     pub const Null: DepKindStruct = DepKindStruct {
@@ -161,6 +165,7 @@ pub mod dep_kind {
         is_eval_always: false,
 
         can_reconstruct_query_key: || true,
+        try_load_from_on_disk_cache: |_, _| {},
     };
 
     // Represents metadata from an extern crate.
@@ -170,6 +175,7 @@ pub mod dep_kind {
         is_eval_always: true,
 
         can_reconstruct_query_key: || true,
+        try_load_from_on_disk_cache: |_, _| {},
     };
 
     pub const TraitSelect: DepKindStruct = DepKindStruct {
@@ -178,6 +184,7 @@ pub mod dep_kind {
         is_eval_always: false,
 
         can_reconstruct_query_key: || false,
+        try_load_from_on_disk_cache: |_, _| {},
     };
 
     pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {
@@ -186,6 +193,7 @@ pub mod dep_kind {
         is_eval_always: false,
 
         can_reconstruct_query_key: || false,
+        try_load_from_on_disk_cache: |_, _| {},
     };
 
     macro_rules! define_query_dep_kinds {
@@ -205,11 +213,32 @@ pub mod dep_kind {
                         ::can_reconstruct_query_key()
                 }
 
+                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<query_keys::$variant<'tcx>> {
+                    <query_keys::$variant<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node)
+                }
+
+                fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: &DepNode) {
+                    if !can_reconstruct_query_key() {
+                        return
+                    }
+
+                    debug_assert!(tcx.dep_graph
+                                     .node_color(dep_node)
+                                     .map(|c| c.is_green())
+                                     .unwrap_or(false));
+
+                    let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
+                    if queries::$variant::cache_on_disk(tcx, &key, None) {
+                        let _ = tcx.$variant(key);
+                    }
+                }
+
                 DepKindStruct {
                     has_params,
                     is_anon,
                     is_eval_always,
                     can_reconstruct_query_key,
+                    try_load_from_on_disk_cache,
                 }
             };)*
         );

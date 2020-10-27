@@ -209,32 +209,6 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     false
 }
 
-pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
-    macro_rules! try_load_from_on_disk_cache {
-        ($($name:ident,)*) => {
-            match dep_node.kind {
-                $(DepKind::$name => {
-                    if <query_keys::$name<'tcx> as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
-                        debug_assert!(tcx.dep_graph
-                                         .node_color(dep_node)
-                                         .map(|c| c.is_green())
-                                         .unwrap_or(false));
-
-                        let key = <query_keys::$name<'tcx> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                        if queries::$name::cache_on_disk(tcx, &key, None) {
-                            let _ = tcx.$name(key);
-                        }
-                    }
-                })*
-
-                _ => (),
-            }
-        }
-    }
-
-    rustc_cached_queries!(try_load_from_on_disk_cache!);
-}
-
 mod sealed {
     use super::{DefId, LocalDefId};
 
