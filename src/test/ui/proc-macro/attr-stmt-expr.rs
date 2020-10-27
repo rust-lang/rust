@@ -8,8 +8,6 @@ use attr_stmt_expr::{expect_let, expect_print_stmt, expect_expr, expect_print_ex
 fn print_str(string: &'static str) {
     // macros are handled a bit differently
     #[expect_print_expr]
-    //~^ ERROR attributes on expressions are experimental
-    //~| HELP add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
     println!("{}", string)
 }
 

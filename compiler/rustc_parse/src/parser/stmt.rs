@@ -105,7 +105,10 @@ impl<'a> Parser<'a> {
 
         let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
 
-        let kind = if delim == token::Brace || self.token == token::Semi || self.token == token::Eof
+        let kind = if delim == token::Brace
+            || self.token == token::Semi
+            || self.token == token::Eof
+            || self.token == token::CloseDelim(token::Brace)
         {
             StmtKind::MacCall(P(MacCallStmt { mac, style, attrs }))
         } else {

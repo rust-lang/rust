@@ -1,14 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/attr-stmt-expr.rs:10:5
-   |
-LL |     #[expect_print_expr]
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/attr-stmt-expr.rs:23:5
+  --> $DIR/attr-stmt-expr.rs:21:5
    |
 LL |     #[expect_expr]
    |     ^^^^^^^^^^^^^^
@@ -16,6 +7,6 @@ LL |     #[expect_expr]
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0658`.
