@@ -115,6 +115,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="value_param callable">f</span><span class="punctuation">(</span><span class="punctuation">)</span>
 <span class="punctuation">}</span>
 
+<span class="keyword">fn</span> <span class="function declaration">foobar</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="keyword">impl</span> <span class="unresolved_reference">Copy</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">foo</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">bar</span> <span class="operator">=</span> <span class="function">foobar</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+<span class="punctuation">}</span>
+
 <span class="macro">macro_rules!</span> <span class="macro declaration">def_fn</span> <span class="punctuation">{</span>
     <span class="punctuation">(</span><span class="punctuation">$</span><span class="punctuation">(</span><span class="punctuation">$</span>tt<span class="punctuation">:</span>tt<span class="punctuation">)</span><span class="punctuation">*</span><span class="punctuation">)</span> <span class="operator">=</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">$</span><span class="punctuation">(</span><span class="punctuation">$</span>tt<span class="punctuation">)</span><span class="punctuation">*</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>

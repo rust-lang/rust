@@ -89,6 +89,12 @@ fn baz<F: Fn() -> ()>(f: F) {
     f()
 }
 
+fn foobar() -> impl Copy {}
+
+fn foo() {
+    let bar = foobar();
+}
+
 macro_rules! def_fn {
     ($($tt:tt)*) => {$($tt)*}
 }
