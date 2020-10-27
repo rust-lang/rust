@@ -831,7 +831,7 @@ impl<'a> Parser<'a> {
         self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
     }
 
-    // We need and identifier or integer, but the next token is a float.
+    // We need an identifier or integer, but the next token is a float.
     // Break the float into components to extract the identifier or integer.
     // FIXME: With current `TokenCursor` it's hard to break tokens into more than 2
     // parts unless those parts are processed immediately. `TokenCursor` should either
