@@ -38,7 +38,7 @@ fn _format_assoc_item<T: HasItem>(data: T, f: &mut Formatter) -> std::fmt::Resul
 fn _call_pointer_fmt(f: &mut Formatter) -> std::fmt::Result {
     let zst_ref = &foo;
     Pointer::fmt(&zst_ref, f)
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
 }
 
 fn main() {
@@ -75,47 +75,47 @@ fn main() {
 
     //potential ways to incorrectly try printing function pointers
     println!("{:p}", &foo);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     print!("{:p}", &foo);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     format!("{:p}", &foo);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
 
     println!("{:p}", &foo as *const _);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", zst_ref);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", cast_zst_ptr);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", coerced_zst_ptr);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
 
     println!("{:p}", &fn_item);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", indirect_ref);
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
 
     println!("{:p}", &nop);
-    //~^ WARNING cast `nop` with `as fn()` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &bar);
-    //~^ WARNING cast `bar` with `as fn(_) -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &baz);
-    //~^ WARNING cast `baz` with `as fn(_, _) -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &unsafe_fn);
-    //~^ WARNING cast `unsafe_fn` with `as unsafe fn()` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &c_fn);
-    //~^ WARNING cast `c_fn` with `as extern "C" fn()` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &unsafe_c_fn);
-    //~^ WARNING cast `unsafe_c_fn` with `as unsafe extern "C" fn()` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &variadic);
-    //~^ WARNING cast `variadic` with `as unsafe extern "C" fn(_, ...)` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     println!("{:p}", &std::env::var::<String>);
-    //~^ WARNING cast `var` with `as fn(_) -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
 
     println!("{:p} {:p} {:p}", &nop, &foo, &bar);
-    //~^ WARNING cast `nop` with `as fn()` to obtain a function pointer
-    //~^^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
-    //~^^^ WARNING cast `bar` with `as fn(_) -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
+    //~^^ WARNING taking a reference to a function item does not give a function pointer
+    //~^^^ WARNING taking a reference to a function item does not give a function pointer
 
     //using a function reference to call a function shouldn't lint
     (&bar)(1);
@@ -128,10 +128,10 @@ fn main() {
     unsafe {
         //potential ways to incorrectly try transmuting function pointers
         std::mem::transmute::<_, usize>(&foo);
-        //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
+        //~^ WARNING taking a reference to a function item does not give a function pointer
         std::mem::transmute::<_, (usize, usize)>((&foo, &bar));
-        //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
-        //~^^ WARNING cast `bar` with `as fn(_) -> _` to obtain a function pointer
+        //~^ WARNING taking a reference to a function item does not give a function pointer
+        //~^^ WARNING taking a reference to a function item does not give a function pointer
 
         //the correct way to transmute function pointers
         std::mem::transmute::<_, usize>(foo as fn() -> u32);
@@ -140,12 +140,12 @@ fn main() {
 
     //function references as arguments required to be bound by std::fmt::Pointer should lint
     print_ptr(&bar);
-    //~^ WARNING cast `bar` with `as fn(_) -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     bound_by_ptr_trait(&bar);
-    //~^ WARNING cast `bar` with `as fn(_) -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
     bound_by_ptr_trait_tuple((&foo, &bar));
-    //~^ WARNING cast `foo` with `as fn() -> _` to obtain a function pointer
-    //~^^ WARNING cast `bar` with `as fn(_) -> _` to obtain a function pointer
+    //~^ WARNING taking a reference to a function item does not give a function pointer
+    //~^^ WARNING taking a reference to a function item does not give a function pointer
     implicit_ptr_trait(&bar); // ignore
 
     //correct ways to pass function pointers as arguments bound by std::fmt::Pointer

@@ -2674,7 +2674,7 @@ declare_lint! {
     /// arguments bound by [`fmt::Pointer`] or transmuted.
     pub FUNCTION_ITEM_REFERENCES,
     Warn,
-    "suggest casting functions to pointers when attempting to take references",
+    "suggest casting to a function pointer when attempting to take references to function items",
 }
 
 declare_lint! {
