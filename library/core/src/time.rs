@@ -123,19 +123,6 @@ impl Duration {
     #[unstable(feature = "duration_zero", issue = "73544")]
     pub const ZERO: Duration = Duration::from_nanos(0);
 
-    /// The minimum duration.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(duration_constants)]
-    /// use std::time::Duration;
-    ///
-    /// assert_eq!(Duration::MIN, Duration::new(0, 0));
-    /// ```
-    #[unstable(feature = "duration_constants", issue = "57391")]
-    pub const MIN: Duration = Duration::from_nanos(0);
-
     /// The maximum duration.
     ///
     /// It is roughly equal to a duration of 584,942,417,355 years.
@@ -533,18 +520,18 @@ impl Duration {
         }
     }
 
-    /// Saturating `Duration` subtraction. Computes `self - other`, returning [`Duration::MIN`]
+    /// Saturating `Duration` subtraction. Computes `self - other`, returning [`Duration::ZERO`]
     /// if the result would be negative or if overflow occurred.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(duration_saturating_ops)]
-    /// #![feature(duration_constants)]
+    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
-    /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::MIN);
+    /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
     /// ```
     #[unstable(feature = "duration_saturating_ops", issue = "76416")]
     #[inline]
@@ -552,7 +539,7 @@ impl Duration {
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
         match self.checked_sub(rhs) {
             Some(res) => res,
-            None => Duration::MIN,
+            None => Duration::ZERO,
         }
     }
 
