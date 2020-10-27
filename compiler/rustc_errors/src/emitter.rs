@@ -357,7 +357,8 @@ pub trait Emitter {
                 }
 
                 if matches!(trace.kind, ExpnKind::Inlined) {
-                    new_labels.push((trace.call_site, "in the inlined copy of this".to_string()));
+                    new_labels
+                        .push((trace.call_site, "in the inlined copy of this code".to_string()));
                 } else if always_backtrace {
                     new_labels.push((
                         trace.def_site,
