@@ -31,14 +31,15 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         self.is_eval_always
     }
 
+    #[inline(always)]
     fn has_params(&self) -> bool {
-        DepKind::has_params(self)
+        self.has_params
     }
 
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", node.kind)?;
 
-        if !node.kind.has_params() && !node.kind.is_anon {
+        if !node.kind.has_params && !node.kind.is_anon {
             return Ok(());
         }
 

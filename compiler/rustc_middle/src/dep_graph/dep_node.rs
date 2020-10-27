@@ -76,6 +76,9 @@ pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
 pub struct DepKindStruct {
+    /// Whether the DepNode has parameters (query keys).
+    pub(super) has_params: bool,
+
     /// Anonymous queries cannot be replayed from one compiler invocation to the next.
     /// When their result is needed, it is recomputed. They are useful for fine-grained
     /// dependency tracking, and caching within one compiler invocation.
@@ -132,15 +135,18 @@ pub mod dep_kind {
     use super::*;
 
     // We use this for most things when incr. comp. is turned off.
-    pub const Null: DepKindStruct = DepKindStruct { is_anon: false, is_eval_always: false };
+    pub const Null: DepKindStruct =
+        DepKindStruct { has_params: false, is_anon: false, is_eval_always: false };
 
     // Represents metadata from an extern crate.
-    pub const CrateMetadata: DepKindStruct = DepKindStruct { is_anon: false, is_eval_always: true };
+    pub const CrateMetadata: DepKindStruct =
+        DepKindStruct { has_params: true, is_anon: false, is_eval_always: true };
 
-    pub const TraitSelect: DepKindStruct = DepKindStruct { is_anon: true, is_eval_always: false };
+    pub const TraitSelect: DepKindStruct =
+        DepKindStruct { has_params: false, is_anon: true, is_eval_always: false };
 
     pub const CompileCodegenUnit: DepKindStruct =
-        DepKindStruct { is_anon: false, is_eval_always: false };
+        DepKindStruct { has_params: true, is_anon: false, is_eval_always: false };
 
     macro_rules! define_query_dep_kinds {
         ($(
@@ -148,10 +154,12 @@ pub mod dep_kind {
             $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
         ,)*) => (
             $(pub const $variant: DepKindStruct = {
+                const has_params: bool = $({ erase!($tuple_arg_ty); true } |)* false;
                 const is_anon: bool = contains_anon_attr!($($attrs)*);
                 const is_eval_always: bool = contains_eval_always_attr!($($attrs)*);
 
                 DepKindStruct {
+                    has_params,
                     is_anon,
                     is_eval_always,
                 }
@@ -195,23 +203,6 @@ macro_rules! define_dep_nodes {
                             })*
 
                             true
-                        }
-                    )*
-                }
-            }
-
-            #[allow(unreachable_code)]
-            pub fn has_params(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => {
-                            // tuple args
-                            $({
-                                erase!($tuple_arg_ty);
-                                return true;
-                            })*
-
-                            false
                         }
                     )*
                 }
@@ -308,7 +299,7 @@ impl DepNodeExt for DepNode {
     /// method will assert that the given DepKind actually requires a
     /// single DefId/DefPathHash parameter.
     fn from_def_path_hash(def_path_hash: DefPathHash, kind: DepKind) -> DepNode {
-        debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
+        debug_assert!(kind.can_reconstruct_query_key() && kind.has_params);
         DepNode { kind, hash: def_path_hash.0.into() }
     }
 
@@ -341,7 +332,7 @@ impl DepNodeExt for DepNode {
             return Err(());
         }
 
-        if kind.has_params() {
+        if kind.has_params {
             Ok(DepNode::from_def_path_hash(def_path_hash, kind))
         } else {
             Ok(DepNode::new_no_params(kind))
