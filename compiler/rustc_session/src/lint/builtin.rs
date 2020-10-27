@@ -2648,7 +2648,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `uninhabited_static` lint detects uninhbaited statics.
+    /// The `uninhabited_static` lint detects uninhabited statics.
     ///
     /// ### Example
     ///

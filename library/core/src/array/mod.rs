@@ -344,7 +344,7 @@ impl<T: PartialOrd, const N: usize> PartialOrd for [T; N] {
     }
 }
 
-/// Implements comparison of arrays lexicographically.
+/// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, const N: usize> Ord for [T; N] {
     #[inline]

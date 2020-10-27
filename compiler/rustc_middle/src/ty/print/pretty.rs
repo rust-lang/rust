@@ -658,7 +658,7 @@ pub trait PrettyPrinter<'tcx>:
                         let span = self.tcx().hir().span(hir_id);
                         p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
                     } else {
-                        p!(write("@{}", self.tcx().def_path_str(did)));
+                        p!(write("@"), print_def_path(did, substs));
                     }
                 } else {
                     p!(print_def_path(did, substs));
@@ -694,7 +694,7 @@ pub trait PrettyPrinter<'tcx>:
                             p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
                         }
                     } else {
-                        p!(write("@{}", self.tcx().def_path_str(did)));
+                        p!(write("@"), print_def_path(did, substs));
                     }
                 } else {
                     p!(print_def_path(did, substs));

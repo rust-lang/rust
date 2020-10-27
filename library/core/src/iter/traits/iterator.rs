@@ -2851,7 +2851,7 @@ pub trait Iterator {
         Product::product(self)
     }
 
-    /// Lexicographically compares the elements of this [`Iterator`] with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another.
     ///
     /// # Examples
@@ -2873,7 +2873,7 @@ pub trait Iterator {
         self.cmp_by(other, |x, y| x.cmp(&y))
     }
 
-    /// Lexicographically compares the elements of this [`Iterator`] with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
@@ -2925,7 +2925,7 @@ pub trait Iterator {
         }
     }
 
-    /// Lexicographically compares the elements of this [`Iterator`] with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another.
     ///
     /// # Examples
@@ -2949,7 +2949,7 @@ pub trait Iterator {
         self.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
     }
 
-    /// Lexicographically compares the elements of this [`Iterator`] with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
@@ -3089,7 +3089,7 @@ pub trait Iterator {
         !self.eq(other)
     }
 
-    /// Determines if the elements of this [`Iterator`] are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// less than those of another.
     ///
     /// # Examples
@@ -3110,7 +3110,7 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Less)
     }
 
-    /// Determines if the elements of this [`Iterator`] are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// less or equal to those of another.
     ///
     /// # Examples
@@ -3131,7 +3131,7 @@ pub trait Iterator {
         matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
     }
 
-    /// Determines if the elements of this [`Iterator`] are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// greater than those of another.
     ///
     /// # Examples
@@ -3152,7 +3152,7 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Greater)
     }
 
-    /// Determines if the elements of this [`Iterator`] are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// greater than or equal to those of another.
     ///
     /// # Examples
