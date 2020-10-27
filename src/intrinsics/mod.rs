@@ -9,6 +9,7 @@ pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
 use crate::prelude::*;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 
 macro intrinsic_pat {
     (_) => {
@@ -819,29 +820,29 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         assert_inhabited | assert_zero_valid | assert_uninit_valid, <T> () {
             let layout = fx.layout_of(T);
             if layout.abi.is_uninhabited() {
-                crate::base::codegen_panic(
+                with_no_trimmed_paths(|| crate::base::codegen_panic(
                     fx,
                     &format!("attempted to instantiate uninhabited type `{}`", T),
                     span,
-                );
+                ));
                 return;
             }
 
             if intrinsic == "assert_zero_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ true).unwrap() {
-                crate::base::codegen_panic(
+                with_no_trimmed_paths(|| crate::base::codegen_panic(
                     fx,
                     &format!("attempted to zero-initialize type `{}`, which is invalid", T),
                     span,
-                );
+                ));
                 return;
             }
 
             if intrinsic == "assert_uninit_valid" && !layout.might_permit_raw_init(fx, /*zero:*/ false).unwrap() {
-                crate::base::codegen_panic(
+                with_no_trimmed_paths(|| crate::base::codegen_panic(
                     fx,
                     &format!("attempted to leave type `{}` uninitialized, which is invalid", T),
                     span,
-                );
+                ));
                 return;
             }
         };
