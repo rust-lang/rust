@@ -3,9 +3,6 @@
 #![warn(clippy::mismatched_target_os)]
 #![allow(unused)]
 
-#[cfg(target_os = "cloudabi")]
-fn cloudabi() {}
-
 #[cfg(target_os = "hermit")]
 fn hermit() {}
 
@@ -16,7 +13,7 @@ fn wasi() {}
 fn none() {}
 
 // list with conditions
-#[cfg(all(not(any(windows, target_os = "cloudabi")), target_os = "wasi"))]
+#[cfg(all(not(windows), target_os = "wasi"))]
 fn list() {}
 
 // windows is a valid target family, should be ignored
