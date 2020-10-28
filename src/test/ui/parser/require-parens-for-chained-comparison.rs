@@ -12,15 +12,15 @@ fn main() {
 
     f<X>();
     //~^ ERROR comparison operators cannot be chained
-    //~| HELP use `::<...>` instead of `<...>` to specify type arguments
+    //~| HELP use `::<...>` instead of `<...>` to specify type or const arguments
 
     f<Result<Option<X>, Option<Option<X>>>(1, 2);
     //~^ ERROR comparison operators cannot be chained
-    //~| HELP use `::<...>` instead of `<...>` to specify type arguments
+    //~| HELP use `::<...>` instead of `<...>` to specify type or const arguments
 
     use std::convert::identity;
     let _ = identity<u8>;
     //~^ ERROR comparison operators cannot be chained
-    //~| HELP use `::<...>` instead of `<...>` to specify type arguments
+    //~| HELP use `::<...>` instead of `<...>` to specify type or const arguments
     //~| HELP or use `(...)` if you meant to specify fn arguments
 }
