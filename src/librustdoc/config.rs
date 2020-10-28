@@ -379,6 +379,17 @@ impl Options {
 
         let mut default_settings: Vec<Vec<(String, String)>> = vec![
             matches
+                .opt_str("default-theme")
+                .iter()
+                .map(|theme| {
+                    vec![
+                        ("use-system-theme".to_string(), "false".to_string()),
+                        ("theme".to_string(), theme.to_string()),
+                    ]
+                })
+                .flatten()
+                .collect(),
+            matches
                 .opt_strs("default-setting")
                 .iter()
                 .map(|s| {
