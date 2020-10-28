@@ -26,6 +26,20 @@ pub trait HirDisplay {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError>;
 
     /// Returns a `Display`able type that is human-readable.
+    fn into_displayable<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        max_size: Option<usize>,
+        omit_verbose_types: bool,
+        display_target: DisplayTarget,
+    ) -> HirDisplayWrapper<'a, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper { db, t: self, max_size, omit_verbose_types, display_target }
+    }
+
+    /// Returns a `Display`able type that is human-readable.
     /// Use this for showing types to the user (e.g. diagnostics)
     fn display<'a>(&'a self, db: &'a dyn HirDatabase) -> HirDisplayWrapper<'a, Self>
     where
@@ -140,7 +154,7 @@ impl<'a> HirFormatter<'a> {
 }
 
 #[derive(Clone, Copy)]
-enum DisplayTarget {
+pub enum DisplayTarget {
     /// Display types for inlays, doc popups, autocompletion, etc...
     /// Showing `{unknown}` or not qualifying paths is fine here.
     /// There's no reason for this to fail.
@@ -232,32 +246,32 @@ impl HirDisplay for ApplicationTy {
             TypeCtor::Str => write!(f, "str")?,
             TypeCtor::Slice => {
                 let t = self.parameters.as_single();
-                write!(f, "[{}]", t.display(f.db))?;
+                write!(f, "[")?;
+                t.hir_fmt(f)?;
+                write!(f, "]")?;
             }
             TypeCtor::Array => {
                 let t = self.parameters.as_single();
-                write!(f, "[{}; _]", t.display(f.db))?;
+                write!(f, "[")?;
+                t.hir_fmt(f)?;
+                write!(f, "; _]")?;
             }
             TypeCtor::RawPtr(m) => {
                 let t = self.parameters.as_single();
-                let ty_display = t.display(f.db);
 
                 write!(f, "*{}", m.as_keyword_for_ptr())?;
                 if matches!(t, Ty::Dyn(predicates) if predicates.len() > 1) {
                     write!(f, "(")?;
-                    write!(f, "{}", ty_display)?;
+                    t.hir_fmt(f)?;
                     write!(f, ")")?;
                 } else {
-                    write!(f, "{}", ty_display)?;
+                    t.hir_fmt(f)?;
                 }
             }
             TypeCtor::Ref(m) => {
                 let t = self.parameters.as_single();
-                let ty_display = if f.omit_verbose_types() {
-                    t.display_truncated(f.db, f.max_size)
-                } else {
-                    t.display(f.db)
-                };
+                let ty_display =
+                    t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 
                 write!(f, "&{}", m.as_keyword_for_ref())?;
                 if matches!(t, Ty::Dyn(predicates) if predicates.len() > 1) {
@@ -272,7 +286,9 @@ impl HirDisplay for ApplicationTy {
             TypeCtor::Tuple { .. } => {
                 let ts = &self.parameters;
                 if ts.len() == 1 {
-                    write!(f, "({},)", ts[0].display(f.db))?;
+                    write!(f, "(")?;
+                    ts[0].hir_fmt(f)?;
+                    write!(f, ",)")?;
                 } else {
                     write!(f, "(")?;
                     f.write_joined(&*ts.0, ", ")?;
@@ -293,11 +309,12 @@ impl HirDisplay for ApplicationTy {
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if *ret != Ty::unit() {
-                    let ret_display = if f.omit_verbose_types() {
-                        ret.display_truncated(f.db, f.max_size)
-                    } else {
-                        ret.display(f.db)
-                    };
+                    let ret_display = ret.into_displayable(
+                        f.db,
+                        f.max_size,
+                        f.omit_verbose_types,
+                        f.display_target,
+                    );
                     write!(f, " -> {}", ret_display)?;
                 }
             }
@@ -329,15 +346,13 @@ impl HirDisplay for ApplicationTy {
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if *ret != Ty::unit() {
-                    let ret_display = if f.omit_verbose_types() {
-                        ret.display_truncated(f.db, f.max_size)
-                    } else {
-                        if f.display_target.is_test() {
-                            ret.display_test(f.db)
-                        } else {
-                            ret.display(f.db)
-                        }
-                    };
+                    let ret_display = ret.into_displayable(
+                        f.db,
+                        f.max_size,
+                        f.omit_verbose_types,
+                        f.display_target,
+                    );
+
                     write!(f, " -> {}", ret_display)?;
                 }
             }
@@ -473,15 +488,12 @@ impl HirDisplay for ApplicationTy {
                         write!(f, "|")?;
                     };
 
-                    let ret_display = if f.omit_verbose_types() {
-                        sig.ret().display_truncated(f.db, f.max_size)
-                    } else {
-                        if f.display_target.is_test() {
-                            sig.ret().display_test(f.db)
-                        } else {
-                            sig.ret().display(f.db)
-                        }
-                    };
+                    let ret_display = sig.ret().into_displayable(
+                        f.db,
+                        f.max_size,
+                        f.omit_verbose_types,
+                        f.display_target,
+                    );
                     write!(f, " -> {}", ret_display)?;
                 } else {
                     write!(f, "{{closure}}")?;
@@ -499,7 +511,13 @@ impl HirDisplay for ProjectionTy {
         }
 
         let trait_ = f.db.trait_data(self.trait_(f.db));
-        write!(f, "<{} as {}", self.parameters[0].display(f.db), trait_.name)?;
+        let first_parameter = self.parameters[0].into_displayable(
+            f.db,
+            f.max_size,
+            f.omit_verbose_types,
+            f.display_target,
+        );
+        write!(f, "<{} as {}", first_parameter, trait_.name)?;
         if self.parameters.len() > 1 {
             write!(f, "<")?;
             f.write_joined(&self.parameters[1..], ", ")?;
@@ -678,10 +696,10 @@ impl HirDisplay for GenericPredicate {
                 projection_pred.projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
                 write!(
                     f,
-                    ">::{} = {}",
+                    ">::{} = ",
                     f.db.type_alias_data(projection_pred.projection_ty.associated_ty).name,
-                    projection_pred.ty.display(f.db)
                 )?;
+                projection_pred.ty.hir_fmt(f)?;
             }
             GenericPredicate::Error => write!(f, "{{error}}")?,
         }
@@ -692,13 +710,18 @@ impl HirDisplay for GenericPredicate {
 impl HirDisplay for Obligation {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
-            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db)),
-            Obligation::Projection(proj) => write!(
-                f,
-                "Normalize({} => {})",
-                proj.projection_ty.display(f.db),
-                proj.ty.display(f.db)
-            ),
+            Obligation::Trait(tr) => {
+                write!(f, "Implements(")?;
+                tr.hir_fmt(f)?;
+                write!(f, ")")
+            }
+            Obligation::Projection(proj) => {
+                write!(f, "Normalize(")?;
+                proj.projection_ty.hir_fmt(f)?;
+                write!(f, " => ")?;
+                proj.ty.hir_fmt(f)?;
+                write!(f, ")")
+            }
         }
     }
 }
