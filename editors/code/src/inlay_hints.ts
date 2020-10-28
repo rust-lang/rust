@@ -61,6 +61,7 @@ function createHintStyle(hintKind: "type" | "parameter" | "chaining") {
                 backgroundColor: bg,
                 fontStyle: "normal",
                 fontWeight: "normal",
+                textDecoration: "none",
             },
         }),
         toDecoration(hint: ra.InlayHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions {
