@@ -61,7 +61,9 @@ impl<T> RangeMap<T> {
     /// Provides read-only iteration over everything in the given range. This does
     /// *not* split items if they overlap with the edges. Do not use this to mutate
     /// through interior mutability.
-    pub fn iter<'a>(&'a self, offset: Size, len: Size) -> impl Iterator<Item = &'a T> + 'a {
+    ///
+    /// The iterator also provides the offset of the given element.
+    pub fn iter<'a>(&'a self, offset: Size, len: Size) -> impl Iterator<Item = (Size, &'a T)> + 'a {
         let offset = offset.bytes();
         let len = len.bytes();
         // Compute a slice starting with the elements we care about.
@@ -75,7 +77,7 @@ impl<T> RangeMap<T> {
         };
         // The first offset that is not included any more.
         let end = offset + len;
-        slice.iter().take_while(move |elem| elem.range.start < end).map(|elem| &elem.data)
+        slice.iter().take_while(move |elem| elem.range.start < end).map(|elem| (Size::from_bytes(elem.range.start), &elem.data))
     }
 
     pub fn iter_mut_all<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> + 'a {
@@ -112,11 +114,13 @@ impl<T> RangeMap<T> {
     /// this will split entries in the map that are only partially hit by the given range,
     /// to make sure that when they are mutated, the effect is constrained to the given range.
     /// Moreover, this will opportunistically merge neighbouring equal blocks.
+    ///
+    /// The iterator also provides the offset of the given element.
     pub fn iter_mut<'a>(
         &'a mut self,
         offset: Size,
         len: Size,
-    ) -> impl Iterator<Item = &'a mut T> + 'a
+    ) -> impl Iterator<Item = (Size, &'a mut T)> + 'a
     where
         T: Clone + PartialEq,
     {
@@ -197,7 +201,7 @@ impl<T> RangeMap<T> {
             // Now we yield the slice. `end` is inclusive.
             &mut self.v[first_idx..=end_idx]
         };
-        slice.iter_mut().map(|elem| &mut elem.data)
+        slice.iter_mut().map(|elem| (Size::from_bytes(elem.range.start), &mut elem.data))
     }
 }
 
@@ -209,7 +213,7 @@ mod tests {
     fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64) -> Vec<T> {
         (offset..offset + len)
             .into_iter()
-            .map(|i| map.iter(Size::from_bytes(i), Size::from_bytes(1)).next().map(|&t| t).unwrap())
+            .map(|i| map.iter(Size::from_bytes(i), Size::from_bytes(1)).next().map(|(_, &t)| t).unwrap())
             .collect()
     }
 
@@ -217,7 +221,7 @@ mod tests {
     fn basic_insert() {
         let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
         // Insert.
-        for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(1)) {
+        for (_, x) in map.iter_mut(Size::from_bytes(10), Size::from_bytes(1)) {
             *x = 42;
         }
         // Check.
@@ -225,10 +229,10 @@ mod tests {
         assert_eq!(map.v.len(), 3);
 
         // Insert with size 0.
-        for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(0)) {
+        for (_, x) in map.iter_mut(Size::from_bytes(10), Size::from_bytes(0)) {
             *x = 19;
         }
-        for x in map.iter_mut(Size::from_bytes(11), Size::from_bytes(0)) {
+        for (_, x) in map.iter_mut(Size::from_bytes(11), Size::from_bytes(0)) {
             *x = 19;
         }
         assert_eq!(to_vec(&map, 10, 2), vec![42, -1]);
@@ -238,16 +242,16 @@ mod tests {
     #[test]
     fn gaps() {
         let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
-        for x in map.iter_mut(Size::from_bytes(11), Size::from_bytes(1)) {
+        for (_, x) in map.iter_mut(Size::from_bytes(11), Size::from_bytes(1)) {
             *x = 42;
         }
-        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(1)) {
+        for (_, x) in map.iter_mut(Size::from_bytes(15), Size::from_bytes(1)) {
             *x = 43;
         }
         assert_eq!(map.v.len(), 5);
         assert_eq!(to_vec(&map, 10, 10), vec![-1, 42, -1, -1, -1, 43, -1, -1, -1, -1]);
 
-        for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(10)) {
+        for (_, x) in map.iter_mut(Size::from_bytes(10), Size::from_bytes(10)) {
             if *x < 42 {
                 *x = 23;
             }
@@ -256,14 +260,14 @@ mod tests {
         assert_eq!(to_vec(&map, 10, 10), vec![23, 42, 23, 23, 23, 43, 23, 23, 23, 23]);
         assert_eq!(to_vec(&map, 13, 5), vec![23, 23, 43, 23, 23]);
 
-        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) {
+        for (_, x) in map.iter_mut(Size::from_bytes(15), Size::from_bytes(5)) {
             *x = 19;
         }
         assert_eq!(map.v.len(), 6);
         assert_eq!(to_vec(&map, 10, 10), vec![23, 42, 23, 23, 23, 19, 19, 19, 19, 19]);
         // Should be seeing two blocks with 19.
         assert_eq!(
-            map.iter(Size::from_bytes(15), Size::from_bytes(2)).map(|&t| t).collect::<Vec<_>>(),
+            map.iter(Size::from_bytes(15), Size::from_bytes(2)).map(|(_, &t)| t).collect::<Vec<_>>(),
             vec![19, 19]
         );
 

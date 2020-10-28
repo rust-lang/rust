@@ -230,13 +230,20 @@ environment variable:
 * `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs.
+* `-Zmiri-track-call-id=<id>` shows a backtrace when the given call id is
+  assigned to a stack frame.  This helps in debugging UB related to Stacked
+  Borrows "protectors".
 * `-Zmiri-track-pointer-tag=<tag>` shows a backtrace when the given pointer tag
   is popped from a borrow stack (which is where the tag becomes invalid and any
   future use of it will error).  This helps you in finding out why UB is
   happening and where in your code would be a good place to look for it.
-* `-Zmiri-track-call-id=<id>` shows a backtrace when the given call id is
-  assigned to a stack frame.  This helps in debugging UB related to Stacked
-  Borrows "protectors".
+* `-Zmiri-track-raw-pointers` makes Stacked Borrows track a pointer tag even for
+  raw pointers. This can make valid code fail to pass the checks, but also can
+  help identify latent aliasing issues in code that Miri accepts by default. You
+  can recognize false positives by "<untagged>" occurring in the message -- this
+  indicates a pointer that was cast from an integer, so Miri was unable to track
+  this pointer. Make sure to use a non-Windows target with this flag, as the
+  Windows runtime makes use of integer-pointer casts.
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 

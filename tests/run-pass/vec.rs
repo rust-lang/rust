@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-track-raw-pointers
+// ignore-windows (FIXME: tracking raw pointers does not work on Windows)
 // Gather all references from a mutable iterator and make sure Miri notices if
 // using them is dangerous.
 fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {

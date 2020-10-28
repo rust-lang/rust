@@ -108,6 +108,8 @@ pub struct GlobalState {
     tracked_pointer_tag: Option<PtrId>,
     /// The call id to trace
     tracked_call_id: Option<CallId>,
+    /// Whether to track raw pointers.
+    track_raw: bool,
 }
 /// Memory extra state gives us interior mutable access to the global state.
 pub type MemoryExtra = Rc<RefCell<GlobalState>>;
@@ -155,7 +157,7 @@ impl fmt::Display for RefKind {
 
 /// Utilities for initialization and ID generation
 impl GlobalState {
-    pub fn new(tracked_pointer_tag: Option<PtrId>, tracked_call_id: Option<CallId>) -> Self {
+    pub fn new(tracked_pointer_tag: Option<PtrId>, tracked_call_id: Option<CallId>, track_raw: bool) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: FxHashMap::default(),
@@ -163,6 +165,7 @@ impl GlobalState {
             active_calls: FxHashSet::default(),
             tracked_pointer_tag,
             tracked_call_id,
+            track_raw,
         }
     }
 
@@ -309,14 +312,14 @@ impl<'tcx> Stack {
 
     /// Test if a memory `access` using pointer tagged `tag` is granted.
     /// If yes, return the index of the item that granted it.
-    fn access(&mut self, access: AccessKind, tag: Tag, global: &GlobalState) -> InterpResult<'tcx> {
+    fn access(&mut self, access: AccessKind, ptr: Pointer<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
+        let granting_idx = self.find_granting(access, ptr.tag).ok_or_else(|| {
             err_sb_ub(format!(
-                "no item granting {} to tag {:?} found in borrow stack.",
-                access, tag
+                "no item granting {} to tag {:?} at {} found in borrow stack.",
+                access, ptr.tag, ptr.erase_tag(),
             ))
         })?;
 
@@ -328,7 +331,7 @@ impl<'tcx> Stack {
             let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
-                Stack::check_protector(&item, Some(tag), global)?;
+                Stack::check_protector(&item, Some(ptr.tag), global)?;
             }
         } else {
             // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
@@ -343,7 +346,7 @@ impl<'tcx> Stack {
                 let item = &mut self.borrows[idx];
                 if item.perm == Permission::Unique {
                     trace!("access: disabling item {:?}", item);
-                    Stack::check_protector(item, Some(tag), global)?;
+                    Stack::check_protector(item, Some(ptr.tag), global)?;
                     item.perm = Permission::Disabled;
                 }
             }
@@ -355,12 +358,12 @@ impl<'tcx> Stack {
 
     /// Deallocate a location: Like a write access, but also there must be no
     /// active protectors at all because we will remove all items.
-    fn dealloc(&mut self, tag: Tag, global: &GlobalState) -> InterpResult<'tcx> {
+    fn dealloc(&mut self, ptr: Pointer<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
-        self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
+        self.find_granting(AccessKind::Write, ptr.tag).ok_or_else(|| {
             err_sb_ub(format!(
-                "no item granting write access for deallocation to tag {:?} found in borrow stack",
-                tag,
+                "no item granting write access for deallocation to tag {:?} at {} found in borrow stack",
+                ptr.tag, ptr.erase_tag(),
             ))
         })?;
 
@@ -372,20 +375,20 @@ impl<'tcx> Stack {
         Ok(())
     }
 
-    /// Derived a new pointer from one with the given tag.
+    /// Derive a new pointer from one with the given tag.
     /// `weak` controls whether this operation is weak or strong: weak granting does not act as
     /// an access, and they add the new item directly on top of the one it is derived
     /// from instead of all the way at the top of the stack.
-    fn grant(&mut self, derived_from: Tag, new: Item, global: &GlobalState) -> InterpResult<'tcx> {
+    fn grant(&mut self, derived_from: Pointer<Tag>, new: Item, global: &GlobalState) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access =
             if new.perm.grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
-        let granting_idx = self.find_granting(access, derived_from)
+        let granting_idx = self.find_granting(access, derived_from.tag)
             .ok_or_else(|| err_sb_ub(format!(
-                "trying to reborrow for {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack",
-                new.perm, derived_from,
+                "trying to reborrow for {:?} at {}, but parent tag {:?} does not have an appropriate item in the borrow stack",
+                new.perm, derived_from.erase_tag(), derived_from.tag,
             )))?;
 
         // Compute where to put the new item.
@@ -443,12 +446,14 @@ impl<'tcx> Stacks {
         &self,
         ptr: Pointer<Tag>,
         size: Size,
-        f: impl Fn(&mut Stack, &GlobalState) -> InterpResult<'tcx>,
+        f: impl Fn(Pointer<Tag>, &mut Stack, &GlobalState) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         let global = self.global.borrow();
         let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            f(stack, &*global)?;
+        for (offset, stack) in stacks.iter_mut(ptr.offset, size) {
+            let mut cur_ptr = ptr;
+            cur_ptr.offset = offset;
+            f(cur_ptr, stack, &*global)?;
         }
         Ok(())
     }
@@ -477,9 +482,12 @@ impl Stacks {
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
             MemoryKind::Machine(MiriMemoryKind::Global | MiriMemoryKind::ExternStatic | MiriMemoryKind::Tls | MiriMemoryKind::Env) =>
                 (extra.borrow_mut().global_base_ptr(id), Permission::SharedReadWrite),
-            // Everything else we handle entirely untagged for now.
-            // FIXME: experiment with more precise tracking.
-            _ => (Tag::Untagged, Permission::SharedReadWrite),
+            // Everything else we handle like raw pointers for now.
+            _ => {
+                let mut extra = extra.borrow_mut();
+                let tag = if extra.track_raw { Tag::Tagged(extra.new_ptr()) } else { Tag::Untagged };
+                (tag, Permission::SharedReadWrite)
+            }
         };
         (Stacks::new(size, perm, tag, extra), tag)
     }
@@ -487,19 +495,13 @@ impl Stacks {
     #[inline(always)]
     pub fn memory_read<'tcx>(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, |stack, global| {
-            stack.access(AccessKind::Read, ptr.tag, global)?;
-            Ok(())
-        })
+        self.for_each(ptr, size, |ptr, stack, global| stack.access(AccessKind::Read, ptr, global))
     }
 
     #[inline(always)]
     pub fn memory_written<'tcx>(&mut self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, |stack, global| {
-            stack.access(AccessKind::Write, ptr.tag, global)?;
-            Ok(())
-        })
+        self.for_each(ptr, size, |ptr, stack, global| stack.access(AccessKind::Write, ptr, global))
     }
 
     #[inline(always)]
@@ -509,7 +511,7 @@ impl Stacks {
         size: Size,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, |stack, global| stack.dealloc(ptr.tag, global))
+        self.for_each(ptr, size, |ptr, stack, global| stack.dealloc(ptr, global))
     }
 }
 
@@ -561,14 +563,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Permission::SharedReadWrite
                     };
                     let item = Item { perm, tag: new_tag, protector };
-                    stacked_borrows.for_each(cur_ptr, size, |stack, global| {
-                        stack.grant(cur_ptr.tag, item, global)
+                    stacked_borrows.for_each(cur_ptr, size, |cur_ptr, stack, global| {
+                        stack.grant(cur_ptr, item, global)
                     })
                 });
             }
         };
         let item = Item { perm, tag: new_tag, protector };
-        stacked_borrows.for_each(ptr, size, |stack, global| stack.grant(ptr.tag, item, global))
+        stacked_borrows.for_each(ptr, size, |ptr, stack, global| stack.grant(ptr, item, global))
     }
 
     /// Retags an indidual pointer, returning the retagged version.
@@ -597,16 +599,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Compute new borrow.
-        let new_tag = match kind {
-            // Give up tracking for raw pointers.
-            // FIXME: Experiment with more precise tracking. Blocked on `&raw`
-            // because `Rc::into_raw` currently creates intermediate references,
-            // breaking `Rc::from_raw`.
-            RefKind::Raw { .. } => Tag::Untagged,
-            // All other pointesr are properly tracked.
-            _ => Tag::Tagged(
-                this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut().new_ptr(),
-            ),
+        let new_tag = {
+            let mut mem_extra = this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut();
+            match kind {
+                // Give up tracking for raw pointers.
+                RefKind::Raw { .. } if !mem_extra.track_raw => Tag::Untagged,
+                // All other pointers are properly tracked.
+                _ => Tag::Tagged(mem_extra.new_ptr()),
+            }
         };
 
         // Reborrow.
