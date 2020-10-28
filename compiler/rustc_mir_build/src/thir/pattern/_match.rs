@@ -203,7 +203,7 @@
 //! before.
 //! That's almost correct, but only works if there were no wildcards in those first
 //! components. So we need to check that `p` is useful with respect to the rows that
-//! start with a wildcard, if there are any. This is where `D` comes in:
+//! start with a wildcard, if there are any. This is where `S(_, x)` comes in:
 //! `U(P, p) := U(S(_, P), S(_, p))`
 //!
 //! For example, if `P` is:
@@ -634,8 +634,8 @@ impl Slice {
     }
 
     /// The exhaustiveness-checking paper does not include any details on
-    /// checking variable-length slice patterns. However, they are matched
-    /// by an infinite collection of fixed-length array patterns.
+    /// checking variable-length slice patterns. However, they may be
+    /// matched by an infinite collection of fixed-length array patterns.
     ///
     /// Checking the infinite set directly would take an infinite amount
     /// of time. However, it turns out that for each finite set of
@@ -646,11 +646,11 @@ impl Slice {
     /// `sₘ` for each sufficiently-large length `m` that applies to exactly
     /// the same subset of `P`.
     ///
-    /// Because of that, each witness for reachability-checking from one
+    /// Because of that, each witness for reachability-checking of one
     /// of the sufficiently-large lengths can be transformed to an
-    /// equally-valid witness from any other length, so we only have
-    /// to check slice lengths from the "minimal sufficiently-large length"
-    /// and below.
+    /// equally-valid witness of any other length, so we only have
+    /// to check slices of the "minimal sufficiently-large length"
+    /// and less.
     ///
     /// Note that the fact that there is a *single* `sₘ` for each `m`
     /// not depending on the specific pattern in `P` is important: if
@@ -659,8 +659,8 @@ impl Slice {
     ///     `[.., false]`
     /// Then any slice of length ≥1 that matches one of these two
     /// patterns can be trivially turned to a slice of any
-    /// other length ≥1 that matches them and vice-versa - for
-    /// but the slice from length 2 `[false, true]` that matches neither
+    /// other length ≥1 that matches them and vice-versa,
+    /// but the slice of length 2 `[false, true]` that matches neither
     /// of these patterns can't be turned to a slice from length 1 that
     /// matches neither of these patterns, so we have to consider
     /// slices from length 2 there.
@@ -787,7 +787,7 @@ enum Constructor<'tcx> {
     Opaque,
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
     NonExhaustive,
-    /// Fake constructor for those types for which we can't list constructors explicitely, like
+    /// Fake constructor for those types for which we can't list constructors explicitly, like
     /// `f64` and `&str`.
     Unlistable,
     /// Wildcard pattern.
@@ -796,13 +796,10 @@ enum Constructor<'tcx> {
 
 impl<'tcx> Constructor<'tcx> {
     fn is_wildcard(&self) -> bool {
-        match self {
-            Wildcard => true,
-            _ => false,
-        }
+        matches!(self, Wildcard)
     }
 
-    fn as_intrange(&self) -> Option<&IntRange<'tcx>> {
+    fn as_int_range(&self) -> Option<&IntRange<'tcx>> {
         match self {
             IntRange(range) => Some(range),
             _ => None,
@@ -827,7 +824,7 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    /// Some constructors (namely Wildcard, IntRange and Slice) actually stand for a set of actual
+    /// Some constructors (namely `Wildcard`, `IntRange` and `Slice`) actually stand for a set of actual
     /// constructors (like variants, integers or fixed-sized slices). When specializing for these
     /// constructors, we want to be specialising for the actual underlying constructors.
     /// Naively, we would simply return the list of constructors they correspond to. We instead are
@@ -863,8 +860,8 @@ impl<'tcx> Constructor<'tcx> {
 
     /// For wildcards, there are two groups of constructors: there are the constructors actually
     /// present in the matrix (`head_ctors`), and the constructors not present (`missing_ctors`).
-    /// Two constructors that are not in the matrix will either both be catched (by a wildcard), or
-    /// both not be catched. Therefore we can keep the missing constructors grouped together.
+    /// Two constructors that are not in the matrix will either both be caught (by a wildcard), or
+    /// both not be caught. Therefore we can keep the missing constructors grouped together.
     fn split_wildcard<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Self; 1]> {
         // Missing constructors are those that are not matched by any non-wildcard patterns in the
         // current column. We only fully construct them on-demand, because they're rarely used and
@@ -882,8 +879,8 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    /// Returns whether `self` is covered by `other`, ie whether `self` is a subset of `other`. For
-    /// the simple cases, this is simply checking for equality. For the "grouped" constructors,
+    /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
+    /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
     fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
         match (self, other) {
@@ -955,7 +952,7 @@ impl<'tcx> Constructor<'tcx> {
             Variant(_) => used_ctors.iter().any(|c| c == self),
             IntRange(range) => used_ctors
                 .iter()
-                .filter_map(|c| c.as_intrange())
+                .filter_map(|c| c.as_int_range())
                 .any(|other| range.is_covered_by(pcx, other)),
             Slice(slice) => used_ctors
                 .iter()
@@ -1601,7 +1598,7 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
         _ if cx.is_uninhabited(pcx.ty) => vec![],
         ty::Adt(..) | ty::Tuple(..) => vec![Single],
         ty::Ref(_, t, _) if !t.is_str() => vec![Single],
-        // This type is one for which we don't know how to list constructors, like &str of f64.
+        // This type is one for which we don't know how to list constructors, like `&str` or `f64`.
         _ => vec![Unlistable],
     }
 }
@@ -1851,7 +1848,7 @@ impl<'tcx> IntRange<'tcx> {
         let row_borders = pcx
             .matrix
             .head_ctors(pcx.cx)
-            .filter_map(|ctor| ctor.as_intrange())
+            .filter_map(|ctor| ctor.as_int_range())
             .filter_map(|range| {
                 let intersection = self.intersection(pcx.cx.tcx, &range);
                 let should_lint = self.suspicious_intersection(&range);
