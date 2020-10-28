@@ -336,6 +336,24 @@ macro_rules! define_mask_vector {
             call_repeat! { $lanes => define_mask_vector [$impl_type] splat $type | }
             call_counting_args! { $lanes => define_mask_vector => new $type | }
             call_counting_args! { $lanes => define_mask_vector => new_from_bool $type | }
+
+            /// Tests the value of the specified lane.
+            ///
+            /// # Panics
+            /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
+            #[inline]
+            pub fn test(&self, lane: usize) -> bool {
+                self[lane].test()
+            }
+
+            /// Sets the value of the specified lane.
+            ///
+            /// # Panics
+            /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
+            #[inline]
+            pub fn set(&mut self, lane: usize, value: bool) {
+                self[lane] = value.into();
+            }
         }
 
         base_vector_traits! { $name => [$type; $lanes] }
