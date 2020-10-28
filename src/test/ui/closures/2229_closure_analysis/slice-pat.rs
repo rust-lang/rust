@@ -19,6 +19,8 @@ fn main() {
     //~^ ERROR: attributes on expressions are experimental
         || {
             let [a, b, .., e] = arr;
+            //~^ ERROR: Capturing arr[Index] -> ByValue
+            //~^^ ERROR: Min Capture arr[] -> ByValue
             assert_eq!(a, "A");
             assert_eq!(b, "B");
             assert_eq!(e, "E");

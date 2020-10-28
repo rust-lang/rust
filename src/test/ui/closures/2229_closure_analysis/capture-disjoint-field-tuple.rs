@@ -11,6 +11,8 @@ fn main() {
     //~^ ERROR: attributes on expressions are experimental
     || {
         println!("{}", t.0);
+        //~^ ERROR: Capturing t[(0, 0)] -> ImmBorrow
+        //~^^ ERROR: Min Capture t[(0, 0)] -> ImmBorrow
     };
 
     // `c` only captures t.0, therefore mutating t.1 is allowed.

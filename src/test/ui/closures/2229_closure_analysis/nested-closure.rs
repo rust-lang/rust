@@ -22,10 +22,18 @@ fn main() {
         //~^ ERROR: attributes on expressions are experimental
     || {
         println!("{}", p.x);
+        //~^ ERROR: Capturing p[(0, 0)] -> ImmBorrow
+        //~^^ ERROR: Min Capture p[(0, 0)] -> ImmBorrow
         let incr = 10;
         let mut c2 = #[rustc_capture_analysis]
         //~^ ERROR: attributes on expressions are experimental
         || p.y += incr;
+        //~^ ERROR: Capturing p[(1, 0)] -> MutBorrow
+        //~^^ ERROR: Capturing incr[] -> ImmBorrow
+        //~^^^ ERROR: Min Capture p[(1, 0)] -> MutBorrow
+        //~^^^^ ERROR: Min Capture incr[] -> ImmBorrow
+        //~^^^^^ ERROR: Capturing p[(1, 0)] -> MutBorrow
+        //~^^^^^^ ERROR: Min Capture p[(1, 0)] -> MutBorrow
         c2();
         println!("{}", p.y);
     };

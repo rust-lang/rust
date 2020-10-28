@@ -10,6 +10,8 @@ fn main() {
     //~^ ERROR: attributes on expressions are experimental
     || {
         m[0] += 10;
+        //~^ ERROR: Capturing m[] -> MutBorrow
+        //~^^ ERROR: Min Capture m[] -> MutBorrow
         m[1] += 40;
     };
 

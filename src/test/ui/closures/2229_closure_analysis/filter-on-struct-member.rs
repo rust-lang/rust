@@ -22,9 +22,10 @@ impl Data {
         // The closure passed to filter only captures self.filter,
         // therefore mutating self.list is allowed.
         self.list.retain(
-        //~^ cannot borrow `self.list` as mutable because it is also borrowed as immutable
             #[rustc_capture_analysis]
             |v| self.filter.allowed(*v),
+            //~^ ERROR: Capturing self[Deref,(0, 0)] -> ImmBorrow
+            //~^^ ERROR: Min Capture self[Deref,(0, 0)] -> ImmBorrow
         );
     }
 }

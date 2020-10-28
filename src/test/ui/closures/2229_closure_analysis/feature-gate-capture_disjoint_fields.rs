@@ -9,5 +9,7 @@ fn main() {
     //~^ ERROR: attributes on expressions are experimental
     || {
         println!("This uses new capture analyysis to capture s={}", s);
+        //~^ ERROR: Capturing s[] -> ImmBorrow
+        //~^^ ERROR: Min Capture s[] -> ImmBorrow
     };
 }
