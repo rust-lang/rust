@@ -84,26 +84,17 @@ pub trait HirDisplay {
     }
 
     /// Returns a String representation of `self` for test purposes
-    fn display_test<'a>(
-        &'a self,
-        db: &'a dyn HirDatabase,
-        module_id: ModuleId,
-    ) -> Result<String, DisplaySourceCodeError> {
-        let mut result = String::new();
-        match self.hir_fmt(&mut HirFormatter {
+    fn display_test<'a>(&'a self, db: &'a dyn HirDatabase) -> HirDisplayWrapper<'a, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper {
             db,
-            fmt: &mut result,
-            buf: String::with_capacity(20),
-            curr_size: 0,
+            t: self,
             max_size: None,
             omit_verbose_types: false,
-            display_target: DisplayTarget::Test { module_id },
-        }) {
-            Ok(()) => {}
-            Err(HirDisplayError::FmtError) => panic!("Writing to String can't fail!"),
-            Err(HirDisplayError::DisplaySourceCodeError(e)) => return Err(e),
-        };
-        Ok(result)
+            display_target: DisplayTarget::Test,
+        }
     }
 }
 
@@ -158,7 +149,7 @@ enum DisplayTarget {
     /// The generated code should compile, so paths need to be qualified.
     SourceCode { module_id: ModuleId },
     /// Only for test purpose to keep real types
-    Test { module_id: ModuleId },
+    Test,
 }
 
 impl DisplayTarget {
@@ -166,7 +157,7 @@ impl DisplayTarget {
         matches!(self, Self::SourceCode {..})
     }
     fn is_test(&self) -> bool {
-        matches!(self, Self::Test {..})
+        matches!(self, Self::Test)
     }
 }
 
@@ -348,7 +339,7 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::Adt(def_id) => {
                 match f.display_target {
-                    DisplayTarget::Diagnostics => {
+                    DisplayTarget::Diagnostics | DisplayTarget::Test => {
                         let name = match def_id {
                             AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
                             AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
@@ -356,7 +347,7 @@ impl HirDisplay for ApplicationTy {
                         };
                         write!(f, "{}", name)?;
                     }
-                    DisplayTarget::SourceCode { module_id } | DisplayTarget::Test { module_id } => {
+                    DisplayTarget::SourceCode { module_id } => {
                         if let Some(path) = find_path::find_path(
                             f.db.upcast(),
                             ItemInNs::Types(def_id.into()),
@@ -417,28 +408,23 @@ impl HirDisplay for ApplicationTy {
                     _ => panic!("not an associated type"),
                 };
                 let trait_ = f.db.trait_data(trait_);
-                let type_alias = f.db.type_alias_data(type_alias);
+                let type_alias_data = f.db.type_alias_data(type_alias);
 
                 // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
-                if f.display_target.is_test() || self.parameters.len() > 1 {
-                    write!(f, "{}::{}", trait_.name, type_alias.name)?;
+                if f.display_target.is_test() {
+                    write!(f, "{}::{}", trait_.name, type_alias_data.name)?;
                     if self.parameters.len() > 0 {
                         write!(f, "<")?;
                         f.write_joined(&*self.parameters.0, ", ")?;
                         write!(f, ">")?;
                     }
                 } else {
-                    if self.parameters.len() == 1 {
-                        write!(
-                            f,
-                            "<{} as {}>::{}",
-                            self.parameters.as_single().display(f.db),
-                            trait_.name,
-                            type_alias.name
-                        )?;
-                    } else {
-                        write!(f, "{}::{}", trait_.name, type_alias.name)?;
-                    }
+                    let projection_ty = ProjectionTy {
+                        associated_ty: type_alias,
+                        parameters: self.parameters.clone(),
+                    };
+
+                    projection_ty.hir_fmt(f)?;
                 }
             }
             TypeCtor::ForeignType(type_alias) => {

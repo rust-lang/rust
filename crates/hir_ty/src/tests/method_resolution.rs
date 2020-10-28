@@ -108,16 +108,16 @@ fn infer_associated_method_with_modules() {
     check_infer(
         r#"
         mod a {
-            pub struct A;
+            struct A;
             impl A { pub fn thing() -> A { A {} }}
         }
 
         mod b {
-            pub struct B;
+            struct B;
             impl B { pub fn thing() -> u32 { 99 }}
 
-            pub mod c {
-                pub struct C;
+            mod c {
+                struct C;
                 impl C { pub fn thing() -> C { C {} }}
             }
         }
@@ -130,22 +130,22 @@ fn infer_associated_method_with_modules() {
         }
         "#,
         expect![[r#"
-            59..67 '{ A {} }': a::A
-            61..65 'A {}': a::A
-            133..139 '{ 99 }': u32
-            135..137 '99': u32
-            217..225 '{ C {} }': c::C
-            219..223 'C {}': c::C
-            256..340 '{     ...g(); }': ()
-            266..267 'x': a::A
-            270..281 'a::A::thing': fn thing() -> A
-            270..283 'a::A::thing()': a::A
-            293..294 'y': u32
-            297..308 'b::B::thing': fn thing() -> u32
-            297..310 'b::B::thing()': u32
-            320..321 'z': c::C
-            324..335 'c::C::thing': fn thing() -> C
-            324..337 'c::C::thing()': c::C
+            55..63 '{ A {} }': A
+            57..61 'A {}': A
+            125..131 '{ 99 }': u32
+            127..129 '99': u32
+            201..209 '{ C {} }': C
+            203..207 'C {}': C
+            240..324 '{     ...g(); }': ()
+            250..251 'x': A
+            254..265 'a::A::thing': fn thing() -> A
+            254..267 'a::A::thing()': A
+            277..278 'y': u32
+            281..292 'b::B::thing': fn thing() -> u32
+            281..294 'b::B::thing()': u32
+            304..305 'z': C
+            308..319 'c::C::thing': fn thing() -> C
+            308..321 'c::C::thing()': C
         "#]],
     );
 }

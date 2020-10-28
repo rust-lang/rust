@@ -157,14 +157,13 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 (node.value.text_range(), node.value.text().to_string().replace("\n", " "))
             };
             let macro_prefix = if node.file_id != file_id.into() { "!" } else { "" };
-            let module = db.module_for_file(node.file_id.original_file(&db));
             format_to!(
                 buf,
                 "{}{:?} '{}': {}\n",
                 macro_prefix,
                 range,
                 ellipsize(text, 15),
-                ty.display_test(&db, module).unwrap()
+                ty.display_test(&db)
             );
         }
         if include_mismatches {
@@ -175,14 +174,13 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             for (src_ptr, mismatch) in &mismatches {
                 let range = src_ptr.value.text_range();
                 let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
-                let module = db.module_for_file(src_ptr.file_id.original_file(&db));
                 format_to!(
                     buf,
                     "{}{:?}: expected {}, got {}\n",
                     macro_prefix,
                     range,
-                    mismatch.expected.display_test(&db, module).unwrap(),
-                    mismatch.actual.display_test(&db, module).unwrap(),
+                    mismatch.expected.display_test(&db),
+                    mismatch.actual.display_test(&db),
                 );
             }
         }
