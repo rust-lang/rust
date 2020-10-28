@@ -1,6 +1,5 @@
-// error-pattern: lt
-
 fn f(a: isize, b: isize) : lt(a, b) { }
+//~^ ERROR expected one of `->`, `;`, `where`, or `{`, found `:`
 
 fn lt(a: isize, b: isize) { }
 

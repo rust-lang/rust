@@ -1,8 +1,8 @@
 use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, GlobalId, Immediate,
-    InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
+    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
+    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
     ScalarMaybeUninit, StackPopCleanup,
 };
 
@@ -59,23 +59,15 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
-    // FIXME: since the DefId of a promoted is the DefId of its owner, this
-    // means that promoteds in statics are actually interned like statics!
-    // However, this is also currently crucial because we promote mutable
-    // non-empty slices in statics to extend their lifetime, and this
-    // ensures that they are put into a mutable allocation.
-    // For other kinds of promoteds in statics (like array initializers), this is rather silly.
-    let intern_kind = match tcx.static_mutability(cid.instance.def_id()) {
-        Some(m) => InternKind::Static(m),
-        None if cid.promoted.is_some() => InternKind::Promoted,
-        _ => InternKind::Constant,
+    let intern_kind = if cid.promoted.is_some() {
+        InternKind::Promoted
+    } else {
+        match tcx.static_mutability(cid.instance.def_id()) {
+            Some(m) => InternKind::Static(m),
+            None => InternKind::Constant,
+        }
     };
-    intern_const_alloc_recursive(
-        ecx,
-        intern_kind,
-        ret,
-        body.ignore_interior_mut_in_const_validation,
-    );
+    intern_const_alloc_recursive(ecx, intern_kind, ret);
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -376,16 +368,23 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             // Since evaluation had no errors, valiate the resulting constant:
             let validation = try {
                 // FIXME do not validate promoteds until a decision on
-                // https://github.com/rust-lang/rust/issues/67465 is made
+                // https://github.com/rust-lang/rust/issues/67465 and
+                // https://github.com/rust-lang/rust/issues/67534 is made.
+                // Promoteds can contain unexpected `UnsafeCell` and reference `static`s, but their
+                // otherwise restricted form ensures that this is still sound. We just lose the
+                // extra safety net of some of the dynamic checks. They can also contain invalid
+                // values, but since we do not usually check intermediate results of a computation
+                // for validity, it might be surprising to do that here.
                 if cid.promoted.is_none() {
                     let mut ref_tracking = RefTracking::new(mplace);
+                    let mut inner = false;
                     while let Some((mplace, path)) = ref_tracking.todo.pop() {
-                        ecx.const_validate_operand(
-                            mplace.into(),
-                            path,
-                            &mut ref_tracking,
-                            /*may_ref_to_static*/ ecx.memory.extra.can_access_statics,
-                        )?;
+                        let mode = match tcx.static_mutability(cid.instance.def_id()) {
+                            Some(_) => CtfeValidationMode::Regular, // a `static`
+                            None => CtfeValidationMode::Const { inner },
+                        };
+                        ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
+                        inner = true;
                     }
                 }
             };

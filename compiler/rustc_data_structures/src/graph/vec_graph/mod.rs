@@ -29,7 +29,7 @@ impl<N: Idx> VecGraph<N> {
 
         // Create the *edge starts* array. We are iterating over over
         // the (sorted) edge pairs. We maintain the invariant that the
-        // length of the `node_starts` arary is enough to store the
+        // length of the `node_starts` array is enough to store the
         // current source node -- so when we see that the source node
         // for an edge is greater than the current length, we grow the
         // edge-starts array by just enough.

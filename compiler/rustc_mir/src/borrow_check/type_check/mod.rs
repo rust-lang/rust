@@ -974,6 +974,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         checker
     }
 
+    fn unsized_feature_enabled(&self) -> bool {
+        let features = self.tcx().features();
+        features.unsized_locals || features.unsized_fn_params
+    }
+
     /// Equate the inferred type and the annotated type for user type annotations
     fn check_user_type_annotations(&mut self) {
         debug!(
@@ -1456,7 +1461,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
 
                 self.check_rvalue(body, rv, location);
-                if !self.tcx().features().unsized_locals {
+                if !self.unsized_feature_enabled() {
                     let trait_ref = ty::TraitRef {
                         def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                         substs: tcx.mk_substs_trait(place_ty, &[]),
@@ -1717,9 +1722,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                // When `#![feature(unsized_locals)]` is not enabled,
+                // When `unsized_fn_params` and `unsized_locals` are both not enabled,
                 // this check is done at `check_local`.
-                if self.tcx().features().unsized_locals {
+                if self.unsized_feature_enabled() {
                     let span = term.source_info.span;
                     self.ensure_place_sized(dest_ty, span);
                 }
@@ -1880,9 +1885,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             LocalKind::Var | LocalKind::Temp => {}
         }
 
-        // When `#![feature(unsized_locals)]` is enabled, only function calls
+        // When `unsized_fn_params` or `unsized_locals` is enabled, only function calls
         // and nullary ops are checked in `check_call_dest`.
-        if !self.tcx().features().unsized_locals {
+        if !self.unsized_feature_enabled() {
             let span = local_decl.source_info.span;
             let ty = local_decl.ty;
             self.ensure_place_sized(ty, span);
@@ -2024,7 +2029,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             Rvalue::NullaryOp(_, ty) => {
                 // Even with unsized locals cannot box an unsized value.
-                if self.tcx().features().unsized_locals {
+                if self.unsized_feature_enabled() {
                     let span = body.source_info(location).span;
                     self.ensure_place_sized(ty, span);
                 }

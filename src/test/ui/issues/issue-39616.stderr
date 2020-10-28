@@ -4,11 +4,5 @@ error: expected type, found `0`
 LL | fn foo(a: [0; 1]) {}
    |            ^ expected type
 
-error: expected `;` or `{`, found `]`
-  --> $DIR/issue-39616.rs:1:16
-   |
-LL | fn foo(a: [0; 1]) {}
-   |                ^ expected `;` or `{`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

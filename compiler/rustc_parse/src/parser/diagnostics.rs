@@ -1557,14 +1557,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_semi_or_open_brace<T>(&mut self) -> PResult<'a, T> {
-        let token_str = super::token_descr(&self.token);
-        let msg = &format!("expected `;` or `{{`, found {}", token_str);
-        let mut err = self.struct_span_err(self.token.span, msg);
-        err.span_label(self.token.span, "expected `;` or `{`");
-        Err(err)
-    }
-
     pub(super) fn eat_incorrect_doc_comment_for_param_type(&mut self) {
         if let token::DocComment(..) = self.token.kind {
             self.struct_span_err(

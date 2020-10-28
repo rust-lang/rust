@@ -1169,6 +1169,7 @@ symbols! {
         unsafe_cell,
         unsafe_no_drop_flag,
         unsize,
+        unsized_fn_params,
         unsized_locals,
         unsized_tuple_coercion,
         unstable,

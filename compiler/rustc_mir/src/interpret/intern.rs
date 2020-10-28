@@ -2,12 +2,23 @@
 //!
 //! After a const evaluation has computed a value, before we destroy the const evaluator's session
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
+//!
+//! In principle, this is not very complicated: we recursively walk the final value, follow all the
+//! pointers, and move all reachable allocations to the global `tcx` memory. The only complication
+//! is picking the right mutability for the allocations in a `static` initializer: we want to make
+//! as many allocations as possible immutable so LLVM can put them into read-only memory. At the
+//! same time, we need to make memory that could be mutated by the program mutable to avoid
+//! incorrect compilations. To achieve this, we do a type-based traversal of the final value,
+//! tracking mutable and shared references and `UnsafeCell` to determine the current mutability.
+//! (In principle, we could skip this type-based part for `const` and promoteds, as they need to be
+//! always immutable. At least for `const` however we use this opportunity to reject any `const`
+//! that contains allocations whose mutability we cannot identify.)
 
 use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty::{self, layout::TyAndLayout, query::TyCtxtAt, Ty};
+use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
 use rustc_target::abi::Size;
 
 use rustc_ast::Mutability;
@@ -40,11 +51,6 @@ struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// This field stores whether we are *currently* inside an `UnsafeCell`. This can affect
     /// the intern mode of references we encounter.
     inside_unsafe_cell: bool,
-
-    /// This flag is to avoid triggering UnsafeCells are not allowed behind references in constants
-    /// for promoteds.
-    /// It's a copy of `mir::Body`'s ignore_interior_mut_in_const_validation field
-    ignore_interior_mut_in_const: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
@@ -53,21 +59,13 @@ enum InternMode {
     /// this is *immutable*, and below mutable references inside an `UnsafeCell`, this
     /// is *mutable*.
     Static(hir::Mutability),
-    /// The "base value" of a const, which can have `UnsafeCell` (as in `const FOO: Cell<i32>`),
-    /// but that interior mutability is simply ignored.
-    ConstBase,
-    /// The "inner values" of a const with references, where `UnsafeCell` is an error.
-    ConstInner,
+    /// A `const`.
+    Const,
 }
 
 /// Signalling data structure to ensure we don't recurse
 /// into the memory of other constants or statics
 struct IsStaticOrFn;
-
-fn mutable_memory_in_const(tcx: TyCtxtAt<'_>, kind: &str) {
-    // FIXME: show this in validation instead so we can point at where in the value the error is?
-    tcx.sess.span_err(tcx.span, &format!("mutable memory ({}) is not allowed in constant", kind));
-}
 
 /// Intern an allocation without looking at its children.
 /// `mode` is the mode of the environment where we found this pointer.
@@ -129,9 +127,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
         // See const_eval::machine::MemoryExtra::can_access_statics for why
         // immutability is so important.
 
-        // There are no sensible checks we can do here; grep for `mutable_memory_in_const` to
-        // find the checks we are doing elsewhere to avoid even getting here for memory
-        // that "wants" to be mutable.
+        // Validation will ensure that there is no `UnsafeCell` on an immutable allocation.
         alloc.mutability = Mutability::Not;
     };
     // link the alloc id to the actual allocation
@@ -167,17 +163,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
         mplace: MPlaceTy<'tcx>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
+        // ZSTs cannot contain pointers, so we can skip them.
+        if mplace.layout.is_zst() {
+            return Ok(());
+        }
+
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
             if Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type() {
-                if self.mode == InternMode::ConstInner && !self.ignore_interior_mut_in_const {
-                    // We do not actually make this memory mutable.  But in case the user
-                    // *expected* it to be mutable, make sure we error.  This is just a
-                    // sanity check to prevent users from accidentally exploiting the UB
-                    // they caused.  It also helps us to find cases where const-checking
-                    // failed to prevent an `UnsafeCell` (but as `ignore_interior_mut_in_const`
-                    // shows that part is not airtight).
-                    mutable_memory_in_const(self.ecx.tcx, "`UnsafeCell`");
-                }
                 // We are crossing over an `UnsafeCell`, we can mutate again. This means that
                 // References we encounter inside here are interned as pointing to mutable
                 // allocations.
@@ -187,11 +179,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                 self.inside_unsafe_cell = old;
                 return walked;
             }
-        }
-
-        // ZSTs cannot contain pointers, so we can skip them.
-        if mplace.layout.is_zst() {
-            return Ok(());
         }
 
         self.walk_aggregate(mplace, fields)
@@ -213,7 +200,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                 if let Scalar::Ptr(vtable) = mplace.meta.unwrap_meta() {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
-                    self.intern_shallow(vtable.alloc_id, InternMode::ConstInner, None);
+                    self.intern_shallow(vtable.alloc_id, InternMode::Const, None);
                 } else {
                     // Validation will error (with a better message) on an invalid vtable pointer.
                     // Let validation show the error message, but make sure it *does* error.
@@ -225,7 +212,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
             // Only recurse for allocation-backed pointers.
             if let Scalar::Ptr(ptr) = mplace.ptr {
                 // Compute the mode with which we intern this. Our goal here is to make as many
-                // statics as we can immutable so they can be placed in const memory by LLVM.
+                // statics as we can immutable so they can be placed in read-only memory by LLVM.
                 let ref_mode = match self.mode {
                     InternMode::Static(mutbl) => {
                         // In statics, merge outer mutability with reference mutability and
@@ -259,27 +246,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                             }
                         }
                     }
-                    InternMode::ConstBase | InternMode::ConstInner => {
-                        // Ignore `UnsafeCell`, everything is immutable.  Do some sanity checking
-                        // for mutable references that we encounter -- they must all be ZST.
-                        // This helps to prevent users from accidentally exploiting UB that they
-                        // caused (by somehow getting a mutable reference in a `const`).
-                        if ref_mutability == Mutability::Mut {
-                            match referenced_ty.kind() {
-                                ty::Array(_, n) if n.eval_usize(*tcx, self.ecx.param_env) == 0 => {}
-                                ty::Slice(_)
-                                    if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)?
-                                        == 0 => {}
-                                _ => mutable_memory_in_const(tcx, "`&mut`"),
-                            }
-                        } else {
-                            // A shared reference. We cannot check `freeze` here due to references
-                            // like `&dyn Trait` that are actually immutable.  We do check for
-                            // concrete `UnsafeCell` when traversing the pointee though (if it is
-                            // a new allocation, not yet interned).
-                        }
-                        // Go on with the "inner" rules.
-                        InternMode::ConstInner
+                    InternMode::Const => {
+                        // Ignore `UnsafeCell`, everything is immutable.  Validity does some sanity
+                        // checking for mutable references that we encounter -- they must all be
+                        // ZST.
+                        InternMode::Const
                     }
                 };
                 match self.intern_shallow(ptr.alloc_id, ref_mode, Some(referenced_ty)) {
@@ -318,7 +289,6 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
-    ignore_interior_mut_in_const: bool,
 ) where
     'tcx: 'mir,
 {
@@ -327,7 +297,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
         InternKind::Static(mutbl) => InternMode::Static(mutbl),
         // `Constant` includes array lengths.
         // `Promoted` includes non-`Copy` array initializers and `rustc_args_required_const` arguments.
-        InternKind::Constant | InternKind::Promoted => InternMode::ConstBase,
+        InternKind::Constant | InternKind::Promoted => InternMode::Const,
     };
 
     // Type based interning.
@@ -357,7 +327,6 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             ecx,
             mode,
             leftover_allocations,
-            ignore_interior_mut_in_const,
             inside_unsafe_cell: false,
         }
         .visit_value(mplace);

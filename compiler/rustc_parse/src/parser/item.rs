@@ -1538,7 +1538,7 @@ impl<'a> Parser<'a> {
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
         let mut sig_hi = self.prev_token.span;
-        let body = self.parse_fn_body(attrs, &mut sig_hi)?; // `;` or `{ ... }`.
+        let body = self.parse_fn_body(attrs, &ident, &mut sig_hi)?; // `;` or `{ ... }`.
         let fn_sig_span = sig_lo.to(sig_hi);
         Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
     }
@@ -1549,12 +1549,12 @@ impl<'a> Parser<'a> {
     fn parse_fn_body(
         &mut self,
         attrs: &mut Vec<Attribute>,
+        ident: &Ident,
         sig_hi: &mut Span,
     ) -> PResult<'a, Option<P<Block>>> {
-        let (inner_attrs, body) = if self.check(&token::Semi) {
+        let (inner_attrs, body) = if self.eat(&token::Semi) {
             // Include the trailing semicolon in the span of the signature
-            *sig_hi = self.token.span;
-            self.bump(); // `;`
+            *sig_hi = self.prev_token.span;
             (Vec::new(), None)
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
@@ -1574,7 +1574,21 @@ impl<'a> Parser<'a> {
                 .emit();
             (Vec::new(), Some(self.mk_block_err(span)))
         } else {
-            return self.expected_semi_or_open_brace();
+            if let Err(mut err) =
+                self.expected_one_of_not_found(&[], &[token::Semi, token::OpenDelim(token::Brace)])
+            {
+                if self.token.kind == token::CloseDelim(token::Brace) {
+                    // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
+                    // the AST for typechecking.
+                    err.span_label(ident.span, "while parsing this `fn`");
+                    err.emit();
+                    (Vec::new(), None)
+                } else {
+                    return Err(err);
+                }
+            } else {
+                unreachable!()
+            }
         };
         attrs.extend(inner_attrs);
         Ok(body)
@@ -1652,10 +1666,19 @@ impl<'a> Parser<'a> {
         req_name: ReqName,
         ret_allow_plus: AllowPlus,
     ) -> PResult<'a, P<FnDecl>> {
-        Ok(P(FnDecl {
-            inputs: self.parse_fn_params(req_name)?,
-            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?,
-        }))
+        let inputs = self.parse_fn_params(req_name)?;
+        let output = self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?;
+
+        if let ast::FnRetTy::Ty(ty) = &output {
+            if let TyKind::Path(_, Path { segments, .. }) = &ty.kind {
+                if let [.., last] = &segments[..] {
+                    // Detect and recover `fn foo() -> Vec<i32>> {}`
+                    self.check_trailing_angle_brackets(last, &[&token::OpenDelim(token::Brace)]);
+                }
+            }
+        }
+
+        Ok(P(FnDecl { inputs, output }))
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.

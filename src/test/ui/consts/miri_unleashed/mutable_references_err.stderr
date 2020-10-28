@@ -1,22 +1,28 @@
-error: mutable memory (`UnsafeCell`) is not allowed in constant
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/mutable_references_err.rs:16:1
    |
 LL | / const MUH: Meh = Meh {
 LL | |     x: &UnsafeCell::new(42),
 LL | | };
-   | |__^
+   | |__^ type validation failed: encountered `UnsafeCell` in a `const` at .x.<deref>
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
-error: mutable memory (`UnsafeCell`) is not allowed in constant
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/mutable_references_err.rs:26:1
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered `UnsafeCell` in a `const` at .<deref>.<dyn-downcast>.x
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
-error: mutable memory (`&mut`) is not allowed in constant
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/mutable_references_err.rs:30:1
    |
 LL | const BLUNT: &mut i32 = &mut 42;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered mutable reference in a `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 warning: skipping const checks
    |
@@ -38,3 +44,4 @@ LL | const BLUNT: &mut i32 = &mut 42;
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
+For more information about this error, try `rustc --explain E0080`.

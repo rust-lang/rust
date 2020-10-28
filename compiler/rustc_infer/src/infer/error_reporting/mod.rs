@@ -1669,7 +1669,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.note_error_origin(diag, cause, exp_found);
     }
 
-    fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output

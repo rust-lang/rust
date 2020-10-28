@@ -265,7 +265,19 @@ impl<'a> Parser<'a> {
     /// Parses an array (`[TYPE; EXPR]`) or slice (`[TYPE]`) type.
     /// The opening `[` bracket is already eaten.
     fn parse_array_or_slice_ty(&mut self) -> PResult<'a, TyKind> {
-        let elt_ty = self.parse_ty()?;
+        let elt_ty = match self.parse_ty() {
+            Ok(ty) => ty,
+            Err(mut err)
+                if self.look_ahead(1, |t| t.kind == token::CloseDelim(token::Bracket))
+                    | self.look_ahead(1, |t| t.kind == token::Semi) =>
+            {
+                // Recover from `[LIT; EXPR]` and `[LIT]`
+                self.bump();
+                err.emit();
+                self.mk_ty(self.prev_token.span, TyKind::Err)
+            }
+            Err(err) => return Err(err),
+        };
         let ty = if self.eat(&token::Semi) {
             TyKind::Array(elt_ty, self.parse_anon_const_expr()?)
         } else {

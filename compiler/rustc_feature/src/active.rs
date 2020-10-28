@@ -607,6 +607,9 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block
     (active, inline_const, "1.49.0", Some(76001), None),
 
+    /// Allows unsized fn parameters.
+    (active, unsized_fn_params, "1.49.0", Some(48055), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -629,6 +632,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::specialization,
     sym::inline_const,
     sym::repr128,
+    sym::unsized_locals,
 ];
 
 /// Some features are not allowed to be used together at the same time, if

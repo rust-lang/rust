@@ -16,7 +16,7 @@ LL |     (&|_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
    |        ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `<u32 as T<'_>>::V`
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized fn params are gated as an unstable feature
 help: consider further restricting the associated type
    |
 LL | fn main() where <u32 as T<'_>>::V: Sized {

@@ -1,5 +1,14 @@
+warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/borrow-after-move.rs:1:12
+   |
+LL | #![feature(unsized_locals, unsized_fn_params)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrow-after-move.rs:20:24
+  --> $DIR/borrow-after-move.rs:21:24
    |
 LL |         let y = *x;
    |                 -- value moved here
@@ -10,7 +19,7 @@ LL |         println!("{}", &x);
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `y`
-  --> $DIR/borrow-after-move.rs:22:24
+  --> $DIR/borrow-after-move.rs:23:24
    |
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
@@ -21,7 +30,7 @@ LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrow-after-move.rs:30:24
+  --> $DIR/borrow-after-move.rs:31:24
    |
 LL |         let y = *x;
    |                 -- value moved here
@@ -32,7 +41,7 @@ LL |         println!("{}", &x);
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `y`
-  --> $DIR/borrow-after-move.rs:32:24
+  --> $DIR/borrow-after-move.rs:33:24
    |
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
@@ -43,13 +52,13 @@ LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move
    |
 note: this function consumes the receiver `self` by taking ownership of it, which moves `y`
-  --> $DIR/borrow-after-move.rs:4:12
+  --> $DIR/borrow-after-move.rs:5:12
    |
 LL |     fn foo(self) -> String;
    |            ^^^^
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrow-after-move.rs:39:24
+  --> $DIR/borrow-after-move.rs:40:24
    |
 LL |         let x = "hello".to_owned().into_boxed_str();
    |             - move occurs because `x` has type `Box<str>`, which does not implement the `Copy` trait
@@ -58,6 +67,6 @@ LL |         x.foo();
 LL |         println!("{}", &x);
    |                        ^^ value borrowed here after move
 
-error: aborting due to 5 previous errors
+error: aborting due to 5 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0382`.

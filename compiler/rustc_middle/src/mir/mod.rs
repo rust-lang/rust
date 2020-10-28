@@ -210,16 +210,6 @@ pub struct Body<'tcx> {
     /// We hold in this field all the constants we are not able to evaluate yet.
     pub required_consts: Vec<Constant<'tcx>>,
 
-    /// The user may be writing e.g. `&[(SOME_CELL, 42)][i].1` and this would get promoted, because
-    /// we'd statically know that no thing with interior mutability will ever be available to the
-    /// user without some serious unsafe code.  Now this means that our promoted is actually
-    /// `&[(SOME_CELL, 42)]` and the MIR using it will do the `&promoted[i].1` projection because
-    /// the index may be a runtime value. Such a promoted value is illegal because it has reachable
-    /// interior mutability. This flag just makes this situation very obvious where the previous
-    /// implementation without the flag hid this situation silently.
-    /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
-    pub ignore_interior_mut_in_const_validation: bool,
-
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
     /// Note that this does not actually mean that this body is not computable right now.
@@ -276,7 +266,6 @@ impl<'tcx> Body<'tcx> {
             var_debug_info,
             span,
             required_consts: Vec::new(),
-            ignore_interior_mut_in_const_validation: false,
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
         };
@@ -306,7 +295,6 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             generator_kind: None,
             var_debug_info: Vec::new(),
-            ignore_interior_mut_in_const_validation: false,
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
         };
