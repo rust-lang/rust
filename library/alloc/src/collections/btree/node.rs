@@ -107,23 +107,28 @@ impl<K, V> InternalNode<K, V> {
     }
 }
 
-/// A managed, non-null pointer to a node. This is either an owned pointer to
-/// `LeafNode<K, V>` or an owned pointer to `InternalNode<K, V>`.
-///
-/// However, `BoxedNode` contains no information as to which of the two types
-/// of nodes it actually contains, and, partially due to this lack of information,
-/// has no destructor.
-struct BoxedNode<K, V> {
-    ptr: NonNull<LeafNode<K, V>>,
-}
+use ptr_fortress::*;
+mod ptr_fortress {
+    use super::{LeafNode, NonNull};
 
-impl<K, V> BoxedNode<K, V> {
-    fn from_owned(ptr: NonNull<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr }
+    /// A managed, non-null pointer to a node. This is either an owned pointer to
+    /// `LeafNode<K, V>` or an owned pointer to `InternalNode<K, V>`.
+    ///
+    /// However, `BoxedNode` contains no information as to which of the two types
+    /// of nodes it actually contains, and, partially due to this lack of information,
+    /// has no destructor.
+    pub(super) struct BoxedNode<K, V> {
+        ptr: NonNull<LeafNode<K, V>>,
     }
 
-    fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
-        self.ptr
+    impl<K, V> BoxedNode<K, V> {
+        pub(super) fn from_owned(ptr: NonNull<LeafNode<K, V>>) -> Self {
+            BoxedNode { ptr }
+        }
+
+        pub(super) fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
+            self.ptr
+        }
     }
 }
 
