@@ -10,6 +10,7 @@ use std::fmt;
 
 use log::trace;
 use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::{
@@ -132,16 +133,14 @@ pub struct MemoryExtra {
 }
 
 impl MemoryExtra {
-    pub fn new(
-        rng: StdRng,
-        stacked_borrows: bool,
-        tracked_pointer_tag: Option<PtrId>,
-        tracked_call_id: Option<CallId>,
-        tracked_alloc_id: Option<AllocId>,
-        check_alignment: AlignmentCheck,
-    ) -> Self {
-        let stacked_borrows = if stacked_borrows {
-            Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag, tracked_call_id))))
+    pub fn new(config: &MiriConfig) -> Self {
+        let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
+        let stacked_borrows = if config.stacked_borrows {
+            Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(
+                config.tracked_pointer_tag,
+                config.tracked_call_id,
+                config.track_raw,
+            ))))
         } else {
             None
         };
@@ -150,8 +149,8 @@ impl MemoryExtra {
             intptrcast: Default::default(),
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
-            tracked_alloc_id,
-            check_alignment,
+            tracked_alloc_id: config.tracked_alloc_id,
+            check_alignment: config.check_alignment,
         }
     }
 

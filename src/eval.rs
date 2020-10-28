@@ -3,8 +3,6 @@
 use std::convert::TryFrom;
 use std::ffi::OsStr;
 
-use rand::rngs::StdRng;
-use rand::SeedableRng;
 use log::info;
 
 use rustc_hir::def_id::DefId;
@@ -48,6 +46,8 @@ pub struct MiriConfig {
     pub tracked_call_id: Option<CallId>,
     /// The allocation id to report about.
     pub tracked_alloc_id: Option<AllocId>,
+    /// Whether to track raw pointers in stacked borrows.
+    pub track_raw: bool,
 }
 
 impl Default for MiriConfig {
@@ -64,6 +64,7 @@ impl Default for MiriConfig {
             tracked_pointer_tag: None,
             tracked_call_id: None,
             tracked_alloc_id: None,
+            track_raw: false,
         }
     }
 }
@@ -84,14 +85,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         rustc_span::source_map::DUMMY_SP,
         param_env,
         Evaluator::new(config.communicate, config.validate, layout_cx),
-        MemoryExtra::new(
-            StdRng::seed_from_u64(config.seed.unwrap_or(0)),
-            config.stacked_borrows,
-            config.tracked_pointer_tag,
-            config.tracked_call_id,
-            config.tracked_alloc_id,
-            config.check_alignment,
-        ),
+        MemoryExtra::new(&config),
     );
     // Complete initialization.
     EnvVars::init(&mut ecx, config.excluded_env_vars)?;

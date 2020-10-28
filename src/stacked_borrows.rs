@@ -108,6 +108,8 @@ pub struct GlobalState {
     tracked_pointer_tag: Option<PtrId>,
     /// The call id to trace
     tracked_call_id: Option<CallId>,
+    /// Whether to track raw pointers.
+    track_raw: bool,
 }
 /// Memory extra state gives us interior mutable access to the global state.
 pub type MemoryExtra = Rc<RefCell<GlobalState>>;
@@ -155,7 +157,7 @@ impl fmt::Display for RefKind {
 
 /// Utilities for initialization and ID generation
 impl GlobalState {
-    pub fn new(tracked_pointer_tag: Option<PtrId>, tracked_call_id: Option<CallId>) -> Self {
+    pub fn new(tracked_pointer_tag: Option<PtrId>, tracked_call_id: Option<CallId>, track_raw: bool) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: FxHashMap::default(),
@@ -163,6 +165,7 @@ impl GlobalState {
             active_calls: FxHashSet::default(),
             tracked_pointer_tag,
             tracked_call_id,
+            track_raw,
         }
     }
 
@@ -479,9 +482,12 @@ impl Stacks {
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
             MemoryKind::Machine(MiriMemoryKind::Global | MiriMemoryKind::ExternStatic | MiriMemoryKind::Tls | MiriMemoryKind::Env) =>
                 (extra.borrow_mut().global_base_ptr(id), Permission::SharedReadWrite),
-            // Everything else we handle entirely untagged for now.
-            // FIXME: experiment with more precise tracking.
-            _ => (Tag::Untagged, Permission::SharedReadWrite),
+            // Everything else we handle like raw pointers for now.
+            _ => {
+                let mut extra = extra.borrow_mut();
+                let tag = if extra.track_raw { Tag::Tagged(extra.new_ptr()) } else { Tag::Untagged };
+                (tag, Permission::SharedReadWrite)
+            }
         };
         (Stacks::new(size, perm, tag, extra), tag)
     }
@@ -593,16 +599,14 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Compute new borrow.
-        let new_tag = match kind {
-            // Give up tracking for raw pointers.
-            // FIXME: Experiment with more precise tracking. Blocked on `&raw`
-            // because `Rc::into_raw` currently creates intermediate references,
-            // breaking `Rc::from_raw`.
-            RefKind::Raw { .. } => Tag::Untagged,
-            // All other pointesr are properly tracked.
-            _ => Tag::Tagged(
-                this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut().new_ptr(),
-            ),
+        let new_tag = {
+            let mut mem_extra = this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut();
+            match kind {
+                // Give up tracking for raw pointers.
+                RefKind::Raw { .. } if !mem_extra.track_raw => Tag::Untagged,
+                // All other pointers are properly tracked.
+                _ => Tag::Tagged(mem_extra.new_ptr()),
+            }
         };
 
         // Reborrow.
