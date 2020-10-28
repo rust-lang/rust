@@ -234,15 +234,23 @@ def children_of_btree_map(map):
                 val = vals[i]["value"]["value"] if vals.type.sizeof > 0 else "()"
                 yield key, val
 
+    node_path = "alloc::collections::btree::node::"
     if map["length"] > 0:
         root = map["root"]
         if root.type.name.startswith("core::option::Option<"):
             root = root.cast(gdb.lookup_type(root.type.name[21:-1]))
         node_ptr = root["node"]
-        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+        if node_ptr.type.name.startswith(node_path + "node_ptr::UnboxedNode<"):
+            height = node_ptr["height"]
             node_ptr = node_ptr["ptr"]
+        else:
+            # BACKCOMPAT: rust 1.49
+            height = root["height"]
+            if node_ptr.type.name.startswith(node_path + "BoxedNode<"):
+                node_ptr = node_ptr["ptr"]
+            else:
+                pass  # BACKCOMPAT: between merge of #78104 and #79093
         node_ptr = unwrap_unique_or_non_null(node_ptr)
-        height = root["height"]
         for child in children_of_node(node_ptr, height):
             yield child
 
