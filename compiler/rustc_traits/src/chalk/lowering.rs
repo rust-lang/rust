@@ -638,8 +638,16 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         self,
         interner: &RustInterner<'tcx>,
     ) -> chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>> {
+        // `Self` has one binder:
+        // Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>
+        // The return type has two:
+        // Binders<&[Binders<WhereClause<I>>]>
+        // This means that any variables that are escaping `self` need to be
+        // shifted in by one so that they are still escaping.
+        let shifted_predicates = ty::fold::shift_vars(interner.tcx, &self, 1);
+
         let (predicates, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, &self);
+            collect_bound_vars(interner, interner.tcx, &shifted_predicates);
         let self_ty = interner.tcx.mk_ty(ty::Bound(
             // This is going to be wrapped in a binder
             ty::DebruijnIndex::from_usize(1),
@@ -648,7 +656,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         let where_clauses = predicates.into_iter().map(|predicate| match predicate {
             ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
                 chalk_ir::Binders::new(
-                    chalk_ir::VariableKinds::empty(interner),
+                    binders.clone(),
                     chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
                         trait_id: chalk_ir::TraitId(def_id),
                         substitution: interner
@@ -659,25 +667,34 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                 )
             }
             ty::ExistentialPredicate::Projection(predicate) => chalk_ir::Binders::new(
-                chalk_ir::VariableKinds::empty(interner),
+                binders.clone(),
                 chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
                     alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
                         associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
-                        substitution: predicate.substs.lower_into(interner),
+                        substitution: interner
+                            .tcx
+                            .mk_substs_trait(self_ty, predicate.substs)
+                            .lower_into(interner),
                     }),
                     ty: predicate.ty.lower_into(interner),
                 }),
             ),
             ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
-                chalk_ir::VariableKinds::empty(interner),
+                binders.clone(),
                 chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
                     trait_id: chalk_ir::TraitId(def_id),
                     substitution: interner.tcx.mk_substs_trait(self_ty, &[]).lower_into(interner),
                 }),
             ),
         });
+
+        // Binder for the bound variable representing the concrete underlying type.
+        let existential_binder = chalk_ir::VariableKinds::from1(
+            interner,
+            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
+        );
         let value = chalk_ir::QuantifiedWhereClauses::from_iter(interner, where_clauses);
-        chalk_ir::Binders::new(binders, value)
+        chalk_ir::Binders::new(existential_binder, value)
     }
 }
 
@@ -746,6 +763,17 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::TraitBound<RustInterner<'tcx>>>
         chalk_solve::rust_ir::TraitBound {
             trait_id: chalk_ir::TraitId(self.def_id),
             args_no_self: self.substs[1..].iter().map(|arg| arg.lower_into(interner)).collect(),
+        }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::Polarity> for ty::ImplPolarity {
+    fn lower_into(self, _interner: &RustInterner<'tcx>) -> chalk_solve::rust_ir::Polarity {
+        match self {
+            ty::ImplPolarity::Positive => chalk_solve::rust_ir::Polarity::Positive,
+            ty::ImplPolarity::Negative => chalk_solve::rust_ir::Polarity::Negative,
+            // FIXME(chalk) reservation impls
+            ty::ImplPolarity::Reservation => chalk_solve::rust_ir::Polarity::Negative,
         }
     }
 }
