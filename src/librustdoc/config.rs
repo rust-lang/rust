@@ -394,6 +394,7 @@ impl Options {
                 .iter()
                 .map(|s| {
                     let mut kv = s.splitn(2, '=');
+                    // never panics because `splitn` always returns at least one element
                     let k = kv.next().unwrap().to_string();
                     let v = kv.next().unwrap_or("true").to_string();
                     (k, v)
