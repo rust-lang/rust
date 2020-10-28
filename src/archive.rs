@@ -132,7 +132,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             }
 
             // ok, don't skip this
-            return false;
+            false
         })
     }
 

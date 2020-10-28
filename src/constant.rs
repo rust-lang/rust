@@ -188,7 +188,7 @@ pub(crate) fn trans_const_value<'tcx>(
             match x {
                 Scalar::Raw { data, size } => {
                     assert_eq!(u64::from(size), layout.size.bytes());
-                    return CValue::const_val(fx, layout, data);
+                    CValue::const_val(fx, layout, data)
                 }
                 Scalar::Ptr(ptr) => {
                     let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);
@@ -232,7 +232,7 @@ pub(crate) fn trans_const_value<'tcx>(
                     } else {
                         base_addr
                     };
-                    return CValue::by_val(val, layout);
+                    CValue::by_val(val, layout)
                 }
             }
         }
@@ -293,14 +293,12 @@ fn data_id_for_static(
     let rlinkage = tcx.codegen_fn_attrs(def_id).linkage;
     let linkage = if definition {
         crate::linkage::get_static_linkage(tcx, def_id)
+    } else if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
+        || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
+    {
+        Linkage::Preemptible
     } else {
-        if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
-            || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
-        {
-            Linkage::Preemptible
-        } else {
-            Linkage::Import
-        }
+        Linkage::Import
     };
 
     let instance = Instance::mono(tcx, def_id).polymorphize(tcx);

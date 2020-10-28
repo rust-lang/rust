@@ -181,12 +181,10 @@ pub(crate) fn clif_int_or_float_cast(
                 fx.bcx.ins().select(has_overflow, max_val, val)
             };
             fx.bcx.ins().ireduce(to_ty, val)
+        } else if to_signed {
+            fx.bcx.ins().fcvt_to_sint_sat(to_ty, from)
         } else {
-            if to_signed {
-                fx.bcx.ins().fcvt_to_sint_sat(to_ty, from)
-            } else {
-                fx.bcx.ins().fcvt_to_uint_sat(to_ty, from)
-            }
+            fx.bcx.ins().fcvt_to_uint_sat(to_ty, from)
         }
     } else if from_ty.is_float() && to_ty.is_float() {
         // float -> float

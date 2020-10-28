@@ -753,7 +753,7 @@ fn trans_stmt<'tcx>(
                 }
                 Rvalue::Aggregate(kind, operands) => match **kind {
                     AggregateKind::Array(_ty) => {
-                        for (i, operand) in operands.into_iter().enumerate() {
+                        for (i, operand) in operands.iter().enumerate() {
                             let operand = trans_operand(fx, operand);
                             let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
                             let to = lval.place_index(fx, index);
@@ -938,7 +938,7 @@ pub(crate) fn trans_place<'tcx>(
                         let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
-                            fx.layout_of(fx.tcx.mk_array(elem_ty, u64::from(to) - u64::from(from))),
+                            fx.layout_of(fx.tcx.mk_array(elem_ty, to - from)),
                         );
                     }
                     ty::Slice(elem_ty) => {

@@ -9,6 +9,7 @@
 )]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
+#![warn(unreachable_pub)]
 
 #[cfg(feature = "jit")]
 extern crate libc;

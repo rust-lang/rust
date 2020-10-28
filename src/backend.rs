@@ -73,7 +73,7 @@ impl WriteDebugInfo for ObjectProduct {
         // FIXME use SHT_X86_64_UNWIND for .eh_frame
         let section_id = self.object.add_section(
             segment,
-            name.clone(),
+            name,
             if id == SectionId::EhFrame {
                 SectionKind::ReadOnlyData
             } else {
@@ -201,6 +201,5 @@ pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
     if std::env::var("CG_CLIF_FUNCTION_SECTIONS").is_ok() {
         builder.per_function_section(true);
     }
-    let module = ObjectModule::new(builder);
-    module
+    ObjectModule::new(builder)
 }

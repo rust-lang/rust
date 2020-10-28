@@ -27,10 +27,10 @@ fn codegen_field<'tcx>(
             return simple(fx);
         }
         match field_layout.ty.kind() {
-            ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(fx),
+            ty::Slice(..) | ty::Str | ty::Foreign(..) => simple(fx),
             ty::Adt(def, _) if def.repr.packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
-                return simple(fx);
+                simple(fx)
             }
             _ => {
                 // We have to align the offset for DST's
@@ -237,15 +237,12 @@ impl<'tcx> CValue<'tcx> {
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
-        match layout.ty.kind() {
-            ty::Bool => {
-                assert!(
-                    const_val == 0 || const_val == 1,
-                    "Invalid bool 0x{:032X}",
-                    const_val
-                );
-            }
-            _ => {}
+        if let ty::Bool = layout.ty.kind() {
+            assert!(
+                const_val == 0 || const_val == 1,
+                "Invalid bool 0x{:032X}",
+                const_val
+            );
         }
 
         let val = match layout.ty.kind() {

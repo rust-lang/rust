@@ -300,7 +300,7 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
         return_ty: Ty<'tcx>,
     ) -> CValue<'tcx> {
         let (input_tys, args): (Vec<_>, Vec<_>) = args
-            .into_iter()
+            .iter()
             .map(|arg| {
                 (
                     self.clif_type(arg.layout().ty).unwrap(),
@@ -421,34 +421,31 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
 
         // While this is normally an optimization to prevent an unnecessary copy when an argument is
         // not mutated by the current function, this is necessary to support unsized arguments.
-        match arg_kind {
-            ArgKind::Normal(Some(val)) => {
-                if let Some((addr, meta)) = val.try_to_ptr() {
-                    let local_decl = &fx.mir.local_decls[local];
-                    //                       v this ! is important
-                    let internally_mutable = !val.layout().ty.is_freeze(
-                        fx.tcx.at(local_decl.source_info.span),
-                        ParamEnv::reveal_all(),
-                    );
-                    if local_decl.mutability == mir::Mutability::Not && !internally_mutable {
-                        // We wont mutate this argument, so it is fine to borrow the backing storage
-                        // of this argument, to prevent a copy.
+        if let ArgKind::Normal(Some(val)) = arg_kind {
+            if let Some((addr, meta)) = val.try_to_ptr() {
+                let local_decl = &fx.mir.local_decls[local];
+                //                       v this ! is important
+                let internally_mutable = !val.layout().ty.is_freeze(
+                    fx.tcx.at(local_decl.source_info.span),
+                    ParamEnv::reveal_all(),
+                );
+                if local_decl.mutability == mir::Mutability::Not && !internally_mutable {
+                    // We wont mutate this argument, so it is fine to borrow the backing storage
+                    // of this argument, to prevent a copy.
 
-                        let place = if let Some(meta) = meta {
-                            CPlace::for_ptr_with_extra(addr, meta, val.layout())
-                        } else {
-                            CPlace::for_ptr(addr, val.layout())
-                        };
+                    let place = if let Some(meta) = meta {
+                        CPlace::for_ptr_with_extra(addr, meta, val.layout())
+                    } else {
+                        CPlace::for_ptr(addr, val.layout())
+                    };
 
-                        #[cfg(debug_assertions)]
-                        self::comments::add_local_place_comments(fx, place, local);
+                    #[cfg(debug_assertions)]
+                    self::comments::add_local_place_comments(fx, place, local);
 
-                        assert_eq!(fx.local_map.push(place), local);
-                        continue;
-                    }
+                    assert_eq!(fx.local_map.push(place), local);
+                    continue;
                 }
             }
-            _ => {}
         }
 
         let place = make_local_place(fx, local, layout, is_ssa);
@@ -568,7 +565,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         }
         args
     } else {
-        args.into_iter()
+        args.iter()
             .map(|arg| trans_operand(fx, arg))
             .collect::<Vec<_>>()
     };

@@ -11,9 +11,9 @@ use crate::abi::pass_mode::*;
 use crate::prelude::*;
 
 pub(super) fn add_args_header_comment(fx: &mut FunctionCx<'_, '_, impl Module>) {
-    fx.add_global_comment(format!(
-        "kind  loc.idx   param    pass mode                            ty"
-    ));
+    fx.add_global_comment(
+        "kind  loc.idx   param    pass mode                            ty".to_string(),
+    );
 }
 
 pub(super) fn add_arg_comment<'tcx>(
@@ -56,9 +56,9 @@ pub(super) fn add_arg_comment<'tcx>(
 
 pub(super) fn add_locals_header_comment(fx: &mut FunctionCx<'_, '_, impl Module>) {
     fx.add_global_comment(String::new());
-    fx.add_global_comment(format!(
-        "kind  local ty                              size align (abi,pref)"
-    ));
+    fx.add_global_comment(
+        "kind  local ty                              size align (abi,pref)".to_string(),
+    );
 }
 
 pub(super) fn add_local_place_comments<'tcx>(
