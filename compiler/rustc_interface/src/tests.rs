@@ -550,6 +550,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(force_overflow_checks, Some(true));
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
+    tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
     tracked!(inline_in_all_cgus, Some(true));
     tracked!(insert_sideeffect, true);
