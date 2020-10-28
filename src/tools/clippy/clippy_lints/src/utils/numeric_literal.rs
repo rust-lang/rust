@@ -1,6 +1,6 @@
 use rustc_ast::ast::{Lit, LitFloatType, LitIntType, LitKind};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Radix {
     Binary,
     Octal,
@@ -11,8 +11,8 @@ pub enum Radix {
 impl Radix {
     /// Returns a reasonable digit group size for this radix.
     #[must_use]
-    fn suggest_grouping(&self) -> usize {
-        match *self {
+    fn suggest_grouping(self) -> usize {
+        match self {
             Self::Binary | Self::Hexadecimal => 4,
             Self::Octal | Self::Decimal => 3,
         }

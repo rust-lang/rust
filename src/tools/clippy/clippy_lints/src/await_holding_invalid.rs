@@ -45,13 +45,52 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub AWAIT_HOLDING_LOCK,
-    pedantic,
+    correctness,
     "Inside an async function, holding a MutexGuard while calling await"
 }
 
-declare_lint_pass!(AwaitHoldingLock => [AWAIT_HOLDING_LOCK]);
+declare_clippy_lint! {
+    /// **What it does:** Checks for calls to await while holding a
+    /// `RefCell` `Ref` or `RefMut`.
+    ///
+    /// **Why is this bad?** `RefCell` refs only check for exclusive mutable access
+    /// at runtime. Holding onto a `RefCell` ref across an `await` suspension point
+    /// risks panics from a mutable ref shared while other refs are outstanding.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// use std::cell::RefCell;
+    ///
+    /// async fn foo(x: &RefCell<u32>) {
+    ///   let b = x.borrow_mut()();
+    ///   *ref += 1;
+    ///   bar.await;
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// use std::cell::RefCell;
+    ///
+    /// async fn foo(x: &RefCell<u32>) {
+    ///   {
+    ///     let b = x.borrow_mut();
+    ///     *ref += 1;
+    ///   }
+    ///   bar.await;
+    /// }
+    /// ```
+    pub AWAIT_HOLDING_REFCELL_REF,
+    correctness,
+    "Inside an async function, holding a RefCell ref while calling await"
+}
 
-impl LateLintPass<'_> for AwaitHoldingLock {
+declare_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF]);
+
+impl LateLintPass<'_> for AwaitHolding {
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
         use AsyncGeneratorKind::{Block, Closure, Fn};
         if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
@@ -78,6 +117,16 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
                     "these are all the await points this lock is held through",
                 );
             }
+            if is_refcell_ref(cx, adt.did) {
+                span_lint_and_note(
+                        cx,
+                        AWAIT_HOLDING_REFCELL_REF,
+                        ty_cause.span,
+                        "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.",
+                        ty_cause.scope_span.or(Some(span)),
+                        "these are all the await points this ref is held through",
+                    );
+            }
         }
     }
 }
@@ -89,4 +138,8 @@ fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
         || match_def_path(cx, def_id, &paths::PARKING_LOT_MUTEX_GUARD)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_READ_GUARD)
         || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_WRITE_GUARD)
+}
+
+fn is_refcell_ref(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    match_def_path(cx, def_id, &paths::REFCELL_REF) || match_def_path(cx, def_id, &paths::REFCELL_REFMUT)
 }

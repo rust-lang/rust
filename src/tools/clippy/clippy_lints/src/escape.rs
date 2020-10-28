@@ -29,7 +29,6 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # fn foo(bar: usize) {}
-    ///
     /// // Bad
     /// let x = Box::new(1);
     /// foo(*x);

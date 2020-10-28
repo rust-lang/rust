@@ -172,3 +172,12 @@ declare_deprecated_lint! {
     pub DROP_BOUNDS,
     "this lint has been uplifted to rustc and is now called `drop_bounds`"
 }
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
+    /// `temporary_cstring_as_ptr`.
+    pub TEMPORARY_CSTRING_AS_PTR,
+    "this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`"
+}
