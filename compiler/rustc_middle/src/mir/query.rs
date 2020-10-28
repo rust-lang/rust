@@ -95,7 +95,7 @@ impl UnsafetyViolationDetails {
                  and cause data races: all of these are undefined behavior",
             ),
             AssignToDroppingUnionField => (
-                "assignment to union field that needs dropping",
+                "assignment to union field that might need dropping",
                 "the previous content of the field will be dropped, which causes undefined \
                  behavior if the field was not properly initialized",
             ),

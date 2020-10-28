@@ -6,19 +6,19 @@ LL |     *(u.p) = 13;
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error[E0133]: assignment to union field that needs dropping is unsafe and requires unsafe function or block
+error[E0133]: assignment to union field that might need dropping is unsafe and requires unsafe function or block
   --> $DIR/union-unsafe.rs:35:5
    |
 LL |     u.a = (RefCell::new(0), 1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to union field that needs dropping
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to union field that might need dropping
    |
    = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
 
-error[E0133]: assignment to union field that needs dropping is unsafe and requires unsafe function or block
+error[E0133]: assignment to union field that might need dropping is unsafe and requires unsafe function or block
   --> $DIR/union-unsafe.rs:36:5
    |
 LL |     u.a.0 = RefCell::new(0);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ assignment to union field that needs dropping
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ assignment to union field that might need dropping
    |
    = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
 
