@@ -488,6 +488,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::drop_bounds",
         "this lint has been uplifted to rustc and is now called `drop_bounds`",
     );
+    store.register_removed(
+        "clippy::temporary_cstring_as_ptr",
+        "this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
