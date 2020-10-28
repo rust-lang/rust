@@ -1552,7 +1552,7 @@ Released 2018-09-13
 
 ## 0.0.64 — 2016-04-26
 * Rustup to *rustc 1.10.0-nightly (645dd013a 2016-04-24)*
-* New lints: [`temporary_cstring_as_ptr`], [`unsafe_removed_from_name`], and [`mem_forget`]
+* New lints: `temporary_cstring_as_ptr`, [`unsafe_removed_from_name`], and [`mem_forget`]
 
 ## 0.0.63 — 2016-04-08
 * Rustup to *rustc 1.9.0-nightly (7979dd608 2016-04-07)*
