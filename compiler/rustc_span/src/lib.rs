@@ -1925,9 +1925,7 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
             return;
         }
 
-        TAG_NOT_ROOT.hash_stable(ctx, hasher);
         let index = self.as_u32() as usize;
-
         let res = CACHE.with(|cache| cache.borrow().get(index).copied().flatten());
 
         if let Some(res) = res {
@@ -1936,6 +1934,7 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
             let new_len = index + 1;
 
             let mut sub_hasher = StableHasher::new();
+            TAG_NOT_ROOT.hash_stable(ctx, &mut sub_hasher);
             self.expn_data().hash_stable(ctx, &mut sub_hasher);
             let sub_hash: Fingerprint = sub_hasher.finish();
 
