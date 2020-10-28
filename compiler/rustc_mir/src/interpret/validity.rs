@@ -579,9 +579,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Nothing to check.
                 Ok(true)
             }
-            // The above should be all the (inhabited) primitive types. The rest is compound, we
+            // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
-            // (`Str` UTF-8 check happens in `visit_aggregate`, too.)
             ty::Adt(..)
             | ty::Tuple(..)
             | ty::Array(..)
