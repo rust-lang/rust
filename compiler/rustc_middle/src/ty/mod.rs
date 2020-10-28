@@ -3018,7 +3018,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::AnonConst => self.mir_for_ctfe_opt_const_arg(def),
                 // If the caller wants `mir_for_ctfe` they should not be using `instance_mir`, so
                 // we'll assume const fn also wants the optimized version.
-                _ => self.optimized_mir_opt_const_arg(def),
+                _ => self.optimized_mir_or_const_arg_mir(def),
             },
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)

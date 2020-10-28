@@ -439,7 +439,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn optimized_mir_opt_const_arg(
+    pub fn optimized_mir_or_const_arg_mir(
         self,
         def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx Body<'tcx> {

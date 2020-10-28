@@ -517,34 +517,26 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
     let did = did.expect_local();
-    if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
-        tcx.mir_for_ctfe_of_const_arg(def)
-    } else {
-        tcx.arena.alloc(inner_optimized_mir(tcx, ty::WithOptConstParam::unknown(did)))
-    }
+    assert_eq!(ty::WithOptConstParam::try_lookup(did, tcx), None);
+    tcx.arena.alloc(inner_optimized_mir(tcx, did))
 }
 
-fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
-    if tcx.is_constructor(def.did.to_def_id()) {
+fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
+    if tcx.is_constructor(did.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
         // qualification and borrow checking the trouble of special casing
         // constructors.
-        return shim::build_adt_ctor(tcx, def.did.to_def_id());
+        return shim::build_adt_ctor(tcx, did.to_def_id());
     }
 
-    match tcx.hir().body_const_context(def.did) {
-        Some(hir::ConstContext::ConstFn) => {
-            if let Some((did, param_did)) = def.to_global().as_const_arg() {
-                tcx.ensure().mir_for_ctfe_of_const_arg((did, param_did))
-            } else {
-                tcx.ensure().mir_for_ctfe(def.did)
-            }
-        }
+    match tcx.hir().body_const_context(did) {
+        Some(hir::ConstContext::ConstFn) => tcx.ensure().mir_for_ctfe(did),
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
     }
-    let mut body = tcx.mir_drops_elaborated_and_const_checked(def).steal();
+    let mut body =
+        tcx.mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(did)).steal();
     run_optimization_passes(tcx, &mut body);
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
