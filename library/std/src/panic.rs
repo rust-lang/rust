@@ -31,7 +31,7 @@ pub use core::panic::{Location, PanicInfo};
 /// accessed later using [`PanicInfo::payload`].
 ///
 /// See the [`panic!`] macro for more information about panicking.
-#[unstable(feature = "panic_box", issue = "none")]
+#[unstable(feature = "panic_any", issue = "none")]
 #[inline]
 pub fn panic_any<M: Any + Send>(msg: M) -> ! {
     crate::panicking::begin_panic(msg);
