@@ -1160,9 +1160,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
+    fn is_ctfe_mir_available(&self, id: DefIndex) -> bool {
+        self.root.tables.mir_for_ctfe.get(self, id).is_some()
+    }
+
     fn is_item_mir_available(&self, id: DefIndex) -> bool {
         self.root.tables.mir.get(self, id).is_some()
-            || self.root.tables.mir_for_ctfe.get(self, id).is_some()
     }
 
     fn module_expansion(&self, id: DefIndex, sess: &Session) -> ExpnId {

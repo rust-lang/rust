@@ -74,8 +74,8 @@ pub(crate) fn provide(providers: &mut Providers) {
         mir_for_ctfe,
         mir_for_ctfe_of_const_arg,
         optimized_mir,
-        optimized_mir_of_const_arg,
         is_mir_available,
+        is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         promoted_mir: |tcx, def_id| {
             let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
@@ -518,20 +518,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
     let did = did.expect_local();
     if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
-        tcx.optimized_mir_of_const_arg(def)
+        tcx.mir_for_ctfe_of_const_arg(def)
     } else {
         tcx.arena.alloc(inner_optimized_mir(tcx, ty::WithOptConstParam::unknown(did)))
     }
-}
-
-fn optimized_mir_of_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
-) -> &'tcx Body<'tcx> {
-    tcx.arena.alloc(inner_optimized_mir(
-        tcx,
-        ty::WithOptConstParam { did, const_param_did: Some(param_did) },
-    ))
 }
 
 fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {

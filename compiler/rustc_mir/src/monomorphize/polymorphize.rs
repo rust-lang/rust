@@ -54,9 +54,17 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     }
 
     // Exit early when there is no MIR available.
-    if !tcx.is_mir_available(def_id) {
-        debug!("unused_generic_params: (no mir available) def_id={:?}", def_id);
-        return FiniteBitSet::new_empty();
+    let context = tcx.hir().body_const_context(def_id.expect_local());
+    match context {
+        None if !tcx.is_mir_available(def_id) => {
+            debug!("unused_generic_params: (no mir available) def_id={:?}", def_id);
+            return FiniteBitSet::new_empty();
+        }
+        Some(_) if !tcx.is_ctfe_mir_available(def_id) => {
+            debug!("unused_generic_params: (no ctfe mir available) def_id={:?}", def_id);
+            return FiniteBitSet::new_empty();
+        }
+        _ => {}
     }
 
     // Create a bitset with N rightmost ones for each parameter.
@@ -69,8 +77,11 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
     debug!("unused_generic_params: (after default) unused_parameters={:?}", unused_parameters);
 
     // Visit MIR and accumululate used generic parameters.
-    let body = match tcx.hir().body_const_context(def_id.expect_local()) {
+    let body = match context {
         None => tcx.optimized_mir(def_id),
+        // FIXME(oli-obk): since this is solely used for codegen (I think?), should we keep using
+        // the optimized MIR for `const fn`? Need to adjust the above `is_mir_available` check
+        // in that case.
         Some(_) => tcx.mir_for_ctfe(def_id),
     };
     let mut vis = MarkUsedGenericParams { tcx, def_id, unused_parameters: &mut unused_parameters };

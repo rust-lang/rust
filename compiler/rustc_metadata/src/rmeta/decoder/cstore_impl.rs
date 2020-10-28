@@ -146,6 +146,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
+    is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_panic_runtime => { cdata.root.panic_runtime }

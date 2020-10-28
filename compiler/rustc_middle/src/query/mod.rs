@@ -346,15 +346,6 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
-        // FIXME: now that we have `mir_for_ctfe_of_const_arg` can we get
-        // rid of this query?
-        query optimized_mir_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
-            desc {
-                |tcx| "optimizing MIR for the const argument `{}`",
-                tcx.def_path_str(key.0.to_def_id())
-            }
-        }
-
         /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
         /// MIR pass (assuming the -Zinstrument-coverage option is enabled).
         query coverageinfo(key: DefId) -> mir::CoverageInfo {
@@ -944,6 +935,10 @@ rustc_queries! {
     }
 
     Codegen {
+        // FIXME: remove after figuring out how to make miri able to detect non-Rust function calls
+        query is_ctfe_mir_available(key: DefId) -> bool {
+            desc { |tcx| "checking if item has ctfe mir available: `{}`", tcx.def_path_str(key) }
+        }
         query is_mir_available(key: DefId) -> bool {
             desc { |tcx| "checking if item has mir available: `{}`", tcx.def_path_str(key) }
         }

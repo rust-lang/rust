@@ -444,7 +444,7 @@ impl<'tcx> TyCtxt<'tcx> {
         def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx Body<'tcx> {
         if let Some((did, param_did)) = def.as_const_arg() {
-            self.optimized_mir_of_const_arg((did, param_did))
+            self.mir_for_ctfe_of_const_arg((did, param_did))
         } else {
             self.optimized_mir(def.did)
         }

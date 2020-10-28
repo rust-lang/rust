@@ -479,7 +479,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         match instance {
             ty::InstanceDef::Item(def) => {
-                if self.tcx.is_mir_available(def.did) {
+                if self.tcx.is_ctfe_mir_available(def.did) {
                     Ok(self.tcx.mir_for_ctfe_opt_const_arg(def))
                 } else {
                     throw_unsup!(NoMirFor(def.did))
