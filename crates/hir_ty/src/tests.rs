@@ -74,7 +74,7 @@ fn check_types_impl(ra_fixture: &str, display_source: bool) {
                 let module = db.module_for_file(file_id);
                 ty.display_source_code(&db, module).unwrap()
             } else {
-                ty.display(&db).to_string()
+                ty.display_test(&db).to_string()
             };
             assert_eq!(expected, actual);
             checked_one = true;
@@ -163,7 +163,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 macro_prefix,
                 range,
                 ellipsize(text, 15),
-                ty.display(&db)
+                ty.display_test(&db)
             );
         }
         if include_mismatches {
@@ -179,8 +179,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                     "{}{:?}: expected {}, got {}\n",
                     macro_prefix,
                     range,
-                    mismatch.expected.display(&db),
-                    mismatch.actual.display(&db),
+                    mismatch.expected.display_test(&db),
+                    mismatch.actual.display_test(&db),
                 );
             }
         }

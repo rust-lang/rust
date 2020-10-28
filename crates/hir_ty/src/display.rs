@@ -82,6 +82,20 @@ pub trait HirDisplay {
         };
         Ok(result)
     }
+
+    /// Returns a String representation of `self` for test purposes
+    fn display_test<'a>(&'a self, db: &'a dyn HirDatabase) -> HirDisplayWrapper<'a, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper {
+            db,
+            t: self,
+            max_size: None,
+            omit_verbose_types: false,
+            display_target: DisplayTarget::Test,
+        }
+    }
 }
 
 impl<'a> HirFormatter<'a> {
@@ -134,11 +148,16 @@ enum DisplayTarget {
     /// Display types for inserting them in source files.
     /// The generated code should compile, so paths need to be qualified.
     SourceCode { module_id: ModuleId },
+    /// Only for test purpose to keep real types
+    Test,
 }
 
 impl DisplayTarget {
     fn is_source_code(&self) -> bool {
         matches!(self, Self::SourceCode {..})
+    }
+    fn is_test(&self) -> bool {
+        matches!(self, Self::Test)
     }
 }
 
@@ -313,14 +332,18 @@ impl HirDisplay for ApplicationTy {
                     let ret_display = if f.omit_verbose_types() {
                         ret.display_truncated(f.db, f.max_size)
                     } else {
-                        ret.display(f.db)
+                        if f.display_target.is_test() {
+                            ret.display_test(f.db)
+                        } else {
+                            ret.display(f.db)
+                        }
                     };
                     write!(f, " -> {}", ret_display)?;
                 }
             }
             TypeCtor::Adt(def_id) => {
                 match f.display_target {
-                    DisplayTarget::Diagnostics => {
+                    DisplayTarget::Diagnostics | DisplayTarget::Test => {
                         let name = match def_id {
                             AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
                             AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
@@ -389,12 +412,23 @@ impl HirDisplay for ApplicationTy {
                     _ => panic!("not an associated type"),
                 };
                 let trait_ = f.db.trait_data(trait_);
-                let type_alias = f.db.type_alias_data(type_alias);
-                write!(f, "{}::{}", trait_.name, type_alias.name)?;
-                if self.parameters.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
-                    write!(f, ">")?;
+                let type_alias_data = f.db.type_alias_data(type_alias);
+
+                // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
+                if f.display_target.is_test() {
+                    write!(f, "{}::{}", trait_.name, type_alias_data.name)?;
+                    if self.parameters.len() > 0 {
+                        write!(f, "<")?;
+                        f.write_joined(&*self.parameters.0, ", ")?;
+                        write!(f, ">")?;
+                    }
+                } else {
+                    let projection_ty = ProjectionTy {
+                        associated_ty: type_alias,
+                        parameters: self.parameters.clone(),
+                    };
+
+                    projection_ty.hir_fmt(f)?;
                 }
             }
             TypeCtor::ForeignType(type_alias) => {
@@ -442,7 +476,11 @@ impl HirDisplay for ApplicationTy {
                     let ret_display = if f.omit_verbose_types() {
                         sig.ret().display_truncated(f.db, f.max_size)
                     } else {
-                        sig.ret().display(f.db)
+                        if f.display_target.is_test() {
+                            sig.ret().display_test(f.db)
+                        } else {
+                            sig.ret().display(f.db)
+                        }
                     };
                     write!(f, " -> {}", ret_display)?;
                 } else {
