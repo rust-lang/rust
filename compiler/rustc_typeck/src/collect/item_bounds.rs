@@ -61,23 +61,23 @@ fn opaque_type_bounds<'tcx>(
     bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
-    let item_ty =
-        tcx.mk_opaque(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
+    ty::print::with_no_queries(|| {
+        let item_ty =
+            tcx.mk_opaque(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
 
-    let bounds = ty::print::with_no_queries(|| {
-        AstConv::compute_bounds(
+        let bounds = AstConv::compute_bounds(
             &ItemCtxt::new(tcx, opaque_def_id),
             item_ty,
             bounds,
             SizedByDefault::Yes,
             span,
         )
-    });
+        .predicates(tcx, item_ty);
 
-    let bounds = bounds.predicates(tcx, item_ty);
-    debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(opaque_def_id), bounds);
+        debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(opaque_def_id), bounds);
 
-    tcx.arena.alloc_slice(&bounds)
+        tcx.arena.alloc_slice(&bounds)
+    })
 }
 
 pub(super) fn explicit_item_bounds(
