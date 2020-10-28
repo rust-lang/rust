@@ -102,6 +102,7 @@ pub(crate) fn runnable(
 ) -> Option<Runnable> {
     match_ast! {
         match item {
+            ast::Struct(it) => runnable_struct(sema, it, file_id),
             ast::Fn(it) => runnable_fn(sema, it, file_id),
             ast::Module(it) => runnable_mod(sema, it, file_id),
             _ => None,
@@ -182,6 +183,43 @@ fn runnable_fn(
     Some(Runnable { nav, kind, cfg })
 }
 
+fn runnable_struct(
+    sema: &Semantics<RootDatabase>,
+    struct_def: ast::Struct,
+    file_id: FileId,
+) -> Option<Runnable> {
+    if !has_runnable_doc_test(&struct_def) {
+        return None;
+    }
+    let name_string = struct_def.name()?.text().to_string();
+
+    let attrs =
+        Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &struct_def));
+    let cfg = attrs.cfg();
+
+    let test_id = match sema.to_def(&struct_def).map(|def| def.module(sema.db)) {
+        Some(module) => {
+            let path_iter = module
+                .path_to_root(sema.db)
+                .into_iter()
+                .rev()
+                .filter_map(|it| it.name(sema.db))
+                .map(|name| name.to_string());
+            let path = path_iter.chain(std::iter::once(name_string)).join("::");
+
+            TestId::Path(path)
+        }
+        None => TestId::Name(name_string),
+    };
+
+    let nav = NavigationTarget::from_doc_commented(
+        sema.db,
+        InFile::new(file_id.into(), &struct_def),
+        InFile::new(file_id.into(), &struct_def),
+    );
+    Some(Runnable { nav, kind: RunnableKind::DocTest { test_id }, cfg })
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct TestAttr {
     pub ignore: bool,
@@ -215,8 +253,8 @@ const RUSTDOC_FENCE: &str = "```";
 const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
     &["", "rust", "should_panic", "edition2015", "edition2018"];
 
-fn has_runnable_doc_test(fn_def: &ast::Fn) -> bool {
-    fn_def.doc_comment_text().map_or(false, |comments_text| {
+fn has_runnable_doc_test(def: &dyn DocCommentsOwner) -> bool {
+    def.doc_comment_text().map_or(false, |comments_text| {
         let mut in_code_block = false;
 
         for line in comments_text.lines() {
@@ -487,8 +525,14 @@ fn should_have_no_runnable_5() {}
 /// let z = 55;
 /// ```
 fn should_have_no_runnable_6() {}
+
+/// ```
+/// let x = 5;
+/// ```
+struct StructWithRunnable(String);
+
 "#,
-            &[&BIN, &DOCTEST, &DOCTEST, &DOCTEST],
+            &[&BIN, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST],
             expect![[r#"
                 [
                     Runnable {
@@ -565,6 +609,26 @@ fn should_have_no_runnable_6() {}
                         kind: DocTest {
                             test_id: Path(
                                 "should_have_runnable_2",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 756..821,
+                            focus_range: None,
+                            name: "StructWithRunnable",
+                            kind: STRUCT,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "StructWithRunnable",
                             ),
                         },
                         cfg: None,
