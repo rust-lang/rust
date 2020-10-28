@@ -4,9 +4,10 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
+    indent_of, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment,
+    match_trait_method, match_type, match_var, multispan_sugg, qpath_res, single_segment_path, snippet,
+    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
+    span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -293,9 +294,24 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for empty `loop` expressions.
     ///
-    /// **Why is this bad?** Those busy loops burn CPU cycles without doing
-    /// anything. Think of the environment and either block on something or at least
-    /// make the thread sleep for some microseconds.
+    /// **Why is this bad?** These busy loops burn CPU cycles without doing
+    /// anything. It is _almost always_ a better idea to `panic!` than to have
+    /// a busy loop.
+    ///
+    /// If panicking isn't possible, think of the environment and either:
+    ///   - block on something
+    ///   - sleep the thread for some microseconds
+    ///   - yield or pause the thread
+    ///
+    /// For `std` targets, this can be done with
+    /// [`std::thread::sleep`](https://doc.rust-lang.org/std/thread/fn.sleep.html)
+    /// or [`std::thread::yield_now`](https://doc.rust-lang.org/std/thread/fn.yield_now.html).
+    ///
+    /// For `no_std` targets, doing this is more complicated, especially because
+    /// `#[panic_handler]`s can't panic. To stop/pause the thread, you will
+    /// probably need to invoke some target-specific intrinsic. Examples include:
+    ///   - [`x86_64::instructions::hlt`](https://docs.rs/x86_64/0.12.2/x86_64/instructions/fn.hlt.html)
+    ///   - [`cortex_m::asm::wfi`](https://docs.rs/cortex-m/0.6.3/cortex_m/asm/fn.wfi.html)
     ///
     /// **Known problems:** None.
     ///
@@ -452,6 +468,31 @@ declare_clippy_lint! {
     "the same item is pushed inside of a for loop"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks whether a for loop has a single element.
+    ///
+    /// **Why is this bad?** There is no reason to have a loop of a
+    /// single element.
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let item1 = 2;
+    /// for item in &[item1] {
+    ///     println!("{}", item);
+    /// }
+    /// ```
+    /// could be written as
+    /// ```rust
+    /// let item1 = 2;
+    /// let item = &item1;
+    /// println!("{}", item);
+    /// ```
+    pub SINGLE_ELEMENT_LOOP,
+    complexity,
+    "there is no reason to have a single element loop"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     NEEDLESS_RANGE_LOOP,
@@ -469,6 +510,7 @@ declare_lint_pass!(Loops => [
     MUT_RANGE_BOUND,
     WHILE_IMMUTABLE_CONDITION,
     SAME_ITEM_PUSH,
+    SINGLE_ELEMENT_LOOP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -502,13 +544,15 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // (even if the "match" or "if let" is used for declaration)
         if let ExprKind::Loop(ref block, _, LoopSource::Loop) = expr.kind {
             // also check for empty `loop {}` statements
+            // TODO(issue #6161): Enable for no_std crates (outside of #[panic_handler])
             if block.stmts.is_empty() && block.expr.is_none() && !is_no_std_crate(cx.tcx.hir().krate()) {
-                span_lint(
+                span_lint_and_help(
                     cx,
                     EMPTY_LOOP,
                     expr.span,
-                    "empty `loop {}` detected. You may want to either use `panic!()` or add \
-                     `std::thread::sleep(..);` to the loop body.",
+                    "empty `loop {}` wastes CPU cycles",
+                    None,
+                    "You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.",
                 );
             }
 
@@ -777,6 +821,7 @@ fn check_for_loop<'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
+    check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
 }
 
@@ -1866,6 +1911,43 @@ fn check_for_loop_over_map_kv<'tcx>(
     }
 }
 
+fn check_for_single_element_loop<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    arg: &'tcx Expr<'_>,
+    body: &'tcx Expr<'_>,
+    expr: &'tcx Expr<'_>,
+) {
+    if_chain! {
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg_expr) = arg.kind;
+        if let PatKind::Binding(.., target, _) = pat.kind;
+        if let ExprKind::Array(ref arg_expr_list) = arg_expr.kind;
+        if let [arg_expression] = arg_expr_list;
+        if let ExprKind::Path(ref list_item) = arg_expression.kind;
+        if let Some(list_item_name) = single_segment_path(list_item).map(|ps| ps.ident.name);
+        if let ExprKind::Block(ref block, _) = body.kind;
+        if !block.stmts.is_empty();
+
+        then {
+            let for_span = get_span_of_entire_for_loop(expr);
+            let mut block_str = snippet(cx, block.span, "..").into_owned();
+            block_str.remove(0);
+            block_str.pop();
+
+
+            span_lint_and_sugg(
+                cx,
+                SINGLE_ELEMENT_LOOP,
+                for_span,
+                "for loop over a single element",
+                "try",
+                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
+                Applicability::MachineApplicable
+            )
+        }
+    }
+}
+
 struct MutatePairDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     hir_id_low: Option<HirId>,
@@ -1969,12 +2051,11 @@ fn check_for_mutation<'tcx>(
         span_low: None,
         span_high: None,
     };
-    let def_id = body.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            def_id.expect_local(),
+            body.hir_id.owner,
             cx.param_env,
             cx.typeck_results(),
         )
@@ -2920,7 +3001,14 @@ impl IterFunction {
             IterFunctionKind::IntoIter => String::new(),
             IterFunctionKind::Len => String::from(".count()"),
             IterFunctionKind::IsEmpty => String::from(".next().is_none()"),
-            IterFunctionKind::Contains(span) => format!(".any(|x| x == {})", snippet(cx, *span, "..")),
+            IterFunctionKind::Contains(span) => {
+                let s = snippet(cx, *span, "..");
+                if let Some(stripped) = s.strip_prefix('&') {
+                    format!(".any(|x| x == {})", stripped)
+                } else {
+                    format!(".any(|x| x == *{})", s)
+                }
+            },
         }
     }
     fn get_suggestion_text(&self) -> &'static str {

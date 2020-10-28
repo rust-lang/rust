@@ -1,0 +1,10 @@
+error: calling `&mut Mutex::lock` unnecessarily locks an exclusive (mutable) reference
+  --> $DIR/mut_mutex_lock.rs:11:33
+   |
+LL |     let mut value = value_mutex.lock().unwrap();
+   |                                 ^^^^ help: change this to: `get_mut`
+   |
+   = note: `-D clippy::mut-mutex-lock` implied by `-D warnings`
+
+error: aborting due to previous error
+

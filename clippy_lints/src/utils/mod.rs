@@ -27,11 +27,14 @@ pub use self::diagnostics::*;
 pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::borrow::Cow;
+use std::collections::hash_map::Entry;
+use std::hash::BuildHasherDefault;
 use std::mem;
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_attr as attr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -268,6 +271,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<def::Res> {
             krate: *krate,
             index: CRATE_DEF_INDEX,
         };
+        let mut current_item = None;
         let mut items = cx.tcx.item_children(krate);
         let mut path_it = path.iter().skip(1).peekable();
 
@@ -277,6 +281,12 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<def::Res> {
                 None => return None,
             };
 
+            // `get_def_path` seems to generate these empty segments for extern blocks.
+            // We can just ignore them.
+            if segment.is_empty() {
+                continue;
+            }
+
             let result = SmallVec::<[_; 8]>::new();
             for item in mem::replace(&mut items, cx.tcx.arena.alloc_slice(&result)).iter() {
                 if item.ident.name.as_str() == *segment {
@@ -284,8 +294,26 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<def::Res> {
                         return Some(item.res);
                     }
 
+                    current_item = Some(item);
                     items = cx.tcx.item_children(item.res.def_id());
                     break;
+                }
+            }
+
+            // The segment isn't a child_item.
+            // Try to find it under an inherent impl.
+            if_chain! {
+                if path_it.peek().is_none();
+                if let Some(current_item) = current_item;
+                let item_def_id = current_item.res.def_id();
+                if cx.tcx.def_kind(item_def_id) == DefKind::Struct;
+                then {
+                    // Bad `find_map` suggestion. See #4193.
+                    #[allow(clippy::find_map)]
+                    return cx.tcx.inherent_impls(item_def_id).iter()
+                        .flat_map(|&impl_def_id| cx.tcx.item_children(impl_def_id))
+                        .find(|item| item.ident.name.as_str() == *segment)
+                        .map(|item| item.res);
                 }
             }
         }
@@ -299,7 +327,7 @@ pub fn qpath_res(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, id: hir::HirId) -
         hir::QPath::Resolved(_, path) => path.res,
         hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
             if cx.tcx.has_typeck_results(id.owner.to_def_id()) {
-                cx.tcx.typeck(id.owner.to_def_id().expect_local()).qpath_res(qpath, id)
+                cx.tcx.typeck(id.owner).qpath_res(qpath, id)
             } else {
                 Res::Err
             }
@@ -1438,6 +1466,41 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
         }
     }
     None
+}
+
+/// returns list of all pairs (a, b) from `exprs` such that `eq(a, b)`
+/// `hash` must be comformed with `eq`
+pub fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Vec<(&T, &T)>
+where
+    Hash: Fn(&T) -> u64,
+    Eq: Fn(&T, &T) -> bool,
+{
+    if exprs.len() == 2 && eq(&exprs[0], &exprs[1]) {
+        return vec![(&exprs[0], &exprs[1])];
+    }
+
+    let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
+
+    let mut map: FxHashMap<_, Vec<&_>> =
+        FxHashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
+
+    for expr in exprs {
+        match map.entry(hash(expr)) {
+            Entry::Occupied(mut o) => {
+                for o in o.get() {
+                    if eq(o, expr) {
+                        match_expr_list.push((o, expr));
+                    }
+                }
+                o.get_mut().push(expr);
+            },
+            Entry::Vacant(v) => {
+                v.insert(vec![expr]);
+            },
+        }
+    }
+
+    match_expr_list
 }
 
 #[macro_export]
