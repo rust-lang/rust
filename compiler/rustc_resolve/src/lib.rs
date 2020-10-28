@@ -1725,10 +1725,9 @@ impl<'a> Resolver<'a> {
                         Scope::MacroRules(binding.parent_macro_rules_scope)
                     }
                     MacroRulesScope::Invocation(invoc_id) => Scope::MacroRules(
-                        self.output_macro_rules_scopes
-                            .get(&invoc_id)
-                            .cloned()
-                            .unwrap_or(self.invocation_parent_scopes[&invoc_id].macro_rules),
+                        self.output_macro_rules_scopes.get(&invoc_id).cloned().unwrap_or_else(
+                            || self.invocation_parent_scopes[&invoc_id].macro_rules,
+                        ),
                     ),
                     MacroRulesScope::Empty => Scope::Module(module),
                 },
