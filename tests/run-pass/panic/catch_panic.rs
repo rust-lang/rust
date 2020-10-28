@@ -78,7 +78,6 @@ fn main() {
     // Assertion and debug assertion
     test(None, |_old_val| { assert!(false); loop {} });
     test(None, |_old_val| { debug_assert!(false); loop {} });
-    test(None, |_old_val| { unsafe { std::char::from_u32_unchecked(0xFD10000); } loop {} }); // trigger debug-assertion in libstd
 
     eprintln!("Success!"); // Make sure we get this in stderr
 }
