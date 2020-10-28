@@ -82,7 +82,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     fn instantiate_canonical_vars(
         &self,
         span: Span,
-        variables: &List<CanonicalVarInfo>,
+        variables: &List<CanonicalVarInfo<'tcx>>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
         let var_values: IndexVec<BoundVar, GenericArg<'tcx>> = variables
@@ -100,7 +100,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     fn instantiate_canonical_var(
         &self,
         span: Span,
-        cv_info: CanonicalVarInfo,
+        cv_info: CanonicalVarInfo<'tcx>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> GenericArg<'tcx> {
         match cv_info.kind {
@@ -154,7 +154,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.tcx
                     .mk_const(ty::Const {
                         val: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty: self.tcx.ty_error(), // FIXME(const_generics)
+                        ty: name.ty,
                     })
                     .into()
             }
