@@ -23,6 +23,4 @@ thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:LL:29
 Caught panic message (&str): assertion failed: false
 thread 'main' panicked at 'assertion failed: false', $DIR/catch_panic.rs:LL:29
 Caught panic message (&str): assertion failed: false
-thread 'main' panicked at 'called `Option::unwrap()` on a `None` value', $LOC
-Caught panic message (&str): called `Option::unwrap()` on a `None` value
 Success!
