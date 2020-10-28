@@ -85,8 +85,10 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                         } else if leaf.has_param_types_or_consts() {
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
+
+                        false
                     }
-                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => (),
+                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => false,
                 });
 
                 match failure_kind {
@@ -194,12 +196,12 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 ///
 /// This is only able to represent a subset of `MIR`,
 /// and should not leak any information about desugarings.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct AbstractConst<'tcx> {
     // FIXME: Consider adding something like `IndexSlice`
     // and use this here.
-    inner: &'tcx [Node<'tcx>],
-    substs: SubstsRef<'tcx>,
+    pub inner: &'tcx [Node<'tcx>],
+    pub substs: SubstsRef<'tcx>,
 }
 
 impl AbstractConst<'tcx> {
@@ -209,7 +211,19 @@ impl AbstractConst<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         let inner = tcx.mir_abstract_const_opt_const_arg(def)?;
+        debug!("AbstractConst::new({:?}) = {:?}", def, inner);
         Ok(inner.map(|inner| AbstractConst { inner, substs }))
+    }
+
+    pub fn from_const(
+        tcx: TyCtxt<'tcx>,
+        ct: &ty::Const<'tcx>,
+    ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
+        match ct.val {
+            ty::ConstKind::Unevaluated(def, substs, None) => AbstractConst::new(tcx, def, substs),
+            ty::ConstKind::Error(_) => Err(ErrorReported),
+            _ => Ok(None),
+        }
     }
 
     #[inline]
@@ -550,31 +564,32 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // on `ErrorReported`.
 }
 
-fn walk_abstract_const<'tcx, F>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, mut f: F)
+// FIXME: Use `std::ops::ControlFlow` instead of `bool` here.
+pub fn walk_abstract_const<'tcx, F>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, mut f: F) -> bool
 where
-    F: FnMut(Node<'tcx>),
+    F: FnMut(Node<'tcx>) -> bool,
 {
-    recurse(tcx, ct, &mut f);
-    fn recurse<'tcx>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, f: &mut dyn FnMut(Node<'tcx>)) {
+    fn recurse<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        ct: AbstractConst<'tcx>,
+        f: &mut dyn FnMut(Node<'tcx>) -> bool,
+    ) -> bool {
         let root = ct.root();
-        f(root);
-        match root {
-            Node::Leaf(_) => (),
-            Node::Binop(_, l, r) => {
-                recurse(tcx, ct.subtree(l), f);
-                recurse(tcx, ct.subtree(r), f);
-            }
-            Node::UnaryOp(_, v) => {
-                recurse(tcx, ct.subtree(v), f);
-            }
-            Node::FunctionCall(func, args) => {
-                recurse(tcx, ct.subtree(func), f);
-                for &arg in args {
-                    recurse(tcx, ct.subtree(arg), f);
+        f(root)
+            || match root {
+                Node::Leaf(_) => false,
+                Node::Binop(_, l, r) => {
+                    recurse(tcx, ct.subtree(l), f) || recurse(tcx, ct.subtree(r), f)
+                }
+                Node::UnaryOp(_, v) => recurse(tcx, ct.subtree(v), f),
+                Node::FunctionCall(func, args) => {
+                    recurse(tcx, ct.subtree(func), f)
+                        || args.iter().any(|&arg| recurse(tcx, ct.subtree(arg), f))
                 }
             }
-        }
     }
+
+    recurse(tcx, ct, &mut f)
 }
 
 /// Tries to unify two abstract constants using structural equality.

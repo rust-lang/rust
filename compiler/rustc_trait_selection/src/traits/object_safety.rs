@@ -11,6 +11,7 @@
 use super::elaborate_predicates;
 
 use crate::infer::TyCtxtInferExt;
+use crate::traits::const_evaluatable::{self, AbstractConst};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::FatalError;
@@ -249,7 +250,7 @@ fn predicates_reference_self(
     predicates
         .predicates
         .iter()
-        .map(|(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), *sp))
+        .map(|&(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
         .filter_map(|predicate| predicate_references_self(tcx, predicate))
         .collect()
 }
@@ -260,7 +261,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Type)
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id))
-        .map(|(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), *sp))
+        .map(|&(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
         .filter_map(|predicate| predicate_references_self(tcx, predicate))
         .collect()
 }
@@ -415,7 +416,7 @@ fn virtual_call_violation_for_method<'tcx>(
         ));
     }
 
-    for (i, input_ty) in sig.skip_binder().inputs()[1..].iter().enumerate() {
+    for (i, &input_ty) in sig.skip_binder().inputs()[1..].iter().enumerate() {
         if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
             return Some(MethodViolationCode::ReferencesSelfInput(i));
         }
@@ -438,10 +439,7 @@ fn virtual_call_violation_for_method<'tcx>(
         // so outlives predicates will always hold.
         .cloned()
         .filter(|(p, _)| p.to_opt_type_outlives().is_none())
-        .collect::<Vec<_>>()
-        // Do a shallow visit so that `contains_illegal_self_type_reference`
-        // may apply it's custom visiting.
-        .visit_tys_shallow(|t| contains_illegal_self_type_reference(tcx, trait_def_id, t))
+        .any(|pred| contains_illegal_self_type_reference(tcx, trait_def_id, pred))
     {
         return Some(MethodViolationCode::WhereClauseReferencesSelf);
     }
@@ -715,10 +713,10 @@ fn receiver_is_dispatchable<'tcx>(
     })
 }
 
-fn contains_illegal_self_type_reference<'tcx>(
+fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
-    ty: Ty<'tcx>,
+    value: T,
 ) -> bool {
     // This is somewhat subtle. In general, we want to forbid
     // references to `Self` in the argument and return types,
@@ -761,7 +759,6 @@ fn contains_illegal_self_type_reference<'tcx>(
 
     struct IllegalSelfTypeVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
-        self_ty: Ty<'tcx>,
         trait_def_id: DefId,
         supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>>,
     }
@@ -769,7 +766,7 @@ fn contains_illegal_self_type_reference<'tcx>(
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
             match t.kind() {
-                ty::Param(_) => t == self.self_ty,
+                ty::Param(_) => t == self.tcx.types.self_param,
                 ty::Projection(ref data) => {
                     // This is a projected type `<Foo as SomeTrait>::X`.
 
@@ -802,22 +799,62 @@ fn contains_illegal_self_type_reference<'tcx>(
             }
         }
 
-        fn visit_const(&mut self, _c: &ty::Const<'tcx>) -> bool {
-            // FIXME(#72219) Look into the unevaluated constants for object safety violations.
-            // Do not walk substitutions of unevaluated consts, as they contain `Self`, even
-            // though the const expression doesn't necessary use it. Currently type variables
-            // inside array length expressions are forbidden, so they can't break the above
-            // rules.
-            false
+        fn visit_const(&mut self, ct: &ty::Const<'tcx>) -> bool {
+            // First check if the type of this constant references `Self`.
+            if self.visit_ty(ct.ty) {
+                return true;
+            }
+
+            // Constants can only influence object safety if they reference `Self`.
+            // This is only possible for unevaluated constants, so we walk these here.
+            //
+            // If `AbstractConst::new` returned an error we already failed compilation
+            // so we don't have to emit an additional error here.
+            //
+            // We currently recurse into abstract consts here but do not recurse in
+            // `is_const_evaluatable`. This means that the object safety check is more
+            // liberal than the const eval check.
+            //
+            // This shouldn't really matter though as we can't really use any
+            // constants which are not considered const evaluatable.
+            use rustc_middle::mir::abstract_const::Node;
+            if let Ok(Some(ct)) = AbstractConst::from_const(self.tcx, ct) {
+                const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node {
+                    Node::Leaf(leaf) => {
+                        let leaf = leaf.subst(self.tcx, ct.substs);
+                        self.visit_const(leaf)
+                    }
+                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => false,
+                })
+            } else {
+                false
+            }
+        }
+
+        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> bool {
+            if let ty::PredicateAtom::ConstEvaluatable(def, substs) = pred.skip_binders() {
+                // FIXME(const_evaluatable_checked): We should probably deduplicate the logic for
+                // `AbstractConst`s here, it might make sense to change `ConstEvaluatable` to
+                // take a `ty::Const` instead.
+                use rustc_middle::mir::abstract_const::Node;
+                if let Ok(Some(ct)) = AbstractConst::new(self.tcx, def, substs) {
+                    const_evaluatable::walk_abstract_const(self.tcx, ct, |node| match node {
+                        Node::Leaf(leaf) => {
+                            let leaf = leaf.subst(self.tcx, ct.substs);
+                            self.visit_const(leaf)
+                        }
+                        Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => false,
+                    })
+                } else {
+                    false
+                }
+            } else {
+                pred.super_visit_with(self)
+            }
         }
     }
 
-    ty.visit_with(&mut IllegalSelfTypeVisitor {
-        tcx,
-        self_ty: tcx.types.self_param,
-        trait_def_id,
-        supertraits: None,
-    })
+    value.visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
