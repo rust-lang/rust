@@ -240,9 +240,12 @@ environment variable:
   future use of it will error).  This helps you in finding out why UB is
   happening and where in your code would be a good place to look for it.
 * `-Zmiri-track-raw-pointers` makes Stacked Borrows track a pointer tag even for
-  raw pointers. This can make valid code fail to pass the checks (when
-  integer-pointer casts are involved), but also can help identify latent
-  aliasing issues in code that Miri accepts by default.
+  raw pointers. This can make valid code fail to pass the checks, but also can
+  help identify latent aliasing issues in code that Miri accepts by default. You
+  can recognize false positives by "<untagged>" occurring in the message -- this
+  indicates a pointer that was cast from an integer, so Miri was unable to track
+  this pointer. Make sure to use a non-Windows target with this flag, as the
+  Windows runtime makes use of integer-pointer casts.
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
