@@ -72,7 +72,7 @@ where
     // is an index -- not a reference.
     let len = node.len();
     for i in 0..len {
-        let k = unsafe { node.key_at(i) };
+        let k = unsafe { node.reborrow().key_at(i) };
         match key.cmp(k.borrow()) {
             Ordering::Greater => {}
             Ordering::Equal => return (i, true),
