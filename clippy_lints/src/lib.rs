@@ -488,6 +488,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::drop_bounds",
         "this lint has been uplifted to rustc and is now called `drop_bounds`",
     );
+    store.register_removed(
+        "clippy::temporary_cstring_as_ptr",
+        "this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -712,7 +716,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::SKIP_WHILE_NEXT,
         &methods::STRING_EXTEND_CHARS,
         &methods::SUSPICIOUS_MAP,
-        &methods::TEMPORARY_CSTRING_AS_PTR,
         &methods::UNINIT_ASSUMED_INIT,
         &methods::UNNECESSARY_FILTER_MAP,
         &methods::UNNECESSARY_FOLD,
@@ -1436,7 +1439,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::SKIP_WHILE_NEXT),
         LintId::of(&methods::STRING_EXTEND_CHARS),
         LintId::of(&methods::SUSPICIOUS_MAP),
-        LintId::of(&methods::TEMPORARY_CSTRING_AS_PTR),
         LintId::of(&methods::UNINIT_ASSUMED_INIT),
         LintId::of(&methods::UNNECESSARY_FILTER_MAP),
         LintId::of(&methods::UNNECESSARY_FOLD),
@@ -1793,7 +1795,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mem_replace::MEM_REPLACE_WITH_UNINIT),
         LintId::of(&methods::CLONE_DOUBLE_REF),
         LintId::of(&methods::ITERATOR_STEP_BY_ZERO),
-        LintId::of(&methods::TEMPORARY_CSTRING_AS_PTR),
         LintId::of(&methods::UNINIT_ASSUMED_INIT),
         LintId::of(&methods::ZST_OFFSET),
         LintId::of(&minmax::MIN_MAX),
