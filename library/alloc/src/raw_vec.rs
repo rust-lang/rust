@@ -397,24 +397,22 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
         let additional = cmp::max(self.cap, additional);
 
-        // Tiny Vecs are dumb. Skip to:
-        // - 8 if the element size is 1, because any heap allocators is likely
-        //   to round up a request of less than 8 bytes to at least 8 bytes.
-        // - 4 if elements are moderate-sized (<= 1 KiB).
-        // - 1 otherwise, to avoid wasting too much space for very short Vecs.
-        // Note that `min_non_zero_cap` is computed statically.
-        let elem_size = mem::size_of::<T>();
-        let min_non_zero_cap: usize = if elem_size == 1 {
-            8
-        } else if elem_size <= 1024 {
-            4
-        } else {
-            1
-        };
-        let additional = cmp::max(min_non_zero_cap.saturating_sub(self.cap), additional);
+        let additional = cmp::max(Self::MIN_NON_ZERO_CAP.saturating_sub(self.cap), additional);
 
         self.grow_exact(len, additional)
     }
+
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB).
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
+    // Note that `min_non_zero_cap` is computed statically.
+    const MIN_NON_ZERO_CAP: usize = match mem::size_of::<T>() {
+        1 => 8,
+        elem_size if elem_size <= 1024 => 4,
+        _ => 1,
+    };
 
     // The constraints on this method are much the same as those on
     // `grow_amortized`, but this method is usually instantiated less often so
