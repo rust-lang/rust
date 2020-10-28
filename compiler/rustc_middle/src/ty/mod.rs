@@ -266,6 +266,10 @@ impl<'tcx> AssociatedItems<'tcx> {
         self.items.iter().map(|(_, v)| *v)
     }
 
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
     /// Returns an iterator over all associated items with the given name, ignoring hygiene.
     pub fn filter_by_name_unhygienic(
         &self,

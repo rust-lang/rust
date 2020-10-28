@@ -2,8 +2,9 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
+use smallvec::SmallVec;
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     assert_eq!(crate_num, LOCAL_CRATE);
@@ -18,9 +19,18 @@ struct InherentOverlapChecker<'tcx> {
 impl InherentOverlapChecker<'tcx> {
     /// Checks whether any associated items in impls 1 and 2 share the same identifier and
     /// namespace.
-    fn impls_have_common_items(&self, impl1: DefId, impl2: DefId) -> bool {
-        let impl_items1 = self.tcx.associated_items(impl1);
-        let impl_items2 = self.tcx.associated_items(impl2);
+    fn impls_have_common_items(
+        &self,
+        impl_items1: &ty::AssociatedItems<'_>,
+        impl_items2: &ty::AssociatedItems<'_>,
+    ) -> bool {
+        let mut impl_items1 = &impl_items1;
+        let mut impl_items2 = &impl_items2;
+
+        // Performance optimization: iterate over the smaller list
+        if impl_items1.len() > impl_items2.len() {
+            std::mem::swap(&mut impl_items1, &mut impl_items2);
+        }
 
         for item1 in impl_items1.in_definition_order() {
             let collision = impl_items2.filter_by_name_unhygienic(item1.ident.name).any(|item2| {
@@ -113,9 +123,20 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                 let ty_def_id = self.tcx.hir().local_def_id(item.hir_id);
                 let impls = self.tcx.inherent_impls(ty_def_id);
 
-                for (i, &impl1_def_id) in impls.iter().enumerate() {
-                    for &impl2_def_id in &impls[(i + 1)..] {
-                        if self.impls_have_common_items(impl1_def_id, impl2_def_id) {
+                // If there is only one inherent impl block,
+                // there is nothing to overlap check it with
+                if impls.len() <= 1 {
+                    return;
+                }
+
+                let impls_items = impls
+                    .iter()
+                    .map(|impl_def_id| (impl_def_id, self.tcx.associated_items(*impl_def_id)))
+                    .collect::<SmallVec<[_; 8]>>();
+
+                for (i, &(&impl1_def_id, impl_items1)) in impls_items.iter().enumerate() {
+                    for &(&impl2_def_id, impl_items2) in &impls_items[(i + 1)..] {
+                        if self.impls_have_common_items(impl_items1, impl_items2) {
                             self.check_for_overlapping_inherent_impls(impl1_def_id, impl2_def_id);
                         }
                     }
