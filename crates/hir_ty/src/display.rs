@@ -332,7 +332,11 @@ impl HirDisplay for ApplicationTy {
                     let ret_display = if f.omit_verbose_types() {
                         ret.display_truncated(f.db, f.max_size)
                     } else {
-                        ret.display(f.db)
+                        if f.display_target.is_test() {
+                            ret.display_test(f.db)
+                        } else {
+                            ret.display(f.db)
+                        }
                     };
                     write!(f, " -> {}", ret_display)?;
                 }
@@ -472,7 +476,11 @@ impl HirDisplay for ApplicationTy {
                     let ret_display = if f.omit_verbose_types() {
                         sig.ret().display_truncated(f.db, f.max_size)
                     } else {
-                        sig.ret().display(f.db)
+                        if f.display_target.is_test() {
+                            sig.ret().display_test(f.db)
+                        } else {
+                            sig.ret().display(f.db)
+                        }
                     };
                     write!(f, " -> {}", ret_display)?;
                 } else {

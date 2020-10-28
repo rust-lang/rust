@@ -907,7 +907,8 @@ fn test<T: Trait>(t: T) { (*t); }
 }
 
 #[test]
-fn associated_type_inlay_hints() {
+fn associated_type_placeholder() {
+    // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
     check_types(
         r#"
 pub trait ApplyL {
@@ -923,13 +924,13 @@ impl<T> ApplyL for RefMutL<T> {
 fn test<T: ApplyL>() {
     let y: <RefMutL<T> as ApplyL>::Out = no_matter;
     y;
-} //^ <T as ApplyL>::Out
+} //^ ApplyL::Out<T>
 "#,
     );
 }
 
 #[test]
-fn associated_type_inlay_hints_2() {
+fn associated_type_placeholder_2() {
     check_types(
         r#"
 pub trait ApplyL {
@@ -940,7 +941,7 @@ fn foo<T: ApplyL>(t: T) -> <T as ApplyL>::Out;
 fn test<T: ApplyL>(t: T) {
     let y = foo(t);
     y;
-} //^ <T as ApplyL>::Out
+} //^ ApplyL::Out<T>
 "#,
     );
 }

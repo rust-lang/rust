@@ -74,7 +74,7 @@ fn check_types_impl(ra_fixture: &str, display_source: bool) {
                 let module = db.module_for_file(file_id);
                 ty.display_source_code(&db, module).unwrap()
             } else {
-                ty.display(&db).to_string()
+                ty.display_test(&db).to_string()
             };
             assert_eq!(expected, actual);
             checked_one = true;

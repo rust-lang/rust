@@ -832,7 +832,7 @@ fn issue_4966() {
             365..390 'Repeat...nner }': Repeat<Map<|&f64| -> f64>>
             383..388 'inner': Map<|&f64| -> f64>
             401..404 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
-            407..416 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>, Repeat<Map<|&f64| -> f64>>>(Repeat<Map<|&f64| -> f64>>) -> Vec<<Repeat<Map<|&f64| -> f64>> as IntoIterator>::Item>
+            407..416 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>, Repeat<Map<|&f64| -> f64>>>(Repeat<Map<|&f64| -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
             407..424 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
             417..423 'repeat': Repeat<Map<|&f64| -> f64>>
             431..434 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
