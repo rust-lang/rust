@@ -74,9 +74,29 @@ pub trait HirDisplay {
             curr_size: 0,
             max_size: None,
             omit_verbose_types: false,
-            #[cfg(not(test))]
             display_target: DisplayTarget::SourceCode { module_id },
-            #[cfg(test)]
+        }) {
+            Ok(()) => {}
+            Err(HirDisplayError::FmtError) => panic!("Writing to String can't fail!"),
+            Err(HirDisplayError::DisplaySourceCodeError(e)) => return Err(e),
+        };
+        Ok(result)
+    }
+
+    /// Returns a String representation of `self` for test purposes
+    fn display_test<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        module_id: ModuleId,
+    ) -> Result<String, DisplaySourceCodeError> {
+        let mut result = String::new();
+        match self.hir_fmt(&mut HirFormatter {
+            db,
+            fmt: &mut result,
+            buf: String::with_capacity(20),
+            curr_size: 0,
+            max_size: None,
+            omit_verbose_types: false,
             display_target: DisplayTarget::Test { module_id },
         }) {
             Ok(()) => {}
@@ -138,7 +158,6 @@ enum DisplayTarget {
     /// The generated code should compile, so paths need to be qualified.
     SourceCode { module_id: ModuleId },
     /// Only for test purpose to keep real types
-    #[cfg(test)]
     Test { module_id: ModuleId },
 }
 
@@ -147,14 +166,7 @@ impl DisplayTarget {
         matches!(self, Self::SourceCode {..})
     }
     fn is_test(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(self, Self::Test {..})
-        }
-        #[cfg(not(test))]
-        {
-            false
-        }
+        matches!(self, Self::Test {..})
     }
 }
 
@@ -344,21 +356,7 @@ impl HirDisplay for ApplicationTy {
                         };
                         write!(f, "{}", name)?;
                     }
-                    DisplayTarget::SourceCode { module_id } => {
-                        if let Some(path) = find_path::find_path(
-                            f.db.upcast(),
-                            ItemInNs::Types(def_id.into()),
-                            module_id,
-                        ) {
-                            write!(f, "{}", path)?;
-                        } else {
-                            return Err(HirDisplayError::DisplaySourceCodeError(
-                                DisplaySourceCodeError::PathNotFound,
-                            ));
-                        }
-                    }
-                    #[cfg(test)]
-                    DisplayTarget::Test { module_id } => {
+                    DisplayTarget::SourceCode { module_id } | DisplayTarget::Test { module_id } => {
                         if let Some(path) = find_path::find_path(
                             f.db.upcast(),
                             ItemInNs::Types(def_id.into()),
@@ -374,40 +372,38 @@ impl HirDisplay for ApplicationTy {
                 }
 
                 if self.parameters.len() > 0 {
-                    let parameters_to_write = if f.display_target.is_source_code()
-                        || f.display_target.is_test()
-                        || f.omit_verbose_types()
-                    {
-                        match self
-                            .ctor
-                            .as_generic_def()
-                            .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
-                            .filter(|defaults| !defaults.is_empty())
-                        {
-                            None => self.parameters.0.as_ref(),
-                            Some(default_parameters) => {
-                                let mut default_from = 0;
-                                for (i, parameter) in self.parameters.iter().enumerate() {
-                                    match (parameter, default_parameters.get(i)) {
-                                        (&Ty::Unknown, _) | (_, None) => {
-                                            default_from = i + 1;
-                                        }
-                                        (_, Some(default_parameter)) => {
-                                            let actual_default = default_parameter
-                                                .clone()
-                                                .subst(&self.parameters.prefix(i));
-                                            if parameter != &actual_default {
+                    let parameters_to_write =
+                        if f.display_target.is_source_code() || f.omit_verbose_types() {
+                            match self
+                                .ctor
+                                .as_generic_def()
+                                .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
+                                .filter(|defaults| !defaults.is_empty())
+                            {
+                                None => self.parameters.0.as_ref(),
+                                Some(default_parameters) => {
+                                    let mut default_from = 0;
+                                    for (i, parameter) in self.parameters.iter().enumerate() {
+                                        match (parameter, default_parameters.get(i)) {
+                                            (&Ty::Unknown, _) | (_, None) => {
                                                 default_from = i + 1;
+                                            }
+                                            (_, Some(default_parameter)) => {
+                                                let actual_default = default_parameter
+                                                    .clone()
+                                                    .subst(&self.parameters.prefix(i));
+                                                if parameter != &actual_default {
+                                                    default_from = i + 1;
+                                                }
                                             }
                                         }
                                     }
+                                    &self.parameters.0[0..default_from]
                                 }
-                                &self.parameters.0[0..default_from]
                             }
-                        }
-                    } else {
-                        self.parameters.0.as_ref()
-                    };
+                        } else {
+                            self.parameters.0.as_ref()
+                        };
                     if !parameters_to_write.is_empty() {
                         write!(f, "<")?;
                         f.write_joined(parameters_to_write, ", ")?;

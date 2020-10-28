@@ -1235,4 +1235,25 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn infer_call_method_return_associated_types_with_generic() {
+        check(
+            r#"
+            pub trait Default {
+                fn default() -> Self;
+            }
+            pub trait Foo {
+                type Bar: Default;
+            }
+
+            pub fn quux<T: Foo>() -> T::Bar {
+                let y = Default::default();
+                  //^ <T as Foo>::Bar
+
+                y
+            }
+            "#,
+        );
+    }
 }

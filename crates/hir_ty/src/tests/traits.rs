@@ -1,7 +1,7 @@
 use expect_test::expect;
 use test_utils::mark;
 
-use super::{check_infer, check_infer_with_mismatches, check_types, check_types_source_code};
+use super::{check_infer, check_infer_with_mismatches, check_types};
 
 #[test]
 fn infer_await() {
@@ -384,12 +384,12 @@ fn infer_project_associated_type() {
             108..261 '{     ...ter; }': ()
             118..119 'x': u32
             145..146 '1': u32
-            156..157 'y': <T as Iterable>::Item
-            183..192 'no_matter': <T as Iterable>::Item
-            202..203 'z': <T as Iterable>::Item
-            215..224 'no_matter': <T as Iterable>::Item
-            234..235 'a': <T as Iterable>::Item
-            249..258 'no_matter': <T as Iterable>::Item
+            156..157 'y': Iterable::Item<T>
+            183..192 'no_matter': Iterable::Item<T>
+            202..203 'z': Iterable::Item<T>
+            215..224 'no_matter': Iterable::Item<T>
+            234..235 'a': Iterable::Item<T>
+            249..258 'no_matter': Iterable::Item<T>
         "#]],
     );
 }
@@ -941,45 +941,6 @@ fn test<T: ApplyL>(t: T) {
     let y = foo(t);
     y;
 } //^ <T as ApplyL>::Out
-"#,
-    );
-}
-
-#[test]
-fn associated_type_placeholder() {
-    check_types_source_code(
-        r#"
-pub trait ApplyL {
-    type Out;
-}
-
-pub struct RefMutL<T>;
-
-impl<T> ApplyL for RefMutL<T> {
-    type Out = <T as ApplyL>::Out;
-}
-
-fn test<T: ApplyL>() {
-    let y: <RefMutL<T> as ApplyL>::Out = no_matter;
-    y;
-} //^ ApplyL::Out<T>
-"#,
-    );
-}
-
-#[test]
-fn associated_type_placeholder_2() {
-    check_types_source_code(
-        r#"
-pub trait ApplyL {
-    type Out;
-}
-fn foo<T: ApplyL>(t: T) -> <T as ApplyL>::Out;
-
-fn test<T: ApplyL>(t: T) {
-    let y = foo(t);
-    y;
-} //^ ApplyL::Out<T>
 "#,
     );
 }
@@ -2158,7 +2119,7 @@ fn unselected_projection_on_impl_self() {
         "#,
         expect![[r#"
             40..44 'self': &Self
-            46..47 'x': <Self as Trait>::Item
+            46..47 'x': Trait::Item<Self>
             126..130 'self': &S
             132..133 'x': u32
             147..161 '{ let y = x; }': ()
@@ -3187,32 +3148,5 @@ fn test() {
   //^^^^^^^^^^^ u8
 }
     "#,
-    );
-}
-
-#[test]
-fn infer_call_method_return_associated_types_with_generic() {
-    check_infer(
-        r#"
-        pub trait Default {
-            fn default() -> Self;
-        }
-        pub trait Foo {
-            type Bar: Default;
-        }
-
-        pub fn quux<T: Foo>() -> T::Bar {
-            let y = Default::default();
-
-            y
-        }
-        "#,
-        expect![[r#"
-            122..164 '{     ...   y }': <T as Foo>::Bar
-            132..133 'y': <T as Foo>::Bar
-            136..152 'Defaul...efault': fn default<<T as Foo>::Bar>() -> <T as Foo>::Bar
-            136..154 'Defaul...ault()': <T as Foo>::Bar
-            161..162 'y': <T as Foo>::Bar
-        "#]],
     );
 }
