@@ -38,7 +38,7 @@ impl ConstantCx {
 
 pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) {
     for constant in &fx.mir.required_consts {
-        let const_ = fx.monomorphize(&constant.literal);
+        let const_ = fx.monomorphize(constant.literal);
         match const_.val {
             ConstKind::Value(_) => {}
             ConstKind::Unevaluated(def, ref substs, promoted) => {
@@ -110,7 +110,7 @@ pub(crate) fn codegen_constant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let const_ = fx.monomorphize(&constant.literal);
+    let const_ = fx.monomorphize(constant.literal);
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
         ConstKind::Unevaluated(def, ref substs, promoted) if fx.tcx.is_static(def.did) => {
@@ -466,7 +466,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
     match operand {
         Operand::Copy(_) | Operand::Move(_) => None,
         Operand::Constant(const_) => Some(
-            fx.monomorphize(&const_.literal)
+            fx.monomorphize(const_.literal)
                 .eval(fx.tcx, ParamEnv::reveal_all()),
         ),
     }
