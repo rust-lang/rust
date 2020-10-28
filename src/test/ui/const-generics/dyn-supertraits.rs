@@ -49,34 +49,37 @@ impl<const N: usize> Foo<N> for BokType<N> {
 }
 impl<const N: usize> Bok<N> for BokType<N> {}
 
-fn a<const N: usize>(_: &dyn Foo<N>) {}
-fn b(_: &dyn Foo<3>) {}
-fn c<T: Bok<N>, const N: usize>(x: T) { a::<N>(&x); }
-fn d<T: ?Sized + Foo<3>>(_: &T) {}
-fn e(x: &dyn Bar<3>) { d(x); }
-
-fn get_myfun<const N: usize>(x: &dyn Foo<N>) -> usize { x.myfun() }
+fn a<const N: usize>(x: &dyn Foo<N>) -> usize { x.myfun() }
+fn b(x: &dyn Foo<3>) -> usize { x.myfun() }
+fn c<T: Bok<N>, const N: usize>(x: T) -> usize { a::<N>(&x) }
+fn d<T: ?Sized + Foo<3>>(x: &T) -> usize { x.myfun() }
+fn e(x: &dyn Bar<3>) -> usize { d(x) }
 
 fn main() {
     let foo = FooType::<3> {};
-    a(&foo); b(&foo); d(&foo);
-    assert!(get_myfun(&foo) == 3);
+    assert!(a(&foo) == 3);
+    assert!(b(&foo) == 3);
+    assert!(d(&foo) == 3);
 
     let bar = BarType::<3> {};
-    a(&bar); b(&bar); d(&bar); e(&bar);
-    assert!(get_myfun(&bar) == 4);
+    assert!(a(&bar) == 4);
+    assert!(b(&bar) == 4);
+    assert!(d(&bar) == 4);
+    assert!(e(&bar) == 4);
 
     let baz = BazType {};
-    a(&baz); b(&baz); d(&baz);
-    assert!(get_myfun(&baz) == 999);
+    assert!(a(&baz) == 999);
+    assert!(b(&baz) == 999);
+    assert!(d(&baz) == 999);
 
     let boz = BozType {};
-    a(&boz); b(&boz); d(&boz);
-    assert!(get_myfun(&boz) == 9999);
+    assert!(a(&boz) == 9999);
+    assert!(b(&boz) == 9999);
+    assert!(d(&boz) == 9999);
 
     let bok = BokType::<3> {};
-    a(&bok); b(&bok); d(&bok);
-    assert!(get_myfun(&bok) == 5);
-    
-    c(BokType::<3> {});
+    assert!(a(&bok) == 5);
+    assert!(b(&bok) == 5);
+    assert!(d(&bok) == 5);
+    assert!(c(BokType::<3> {}) == 5);
 }
