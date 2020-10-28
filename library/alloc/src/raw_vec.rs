@@ -393,11 +393,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // This is ensured by the calling contexts.
         debug_assert!(additional > 0);
 
-        let required_cap = exact_capacity::<T>(len, additional)?;
-
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = cmp::max(self.cap * 2, required_cap);
+        let additional = cmp::max(self.cap, additional);
 
         // Tiny Vecs are dumb. Skip to:
         // - 8 if the element size is 1, because any heap allocators is likely
@@ -406,29 +404,33 @@ impl<T, A: AllocRef> RawVec<T, A> {
         // - 1 otherwise, to avoid wasting too much space for very short Vecs.
         // Note that `min_non_zero_cap` is computed statically.
         let elem_size = mem::size_of::<T>();
-        let min_non_zero_cap = if elem_size == 1 {
+        let min_non_zero_cap: usize = if elem_size == 1 {
             8
         } else if elem_size <= 1024 {
             4
         } else {
             1
         };
-        let cap = cmp::max(min_non_zero_cap, cap);
+        let additional = cmp::max(min_non_zero_cap.saturating_sub(self.cap), additional);
 
-        self.grow_to(cap)
+        self.grow_exact(len, additional)
     }
 
     // The constraints on this method are much the same as those on
     // `grow_amortized`, but this method is usually instantiated less often so
     // it's less critical.
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        let cap = exact_capacity::<T>(len, additional)?;
+        if mem::size_of::<T>() == 0 {
+            // Since we return a capacity of `usize::MAX` when `elem_size` is
+            // 0, getting to here necessarily means the `RawVec` is overfull.
+            return Err(CapacityOverflow);
+        }
 
-        self.grow_to(cap)
-    }
+        // Nothing we can really do about these checks, sadly.
+        let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
-    fn grow_to(&mut self, cap: usize) -> Result<(), TryReserveError> {
         let new_layout = Layout::array::<T>(cap);
+
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
         self.set_ptr(ptr);
@@ -451,17 +453,6 @@ impl<T, A: AllocRef> RawVec<T, A> {
         self.set_ptr(ptr);
         Ok(())
     }
-}
-
-fn exact_capacity<T>(len: usize, additional: usize) -> Result<usize, TryReserveError> {
-    if mem::size_of::<T>() == 0 {
-        // Since we return a capacity of `usize::MAX` when `elem_size` is
-        // 0, getting to here necessarily means the `RawVec` is overfull.
-        return Err(CapacityOverflow);
-    }
-
-    // Nothing we can really do about these checks, sadly.
-    len.checked_add(additional).ok_or(CapacityOverflow)
 }
 
 // This function is outside `RawVec` to minimize compile times. See the comment
