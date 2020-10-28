@@ -31,3 +31,5 @@ harness = false
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
 compiler-builtins-c = ["compiler_builtins/c"]
+compiler-builtins-asm = ["compiler_builtins/asm"]
+compiler-builtins-mangled-names = ["compiler_builtins/mangled-names"]
