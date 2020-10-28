@@ -357,7 +357,7 @@ impl<'tcx, M: Module> HasTargetSpec for FunctionCx<'_, 'tcx, M> {
 }
 
 impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
-    pub(crate) fn monomorphize<T>(&self, value: &T) -> T
+    pub(crate) fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx> + Copy,
     {

@@ -445,43 +445,43 @@ fn codegen_stmt<'tcx>(
         StatementKind::Assign(to_place_and_rval) => {
             let lval = codegen_place(fx, to_place_and_rval.0);
             let dest_layout = lval.layout();
-            match &to_place_and_rval.1 {
-                Rvalue::Use(operand) => {
+            match to_place_and_rval.1 {
+                Rvalue::Use(ref operand) => {
                     let val = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-                    let place = codegen_place(fx, *place);
+                    let place = codegen_place(fx, place);
                     let ref_ = place.place_ref(fx, lval.layout());
                     lval.write_cvalue(fx, ref_);
                 }
                 Rvalue::ThreadLocalRef(def_id) => {
-                    let val = crate::constant::codegen_tls_ref(fx, *def_id, lval.layout());
+                    let val = crate::constant::codegen_tls_ref(fx, def_id, lval.layout());
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::BinaryOp(bin_op, lhs, rhs) => {
+                Rvalue::BinaryOp(bin_op, ref lhs, ref rhs) => {
                     let lhs = codegen_operand(fx, lhs);
                     let rhs = codegen_operand(fx, rhs);
 
-                    let res = crate::num::codegen_binop(fx, *bin_op, lhs, rhs);
+                    let res = crate::num::codegen_binop(fx, bin_op, lhs, rhs);
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
+                Rvalue::CheckedBinaryOp(bin_op, ref lhs, ref rhs) => {
                     let lhs = codegen_operand(fx, lhs);
                     let rhs = codegen_operand(fx, rhs);
 
                     let res = if !fx.tcx.sess.overflow_checks() {
                         let val =
-                            crate::num::codegen_int_binop(fx, *bin_op, lhs, rhs).load_scalar(fx);
+                            crate::num::codegen_int_binop(fx, bin_op, lhs, rhs).load_scalar(fx);
                         let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
                         CValue::by_val_pair(val, is_overflow, lval.layout())
                     } else {
-                        crate::num::codegen_checked_int_binop(fx, *bin_op, lhs, rhs)
+                        crate::num::codegen_checked_int_binop(fx, bin_op, lhs, rhs)
                     };
 
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::UnaryOp(un_op, operand) => {
+                Rvalue::UnaryOp(un_op, ref operand) => {
                     let operand = codegen_operand(fx, operand);
                     let layout = operand.layout();
                     let val = operand.load_scalar(fx);
@@ -509,8 +509,8 @@ fn codegen_stmt<'tcx>(
                     };
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, to_ty) => {
-                    let from_ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx));
+                Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), ref operand, to_ty) => {
+                    let from_ty = fx.monomorphize(operand.ty(&fx.mir.local_decls, fx.tcx));
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     match *from_ty.kind() {
                         ty::FnDef(def_id, substs) => {
@@ -530,14 +530,14 @@ fn codegen_stmt<'tcx>(
                         _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", from_ty),
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), operand, to_ty)
-                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, to_ty)
-                | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, to_ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), ref operand, to_ty)
+                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), ref operand, to_ty)
+                | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), ref operand, to_ty) => {
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
-                Rvalue::Cast(CastKind::Misc, operand, to_ty) => {
+                Rvalue::Cast(CastKind::Misc, ref operand, to_ty) => {
                     let operand = codegen_operand(fx, operand);
                     let from_ty = operand.layout().ty;
                     let to_ty = fx.monomorphize(to_ty);
@@ -577,12 +577,12 @@ fn codegen_stmt<'tcx>(
 
                         use rustc_target::abi::{Int, TagEncoding, Variants};
 
-                        match &operand.layout().variants {
+                        match operand.layout().variants {
                             Variants::Single { index } => {
                                 let discr = operand
                                     .layout()
                                     .ty
-                                    .discriminant_for_variant(fx.tcx, *index)
+                                    .discriminant_for_variant(fx.tcx, index)
                                     .unwrap();
                                 let discr = if discr.ty.is_signed() {
                                     fx.layout_of(discr.ty).size.sign_extend(discr.val)
@@ -595,7 +595,7 @@ fn codegen_stmt<'tcx>(
                                 lval.write_cvalue(fx, discr);
                             }
                             Variants::Multiple {
-                                tag,
+                                ref tag,
                                 tag_field,
                                 tag_encoding: TagEncoding::Direct,
                                 variants: _,
@@ -604,7 +604,7 @@ fn codegen_stmt<'tcx>(
 
                                 // Read the tag/niche-encoded discriminant from memory.
                                 let encoded_discr =
-                                    operand.value_field(fx, mir::Field::new(*tag_field));
+                                    operand.value_field(fx, mir::Field::new(tag_field));
                                 let encoded_discr = encoded_discr.load_scalar(fx);
 
                                 // Decode the discriminant (specifically if it's niche-encoded).
@@ -634,7 +634,7 @@ fn codegen_stmt<'tcx>(
                 }
                 Rvalue::Cast(
                     CastKind::Pointer(PointerCast::ClosureFnPointer(_)),
-                    operand,
+                    ref operand,
                     _to_ty,
                 ) => {
                     let operand = codegen_operand(fx, operand);
@@ -654,18 +654,18 @@ fn codegen_stmt<'tcx>(
                         _ => bug!("{} cannot be cast to a fn ptr", operand.layout().ty),
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, _to_ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
-                    let place = codegen_place(fx, *place);
+                    let place = codegen_place(fx, place);
                     let value = place.to_cvalue(fx);
                     let discr =
                         crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
                     lval.write_cvalue(fx, discr);
                 }
-                Rvalue::Repeat(operand, times) => {
+                Rvalue::Repeat(ref operand, times) => {
                     let operand = codegen_operand(fx, operand);
                     let times = fx
                         .monomorphize(times)
@@ -704,7 +704,7 @@ fn codegen_stmt<'tcx>(
                     }
                 }
                 Rvalue::Len(place) => {
-                    let place = codegen_place(fx, *place);
+                    let place = codegen_place(fx, place);
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
                     let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
@@ -749,7 +749,7 @@ fn codegen_stmt<'tcx>(
                         CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), ty_size.into());
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Aggregate(kind, operands) => match **kind {
+                Rvalue::Aggregate(ref kind, ref operands) => match kind.as_ref() {
                     AggregateKind::Array(_ty) => {
                         for (i, operand) in operands.iter().enumerate() {
                             let operand = codegen_operand(fx, operand);
@@ -877,8 +877,7 @@ fn codegen_array_len<'tcx>(
     match *place.layout().ty.kind() {
         ty::Array(_elem_ty, len) => {
             let len = fx
-                .monomorphize(&len)
-                .eval(fx.tcx, ParamEnv::reveal_all())
+                .monomorphize(len)
                 .eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }

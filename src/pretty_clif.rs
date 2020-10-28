@@ -80,7 +80,7 @@ impl CommentWriter {
                     "sig {:?}",
                     tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),
-                        &crate::abi::fn_sig_for_fn_abi(tcx, instance)
+                        crate::abi::fn_sig_for_fn_abi(tcx, instance)
                     )
                 ),
                 String::new(),
