@@ -1,0 +1,33 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-locals-using-unsized-fn-params.rs:5:15
+   |
+LL | fn f1(box box _b: Box<Box<[u8]>>) {}
+   |               ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/unsized-locals-using-unsized-fn-params.rs:8:12
+   |
+LL | fn f2((_x, _y): (i32, [i32])) {}
+   |            ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i32]`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-locals-using-unsized-fn-params.rs:13:9
+   |
+LL |     let _foo: [u8] = *foo;
+   |         ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

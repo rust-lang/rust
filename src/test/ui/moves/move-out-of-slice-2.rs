@@ -1,4 +1,5 @@
 #![feature(unsized_locals)]
+//~^ WARN the feature `unsized_locals` is incomplete
 
 struct A;
 #[derive(Clone, Copy)]
@@ -8,13 +9,13 @@ fn main() {
     let a: Box<[A]> = Box::new([A]);
     match *a {
         //~^ ERROR cannot move out of type `[A]`, a non-copy slice
-        [a @ ..] => {},
+        [a @ ..] => {}
         _ => {}
     }
     let b: Box<[A]> = Box::new([A, A, A]);
     match *b {
         //~^ ERROR cannot move out of type `[A]`, a non-copy slice
-        [_, _, b @ .., _] => {},
+        [_, _, b @ .., _] => {}
         _ => {}
     }
 
@@ -22,13 +23,13 @@ fn main() {
     let c: Box<[C]> = Box::new([C]);
     match *c {
         //~^ ERROR cannot move out of type `[C]`, a non-copy slice
-        [c @ ..] => {},
+        [c @ ..] => {}
         _ => {}
     }
     let d: Box<[C]> = Box::new([C, C, C]);
     match *d {
         //~^ ERROR cannot move out of type `[C]`, a non-copy slice
-        [_, _, d @ .., _] => {},
+        [_, _, d @ .., _] => {}
         _ => {}
     }
 }

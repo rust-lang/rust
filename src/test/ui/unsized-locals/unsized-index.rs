@@ -1,23 +1,27 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// run-pass
 
-// `std::ops::Index` has an `: ?Sized` bound on the `Idx` type param. This is
-// an accidental left-over from the times when it `Index` was by-reference.
-// Tightening the bound now could be a breaking change. Although no crater
-// regression were observed (https://github.com/rust-lang/rust/pull/59527),
-// let's be conservative and just add a test for this.
-#![feature(unsized_locals)]
+#![feature(unsized_fn_params)]
 
 use std::ops;
+use std::ops::Index;
 
 pub struct A;
 
 impl ops::Index<str> for A {
     type Output = ();
-    fn index(&self, _: str) -> &Self::Output { panic!() }
+    fn index(&self, _: str) -> &Self::Output {
+        &()
+    }
 }
 
 impl ops::IndexMut<str> for A {
-    fn index_mut(&mut self, _: str) -> &mut Self::Output { panic!() }
+    fn index_mut(&mut self, _: str) -> &mut Self::Output {
+        panic!()
+    }
 }
 
-fn main() {}
+fn main() {
+    let a = A {};
+    let s = String::new().into_boxed_str();
+    assert_eq!(&(), a.index(*s));
+}

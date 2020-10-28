@@ -5,7 +5,7 @@ LL |     let f: &mut dyn FnMut<(_,), Output = ()> = &mut |_: <() as Lt<'_>>::T| 
    |                                                      ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `<() as Lt<'_>>::T`
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized fn params are gated as an unstable feature
 help: consider further restricting the associated type
    |
 LL | fn main() where <() as Lt<'_>>::T: Sized {
