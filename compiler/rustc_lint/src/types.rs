@@ -439,7 +439,7 @@ fn lint_literal<'tcx>(
                 cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
                     lint.build(&format!("literal out of range for `{}`", t.name_str()))
                         .note(&format!(
-                            "the literal `{}` does not fit into the type `{}` and will be converted to `std::{}::INFINITY`",
+                            "the literal `{}` does not fit into the type `{}` and will be converted to `{}::INFINITY`",
                             cx.sess()
                                 .source_map()
                                 .span_to_snippet(lit.span)
