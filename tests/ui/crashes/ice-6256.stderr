@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/ice-6256.rs:11:28
+   |
+LL |     let f = |x: &dyn TT| x.func(); //[default]~ ERROR: mismatched types
+   |                            ^^^^ lifetime mismatch
+   |
+   = note: expected reference `&(dyn TT + 'static)`
+              found reference `&dyn TT`
+note: the anonymous lifetime #1 defined on the body at 11:13...
+  --> $DIR/ice-6256.rs:11:13
+   |
+LL |     let f = |x: &dyn TT| x.func(); //[default]~ ERROR: mismatched types
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
