@@ -389,6 +389,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
     // so that all of the code that depends on `T` is within it, while as much
     // of the code that doesn't depend on `T` as possible is in functions that
     // are non-generic over `T`.
+    //
+    // We never inline this function to keep `Vec::push` small.
+    #[inline(never)]
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         // This is ensured by the calling contexts.
         debug_assert!(additional > 0);
