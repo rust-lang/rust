@@ -216,7 +216,7 @@ pub struct RenderOptions {
     pub extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
     pub extern_html_root_urls: BTreeMap<String, String>,
-    /// A map of the default settings (values are as for DOM storage API).  Keys should lack the
+    /// A map of the default settings (values are as for DOM storage API). Keys should lack the
     /// `rustdoc-` prefix.
     pub default_settings: HashMap<String, String>,
     /// If present, suffix added to CSS/JavaScript files when referencing them in generated pages.

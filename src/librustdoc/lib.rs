@@ -273,7 +273,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optopt(
                 "",
                 "default-theme",
-                "Set the default theme.  THEME should be the theme name, generally lowercase. \
+                "Set the default theme. THEME should be the theme name, generally lowercase. \
                  If an unknown default theme is specified, the builtin default is used. \
                  The set of themes, and the rustdoc built-in default is not stable.",
                 "THEME",
@@ -284,7 +284,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "default-setting",
                 "Default value for a rustdoc setting (used when \"rustdoc-SETTING\" is absent \
-                 from web browser Local Storage).    If VALUE is not supplied, \"true\" is used. \
+                 from web browser Local Storage). If VALUE is not supplied, \"true\" is used. \
                  Supported SETTINGs and VALUEs are not documented and not stable.",
                 "SETTING[=VALUE]",
             )
