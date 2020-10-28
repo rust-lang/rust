@@ -23,6 +23,8 @@ fn main() {
     //~^ ERROR: attributes on expressions are experimental
     || {
         let wp = &w.p;
+        //~^ ERROR: Capturing w[(0, 0)] -> ImmBorrow
+        //~^^ ERROR: Min Capture w[(0, 0)] -> ImmBorrow
         println!("{}", wp.x);
     };
 

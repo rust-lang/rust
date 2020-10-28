@@ -16,6 +16,18 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error: aborting due to previous error; 1 warning emitted
+error: Capturing w[(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/multilevel-path-2.rs:22:24
+   |
+LL |         println!("{}", w.p.x);
+   |                        ^^^^^
+
+error: Min Capture w[(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/multilevel-path-2.rs:22:24
+   |
+LL |         println!("{}", w.p.x);
+   |                        ^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.

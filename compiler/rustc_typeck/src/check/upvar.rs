@@ -46,22 +46,6 @@ use rustc_span::{Span, Symbol};
 
 use std::env;
 
-macro_rules! log_capture_analysis {
-    ($fcx:expr, $closure_def_id:expr, $fmt:literal) => {
-        if $fcx.should_log_capture_analysis($closure_def_id) {
-            print!("For closure={:?}: ", $closure_def_id);
-            println!($fmt);
-        }
-    };
-
-    ($fcx:expr, $closure_def_id:expr, $fmt:literal, $($args:expr),*) => {
-        if $fcx.should_log_capture_analysis($closure_def_id) {
-            print!("For closure={:?}: ", $closure_def_id);
-            println!($fmt, $($args),*);
-        }
-    };
-}
-
 /// Describe the relationship between the paths of two places
 /// eg:
 /// - foo is ancestor of foo.bar.baz
@@ -144,9 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
         if self.tcx.features().capture_disjoint_fields || matches!(env::var("SG_NEW"), Ok(_)) {
-            log_capture_analysis!(self, closure_def_id, "Using new-style capture analysis");
         } else {
-            log_capture_analysis!(self, closure_def_id, "Using old-style capture analysis");
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for (&var_hir_id, _) in upvars.iter() {
                     let place = self.place_for_root_variable(local_def_id, var_hir_id);
@@ -182,12 +164,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
         .consume_body(body);
 
-        log_capture_analysis!(
-            self,
-            closure_def_id,
-            "capture information: {:#?}",
-            delegate.capture_information
+        debug!(
+            "For closure={:?}, capture_information={:#?}",
+            closure_def_id, delegate.capture_information
         );
+        self.log_closure_capture_info(closure_def_id, &delegate.capture_information, span);
 
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
@@ -206,6 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.compute_min_captures(closure_def_id, delegate);
+        self.log_closure_min_capture_info(closure_def_id, span);
+
         self.set_closure_captures(closure_def_id);
 
         // Now that we've analyzed the closure, we know how each
@@ -333,10 +316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        debug!(
-            "For closure_def_id={:?}, set_closure_captures={:#?}",
-            closure_def_id, closure_captures
-        );
+        debug!("For closure_def_id={:?}, closure_captures={:#?}", closure_def_id, closure_captures);
         debug!(
             "For closure_def_id={:?}, upvar_capture_map={:#?}",
             closure_def_id, upvar_capture_map
@@ -478,12 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        log_capture_analysis!(
-            self,
-            closure_def_id,
-            "min_captures={:#?}",
-            root_var_min_capture_list
-        );
+        debug!("For closure={:?}, min_captures={:#?}", closure_def_id, root_var_min_capture_list);
 
         if !root_var_min_capture_list.is_empty() {
             self.typeck_results
@@ -576,6 +551,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | (ty::MutBorrow, ty::MutBorrow) => {
                             bug!("Expected unequal capture kinds");
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    fn log_closure_capture_info(
+        &self,
+        closure_def_id: rustc_hir::def_id::DefId,
+        capture_information: &FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>>,
+        closure_span: Span,
+    ) {
+        if self.should_log_capture_analysis(closure_def_id) {
+            for (place, capture_info) in capture_information {
+                let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
+                let output_str = format!("Capturing {}", capture_str);
+
+                let span = capture_info.expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
+                self.tcx.sess.span_err(span, &output_str);
+            }
+        }
+    }
+
+    fn log_closure_min_capture_info(&self, closure_def_id: DefId, closure_span: Span) {
+        if self.should_log_capture_analysis(closure_def_id) {
+            if let Some(min_captures) =
+                self.typeck_results.borrow().closure_min_captures.get(&closure_def_id)
+            {
+                for (_, min_captures_for_var) in min_captures {
+                    for capture in min_captures_for_var {
+                        let place = &capture.place;
+                        let capture_info = &capture.info;
+
+                        let capture_str =
+                            construct_capture_info_string(self.tcx, place, capture_info);
+                        let output_str = format!("Min Capture {}", capture_str);
+
+                        let span =
+                            capture_info.expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
+                        self.tcx.sess.span_err(span, &output_str);
                     }
                 }
             }
@@ -915,6 +930,37 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_place, diag_expr_id);
     }
+}
+
+fn construct_capture_info_string(
+    tcx: TyCtxt<'_>,
+    place: &Place<'tcx>,
+    capture_info: &ty::CaptureInfo<'tcx>,
+) -> String {
+    let variable_name = match place.base {
+        PlaceBase::Upvar(upvar_id) => var_name(tcx, upvar_id.var_path.hir_id).to_string(),
+        _ => bug!("Capture_information should only contain upvars"),
+    };
+
+    let mut projections_str = String::new();
+    for (i, item) in place.projections.iter().enumerate() {
+        let proj = match item.kind {
+            ProjectionKind::Field(a, b) => format!("({:?}, {:?})", a, b),
+            ProjectionKind::Deref => String::from("Deref"),
+            ProjectionKind::Index => String::from("Index"),
+            ProjectionKind::Subslice => String::from("Subslice"),
+        };
+        if i != 0 {
+            projections_str.push_str(",");
+        }
+        projections_str.push_str(proj.as_str());
+    }
+
+    let capture_kind_str = match capture_info.capture_kind {
+        ty::UpvarCapture::ByValue(_) => "ByValue".into(),
+        ty::UpvarCapture::ByRef(borrow) => format!("{:?}", borrow.kind),
+    };
+    format!("{}[{}] -> {}", variable_name, projections_str, capture_kind_str)
 }
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {

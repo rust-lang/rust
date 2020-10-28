@@ -26,7 +26,10 @@ fn main() {
         //~^ ERROR: attributes on expressions are experimental
     || {
         p.x += 10;
+        //~^ ERROR: Capturing p[(0, 0)] -> MutBorrow
+        //~^^ ERROR: Min Capture p[] -> MutBorrow
         println!("{:?}", p);
+        //~^ ERROR: Capturing p[] -> ImmBorrow
     };
 
     c();
