@@ -395,7 +395,10 @@ Definite bugs found:
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
 * [`VecDeque::drain` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/56161)
-* [`BTreeMap` iterators creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
+* Various `BTreeMap` problems
+    * [`BTreeMap` iterators creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
+    * [`BTreeMap::iter_mut` creating overlapping mutable references](https://github.com/rust-lang/rust/issues/73915)
+    * [`BTreeMap` node insertion using raw pointers outside their valid memory area](https://github.com/rust-lang/rust/issues/78477)
 * [`LinkedList` cursor insertion creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
 * [`Vec::push` invalidating existing references into the vector](https://github.com/rust-lang/rust/issues/60847)
 * [`align_to_mut` violating uniqueness of mutable references](https://github.com/rust-lang/rust/issues/68549)
@@ -404,9 +407,9 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [`ryu` using raw pointers outside their valid memory area](https://github.com/dtolnay/ryu/issues/24)
 * [ink! creating overlapping mutable references](https://github.com/rust-lang/miri/issues/1364)
 * [TiKV creating overlapping mutable reference and raw pointer](https://github.com/tikv/tikv/pull/7709)
-* [Windows `Env` iterator creating `*const T` from `&T` to read memory outside of `T`](https://github.com/rust-lang/rust/pull/70479)
-* [`BTreeMap::iter_mut` creating overlapping mutable references](https://github.com/rust-lang/rust/issues/73915)
+* [Windows `Env` iterator using a raw pointer outside its valid memory area](https://github.com/rust-lang/rust/pull/70479)
 * [`VecDeque::iter_mut` creating overlapping mutable references](https://github.com/rust-lang/rust/issues/74029)
+* [Standard library `SipHasher` using a raw pointer outside its valid memory area](https://github.com/rust-lang/rust/pull/78484)
 
 ## License
 
