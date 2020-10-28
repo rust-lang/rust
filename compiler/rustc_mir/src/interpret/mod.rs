@@ -24,7 +24,7 @@ pub use self::machine::{compile_time_machine, AllocMap, Machine, MayLeak, StackP
 pub use self::memory::{AllocCheck, FnVal, Memory, MemoryKind};
 pub use self::operand::{ImmTy, Immediate, OpTy, Operand};
 pub use self::place::{MPlaceTy, MemPlace, MemPlaceMeta, Place, PlaceTy};
-pub use self::validity::RefTracking;
+pub use self::validity::{CtfeValidationMode, RefTracking};
 pub use self::visitor::{MutValueVisitor, ValueVisitor};
 
 crate use self::intrinsics::eval_nullary_intrinsic;
