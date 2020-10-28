@@ -109,7 +109,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                                     arg.span.shrink_to_lo(),
                                     "or add a \"{}\" format string to use the message literally",
                                     "\"{}\", ".into(),
-                                    Applicability::MaybeIncorrect,
+                                    Applicability::MachineApplicable,
                                 );
                             }
                             l.emit();
