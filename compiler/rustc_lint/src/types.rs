@@ -808,15 +808,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_field_type_for_ffi(
         &self,
         cache: &mut FxHashSet<Ty<'tcx>>,
+        abi: SpecAbi,
         field: &ty::FieldDef,
         substs: SubstsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         let field_ty = field.ty(self.cx.tcx, substs);
         if field_ty.has_opaque_types() {
-            self.check_type_for_ffi(cache, field_ty)
+            self.check_type_for_ffi(cache, abi, field_ty)
         } else {
             let field_ty = self.cx.tcx.normalize_erasing_regions(self.cx.param_env, field_ty);
-            self.check_type_for_ffi(cache, field_ty)
+            self.check_type_for_ffi(cache, abi, field_ty)
         }
     }
 
@@ -824,6 +825,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_variant_for_ffi(
         &self,
         cache: &mut FxHashSet<Ty<'tcx>>,
+        abi: SpecAbi,
         ty: Ty<'tcx>,
         def: &ty::AdtDef,
         variant: &ty::VariantDef,
@@ -835,7 +837,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Can assume that only one field is not a ZST, so only check
             // that field's type for FFI-safety.
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
-                self.check_field_type_for_ffi(cache, field, substs)
+                self.check_field_type_for_ffi(cache, abi, field, substs)
             } else {
                 bug!("malformed transparent type");
             }
@@ -844,7 +846,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // actually safe.
             let mut all_phantom = !variant.fields.is_empty();
             for field in &variant.fields {
-                match self.check_field_type_for_ffi(cache, &field, substs) {
+                match self.check_field_type_for_ffi(cache, abi, &field, substs) {
                     FfiSafe => {
                         all_phantom = false;
                     }
@@ -866,7 +868,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn check_type_for_ffi(&self, cache: &mut FxHashSet<Ty<'tcx>>, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+    fn check_type_for_ffi(
+        &self,
+        cache: &mut FxHashSet<Ty<'tcx>>,
+        abi: SpecAbi,
+        ty: Ty<'tcx>,
+    ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
         let tcx = self.cx.tcx;
@@ -922,7 +929,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        self.check_variant_for_ffi(cache, ty, def, def.non_enum_variant(), substs)
+                        self.check_variant_for_ffi(
+                            cache,
+                            abi,
+                            ty,
+                            def,
+                            def.non_enum_variant(),
+                            substs,
+                        )
                     }
                     AdtKind::Enum => {
                         if def.variants.is_empty() {
@@ -967,7 +981,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 };
                             }
 
-                            match self.check_variant_for_ffi(cache, ty, def, variant, substs) {
+                            match self.check_variant_for_ffi(cache, abi, ty, def, variant, substs) {
                                 FfiSafe => (),
                                 r => return r,
                             }
@@ -984,11 +998,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using `u32` or `libc::wchar_t` instead".into()),
             },
 
-            ty::Int(ast::IntTy::I128) | ty::Uint(ast::UintTy::U128) => FfiUnsafe {
-                ty,
-                reason: "128-bit integers don't currently have a known stable ABI".into(),
-                help: None,
-            },
+            ty::Int(ast::IntTy::I128) | ty::Uint(ast::UintTy::U128) if abi != SpecAbi::SysV64 => {
+                FfiUnsafe {
+                    ty,
+                    reason: "128-bit integers don't currently have a known stable ABI".into(),
+                    help: None,
+                }
+            }
 
             // Primitive types with a stable representation.
             ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
@@ -1025,10 +1041,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
-                self.check_type_for_ffi(cache, ty)
+                self.check_type_for_ffi(cache, abi, ty)
             }
 
-            ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
+            ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, abi, inner_ty),
 
             ty::FnPtr(sig) => {
                 if self.is_internal_abi(sig.abi()) {
@@ -1045,7 +1061,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 let sig = tcx.erase_late_bound_regions(&sig);
                 if !sig.output().is_unit() {
-                    let r = self.check_type_for_ffi(cache, sig.output());
+                    let r = self.check_type_for_ffi(cache, abi, sig.output());
                     match r {
                         FfiSafe => {}
                         _ => {
@@ -1054,7 +1070,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     }
                 }
                 for arg in sig.inputs() {
-                    let r = self.check_type_for_ffi(cache, arg);
+                    let r = self.check_type_for_ffi(cache, abi, arg);
                     match r {
                         FfiSafe => {}
                         _ => {
@@ -1166,6 +1182,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_type_for_ffi_and_report_errors(
         &mut self,
+        abi: SpecAbi,
         sp: Span,
         ty: Ty<'tcx>,
         is_static: bool,
@@ -1196,7 +1213,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return;
         }
 
-        match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
+        match self.check_type_for_ffi(&mut FxHashSet::default(), abi, ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
                 self.emit_ffi_unsafe_type_lint(ty, sp, "composed only of `PhantomData`", None);
@@ -1210,25 +1227,25 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl<'_>) {
+    fn check_foreign_fn(&mut self, abi: SpecAbi, id: hir::HirId, decl: &hir::FnDecl<'_>) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false, false);
+            self.check_type_for_ffi_and_report_errors(abi, input_hir.span, input_ty, false, false);
         }
 
         if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
-            self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false, true);
+            self.check_type_for_ffi_and_report_errors(abi, ret_hir.span, ret_ty, false, true);
         }
     }
 
-    fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
+    fn check_foreign_static(&mut self, abi: SpecAbi, id: hir::HirId, span: Span) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let ty = self.cx.tcx.type_of(def_id);
-        self.check_type_for_ffi_and_report_errors(span, ty, true, false);
+        self.check_type_for_ffi_and_report_errors(abi, span, ty, true, false);
     }
 
     fn is_internal_abi(&self, abi: SpecAbi) -> bool {
@@ -1252,10 +1269,10 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.hir_id, decl);
+                    vis.check_foreign_fn(abi, it.hir_id, decl);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.hir_id, ty.span);
+                    vis.check_foreign_static(abi, it.hir_id, ty.span);
                 }
                 hir::ForeignItemKind::Type => (),
             }
@@ -1283,7 +1300,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
 
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
         if !vis.is_internal_abi(abi) {
-            vis.check_foreign_fn(hir_id, decl);
+            vis.check_foreign_fn(abi, hir_id, decl);
         }
     }
 }

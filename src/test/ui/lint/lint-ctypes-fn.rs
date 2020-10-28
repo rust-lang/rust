@@ -83,6 +83,10 @@ pub extern "C" fn i128_type(p: i128) { }
 pub extern "C" fn u128_type(p: u128) { }
 //~^ ERROR uses type `u128`
 
+pub extern "sysv64" fn good_i128_type(p: i128) { }
+
+pub extern "sysv64" fn good_u128_type(p: u128) { }
+
 pub extern "C" fn tuple_type(p: (i32, i32)) { }
 //~^ ERROR uses type `(i32, i32)`
 

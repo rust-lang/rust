@@ -95,6 +95,15 @@ extern {
 
 }
 
+// The u128/i128 is well defined for the SystemV ABI
+extern "sysv64" {
+    pub fn good_i128_type(p: i128);
+    pub fn good_u128_type(p: u128);
+
+    pub static good_static_u128_type: u128;
+    pub static good_static_u128_array_type: [u128; 16];
+}
+
 #[allow(improper_ctypes)]
 extern {
     pub fn good19(_: &String);

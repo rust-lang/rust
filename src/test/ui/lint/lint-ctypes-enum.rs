@@ -69,4 +69,10 @@ extern {
    fn no_result(x: Result<(), num::NonZeroI32>); //~ ERROR `extern` block uses type
 }
 
+// The u128/i128 is well defined for the SystemV ABI
+extern "sysv64" {
+   fn good_nonzero_u128(x: Option<num::NonZeroU128>);
+   fn good_nonzero_i128(x: Option<num::NonZeroI128>);
+}
+
 pub fn main() {}
