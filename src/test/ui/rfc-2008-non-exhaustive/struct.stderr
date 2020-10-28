@@ -1,4 +1,4 @@
-error[E0423]: expected function, tuple struct or tuple variant, found struct `TupleStruct`
+error[E0423]: cannot initialize a tuple struct which contains private fields
   --> $DIR/struct.rs:20:14
    |
 LL |     let ts = TupleStruct(640, 480);
