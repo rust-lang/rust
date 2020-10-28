@@ -35,7 +35,7 @@ use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInt
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, BoundRegion, Region, RegionKind, Ty, TyCtxt, TyKind, TypeFoldable, TypeVisitor,
+    self, Binder, BoundRegion, Region, RegionKind, Ty, TyCtxt, TypeFoldable, TypeVisitor,
 };
 use rustc_span::def_id::DefId;
 
@@ -239,24 +239,16 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::AliasEq<RustInterner<'tcx>>>
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> chalk_ir::Ty<RustInterner<'tcx>> {
-        use chalk_ir::TyData;
         use rustc_ast as ast;
-        use TyKind::*;
 
-        let empty = || chalk_ir::Substitution::empty(interner);
-        let struct_ty =
-            |def_id| chalk_ir::TypeName::Adt(chalk_ir::AdtId(interner.tcx.adt_def(def_id)));
-        let apply = |name, substitution| {
-            TyData::Apply(chalk_ir::ApplicationTy { name, substitution }).intern(interner)
-        };
-        let int = |i| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Int(i)), empty());
-        let uint = |i| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Uint(i)), empty());
-        let float = |f| apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Float(f)), empty());
+        let int = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Int(i));
+        let uint = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(i));
+        let float = |f| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Float(f));
 
         match *self.kind() {
-            Bool => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Bool), empty()),
-            Char => apply(chalk_ir::TypeName::Scalar(chalk_ir::Scalar::Char), empty()),
-            Int(ty) => match ty {
+            ty::Bool => chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Bool),
+            ty::Char => chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Char),
+            ty::Int(ty) => match ty {
                 ast::IntTy::Isize => int(chalk_ir::IntTy::Isize),
                 ast::IntTy::I8 => int(chalk_ir::IntTy::I8),
                 ast::IntTy::I16 => int(chalk_ir::IntTy::I16),
@@ -264,7 +256,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 ast::IntTy::I64 => int(chalk_ir::IntTy::I64),
                 ast::IntTy::I128 => int(chalk_ir::IntTy::I128),
             },
-            Uint(ty) => match ty {
+            ty::Uint(ty) => match ty {
                 ast::UintTy::Usize => uint(chalk_ir::UintTy::Usize),
                 ast::UintTy::U8 => uint(chalk_ir::UintTy::U8),
                 ast::UintTy::U16 => uint(chalk_ir::UintTy::U16),
@@ -272,80 +264,47 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 ast::UintTy::U64 => uint(chalk_ir::UintTy::U64),
                 ast::UintTy::U128 => uint(chalk_ir::UintTy::U128),
             },
-            Float(ty) => match ty {
+            ty::Float(ty) => match ty {
                 ast::FloatTy::F32 => float(chalk_ir::FloatTy::F32),
                 ast::FloatTy::F64 => float(chalk_ir::FloatTy::F64),
             },
-            Adt(def, substs) => apply(struct_ty(def.did), substs.lower_into(interner)),
-            Foreign(def_id) => apply(chalk_ir::TypeName::Foreign(ForeignDefId(def_id)), empty()),
-            Str => apply(chalk_ir::TypeName::Str, empty()),
-            Array(ty, len) => {
-                let value = match len.val {
-                    ty::ConstKind::Value(val) => {
-                        chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: val })
-                    }
-                    ty::ConstKind::Bound(db, bound) => {
-                        chalk_ir::ConstValue::BoundVar(chalk_ir::BoundVar::new(
-                            chalk_ir::DebruijnIndex::new(db.as_u32()),
-                            bound.index(),
-                        ))
-                    }
-                    _ => unimplemented!("Const not implemented. {:?}", len.val),
-                };
-                apply(
-                    chalk_ir::TypeName::Array,
-                    chalk_ir::Substitution::from_iter(
-                        interner,
-                        &[
-                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
-                            chalk_ir::GenericArgData::Const(
-                                chalk_ir::ConstData { ty: len.ty.lower_into(interner), value }
-                                    .intern(interner),
-                            )
-                            .intern(interner),
-                        ],
-                    ),
-                )
+            ty::Adt(def, substs) => {
+                chalk_ir::TyKind::Adt(chalk_ir::AdtId(def), substs.lower_into(interner))
             }
-            Slice(ty) => apply(
-                chalk_ir::TypeName::Slice,
-                chalk_ir::Substitution::from1(
-                    interner,
-                    chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
+            ty::Foreign(def_id) => chalk_ir::TyKind::Foreign(ForeignDefId(def_id)),
+            ty::Str => chalk_ir::TyKind::Str,
+            ty::Array(ty, len) => {
+                chalk_ir::TyKind::Array(ty.lower_into(interner), len.lower_into(interner))
+            }
+            ty::Slice(ty) => chalk_ir::TyKind::Slice(ty.lower_into(interner)),
+
+            ty::RawPtr(ptr) => match ptr.mutbl {
+                ast::Mutability::Mut => {
+                    chalk_ir::TyKind::Raw(chalk_ir::Mutability::Mut, ptr.ty.lower_into(interner))
+                }
+                ast::Mutability::Not => {
+                    chalk_ir::TyKind::Raw(chalk_ir::Mutability::Not, ptr.ty.lower_into(interner))
+                }
+            },
+            ty::Ref(region, ty, mutability) => match mutability {
+                ast::Mutability::Mut => chalk_ir::TyKind::Ref(
+                    chalk_ir::Mutability::Mut,
+                    region.lower_into(interner),
+                    ty.lower_into(interner),
                 ),
-            ),
-            RawPtr(ptr) => {
-                let name = match ptr.mutbl {
-                    ast::Mutability::Mut => chalk_ir::TypeName::Raw(chalk_ir::Mutability::Mut),
-                    ast::Mutability::Not => chalk_ir::TypeName::Raw(chalk_ir::Mutability::Not),
-                };
-                apply(name, chalk_ir::Substitution::from1(interner, ptr.ty.lower_into(interner)))
+                ast::Mutability::Not => chalk_ir::TyKind::Ref(
+                    chalk_ir::Mutability::Not,
+                    region.lower_into(interner),
+                    ty.lower_into(interner),
+                ),
+            },
+            ty::FnDef(def_id, substs) => {
+                chalk_ir::TyKind::FnDef(chalk_ir::FnDefId(def_id), substs.lower_into(interner))
             }
-            Ref(region, ty, mutability) => {
-                let name = match mutability {
-                    ast::Mutability::Mut => chalk_ir::TypeName::Ref(chalk_ir::Mutability::Mut),
-                    ast::Mutability::Not => chalk_ir::TypeName::Ref(chalk_ir::Mutability::Not),
-                };
-                apply(
-                    name,
-                    chalk_ir::Substitution::from_iter(
-                        interner,
-                        &[
-                            chalk_ir::GenericArgData::Lifetime(region.lower_into(interner))
-                                .intern(interner),
-                            chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner),
-                        ],
-                    ),
-                )
-            }
-            FnDef(def_id, substs) => apply(
-                chalk_ir::TypeName::FnDef(chalk_ir::FnDefId(def_id)),
-                substs.lower_into(interner),
-            ),
-            FnPtr(sig) => {
+            ty::FnPtr(sig) => {
                 let (inputs_and_outputs, binders, _named_regions) =
                     collect_bound_vars(interner, interner.tcx, &sig.inputs_and_output());
-                TyData::Function(chalk_ir::FnPointer {
+                chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: binders.len(interner),
                     sig: sig.lower_into(interner),
                     substitution: chalk_ir::Substitution::from_iter(
@@ -355,148 +314,122 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                         }),
                     ),
                 })
-                .intern(interner)
             }
-            Dynamic(predicates, region) => TyData::Dyn(chalk_ir::DynTy {
+            ty::Dynamic(predicates, region) => chalk_ir::TyKind::Dyn(chalk_ir::DynTy {
                 bounds: predicates.lower_into(interner),
                 lifetime: region.lower_into(interner),
-            })
-            .intern(interner),
-            Closure(def_id, substs) => apply(
-                chalk_ir::TypeName::Closure(chalk_ir::ClosureId(def_id)),
-                substs.lower_into(interner),
-            ),
-            Generator(_def_id, _substs, _) => unimplemented!(),
-            GeneratorWitness(_) => unimplemented!(),
-            Never => apply(chalk_ir::TypeName::Never, empty()),
-            Tuple(substs) => {
-                apply(chalk_ir::TypeName::Tuple(substs.len()), substs.lower_into(interner))
+            }),
+            ty::Closure(def_id, substs) => {
+                chalk_ir::TyKind::Closure(chalk_ir::ClosureId(def_id), substs.lower_into(interner))
             }
-            Projection(proj) => TyData::Alias(proj.lower_into(interner)).intern(interner),
-            Opaque(def_id, substs) => {
-                TyData::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
+            ty::Generator(_def_id, _substs, _) => unimplemented!(),
+            ty::GeneratorWitness(_) => unimplemented!(),
+            ty::Never => chalk_ir::TyKind::Never,
+            ty::Tuple(substs) => chalk_ir::TyKind::Tuple(substs.len(), substs.lower_into(interner)),
+            ty::Projection(proj) => chalk_ir::TyKind::Alias(proj.lower_into(interner)),
+            ty::Opaque(def_id, substs) => {
+                chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
                     substitution: substs.lower_into(interner),
                 }))
-                .intern(interner)
             }
             // This should have been done eagerly prior to this, and all Params
             // should have been substituted to placeholders
-            Param(_) => panic!("Lowering Param when not expected."),
-            Bound(db, bound) => TyData::BoundVar(chalk_ir::BoundVar::new(
+            ty::Param(_) => panic!("Lowering Param when not expected."),
+            ty::Bound(db, bound) => chalk_ir::TyKind::BoundVar(chalk_ir::BoundVar::new(
                 chalk_ir::DebruijnIndex::new(db.as_u32()),
                 bound.var.index(),
-            ))
-            .intern(interner),
-            Placeholder(_placeholder) => TyData::Placeholder(chalk_ir::PlaceholderIndex {
-                ui: chalk_ir::UniverseIndex { counter: _placeholder.universe.as_usize() },
-                idx: _placeholder.name.as_usize(),
-            })
-            .intern(interner),
-            Infer(_infer) => unimplemented!(),
-            Error(_) => apply(chalk_ir::TypeName::Error, empty()),
+            )),
+            ty::Placeholder(_placeholder) => {
+                chalk_ir::TyKind::Placeholder(chalk_ir::PlaceholderIndex {
+                    ui: chalk_ir::UniverseIndex { counter: _placeholder.universe.as_usize() },
+                    idx: _placeholder.name.as_usize(),
+                })
+            }
+            ty::Infer(_infer) => unimplemented!(),
+            ty::Error(_) => chalk_ir::TyKind::Error,
         }
+        .intern(interner)
     }
 }
 
 impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> Ty<'tcx> {
-        use chalk_ir::TyData;
+        use chalk_ir::TyKind;
         use rustc_ast::ast;
 
-        let kind = match self.data(interner) {
-            TyData::Apply(application_ty) => match application_ty.name {
-                chalk_ir::TypeName::Adt(struct_id) => {
-                    ty::Adt(struct_id.0, application_ty.substitution.lower_into(interner))
-                }
-                chalk_ir::TypeName::Scalar(scalar) => match scalar {
-                    chalk_ir::Scalar::Bool => ty::Bool,
-                    chalk_ir::Scalar::Char => ty::Char,
-                    chalk_ir::Scalar::Int(int_ty) => match int_ty {
-                        chalk_ir::IntTy::Isize => ty::Int(ast::IntTy::Isize),
-                        chalk_ir::IntTy::I8 => ty::Int(ast::IntTy::I8),
-                        chalk_ir::IntTy::I16 => ty::Int(ast::IntTy::I16),
-                        chalk_ir::IntTy::I32 => ty::Int(ast::IntTy::I32),
-                        chalk_ir::IntTy::I64 => ty::Int(ast::IntTy::I64),
-                        chalk_ir::IntTy::I128 => ty::Int(ast::IntTy::I128),
-                    },
-                    chalk_ir::Scalar::Uint(int_ty) => match int_ty {
-                        chalk_ir::UintTy::Usize => ty::Uint(ast::UintTy::Usize),
-                        chalk_ir::UintTy::U8 => ty::Uint(ast::UintTy::U8),
-                        chalk_ir::UintTy::U16 => ty::Uint(ast::UintTy::U16),
-                        chalk_ir::UintTy::U32 => ty::Uint(ast::UintTy::U32),
-                        chalk_ir::UintTy::U64 => ty::Uint(ast::UintTy::U64),
-                        chalk_ir::UintTy::U128 => ty::Uint(ast::UintTy::U128),
-                    },
-                    chalk_ir::Scalar::Float(float_ty) => match float_ty {
-                        chalk_ir::FloatTy::F32 => ty::Float(ast::FloatTy::F32),
-                        chalk_ir::FloatTy::F64 => ty::Float(ast::FloatTy::F64),
-                    },
+        let kind = match self.kind(interner) {
+            TyKind::Adt(struct_id, substitution) => {
+                ty::Adt(struct_id.0, substitution.lower_into(interner))
+            }
+            TyKind::Scalar(scalar) => match scalar {
+                chalk_ir::Scalar::Bool => ty::Bool,
+                chalk_ir::Scalar::Char => ty::Char,
+                chalk_ir::Scalar::Int(int_ty) => match int_ty {
+                    chalk_ir::IntTy::Isize => ty::Int(ast::IntTy::Isize),
+                    chalk_ir::IntTy::I8 => ty::Int(ast::IntTy::I8),
+                    chalk_ir::IntTy::I16 => ty::Int(ast::IntTy::I16),
+                    chalk_ir::IntTy::I32 => ty::Int(ast::IntTy::I32),
+                    chalk_ir::IntTy::I64 => ty::Int(ast::IntTy::I64),
+                    chalk_ir::IntTy::I128 => ty::Int(ast::IntTy::I128),
                 },
-                chalk_ir::TypeName::Array => {
-                    let substs = application_ty.substitution.as_slice(interner);
-                    let ty = substs[0].assert_ty_ref(interner).lower_into(interner);
-                    let c = substs[1].assert_const_ref(interner).lower_into(interner);
-                    ty::Array(ty, interner.tcx.mk_const(c))
-                }
-                chalk_ir::TypeName::FnDef(id) => {
-                    ty::FnDef(id.0, application_ty.substitution.lower_into(interner))
-                }
-                chalk_ir::TypeName::Closure(closure) => {
-                    ty::Closure(closure.0, application_ty.substitution.lower_into(interner))
-                }
-                chalk_ir::TypeName::Generator(_) => unimplemented!(),
-                chalk_ir::TypeName::GeneratorWitness(_) => unimplemented!(),
-                chalk_ir::TypeName::Never => ty::Never,
-                chalk_ir::TypeName::Tuple(_size) => {
-                    ty::Tuple(application_ty.substitution.lower_into(interner))
-                }
-                chalk_ir::TypeName::Slice => ty::Slice(
-                    application_ty.substitution.as_slice(interner)[0]
-                        .ty(interner)
-                        .unwrap()
-                        .lower_into(interner),
-                ),
-                chalk_ir::TypeName::Raw(mutbl) => ty::RawPtr(ty::TypeAndMut {
-                    ty: application_ty.substitution.as_slice(interner)[0]
-                        .ty(interner)
-                        .unwrap()
-                        .lower_into(interner),
-                    mutbl: match mutbl {
-                        chalk_ir::Mutability::Mut => ast::Mutability::Mut,
-                        chalk_ir::Mutability::Not => ast::Mutability::Not,
-                    },
-                }),
-                chalk_ir::TypeName::Ref(mutbl) => ty::Ref(
-                    application_ty.substitution.as_slice(interner)[0]
-                        .lifetime(interner)
-                        .unwrap()
-                        .lower_into(interner),
-                    application_ty.substitution.as_slice(interner)[1]
-                        .ty(interner)
-                        .unwrap()
-                        .lower_into(interner),
-                    match mutbl {
-                        chalk_ir::Mutability::Mut => ast::Mutability::Mut,
-                        chalk_ir::Mutability::Not => ast::Mutability::Not,
-                    },
-                ),
-                chalk_ir::TypeName::Str => ty::Str,
-                chalk_ir::TypeName::OpaqueType(opaque_ty) => {
-                    ty::Opaque(opaque_ty.0, application_ty.substitution.lower_into(interner))
-                }
-                chalk_ir::TypeName::AssociatedType(assoc_ty) => ty::Projection(ty::ProjectionTy {
-                    substs: application_ty.substitution.lower_into(interner),
-                    item_def_id: assoc_ty.0,
-                }),
-                chalk_ir::TypeName::Foreign(def_id) => ty::Foreign(def_id.0),
-                chalk_ir::TypeName::Error => unimplemented!(),
+                chalk_ir::Scalar::Uint(int_ty) => match int_ty {
+                    chalk_ir::UintTy::Usize => ty::Uint(ast::UintTy::Usize),
+                    chalk_ir::UintTy::U8 => ty::Uint(ast::UintTy::U8),
+                    chalk_ir::UintTy::U16 => ty::Uint(ast::UintTy::U16),
+                    chalk_ir::UintTy::U32 => ty::Uint(ast::UintTy::U32),
+                    chalk_ir::UintTy::U64 => ty::Uint(ast::UintTy::U64),
+                    chalk_ir::UintTy::U128 => ty::Uint(ast::UintTy::U128),
+                },
+                chalk_ir::Scalar::Float(float_ty) => match float_ty {
+                    chalk_ir::FloatTy::F32 => ty::Float(ast::FloatTy::F32),
+                    chalk_ir::FloatTy::F64 => ty::Float(ast::FloatTy::F64),
+                },
             },
-            TyData::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
+            TyKind::Array(ty, c) => {
+                let ty = ty.lower_into(interner);
+                let c = c.lower_into(interner);
+                ty::Array(ty, interner.tcx.mk_const(c))
+            }
+            TyKind::FnDef(id, substitution) => ty::FnDef(id.0, substitution.lower_into(interner)),
+            TyKind::Closure(closure, substitution) => {
+                ty::Closure(closure.0, substitution.lower_into(interner))
+            }
+            TyKind::Generator(..) => unimplemented!(),
+            TyKind::GeneratorWitness(..) => unimplemented!(),
+            TyKind::Never => ty::Never,
+            TyKind::Tuple(_len, substitution) => ty::Tuple(substitution.lower_into(interner)),
+            TyKind::Slice(ty) => ty::Slice(ty.lower_into(interner)),
+            TyKind::Raw(mutbl, ty) => ty::RawPtr(ty::TypeAndMut {
+                ty: ty.lower_into(interner),
+                mutbl: match mutbl {
+                    chalk_ir::Mutability::Mut => ast::Mutability::Mut,
+                    chalk_ir::Mutability::Not => ast::Mutability::Not,
+                },
+            }),
+            TyKind::Ref(mutbl, lifetime, ty) => ty::Ref(
+                lifetime.lower_into(interner),
+                ty.lower_into(interner),
+                match mutbl {
+                    chalk_ir::Mutability::Mut => ast::Mutability::Mut,
+                    chalk_ir::Mutability::Not => ast::Mutability::Not,
+                },
+            ),
+            TyKind::Str => ty::Str,
+            TyKind::OpaqueType(opaque_ty, substitution) => {
+                ty::Opaque(opaque_ty.0, substitution.lower_into(interner))
+            }
+            TyKind::AssociatedType(assoc_ty, substitution) => ty::Projection(ty::ProjectionTy {
+                substs: substitution.lower_into(interner),
+                item_def_id: assoc_ty.0,
+            }),
+            TyKind::Foreign(def_id) => ty::Foreign(def_id.0),
+            TyKind::Error => return interner.tcx.ty_error(),
+            TyKind::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(placeholder.ui.counter),
                 name: ty::BoundVar::from_usize(placeholder.idx),
             }),
-            chalk_ir::TyData::Alias(alias_ty) => match alias_ty {
+            TyKind::Alias(alias_ty) => match alias_ty {
                 chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::ProjectionTy {
                     item_def_id: projection.associated_ty_id.0,
                     substs: projection.substitution.lower_into(interner),
@@ -505,16 +438,16 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                     ty::Opaque(opaque.opaque_ty_id.0, opaque.substitution.lower_into(interner))
                 }
             },
-            TyData::Function(_quantified_ty) => unimplemented!(),
-            TyData::BoundVar(_bound) => ty::Bound(
+            TyKind::Function(_quantified_ty) => unimplemented!(),
+            TyKind::BoundVar(_bound) => ty::Bound(
                 ty::DebruijnIndex::from_usize(_bound.debruijn.depth() as usize),
                 ty::BoundTy {
                     var: ty::BoundVar::from_usize(_bound.index),
                     kind: ty::BoundTyKind::Anon,
                 },
             ),
-            TyData::InferenceVar(_, _) => unimplemented!(),
-            TyData::Dyn(_) => unimplemented!(),
+            TyKind::InferenceVar(_, _) => unimplemented!(),
+            TyKind::Dyn(_) => unimplemented!(),
         };
         interner.tcx.mk_ty(kind)
     }
@@ -909,7 +842,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 match self.parameters.entry(bound_ty.var.as_u32()) {
                     Entry::Vacant(entry) => {
-                        entry.insert(chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General));
+                        entry.insert(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General));
                     }
                     Entry::Occupied(entry) => match entry.get() {
                         chalk_ir::VariableKind::Ty(_) => {}

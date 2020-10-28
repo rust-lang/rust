@@ -324,19 +324,19 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     fn impl_provided_for(
         &self,
         auto_trait_id: chalk_ir::TraitId<RustInterner<'tcx>>,
-        app_ty: &chalk_ir::ApplicationTy<RustInterner<'tcx>>,
+        chalk_ty: &chalk_ir::TyKind<RustInterner<'tcx>>,
     ) -> bool {
         use chalk_ir::Scalar::*;
-        use chalk_ir::TypeName::*;
+        use chalk_ir::TyKind::*;
 
         let trait_def_id = auto_trait_id.0;
         let all_impls = self.interner.tcx.all_impls(trait_def_id);
         for impl_def_id in all_impls {
             let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
             let self_ty = trait_ref.self_ty();
-            let provides = match (self_ty.kind(), app_ty.name) {
-                (&ty::Adt(impl_adt_def, ..), Adt(id)) => impl_adt_def.did == id.0.did,
-                (_, AssociatedType(_ty_id)) => {
+            let provides = match (self_ty.kind(), chalk_ty) {
+                (&ty::Adt(impl_adt_def, ..), Adt(id, ..)) => impl_adt_def.did == id.0.did,
+                (_, AssociatedType(_ty_id, ..)) => {
                     // FIXME(chalk): See https://github.com/rust-lang/rust/pull/77152#discussion_r494484774
                     false
                 }
@@ -365,10 +365,10 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                     (ast::FloatTy::F32, chalk_ir::FloatTy::F32)
                         | (ast::FloatTy::F64, chalk_ir::FloatTy::F64)
                 ),
-                (&ty::Tuple(..), Tuple(..)) => true,
-                (&ty::Array(..), Array) => true,
-                (&ty::Slice(..), Slice) => true,
-                (&ty::RawPtr(type_and_mut), Raw(mutability)) => {
+                (&ty::Tuple(substs), Tuple(len, _)) => substs.len() == *len,
+                (&ty::Array(..), Array(..)) => true,
+                (&ty::Slice(..), Slice(..)) => true,
+                (&ty::RawPtr(type_and_mut), Raw(mutability, _)) => {
                     match (type_and_mut.mutbl, mutability) {
                         (ast::Mutability::Mut, chalk_ir::Mutability::Mut) => true,
                         (ast::Mutability::Mut, chalk_ir::Mutability::Not) => false,
@@ -376,17 +376,19 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
                     }
                 }
-                (&ty::Ref(.., mutability1), Ref(mutability2)) => match (mutability1, mutability2) {
-                    (ast::Mutability::Mut, chalk_ir::Mutability::Mut) => true,
-                    (ast::Mutability::Mut, chalk_ir::Mutability::Not) => false,
-                    (ast::Mutability::Not, chalk_ir::Mutability::Mut) => false,
-                    (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
-                },
-                (&ty::Opaque(def_id, ..), OpaqueType(opaque_ty_id)) => def_id == opaque_ty_id.0,
-                (&ty::FnDef(def_id, ..), FnDef(fn_def_id)) => def_id == fn_def_id.0,
+                (&ty::Ref(.., mutability1), Ref(mutability2, ..)) => {
+                    match (mutability1, mutability2) {
+                        (ast::Mutability::Mut, chalk_ir::Mutability::Mut) => true,
+                        (ast::Mutability::Mut, chalk_ir::Mutability::Not) => false,
+                        (ast::Mutability::Not, chalk_ir::Mutability::Mut) => false,
+                        (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
+                    }
+                }
+                (&ty::Opaque(def_id, ..), OpaqueType(opaque_ty_id, ..)) => def_id == opaque_ty_id.0,
+                (&ty::FnDef(def_id, ..), FnDef(fn_def_id, ..)) => def_id == fn_def_id.0,
                 (&ty::Str, Str) => true,
                 (&ty::Never, Never) => true,
-                (&ty::Closure(def_id, ..), Closure(closure_id)) => def_id == closure_id.0,
+                (&ty::Closure(def_id, ..), Closure(closure_id, _)) => def_id == closure_id.0,
                 (&ty::Foreign(def_id), Foreign(foreign_def_id)) => def_id == foreign_def_id.0,
                 (&ty::Error(..), Error) => false,
                 _ => false,
@@ -506,17 +508,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         substs: &chalk_ir::Substitution<RustInterner<'tcx>>,
     ) -> chalk_solve::rust_ir::ClosureKind {
         let kind = &substs.as_slice(&self.interner)[substs.len(&self.interner) - 3];
-        match kind.assert_ty_ref(&self.interner).data(&self.interner) {
-            chalk_ir::TyData::Apply(apply) => match apply.name {
-                chalk_ir::TypeName::Scalar(scalar) => match scalar {
-                    chalk_ir::Scalar::Int(int_ty) => match int_ty {
-                        chalk_ir::IntTy::I8 => chalk_solve::rust_ir::ClosureKind::Fn,
-                        chalk_ir::IntTy::I16 => chalk_solve::rust_ir::ClosureKind::FnMut,
-                        chalk_ir::IntTy::I32 => chalk_solve::rust_ir::ClosureKind::FnOnce,
-                        _ => bug!("bad closure kind"),
-                    },
-                    _ => bug!("bad closure kind"),
-                },
+        match kind.assert_ty_ref(&self.interner).kind(&self.interner) {
+            chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Int(int_ty)) => match int_ty {
+                chalk_ir::IntTy::I8 => chalk_solve::rust_ir::ClosureKind::Fn,
+                chalk_ir::IntTy::I16 => chalk_solve::rust_ir::ClosureKind::FnMut,
+                chalk_ir::IntTy::I32 => chalk_solve::rust_ir::ClosureKind::FnOnce,
                 _ => bug!("bad closure kind"),
             },
             _ => bug!("bad closure kind"),
@@ -530,23 +526,19 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> chalk_ir::Binders<chalk_solve::rust_ir::FnDefInputsAndOutputDatum<RustInterner<'tcx>>>
     {
         let sig = &substs.as_slice(&self.interner)[substs.len(&self.interner) - 2];
-        match sig.assert_ty_ref(&self.interner).data(&self.interner) {
-            chalk_ir::TyData::Function(f) => {
+        match sig.assert_ty_ref(&self.interner).kind(&self.interner) {
+            chalk_ir::TyKind::Function(f) => {
                 let substitution = f.substitution.as_slice(&self.interner);
                 let return_type =
                     substitution.last().unwrap().assert_ty_ref(&self.interner).clone();
                 // Closure arguments are tupled
                 let argument_tuple = substitution[0].assert_ty_ref(&self.interner);
-                let argument_types = match argument_tuple.data(&self.interner) {
-                    chalk_ir::TyData::Apply(apply) => match apply.name {
-                        chalk_ir::TypeName::Tuple(_) => apply
-                            .substitution
-                            .iter(&self.interner)
-                            .map(|arg| arg.assert_ty_ref(&self.interner))
-                            .cloned()
-                            .collect(),
-                        _ => bug!("Expecting closure FnSig args to be tupled."),
-                    },
+                let argument_types = match argument_tuple.kind(&self.interner) {
+                    chalk_ir::TyKind::Tuple(_len, substitution) => substitution
+                        .iter(&self.interner)
+                        .map(|arg| arg.assert_ty_ref(&self.interner))
+                        .cloned()
+                        .collect(),
                     _ => bug!("Expecting closure FnSig args to be tupled."),
                 };
 
@@ -637,7 +629,7 @@ fn binders_for<'tcx>(
         bound_vars.iter().map(|arg| match arg.unpack() {
             ty::subst::GenericArgKind::Lifetime(_re) => chalk_ir::VariableKind::Lifetime,
             ty::subst::GenericArgKind::Type(_ty) => {
-                chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General)
+                chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }
             ty::subst::GenericArgKind::Const(c) => {
                 chalk_ir::VariableKind::Const(c.ty.lower_into(interner))
