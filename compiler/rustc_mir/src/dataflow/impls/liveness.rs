@@ -8,7 +8,7 @@ use crate::dataflow::{AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 ///
 /// This analysis considers references as being used only at the point of the
 /// borrow. In other words, this analysis does not track uses because of references that already
-/// exist. See [this `mir-datalow` test][flow-test] for an example. You almost never want to use
+/// exist. See [this `mir-dataflow` test][flow-test] for an example. You almost never want to use
 /// this analysis without also looking at the results of [`MaybeBorrowedLocals`].
 ///
 /// [`MaybeBorrowedLocals`]: ../struct.MaybeBorrowedLocals.html
@@ -134,7 +134,7 @@ impl DefUse {
 
             // `MutatingUseContext::Call` and `MutatingUseContext::Yield` indicate that this is the
             // destination place for a `Call` return or `Yield` resume respectively. Since this is
-            // only a `Def` when the function returns succesfully, we handle this case separately
+            // only a `Def` when the function returns successfully, we handle this case separately
             // in `call_return_effect` above.
             PlaceContext::MutatingUse(MutatingUseContext::Call | MutatingUseContext::Yield) => None,
 
