@@ -74,7 +74,10 @@ pub trait HirDisplay {
             curr_size: 0,
             max_size: None,
             omit_verbose_types: false,
+            #[cfg(not(test))]
             display_target: DisplayTarget::SourceCode { module_id },
+            #[cfg(test)]
+            display_target: DisplayTarget::Test { module_id },
         }) {
             Ok(()) => {}
             Err(HirDisplayError::FmtError) => panic!("Writing to String can't fail!"),
@@ -134,11 +137,24 @@ enum DisplayTarget {
     /// Display types for inserting them in source files.
     /// The generated code should compile, so paths need to be qualified.
     SourceCode { module_id: ModuleId },
+    /// Only for test purpose to keep real types
+    #[cfg(test)]
+    Test { module_id: ModuleId },
 }
 
 impl DisplayTarget {
     fn is_source_code(&self) -> bool {
         matches!(self, Self::SourceCode {..})
+    }
+    fn is_test(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(self, Self::Test {..})
+        }
+        #[cfg(not(test))]
+        {
+            false
+        }
     }
 }
 
@@ -341,41 +357,57 @@ impl HirDisplay for ApplicationTy {
                             ));
                         }
                     }
+                    #[cfg(test)]
+                    DisplayTarget::Test { module_id } => {
+                        if let Some(path) = find_path::find_path(
+                            f.db.upcast(),
+                            ItemInNs::Types(def_id.into()),
+                            module_id,
+                        ) {
+                            write!(f, "{}", path)?;
+                        } else {
+                            return Err(HirDisplayError::DisplaySourceCodeError(
+                                DisplaySourceCodeError::PathNotFound,
+                            ));
+                        }
+                    }
                 }
 
                 if self.parameters.len() > 0 {
-                    let parameters_to_write =
-                        if f.display_target.is_source_code() || f.omit_verbose_types() {
-                            match self
-                                .ctor
-                                .as_generic_def()
-                                .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
-                                .filter(|defaults| !defaults.is_empty())
-                            {
-                                None => self.parameters.0.as_ref(),
-                                Some(default_parameters) => {
-                                    let mut default_from = 0;
-                                    for (i, parameter) in self.parameters.iter().enumerate() {
-                                        match (parameter, default_parameters.get(i)) {
-                                            (&Ty::Unknown, _) | (_, None) => {
+                    let parameters_to_write = if f.display_target.is_source_code()
+                        || f.display_target.is_test()
+                        || f.omit_verbose_types()
+                    {
+                        match self
+                            .ctor
+                            .as_generic_def()
+                            .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
+                            .filter(|defaults| !defaults.is_empty())
+                        {
+                            None => self.parameters.0.as_ref(),
+                            Some(default_parameters) => {
+                                let mut default_from = 0;
+                                for (i, parameter) in self.parameters.iter().enumerate() {
+                                    match (parameter, default_parameters.get(i)) {
+                                        (&Ty::Unknown, _) | (_, None) => {
+                                            default_from = i + 1;
+                                        }
+                                        (_, Some(default_parameter)) => {
+                                            let actual_default = default_parameter
+                                                .clone()
+                                                .subst(&self.parameters.prefix(i));
+                                            if parameter != &actual_default {
                                                 default_from = i + 1;
-                                            }
-                                            (_, Some(default_parameter)) => {
-                                                let actual_default = default_parameter
-                                                    .clone()
-                                                    .subst(&self.parameters.prefix(i));
-                                                if parameter != &actual_default {
-                                                    default_from = i + 1;
-                                                }
                                             }
                                         }
                                     }
-                                    &self.parameters.0[0..default_from]
                                 }
+                                &self.parameters.0[0..default_from]
                             }
-                        } else {
-                            self.parameters.0.as_ref()
-                        };
+                        }
+                    } else {
+                        self.parameters.0.as_ref()
+                    };
                     if !parameters_to_write.is_empty() {
                         write!(f, "<")?;
                         f.write_joined(parameters_to_write, ", ")?;
@@ -391,8 +423,8 @@ impl HirDisplay for ApplicationTy {
                 let trait_ = f.db.trait_data(trait_);
                 let type_alias = f.db.type_alias_data(type_alias);
 
-                // Use placeholder associated types when the target is source code (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
-                if f.display_target.is_source_code() || self.parameters.len() > 1 {
+                // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
+                if f.display_target.is_test() || self.parameters.len() > 1 {
                     write!(f, "{}::{}", trait_.name, type_alias.name)?;
                     if self.parameters.len() > 0 {
                         write!(f, "<")?;

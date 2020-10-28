@@ -1,7 +1,7 @@
 use expect_test::expect;
 use test_utils::mark;
 
-use super::{check_infer, check_infer_with_mismatches, check_types};
+use super::{check_infer, check_infer_with_mismatches, check_types, check_types_source_code};
 
 #[test]
 fn infer_await() {
@@ -907,7 +907,7 @@ fn test<T: Trait>(t: T) { (*t); }
 }
 
 #[test]
-fn associated_type_placeholder() {
+fn associated_type_inlay_hints() {
     check_types(
         r#"
 pub trait ApplyL {
@@ -929,7 +929,7 @@ fn test<T: ApplyL>() {
 }
 
 #[test]
-fn associated_type_placeholder_2() {
+fn associated_type_inlay_hints_2() {
     check_types(
         r#"
 pub trait ApplyL {
@@ -941,6 +941,45 @@ fn test<T: ApplyL>(t: T) {
     let y = foo(t);
     y;
 } //^ <T as ApplyL>::Out
+"#,
+    );
+}
+
+#[test]
+fn associated_type_placeholder() {
+    check_types_source_code(
+        r#"
+pub trait ApplyL {
+    type Out;
+}
+
+pub struct RefMutL<T>;
+
+impl<T> ApplyL for RefMutL<T> {
+    type Out = <T as ApplyL>::Out;
+}
+
+fn test<T: ApplyL>() {
+    let y: <RefMutL<T> as ApplyL>::Out = no_matter;
+    y;
+} //^ ApplyL::Out<T>
+"#,
+    );
+}
+
+#[test]
+fn associated_type_placeholder_2() {
+    check_types_source_code(
+        r#"
+pub trait ApplyL {
+    type Out;
+}
+fn foo<T: ApplyL>(t: T) -> <T as ApplyL>::Out;
+
+fn test<T: ApplyL>(t: T) {
+    let y = foo(t);
+    y;
+} //^ ApplyL::Out<T>
 "#,
     );
 }
