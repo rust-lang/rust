@@ -28,7 +28,6 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # fn somefunc() -> bool { true };
-    ///
     /// // Bad
     /// if { let x = somefunc(); x } { /* ... */ }
     ///

@@ -12,13 +12,14 @@ LL | |     }
    |
    = note: `-D clippy::while-let-loop` implied by `-D warnings`
 
-error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+error: empty `loop {}` wastes CPU cycles
   --> $DIR/ice-360.rs:10:9
    |
 LL |         loop {}
    |         ^^^^^^^
    |
    = note: `-D clippy::empty-loop` implied by `-D warnings`
+   = help: You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
 
 error: aborting due to 2 previous errors
 

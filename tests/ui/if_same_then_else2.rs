@@ -3,7 +3,8 @@
     clippy::blacklisted_name,
     clippy::collapsible_if,
     clippy::ifs_same_cond,
-    clippy::needless_return
+    clippy::needless_return,
+    clippy::single_element_loop
 )]
 
 fn if_same_then_else2() -> Result<&'static str, ()> {
