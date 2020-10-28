@@ -44,15 +44,18 @@
 //! Rc::downgrade(&my_rc);
 //! ```
 //!
-//! `Rc<T>`'s implementations of traits like `Clone` should also be called using
-//! fully qualified syntax to avoid confusion as to whether the *reference* is being
-//! cloned or the *backing data* (`T`) is being cloned:
+//! `Rc<T>`'s implementations of traits like `Clone` may also be called using
+//! fully qualified syntax. Some people prefer to use fully qualified syntax,
+//! while others prefer using method-call syntax.
 //!
 //! ```
 //! use std::rc::Rc;
 //!
-//! let my_rc = Rc::new(());
-//! let your_rc = Rc::clone(&my_rc);
+//! let rc = Rc::new(());
+//! // Method-call syntax
+//! let rc2 = rc.clone();
+//! // Fully qualified syntax
+//! let rc3 = Rc::clone(&rc);
 //! ```
 //!
 //! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the inner value may have

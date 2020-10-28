@@ -138,15 +138,18 @@ macro_rules! acquire {
 /// Arc::downgrade(&my_arc);
 /// ```
 ///
-/// `Arc<T>`'s implementations of traits like `Clone` should also be called using
-/// fully qualified syntax to avoid confusion as to whether the *reference* is being
-/// cloned or the *backing data* (`T`) is being cloned:
+/// `Arc<T>`'s implementations of traits like `Clone` may also be called using
+/// fully qualified syntax. Some people prefer to use fully qualified syntax,
+/// while others prefer using method-call syntax.
 ///
 /// ```
 /// use std::sync::Arc;
 ///
-/// let my_arc = Arc::new(());
-/// let your_arc = Arc::clone(&my_arc);
+/// let arc = Arc::new(());
+/// // Method-call syntax
+/// let arc2 = arc.clone();
+/// // Fully qualified syntax
+/// let arc3 = Arc::clone(&arc);
 /// ```
 ///
 /// [`Weak<T>`][Weak] does not auto-dereference to `T`, because the inner value may have
