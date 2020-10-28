@@ -377,7 +377,7 @@ impl Options {
             }
         };
 
-        let mut default_settings: Vec<Vec<(String, String)>> = vec![
+        let default_settings: Vec<Vec<(String, String)>> = vec![
             matches
                 .opt_str("default-theme")
                 .iter()
@@ -401,7 +401,7 @@ impl Options {
                 })
                 .collect(),
         ];
-        let default_settings = default_settings.drain(..).flatten().collect();
+        let default_settings = default_settings.into_iter().flatten().collect();
 
         let test_args = matches.opt_strs("test-args");
         let test_args: Vec<String> =
