@@ -1,3 +1,4 @@
+// compile-flags: -Zmiri-track-raw-pointers
 #![feature(new_uninit)]
 
 use std::slice;
