@@ -738,14 +738,14 @@ impl<D: Decoder> Decodable<D> for Span {
 }
 
 /// Calls the provided closure, using the provided `SourceMap` to format
-/// any spans that are debug-printed during the closure'e exectuino.
+/// any spans that are debug-printed during the closure's execution.
 ///
 /// Normally, the global `TyCtxt` is used to retrieve the `SourceMap`
 /// (see `rustc_interface::callbacks::span_debug1). However, some parts
 /// of the compiler (e.g. `rustc_parse`) may debug-print `Span`s before
 /// a `TyCtxt` is available. In this case, we fall back to
 /// the `SourceMap` provided to this function. If that is not available,
-/// we fall back to printing the raw `Span` field values
+/// we fall back to printing the raw `Span` field values.
 pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
     SESSION_GLOBALS.with(|session_globals| {
         *session_globals.source_map.borrow_mut() = Some(source_map);
