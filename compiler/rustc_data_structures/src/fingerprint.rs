@@ -3,77 +3,152 @@ use rustc_serialize::{
     opaque::{self, EncodeResult},
     Decodable, Encodable,
 };
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use std::mem;
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
-pub struct Fingerprint(u64, u64);
+#[cfg(test)]
+mod tests;
+
+// Use `[u8; 16]` representation since it imposes no alignment requirements.
+// This can reduce memory consumption by preventing otherwise unnecessary
+// padding in arrays of structs containing `Fingerprint`s. An example of this is
+// the query dependency graph, which contains a large array of `DepNode`s. As of
+// this writing, the size of a `DepNode` decreases by ~30% (from 24 bytes to 17)
+// by using a byte array here instead of two `u64`s, which noticeably decreases
+// total memory usage when compiling large crates. However, it has the potential
+// to increase the instruction count slightly if not carefully implemented.
+#[derive(Eq, Debug, Clone, Copy)]
+pub struct Fingerprint([u8; 16]);
 
 impl Fingerprint {
-    pub const ZERO: Fingerprint = Fingerprint(0, 0);
+    pub const ZERO: Fingerprint = Fingerprint([0; 16]);
 
     #[inline]
-    pub fn from_smaller_hash(hash: u64) -> Fingerprint {
-        Fingerprint(hash, hash)
-    }
-
-    #[inline]
-    pub fn to_smaller_hash(&self) -> u64 {
-        self.0
+    fn from_value(v0: u64, v1: u64) -> Fingerprint {
+        Fingerprint([
+            (v0 >> 0) as u8,
+            (v0 >> 8) as u8,
+            (v0 >> 16) as u8,
+            (v0 >> 24) as u8,
+            (v0 >> 32) as u8,
+            (v0 >> 40) as u8,
+            (v0 >> 48) as u8,
+            (v0 >> 56) as u8,
+            (v1 >> 0) as u8,
+            (v1 >> 8) as u8,
+            (v1 >> 16) as u8,
+            (v1 >> 24) as u8,
+            (v1 >> 32) as u8,
+            (v1 >> 40) as u8,
+            (v1 >> 48) as u8,
+            (v1 >> 56) as u8,
+        ])
     }
 
     #[inline]
     pub fn as_value(&self) -> (u64, u64) {
-        (self.0, self.1)
+        (
+            ((self.0[0] as u64) << 0)
+                | ((self.0[1] as u64) << 8)
+                | ((self.0[2] as u64) << 16)
+                | ((self.0[3] as u64) << 24)
+                | ((self.0[4] as u64) << 32)
+                | ((self.0[5] as u64) << 40)
+                | ((self.0[6] as u64) << 48)
+                | ((self.0[7] as u64) << 56),
+            ((self.0[8] as u64) << 0)
+                | ((self.0[9] as u64) << 8)
+                | ((self.0[10] as u64) << 16)
+                | ((self.0[11] as u64) << 24)
+                | ((self.0[12] as u64) << 32)
+                | ((self.0[13] as u64) << 40)
+                | ((self.0[14] as u64) << 48)
+                | ((self.0[15] as u64) << 56),
+        )
+    }
+
+    #[inline]
+    fn from_value_u128(v: u128) -> Fingerprint {
+        Fingerprint::from_value(v as u64, (v >> 64) as u64)
+    }
+
+    #[inline]
+    pub fn as_value_u128(&self) -> u128 {
+        let (v0, v1) = self.as_value();
+        v0 as u128 | ((v1 as u128) << 64)
+    }
+
+    #[inline]
+    pub fn from_smaller_hash(hash: u64) -> Fingerprint {
+        Fingerprint::from_value(hash, hash)
+    }
+
+    #[inline]
+    pub fn to_smaller_hash(&self) -> u64 {
+        self.as_value().0
     }
 
     #[inline]
     pub fn combine(self, other: Fingerprint) -> Fingerprint {
         // See https://stackoverflow.com/a/27952689 on why this function is
         // implemented this way.
-        Fingerprint(
-            self.0.wrapping_mul(3).wrapping_add(other.0),
-            self.1.wrapping_mul(3).wrapping_add(other.1),
-        )
+        let v = self.as_value_u128().wrapping_mul(3).wrapping_add(other.as_value_u128());
+        Fingerprint::from_value_u128(v)
     }
 
     // Combines two hashes in an order independent way. Make sure this is what
     // you want.
     #[inline]
     pub fn combine_commutative(self, other: Fingerprint) -> Fingerprint {
-        let a = u128::from(self.1) << 64 | u128::from(self.0);
-        let b = u128::from(other.1) << 64 | u128::from(other.0);
-
-        let c = a.wrapping_add(b);
-
-        Fingerprint((c >> 64) as u64, c as u64)
+        let v = self.as_value_u128().wrapping_add(other.as_value_u128());
+        Fingerprint::from_value_u128(v)
     }
 
     pub fn to_hex(&self) -> String {
-        format!("{:x}{:x}", self.0, self.1)
+        let (self0, self1) = self.as_value();
+        format!("{:x}{:x}", self0, self1)
     }
 
     pub fn encode_opaque(&self, encoder: &mut opaque::Encoder) -> EncodeResult {
-        let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
-
-        encoder.emit_raw_bytes(&bytes);
+        encoder.emit_raw_bytes(&self.0);
         Ok(())
     }
 
     pub fn decode_opaque(decoder: &mut opaque::Decoder<'_>) -> Result<Fingerprint, String> {
-        let mut bytes = [0; 16];
-
-        decoder.read_raw_bytes(&mut bytes)?;
-
-        let [l, r]: [u64; 2] = unsafe { mem::transmute(bytes) };
-
-        Ok(Fingerprint(u64::from_le(l), u64::from_le(r)))
+        let mut fingerprint = Fingerprint::ZERO;
+        decoder.read_raw_bytes(&mut fingerprint.0)?;
+        Ok(fingerprint)
     }
 }
 
 impl std::fmt::Display for Fingerprint {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(formatter, "{:x}-{:x}", self.0, self.1)
+        let (self0, self1) = self.as_value();
+        write!(formatter, "{:x}-{:x}", self0, self1)
+    }
+}
+
+impl Ord for Fingerprint {
+    #[inline]
+    fn cmp(&self, other: &Fingerprint) -> Ordering {
+        // This implementation is faster than the one generated by the `derive` attribute.
+        self.as_value_u128().cmp(&other.as_value_u128())
+    }
+}
+
+impl PartialOrd for Fingerprint {
+    #[inline]
+    fn partial_cmp(&self, other: &Fingerprint) -> Option<Ordering> {
+        // This implementation is faster than the one generated by the `derive` attribute.
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Fingerprint {
+    #[inline]
+    fn eq(&self, other: &Fingerprint) -> bool {
+        // This implementation is faster than the one generated by the `derive` attribute.
+        self.as_value_u128() == other.as_value_u128()
     }
 }
 
@@ -91,8 +166,10 @@ trait FingerprintHasher {
 impl<H: Hasher> FingerprintHasher for H {
     #[inline]
     default fn write_fingerprint(&mut self, fingerprint: &Fingerprint) {
-        self.write_u64(fingerprint.0);
-        self.write_u64(fingerprint.1);
+        // It's faster to hash this as two `u64`s than as a `u128` or slice.
+        let (fingerprint0, fingerprint1) = fingerprint.as_value();
+        self.write_u64(fingerprint0);
+        self.write_u64(fingerprint1);
     }
 }
 
@@ -100,7 +177,8 @@ impl FingerprintHasher for crate::unhash::Unhasher {
     #[inline]
     fn write_fingerprint(&mut self, fingerprint: &Fingerprint) {
         // `Unhasher` only wants a single `u64`
-        self.write_u64(fingerprint.0);
+        let (fingerprint0, _) = fingerprint.as_value();
+        self.write_u64(fingerprint0);
     }
 }
 
@@ -108,7 +186,7 @@ impl stable_hasher::StableHasherResult for Fingerprint {
     #[inline]
     fn finish(hasher: stable_hasher::StableHasher) -> Self {
         let (_0, _1) = hasher.finalize();
-        Fingerprint(_0, _1)
+        Fingerprint::from_value(_0, _1)
     }
 }
 

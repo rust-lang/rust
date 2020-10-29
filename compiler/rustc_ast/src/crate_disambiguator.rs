@@ -20,9 +20,7 @@ impl CrateDisambiguator {
 
 impl fmt::Display for CrateDisambiguator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let (a, b) = self.0.as_value();
-        let as_u128 = a as u128 | ((b as u128) << 64);
-        f.write_str(&base_n::encode(as_u128, base_n::CASE_INSENSITIVE))
+        f.write_str(&base_n::encode(self.0.as_value_u128(), base_n::CASE_INSENSITIVE))
     }
 }
 
