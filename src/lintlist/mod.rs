@@ -299,6 +299,13 @@ vec![
         module: "comparison_chain",
     },
     Lint {
+        name: "comparison_to_empty",
+        group: "style",
+        desc: "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead",
+        deprecation: None,
+        module: "len_zero",
+    },
+    Lint {
         name: "copy_iterator",
         group: "pedantic",
         desc: "implementing `Iterator` on a `Copy` type",
