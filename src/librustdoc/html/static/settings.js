@@ -14,10 +14,6 @@
         }
     }
 
-    function getSettingValue(settingName) {
-        return getCurrentValue("rustdoc-" + settingName);
-    }
-
     function setEvents() {
         var elems = {
             toggles: document.getElementsByClassName("slider"),

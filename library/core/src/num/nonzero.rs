@@ -92,6 +92,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 doc_comment! {
                     concat!(
 "Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`"),
+                    #[inline]
                     fn from(nonzero: $Ty) -> Self {
                         nonzero.0
                     }

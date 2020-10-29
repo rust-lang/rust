@@ -1,10 +1,37 @@
 // From rust:
-/* global resourcesSuffix */
+/* global resourcesSuffix, getSettingValue */
 
 var darkThemes = ["dark", "ayu"];
 var currentTheme = document.getElementById("themeStyle");
 var mainTheme = document.getElementById("mainThemeStyle");
-var localStoredTheme = getCurrentValue("rustdoc-theme");
+
+var settingsDataset = (function () {
+    var settingsElement = document.getElementById("default-settings");
+    if (settingsElement === null) {
+        return null;
+    }
+    var dataset = settingsElement.dataset;
+    if (dataset === undefined) {
+        return null;
+    }
+    return dataset;
+})();
+
+function getSettingValue(settingName) {
+    var current = getCurrentValue('rustdoc-' + settingName);
+    if (current !== null) {
+        return current;
+    }
+    if (settingsDataset !== null) {
+        var def = settingsDataset[settingName.replace(/-/g,'_')];
+        if (def !== undefined) {
+            return def;
+        }
+    }
+    return null;
+}
+
+var localStoredTheme = getSettingValue("theme");
 
 var savedHref = [];
 
@@ -156,9 +183,9 @@ var updateSystemTheme = (function() {
 
     function handlePreferenceChange(mql) {
         // maybe the user has disabled the setting in the meantime!
-        if (getCurrentValue("rustdoc-use-system-theme") !== "false") {
-            var lightTheme = getCurrentValue("rustdoc-preferred-light-theme") || "light";
-            var darkTheme = getCurrentValue("rustdoc-preferred-dark-theme") || "dark";
+        if (getSettingValue("use-system-theme") !== "false") {
+            var lightTheme = getSettingValue("preferred-light-theme") || "light";
+            var darkTheme = getSettingValue("preferred-dark-theme") || "dark";
 
             if (mql.matches) {
                 // prefers a dark theme
@@ -181,11 +208,11 @@ var updateSystemTheme = (function() {
     };
 })();
 
-if (getCurrentValue("rustdoc-use-system-theme") !== "false" && window.matchMedia) {
+if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
     // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
-    if (getCurrentValue("rustdoc-use-system-theme") === null
-        && getCurrentValue("rustdoc-preferred-dark-theme") === null
+    if (getSettingValue("use-system-theme") === null
+        && getSettingValue("preferred-dark-theme") === null
         && darkThemes.indexOf(localStoredTheme) >= 0) {
         updateLocalStorage("rustdoc-preferred-dark-theme", localStoredTheme);
     }
@@ -196,7 +223,7 @@ if (getCurrentValue("rustdoc-use-system-theme") !== "false" && window.matchMedia
     switchTheme(
         currentTheme,
         mainTheme,
-        getCurrentValue("rustdoc-theme") || "light",
+        getSettingValue("theme") || "light",
         false
     );
 }

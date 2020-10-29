@@ -20,7 +20,8 @@ use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use tracing::{debug, trace};
 
-const TURBOFISH: &str = "use `::<...>` instead of `<...>` to specify type arguments";
+const TURBOFISH_SUGGESTION_STR: &str =
+    "use `::<...>` instead of `<...>` to specify type or const arguments";
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident) -> Param {
@@ -659,7 +660,7 @@ impl<'a> Parser<'a> {
                                 Ok(_) => {
                                     e.span_suggestion_verbose(
                                         binop.span.shrink_to_lo(),
-                                        "use `::<...>` instead of `<...>` to specify type arguments",
+                                        TURBOFISH_SUGGESTION_STR,
                                         "::".to_string(),
                                         Applicability::MaybeIncorrect,
                                     );
@@ -814,7 +815,7 @@ impl<'a> Parser<'a> {
                 let suggest = |err: &mut DiagnosticBuilder<'_>| {
                     err.span_suggestion_verbose(
                         op.span.shrink_to_lo(),
-                        TURBOFISH,
+                        TURBOFISH_SUGGESTION_STR,
                         "::".to_string(),
                         Applicability::MaybeIncorrect,
                     );
@@ -888,7 +889,7 @@ impl<'a> Parser<'a> {
                         {
                             // All we know is that this is `foo < bar >` and *nothing* else. Try to
                             // be helpful, but don't attempt to recover.
-                            err.help(TURBOFISH);
+                            err.help(TURBOFISH_SUGGESTION_STR);
                             err.help("or use `(...)` if you meant to specify fn arguments");
                         }
 

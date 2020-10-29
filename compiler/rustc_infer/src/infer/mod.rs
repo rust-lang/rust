@@ -678,8 +678,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
         let mut inner = self.inner.borrow_mut();
-        // FIXME(const_generics): should there be an equivalent function for const variables?
-
         let mut vars: Vec<Ty<'_>> = inner
             .type_variables()
             .unsolved_variables()

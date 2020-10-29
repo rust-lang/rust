@@ -177,7 +177,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         //
         // We are careful always to call this function *before* we
         // set up the gen-bits for the statement or
-        // termanator. That way, if the effect of the statement or
+        // terminator. That way, if the effect of the statement or
         // terminator *does* introduce a new loan of the same
         // region, then setting that gen-bit will override any
         // potential kill introduced here.

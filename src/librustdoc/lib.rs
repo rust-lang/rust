@@ -269,6 +269,26 @@ fn opts() -> Vec<RustcOptGroup> {
                 "sort modules by where they appear in the program, rather than alphabetically",
             )
         }),
+        unstable("default-theme", |o| {
+            o.optopt(
+                "",
+                "default-theme",
+                "Set the default theme. THEME should be the theme name, generally lowercase. \
+                 If an unknown default theme is specified, the builtin default is used. \
+                 The set of themes, and the rustdoc built-in default is not stable.",
+                "THEME",
+            )
+        }),
+        unstable("default-setting", |o| {
+            o.optmulti(
+                "",
+                "default-setting",
+                "Default value for a rustdoc setting (used when \"rustdoc-SETTING\" is absent \
+                 from web browser Local Storage). If VALUE is not supplied, \"true\" is used. \
+                 Supported SETTINGs and VALUEs are not documented and not stable.",
+                "SETTING[=VALUE]",
+            )
+        }),
         stable("theme", |o| {
             o.optmulti(
                 "",

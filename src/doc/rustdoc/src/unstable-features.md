@@ -348,7 +348,7 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs -Z unstable-options --enable-per-target-ignores
 ```
 
-This flag allows you to tag doctests with compiltest style `ignore-foo` filters that prevent
+This flag allows you to tag doctests with compiletest style `ignore-foo` filters that prevent
 rustdoc from running that test if the target triple string contains foo. For example:
 
 ```rust
