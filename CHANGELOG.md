@@ -1803,6 +1803,7 @@ Released 2018-09-13
 [`manual_unwrap_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_unwrap_or
 [`many_single_char_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names
 [`map_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_clone
+[`map_collect_result_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_collect_result_unit
 [`map_entry`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_entry
 [`map_err_ignore`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_err_ignore
 [`map_flatten`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_flatten

@@ -1230,6 +1230,13 @@ vec![
         module: "map_clone",
     },
     Lint {
+        name: "map_collect_result_unit",
+        group: "style",
+        desc: "using `.map(_).collect::<Result<(),_>()`, which can be replaced with `try_for_each`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "map_entry",
         group: "perf",
         desc: "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`",
