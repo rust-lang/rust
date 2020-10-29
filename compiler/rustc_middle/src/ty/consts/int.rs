@@ -2,7 +2,6 @@ use crate::mir::interpret::{sign_extend, truncate, InterpErrorInfo, InterpResult
 use crate::throw_ub;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
-use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::{Size, TargetDataLayout};
 use std::convert::{TryFrom, TryInto};
@@ -29,7 +28,7 @@ impl std::fmt::Debug for ConstInt {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { int, signed, is_ptr_sized_integral } = *self;
         let size = int.size().bytes();
-        let raw = int.data();
+        let raw = int.data;
         if signed {
             let bit_size = size * 8;
             let min = 1u128 << (bit_size - 1);
@@ -116,41 +115,46 @@ impl std::fmt::Debug for ConstInt {
 
 // FIXME: reuse in `super::int::ConstInt` and `Scalar::Bits`
 /// The raw bytes of a simple value.
+///
+/// This is a packed struct in order to allow this type to be optimally embedded in enums
+/// (like Scalar).
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[derive(HashStable)]
+#[repr(packed)]
 pub struct ScalarInt {
     /// The first `size` bytes of `data` are the value.
     /// Do not try to read less or more bytes than that. The remaining bytes must be 0.
-    ///
-    /// This is an array in order to allow this type to be optimally embedded in enums
-    /// (like Scalar).
-    bytes: [u8; 16],
+    data: u128,
     size: u8,
+}
+
+// Cannot derive these, as the derives take references to the fields, and we
+// can't take references to fields of packed structs.
+impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut crate::ty::StableHasher) {
+        { self.data }.hash_stable(hcx, hasher);
+        self.size.hash_stable(hcx, hasher);
+    }
 }
 
 impl<S: Encoder> Encodable<S> for ScalarInt {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u128(self.data())?;
+        s.emit_u128(self.data)?;
         s.emit_u8(self.size)
     }
 }
 
 impl<D: Decoder> Decodable<D> for ScalarInt {
     fn decode(d: &mut D) -> Result<ScalarInt, D::Error> {
-        Ok(ScalarInt { bytes: d.read_u128()?.to_ne_bytes(), size: d.read_u8()? })
+        Ok(ScalarInt { data: d.read_u128()?, size: d.read_u8()? })
     }
 }
 
 impl ScalarInt {
-    pub const TRUE: ScalarInt = ScalarInt { bytes: 1_u128.to_ne_bytes(), size: 1 };
+    pub const TRUE: ScalarInt = ScalarInt { data: 1_u128, size: 1 };
 
-    pub const FALSE: ScalarInt = ScalarInt { bytes: 0_u128.to_ne_bytes(), size: 1 };
+    pub const FALSE: ScalarInt = ScalarInt { data: 0_u128, size: 1 };
 
-    pub const ZST: ScalarInt = ScalarInt { bytes: 0_u128.to_ne_bytes(), size: 0 };
-
-    fn data(self) -> u128 {
-        u128::from_ne_bytes(self.bytes)
-    }
+    pub const ZST: ScalarInt = ScalarInt { data: 0_u128, size: 0 };
 
     #[inline]
     pub fn size(self) -> Size {
@@ -164,10 +168,10 @@ impl ScalarInt {
     #[inline(always)]
     fn check_data(self) {
         debug_assert_eq!(
-            truncate(self.data(), self.size()),
-            self.data(),
+            truncate(self.data, self.size()),
+            { self.data },
             "Scalar value {:#x} exceeds size of {} bytes",
-            self.data(),
+            { self.data },
             self.size
         );
     }
@@ -179,7 +183,7 @@ impl ScalarInt {
 
     #[inline]
     pub fn null(size: Size) -> Self {
-        Self { bytes: [0; 16], size: size.bytes() as u8 }
+        Self { data: 0, size: size.bytes() as u8 }
     }
 
     pub(crate) fn ptr_sized_op<'tcx>(
@@ -188,17 +192,14 @@ impl ScalarInt {
         f_int: impl FnOnce(u64) -> InterpResult<'tcx, u64>,
     ) -> InterpResult<'tcx, Self> {
         assert_eq!(u64::from(self.size), dl.pointer_size.bytes());
-        Ok(Self {
-            bytes: u128::from(f_int(u64::try_from(self.data()).unwrap())?).to_ne_bytes(),
-            size: self.size,
-        })
+        Ok(Self { data: u128::from(f_int(u64::try_from(self.data).unwrap())?), size: self.size })
     }
 
     #[inline]
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
         let data = i.into();
         if truncate(data, size) == data {
-            Some(Self { bytes: data.to_ne_bytes(), size: size.bytes() as u8 })
+            Some(Self { data, size: size.bytes() as u8 })
         } else {
             None
         }
@@ -210,7 +211,7 @@ impl ScalarInt {
         // `into` performed sign extension, we have to truncate
         let truncated = truncate(i as u128, size);
         if sign_extend(truncated, size) as i128 == i {
-            Some(Self { bytes: truncated.to_ne_bytes(), size: size.bytes() as u8 })
+            Some(Self { data: truncated, size: size.bytes() as u8 })
         } else {
             None
         }
@@ -221,7 +222,7 @@ impl ScalarInt {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         assert_eq!(target_size.bytes(), u64::from(self.size));
         self.check_data();
-        self.data()
+        self.data
     }
 
     #[inline]
@@ -234,7 +235,7 @@ impl ScalarInt {
             });
         }
         self.check_data();
-        Ok(self.data())
+        Ok(self.data)
     }
 }
 
@@ -245,7 +246,7 @@ macro_rules! from {
                 #[inline]
                 fn from(u: $ty) -> Self {
                     Self {
-                        bytes: u128::from(u).to_ne_bytes(),
+                        data: u128::from(u),
                         size: std::mem::size_of::<$ty>() as u8,
                     }
                 }
@@ -274,7 +275,7 @@ try_from!(u8, u16, u32, u64, u128);
 impl From<char> for ScalarInt {
     #[inline]
     fn from(c: char) -> Self {
-        Self { bytes: (c as u128).to_ne_bytes(), size: std::mem::size_of::<char>() as u8 }
+        Self { data: c as u128, size: std::mem::size_of::<char>() as u8 }
     }
 }
 
@@ -291,7 +292,7 @@ impl From<Single> for ScalarInt {
     #[inline]
     fn from(f: Single) -> Self {
         // We trust apfloat to give us properly truncated data.
-        Self { bytes: f.to_bits().to_ne_bytes(), size: 4 }
+        Self { data: f.to_bits(), size: 4 }
     }
 }
 
@@ -307,7 +308,7 @@ impl From<Double> for ScalarInt {
     #[inline]
     fn from(f: Double) -> Self {
         // We trust apfloat to give us properly truncated data.
-        Self { bytes: f.to_bits().to_ne_bytes(), size: 8 }
+        Self { data: f.to_bits(), size: 8 }
     }
 }
 
@@ -335,6 +336,6 @@ impl fmt::LowerHex for ScalarInt {
         self.check_data();
         // Format as hex number wide enough to fit any value of the given `size`.
         // So data=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
-        write!(f, "{:01$x}", self.data(), self.size as usize * 2)
+        write!(f, "{:01$x}", { self.data }, self.size as usize * 2)
     }
 }

@@ -982,8 +982,8 @@ pub trait PrettyPrinter<'tcx>:
                 None => p!("<dangling pointer>"),
             },
             // Bool
-            (Scalar::Raw(ScalarInt::FALSE), ty::Bool) => p!("false"),
-            (Scalar::Raw(ScalarInt::TRUE), ty::Bool) => p!("true"),
+            (Scalar::Raw(int), ty::Bool) if int == ScalarInt::FALSE => p!("false"),
+            (Scalar::Raw(int), ty::Bool) if int == ScalarInt::TRUE => p!("true"),
             // Float
             (Scalar::Raw(int), ty::Float(ast::FloatTy::F32)) => {
                 p!(write("{}f32", Single::try_from(int).unwrap()))
@@ -1025,7 +1025,9 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             // For function type zsts just printing the path is enough
-            (Scalar::Raw(ScalarInt::ZST), ty::FnDef(d, s)) => p!(print_value_path(*d, s)),
+            (Scalar::Raw(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {
+                p!(print_value_path(*d, s))
+            }
             // Nontrivial types with scalar bit representation
             (Scalar::Raw(int), _) => {
                 let print = |mut this: Self| {
