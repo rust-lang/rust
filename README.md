@@ -259,7 +259,7 @@ Some native rustc `-Z` flags are also very relevant for Miri:
 Moreover, Miri recognizes some environment variables:
 
 * `MIRI_LOG`, `MIRI_BACKTRACE` control logging and backtrace printing during
-  Miri executions, also [see above][testing-miri].
+  Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
 * `MIRIFLAGS` (recognized by `cargo miri` and the test suite) defines extra
   flags to be passed to Miri.
 * `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite)
@@ -281,6 +281,8 @@ different Miri binaries, and as such worth documenting:
   directory after loading all the source files, but before commencing
   interpretation. This is useful if the interpreted program wants a different
   working directory at run-time than at build-time.
+  
+[testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 
 ## Miri `extern` functions
 
