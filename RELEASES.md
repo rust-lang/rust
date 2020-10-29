@@ -78,15 +78,25 @@ Compatibility Notes
 - [`mem::uninitialized` will now panic if any inner types inside a struct or enum
   disallow zero-initialization.][71274]
 - [`#[target_feature]` will now error if used in a place where it has no effect.][78143]
+- [Foreign exceptions are now caught by `catch_unwind` and will cause an abort.][70212]
 
 [78143]: https://github.com/rust-lang/rust/issues/78143
 
 Internal Only
 -------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
 - [Building `rustc` from source now uses `ninja` by default over `make`.][74922]
   You can continue building with `make` by setting `ninja=false` in
   your `config.toml`.
+- [cg_llvm: `fewer_names` in `uncached_llvm_type`][76030]
+- [Made `ensure_sufficient_stack()` non-generic][76680]
 
+[76680]: https://github.com/rust-lang/rust/pull/76680/
+[76030]: https://github.com/rust-lang/rust/pull/76030/
+[70212]: https://github.com/rust-lang/rust/pull/70212/
 [27675]: https://github.com/rust-lang/rust/issues/27675/
 [54121]: https://github.com/rust-lang/rust/issues/54121/  
 [71274]: https://github.com/rust-lang/rust/pull/71274/
@@ -215,6 +225,7 @@ Compatibility Notes
 
 Internal Only
 --------
+
 - [Improved default settings for bootstrapping in `x.py`.][73964] You can read details about this change in the ["Changes to `x.py` defaults"](https://blog.rust-lang.org/inside-rust/2020/08/30/changes-to-x-py-defaults.html) post on the Inside Rust blog.
 
 [1.47.0-cfg]: https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard
