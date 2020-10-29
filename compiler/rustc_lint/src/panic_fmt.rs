@@ -24,7 +24,7 @@ declare_lint! {
     /// A future version of Rust will interpret this string as format string,
     /// which would break this.
     PANIC_FMT,
-    Warn,
+    Deny,
     "detect braces in single-argument panic!() invocations",
     report_in_external_macro
 }
