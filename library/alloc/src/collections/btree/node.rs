@@ -33,7 +33,6 @@ use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull};
 
-use crate::alloc::{AllocRef, Global, Layout};
 use crate::boxed::Box;
 
 const B: usize = 6;
@@ -109,7 +108,8 @@ impl<K, V> InternalNode<K, V> {
 
 use ptr_fortress::*;
 mod ptr_fortress {
-    use super::{LeafNode, NonNull};
+    use super::{Box, InternalNode, LeafNode, NonNull};
+    use crate::alloc::{AllocRef, Global, Layout};
 
     /// A managed, non-null pointer to a node. This is either an owned pointer to
     /// `LeafNode<K, V>` or an owned pointer to `InternalNode<K, V>`.
@@ -121,18 +121,81 @@ mod ptr_fortress {
         ptr: NonNull<LeafNode<K, V>>,
     }
 
-    impl<K, V> BoxedNode<K, V> {
-        pub(super) fn from_owned(ptr: NonNull<LeafNode<K, V>>) -> Self {
-            BoxedNode { ptr }
+    /// A managed, non-null pointer to a node. This is either owned or shared,
+    /// and points to either a `LeafNode<K, V>` or an `InternalNode<K, V>`.
+    ///
+    /// However, `NodePtr` contains no information as to whether it owns or
+    /// shares, and which of the two types of nodes it actually points to.
+    ///
+    /// It wraps and acts like a raw pointer to avoid invalidating other
+    /// references to the same node.
+    pub(super) struct NodePtr<K, V> {
+        ptr: NonNull<LeafNode<K, V>>,
+    }
+
+    impl<K, V> NodePtr<K, V> {
+        pub(super) fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
+            NodePtr { ptr: NonNull::from(Box::leak(leaf)) }
         }
 
-        pub(super) fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
-            self.ptr
+        pub(super) fn from_new_internal(internal: Box<InternalNode<K, V>>) -> Self {
+            NodePtr { ptr: NonNull::from(Box::leak(internal)).cast() }
+        }
+
+        /// Create from a parent pointer stored in LeafNode.
+        pub(super) fn from_internal(internal_ptr: NonNull<InternalNode<K, V>>) -> Self {
+            NodePtr { ptr: internal_ptr.cast() }
+        }
+
+        pub(super) fn from_boxed_node(boxed_node: BoxedNode<K, V>) -> Self {
+            NodePtr { ptr: NonNull::from(boxed_node.ptr) }
+        }
+
+        pub(super) fn into_boxed_node(self) -> BoxedNode<K, V> {
+            BoxedNode { ptr: self.ptr }
+        }
+
+        /// Implementation of PartialEq, but there's no need to announce that trait.
+        pub(super) fn eq(&self, other: &Self) -> bool {
+            let Self { ptr } = self;
+            *ptr == other.ptr
+        }
+
+        /// Exposes the leaf portion of any leaf or internal node.
+        pub(super) fn as_leaf_ptr(this: &Self) -> *mut LeafNode<K, V> {
+            this.ptr.as_ptr()
+        }
+
+        /// Exposes an internal node.
+        /// # Safety
+        /// The node must not be a leaf.
+        pub(super) unsafe fn as_internal_ptr(this: &Self) -> *mut InternalNode<K, V> {
+            this.ptr.as_ptr() as *mut _
+        }
+
+        /// # Safety
+        /// The node must be a leaf.
+        pub(super) unsafe fn dealloc_leaf(self) {
+            unsafe { Global.dealloc(self.ptr.cast(), Layout::new::<LeafNode<K, V>>()) }
+        }
+
+        /// # Safety
+        /// The node must not be a leaf.
+        pub(super) unsafe fn dealloc_internal(self) {
+            unsafe { Global.dealloc(self.ptr.cast(), Layout::new::<InternalNode<K, V>>()) }
+        }
+    }
+
+    impl<K, V> Copy for NodePtr<K, V> {}
+    impl<K, V> Clone for NodePtr<K, V> {
+        fn clone(&self) -> Self {
+            *self
         }
     }
 }
 
-/// An owned tree.
+/// An owned tree. Also, the volatile representation of the contents of an internal edge,
+/// at times when those contents are not packed into a BoxedNode.
 ///
 /// Note that this does not have a destructor, and must be cleaned up manually.
 pub type Root<K, V> = NodeRef<marker::Owned, K, V, marker::LeafOrInternal>;
@@ -150,13 +213,13 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     }
 
     fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
-        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
+        NodeRef { height: 0, node: NodePtr::from_new_leaf(leaf), _marker: PhantomData }
     }
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
-        NodeRef { height, node: NonNull::from(Box::leak(internal)).cast(), _marker: PhantomData }
+        NodeRef { height, node: NodePtr::from_new_internal(internal), _marker: PhantomData }
     }
 }
 
@@ -176,7 +239,7 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
 
     /// Packs the reference, aware of type and height, into a type-agnostic pointer.
     fn into_boxed_node(self) -> BoxedNode<K, V> {
-        BoxedNode::from_owned(self.node)
+        self.node.into_boxed_node()
     }
 }
 
@@ -186,7 +249,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// and is the opposite of `pop_internal_level`.
     pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].write(BoxedNode::from_owned(self.node));
+        new_node.edges[0].write(self.node.into_boxed_node());
         let mut new_root = NodeRef::from_new_internal(new_node, self.height + 1);
         new_root.borrow_mut().first_edge().correct_parent_link();
         *self = new_root.forget_type();
@@ -214,7 +277,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         self.borrow_mut().clear_parent_link();
 
         unsafe {
-            Global.dealloc(top.cast(), Layout::new::<InternalNode<K, V>>());
+            top.dealloc_internal();
         }
     }
 }
@@ -275,7 +338,7 @@ pub struct NodeRef<BorrowType, K, V, Type> {
     height: usize,
     /// The pointer to the leaf or internal node. The definition of `InternalNode`
     /// ensures that the pointer is valid either way.
-    node: NonNull<LeafNode<K, V>>,
+    node: NodePtr<K, V>,
     _marker: PhantomData<(BorrowType, Type)>,
 }
 
@@ -296,7 +359,7 @@ unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Unpack a node reference that was packed by `Root::into_boxed_node`.
     fn from_boxed_node(boxed_node: BoxedNode<K, V>, height: usize) -> Self {
-        NodeRef { height, node: boxed_node.as_ptr(), _marker: PhantomData }
+        NodeRef { height, node: NodePtr::from_boxed_node(boxed_node), _marker: PhantomData }
     }
 }
 
@@ -304,7 +367,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Unpack a node reference that was packed as `NodeRef::parent`.
     fn from_internal(node: NonNull<InternalNode<K, V>>, height: usize) -> Self {
         debug_assert!(height > 0);
-        NodeRef { height, node: node.cast(), _marker: PhantomData }
+        NodeRef { height, node: NodePtr::from_internal(node), _marker: PhantomData }
     }
 }
 
@@ -314,7 +377,7 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Returns a raw ptr to avoid invalidating other references to this node.
     fn as_internal_ptr(this: &Self) -> *mut InternalNode<K, V> {
         // SAFETY: the static node type is `Internal`.
-        this.node.as_ptr() as *mut InternalNode<K, V>
+        unsafe { NodePtr::as_internal_ptr(&this.node) }
     }
 }
 
@@ -364,7 +427,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         // The node must be valid for at least the LeafNode portion.
         // This is not a reference in the NodeRef type because we don't know if
         // it should be unique or shared.
-        this.node.as_ptr()
+        NodePtr::as_leaf_ptr(&this.node)
     }
 }
 
@@ -466,15 +529,10 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
-        unsafe {
-            Global.dealloc(
-                node.cast(),
-                if height > 0 {
-                    Layout::new::<InternalNode<K, V>>()
-                } else {
-                    Layout::new::<LeafNode<K, V>>()
-                },
-            );
+        if height > 0 {
+            unsafe { node.dealloc_internal() };
+        } else {
+            unsafe { node.dealloc_leaf() };
         }
         ret
     }
@@ -1426,9 +1484,9 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
                 left_node.correct_childrens_parent_links(left_len + 1..=left_len + 1 + right_len);
 
-                Global.dealloc(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
+                right_node.node.dealloc_internal();
             } else {
-                Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
+                right_node.node.dealloc_leaf();
             }
 
             let new_idx = match track_edge_idx {

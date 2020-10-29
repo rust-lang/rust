@@ -239,7 +239,8 @@ def children_of_btree_map(map):
         if root.type.name.startswith("core::option::Option<"):
             root = root.cast(gdb.lookup_type(root.type.name[21:-1]))
         node_ptr = root["node"]
-        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<") \
+        or node_ptr.type.name.startswith("alloc::collections::btree::node::ptr_fortress::NodePtr<"):
             node_ptr = node_ptr["ptr"]
         node_ptr = unwrap_unique_or_non_null(node_ptr)
         height = root["height"]
