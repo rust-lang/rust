@@ -4,7 +4,7 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |         x.set(y);
    |               ^
    |
-note: ...the reference is valid for the anonymous lifetime #3 defined on the body at 16:14...
+note: ...the reference is valid for the anonymous lifetime #2 defined on the body at 16:14...
   --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:16:14
    |
 LL |       doit(0, &|x, y| {
@@ -12,7 +12,7 @@ LL |       doit(0, &|x, y| {
 LL | |         x.set(y);
 LL | |     });
    | |_____^
-note: ...but the borrowed content is only valid for the anonymous lifetime #4 defined on the body at 16:14
+note: ...but the borrowed content is only valid for the anonymous lifetime #3 defined on the body at 16:14
   --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:16:14
    |
 LL |       doit(0, &|x, y| {

@@ -684,7 +684,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Rewrite any late-bound regions so that they are anonymous. Region numbers are
-    /// assigned starting at 1 and increasing monotonically in the order traversed
+    /// assigned starting at 0 and increasing monotonically in the order traversed
     /// by the fold operation.
     ///
     /// The chief purpose of this function is to canonicalize regions so that two
@@ -698,8 +698,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut counter = 0;
         Binder::bind(
             self.replace_late_bound_regions(sig, |_| {
+                let r = self.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(counter)));
                 counter += 1;
-                self.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(counter)))
+                r
             })
             .0,
         )

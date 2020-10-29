@@ -186,8 +186,9 @@ pub fn resolve_interior<'a, 'tcx>(
                 // which means that none of the regions inside relate to any other, even if
                 // typeck had previously found constraints that would cause them to be related.
                 let folded = fcx.tcx.fold_regions(&erased, &mut false, |_, current_depth| {
+                    let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)));
                     counter += 1;
-                    fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
+                    r
                 });
 
                 cause.ty = folded;
