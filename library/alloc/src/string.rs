@@ -1235,6 +1235,10 @@ impl String {
         let mut del_bytes = 0;
         let mut idx = 0;
 
+        unsafe {
+            self.vec.set_len(0);
+        }
+
         while idx < len {
             let ch = unsafe { self.get_unchecked(idx..len).chars().next().unwrap() };
             let ch_len = ch.len_utf8();
@@ -1255,10 +1259,8 @@ impl String {
             idx += ch_len;
         }
 
-        if del_bytes > 0 {
-            unsafe {
-                self.vec.set_len(len - del_bytes);
-            }
+        unsafe {
+            self.vec.set_len(len - del_bytes);
         }
     }
 
