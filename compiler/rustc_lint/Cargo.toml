@@ -20,3 +20,4 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_index = { path = "../rustc_index" }
 rustc_session = { path = "../rustc_session" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
+rustc_parse_format = { path = "../rustc_parse_format" }
