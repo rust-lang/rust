@@ -1,6 +1,6 @@
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
-use rustc_errors::Applicability;
+use rustc_errors::{pluralize, Applicability};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
@@ -21,7 +21,7 @@ declare_lint! {
     ///
     /// `panic!("{}")` panics with the message `"{}"`, as a `panic!()` invocation
     /// with a single argument does not use `format_args!()`.
-    /// A future version of Rust will interpret this string as format string,
+    /// A future edition of Rust will interpret this string as format string,
     /// which would break this.
     PANIC_FMT,
     Warn,
@@ -97,11 +97,11 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                                 1 => "panic message contains an unused formatting placeholder",
                                 _ => "panic message contains unused formatting placeholders",
                             });
-                            l.note("this message is not used as a format string when given without arguments, but will be in a future Rust version");
+                            l.note("this message is not used as a format string when given without arguments, but will be in a future Rust edition");
                             if expn.call_site.contains(arg.span) {
                                 l.span_suggestion(
                                     arg.span.shrink_to_hi(),
-                                    "add the missing argument(s)",
+                                    &format!("add the missing argument{}", pluralize!(n_arguments)),
                                     ", ...".into(),
                                     Applicability::HasPlaceholders,
                                 );
@@ -131,7 +131,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                         };
                         cx.struct_span_lint(PANIC_FMT, brace_spans.unwrap_or(vec![expn.call_site]), |lint| {
                             let mut l = lint.build(msg);
-                            l.note("this message is not used as a format string, but will be in a future Rust version");
+                            l.note("this message is not used as a format string, but will be in a future Rust edition");
                             if expn.call_site.contains(arg.span) {
                                 l.span_suggestion(
                                     arg.span.shrink_to_lo(),
