@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `x.py check` needs opt-in to check tests (--all-targets) [#77473](https://github.com/rust-lang/rust/pull/77473)
 - The default bootstrap profiles are now located at `bootstrap/defaults/config.$PROFILE.toml` (previously they were located at `bootstrap/defaults/config.toml.$PROFILE`) [#77558](https://github.com/rust-lang/rust/pull/77558)
+- If you have Rust already installed, `x.py` will now infer the host target
+  from the default rust toolchain. [#78513](https://github.com/rust-lang/rust/pull/78513)
 
 
 ## [Version 2] - 2020-09-25
