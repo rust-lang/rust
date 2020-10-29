@@ -639,7 +639,7 @@ fn write_out_deps(
             .collect();
 
         if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
-            files.push(backend.to_string());
+            files.push((backend.to_string(), None)); // TO DO: is this something we need to hash?
         }
 
         if sess.binary_dep_depinfo() {
