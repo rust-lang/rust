@@ -19,7 +19,7 @@
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, UnsafeCell};
 use std::cmp;
 use std::marker::{PhantomData, Send};
 use std::mem::{self, MaybeUninit};
@@ -43,6 +43,9 @@ pub struct TypedArena<T> {
 
     /// A vector of arena chunks.
     chunks: RefCell<Vec<TypedArenaChunk<T>>>,
+
+    /// An intermediate vector for allocating from iterators.
+    intermediate: UnsafeCell<Vec<T>>,
 
     /// Marker indicating that dropping the arena causes its owned
     /// instances of `T` to be dropped.
@@ -109,6 +112,7 @@ impl<T> Default for TypedArena<T> {
             ptr: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
             chunks: RefCell::new(vec![]),
+            intermediate: UnsafeCell::new(vec![]),
             _own: PhantomData,
         }
     }
@@ -191,17 +195,31 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);
-        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
-        if vec.is_empty() {
+
+        let intermediate: &mut Vec<T> = unsafe { &mut *self.intermediate.get() };
+        let len_before = intermediate.len();
+
+        // Extending the vector would be incorrect, because the length is updated after the elements
+        // are copied into the vector. Instead, push them one-by-one, which makes the operations
+        // independent of each other.
+        // Even though we can technically hold multiple mutable references to the vector,
+        // this is safe, because the only case it happens is nested iteration. As long as items are
+        // pushed into the intermediate vector one by one, the nested iteration case only needs to
+        // trim the vector back to it's original length to remain safe.
+        for item in iter.into_iter() {
+            intermediate.push(item);
+        }
+
+        if intermediate.len() == len_before {
             return &mut [];
         }
         // Move the content to the arena by copying it and then forgetting
         // the content of the SmallVec
         unsafe {
-            let len = vec.len();
+            let len = intermediate.len() - len_before;
             let start_ptr = self.alloc_raw_slice(len);
-            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            vec.set_len(0);
+            intermediate[len_before..].as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            intermediate.set_len(len_before);
             slice::from_raw_parts_mut(start_ptr, len)
         }
     }
