@@ -1,4 +1,5 @@
-#![feature(unsized_locals)]
+#![feature(unsized_locals, unsized_fn_params)]
+#![allow(incomplete_features)]
 
 fn ref_box_dyn() {
     struct Struct(i32);

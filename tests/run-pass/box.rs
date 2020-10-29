@@ -21,7 +21,7 @@ fn into_raw() { unsafe {
 
 fn into_unique() { unsafe {
     let b = Box::new(4i32);
-    let u = Box::into_unique(b);
+    let u = Box::into_unique(b).0;
 
     // "lose the tag"
     let r = ((u.as_ptr() as usize)+0) as *mut i32;
