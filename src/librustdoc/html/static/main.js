@@ -89,7 +89,7 @@ function defocusSearchBar() {
                      "derive",
                      "traitalias"];
 
-    var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
+    var disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     var search_input = getSearchInput();
     var searchTimeout = null;
     var toggleAllDocsId = "toggle-all-docs";
@@ -1580,7 +1580,7 @@ function defocusSearchBar() {
         function showResults(results) {
             var search = getSearchElement();
             if (results.others.length === 1
-                && getCurrentValue("rustdoc-go-to-only-result") === "true"
+                && getSettingValue("go-to-only-result") === "true"
                 // By default, the search DOM element is "empty" (meaning it has no children not
                 // text content). Once a search has been run, it won't be empty, even if you press
                 // ESC or empty the search input (which also "cancels" the search).
@@ -2296,7 +2296,7 @@ function defocusSearchBar() {
     function autoCollapse(pageId, collapse) {
         if (collapse) {
             toggleAllDocs(pageId, true);
-        } else if (getCurrentValue("rustdoc-auto-hide-trait-implementations") !== "false") {
+        } else if (getSettingValue("auto-hide-trait-implementations") !== "false") {
             var impl_list = document.getElementById("trait-implementations-list");
 
             if (impl_list !== null) {
@@ -2370,8 +2370,8 @@ function defocusSearchBar() {
         }
 
         var toggle = createSimpleToggle(false);
-        var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
-        var hideImplementors = getCurrentValue("rustdoc-auto-collapse-implementors") !== "false";
+        var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
+        var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
         var pageId = getPageId();
 
         var func = function(e) {
@@ -2487,7 +2487,7 @@ function defocusSearchBar() {
                 });
             }
         }
-        var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
+        var showItemDeclarations = getSettingValue("auto-hide-" + className);
         if (showItemDeclarations === null) {
             if (className === "enum" || className === "macro") {
                 showItemDeclarations = "false";
@@ -2495,7 +2495,7 @@ function defocusSearchBar() {
                 showItemDeclarations = "true";
             } else {
                 // In case we found an unknown type, we just use the "parent" value.
-                showItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
+                showItemDeclarations = getSettingValue("auto-hide-declarations");
             }
         }
         showItemDeclarations = showItemDeclarations === "false";
@@ -2569,7 +2569,7 @@ function defocusSearchBar() {
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
         var pageId = getPageId();
 
-        autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
+        autoCollapse(pageId, getSettingValue("collapse") === "true");
 
         if (pageId !== null) {
             expandSection(pageId);
@@ -2592,7 +2592,7 @@ function defocusSearchBar() {
     (function() {
         // To avoid checking on "rustdoc-item-attributes" value on every loop...
         var itemAttributesFunc = function() {};
-        if (getCurrentValue("rustdoc-auto-hide-attributes") !== "false") {
+        if (getSettingValue("auto-hide-attributes") !== "false") {
             itemAttributesFunc = function(x) {
                 collapseDocs(x.previousSibling.childNodes[0], "toggle");
             };
@@ -2611,7 +2611,7 @@ function defocusSearchBar() {
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
         var lineNumbersFunc = function() {};
-        if (getCurrentValue("rustdoc-line-numbers") === "true") {
+        if (getSettingValue("line-numbers") === "true") {
             lineNumbersFunc = function(x) {
                 var count = x.textContent.split("\n").length;
                 var elems = [];
@@ -2768,7 +2768,7 @@ function defocusSearchBar() {
             }
             return 0;
         });
-        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
+        var savedCrate = getSettingValue("saved-filter-crate");
         for (var i = 0; i < crates_text.length; ++i) {
             var option = document.createElement("option");
             option.value = crates_text[i];
