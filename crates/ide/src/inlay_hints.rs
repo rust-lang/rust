@@ -162,7 +162,7 @@ fn get_param_name_hints(
         .zip(args)
         .filter_map(|((param, _ty), arg)| {
             let param_name = match param? {
-                Either::Left(self_param) => self_param.to_string(),
+                Either::Left(_) => "self".to_string(),
                 Either::Right(pat) => match pat {
                     ast::Pat::IdentPat(it) => it.name()?.to_string(),
                     _ => return None,
@@ -809,7 +809,7 @@ fn main() {
     t.method(123);
            //^^^ param
     Test::method(&t,      3456);
-               //^^ &self ^^^^ param
+               //^^ self  ^^^^ param
     Test::from_syntax(
         FileId {},
       //^^^^^^^^^ file_id
@@ -1359,5 +1359,26 @@ fn main() {
             }
             "#,
         );
+    }
+
+    #[test]
+    fn self_param_hints() {
+        check(
+            r#"
+struct Foo;
+
+impl Foo {
+    fn foo(self: Self) {}
+    fn bar(self: &Self) {}
+}
+
+fn main() {
+    Foo::foo(Foo);
+           //^^^ self
+    Foo::bar(&Foo);
+           //^^^^ self
+}
+"#,
+        )
     }
 }
