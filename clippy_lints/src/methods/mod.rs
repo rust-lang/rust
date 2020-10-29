@@ -1797,11 +1797,11 @@ fn lint_or_fun_call<'tcx>(
         cx: &LateContext<'tcx>,
         name: &str,
         method_span: Span,
-        fun_span: Span,
         self_expr: &hir::Expr<'_>,
         arg: &'tcx hir::Expr<'_>,
-        or_has_args: bool,
         span: Span,
+        // None if lambda is required
+        fun_span: Option<Span>,
     ) {
         // (path, fn_has_argument, methods, suffix)
         static KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
@@ -1840,10 +1840,18 @@ fn lint_or_fun_call<'tcx>(
             if poss.contains(&name);
 
             then {
-                let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
-                    (true, _) => format!("|_| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-                    (false, false) => format!("|| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-                    (false, true) => snippet_with_macro_callsite(cx, fun_span, ".."),
+                let sugg: Cow<'_, str> = {
+                    let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
+                        (false, Some(fun_span)) => (fun_span, false),
+                        _ => (arg.span, true),
+                    };
+                    let snippet = snippet_with_macro_callsite(cx, snippet_span, "..");
+                    if use_lambda {
+                        let l_arg = if fn_has_arguments { "_" } else { "" };
+                        format!("|{}| {}", l_arg, snippet).into()
+                    } else {
+                        snippet
+                    }
                 };
                 let span_replace_word = method_span.with_hi(span.hi());
                 span_lint_and_sugg(
@@ -1864,28 +1872,13 @@ fn lint_or_fun_call<'tcx>(
             hir::ExprKind::Call(ref fun, ref or_args) => {
                 let or_has_args = !or_args.is_empty();
                 if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
-                    check_general_case(
-                        cx,
-                        name,
-                        method_span,
-                        fun.span,
-                        &args[0],
-                        &args[1],
-                        or_has_args,
-                        expr.span,
-                    );
+                    let fun_span = if or_has_args { None } else { Some(fun.span) };
+                    check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, fun_span);
                 }
             },
-            hir::ExprKind::MethodCall(_, span, ref or_args, _) => check_general_case(
-                cx,
-                name,
-                method_span,
-                span,
-                &args[0],
-                &args[1],
-                !or_args.is_empty(),
-                expr.span,
-            ),
+            hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
+                check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
+            },
             _ => {},
         }
     }
