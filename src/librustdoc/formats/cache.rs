@@ -308,7 +308,7 @@ impl DocFolder for Cache {
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
-                    if item.def_id.index != CRATE_DEF_INDEX {
+                    if item.def_id.index != CRATE_DEF_INDEX && !item.attrs.is_search_hidden() {
                         self.search_index.push(IndexItem {
                             ty: item.type_(),
                             name: s.to_string(),

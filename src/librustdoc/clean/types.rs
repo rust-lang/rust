@@ -718,6 +718,10 @@ impl Attributes {
             .filter(|v| !v.is_empty())
             .collect::<FxHashSet<_>>()
     }
+
+    pub fn is_search_hidden(&self) -> bool {
+        self.has_doc_flag(sym::search_hidden)
+    }
 }
 
 impl PartialEq for Attributes {

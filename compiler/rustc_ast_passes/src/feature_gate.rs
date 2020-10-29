@@ -261,6 +261,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     masked => doc_masked
                     spotlight => doc_spotlight
                     keyword => doc_keyword
+                    search_hidden => doc_search_hidden
                 );
             }
         }

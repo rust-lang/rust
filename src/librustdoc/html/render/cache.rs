@@ -73,6 +73,9 @@ pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
     for &(did, ref item) in orphan_impl_items {
+        if item.attrs.is_search_hidden() {
+            continue;
+        }
         if let Some(&(ref fqp, _)) = paths.get(&did) {
             search_index.push(IndexItem {
                 ty: item.type_(),

@@ -610,6 +610,9 @@ declare_features! (
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
 
+    /// Allows `#[doc(search_hidden)]`.
+    (active, doc_search_hidden, "1.49.0", Some(67368), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
