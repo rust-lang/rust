@@ -31,6 +31,7 @@
 //! not. To lower anything wrapped in a `Binder`, we first deeply find any bound
 //! variables from the current `Binder`.
 
+use rustc_ast::ast;
 use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInterner};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
@@ -278,26 +279,14 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             }
             ty::Slice(ty) => chalk_ir::TyKind::Slice(ty.lower_into(interner)),
 
-            ty::RawPtr(ptr) => match ptr.mutbl {
-                ast::Mutability::Mut => {
-                    chalk_ir::TyKind::Raw(chalk_ir::Mutability::Mut, ptr.ty.lower_into(interner))
-                }
-                ast::Mutability::Not => {
-                    chalk_ir::TyKind::Raw(chalk_ir::Mutability::Not, ptr.ty.lower_into(interner))
-                }
-            },
-            ty::Ref(region, ty, mutability) => match mutability {
-                ast::Mutability::Mut => chalk_ir::TyKind::Ref(
-                    chalk_ir::Mutability::Mut,
-                    region.lower_into(interner),
-                    ty.lower_into(interner),
-                ),
-                ast::Mutability::Not => chalk_ir::TyKind::Ref(
-                    chalk_ir::Mutability::Not,
-                    region.lower_into(interner),
-                    ty.lower_into(interner),
-                ),
-            },
+            ty::RawPtr(ptr) => {
+                chalk_ir::TyKind::Raw(ptr.mutbl.lower_into(interner), ptr.ty.lower_into(interner))
+            }
+            ty::Ref(region, ty, mutability) => chalk_ir::TyKind::Ref(
+                mutability.lower_into(interner),
+                region.lower_into(interner),
+                ty.lower_into(interner),
+            ),
             ty::FnDef(def_id, substs) => {
                 chalk_ir::TyKind::FnDef(chalk_ir::FnDefId(def_id), substs.lower_into(interner))
             }
@@ -356,7 +345,6 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
 impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
     fn lower_into(self, interner: &RustInterner<'tcx>) -> Ty<'tcx> {
         use chalk_ir::TyKind;
-        use rustc_ast::ast;
 
         let kind = match self.kind(interner) {
             TyKind::Adt(struct_id, substitution) => {
@@ -402,18 +390,12 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             TyKind::Slice(ty) => ty::Slice(ty.lower_into(interner)),
             TyKind::Raw(mutbl, ty) => ty::RawPtr(ty::TypeAndMut {
                 ty: ty.lower_into(interner),
-                mutbl: match mutbl {
-                    chalk_ir::Mutability::Mut => ast::Mutability::Mut,
-                    chalk_ir::Mutability::Not => ast::Mutability::Not,
-                },
+                mutbl: mutbl.lower_into(interner),
             }),
             TyKind::Ref(mutbl, lifetime, ty) => ty::Ref(
                 lifetime.lower_into(interner),
                 ty.lower_into(interner),
-                match mutbl {
-                    chalk_ir::Mutability::Mut => ast::Mutability::Mut,
-                    chalk_ir::Mutability::Not => ast::Mutability::Not,
-                },
+                mutbl.lower_into(interner),
             ),
             TyKind::Str => ty::Str,
             TyKind::OpaqueType(opaque_ty, substitution) => {
@@ -763,6 +745,24 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::TraitBound<RustInterner<'tcx>>>
         chalk_solve::rust_ir::TraitBound {
             trait_id: chalk_ir::TraitId(self.def_id),
             args_no_self: self.substs[1..].iter().map(|arg| arg.lower_into(interner)).collect(),
+        }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, chalk_ir::Mutability> for ast::Mutability {
+    fn lower_into(self, _interner: &RustInterner<'tcx>) -> chalk_ir::Mutability {
+        match self {
+            rustc_ast::Mutability::Mut => chalk_ir::Mutability::Mut,
+            rustc_ast::Mutability::Not => chalk_ir::Mutability::Not,
+        }
+    }
+}
+
+impl<'tcx> LowerInto<'tcx, ast::Mutability> for chalk_ir::Mutability {
+    fn lower_into(self, _interner: &RustInterner<'tcx>) -> ast::Mutability {
+        match self {
+            chalk_ir::Mutability::Mut => ast::Mutability::Mut,
+            chalk_ir::Mutability::Not => ast::Mutability::Not,
         }
     }
 }
