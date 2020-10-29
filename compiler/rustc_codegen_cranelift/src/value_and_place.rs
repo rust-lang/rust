@@ -231,15 +231,16 @@ impl<'tcx> CValue<'tcx> {
     pub(crate) fn const_val(
         fx: &mut FunctionCx<'_, 'tcx, impl Module>,
         layout: TyAndLayout<'tcx>,
-        const_val: u128,
+        const_val: ty::ScalarInt,
     ) -> CValue<'tcx> {
+        assert_eq!(const_val.size(), layout.size);
         use cranelift_codegen::ir::immediates::{Ieee32, Ieee64};
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
         if let ty::Bool = layout.ty.kind() {
             assert!(
-                const_val == 0 || const_val == 1,
+                const_val == ty::ScalarInt::FALSE || const_val == ty::ScalarInt::TRUE,
                 "Invalid bool 0x{:032X}",
                 const_val
             );
@@ -247,6 +248,7 @@ impl<'tcx> CValue<'tcx> {
 
         let val = match layout.ty.kind() {
             ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
+                let const_val = const_val.to_bits(layout.size).unwrap();
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
                 let msb = fx
                     .bcx

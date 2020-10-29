@@ -353,3 +353,17 @@ impl fmt::LowerHex for ScalarInt {
         write!(f, "{:01$x}", { self.data }, self.size as usize * 2)
     }
 }
+
+impl fmt::UpperHex for ScalarInt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.check_data();
+        // Format as hex number wide enough to fit any value of the given `size`.
+        // So data=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
+        // Using a block `{self.data}` here to force a copy instead of using `self.data`
+        // directly, because `write!` takes references to its formatting arguments and
+        // would thus borrow `self.data`. Since `Self`
+        // is a packed struct, that would create a possibly unaligned reference, which
+        // is UB on a lot of platforms.
+        write!(f, "{:01$X}", { self.data }, self.size as usize * 2)
+    }
+}
