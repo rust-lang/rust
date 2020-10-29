@@ -461,10 +461,17 @@ fn virtual_call_violation_for_method<'tcx>(
 
             let param_env = tcx.param_env(method.def_id);
 
-            let abi_of_ty = |ty: Ty<'tcx>| -> &Abi {
+            let abi_of_ty = |ty: Ty<'tcx>| -> Option<&Abi> {
                 match tcx.layout_of(param_env.and(ty)) {
-                    Ok(layout) => &layout.abi,
-                    Err(err) => bug!("error: {}\n while computing layout for type {:?}", err, ty),
+                    Ok(layout) => Some(&layout.abi),
+                    Err(err) => {
+                        // #78372
+                        tcx.sess.delay_span_bug(
+                            tcx.def_span(method.def_id),
+                            &format!("error: {}\n while computing layout for type {:?}", err, ty),
+                        );
+                        None
+                    }
                 }
             };
 
@@ -473,7 +480,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 receiver_for_self_ty(tcx, receiver_ty, tcx.mk_unit(), method.def_id);
 
             match abi_of_ty(unit_receiver_ty) {
-                &Abi::Scalar(..) => (),
+                Some(Abi::Scalar(..)) => (),
                 abi => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(method.def_id),
@@ -493,13 +500,12 @@ fn virtual_call_violation_for_method<'tcx>(
                 receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method.def_id);
 
             match abi_of_ty(trait_object_receiver) {
-                &Abi::ScalarPair(..) => (),
+                Some(Abi::ScalarPair(..)) => (),
                 abi => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(method.def_id),
                         &format!(
-                            "receiver when `Self = {}` should have a ScalarPair ABI; \
-                                 found {:?}",
+                            "receiver when `Self = {}` should have a ScalarPair ABI; found {:?}",
                             trait_object_ty, abi
                         ),
                     );
