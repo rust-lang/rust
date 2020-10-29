@@ -34,9 +34,18 @@ impl clean::Attributes {
 }
 
 fn unindent_fragments(docs: &mut Vec<DocFragment>) {
-    let mut saw_first_line = false;
-    let mut saw_second_line = false;
-
+    // `add` is used in case the most common sugared doc syntax is used ("/// "). The other
+    // fragments kind's lines are never starting with a whitespace unless they are using some
+    // markdown formatting requiring it. Therefore, if the doc block have a mix between the two,
+    // we need to take into account the fact that the minimum indent minus one (to take this
+    // whitespace into account).
+    //
+    // For example:
+    //
+    // /// hello!
+    // #[doc = "another"]
+    //
+    // In this case, you want "hello! another" and not "hello!  another".
     let add = if !docs.windows(2).all(|arr| arr[0].kind == arr[1].kind)
         && docs.iter().any(|d| d.kind == DocFragmentKind::SugaredDoc)
     {
@@ -47,27 +56,22 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
         0
     };
 
+    // `min_indent` is used to know how much whitespaces from the start of each lines must be
+    // removed. Example:
+    //
+    // ///     hello!
+    // #[doc = "another"]
+    //
+    // In here, the `min_indent` is 1 (because non-sugared fragment are always counted with minimum
+    // 1 whitespace), meaning that "hello!" will be considered a codeblock because it starts with 4
+    // (5 - 1) whitespaces.
     let min_indent = match docs
         .iter()
         .map(|fragment| {
             fragment.doc.lines().fold(usize::MAX, |min_indent, line| {
-                // After we see the first non-whitespace line, look at
-                // the line we have. If it is not whitespace, and therefore
-                // part of the first paragraph, then ignore the indentation
-                // level of the first line
-                let ignore_previous_indents =
-                    saw_first_line && !saw_second_line && !line.chars().all(|c| c.is_whitespace());
-
-                let min_indent = if ignore_previous_indents { usize::MAX } else { min_indent };
-
-                if saw_first_line {
-                    saw_second_line = true;
-                }
-
                 if line.chars().all(|c| c.is_whitespace()) {
                     min_indent
                 } else {
-                    saw_first_line = true;
                     // Compare against either space or tab, ignoring whether they are
                     // mixed or not.
                     let whitespace = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
@@ -82,7 +86,6 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
         None => return,
     };
 
-    let mut first_ignored = false;
     for fragment in docs {
         let lines: Vec<_> = fragment.doc.lines().collect();
 
@@ -93,26 +96,18 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
                 min_indent
             };
 
-            let mut iter = lines.iter();
-            let mut result = if !first_ignored {
-                first_ignored = true;
-                vec![iter.next().unwrap().trim_start().to_string()]
-            } else {
-                Vec::new()
-            };
-            result.extend_from_slice(
-                &iter
-                    .map(|&line| {
-                        if line.chars().all(|c| c.is_whitespace()) {
-                            line.to_string()
-                        } else {
-                            assert!(line.len() >= min_indent);
-                            line[min_indent..].to_string()
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            fragment.doc = result.join("\n");
+            fragment.doc = lines
+                .iter()
+                .map(|&line| {
+                    if line.chars().all(|c| c.is_whitespace()) {
+                        line.to_string()
+                    } else {
+                        assert!(line.len() >= min_indent);
+                        line[min_indent..].to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
         }
     }
 }
