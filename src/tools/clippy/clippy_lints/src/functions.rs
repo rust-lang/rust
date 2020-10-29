@@ -579,9 +579,8 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
-    let def_id = pat.hir_id.owner.to_def_id();
-    if cx.tcx.has_typeck_results(def_id) {
-        is_mutable_ty(cx, &cx.tcx.typeck(def_id.expect_local()).pat_ty(pat), pat.span, tys)
+    if cx.tcx.has_typeck_results(pat.hir_id.owner.to_def_id()) {
+        is_mutable_ty(cx, &cx.tcx.typeck(pat.hir_id.owner).pat_ty(pat), pat.span, tys)
     } else {
         false
     }
@@ -694,11 +693,10 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             Call(_, args) | MethodCall(_, _, args, _) => {
                 let mut tys = FxHashSet::default();
                 for arg in args {
-                    let def_id = arg.hir_id.owner.to_def_id();
-                    if self.cx.tcx.has_typeck_results(def_id)
+                    if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
                         && is_mutable_ty(
                             self.cx,
-                            self.cx.tcx.typeck(def_id.expect_local()).expr_ty(arg),
+                            self.cx.tcx.typeck(arg.hir_id.owner).expr_ty(arg),
                             arg.span,
                             &mut tys,
                         )

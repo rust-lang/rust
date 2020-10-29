@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::match_like_matches_macro)]
-#![allow(unreachable_patterns)]
+#![allow(unreachable_patterns, dead_code)]
 
 fn main() {
     let x = Some(5);
@@ -45,4 +45,78 @@ fn main() {
         _ => true,
         None => false,
     };
+
+    enum E {
+        A(u32),
+        B(i32),
+        C,
+        D,
+    };
+    let x = E::A(2);
+    {
+        // lint
+        let _ans = match x {
+            E::A(_) => true,
+            E::B(_) => true,
+            _ => false,
+        };
+    }
+    {
+        // lint
+        let _ans = match x {
+            E::B(_) => false,
+            E::C => false,
+            _ => true,
+        };
+    }
+    {
+        // no lint
+        let _ans = match x {
+            E::A(_) => false,
+            E::B(_) => false,
+            E::C => true,
+            _ => true,
+        };
+    }
+    {
+        // no lint
+        let _ans = match x {
+            E::A(_) => true,
+            E::B(_) => false,
+            E::C => false,
+            _ => true,
+        };
+    }
+    {
+        // no lint
+        let _ans = match x {
+            E::A(a) if a < 10 => false,
+            E::B(a) if a < 10 => false,
+            _ => true,
+        };
+    }
+    {
+        // no lint
+        let _ans = match x {
+            E::A(_) => false,
+            E::B(a) if a < 10 => false,
+            _ => true,
+        };
+    }
+    {
+        // no lint
+        let _ans = match x {
+            E::A(a) => a == 10,
+            E::B(_) => false,
+            _ => true,
+        };
+    }
+    {
+        // no lint
+        let _ans = match x {
+            E::A(_) => false,
+            E::B(_) => true,
+            _ => false,
+        };
+    }
 }

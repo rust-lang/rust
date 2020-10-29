@@ -19,12 +19,11 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
         used_mutably: FxHashSet::default(),
         skip: false,
     };
-    let def_id = expr.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            def_id.expect_local(),
+            expr.hir_id.owner,
             cx.param_env,
             cx.typeck_results(),
         )
