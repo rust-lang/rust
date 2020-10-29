@@ -127,14 +127,17 @@ pub fn setup(src_path: &Path, profile: Profile) {
 
 // Used to get the path for `Subcommand::Setup`
 pub fn interactive_path() -> io::Result<Profile> {
-    fn abbrev_all() -> impl Iterator<Item = (String, Profile)> {
-        ('a'..).map(|c| c.to_string()).zip(Profile::all())
+    fn abbrev_all() -> impl Iterator<Item = ((String, String), Profile)> {
+        ('a'..)
+            .zip(1..)
+            .map(|(letter, number)| (letter.to_string(), number.to_string()))
+            .zip(Profile::all())
     }
 
     fn parse_with_abbrev(input: &str) -> Result<Profile, String> {
         let input = input.trim().to_lowercase();
-        for (letter, profile) in abbrev_all() {
-            if input == letter {
+        for ((letter, number), profile) in abbrev_all() {
+            if input == letter || input == number {
                 return Ok(profile);
             }
         }
@@ -142,13 +145,13 @@ pub fn interactive_path() -> io::Result<Profile> {
     }
 
     println!("Welcome to the Rust project! What do you want to do with x.py?");
-    for (letter, profile) in abbrev_all() {
+    for ((letter, _), profile) in abbrev_all() {
         println!("{}) {}: {}", letter, profile, profile.purpose());
     }
     let template = loop {
         print!(
             "Please choose one ({}): ",
-            abbrev_all().map(|(l, _)| l).collect::<Vec<_>>().join("/")
+            abbrev_all().map(|((l, _), _)| l).collect::<Vec<_>>().join("/")
         );
         io::stdout().flush()?;
         let mut input = String::new();
