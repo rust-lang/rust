@@ -1036,6 +1036,15 @@ pub enum SourceFileHashAlgorithm {
     Sha1,
 }
 
+impl ToString for SourceFileHashAlgorithm {
+    fn to_string(&self) -> String {
+        match self {
+            SourceFileHashAlgorithm::Md5 => "md5".to_string(),
+            SourceFileHashAlgorithm::Sha1 => "sha1".to_string(),
+        }
+    }
+}
+
 impl FromStr for SourceFileHashAlgorithm {
     type Err = ();
 

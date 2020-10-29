@@ -9,7 +9,7 @@ use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
-    metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
+    metadata_symbol_name, svh_symbol_name, ExportedSymbol, SymbolExportLevel,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
@@ -218,6 +218,11 @@ fn exported_symbols_provider_local(
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
         symbols.push((exported_symbol, SymbolExportLevel::Rust));
+
+        let symbol_name = svh_symbol_name(tcx);
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
+
+        symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {

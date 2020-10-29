@@ -19,7 +19,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
-    metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
+    metadata_symbol_name, svh_symbol_name, ExportedSymbol, SymbolExportLevel,
 };
 use rustc_middle::mir::interpret;
 use rustc_middle::traits::specialization_graph;
@@ -1669,12 +1669,15 @@ impl EncodeContext<'a, 'tcx> {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
         let metadata_symbol_name = SymbolName::new(self.tcx, &metadata_symbol_name(self.tcx));
+        let svh_symbol_name = SymbolName::new(self.tcx, &svh_symbol_name(self.tcx));
 
         self.lazy(
             exported_symbols
                 .iter()
                 .filter(|&&(ref exported_symbol, _)| match *exported_symbol {
-                    ExportedSymbol::NoDefId(symbol_name) => symbol_name != metadata_symbol_name,
+                    ExportedSymbol::NoDefId(symbol_name) => {
+                        symbol_name != metadata_symbol_name && symbol_name != svh_symbol_name
+                    }
                     _ => true,
                 })
                 .cloned(),

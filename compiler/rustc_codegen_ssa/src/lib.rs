@@ -56,8 +56,8 @@ pub struct ModuleCodegen<M> {
     pub kind: ModuleKind,
 }
 
-// FIXME(eddyb) maybe include the crate name in this?
-pub const METADATA_FILENAME: &str = "lib.rmeta";
+pub const METADATA_FILE_PREFIX: &str = "lib";
+pub const METADATA_FILE_EXTENSION: &str = ".rmeta";
 
 impl<M> ModuleCodegen<M> {
     pub fn into_compiled_module(

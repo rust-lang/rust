@@ -34,11 +34,13 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_span::{FileName, RealFileName};
+use rustc_span::{FileName, RealFileName, SourceFile};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use smallvec::SmallVec;
 use tracing::{info, warn};
+
+use md5::{Digest, Md5};
 
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
@@ -46,7 +48,7 @@ use tempfile::Builder as TempFileBuilder;
 use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
-use std::io::{self, BufWriter, Write};
+use std::io::{self, BufWriter, Read, Write};
 use std::lazy::SyncLazy;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -602,6 +604,12 @@ fn escape_dep_env(symbol: Symbol) -> String {
     escaped
 }
 
+enum FileHash {
+    SourceFile(Lrc<SourceFile>),
+    BinaryHash(u64, Vec<u8>),
+    HashInFilename(u64),
+}
+
 fn write_out_deps(
     sess: &Session,
     boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
@@ -617,13 +625,17 @@ fn write_out_deps(
     let result = (|| -> io::Result<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let mut files: Vec<String> = sess
-            .source_map()
-            .files()
+        let source_files = sess.source_map().files();
+        let mut files: Vec<(String, Option<FileHash>)> = source_files
             .iter()
             .filter(|fmap| fmap.is_real_file())
             .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| escape_dep_filename(&fmap.unmapped_path.as_ref().unwrap_or(&fmap.name)))
+            .map(|fmap| {
+                (
+                    escape_dep_filename(&fmap.unmapped_path.as_ref().unwrap_or(&fmap.name)),
+                    Some(FileHash::SourceFile(fmap.clone())),
+                )
+            })
             .collect();
 
         if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
@@ -635,16 +647,19 @@ fn write_out_deps(
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
+                        let hash = hash_bin(&path).ok();
                         let file_name = FileName::Real(RealFileName::Named(path));
-                        files.push(escape_dep_filename(&file_name));
+                        files.push((escape_dep_filename(&file_name), hash));
                     }
                     if let Some((path, _)) = source.rlib {
+                        let hash = hash_bin_with_svh(&path).ok();
                         let file_name = FileName::Real(RealFileName::Named(path));
-                        files.push(escape_dep_filename(&file_name));
+                        files.push((escape_dep_filename(&file_name), hash));
                     }
                     if let Some((path, _)) = source.rmeta {
+                        let hash = hash_bin_with_svh(&path).ok();
                         let file_name = FileName::Real(RealFileName::Named(path));
-                        files.push(escape_dep_filename(&file_name));
+                        files.push((escape_dep_filename(&file_name), hash));
                     }
                 }
             });
@@ -652,14 +667,34 @@ fn write_out_deps(
 
         let mut file = BufWriter::new(fs::File::create(&deps_filename)?);
         for path in out_filenames {
-            writeln!(file, "{}: {}\n", path.display(), files.join(" "))?;
+            let line: Vec<&str> = files.iter().map(|(f, _)| f.as_ref()).collect();
+            writeln!(file, "{}: {}\n", path.display(), line.join(" "))?;
         }
 
         // Emit a fake target for each input file to the compilation. This
         // prevents `make` from spitting out an error if a file is later
         // deleted. For more info see #28735
-        for path in files {
+        for (path, file_hash) in files {
             writeln!(file, "{}:", path)?;
+
+            match file_hash {
+                Some(FileHash::SourceFile(src_file)) => {
+                    writeln!(
+                        file,
+                        "# size:{} {}:{:?}",
+                        src_file.byte_length(),
+                        src_file.src_hash.kind.to_string(),
+                        src_file.src_hash.hash_bytes()
+                    )?;
+                }
+                Some(FileHash::BinaryHash(size, md5_hash)) => {
+                    writeln!(file, "# size:{} {}:{:?}", size, "md5", md5_hash)?;
+                }
+                Some(FileHash::HashInFilename(size)) => {
+                    writeln!(file, "# size:{} {}:0", size, "hash_in_filename",)?;
+                }
+                None => {}
+            }
         }
 
         // Emit special comments with information about accessed environment variables.
@@ -697,6 +732,37 @@ fn write_out_deps(
             e
         )),
     }
+}
+
+fn hash_bin(path: &PathBuf) -> io::Result<FileHash> {
+    let hash = md5_hash_file(path)?;
+    let mut fname = path.to_str().unwrap().to_owned();
+    fname.push_str(".md5");
+    let size = fs::metadata(path).unwrap().len(); //FIXME calc while hashing
+    fs::write(fname, &hash)?;
+    Ok(FileHash::BinaryHash(size, hash))
+}
+
+/// For files with svh in their filename we indicate that we should
+/// trust the contents are correct without further checks.
+fn hash_bin_with_svh(path: &PathBuf) -> io::Result<FileHash> {
+    let size = fs::metadata(path)?.len();
+    Ok(FileHash::HashInFilename(size))
+}
+
+fn md5_hash_file(path: &PathBuf) -> io::Result<Vec<u8>> {
+    let mut reader = io::BufReader::new(fs::File::open(&path)?);
+
+    let mut hasher = Md5::new();
+    let mut buffer = [0; 1024];
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        hasher.input(&buffer[..count]);
+    }
+    Ok(hasher.result().as_slice().to_vec())
 }
 
 pub fn prepare_outputs(
@@ -1009,11 +1075,11 @@ fn encode_and_write_metadata(
         .crate_types()
         .iter()
         .map(|ty| match *ty {
-            CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => MetadataKind::None,
+            CrateType::Executable | CrateType::Staticlib => MetadataKind::None,
 
             CrateType::Rlib => MetadataKind::Uncompressed,
 
-            CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
+            CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
         })
         .max()
         .unwrap_or(MetadataKind::None);
@@ -1039,7 +1105,16 @@ fn encode_and_write_metadata(
             .tempdir_in(out_filename.parent().unwrap())
             .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
-        let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
+
+        let crate_name = &tcx.crate_name(LOCAL_CRATE).as_str();
+
+        let metadata_filename = emit_metadata(
+            tcx.sess,
+            &metadata,
+            &metadata_tmpdir,
+            &crate_name,
+            &tcx.crate_hash(LOCAL_CRATE),
+        );
         if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }

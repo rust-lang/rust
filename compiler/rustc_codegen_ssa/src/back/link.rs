@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
@@ -21,7 +22,10 @@ use super::archive::ArchiveBuilder;
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::rpath::{self, RPathConfig};
-use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME};
+use crate::{
+    looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILE_EXTENSION,
+    METADATA_FILE_PREFIX,
+};
 
 use cc::windows_registry;
 use tempfile::Builder as TempFileBuilder;
@@ -270,8 +274,16 @@ pub fn each_linked_rlib(
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &EncodedMetadata, tmpdir: &MaybeTempDir) -> PathBuf {
-    let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
+pub fn emit_metadata(
+    sess: &Session,
+    metadata: &EncodedMetadata,
+    tmpdir: &MaybeTempDir,
+    crate_name: &str,
+    svh: &Svh,
+) -> PathBuf {
+    let out_filename = tmpdir
+        .as_ref()
+        .join(format!("{}{}-{}{}", METADATA_FILE_PREFIX, crate_name, svh, METADATA_FILE_EXTENSION));
     let result = fs::write(&out_filename, &metadata.raw_data);
 
     if let Err(e) = result {
@@ -355,12 +367,19 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     //   not be correctly inferred once 'foo.o' is removed.
     //
     // Basically, all this means is that this code should not move above the
-    // code above.
+    // code above. @audit rlib add here
+
     match flavor {
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
             // contain the metadata in a separate file.
-            ab.add_file(&emit_metadata(sess, &codegen_results.metadata, tmpdir));
+            ab.add_file(&emit_metadata(
+                sess,
+                &codegen_results.metadata,
+                tmpdir,
+                &codegen_results.crate_name.as_str(),
+                &codegen_results.crate_hash,
+            ));
 
             // After adding all files to the archive, we need to update the
             // symbol table of the archive. This currently dies on macOS (see
@@ -1916,7 +1935,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
             let mut any_objects = false;
             for f in archive.src_files() {
-                if f == METADATA_FILENAME {
+                if f.starts_with(METADATA_FILE_PREFIX) && f.ends_with(METADATA_FILE_EXTENSION) {
                     archive.remove_file(&f);
                     continue;
                 }

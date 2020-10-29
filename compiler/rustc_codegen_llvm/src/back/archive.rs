@@ -10,7 +10,9 @@ use std::str;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind};
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
-use rustc_codegen_ssa::{looks_like_rust_object_file, METADATA_FILENAME};
+use rustc_codegen_ssa::{
+    looks_like_rust_object_file, METADATA_FILE_EXTENSION, METADATA_FILE_PREFIX,
+};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
@@ -130,7 +132,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
         self.add_archive(rlib, move |fname: &str| {
             // Ignore metadata files, no matter the name.
-            if fname == METADATA_FILENAME {
+            if fname.starts_with(METADATA_FILE_PREFIX) && fname.ends_with(METADATA_FILE_EXTENSION) {
                 return true;
             }
 

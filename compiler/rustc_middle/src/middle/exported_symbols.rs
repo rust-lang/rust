@@ -53,3 +53,8 @@ pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
         tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex()
     )
 }
+
+/// Embed the hash that represents the crate for use as a fingerprint.
+pub fn svh_symbol_name(tcx: TyCtxt<'_>) -> String {
+    format!("rust_svh_{}_{}", tcx.original_crate_name(LOCAL_CRATE), tcx.crate_hash(LOCAL_CRATE))
+}
