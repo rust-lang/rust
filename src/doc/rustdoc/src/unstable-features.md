@@ -422,3 +422,19 @@ Calculating code examples follows these rules:
   * static
   * typedef
 2. If one of the previously listed items has a code example, then it'll be counted.
+
+### Hide an item from the doc search
+
+If you want an item to be visible from the documentation but to not show up when using
+the documentation search, you can use the `#[doc(search_hidden)]` attribute. For
+example:
+
+```rust
+#![feature(doc_search_hidden)]
+
+#[doc(search_hidden)]
+pub struct Bar;
+```
+
+If you look for "Bar" in the search, it won't appear. However, the type will appear in
+the documentation like it normally should.
