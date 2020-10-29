@@ -1803,6 +1803,14 @@ fn lint_or_fun_call<'tcx>(
         or_has_args: bool,
         span: Span,
     ) {
+        // (path, fn_has_argument, methods, suffix)
+        static KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
+            (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
+            (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
+        ];
+
         if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = &arg.kind {
             if path.ident.as_str() == "len" {
                 let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
@@ -1818,16 +1826,8 @@ fn lint_or_fun_call<'tcx>(
             }
         }
 
-        // (path, fn_has_argument, methods, suffix)
-        let know_types: &[(&[_], _, &[_], _)] = &[
-            (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
-            (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
-            (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
-            (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
-        ];
-
         if_chain! {
-            if know_types.iter().any(|k| k.2.contains(&name));
+            if KNOW_TYPES.iter().any(|k| k.2.contains(&name));
 
             if is_lazyness_candidate(cx, arg);
             if !contains_return(&arg);
@@ -1835,7 +1835,7 @@ fn lint_or_fun_call<'tcx>(
             let self_ty = cx.typeck_results().expr_ty(self_expr);
 
             if let Some(&(_, fn_has_arguments, poss, suffix)) =
-                know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
+                KNOW_TYPES.iter().find(|&&i| match_type(cx, self_ty, i.0));
 
             if poss.contains(&name);
 
