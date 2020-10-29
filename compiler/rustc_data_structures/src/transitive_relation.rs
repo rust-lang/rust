@@ -18,7 +18,7 @@ pub struct TransitiveRelation<T: Eq + Hash> {
     edges: Vec<Edge>,
 
     // This is a cached transitive closure derived from the edges.
-    // Currently, we build it lazilly and just throw out any existing
+    // Currently, we build it lazily and just throw out any existing
     // copy whenever a new edge is added. (The Lock is to permit
     // the lazy computation.) This is kind of silly, except for the
     // fact its size is tied to `self.elements.len()`, so I wanted to
@@ -255,7 +255,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             // argument is that, after step 2, we know that no element
             // can reach its successors (in the vector, not the graph).
             // After step 3, we know that no element can reach any of
-            // its predecesssors (because of step 2) nor successors
+            // its predecessors (because of step 2) nor successors
             // (because we just called `pare_down`)
             //
             // This same algorithm is used in `parents` below.
