@@ -147,7 +147,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     .sess
                     .local_crate_disambiguator()
                     .to_fingerprint()
-                    .as_value(),
+                    .to_value(),
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
