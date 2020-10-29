@@ -168,6 +168,16 @@ static DOCS_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-musl",
 ];
 
+static MSI_INSTALLERS: &[&str] = &[
+    "aarch64-pc-windows-msvc",
+    "i686-pc-windows-gnu",
+    "i686-pc-windows-msvc",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+];
+
+static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
+
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
 static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-analyzer-preview"];
@@ -314,10 +324,12 @@ impl Builder {
             manifest_version: "2".to_string(),
             date: self.date.to_string(),
             pkg: BTreeMap::new(),
+            artifacts: BTreeMap::new(),
             renames: BTreeMap::new(),
             profiles: BTreeMap::new(),
         };
         self.add_packages_to(&mut manifest);
+        self.add_artifacts_to(&mut manifest);
         self.add_profiles_to(&mut manifest);
         self.add_renames_to(&mut manifest);
         manifest.pkg.insert("rust".to_string(), self.rust_package(&manifest));
@@ -344,6 +356,27 @@ impl Builder {
         package("rustfmt-preview", HOSTS);
         package("rust-analysis", TARGETS);
         package("llvm-tools-preview", TARGETS);
+    }
+
+    fn add_artifacts_to(&mut self, manifest: &mut Manifest) {
+        manifest.add_artifact("source-code", |artifact| {
+            let tarball = self.versions.tarball_name(&PkgType::Rustc, "src").unwrap();
+            artifact.add_tarball(self, "*", &tarball);
+        });
+
+        manifest.add_artifact("installer-msi", |artifact| {
+            for target in MSI_INSTALLERS {
+                let msi = self.versions.archive_name(&PkgType::Rust, target, "msi").unwrap();
+                artifact.add_file(self, target, &msi);
+            }
+        });
+
+        manifest.add_artifact("installer-pkg", |artifact| {
+            for target in PKG_INSTALLERS {
+                let pkg = self.versions.archive_name(&PkgType::Rust, target, "pkg").unwrap();
+                artifact.add_file(self, target, &pkg);
+            }
+        });
     }
 
     fn add_profiles_to(&mut self, manifest: &mut Manifest) {

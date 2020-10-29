@@ -13,6 +13,7 @@ const RUSTC_VERSION: &str = include_str!("../../../version");
 pub(crate) enum PkgType {
     Rust,
     RustSrc,
+    Rustc,
     Cargo,
     Rls,
     RustAnalyzer,
@@ -28,6 +29,7 @@ impl PkgType {
         match component {
             "rust" => PkgType::Rust,
             "rust-src" => PkgType::RustSrc,
+            "rustc" => PkgType::Rustc,
             "cargo" => PkgType::Cargo,
             "rls" | "rls-preview" => PkgType::Rls,
             "rust-analyzer" | "rust-analyzer-preview" => PkgType::RustAnalyzer,
@@ -44,6 +46,7 @@ impl PkgType {
         match self {
             PkgType::Rust => "rust",
             PkgType::RustSrc => "rust-src",
+            PkgType::Rustc => "rustc",
             PkgType::Cargo => "cargo",
             PkgType::Rls => "rls",
             PkgType::RustAnalyzer => "rust-analyzer",
@@ -69,6 +72,7 @@ impl PkgType {
 
             PkgType::Rust => true,
             PkgType::RustSrc => true,
+            PkgType::Rustc => true,
             PkgType::Other(_) => true,
         }
     }
@@ -165,10 +169,11 @@ impl Versions {
         }
     }
 
-    pub(crate) fn tarball_name(
+    pub(crate) fn archive_name(
         &mut self,
         package: &PkgType,
         target: &str,
+        extension: &str,
     ) -> Result<String, Error> {
         let component_name = package.tarball_component_name();
         let version = match self.channel.as_str() {
@@ -179,10 +184,18 @@ impl Versions {
         };
 
         if package.target_independent() {
-            Ok(format!("{}-{}.tar.gz", component_name, version))
+            Ok(format!("{}-{}.{}", component_name, version, extension))
         } else {
-            Ok(format!("{}-{}-{}.tar.gz", component_name, version, target))
+            Ok(format!("{}-{}-{}.{}", component_name, version, target, extension))
         }
+    }
+
+    pub(crate) fn tarball_name(
+        &mut self,
+        package: &PkgType,
+        target: &str,
+    ) -> Result<String, Error> {
+        self.archive_name(package, target, "tar.gz")
     }
 
     pub(crate) fn rustc_version(&self) -> &str {
