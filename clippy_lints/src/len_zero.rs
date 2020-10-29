@@ -85,7 +85,7 @@ declare_clippy_lint! {
     /// if s == "" {
     ///     ..
     /// }
-
+    ///
     /// if arr == [] {
     ///     ..
     /// }
@@ -95,7 +95,7 @@ declare_clippy_lint! {
     /// if s.is_empty() {
     ///     ..
     /// }
-
+    ///
     /// if arr.is_empty() {
     ///     ..
     /// }
