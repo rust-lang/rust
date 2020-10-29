@@ -9,6 +9,7 @@
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(bool_to_option)]
+#![feature(once_cell)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 
