@@ -3763,6 +3763,7 @@ name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
  "libc",
+ "md-5",
  "rustc-rayon",
  "rustc_ast",
  "rustc_ast_lowering",
