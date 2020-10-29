@@ -1,5 +1,5 @@
 warning: panic message contains a brace
-  --> $DIR/panic-brace.rs:8:29
+  --> $DIR/panic-brace.rs:11:29
    |
 LL |     panic!("here's a brace: {");
    |                             ^
@@ -12,7 +12,7 @@ LL |     panic!("{}", "here's a brace: {");
    |            ^^^^^
 
 warning: panic message contains a brace
-  --> $DIR/panic-brace.rs:9:31
+  --> $DIR/panic-brace.rs:12:31
    |
 LL |     std::panic!("another one: }");
    |                               ^
@@ -24,7 +24,7 @@ LL |     std::panic!("{}", "another one: }");
    |                 ^^^^^
 
 warning: panic message contains an unused formatting placeholder
-  --> $DIR/panic-brace.rs:10:25
+  --> $DIR/panic-brace.rs:13:25
    |
 LL |     core::panic!("Hello {}");
    |                         ^^
@@ -40,7 +40,7 @@ LL |     core::panic!("{}", "Hello {}");
    |                  ^^^^^
 
 warning: panic message contains unused formatting placeholders
-  --> $DIR/panic-brace.rs:11:21
+  --> $DIR/panic-brace.rs:14:21
    |
 LL |     assert!(false, "{:03x} {test} bla");
    |                     ^^^^^^ ^^^^^^
@@ -56,7 +56,7 @@ LL |     assert!(false, "{}", "{:03x} {test} bla");
    |                    ^^^^^
 
 warning: panic message contains braces
-  --> $DIR/panic-brace.rs:13:27
+  --> $DIR/panic-brace.rs:16:27
    |
 LL |     debug_assert!(false, "{{}} bla");
    |                           ^^^^
@@ -68,7 +68,7 @@ LL |     debug_assert!(false, "{}", "{{}} bla");
    |                          ^^^^^
 
 warning: panic message contains an unused formatting placeholder
-  --> $DIR/panic-brace.rs:16:12
+  --> $DIR/panic-brace.rs:19:12
    |
 LL |     panic!(concat!("{", "}"));
    |            ^^^^^^^^^^^^^^^^^
@@ -84,7 +84,7 @@ LL |     panic!("{}", concat!("{", "}"));
    |            ^^^^^
 
 warning: panic message contains braces
-  --> $DIR/panic-brace.rs:17:5
+  --> $DIR/panic-brace.rs:20:5
    |
 LL |     panic!(concat!("{", "{"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,5 +95,13 @@ help: add a "{}" format string to use the message literally
 LL |     panic!("{}", concat!("{", "{"));
    |            ^^^^^
 
-warning: 7 warnings emitted
+warning: panic message contains an unused formatting placeholder
+  --> $DIR/panic-brace.rs:22:37
+   |
+LL |     fancy_panic::fancy_panic!("test {} 123");
+   |                                     ^^
+   |
+   = note: this message is not used as a format string when given without arguments, but will be in a future Rust edition
+
+warning: 8 warnings emitted
 
