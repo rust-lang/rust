@@ -446,7 +446,7 @@ impl Hash for PrefixComponent<'_> {
 /// (`/` or `\`).
 ///
 /// This `enum` is created by iterating over [`Components`], which in turn is
-/// created by the [`components`][`Path::components`] method on [`Path`].
+/// created by the [`components`](Path::components) method on [`Path`].
 ///
 /// # Examples
 ///
@@ -1319,7 +1319,7 @@ impl PathBuf {
         self.inner
     }
 
-    /// Converts this `PathBuf` into a [boxed][`Box`] [`Path`].
+    /// Converts this `PathBuf` into a [boxed](Box) [`Path`].
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_boxed_path(self) -> Box<Path> {
         let rw = Box::into_raw(self.inner.into_boxed_os_str()) as *mut Path;
@@ -1686,8 +1686,7 @@ pub struct Path {
     inner: OsStr,
 }
 
-/// An error returned from [`Path::strip_prefix`][`strip_prefix`] if the prefix
-/// was not found.
+/// An error returned from [`Path::strip_prefix`] if the prefix was not found.
 ///
 /// This `struct` is created by the [`strip_prefix`] method on [`Path`].
 /// See its documentation for more.
@@ -2470,7 +2469,7 @@ impl Path {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 
-    /// Converts a [`Box<Path>`][`Box`] into a [`PathBuf`] without copying or
+    /// Converts a [`Box<Path>`](Box) into a [`PathBuf`] without copying or
     /// allocating.
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
@@ -2498,7 +2497,7 @@ impl fmt::Debug for Path {
 ///
 /// A [`Path`] might contain non-Unicode data. This `struct` implements the
 /// [`Display`] trait in a way that mitigates that. It is created by the
-/// [`display`][`Path::display`] method on [`Path`].
+/// [`display`](Path::display) method on [`Path`].
 ///
 /// # Examples
 ///
