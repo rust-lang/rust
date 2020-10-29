@@ -1834,10 +1834,10 @@ impl<'tcx> TyS<'tcx> {
             }
             ty::Array(ty, len) => {
                 match len.try_eval_usize(tcx, ParamEnv::empty()) {
+                    Some(0) | None => false,
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
-                    Some(n) if n != 0 => ty.conservative_is_privately_uninhabited(tcx),
-                    _ => false,
+                    Some(1..) => ty.conservative_is_privately_uninhabited(tcx),
                 }
             }
             ty::Ref(..) => {
