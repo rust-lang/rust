@@ -2042,6 +2042,10 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
     let source_map_files = tcx.sess.source_map().files();
+    let source_file_cache = (source_map_files[0].clone(), 0);
+    let required_source_files = Some(GrowableBitSet::with_capacity(source_map_files.len()));
+    drop(source_map_files);
+
     let hygiene_ctxt = HygieneEncodeContext::default();
 
     let mut ecx = EncodeContext {
@@ -2052,13 +2056,12 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         lazy_state: LazyState::NoNode,
         type_shorthands: Default::default(),
         predicate_shorthands: Default::default(),
-        source_file_cache: (source_map_files[0].clone(), 0),
+        source_file_cache,
         interpret_allocs: Default::default(),
-        required_source_files: Some(GrowableBitSet::with_capacity(source_map_files.len())),
+        required_source_files,
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
     };
-    drop(source_map_files);
 
     // Encode the rustc version string in a predictable location.
     rustc_version().encode(&mut ecx).unwrap();
