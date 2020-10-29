@@ -37,12 +37,7 @@ fn should_leave_multiple_indent_levels() {
 
 #[test]
 fn should_ignore_first_line_indent() {
-    // The first line of the first paragraph may not be indented as
-    // far due to the way the doc string was written:
-    //
-    // #[doc = "Start way over here
-    //          and continue here"]
-    run_test("line1\n    line2", "line1\nline2");
+    run_test("line1\n    line2", "line1\n    line2");
 }
 
 #[test]
