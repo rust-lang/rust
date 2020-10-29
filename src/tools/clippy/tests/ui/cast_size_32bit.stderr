@@ -124,7 +124,7 @@ error: casting integer literal to `f64` is unnecessary
   --> $DIR/cast_size_32bit.rs:34:5
    |
 LL |     3_999_999_999usize as f64;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `3999999999_f64`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `3_999_999_999_f64`
    |
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
 

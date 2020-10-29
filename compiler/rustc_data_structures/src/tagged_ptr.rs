@@ -24,7 +24,7 @@ mod drop;
 pub use copy::CopyTaggedPtr;
 pub use drop::TaggedPtr;
 
-/// This describes the pointer type encaspulated by TaggedPtr.
+/// This describes the pointer type encapsulated by TaggedPtr.
 ///
 /// # Safety
 ///

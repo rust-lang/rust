@@ -62,10 +62,17 @@ vec![
     },
     Lint {
         name: "await_holding_lock",
-        group: "pedantic",
+        group: "correctness",
         desc: "Inside an async function, holding a MutexGuard while calling await",
         deprecation: None,
-        module: "await_holding_lock",
+        module: "await_holding_invalid",
+    },
+    Lint {
+        name: "await_holding_refcell_ref",
+        group: "correctness",
+        desc: "Inside an async function, holding a RefCell ref while calling await",
+        deprecation: None,
+        module: "await_holding_invalid",
     },
     Lint {
         name: "bad_bit_mask",
@@ -1062,6 +1069,13 @@ vec![
         module: "large_stack_arrays",
     },
     Lint {
+        name: "large_types_passed_by_value",
+        group: "pedantic",
+        desc: "functions taking large arguments by value",
+        deprecation: None,
+        module: "pass_by_ref_or_value",
+    },
+    Lint {
         name: "len_without_is_empty",
         group: "style",
         desc: "traits or impls with a public `len` method but no corresponding `is_empty` method",
@@ -1160,6 +1174,13 @@ vec![
         module: "manual_non_exhaustive",
     },
     Lint {
+        name: "manual_range_contains",
+        group: "style",
+        desc: "manually reimplementing {`Range`, `RangeInclusive`}`::contains`",
+        deprecation: None,
+        module: "ranges",
+    },
+    Lint {
         name: "manual_saturating_arithmetic",
         group: "style",
         desc: "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`",
@@ -1183,7 +1204,7 @@ vec![
     Lint {
         name: "manual_unwrap_or",
         group: "complexity",
-        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or`",
+        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or` or `Result::unwrap_or`",
         deprecation: None,
         module: "manual_unwrap_or",
     },
@@ -1283,7 +1304,7 @@ vec![
         group: "pedantic",
         desc: "`match` with identical arm bodies",
         deprecation: None,
-        module: "copies",
+        module: "matches",
     },
     Lint {
         name: "match_single_binding",
@@ -1487,6 +1508,13 @@ vec![
         desc: "usage of double-mut refs, e.g., `&mut &mut ...`",
         deprecation: None,
         module: "mut_mut",
+    },
+    Lint {
+        name: "mut_mutex_lock",
+        group: "style",
+        desc: "`&mut Mutex::lock` does unnecessary locking",
+        deprecation: None,
+        module: "mut_mutex_lock",
     },
     Lint {
         name: "mut_range_bound",
@@ -2126,6 +2154,13 @@ vec![
         module: "single_component_path_imports",
     },
     Lint {
+        name: "single_element_loop",
+        group: "complexity",
+        desc: "there is no reason to have a single element loop",
+        deprecation: None,
+        module: "loops",
+    },
+    Lint {
         name: "single_match",
         group: "style",
         desc: "a `match` statement with a single nontrivial arm (i.e., where the other arm is `_ => {}`) instead of `if let`",
@@ -2382,7 +2417,7 @@ vec![
         group: "pedantic",
         desc: "functions taking small copyable arguments by reference",
         deprecation: None,
-        module: "trivially_copy_pass_by_ref",
+        module: "pass_by_ref_or_value",
     },
     Lint {
         name: "try_err",
@@ -2404,6 +2439,13 @@ vec![
         desc: "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`",
         deprecation: None,
         module: "trait_bounds",
+    },
+    Lint {
+        name: "undropped_manually_drops",
+        group: "correctness",
+        desc: "use of safe `std::mem::drop` function to drop a std::mem::ManuallyDrop, which will not drop the inner value",
+        deprecation: None,
+        module: "undropped_manually_drops",
     },
     Lint {
         name: "unicode_not_nfc",
@@ -2593,6 +2635,13 @@ vec![
         desc: "needless unit expression",
         deprecation: None,
         module: "unused_unit",
+    },
+    Lint {
+        name: "unusual_byte_groupings",
+        group: "style",
+        desc: "binary or hex literals that aren\'t grouped by four",
+        deprecation: None,
+        module: "literal_representation",
     },
     Lint {
         name: "unwrap_in_result",

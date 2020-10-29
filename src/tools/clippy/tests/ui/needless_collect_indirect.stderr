@@ -48,8 +48,21 @@ LL | |     indirect_contains.contains(&&5);
 help: Check if the original Iterator contains an element instead of collecting then checking
    |
 LL |     
-LL |     sample.iter().any(|x| x == &&5);
+LL |     sample.iter().any(|x| x == &5);
    |
 
-error: aborting due to 4 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:23:5
+   |
+LL | /     let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
+LL | |     non_copy_contains.contains(&a);
+   | |____^
+   |
+help: Check if the original Iterator contains an element instead of collecting then checking
+   |
+LL |     
+LL |     sample.into_iter().any(|x| x == a);
+   |
+
+error: aborting due to 5 previous errors
 

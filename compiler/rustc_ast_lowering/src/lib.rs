@@ -148,7 +148,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     is_collecting_in_band_lifetimes: bool,
 
     /// Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
-    /// When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
+    /// When `is_collecting_in_band_lifetimes` is true, each lifetime is checked
     /// against this list to see if it is already in-scope, or if a definition
     /// needs to be created for it.
     ///
@@ -257,7 +257,7 @@ enum ImplTraitPosition {
     /// Disallowed in `let` / `const` / `static` bindings.
     Binding,
 
-    /// All other posiitons.
+    /// All other positions.
     Other,
 }
 
@@ -363,7 +363,7 @@ enum ParenthesizedGenericArgs {
 ///   elided bounds follow special rules. Note that this only covers
 ///   cases where *nothing* is written; the `'_` in `Box<dyn Foo +
 ///   '_>` is a case of "modern" elision.
-/// - **Deprecated** -- this coverse cases like `Ref<T>`, where the lifetime
+/// - **Deprecated** -- this covers cases like `Ref<T>`, where the lifetime
 ///   parameter to ref is completely elided. `Ref<'_, T>` would be the modern,
 ///   non-deprecated equivalent.
 ///
