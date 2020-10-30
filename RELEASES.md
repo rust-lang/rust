@@ -297,6 +297,7 @@ Compiler
 - [Added the `tiny` value to the `code-model` codegen flag.][72397]
 - [Added tier 3 support\* for the `mipsel-sony-psp` target.][72062]
 - [Added tier 3 support for the `thumbv7a-uwp-windows-msvc` target.][72133]
+- [Upgraded to LLVM 10.][67759]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
@@ -396,6 +397,7 @@ Internals Only
 [72062]: https://github.com/rust-lang/rust/pull/72062/
 [72094]: https://github.com/rust-lang/rust/pull/72094/
 [72133]: https://github.com/rust-lang/rust/pull/72133/
+[67759]: https://github.com/rust-lang/rust/pull/67759/
 [71900]: https://github.com/rust-lang/rust/pull/71900/
 [71928]: https://github.com/rust-lang/rust/pull/71928/
 [71662]: https://github.com/rust-lang/rust/pull/71662/
@@ -1270,6 +1272,7 @@ Compiler
   `armv7-unknown-linux-musleabi` targets.][63107]
 - [Added tier 3 support for the `hexagon-unknown-linux-musl` target.][62814]
 - [Added tier 3 support for the `riscv32i-unknown-none-elf` target.][62784]
+- [Upgraded to LLVM 9.][62592]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
@@ -1336,6 +1339,7 @@ Compatibility Notes
 [62735]: https://github.com/rust-lang/rust/pull/62735/
 [62766]: https://github.com/rust-lang/rust/pull/62766/
 [62784]: https://github.com/rust-lang/rust/pull/62784/
+[62592]: https://github.com/rust-lang/rust/pull/62592/
 [62785]: https://github.com/rust-lang/rust/issues/62785/
 [62814]: https://github.com/rust-lang/rust/pull/62814/
 [62896]: https://github.com/rust-lang/rust/issues/62896/
@@ -2431,6 +2435,7 @@ Compiler
 --------
 - [Added the `riscv32imc-unknown-none-elf` target.][53822]
 - [Added the `aarch64-unknown-netbsd` target][53165]
+- [Upgraded to LLVM 8.][53611]
 
 Libraries
 ---------
@@ -2479,6 +2484,7 @@ Misc
 [53033]: https://github.com/rust-lang/rust/pull/53033/
 [53044]: https://github.com/rust-lang/rust/pull/53044/
 [53165]: https://github.com/rust-lang/rust/pull/53165/
+[53611]: https://github.com/rust-lang/rust/pull/53611/
 [53213]: https://github.com/rust-lang/rust/pull/53213/
 [53236]: https://github.com/rust-lang/rust/pull/53236/
 [53272]: https://github.com/rust-lang/rust/pull/53272/
@@ -2537,6 +2543,7 @@ Compiler
 - [Bumped minimum LLVM version to 5.0.][51899]
 - [Added `powerpc64le-unknown-linux-musl` target.][51619]
 - [Added `aarch64-unknown-hermit` and `x86_64-unknown-hermit` targets.][52861]
+- [Upgraded to LLVM 7.][51966]
 
 Libraries
 ---------
@@ -2588,6 +2595,7 @@ Compatibility Notes
 
 [53893]: https://github.com/rust-lang/rust/pull/53893/
 [52861]: https://github.com/rust-lang/rust/pull/52861/
+[51966]: https://github.com/rust-lang/rust/pull/51966/
 [52656]: https://github.com/rust-lang/rust/pull/52656/
 [52239]: https://github.com/rust-lang/rust/pull/52239/
 [52330]: https://github.com/rust-lang/rust/pull/52330/
