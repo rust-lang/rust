@@ -196,20 +196,21 @@ impl<T> TypedArena<T> {
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);
 
-        let intermediate: &mut Vec<T> = unsafe { &mut *self.intermediate.get() };
-        let len_before = intermediate.len();
+        let len_before = {
+            let intermediate = unsafe { &*self.intermediate.get() };
+            intermediate.len()
+        };
 
         // Extending the vector would be incorrect, because the length is updated after the elements
         // are copied into the vector. Instead, push them one-by-one, which makes the operations
         // independent of each other.
-        // Even though we can technically hold multiple mutable references to the vector,
-        // this is safe, because the only case it happens is nested iteration. As long as items are
-        // pushed into the intermediate vector one by one, the nested iteration case only needs to
-        // trim the vector back to it's original length to remain safe.
-        for item in iter.into_iter() {
+        // Make sure we don't hold multiple mutable references to the vector.
+        for item in iter {
+            let intermediate = unsafe { &mut *self.intermediate.get() };
             intermediate.push(item);
         }
 
+        let intermediate = unsafe { &mut *self.intermediate.get() };
         if intermediate.len() == len_before {
             return &mut [];
         }
