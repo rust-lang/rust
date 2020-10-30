@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/meta-expected-error-correct-rev.rs:7:18
+  --> $DIR/expected-error-correct-rev.rs:7:18
    |
 LL |     let x: u32 = 22_usize;
    |            ---   ^^^^^^^^ expected `u32`, found `usize`
