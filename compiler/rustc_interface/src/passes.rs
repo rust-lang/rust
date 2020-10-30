@@ -7,6 +7,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, token, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
@@ -40,7 +41,7 @@ use rustc_typeck as typeck;
 use smallvec::SmallVec;
 use tracing::{info, warn};
 
-use md5::{Digest, Md5};
+//use md5::{Digest, Md5};
 
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
@@ -48,7 +49,7 @@ use tempfile::Builder as TempFileBuilder;
 use std::any::Any;
 use std::cell::RefCell;
 use std::ffi::OsString;
-use std::io::{self, BufWriter, Read, Write};
+use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -606,8 +607,8 @@ fn escape_dep_env(symbol: Symbol) -> String {
 
 enum FileHash {
     SourceFile(Lrc<SourceFile>),
-    BinaryHash(u64, Vec<u8>),
-    HashInFilename(u64),
+    BinaryHash(u64, String),
+    //HashInFilename(u64),
 }
 
 fn write_out_deps(
@@ -646,18 +647,19 @@ fn write_out_deps(
             boxed_resolver.borrow().borrow_mut().access(|resolver| {
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
+                    let svh = resolver.cstore().crate_hash_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
-                        let hash = hash_bin(&path).ok();
+                        let hash = hash_bin(&path, &svh).ok();
                         let file_name = FileName::Real(RealFileName::Named(path));
                         files.push((escape_dep_filename(&file_name), hash));
                     }
                     if let Some((path, _)) = source.rlib {
-                        let hash = hash_bin_with_svh(&path).ok();
+                        let hash = hash_bin(&path, &svh).ok();
                         let file_name = FileName::Real(RealFileName::Named(path));
                         files.push((escape_dep_filename(&file_name), hash));
                     }
                     if let Some((path, _)) = source.rmeta {
-                        let hash = hash_bin_with_svh(&path).ok();
+                        let hash = hash_bin(&path, &svh).ok();
                         let file_name = FileName::Real(RealFileName::Named(path));
                         files.push((escape_dep_filename(&file_name), hash));
                     }
@@ -687,12 +689,12 @@ fn write_out_deps(
                         src_file.src_hash.hash_bytes()
                     )?;
                 }
-                Some(FileHash::BinaryHash(size, md5_hash)) => {
-                    writeln!(file, "# size:{} {}:{:?}", size, "md5", md5_hash)?;
+                Some(FileHash::BinaryHash(size, svh)) => {
+                    writeln!(file, "# size:{} {}:{}", size, "svh", svh)?;
                 }
-                Some(FileHash::HashInFilename(size)) => {
-                    writeln!(file, "# size:{} {}:0", size, "hash_in_filename",)?;
-                }
+                // Some(FileHash::HashInFilename(size)) => {
+                //     writeln!(file, "# size:{} {}:0", size, "hash_in_filename",)?;
+                // }
                 None => {}
             }
         }
@@ -734,36 +736,35 @@ fn write_out_deps(
     }
 }
 
-fn hash_bin(path: &PathBuf) -> io::Result<FileHash> {
-    let hash = md5_hash_file(path)?;
-    let mut fname = path.to_str().unwrap().to_owned();
-    fname.push_str(".md5");
-    let size = fs::metadata(path).unwrap().len(); //FIXME calc while hashing
-    fs::write(fname, &hash)?;
-    Ok(FileHash::BinaryHash(size, hash))
+fn hash_bin(path: &PathBuf, svh: &Svh) -> io::Result<FileHash> {
+    let size = fs::metadata(path)?.len();
+    let svh_str = format!("{}", svh);
+    Ok(FileHash::BinaryHash(size, svh_str))
 }
 
 /// For files with svh in their filename we indicate that we should
 /// trust the contents are correct without further checks.
-fn hash_bin_with_svh(path: &PathBuf) -> io::Result<FileHash> {
-    let size = fs::metadata(path)?.len();
-    Ok(FileHash::HashInFilename(size))
-}
+/// FIXME: is that really an svh in the filename - that's potentially overridden by an arg.
+/// not sure we can trust it.
+// fn hash_bin_with_svh(path: &PathBuf) -> io::Result<FileHash> {
+//     let size = fs::metadata(path)?.len();
+//     Ok(FileHash::HashInFilename(size))
+// }
 
-fn md5_hash_file(path: &PathBuf) -> io::Result<Vec<u8>> {
-    let mut reader = io::BufReader::new(fs::File::open(&path)?);
+// fn md5_hash_file(path: &PathBuf) -> io::Result<Vec<u8>> {
+//     let mut reader = io::BufReader::new(fs::File::open(&path)?);
 
-    let mut hasher = Md5::new();
-    let mut buffer = [0; 1024];
-    loop {
-        let count = reader.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        hasher.input(&buffer[..count]);
-    }
-    Ok(hasher.result().as_slice().to_vec())
-}
+//     let mut hasher = Md5::new();
+//     let mut buffer = [0; 1024];
+//     loop {
+//         let count = reader.read(&mut buffer)?;
+//         if count == 0 {
+//             break;
+//         }
+//         hasher.input(&buffer[..count]);
+//     }
+//     Ok(hasher.result().as_slice().to_vec())
+// }
 
 pub fn prepare_outputs(
     sess: &Session,
