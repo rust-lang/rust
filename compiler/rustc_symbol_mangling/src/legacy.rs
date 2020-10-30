@@ -326,10 +326,8 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
-        let args = args.iter().cloned().filter(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(_) => false,
-            _ => true,
-        });
+        let args =
+            args.iter().cloned().filter(|arg| !matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
 
         if args.clone().next().is_some() {
             self.generic_delimiters(|cx| cx.comma_sep(args))

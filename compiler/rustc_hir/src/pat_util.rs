@@ -92,10 +92,7 @@ impl hir::Pat<'_> {
     /// Checks if the pattern contains any patterns that bind something to
     /// an ident, e.g., `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
     pub fn contains_bindings(&self) -> bool {
-        self.satisfies(|p| match p.kind {
-            PatKind::Binding(..) => true,
-            _ => false,
-        })
+        self.satisfies(|p| matches!(p.kind, PatKind::Binding(..)))
     }
 
     /// Checks if the pattern satisfies the given predicate on some sub-pattern.

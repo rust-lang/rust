@@ -302,13 +302,11 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             } else if options.contains(InlineAsmOptions::READONLY) {
                 llvm::Attribute::ReadOnly.apply_callsite(llvm::AttributePlace::Function, result);
             }
+        } else if options.contains(InlineAsmOptions::NOMEM) {
+            llvm::Attribute::InaccessibleMemOnly
+                .apply_callsite(llvm::AttributePlace::Function, result);
         } else {
-            if options.contains(InlineAsmOptions::NOMEM) {
-                llvm::Attribute::InaccessibleMemOnly
-                    .apply_callsite(llvm::AttributePlace::Function, result);
-            } else {
-                // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
-            }
+            // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
         }
 
         // Write results to outputs

@@ -91,10 +91,7 @@ pub enum SuggestionStyle {
 
 impl SuggestionStyle {
     fn hide_inline(&self) -> bool {
-        match *self {
-            SuggestionStyle::ShowCode => false,
-            _ => true,
-        }
+        !matches!(*self, SuggestionStyle::ShowCode)
     }
 }
 
@@ -1038,10 +1035,7 @@ impl Level {
     }
 
     pub fn is_failure_note(&self) -> bool {
-        match *self {
-            FailureNote => true,
-            _ => false,
-        }
+        matches!(*self, FailureNote)
     }
 }
 

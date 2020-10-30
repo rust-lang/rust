@@ -716,7 +716,7 @@ impl RustcDefaultCalls {
                 TargetList => {
                     let mut targets =
                         rustc_target::spec::TARGETS.iter().copied().collect::<Vec<_>>();
-                    targets.sort();
+                    targets.sort_unstable();
                     println!("{}", targets.join("\n"));
                 }
                 Sysroot => println!("{}", sess.sysroot.display()),

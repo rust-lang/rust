@@ -223,10 +223,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     BindingMode::ByValue => mutability == Mutability::Mut,
                     BindingMode::ByRef(bk) => {
                         write!(f, "ref ")?;
-                        match bk {
-                            BorrowKind::Mut { .. } => true,
-                            _ => false,
-                        }
+                        matches!(bk, BorrowKind::Mut { .. })
                     }
                 };
                 if is_mut {

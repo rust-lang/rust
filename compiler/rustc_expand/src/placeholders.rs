@@ -345,10 +345,10 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
 
     fn visit_mod(&mut self, module: &mut ast::Mod) {
         noop_visit_mod(module, self);
-        module.items.retain(|item| match item.kind {
-            ast::ItemKind::MacCall(_) if !self.cx.ecfg.keep_macs => false, // remove macro definitions
-            _ => true,
-        });
+        // remove macro definitions
+        module.items.retain(
+            |item| !matches!(item.kind, ast::ItemKind::MacCall(_) if !self.cx.ecfg.keep_macs),
+        );
     }
 
     fn visit_mac(&mut self, _mac: &mut ast::MacCall) {

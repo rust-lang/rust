@@ -702,10 +702,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 _ => break,
             }
         }
-        let followed_by_brace = match sm.span_to_snippet(sp) {
-            Ok(ref snippet) if snippet == "{" => true,
-            _ => false,
-        };
+        let followed_by_brace = matches!(sm.span_to_snippet(sp), Ok(ref snippet) if snippet == "{");
         // In case this could be a struct literal that needs to be surrounded
         // by parentheses, find the appropriate span.
         let mut i = 0;
@@ -1788,12 +1785,11 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         }
                         msg = "consider introducing a named lifetime parameter".to_string();
                         should_break = true;
-                        if let Some(param) = generics.params.iter().find(|p| match p.kind {
-                            hir::GenericParamKind::Type {
+                        if let Some(param) = generics.params.iter().find(|p| {
+                            !matches!(p.kind, hir::GenericParamKind::Type {
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                 ..
-                            } => false,
-                            _ => true,
+                            })
                         }) {
                             (param.span.shrink_to_lo(), "'a, ".to_string())
                         } else {

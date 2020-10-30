@@ -299,13 +299,11 @@ impl<'a> State<'a> {
     pub fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
         if !self.s.is_beginning_of_line() {
             self.s.break_offset(n, off)
-        } else {
-            if off != 0 && self.s.last_token().is_hardbreak_tok() {
-                // We do something pretty sketchy here: tuck the nonzero
-                // offset-adjustment we were going to deposit along with the
-                // break into the previous hardbreak.
-                self.s.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
-            }
+        } else if off != 0 && self.s.last_token().is_hardbreak_tok() {
+            // We do something pretty sketchy here: tuck the nonzero
+            // offset-adjustment we were going to deposit along with the
+            // break into the previous hardbreak.
+            self.s.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
         }
     }
 
@@ -1921,10 +1919,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::Box(ref inner) => {
-                let is_range_inner = match inner.kind {
-                    PatKind::Range(..) => true,
-                    _ => false,
-                };
+                let is_range_inner = matches!(inner.kind, PatKind::Range(..));
                 self.s.word("box ");
                 if is_range_inner {
                     self.popen();
@@ -1935,10 +1930,7 @@ impl<'a> State<'a> {
                 }
             }
             PatKind::Ref(ref inner, mutbl) => {
-                let is_range_inner = match inner.kind {
-                    PatKind::Range(..) => true,
-                    _ => false,
-                };
+                let is_range_inner = matches!(inner.kind, PatKind::Range(..));
                 self.s.word("&");
                 self.s.word(mutbl.prefix_str());
                 if is_range_inner {
@@ -2435,10 +2427,7 @@ impl<'a> State<'a> {
 //
 // Duplicated from `parse::classify`, but adapted for the HIR.
 fn expr_requires_semi_to_be_stmt(e: &hir::Expr<'_>) -> bool {
-    match e.kind {
-        hir::ExprKind::Match(..) | hir::ExprKind::Block(..) | hir::ExprKind::Loop(..) => false,
-        _ => true,
-    }
+    !matches!(e.kind, hir::ExprKind::Match(..) | hir::ExprKind::Block(..) | hir::ExprKind::Loop(..))
 }
 
 /// This statement requires a semicolon after it.

@@ -557,17 +557,11 @@ impl Primitive {
     }
 
     pub fn is_float(self) -> bool {
-        match self {
-            F32 | F64 => true,
-            _ => false,
-        }
+        matches!(self, F32 | F64)
     }
 
     pub fn is_int(self) -> bool {
-        match self {
-            Int(..) => true,
-            _ => false,
-        }
+        matches!(self, Int(..))
     }
 }
 
@@ -794,18 +788,12 @@ impl Abi {
 
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
-        match *self {
-            Abi::Uninhabited => true,
-            _ => false,
-        }
+        matches!(*self, Abi::Uninhabited)
     }
 
     /// Returns `true` is this is a scalar type
     pub fn is_scalar(&self) -> bool {
-        match *self {
-            Abi::Scalar(_) => true,
-            _ => false,
-        }
+        matches!(*self, Abi::Scalar(_))
     }
 }
 

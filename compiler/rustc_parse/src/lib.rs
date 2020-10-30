@@ -606,7 +606,7 @@ fn prepend_attrs(
 ) -> Option<tokenstream::TokenStream> {
     let tokens = tokens?.clone().into_token_stream();
     if attrs.is_empty() {
-        return Some(tokens.clone());
+        return Some(tokens);
     }
     let mut builder = tokenstream::TokenStreamBuilder::new();
     for attr in attrs {
@@ -622,6 +622,6 @@ fn prepend_attrs(
                 .into_token_stream(),
         );
     }
-    builder.push(tokens.clone());
+    builder.push(tokens);
     Some(builder.build())
 }

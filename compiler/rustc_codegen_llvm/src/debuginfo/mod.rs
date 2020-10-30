@@ -435,7 +435,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             name_to_append_suffix_to.push('<');
             for (i, actual_type) in substs.types().enumerate() {
                 if i != 0 {
-                    name_to_append_suffix_to.push_str(",");
+                    name_to_append_suffix_to.push(',');
                 }
 
                 let actual_type =

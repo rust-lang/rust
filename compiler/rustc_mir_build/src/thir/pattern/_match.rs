@@ -337,10 +337,7 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
 
 impl<'tcx> Pat<'tcx> {
     pub(super) fn is_wildcard(&self) -> bool {
-        match *self.kind {
-            PatKind::Binding { subpattern: None, .. } | PatKind::Wild => true,
-            _ => false,
-        }
+        matches!(*self.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
     }
 }
 
@@ -1358,10 +1355,7 @@ impl<'tcx> Usefulness<'tcx> {
     }
 
     fn is_useful(&self) -> bool {
-        match *self {
-            NotUseful => false,
-            _ => true,
-        }
+        !matches!(*self, NotUseful)
     }
 
     fn apply_constructor<'p>(
@@ -1623,10 +1617,7 @@ struct IntRange<'tcx> {
 impl<'tcx> IntRange<'tcx> {
     #[inline]
     fn is_integral(ty: Ty<'_>) -> bool {
-        match ty.kind() {
-            ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool => true,
-            _ => false,
-        }
+        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
     }
 
     fn is_singleton(&self) -> bool {

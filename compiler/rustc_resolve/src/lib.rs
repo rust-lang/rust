@@ -313,17 +313,17 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => {
-                    if self.span.map_or(true, |span| item.span < span) {
-                        if !item.span.from_expansion() {
-                            // don't insert between attributes and an item
-                            if item.attrs.is_empty() {
-                                self.span = Some(item.span.shrink_to_lo());
-                            } else {
-                                // find the first attribute on the item
-                                for attr in &item.attrs {
-                                    if self.span.map_or(true, |span| attr.span < span) {
-                                        self.span = Some(attr.span.shrink_to_lo());
-                                    }
+                    if self.span.map_or(true, |span| item.span < span)
+                        && !item.span.from_expansion()
+                    {
+                        // don't insert between attributes and an item
+                        if item.attrs.is_empty() {
+                            self.span = Some(item.span.shrink_to_lo());
+                        } else {
+                            // find the first attribute on the item
+                            for attr in &item.attrs {
+                                if self.span.map_or(true, |span| attr.span < span) {
+                                    self.span = Some(attr.span.shrink_to_lo());
                                 }
                             }
                         }
@@ -558,17 +558,11 @@ impl<'a> ModuleData<'a> {
 
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(&self) -> bool {
-        match self.kind {
-            ModuleKind::Def(DefKind::Mod, _, _) => true,
-            _ => false,
-        }
+        matches!(self.kind, ModuleKind::Def(DefKind::Mod, _, _))
     }
 
     fn is_trait(&self) -> bool {
-        match self.kind {
-            ModuleKind::Def(DefKind::Trait, _, _) => true,
-            _ => false,
-        }
+        matches!(self.kind, ModuleKind::Def(DefKind::Trait, _, _))
     }
 
     fn nearest_item_scope(&'a self) -> Module<'a> {
@@ -628,10 +622,7 @@ enum NameBindingKind<'a> {
 impl<'a> NameBindingKind<'a> {
     /// Is this a name binding of a import?
     fn is_import(&self) -> bool {
-        match *self {
-            NameBindingKind::Import { .. } => true,
-            _ => false,
-        }
+        matches!(*self, NameBindingKind::Import { .. })
     }
 }
 
@@ -750,13 +741,10 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_variant(&self) -> bool {
-        match self.kind {
-            NameBindingKind::Res(
+        matches!(self.kind, NameBindingKind::Res(
                 Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _),
                 _,
-            ) => true,
-            _ => false,
-        }
+            ))
     }
 
     fn is_extern_crate(&self) -> bool {
@@ -774,10 +762,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_import(&self) -> bool {
-        match self.kind {
-            NameBindingKind::Import { .. } => true,
-            _ => false,
-        }
+        matches!(self.kind, NameBindingKind::Import { .. })
     }
 
     fn is_glob_import(&self) -> bool {
@@ -788,17 +773,14 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_importable(&self) -> bool {
-        match self.res() {
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => false,
-            _ => true,
-        }
+        !matches!(
+            self.res(),
+            Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _)
+        )
     }
 
     fn is_macro_def(&self) -> bool {
-        match self.kind {
-            NameBindingKind::Res(Res::Def(DefKind::Macro(..), _), _) => true,
-            _ => false,
-        }
+        matches!(self.kind, NameBindingKind::Res(Res::Def(DefKind::Macro(..), _), _))
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
@@ -1380,7 +1362,7 @@ impl<'a> Resolver<'a> {
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
         ResolverOutputs {
-            definitions: definitions,
+            definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
             visibilities,
             extern_crate_map,
@@ -1992,11 +1974,12 @@ impl<'a> Resolver<'a> {
                 // The macro is a proc macro derive
                 if let Some(def_id) = module.expansion.expn_data().macro_def_id {
                     if let Some(ext) = self.get_macro_by_def_id(def_id) {
-                        if !ext.is_builtin && ext.macro_kind() == MacroKind::Derive {
-                            if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
-                                *poisoned = Some(node_id);
-                                return module.parent;
-                            }
+                        if !ext.is_builtin
+                            && ext.macro_kind() == MacroKind::Derive
+                            && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
+                        {
+                            *poisoned = Some(node_id);
+                            return module.parent;
                         }
                     }
                 }
@@ -2390,10 +2373,7 @@ impl<'a> Resolver<'a> {
                         _ => None,
                     };
                     let (label, suggestion) = if module_res == self.graph_root.res() {
-                        let is_mod = |res| match res {
-                            Res::Def(DefKind::Mod, _) => true,
-                            _ => false,
-                        };
+                        let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
                         // Don't look up import candidates if this is a speculative resolve
                         let mut candidates = if record_used {
                             self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod)

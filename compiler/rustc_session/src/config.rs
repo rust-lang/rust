@@ -2057,10 +2057,7 @@ impl PpMode {
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        match *self {
-            PpmMir | PpmMirCFG => true,
-            _ => false,
-        }
+        matches!(*self, PpmMir | PpmMirCFG)
     }
 }
 

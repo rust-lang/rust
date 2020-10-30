@@ -344,10 +344,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
-        block.stmts.iter().any(|statement| match statement.kind {
-            StmtKind::Item(_) | StmtKind::MacCall(_) => true,
-            _ => false,
-        })
+        block
+            .stmts
+            .iter()
+            .any(|statement| matches!(statement.kind, StmtKind::Item(_) | StmtKind::MacCall(_)))
     }
 
     // Add an import to the current module.

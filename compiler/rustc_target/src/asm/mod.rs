@@ -478,10 +478,7 @@ pub enum InlineAsmType {
 
 impl InlineAsmType {
     pub fn is_integer(self) -> bool {
-        match self {
-            Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128 => true,
-            _ => false,
-        }
+        matches!(self, Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128)
     }
 
     pub fn size(self) -> Size {

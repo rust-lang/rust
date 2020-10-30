@@ -257,16 +257,12 @@ impl<'a> PathSource<'a> {
     }
 
     fn is_call(self) -> bool {
-        match self {
-            PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })) => true,
-            _ => false,
-        }
+        matches!(self, PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })))
     }
 
     crate fn is_expected(self, res: Res) -> bool {
         match self {
-            PathSource::Type => match res {
-                Res::Def(
+            PathSource::Type => matches!(res, Res::Def(
                     DefKind::Struct
                     | DefKind::Union
                     | DefKind::Enum
@@ -280,19 +276,12 @@ impl<'a> PathSource<'a> {
                     _,
                 )
                 | Res::PrimTy(..)
-                | Res::SelfTy(..) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::No) => match res {
-                Res::Def(DefKind::Trait, _) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::Maybe) => match res {
-                Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => true,
-                _ => false,
-            },
-            PathSource::Expr(..) => match res {
-                Res::Def(
+                | Res::SelfTy(..)),
+            PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
+            PathSource::Trait(AliasPossibility::Maybe) => {
+                matches!(res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+            }
+            PathSource::Expr(..) => matches!(res, Res::Def(
                     DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
                     | DefKind::Const
                     | DefKind::Static
@@ -303,23 +292,16 @@ impl<'a> PathSource<'a> {
                     _,
                 )
                 | Res::Local(..)
-                | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::Pat => match res {
-                Res::Def(
+                | Res::SelfCtor(..)),
+            PathSource::Pat => matches!(res, Res::Def(
                     DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst,
                     _,
                 )
-                | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::TupleStruct(..) => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::Struct => match res {
-                Res::Def(
+                | Res::SelfCtor(..)),
+            PathSource::TupleStruct(..) => {
+                matches!(res, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
+            }
+            PathSource::Struct => matches!(res, Res::Def(
                     DefKind::Struct
                     | DefKind::Union
                     | DefKind::Variant
@@ -327,9 +309,7 @@ impl<'a> PathSource<'a> {
                     | DefKind::AssocTy,
                     _,
                 )
-                | Res::SelfTy(..) => true,
-                _ => false,
-            },
+                | Res::SelfTy(..)),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
@@ -1450,10 +1430,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn is_base_res_local(&self, nid: NodeId) -> bool {
-        match self.r.partial_res_map.get(&nid).map(|res| res.base_res()) {
-            Some(Res::Local(..)) => true,
-            _ => false,
-        }
+        matches!(self.r.partial_res_map.get(&nid).map(|res| res.base_res()), Some(Res::Local(..)))
     }
 
     /// Checks that all of the arms in an or-pattern have exactly the
