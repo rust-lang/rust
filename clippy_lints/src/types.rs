@@ -553,7 +553,7 @@ impl Types {
                                     hir_ty.span,
                                     "`Vec<T>` is already on the heap, the boxing is unnecessary.",
                                     "try",
-                                    format!("Vec<{}>", ty_ty),
+                                    format!("Vec<{}>", snippet(cx, boxed_ty.span, "..")),
                                     Applicability::MachineApplicable,
                                 );
                                 return; // don't recurse into the type
