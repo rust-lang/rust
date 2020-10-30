@@ -156,24 +156,13 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
-        TokenTree::Token(token) => match token.kind {
-            token::Comma => false,
-            _ => true,
-        },
-        TokenTree::Delimited(_, DelimToken::Paren, _) => match prev {
-            TokenTree::Token(token) => match token.kind {
-                token::Ident(_, _) => false,
-                _ => true,
-            },
-            _ => true,
-        },
-        TokenTree::Delimited(_, DelimToken::Bracket, _) => match prev {
-            TokenTree::Token(token) => match token.kind {
-                token::Pound => false,
-                _ => true,
-            },
-            _ => true,
-        },
+        TokenTree::Token(token) => token.kind != token::Comma,
+        TokenTree::Delimited(_, DelimToken::Paren, _) => {
+            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
+        }
+        TokenTree::Delimited(_, DelimToken::Bracket, _) => {
+            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
+        }
         TokenTree::Delimited(..) => true,
     }
 }

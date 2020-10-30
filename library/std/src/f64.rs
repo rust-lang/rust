@@ -1,7 +1,7 @@
 //! This module provides constants which are specific to the implementation
 //! of the `f64` floating point data type.
 //!
-//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
+//! *[See also the `f64` primitive type](primitive@f64).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
@@ -920,22 +920,20 @@ impl f64 {
     fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
         if !cfg!(any(target_os = "solaris", target_os = "illumos")) {
             log_fn(self)
-        } else {
-            if self.is_finite() {
-                if self > 0.0 {
-                    log_fn(self)
-                } else if self == 0.0 {
-                    Self::NEG_INFINITY // log(0) = -Inf
-                } else {
-                    Self::NAN // log(-n) = NaN
-                }
-            } else if self.is_nan() {
-                self // log(NaN) = NaN
-            } else if self > 0.0 {
-                self // log(Inf) = Inf
+        } else if self.is_finite() {
+            if self > 0.0 {
+                log_fn(self)
+            } else if self == 0.0 {
+                Self::NEG_INFINITY // log(0) = -Inf
             } else {
-                Self::NAN // log(-Inf) = NaN
+                Self::NAN // log(-n) = NaN
             }
+        } else if self.is_nan() {
+            self // log(NaN) = NaN
+        } else if self > 0.0 {
+            self // log(Inf) = Inf
+        } else {
+            Self::NAN // log(-Inf) = NaN
         }
     }
 }
