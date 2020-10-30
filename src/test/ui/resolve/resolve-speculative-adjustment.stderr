@@ -20,7 +20,7 @@ error[E0425]: cannot find function `method` in this scope
   --> $DIR/resolve-speculative-adjustment.rs:25:9
    |
 LL |         method();
-   |         ^^^^^^ help: try: `self.method`
+   |         ^^^^^^ help: you might have meant to call the method: `self.method`
 
 error: aborting due to 4 previous errors
 
