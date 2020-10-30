@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [1.4.22] 2020-10-30
+
+### Changed
+
+- Update `rustc-ap-*` crates to v686.0.0
+
+### Added
+- Initial support for formatting new ConstBlock syntax ([#4478](https://github.com/rust-lang/rustfmt/pull/4478))
+
+### Fixed
+- Handling of unclosed delimiter-only parsing errors in input files ([#4466](https://github.com/rust-lang/rustfmt/issues/4466))
+- Misc. minor parser bugs ([#4418](https://github.com/rust-lang/rustfmt/issues/4418) and [#4431](https://github.com/rust-lang/rustfmt/issues/4431))
+- Panic on nested tuple access ([#4355](https://github.com/rust-lang/rustfmt/issues/4355))
+- Unable to disable license template path via cli override ([#4487](https://github.com/rust-lang/rustfmt/issues/4487))
+- Preserve comments in empty statements [#4018](https://github.com/rust-lang/rustfmt/issues/4018))
+- Indentation on skipped code [#4398](https://github.com/rust-lang/rustfmt/issues/4398))
+
+
 ## [1.4.22] 2020-10-04
 
 ### Changed
@@ -9,7 +27,6 @@
 - Update `rustc-ap-*` crates to v679.0.0
 - Add config option to allow control of leading match arm pipes
 - Support `RUSTFMT` environment variable in `cargo fmt` to run specified `rustfmt` instance
-
 
 ### Fixed
 

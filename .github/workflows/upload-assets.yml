@@ -55,11 +55,11 @@ jobs:
           cp {README.md,Configurations.md,CHANGELOG.md,LICENSE-MIT,LICENSE-APACHE} "$staging/"
 
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp "target/release/{rustfmt.exe,cargo-fmt.exe,rustfmt-format-diff.exe,git-rustfmt.exe}" "$staging/"
+            cp target/release/{rustfmt.exe,cargo-fmt.exe,rustfmt-format-diff.exe,git-rustfmt.exe} "$staging/"
             7z a "$staging.zip" "$staging"
             echo "::set-env name=ASSET::$staging.zip"
           else
-            cp "target/release/{rustfmt,cargo-fmt,rustfmt-format-diff,git-rustfmt} "$staging/"
+            cp target/release/{rustfmt,cargo-fmt,rustfmt-format-diff,git-rustfmt} "$staging/"
             tar czf "$staging.tar.gz" "$staging"
             echo "::set-env name=ASSET::$staging.tar.gz"
           fi
