@@ -1,7 +1,7 @@
 //! This module provides constants which are specific to the implementation
 //! of the `f64` floating point data type.
 //!
-//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
+//! *[See also the `f64` primitive type](primitive@f64).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
