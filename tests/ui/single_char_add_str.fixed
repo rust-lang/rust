@@ -38,6 +38,8 @@ fn main() {
     string.insert(x, 'a');
     const Y: usize = 1;
     string.insert(Y, 'a');
+    string.insert(Y, '"');
+    string.insert(Y, '\'');
 
     get_string!().insert(1, '?');
 }

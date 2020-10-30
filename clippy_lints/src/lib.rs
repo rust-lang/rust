@@ -1958,6 +1958,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles");
     ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
     ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
+    ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
 }
 
 // only exists to let the dogfood integration test works.

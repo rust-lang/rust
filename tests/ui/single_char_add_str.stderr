@@ -73,10 +73,22 @@ LL |     string.insert_str(Y, r##"a"##);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, 'a')`
 
 error: calling `insert_str()` using a single-character string literal
+  --> $DIR/single_char_add_str.rs:41:5
+   |
+LL |     string.insert_str(Y, r##"""##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, '"')`
+
+error: calling `insert_str()` using a single-character string literal
   --> $DIR/single_char_add_str.rs:42:5
+   |
+LL |     string.insert_str(Y, r##"'"##);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `string.insert(Y, '/'')`
+
+error: calling `insert_str()` using a single-character string literal
+  --> $DIR/single_char_add_str.rs:44:5
    |
 LL |     get_string!().insert_str(1, "?");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `insert` with a character literal: `get_string!().insert(1, '?')`
 
-error: aborting due to 13 previous errors
+error: aborting due to 15 previous errors
 

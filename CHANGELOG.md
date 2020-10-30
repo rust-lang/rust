@@ -22,7 +22,7 @@ Current beta, release 2020-11-19
 * [`map_err_ignore`] [#5998](https://github.com/rust-lang/rust-clippy/pull/5998)
 * [`rc_buffer`] [#6044](https://github.com/rust-lang/rust-clippy/pull/6044)
 * [`to_string_in_display`] [#5831](https://github.com/rust-lang/rust-clippy/pull/5831)
-* [`single_char_push_str`] [#5881](https://github.com/rust-lang/rust-clippy/pull/5881)
+* `single_char_push_str` [#5881](https://github.com/rust-lang/rust-clippy/pull/5881)
 
 ### Moves and Deprecations
 
