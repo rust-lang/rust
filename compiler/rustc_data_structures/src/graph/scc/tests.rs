@@ -142,6 +142,32 @@ fn test_find_state_3() {
     assert_eq!(sccs.successors(1), &[0]);
 }
 
+#[test]
+fn test_deep_linear() {
+    /*
+    0
+    |
+    v
+    1
+    |
+    v
+    2
+    |
+    v
+    …
+     */
+    const NR_NODES: usize = 1 << 14;
+    let mut nodes = vec![];
+    for i in 1..NR_NODES {
+        nodes.push((i - 1, i));
+    }
+    let graph = TestGraph::new(0, nodes.as_slice());
+    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    assert_eq!(sccs.num_sccs(), NR_NODES);
+    assert_eq!(sccs.scc(0), NR_NODES - 1);
+    assert_eq!(sccs.scc(NR_NODES - 1), 0);
+}
+
 #[bench]
 fn bench_sccc(b: &mut test::Bencher) {
     // Like `test_three_sccs` but each state is replaced by a group of
