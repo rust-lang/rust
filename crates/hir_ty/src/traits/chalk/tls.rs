@@ -1,12 +1,12 @@
 //! Implementation of Chalk debug helper functions using TLS.
 use std::fmt;
 
-use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication, TypeName};
+use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication};
 use itertools::Itertools;
 
 use super::{from_chalk, Interner, TypeAliasAsAssocType};
-use crate::{db::HirDatabase, CallableDefId, TypeCtor};
-use hir_def::{AdtId, AssocContainerId, DefWithBodyId, Lookup, TypeAliasId};
+use crate::{db::HirDatabase, CallableDefId};
+use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
 
 pub use unsafe_tls::{set_current_program, with_current_program};
 
@@ -18,94 +18,12 @@ impl DebugContext<'_> {
         id: super::AdtId,
         f: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let type_ctor: TypeCtor = from_chalk(self.0, TypeName::Adt(id));
-        match type_ctor {
-            TypeCtor::Bool => write!(f, "bool")?,
-            TypeCtor::Char => write!(f, "char")?,
-            TypeCtor::Int(t) => write!(f, "{}", t)?,
-            TypeCtor::Float(t) => write!(f, "{}", t)?,
-            TypeCtor::Str => write!(f, "str")?,
-            TypeCtor::Slice => write!(f, "slice")?,
-            TypeCtor::Array => write!(f, "array")?,
-            TypeCtor::RawPtr(m) => write!(f, "*{}", m.as_keyword_for_ptr())?,
-            TypeCtor::Ref(m) => write!(f, "&{}", m.as_keyword_for_ref())?,
-            TypeCtor::Never => write!(f, "!")?,
-            TypeCtor::Tuple { .. } => {
-                write!(f, "()")?;
-            }
-            TypeCtor::FnPtr { .. } => {
-                write!(f, "fn")?;
-            }
-            TypeCtor::FnDef(def) => {
-                let name = match def {
-                    CallableDefId::FunctionId(ff) => self.0.function_data(ff).name.clone(),
-                    CallableDefId::StructId(s) => self.0.struct_data(s).name.clone(),
-                    CallableDefId::EnumVariantId(e) => {
-                        let enum_data = self.0.enum_data(e.parent);
-                        enum_data.variants[e.local_id].name.clone()
-                    }
-                };
-                match def {
-                    CallableDefId::FunctionId(_) => write!(f, "{{fn {}}}", name)?,
-                    CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {
-                        write!(f, "{{ctor {}}}", name)?
-                    }
-                }
-            }
-            TypeCtor::Adt(def_id) => {
-                let name = match def_id {
-                    AdtId::StructId(it) => self.0.struct_data(it).name.clone(),
-                    AdtId::UnionId(it) => self.0.union_data(it).name.clone(),
-                    AdtId::EnumId(it) => self.0.enum_data(it).name.clone(),
-                };
-                write!(f, "{}", name)?;
-            }
-            TypeCtor::AssociatedType(type_alias) => {
-                let trait_ = match type_alias.lookup(self.0.upcast()).container {
-                    AssocContainerId::TraitId(it) => it,
-                    _ => panic!("not an associated type"),
-                };
-                let trait_name = self.0.trait_data(trait_).name.clone();
-                let name = self.0.type_alias_data(type_alias).name.clone();
-                write!(f, "{}::{}", trait_name, name)?;
-            }
-            TypeCtor::OpaqueType(opaque_ty_id) => match opaque_ty_id {
-                crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
-                    write!(f, "{{impl trait {} of {:?}}}", idx, func)?;
-                }
-                crate::OpaqueTyId::AsyncBlockTypeImplTrait(def, idx) => {
-                    write!(f, "{{impl trait of async block {} of {:?}}}", idx.into_raw(), def)?;
-                }
-            },
-            TypeCtor::ForeignType(type_alias) => {
-                let name = self.0.type_alias_data(type_alias).name.clone();
-                write!(f, "{}", name)?;
-            }
-            TypeCtor::Closure { def, expr } => {
-                write!(f, "{{closure {:?} in ", expr.into_raw())?;
-                match def {
-                    DefWithBodyId::FunctionId(func) => {
-                        write!(f, "fn {}", self.0.function_data(func).name)?
-                    }
-                    DefWithBodyId::StaticId(s) => {
-                        if let Some(name) = self.0.static_data(s).name.as_ref() {
-                            write!(f, "body of static {}", name)?;
-                        } else {
-                            write!(f, "body of unnamed static {:?}", s)?;
-                        }
-                    }
-                    DefWithBodyId::ConstId(c) => {
-                        if let Some(name) = self.0.const_data(c).name.as_ref() {
-                            write!(f, "body of const {}", name)?;
-                        } else {
-                            write!(f, "body of unnamed const {:?}", c)?;
-                        }
-                    }
-                };
-                write!(f, "}}")?;
-            }
-        }
-        Ok(())
+        let name = match id.0 {
+            AdtId::StructId(it) => self.0.struct_data(it).name.clone(),
+            AdtId::UnionId(it) => self.0.union_data(it).name.clone(),
+            AdtId::EnumId(it) => self.0.enum_data(it).name.clone(),
+        };
+        write!(f, "{}", name)
     }
 
     pub fn debug_trait_id(
@@ -232,14 +150,6 @@ impl DebugContext<'_> {
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         write!(fmt, "{:?}", pci.debug(&Interner))
-    }
-
-    pub fn debug_application_ty(
-        &self,
-        application_ty: &chalk_ir::ApplicationTy<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", application_ty.debug(&Interner))
     }
 
     pub fn debug_substitution(

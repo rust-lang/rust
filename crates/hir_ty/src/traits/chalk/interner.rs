@@ -122,13 +122,6 @@ impl chalk_ir::interner::Interner for Interner {
         tls::with_current_program(|prog| Some(prog?.debug_program_clause_implication(pci, fmt)))
     }
 
-    fn debug_application_ty(
-        application_ty: &chalk_ir::ApplicationTy<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_application_ty(application_ty, fmt)))
-    }
-
     fn debug_substitution(
         substitution: &chalk_ir::Substitution<Interner>,
         fmt: &mut fmt::Formatter<'_>,

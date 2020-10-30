@@ -5,7 +5,7 @@
 
 use chalk_ir::{
     cast::Cast, fold::shift::Shift, interner::HasInterner, LifetimeData, PlaceholderIndex, Scalar,
-    TypeName, UniverseIndex,
+    UniverseIndex,
 };
 use chalk_solve::rust_ir;
 
@@ -32,7 +32,7 @@ impl ToChalk for Ty {
                 TypeCtor::Array => array_to_chalk(db, apply_ty.parameters),
                 TypeCtor::FnPtr { num_args: _, is_varargs } => {
                     let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
-                    chalk_ir::TyData::Function(chalk_ir::FnPointer {
+                    chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                         num_binders: 0,
                         sig: chalk_ir::FnSig {
                             abi: (),
@@ -43,10 +43,68 @@ impl ToChalk for Ty {
                     })
                     .intern(&Interner)
                 }
-                _ => {
-                    let name = apply_ty.ctor.to_chalk(db);
+                TypeCtor::AssociatedType(type_alias) => {
+                    let assoc_type = TypeAliasAsAssocType(type_alias);
+                    let assoc_type_id = assoc_type.to_chalk(db);
                     let substitution = apply_ty.parameters.to_chalk(db);
-                    chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
+                    chalk_ir::TyKind::AssociatedType(assoc_type_id, substitution).intern(&Interner)
+                }
+
+                TypeCtor::OpaqueType(impl_trait_id) => {
+                    let id = impl_trait_id.to_chalk(db);
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::TyKind::OpaqueType(id, substitution).intern(&Interner)
+                }
+
+                TypeCtor::ForeignType(type_alias) => {
+                    let foreign_type = TypeAliasAsForeignType(type_alias);
+                    let foreign_type_id = foreign_type.to_chalk(db);
+                    chalk_ir::TyKind::Foreign(foreign_type_id).intern(&Interner)
+                }
+
+                TypeCtor::Bool => chalk_ir::TyKind::Scalar(Scalar::Bool).intern(&Interner),
+                TypeCtor::Char => chalk_ir::TyKind::Scalar(Scalar::Char).intern(&Interner),
+                TypeCtor::Int(int_ty) => {
+                    chalk_ir::TyKind::Scalar(int_ty_to_chalk(int_ty)).intern(&Interner)
+                }
+                TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 }) => {
+                    chalk_ir::TyKind::Scalar(Scalar::Float(chalk_ir::FloatTy::F32))
+                        .intern(&Interner)
+                }
+                TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 }) => {
+                    chalk_ir::TyKind::Scalar(Scalar::Float(chalk_ir::FloatTy::F64))
+                        .intern(&Interner)
+                }
+
+                TypeCtor::Tuple { cardinality } => {
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::TyKind::Tuple(cardinality.into(), substitution).intern(&Interner)
+                }
+                TypeCtor::RawPtr(mutability) => {
+                    let ty = apply_ty.parameters[0].clone().to_chalk(db);
+                    chalk_ir::TyKind::Raw(mutability.to_chalk(db), ty).intern(&Interner)
+                }
+                TypeCtor::Slice => {
+                    chalk_ir::TyKind::Slice(apply_ty.parameters[0].clone().to_chalk(db))
+                        .intern(&Interner)
+                }
+                TypeCtor::Str => chalk_ir::TyKind::Str.intern(&Interner),
+                TypeCtor::FnDef(callable_def) => {
+                    let id = callable_def.to_chalk(db);
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::TyKind::FnDef(id, substitution).intern(&Interner)
+                }
+                TypeCtor::Never => chalk_ir::TyKind::Never.intern(&Interner),
+
+                TypeCtor::Closure { def, expr } => {
+                    let closure_id = db.intern_closure((def, expr));
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::TyKind::Closure(closure_id.into(), substitution).intern(&Interner)
+                }
+
+                TypeCtor::Adt(adt_id) => {
+                    let substitution = apply_ty.parameters.to_chalk(db);
+                    chalk_ir::TyKind::Adt(chalk_ir::AdtId(adt_id), substitution).intern(&Interner)
                 }
             },
             Ty::Projection(proj_ty) => {
@@ -67,7 +125,7 @@ impl ToChalk for Ty {
                 }
                 .to_ty::<Interner>(&Interner)
             }
-            Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx).intern(&Interner),
+            Ty::Bound(idx) => chalk_ir::TyKind::BoundVar(idx).intern(&Interner),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
                 let where_clauses = chalk_ir::QuantifiedWhereClauses::from_iter(
@@ -78,55 +136,45 @@ impl ToChalk for Ty {
                     bounds: make_binders(where_clauses, 1),
                     lifetime: LifetimeData::Static.intern(&Interner),
                 };
-                chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
+                chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
             }
             Ty::Opaque(opaque_ty) => {
                 let opaque_ty_id = opaque_ty.opaque_ty_id.to_chalk(db);
                 let substitution = opaque_ty.parameters.to_chalk(db);
-                chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
+                chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id,
                     substitution,
                 }))
                 .intern(&Interner)
             }
-            Ty::Unknown => {
-                let substitution = chalk_ir::Substitution::empty(&Interner);
-                let name = TypeName::Error;
-                chalk_ir::ApplicationTy { name, substitution }.cast(&Interner).intern(&Interner)
-            }
+            Ty::Unknown => chalk_ir::TyKind::Error.intern(&Interner),
         }
     }
     fn from_chalk(db: &dyn HirDatabase, chalk: chalk_ir::Ty<Interner>) -> Self {
-        match chalk.data(&Interner).clone() {
-            chalk_ir::TyData::Apply(apply_ty) => match apply_ty.name {
-                TypeName::Error => Ty::Unknown,
-                TypeName::Ref(m) => ref_from_chalk(db, m, apply_ty.substitution),
-                TypeName::Array => array_from_chalk(db, apply_ty.substitution),
-                _ => {
-                    let ctor = from_chalk(db, apply_ty.name);
-                    let parameters = from_chalk(db, apply_ty.substitution);
-                    Ty::Apply(ApplicationTy { ctor, parameters })
-                }
-            },
-            chalk_ir::TyData::Placeholder(idx) => {
+        match chalk.data(&Interner).kind.clone() {
+            chalk_ir::TyKind::Error => Ty::Unknown,
+            chalk_ir::TyKind::Array(ty, _size) => {
+                Ty::apply(TypeCtor::Array, Substs::single(from_chalk(db, ty)))
+            }
+            chalk_ir::TyKind::Placeholder(idx) => {
                 assert_eq!(idx.ui, UniverseIndex::ROOT);
                 let interned_id = crate::db::GlobalTypeParamId::from_intern_id(
                     crate::salsa::InternId::from(idx.idx),
                 );
                 Ty::Placeholder(db.lookup_intern_type_param_id(interned_id))
             }
-            chalk_ir::TyData::Alias(chalk_ir::AliasTy::Projection(proj)) => {
+            chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
                 let associated_ty =
                     from_chalk::<TypeAliasAsAssocType, _>(db, proj.associated_ty_id).0;
                 let parameters = from_chalk(db, proj.substitution);
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
-            chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
+            chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
                 let impl_trait_id = from_chalk(db, opaque_ty.opaque_ty_id);
                 let parameters = from_chalk(db, opaque_ty.substitution);
                 Ty::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters })
             }
-            chalk_ir::TyData::Function(chalk_ir::FnPointer {
+            chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                 num_binders,
                 sig: chalk_ir::FnSig { variadic, .. },
                 substitution,
@@ -145,9 +193,9 @@ impl ToChalk for Ty {
                     parameters,
                 })
             }
-            chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx),
-            chalk_ir::TyData::InferenceVar(_iv, _kind) => Ty::Unknown,
-            chalk_ir::TyData::Dyn(where_clauses) => {
+            chalk_ir::TyKind::BoundVar(idx) => Ty::Bound(idx),
+            chalk_ir::TyKind::InferenceVar(_iv, _kind) => Ty::Unknown,
+            chalk_ir::TyKind::Dyn(where_clauses) => {
                 assert_eq!(where_clauses.bounds.binders.len(&Interner), 1);
                 let predicates = where_clauses
                     .bounds
@@ -157,8 +205,74 @@ impl ToChalk for Ty {
                     .collect();
                 Ty::Dyn(predicates)
             }
+
+            chalk_ir::TyKind::Adt(struct_id, subst) => {
+                apply_ty_from_chalk(db, TypeCtor::Adt(struct_id.0), subst)
+            }
+            chalk_ir::TyKind::AssociatedType(type_id, subst) => apply_ty_from_chalk(
+                db,
+                TypeCtor::AssociatedType(from_chalk::<TypeAliasAsAssocType, _>(db, type_id).0),
+                subst,
+            ),
+            chalk_ir::TyKind::OpaqueType(opaque_type_id, subst) => {
+                apply_ty_from_chalk(db, TypeCtor::OpaqueType(from_chalk(db, opaque_type_id)), subst)
+            }
+
+            chalk_ir::TyKind::Scalar(Scalar::Bool) => Ty::simple(TypeCtor::Bool),
+            chalk_ir::TyKind::Scalar(Scalar::Char) => Ty::simple(TypeCtor::Char),
+            chalk_ir::TyKind::Scalar(Scalar::Int(int_ty)) => Ty::simple(TypeCtor::Int(IntTy {
+                signedness: Signedness::Signed,
+                bitness: bitness_from_chalk_int(int_ty),
+            })),
+            chalk_ir::TyKind::Scalar(Scalar::Uint(uint_ty)) => Ty::simple(TypeCtor::Int(IntTy {
+                signedness: Signedness::Unsigned,
+                bitness: bitness_from_chalk_uint(uint_ty),
+            })),
+            chalk_ir::TyKind::Scalar(Scalar::Float(chalk_ir::FloatTy::F32)) => {
+                Ty::simple(TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 }))
+            }
+            chalk_ir::TyKind::Scalar(Scalar::Float(chalk_ir::FloatTy::F64)) => {
+                Ty::simple(TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 }))
+            }
+            chalk_ir::TyKind::Tuple(cardinality, subst) => {
+                apply_ty_from_chalk(db, TypeCtor::Tuple { cardinality: cardinality as u16 }, subst)
+            }
+            chalk_ir::TyKind::Raw(mutability, ty) => {
+                Ty::apply_one(TypeCtor::RawPtr(from_chalk(db, mutability)), from_chalk(db, ty))
+            }
+            chalk_ir::TyKind::Slice(ty) => Ty::apply_one(TypeCtor::Slice, from_chalk(db, ty)),
+            chalk_ir::TyKind::Ref(mutability, _lifetime, ty) => {
+                Ty::apply_one(TypeCtor::Ref(from_chalk(db, mutability)), from_chalk(db, ty))
+            }
+            chalk_ir::TyKind::Str => Ty::simple(TypeCtor::Str),
+            chalk_ir::TyKind::Never => Ty::simple(TypeCtor::Never),
+
+            chalk_ir::TyKind::FnDef(fn_def_id, subst) => {
+                let callable_def = from_chalk(db, fn_def_id);
+                apply_ty_from_chalk(db, TypeCtor::FnDef(callable_def), subst)
+            }
+
+            chalk_ir::TyKind::Closure(id, subst) => {
+                let id: crate::db::ClosureId = id.into();
+                let (def, expr) = db.lookup_intern_closure(id);
+                apply_ty_from_chalk(db, TypeCtor::Closure { def, expr }, subst)
+            }
+
+            chalk_ir::TyKind::Foreign(foreign_def_id) => Ty::simple(TypeCtor::ForeignType(
+                from_chalk::<TypeAliasAsForeignType, _>(db, foreign_def_id).0,
+            )),
+            chalk_ir::TyKind::Generator(_, _) => unimplemented!(), // FIXME
+            chalk_ir::TyKind::GeneratorWitness(_, _) => unimplemented!(), // FIXME
         }
     }
+}
+
+fn apply_ty_from_chalk(
+    db: &dyn HirDatabase,
+    ctor: TypeCtor,
+    subst: chalk_ir::Substitution<Interner>,
+) -> Ty {
+    Ty::Apply(ApplicationTy { ctor, parameters: from_chalk(db, subst) })
 }
 
 /// We currently don't model lifetimes, but Chalk does. So, we have to insert a
@@ -170,60 +284,21 @@ fn ref_to_chalk(
 ) -> chalk_ir::Ty<Interner> {
     let arg = subst[0].clone().to_chalk(db);
     let lifetime = LifetimeData::Static.intern(&Interner);
-    chalk_ir::ApplicationTy {
-        name: TypeName::Ref(mutability.to_chalk(db)),
-        substitution: chalk_ir::Substitution::from_iter(
-            &Interner,
-            vec![lifetime.cast(&Interner), arg.cast(&Interner)],
-        ),
-    }
-    .intern(&Interner)
-}
-
-/// Here we remove the lifetime from the type we got from Chalk.
-fn ref_from_chalk(
-    db: &dyn HirDatabase,
-    mutability: chalk_ir::Mutability,
-    subst: chalk_ir::Substitution<Interner>,
-) -> Ty {
-    let tys = subst
-        .iter(&Interner)
-        .filter_map(|p| Some(from_chalk(db, p.ty(&Interner)?.clone())))
-        .collect();
-    Ty::apply(TypeCtor::Ref(from_chalk(db, mutability)), Substs(tys))
+    chalk_ir::TyKind::Ref(mutability.to_chalk(db), lifetime, arg).intern(&Interner)
 }
 
 /// We currently don't model constants, but Chalk does. So, we have to insert a
 /// fake constant here, because Chalks built-in logic may expect it to be there.
 fn array_to_chalk(db: &dyn HirDatabase, subst: Substs) -> chalk_ir::Ty<Interner> {
     let arg = subst[0].clone().to_chalk(db);
-    let usize_ty = chalk_ir::ApplicationTy {
-        name: TypeName::Scalar(Scalar::Uint(chalk_ir::UintTy::Usize)),
-        substitution: chalk_ir::Substitution::empty(&Interner),
-    }
-    .intern(&Interner);
+    let usize_ty =
+        chalk_ir::TyKind::Scalar(Scalar::Uint(chalk_ir::UintTy::Usize)).intern(&Interner);
     let const_ = chalk_ir::ConstData {
         ty: usize_ty,
         value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: () }),
     }
     .intern(&Interner);
-    chalk_ir::ApplicationTy {
-        name: TypeName::Array,
-        substitution: chalk_ir::Substitution::from_iter(
-            &Interner,
-            vec![arg.cast(&Interner), const_.cast(&Interner)],
-        ),
-    }
-    .intern(&Interner)
-}
-
-/// Here we remove the const from the type we got from Chalk.
-fn array_from_chalk(db: &dyn HirDatabase, subst: chalk_ir::Substitution<Interner>) -> Ty {
-    let tys = subst
-        .iter(&Interner)
-        .filter_map(|p| Some(from_chalk(db, p.ty(&Interner)?.clone())))
-        .collect();
-    Ty::apply(TypeCtor::Array, Substs(tys))
+    chalk_ir::TyKind::Array(arg, const_).intern(&Interner)
 }
 
 impl ToChalk for Substs {
@@ -285,124 +360,6 @@ impl ToChalk for OpaqueTyId {
         opaque_ty_id: chalk_ir::OpaqueTyId<Interner>,
     ) -> OpaqueTyId {
         db.lookup_intern_impl_trait_id(opaque_ty_id.into())
-    }
-}
-
-impl ToChalk for TypeCtor {
-    type Chalk = TypeName<Interner>;
-
-    fn to_chalk(self, db: &dyn HirDatabase) -> TypeName<Interner> {
-        match self {
-            TypeCtor::AssociatedType(type_alias) => {
-                let assoc_type = TypeAliasAsAssocType(type_alias);
-                let assoc_type_id = assoc_type.to_chalk(db);
-                TypeName::AssociatedType(assoc_type_id)
-            }
-
-            TypeCtor::OpaqueType(impl_trait_id) => {
-                let id = impl_trait_id.to_chalk(db);
-                TypeName::OpaqueType(id)
-            }
-
-            TypeCtor::ForeignType(type_alias) => {
-                let foreign_type = TypeAliasAsForeignType(type_alias);
-                let foreign_type_id = foreign_type.to_chalk(db);
-                TypeName::Foreign(foreign_type_id)
-            }
-
-            TypeCtor::Bool => TypeName::Scalar(Scalar::Bool),
-            TypeCtor::Char => TypeName::Scalar(Scalar::Char),
-            TypeCtor::Int(int_ty) => TypeName::Scalar(int_ty_to_chalk(int_ty)),
-            TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 }) => {
-                TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32))
-            }
-            TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 }) => {
-                TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64))
-            }
-
-            TypeCtor::Tuple { cardinality } => TypeName::Tuple(cardinality.into()),
-            TypeCtor::RawPtr(mutability) => TypeName::Raw(mutability.to_chalk(db)),
-            TypeCtor::Slice => TypeName::Slice,
-            TypeCtor::Array => TypeName::Array,
-            TypeCtor::Ref(mutability) => TypeName::Ref(mutability.to_chalk(db)),
-            TypeCtor::Str => TypeName::Str,
-            TypeCtor::FnDef(callable_def) => {
-                let id = callable_def.to_chalk(db);
-                TypeName::FnDef(id)
-            }
-            TypeCtor::Never => TypeName::Never,
-
-            TypeCtor::Closure { def, expr } => {
-                let closure_id = db.intern_closure((def, expr));
-                TypeName::Closure(closure_id.into())
-            }
-
-            TypeCtor::Adt(adt_id) => TypeName::Adt(chalk_ir::AdtId(adt_id)),
-
-            TypeCtor::FnPtr { .. } => {
-                // This should not be reached, since Chalk doesn't represent
-                // function pointers with TypeName
-                unreachable!()
-            }
-        }
-    }
-
-    fn from_chalk(db: &dyn HirDatabase, type_name: TypeName<Interner>) -> TypeCtor {
-        match type_name {
-            TypeName::Adt(struct_id) => TypeCtor::Adt(struct_id.0),
-            TypeName::AssociatedType(type_id) => {
-                TypeCtor::AssociatedType(from_chalk::<TypeAliasAsAssocType, _>(db, type_id).0)
-            }
-            TypeName::OpaqueType(opaque_type_id) => {
-                TypeCtor::OpaqueType(from_chalk(db, opaque_type_id))
-            }
-
-            TypeName::Scalar(Scalar::Bool) => TypeCtor::Bool,
-            TypeName::Scalar(Scalar::Char) => TypeCtor::Char,
-            TypeName::Scalar(Scalar::Int(int_ty)) => TypeCtor::Int(IntTy {
-                signedness: Signedness::Signed,
-                bitness: bitness_from_chalk_int(int_ty),
-            }),
-            TypeName::Scalar(Scalar::Uint(uint_ty)) => TypeCtor::Int(IntTy {
-                signedness: Signedness::Unsigned,
-                bitness: bitness_from_chalk_uint(uint_ty),
-            }),
-            TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F32)) => {
-                TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 })
-            }
-            TypeName::Scalar(Scalar::Float(chalk_ir::FloatTy::F64)) => {
-                TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 })
-            }
-            TypeName::Tuple(cardinality) => TypeCtor::Tuple { cardinality: cardinality as u16 },
-            TypeName::Raw(mutability) => TypeCtor::RawPtr(from_chalk(db, mutability)),
-            TypeName::Slice => TypeCtor::Slice,
-            TypeName::Ref(mutability) => TypeCtor::Ref(from_chalk(db, mutability)),
-            TypeName::Str => TypeCtor::Str,
-            TypeName::Never => TypeCtor::Never,
-
-            TypeName::FnDef(fn_def_id) => {
-                let callable_def = from_chalk(db, fn_def_id);
-                TypeCtor::FnDef(callable_def)
-            }
-            TypeName::Array => TypeCtor::Array,
-
-            TypeName::Closure(id) => {
-                let id: crate::db::ClosureId = id.into();
-                let (def, expr) = db.lookup_intern_closure(id);
-                TypeCtor::Closure { def, expr }
-            }
-
-            TypeName::Foreign(foreign_def_id) => {
-                TypeCtor::ForeignType(from_chalk::<TypeAliasAsForeignType, _>(db, foreign_def_id).0)
-            }
-
-            TypeName::Error => {
-                // this should not be reached, since we don't represent TypeName::Error with TypeCtor
-                unreachable!()
-            }
-            TypeName::Generator(_) => unimplemented!(), // FIXME
-            TypeName::GeneratorWitness(_) => unimplemented!(), // FIXME
-        }
     }
 }
 
@@ -677,9 +634,9 @@ where
             .kinds
             .iter()
             .map(|k| match k {
-                TyKind::General => chalk_ir::TyKind::General,
-                TyKind::Integer => chalk_ir::TyKind::Integer,
-                TyKind::Float => chalk_ir::TyKind::Float,
+                TyKind::General => chalk_ir::TyVariableKind::General,
+                TyKind::Integer => chalk_ir::TyVariableKind::Integer,
+                TyKind::Float => chalk_ir::TyVariableKind::Float,
             })
             .map(|tk| {
                 chalk_ir::CanonicalVarKind::new(
@@ -700,9 +657,9 @@ where
             .iter(&Interner)
             .map(|k| match k.kind {
                 chalk_ir::VariableKind::Ty(tk) => match tk {
-                    chalk_ir::TyKind::General => TyKind::General,
-                    chalk_ir::TyKind::Integer => TyKind::Integer,
-                    chalk_ir::TyKind::Float => TyKind::Float,
+                    chalk_ir::TyVariableKind::General => TyKind::General,
+                    chalk_ir::TyVariableKind::Integer => TyKind::Integer,
+                    chalk_ir::TyVariableKind::Float => TyKind::Float,
                 },
                 chalk_ir::VariableKind::Lifetime => panic!("unexpected lifetime from Chalk"),
                 chalk_ir::VariableKind::Const(_) => panic!("unexpected const from Chalk"),
@@ -768,7 +725,8 @@ where
     chalk_ir::Binders::new(
         chalk_ir::VariableKinds::from_iter(
             &Interner,
-            std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General)).take(num_vars),
+            std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General))
+                .take(num_vars),
         ),
         value,
     )
