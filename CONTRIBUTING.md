@@ -141,19 +141,22 @@ tracing) enabled.
 
 The setup for a local rustc works as follows:
 ```sh
+# Clone the rust-lang/rust repo.
 git clone https://github.com/rust-lang/rust/ rustc
 cd rustc
 cp config.toml.example config.toml
 # Now edit `config.toml` and set `debug-assertions = true`.
-# This step can take 30 minutes and more.
-./x.py build src/rustc
+
+# Build a stage 2 rustc.
+# This step can take 30 minutes or more.
+./x.py build --stage 2 compiler/rustc
 # If you change something, you can get a faster rebuild by doing
-./x.py --keep-stage 0 build src/rustc
+./x.py build --keep-stage 0 --stage 2 compiler/rustc
 # You may have to change the architecture in the next command
 rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
 # Now cd to your Miri directory, then configure rustup
 rustup override set custom
 ```
 
-With this, you should now have a working development setup!  See
+With this, you should now have a working development setup! See
 [above](#building-and-testing-miri) for how to proceed working on Miri.
