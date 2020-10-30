@@ -19,7 +19,7 @@
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::cmp;
 use std::marker::{PhantomData, Send};
 use std::mem::{self, MaybeUninit};
@@ -42,7 +42,7 @@ pub struct TypedArena<T> {
     end: Cell<*mut T>,
 
     /// A vector of arena chunks.
-    chunks: RefCell<Vec<TypedArenaChunk<T>>>,
+    chunks: Cell<Vec<TypedArenaChunk<T>>>,
 
     /// Marker indicating that dropping the arena causes its owned
     /// instances of `T` to be dropped.
@@ -108,7 +108,7 @@ impl<T> Default for TypedArena<T> {
             // alloc() will trigger a grow().
             ptr: Cell::new(ptr::null_mut()),
             end: Cell::new(ptr::null_mut()),
-            chunks: RefCell::new(vec![]),
+            chunks: Default::default(),
             _own: PhantomData,
         }
     }
@@ -214,7 +214,9 @@ impl<T> TypedArena<T> {
             // We need the element size to convert chunk sizes (ranging from
             // PAGE to HUGE_PAGE bytes) to element counts.
             let elem_size = cmp::max(1, mem::size_of::<T>());
-            let mut chunks = self.chunks.borrow_mut();
+
+            let chunks = &mut *self.chunks.as_ptr();
+
             let mut new_cap;
             if let Some(last_chunk) = chunks.last_mut() {
                 // If a type is `!needs_drop`, we don't need to keep track of how many elements
@@ -239,22 +241,6 @@ impl<T> TypedArena<T> {
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
-        }
-    }
-
-    /// Clears the arena. Deallocates all but the longest chunk which may be reused.
-    pub fn clear(&mut self) {
-        unsafe {
-            // Clear the last chunk, which is partially filled.
-            let mut chunks_borrow = self.chunks.borrow_mut();
-            if let Some(mut last_chunk) = chunks_borrow.last_mut() {
-                self.clear_last_chunk(&mut last_chunk);
-                let len = chunks_borrow.len();
-                // If `T` is ZST, code below has no effect.
-                for mut chunk in chunks_borrow.drain(..len - 1) {
-                    chunk.destroy(chunk.entries);
-                }
-            }
         }
     }
 
@@ -288,12 +274,13 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         unsafe {
             // Determine how much was filled.
-            let mut chunks_borrow = self.chunks.borrow_mut();
-            if let Some(mut last_chunk) = chunks_borrow.pop() {
+            let chunks = &mut *self.chunks.as_ptr();
+
+            if let Some(mut last_chunk) = chunks.pop() {
                 // Drop the contents of the last chunk.
                 self.clear_last_chunk(&mut last_chunk);
                 // The last chunk will be dropped. Destroy all other chunks.
-                for chunk in chunks_borrow.iter_mut() {
+                for chunk in chunks.iter_mut() {
                     chunk.destroy(chunk.entries);
                 }
             }
@@ -315,7 +302,7 @@ pub struct DroplessArena {
     end: Cell<*mut u8>,
 
     /// A vector of arena chunks.
-    chunks: RefCell<Vec<TypedArenaChunk<u8>>>,
+    chunks: Cell<Vec<TypedArenaChunk<u8>>>,
 }
 
 unsafe impl Send for DroplessArena {}
@@ -336,7 +323,7 @@ impl DroplessArena {
     #[cold]
     fn grow(&self, additional: usize) {
         unsafe {
-            let mut chunks = self.chunks.borrow_mut();
+            let chunks = &mut *self.chunks.as_ptr();
             let mut new_cap;
             if let Some(last_chunk) = chunks.last_mut() {
                 // There is no need to update `last_chunk.entries` because that
@@ -521,7 +508,7 @@ pub struct DropArena {
     /// A list of destructors to run when the arena drops.
     /// Ordered so `destructors` gets dropped before the arena
     /// since its destructor can reference memory in the arena.
-    destructors: RefCell<Vec<DropType>>,
+    destructors: Cell<Vec<DropType>>,
     arena: DroplessArena,
 }
 
@@ -534,9 +521,10 @@ impl DropArena {
         let result = &mut *mem;
         // Record the destructor after doing the allocation as that may panic
         // and would cause `object`'s destructor to run twice if it was recorded before
-        self.destructors
-            .borrow_mut()
+        let destructors = &mut *self.destructors.as_ptr();
+        destructors
             .push(DropType { drop_fn: drop_for_type::<T>, obj: result as *mut T as *mut u8 });
+
         result
     }
 
@@ -550,7 +538,7 @@ impl DropArena {
 
         let start_ptr = self.arena.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
 
-        let mut destructors = self.destructors.borrow_mut();
+        let destructors = &mut *self.destructors.as_ptr();
         // Reserve space for the destructors so we can't panic while adding them
         destructors.reserve(len);
 
