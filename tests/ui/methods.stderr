@@ -8,17 +8,8 @@ LL | |     }
    |
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
-error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead.
   --> $DIR/methods.rs:126:13
-   |
-LL |     let _ = v.iter().filter(|&x| *x < 0).next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::filter-next` implied by `-D warnings`
-   = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
-
-error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:129:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^
@@ -26,9 +17,11 @@ LL | |                                 *x < 0
 LL | |                             }
 LL | |                    ).next();
    | |___________________________^
+   |
+   = note: `-D clippy::filter-next` implied by `-D warnings`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:146:22
+  --> $DIR/methods.rs:143:22
    |
 LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x < 0)`
@@ -36,25 +29,25 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    = note: `-D clippy::search-is-some` implied by `-D warnings`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:147:20
+  --> $DIR/methods.rs:144:20
    |
 LL |     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| **y == x)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:148:20
+  --> $DIR/methods.rs:145:20
    |
 LL |     let _ = (0..1).find(|x| *x == 0).is_some();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| x == 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:149:22
+  --> $DIR/methods.rs:146:22
    |
 LL |     let _ = v.iter().find(|x| **x == 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x == 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:152:13
+  --> $DIR/methods.rs:149:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -64,13 +57,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:158:22
+  --> $DIR/methods.rs:155:22
    |
 LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:161:13
+  --> $DIR/methods.rs:158:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -80,13 +73,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:167:22
+  --> $DIR/methods.rs:164:22
    |
 LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:170:13
+  --> $DIR/methods.rs:167:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -95,5 +88,5 @@ LL | |                                }
 LL | |                    ).is_some();
    | |______________________________^
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 
