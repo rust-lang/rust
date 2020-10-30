@@ -99,9 +99,9 @@ mod mut_ptr;
 ///   dropped normally.
 ///
 /// * It is friendlier to the optimizer to do this over [`ptr::read`] when
-///   dropping manually allocated memory (e.g., when writing Box/Rc/Vec),
-///   as the compiler doesn't need to prove that it's sound to elide the
-///   copy.
+///   dropping manually allocated memory (e.g., in the implementations of
+///   `Box`/`Rc`/`Vec`), as the compiler doesn't need to prove that it's
+///   sound to elide the copy.
 ///
 /// * It can be used to drop [pinned] data when `T` is not `repr(packed)`
 ///   (pinned data must not be moved before it is dropped).
