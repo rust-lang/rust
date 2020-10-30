@@ -446,7 +446,7 @@ impl<W: Write> Write for BufWriter<W> {
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        if let [buf] = bufs {
+        if let Some(buf) = only_one(bufs, |b| !b.is_empty()) {
             // If there's exactly 1 incoming buffer, `Self::write` can make
             // use of self.inner.write_vectored to attempt to combine flushing
             // the existing buffer with writing the new one.
@@ -542,5 +542,24 @@ impl<W: Write> Drop for BufWriter<W> {
         if !self.panicked {
             let _ = self.flush_buf();
         }
+    }
+}
+
+/// Similar to iter.find, this method searches an iterator for an item
+/// matching a predicate, but returns it only if it is the *only* item
+/// matching that predicate. Used to check if there is exactly one non-empty
+/// buffer in a list input to write_vectored.
+///
+/// TODO: delete this function and replace it with slice::trim if that becomes
+/// a things (https://github.com/rust-lang/rfcs/issues/2547)
+fn only_one<I, T>(iter: I, filter: impl FnMut(&T) -> bool) -> Option<T>
+where
+    I: IntoIterator<Item = T>,
+    I::IntoIter: FusedIterator,
+{
+    let mut iter = iter.into_iter().filter(filter);
+    match (iter.next(), iter.count()) {
+        (Some(item), 0) => Some(item),
+        _ => None,
     }
 }
