@@ -79,12 +79,12 @@ pub fn render<T: Print, S: Print>(
         {sidebar}\
     </nav>\
     <div class=\"theme-picker\">\
-        <button id=\"theme-picker\" aria-label=\"Pick another theme!\">\
+        <button id=\"theme-picker\" aria-label=\"Pick another theme!\" aria-haspopup=\"menu\">\
             <img src=\"{static_root_path}brush{suffix}.svg\" \
                  width=\"18\" \
                  alt=\"Pick another theme!\">\
         </button>\
-        <div id=\"theme-choices\"></div>\
+        <div id=\"theme-choices\" role=\"menu\"></div>\
     </div>\
     <script src=\"{static_root_path}theme{suffix}.js\"></script>\
     <nav class=\"sub\">\
