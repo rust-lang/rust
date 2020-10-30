@@ -50,3 +50,14 @@ fn issue1725() {
     bench_antialiased_lines!(bench_draw_antialiased_line_segment_diagonal, (10, 10), (450, 450));
     bench_antialiased_lines!(bench_draw_antialiased_line_segment_shallow, (10, 10), (450, 80));
 }
+
+fn issue_4355() {
+    let _ = ((1,),).0.0;
+}
+
+// https://github.com/rust-lang/rustfmt/issues/4410
+impl Drop for LockGuard {
+    fn drop(&mut self) {
+        LockMap::unlock(&self.0.0, &self.0.1);
+    }
+}

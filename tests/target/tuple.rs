@@ -87,3 +87,14 @@ fn issue1725() {
         (450, 80)
     );
 }
+
+fn issue_4355() {
+    let _ = ((1,),).0 .0;
+}
+
+// https://github.com/rust-lang/rustfmt/issues/4410
+impl Drop for LockGuard {
+    fn drop(&mut self) {
+        LockMap::unlock(&self.0 .0, &self.0 .1);
+    }
+}
