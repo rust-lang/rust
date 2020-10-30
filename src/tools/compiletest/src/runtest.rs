@@ -1775,6 +1775,11 @@ impl<'test> TestCx<'test> {
         let mut aux_rustc =
             aux_cx.make_compile_args(input_file, aux_output, EmitMetadata::No, AllowUnused::No);
 
+        for key in &aux_props.unset_rustc_env {
+            aux_rustc.env_remove(key);
+        }
+        aux_rustc.envs(aux_props.rustc_env.clone());
+
         let (dylib, crate_type) = if aux_props.no_prefer_dynamic {
             (true, None)
         } else if self.config.target.contains("cloudabi")
