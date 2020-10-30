@@ -798,17 +798,61 @@ function handleThemeButtonsBlur(e) {{
     var active = document.activeElement;
     var related = e.relatedTarget;
 
-    if (active.id !== "themePicker" &&
+    if (active.id !== "theme-picker" &&
         (!active.parentNode || active.parentNode.id !== "theme-choices") &&
         (!related ||
-         (related.id !== "themePicker" &&
+         (related.id !== "theme-picker" &&
           (!related.parentNode || related.parentNode.id !== "theme-choices")))) {{
         hideThemeButtonState();
     }}
 }}
 
+function handleThemeKeyPress(e) {{
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {{ return; }}
+    if (!themePicker.parentNode.contains(e.target)) {{ return; }}
+    var active = document.activeElement;
+    switch (e.key) {{
+        case "ArrowUp":
+            e.preventDefault();
+            if (active.previousElementSibling && e.target.id !== "theme-picker") {{
+                active.previousElementSibling.focus();
+            }} else {{
+                showThemeButtonState();
+                themes.lastElementChild.focus();
+            }}
+            break;
+        case "ArrowDown":
+            e.preventDefault();
+            if (active.nextElementSibling && e.target.id !== "theme-picker") {{
+                active.nextElementSibling.focus();
+            }} else {{
+                showThemeButtonState();
+                themes.firstElementChild.focus();
+            }}
+            break;
+        case "Enter":
+        case "Return":
+        case "Space":
+            if (e.target.id === "theme-picker" && themes.style.display === "none") {{
+                e.preventDefault();
+                showThemeButtonState();
+                themes.firstElementChild.focus();
+            }}
+            break;
+        case "Home":
+            e.preventDefault();
+            themes.firstElementChild.focus();
+            break;
+        case "End":
+            e.preventDefault();
+            themes.lastElementChild.focus();
+            break;
+    }}
+}};
+
 themePicker.onclick = switchThemeButtonState;
 themePicker.onblur = handleThemeButtonsBlur;
+document.addEventListener("keydown", handleThemeKeyPress);
 {}.forEach(function(item) {{
     var but = document.createElement("button");
     but.textContent = item;
