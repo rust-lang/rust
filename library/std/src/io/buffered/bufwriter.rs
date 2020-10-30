@@ -383,24 +383,27 @@ impl<W: Write> Write for BufWriter<W> {
         // be the same as a typical pre-flush, since by default vectored
         // writes just do a normal write of the first buffer. In the best case,
         // we were able to do some additional writing during a single syscall.
-        let tail = match buf.len() > self.available() {
-            true => tail!(self.flush_buf_vectored(buf)?),
-            false => buf,
+        let written = match buf.len() > self.available() {
+            true => self.flush_buf_vectored(buf)?,
+            false => 0,
         };
+        let tail = &buf[written..];
 
         // If the incoming buf doesn't fit in our buffer, even after we flushed
         // it to make room, we should forward it directly (via inner.write).
         // However, if the vectored flush successfully wrote some of `buf`,
         // we're now obligated to return Ok(..) before trying any more
         // fallible i/o operations.
-        if tail.len() < self.buf.capacity() {
+        let tail_written = if tail.len() < self.available() {
             self.buf.extend_from_slice(tail);
-            Ok(buf.len())
-        } else if tail.len() < buf.len() {
-            Ok(buf.len() - tail.len())
+            tail.len()
+        } else if written > 0 {
+            0
         } else {
-            self.get_mut().write(buf)
-        }
+            self.get_mut().write(tail)?
+        };
+
+        Ok(written + tail_written)
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
@@ -454,7 +457,8 @@ impl<W: Write> Write for BufWriter<W> {
             if total_len > self.available() {
                 self.flush_buf()?;
             }
-            if total_len >= self.capacity() {
+
+            if total_len >= self.available() {
                 self.get_mut().write_vectored(bufs)
             } else {
                 // Correctness note: we've already verified that none of these
@@ -480,7 +484,7 @@ impl<W: Write> Write for BufWriter<W> {
                         self.flush_buf()?;
                     }
 
-                    if buf.len() >= self.capacity() {
+                    if buf.len() >= self.available() {
                         // If an individual buffer exceeds our *total* capacity
                         // and we haven't buffered anything yet, just forward
                         // it to the underlying device
@@ -493,7 +497,7 @@ impl<W: Write> Write for BufWriter<W> {
                 // return Ok(..) before attempting any fallible i/o operations,
                 // so once the buffer is full we immediately return.
                 total_buffered += self.write_to_buf(buf);
-                if self.buffer().len() == self.capacity() {
+                if self.available() == 0 {
                     break;
                 }
             }
