@@ -1666,19 +1666,10 @@ impl<'a> Parser<'a> {
         req_name: ReqName,
         ret_allow_plus: AllowPlus,
     ) -> PResult<'a, P<FnDecl>> {
-        let inputs = self.parse_fn_params(req_name)?;
-        let output = self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?;
-
-        if let ast::FnRetTy::Ty(ty) = &output {
-            if let TyKind::Path(_, Path { segments, .. }) = &ty.kind {
-                if let [.., last] = &segments[..] {
-                    // Detect and recover `fn foo() -> Vec<i32>> {}`
-                    self.check_trailing_angle_brackets(last, &[&token::OpenDelim(token::Brace)]);
-                }
-            }
-        }
-
-        Ok(P(FnDecl { inputs, output }))
+        Ok(P(FnDecl {
+            inputs: self.parse_fn_params(req_name)?,
+            output: self.parse_ret_ty(ret_allow_plus, RecoverQPath::Yes)?,
+        }))
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
