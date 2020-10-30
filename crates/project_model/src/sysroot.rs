@@ -60,9 +60,7 @@ impl Sysroot {
         let mut sysroot = Sysroot { crates: Arena::default() };
 
         for name in SYSROOT_CRATES.trim().lines() {
-            // FIXME: first path when 1.47 comes out
-            // https://github.com/rust-lang/rust/pull/73265
-            let root = [format!("lib{}/lib.rs", name), format!("{}/src/lib.rs", name)]
+            let root = [format!("{}/src/lib.rs", name), format!("lib{}/lib.rs", name)]
                 .iter()
                 .map(|it| sysroot_src_dir.join(it))
                 .find(|it| it.exists());
@@ -149,9 +147,6 @@ try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
 
 fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
     // Try the new path first since the old one still exists.
-    //
-    // FIXME: remove `src` when 1.47 comes out
-    // https://github.com/rust-lang/rust/pull/73265
     let rust_src = sysroot_path.join("lib/rustlib/src/rust");
     log::debug!("Checking sysroot (looking for `library` and `src` dirs): {}", rust_src.display());
     ["library", "src"].iter().map(|it| rust_src.join(it)).find(|it| it.exists())
