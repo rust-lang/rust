@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{fold::shift::Shift, CanonicalVarKinds, GenericArg, TypeName};
+use chalk_ir::{fold::shift::Shift, CanonicalVarKinds, GenericArg};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::{salsa::InternKey, CrateId};
@@ -81,7 +81,10 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
 
         let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref(&Interner).clone());
 
-        fn binder_kind(ty: &Ty, binders: &CanonicalVarKinds<Interner>) -> Option<chalk_ir::TyKind> {
+        fn binder_kind(
+            ty: &Ty,
+            binders: &CanonicalVarKinds<Interner>,
+        ) -> Option<chalk_ir::TyVariableKind> {
             if let Ty::Bound(bv) = ty {
                 let binders = binders.as_slice(&Interner);
                 if bv.debruijn == DebruijnIndex::INNERMOST {
@@ -95,8 +98,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
 
         let self_ty_fp = TyFingerprint::for_impl(&ty);
         let fps: &[TyFingerprint] = match binder_kind(&ty, binders) {
-            Some(chalk_ir::TyKind::Integer) => &ALL_INT_FPS,
-            Some(chalk_ir::TyKind::Float) => &ALL_FLOAT_FPS,
+            Some(chalk_ir::TyVariableKind::Integer) => &ALL_INT_FPS,
+            Some(chalk_ir::TyVariableKind::Float) => &ALL_FLOAT_FPS,
             _ => self_ty_fp.as_ref().map(std::slice::from_ref).unwrap_or(&[]),
         };
 
@@ -129,12 +132,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         debug!("impls_for_trait returned {} impls", result.len());
         result
     }
-    fn impl_provided_for(
-        &self,
-        auto_trait_id: TraitId,
-        application_ty: &chalk_ir::ApplicationTy<Interner>,
-    ) -> bool {
-        debug!("impl_provided_for {:?}, {:?}", auto_trait_id, application_ty);
+    fn impl_provided_for(&self, auto_trait_id: TraitId, kind: &chalk_ir::TyKind<Interner>) -> bool {
+        debug!("impl_provided_for {:?}, {:?}", auto_trait_id, kind);
         false // FIXME
     }
     fn associated_ty_value(&self, id: AssociatedTyValueId) -> Arc<AssociatedTyValue> {
@@ -466,7 +465,7 @@ pub(crate) fn struct_datum_query(
     struct_id: AdtId,
 ) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
-    let type_ctor: TypeCtor = from_chalk(db, TypeName::Adt(struct_id));
+    let type_ctor = TypeCtor::Adt(from_chalk(db, struct_id));
     debug!("struct {:?} = {:?}", struct_id, type_ctor);
     let num_params = type_ctor.num_ty_params(db);
     let upstream = type_ctor.krate(db) != Some(krate);
