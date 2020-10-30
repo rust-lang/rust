@@ -23,7 +23,6 @@ pub(crate) struct Directory {
 /// A parser for Rust source code.
 pub(crate) struct Parser<'a> {
     parser: RawParser<'a>,
-    sess: &'a ParseSess,
 }
 
 /// A builder for the `Parser`.
@@ -71,7 +70,7 @@ impl<'a> ParserBuilder<'a> {
             }
         };
 
-        Ok(Parser { parser, sess })
+        Ok(Parser { parser })
     }
 
     fn parser(
@@ -151,32 +150,39 @@ impl<'a> Parser<'a> {
         directory_ownership: Option<DirectoryOwnership>,
         sess: &'a ParseSess,
     ) -> Result<ast::Crate, ParserError> {
+        let krate = Parser::parse_crate_inner(config, input, directory_ownership, sess)?;
+        if !sess.has_errors() {
+            return Ok(krate);
+        }
+
+        if sess.can_reset_errors() {
+            sess.reset_errors();
+            return Ok(krate);
+        }
+
+        Err(ParserError::ParseError)
+    }
+
+    fn parse_crate_inner(
+        config: &'a Config,
+        input: Input,
+        directory_ownership: Option<DirectoryOwnership>,
+        sess: &'a ParseSess,
+    ) -> Result<ast::Crate, ParserError> {
         let mut parser = ParserBuilder::default()
             .config(config)
             .input(input)
             .directory_ownership(directory_ownership)
             .sess(sess)
             .build()?;
-
-        parser.parse_crate_inner()
+        parser.parse_crate_mod()
     }
 
-    fn parse_crate_inner(&mut self) -> Result<ast::Crate, ParserError> {
+    fn parse_crate_mod(&mut self) -> Result<ast::Crate, ParserError> {
         let mut parser = AssertUnwindSafe(&mut self.parser);
 
         match catch_unwind(move || parser.parse_crate_mod()) {
-            Ok(Ok(krate)) => {
-                if !self.sess.has_errors() {
-                    return Ok(krate);
-                }
-
-                if self.sess.can_reset_errors() {
-                    self.sess.reset_errors();
-                    return Ok(krate);
-                }
-
-                Err(ParserError::ParseError)
-            }
+            Ok(Ok(k)) => Ok(k),
             Ok(Err(mut db)) => {
                 db.emit();
                 Err(ParserError::ParseError)
