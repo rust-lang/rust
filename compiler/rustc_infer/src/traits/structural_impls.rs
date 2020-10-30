@@ -4,6 +4,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::fmt;
+use std::ops::ControlFlow;
 
 // Structural impls for the structs in `traits`.
 
@@ -68,7 +69,7 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
         self.predicate.visit_with(visitor)
     }
 }

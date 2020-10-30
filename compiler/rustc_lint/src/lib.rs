@@ -37,6 +37,7 @@
 #![feature(or_patterns)]
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
+#![feature(control_flow_enum)]
 #![recursion_limit = "256"]
 
 #[macro_use]

@@ -87,41 +87,46 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
         Terminator { source_info: self.source_info, kind }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
         use crate::mir::TerminatorKind::*;
 
         match self.kind {
             SwitchInt { ref discr, switch_ty, .. } => {
-                discr.visit_with(visitor) || switch_ty.visit_with(visitor)
+                discr.visit_with(visitor)?;
+                switch_ty.visit_with(visitor)
             }
             Drop { ref place, .. } => place.visit_with(visitor),
             DropAndReplace { ref place, ref value, .. } => {
-                place.visit_with(visitor) || value.visit_with(visitor)
+                place.visit_with(visitor)?;
+                value.visit_with(visitor)
             }
             Yield { ref value, .. } => value.visit_with(visitor),
             Call { ref func, ref args, ref destination, .. } => {
-                let dest = if let Some((ref loc, _)) = *destination {
-                    loc.visit_with(visitor)
-                } else {
-                    false
+                if let Some((ref loc, _)) = *destination {
+                    loc.visit_with(visitor)?;
                 };
-                dest || func.visit_with(visitor) || args.visit_with(visitor)
+                func.visit_with(visitor)?;
+                args.visit_with(visitor)
             }
             Assert { ref cond, ref msg, .. } => {
-                if cond.visit_with(visitor) {
+                if cond.visit_with(visitor).is_break() {
                     use AssertKind::*;
                     match msg {
                         BoundsCheck { ref len, ref index } => {
-                            len.visit_with(visitor) || index.visit_with(visitor)
+                            len.visit_with(visitor)?;
+                            index.visit_with(visitor)
                         }
-                        Overflow(_, l, r) => l.visit_with(visitor) || r.visit_with(visitor),
+                        Overflow(_, l, r) => {
+                            l.visit_with(visitor)?;
+                            r.visit_with(visitor)
+                        }
                         OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                             op.visit_with(visitor)
                         }
-                        ResumedAfterReturn(_) | ResumedAfterPanic(_) => false,
+                        ResumedAfterReturn(_) | ResumedAfterPanic(_) => ControlFlow::CONTINUE,
                     }
                 } else {
-                    false
+                    ControlFlow::CONTINUE
                 }
             }
             InlineAsm { ref operands, .. } => operands.visit_with(visitor),
@@ -132,7 +137,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             | GeneratorDrop
             | Unreachable
             | FalseEdge { .. }
-            | FalseUnwind { .. } => false,
+            | FalseUnwind { .. } => ControlFlow::CONTINUE,
         }
     }
 }
@@ -142,8 +147,8 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
         *self
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
-        false
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+        ControlFlow::CONTINUE
     }
 }
 
@@ -152,8 +157,9 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
         Place { local: self.local.fold_with(folder), projection: self.projection.fold_with(folder) }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.local.visit_with(visitor) || self.projection.visit_with(visitor)
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+        self.local.visit_with(visitor)?;
+        self.projection.visit_with(visitor)
     }
 }
 
@@ -163,8 +169,8 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
         folder.tcx().intern_place_elems(&v)
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|t| t.visit_with(visitor))
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
 
@@ -213,32 +219,47 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
         use crate::mir::Rvalue::*;
         match *self {
             Use(ref op) => op.visit_with(visitor),
             Repeat(ref op, _) => op.visit_with(visitor),
             ThreadLocalRef(did) => did.visit_with(visitor),
-            Ref(region, _, ref place) => region.visit_with(visitor) || place.visit_with(visitor),
+            Ref(region, _, ref place) => {
+                region.visit_with(visitor)?;
+                place.visit_with(visitor)
+            }
             AddressOf(_, ref place) => place.visit_with(visitor),
             Len(ref place) => place.visit_with(visitor),
-            Cast(_, ref op, ty) => op.visit_with(visitor) || ty.visit_with(visitor),
+            Cast(_, ref op, ty) => {
+                op.visit_with(visitor)?;
+                ty.visit_with(visitor)
+            }
             BinaryOp(_, ref rhs, ref lhs) | CheckedBinaryOp(_, ref rhs, ref lhs) => {
-                rhs.visit_with(visitor) || lhs.visit_with(visitor)
+                rhs.visit_with(visitor)?;
+                lhs.visit_with(visitor)
             }
             UnaryOp(_, ref val) => val.visit_with(visitor),
             Discriminant(ref place) => place.visit_with(visitor),
             NullaryOp(_, ty) => ty.visit_with(visitor),
             Aggregate(ref kind, ref fields) => {
-                (match **kind {
-                    AggregateKind::Array(ty) => ty.visit_with(visitor),
-                    AggregateKind::Tuple => false,
-                    AggregateKind::Adt(_, _, substs, user_ty, _) => {
-                        substs.visit_with(visitor) || user_ty.visit_with(visitor)
+                match **kind {
+                    AggregateKind::Array(ty) => {
+                        ty.visit_with(visitor)?;
                     }
-                    AggregateKind::Closure(_, substs) => substs.visit_with(visitor),
-                    AggregateKind::Generator(_, substs, _) => substs.visit_with(visitor),
-                }) || fields.visit_with(visitor)
+                    AggregateKind::Tuple => {}
+                    AggregateKind::Adt(_, _, substs, user_ty, _) => {
+                        substs.visit_with(visitor)?;
+                        user_ty.visit_with(visitor)?;
+                    }
+                    AggregateKind::Closure(_, substs) => {
+                        substs.visit_with(visitor)?;
+                    }
+                    AggregateKind::Generator(_, substs, _) => {
+                        substs.visit_with(visitor)?;
+                    }
+                }
+                fields.visit_with(visitor)
             }
         }
     }
@@ -253,7 +274,7 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
         match *self {
             Operand::Copy(ref place) | Operand::Move(ref place) => place.visit_with(visitor),
             Operand::Constant(ref c) => c.visit_with(visitor),
@@ -277,13 +298,13 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
         }
     }
 
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<()> {
         use crate::mir::ProjectionElem::*;
 
         match self {
             Field(_, ty) => ty.visit_with(visitor),
             Index(v) => v.visit_with(visitor),
-            _ => false,
+            _ => ControlFlow::CONTINUE,
         }
     }
 }
@@ -292,8 +313,8 @@ impl<'tcx> TypeFoldable<'tcx> for Field {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         *self
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
-        false
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+        ControlFlow::CONTINUE
     }
 }
 
@@ -301,8 +322,8 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         *self
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
-        false
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+        ControlFlow::CONTINUE
     }
 }
 
@@ -310,8 +331,8 @@ impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         self.clone()
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
-        false
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+        ControlFlow::CONTINUE
     }
 }
 
@@ -323,7 +344,7 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
             literal: self.literal.fold_with(folder),
         }
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
         self.literal.visit_with(visitor)
     }
 }

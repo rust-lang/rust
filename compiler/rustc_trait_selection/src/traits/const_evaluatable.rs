@@ -24,6 +24,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 use std::cmp;
+use std::ops::ControlFlow;
 
 /// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
@@ -86,9 +87,11 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
 
-                        false
+                        ControlFlow::CONTINUE
                     }
-                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => false,
+                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
+                        ControlFlow::CONTINUE
+                    }
                 });
 
                 match failure_kind {
@@ -564,29 +567,33 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // on `ErrorReported`.
 }
 
-// FIXME: Use `std::ops::ControlFlow` instead of `bool` here.
-pub fn walk_abstract_const<'tcx, F>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, mut f: F) -> bool
+pub fn walk_abstract_const<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    ct: AbstractConst<'tcx>,
+    mut f: F,
+) -> ControlFlow<()>
 where
-    F: FnMut(Node<'tcx>) -> bool,
+    F: FnMut(Node<'tcx>) -> ControlFlow<()>,
 {
     fn recurse<'tcx>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
-        f: &mut dyn FnMut(Node<'tcx>) -> bool,
-    ) -> bool {
+        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<()>,
+    ) -> ControlFlow<()> {
         let root = ct.root();
-        f(root)
-            || match root {
-                Node::Leaf(_) => false,
-                Node::Binop(_, l, r) => {
-                    recurse(tcx, ct.subtree(l), f) || recurse(tcx, ct.subtree(r), f)
-                }
-                Node::UnaryOp(_, v) => recurse(tcx, ct.subtree(v), f),
-                Node::FunctionCall(func, args) => {
-                    recurse(tcx, ct.subtree(func), f)
-                        || args.iter().any(|&arg| recurse(tcx, ct.subtree(arg), f))
-                }
+        f(root)?;
+        match root {
+            Node::Leaf(_) => ControlFlow::CONTINUE,
+            Node::Binop(_, l, r) => {
+                recurse(tcx, ct.subtree(l), f)?;
+                recurse(tcx, ct.subtree(r), f)
             }
+            Node::UnaryOp(_, v) => recurse(tcx, ct.subtree(v), f),
+            Node::FunctionCall(func, args) => {
+                recurse(tcx, ct.subtree(func), f)?;
+                args.iter().try_for_each(|&arg| recurse(tcx, ct.subtree(arg), f))
+            }
+        }
     }
 
     recurse(tcx, ct, &mut f)

@@ -18,6 +18,7 @@ use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, Re
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
 use std::convert::TryFrom;
+use std::ops::ControlFlow;
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {
@@ -517,7 +518,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 self.possible_borrower.add(borrowed.local, lhs);
             },
             other => {
-                if !ContainsRegion.visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty) {
+                if ContainsRegion.visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty).is_continue() {
                     return;
                 }
                 rvalue_locals(other, |rhs| {
@@ -539,7 +540,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
             // If the call returns something with lifetimes,
             // let's conservatively assume the returned value contains lifetime of all the arguments.
             // For example, given `let y: Foo<'a> = foo(x)`, `y` is considered to be a possible borrower of `x`.
-            if !ContainsRegion.visit_ty(&self.body.local_decls[*dest].ty) {
+            if ContainsRegion.visit_ty(&self.body.local_decls[*dest].ty).is_continue() {
                 return;
             }
 
@@ -558,8 +559,8 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
 struct ContainsRegion;
 
 impl TypeVisitor<'_> for ContainsRegion {
-    fn visit_region(&mut self, _: ty::Region<'_>) -> bool {
-        true
+    fn visit_region(&mut self, _: ty::Region<'_>) -> ControlFlow<()> {
+        ControlFlow::BREAK
     }
 }
 

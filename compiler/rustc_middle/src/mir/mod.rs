@@ -32,7 +32,7 @@ use rustc_target::abi;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{Index, IndexMut};
+use std::ops::{ControlFlow, Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
@@ -2489,7 +2489,7 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
         UserTypeProjection { base, projs }
     }
 
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<()> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }

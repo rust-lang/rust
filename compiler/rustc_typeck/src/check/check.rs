@@ -24,6 +24,8 @@ use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
+use std::ops::ControlFlow;
+
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
     let visit = wfcheck::CheckTypeWellFormedVisitor::new(tcx);
     tcx.hir().krate().par_visit_all_item_likes(&visit);
@@ -448,30 +450,34 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     };
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
-            if t != self.opaque_identity_ty && t.super_visit_with(self) {
+            if t != self.opaque_identity_ty && t.super_visit_with(self).is_break() {
                 self.ty = Some(t);
-                return true;
+                return ControlFlow::BREAK;
             }
-            false
+            ControlFlow::CONTINUE
         }
 
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<()> {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
             if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
-                return *index < self.generics.parent_count as u32;
+                if *index < self.generics.parent_count as u32 {
+                    return ControlFlow::BREAK;
+                } else {
+                    return ControlFlow::CONTINUE;
+                }
             }
 
             r.super_visit_with(self)
         }
 
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
             if let ty::ConstKind::Unevaluated(..) = c.val {
                 // FIXME(#72219) We currenctly don't detect lifetimes within substs
                 // which would violate this check. Even though the particular substitution is not used
                 // within the const, this should still be fixed.
-                return false;
+                return ControlFlow::CONTINUE;
             }
             c.super_visit_with(self)
         }
@@ -493,7 +499,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         let prohibit_opaque = tcx
             .explicit_item_bounds(def_id)
             .iter()
-            .any(|(predicate, _)| predicate.visit_with(&mut visitor));
+            .any(|(predicate, _)| predicate.visit_with(&mut visitor).is_break());
         debug!(
             "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
             prohibit_opaque, visitor
@@ -1449,11 +1455,11 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
             {
                 struct VisitTypes(Vec<DefId>);
                 impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
-                    fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
                         match *t.kind() {
                             ty::Opaque(def, _) => {
                                 self.0.push(def);
-                                false
+                                ControlFlow::CONTINUE
                             }
                             _ => t.super_visit_with(self),
                         }

@@ -24,6 +24,8 @@ use rustc_trait_selection::opaque_types::may_define_opaque_type;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
+use std::ops::ControlFlow;
+
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:
 ///
@@ -798,18 +800,18 @@ fn check_where_clauses<'tcx, 'fcx>(
                 params: FxHashSet<u32>,
             }
             impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
-                fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
                     if let ty::Param(param) = t.kind() {
                         self.params.insert(param.index);
                     }
                     t.super_visit_with(self)
                 }
 
-                fn visit_region(&mut self, _: ty::Region<'tcx>) -> bool {
-                    true
+                fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<()> {
+                    ControlFlow::BREAK
                 }
 
-                fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+                fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
                     if let ty::ConstKind::Param(param) = c.val {
                         self.params.insert(param.index);
                     }
@@ -817,7 +819,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 }
             }
             let mut param_count = CountParams::default();
-            let has_region = pred.visit_with(&mut param_count);
+            let has_region = pred.visit_with(&mut param_count).is_break();
             let substituted_pred = pred.subst(fcx.tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.

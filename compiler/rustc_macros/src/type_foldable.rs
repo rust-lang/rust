@@ -15,8 +15,12 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
             }
         })
     });
-    let body_visit = s.fold(false, |acc, bind| {
-        quote! { #acc || ::rustc_middle::ty::fold::TypeFoldable::visit_with(#bind, __folder) }
+
+    let body_visit = s.fold(quote!(), |acc, bind| {
+        quote! {
+            #acc
+            ::rustc_middle::ty::fold::TypeFoldable::visit_with(#bind, __folder)?;
+        }
     });
 
     s.bound_impl(
@@ -32,8 +36,9 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
             fn super_visit_with<__F: ::rustc_middle::ty::fold::TypeVisitor<'tcx>>(
                 &self,
                 __folder: &mut __F
-            ) -> bool {
+            ) -> ::std::ops::ControlFlow<()> {
                 match *self { #body_visit }
+                ::std::ops::ControlFlow::CONTINUE
             }
         },
     )

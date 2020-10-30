@@ -30,6 +30,7 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use std::fmt::Debug;
+use std::ops::ControlFlow;
 
 #[derive(PartialEq)]
 pub enum NormalizationStrategy {
@@ -740,15 +741,15 @@ struct ScopeInstantiator<'me, 'tcx> {
 }
 
 impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ControlFlow<()> {
         self.target_index.shift_in(1);
         t.super_visit_with(self);
         self.target_index.shift_out(1);
 
-        false
+        ControlFlow::CONTINUE
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<()> {
         let ScopeInstantiator { bound_region_scope, next_region, .. } = self;
 
         match r {
@@ -759,7 +760,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
             _ => {}
         }
 
-        false
+        ControlFlow::CONTINUE
     }
 }
 
