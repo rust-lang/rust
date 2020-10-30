@@ -3,6 +3,33 @@ use crate::io::{
     self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
 
+/// Helper macro for a common write pattern. Write a buffer using the given
+/// function call, then use the returned usize to get the unwritten tail of
+/// the buffer.
+///
+/// Example:
+///
+/// ```
+/// // Use a ? for an i/o operation
+/// let tail = tail!(self.flush_buf_vectored(buf)?);
+///
+/// // omit the ? for an infallible operation
+/// let tail = tail!(self.write_to_buffer(buf));
+/// ```
+macro_rules! tail {
+    ($this:ident $(. $write:ident)+ ($buf:expr)) => {{
+        let buf = $buf;
+        let written = $this $(. $write)+ (buf);
+        &buf[written..]
+    }};
+
+    ($this:ident $(. $write:ident)+ ($buf:expr) ? ) => {{
+        let buf = $buf;
+        let written = $this $(. $write)+ (buf)?;
+        &buf[written..]
+    }};
+}
+
 /// Wraps a writer and buffers its output.
 ///
 /// It can be excessively inefficient to work directly with something that
@@ -72,6 +99,51 @@ pub struct BufWriter<W: Write> {
     panicked: bool,
 }
 
+/// Helper struct for BufWriter::flush_buf to ensure the buffer is updated
+/// after all the writes are complete. It tracks the number of written bytes
+/// and drains them all from the front of the buffer when dropped.
+struct BufGuard<'a> {
+    buffer: &'a mut Vec<u8>,
+    written: usize,
+}
+
+impl<'a> BufGuard<'a> {
+    fn new(buffer: &'a mut Vec<u8>) -> Self {
+        Self { buffer, written: 0 }
+    }
+
+    /// The unwritten part of the buffer
+    fn remaining(&self) -> &[u8] {
+        &self.buffer[self.written..]
+    }
+
+    /// Flag some bytes as removed from the front of the buffer
+    fn consume(&mut self, amt: usize) {
+        self.written += amt;
+    }
+
+    /// true if all of the bytes have been written
+    fn done(&self) -> bool {
+        self.written >= self.buffer.len()
+    }
+
+    /// Used in vectored flush mode; reports how many *extra* bytes after
+    /// `buffer` (ie, new bytes from the caller) were written
+    fn extra_written(&self) -> Option<usize> {
+        self.written.checked_sub(self.buffer.len())
+    }
+}
+
+impl Drop for BufGuard<'_> {
+    fn drop(&mut self) {
+        if self.written >= self.buffer.len() {
+            self.buffer.clear();
+        } else if self.written > 0 {
+            self.buffer.drain(..self.written);
+        }
+    }
+}
+
 impl<W: Write> BufWriter<W> {
     /// Creates a new `BufWriter<W>` with a default buffer capacity. The default is currently 8 KB,
     /// but may change in the future.
@@ -115,45 +187,9 @@ impl<W: Write> BufWriter<W> {
     /// `write`), any 0-length writes from `inner` must be reported as i/o
     /// errors from this method.
     pub(super) fn flush_buf(&mut self) -> io::Result<()> {
-        /// Helper struct to ensure the buffer is updated after all the writes
-        /// are complete. It tracks the number of written bytes and drains them
-        /// all from the front of the buffer when dropped.
-        struct BufGuard<'a> {
-            buffer: &'a mut Vec<u8>,
-            written: usize,
-        }
-
-        impl<'a> BufGuard<'a> {
-            fn new(buffer: &'a mut Vec<u8>) -> Self {
-                Self { buffer, written: 0 }
-            }
-
-            /// The unwritten part of the buffer
-            fn remaining(&self) -> &[u8] {
-                &self.buffer[self.written..]
-            }
-
-            /// Flag some bytes as removed from the front of the buffer
-            fn consume(&mut self, amt: usize) {
-                self.written += amt;
-            }
-
-            /// true if all of the bytes have been written
-            fn done(&self) -> bool {
-                self.written >= self.buffer.len()
-            }
-        }
-
-        impl Drop for BufGuard<'_> {
-            fn drop(&mut self) {
-                if self.written > 0 {
-                    self.buffer.drain(..self.written);
-                }
-            }
-        }
-
         let mut guard = BufGuard::new(&mut self.buf);
         let inner = self.inner.as_mut().unwrap();
+
         while !guard.done() {
             self.panicked = true;
             let r = inner.write(guard.remaining());
@@ -172,6 +208,47 @@ impl<W: Write> BufWriter<W> {
             }
         }
         Ok(())
+    }
+
+    /// Same as flush_buf, but uses vector operations to attempt to *also*
+    /// flush an incoming buffer. The returned usize is the number of bytes
+    /// successfully written from the *new* buf. This method will loop until
+    /// the entire *current* buffer is flushed, even if that means 0 bytes
+    /// from the new buffer were written.
+    pub(super) fn flush_buf_vectored(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let inner = self.inner.as_mut().unwrap();
+
+        if !inner.is_write_vectored() {
+            self.flush_buf()?;
+            return Ok(0);
+        }
+
+        let mut guard = BufGuard::new(&mut self.buf);
+
+        // Continue looping only as long as there is unwritten content in self.buf
+        loop {
+            match guard.extra_written() {
+                None => {
+                    let buffers = [IoSlice::new(guard.remaining()), IoSlice::new(buf)];
+                    self.panicked = true;
+                    let r = inner.write_vectored(&buffers);
+                    self.panicked = false;
+
+                    match r {
+                        Ok(0) => {
+                            return Err(Error::new(
+                                ErrorKind::WriteZero,
+                                "failed to write the buffered data",
+                            ))
+                        }
+                        Ok(n) => guard.consume(n),
+                        Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+                        Err(e) => return Err(e),
+                    }
+                }
+                Some(extra) => return Ok(extra),
+            }
+        }
     }
 
     /// Buffer some data without flushing it, regardless of the size of the
@@ -291,12 +368,36 @@ impl<W: Write> BufWriter<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for BufWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        // Design notes:
+        //
         // We assume that callers of `write` prefer to avoid split writes where
         // possible, so we pre-flush the buffer rather than doing a partial
         // write to fill it.
+        //
+        // During the pre-flush, we attempt a vectored write of both the
+        // buffered bytes and the new bytes. In the worst case, this will
+        // be the same as a typical pre-flush, since by default vectored
+        // writes just do a normal write of the first buffer.
         if self.buf.len() + buf.len() > self.buf.capacity() {
-            self.flush_buf()?;
+            let new_written = self.flush_buf_vectored(buf)?;
+            if new_written > 0 {
+                // At this point, we're obligated to return Ok(..) before
+                // trying any more fallible i/o operations. If the *remaining*
+                // buf fits in our buffer, buffer it eagerly; if not, buffering
+                // it would be pessimistic (since it's preferable to let the
+                // user follow up with another write call during which the
+                // write can be forwarded directly to inner, skipping the
+                // buffer).
+                let tail = &buf[new_written..];
+                return if tail.len() < self.buf.capacity() {
+                    self.buf.extend_from_slice(tail);
+                    Ok(buf.len())
+                } else {
+                    Ok(new_written)
+                };
+            }
         }
+
         if buf.len() >= self.buf.capacity() {
             self.get_mut().write(buf)
         } else {
@@ -311,27 +412,46 @@ impl<W: Write> Write for BufWriter<W> {
         // This method tries to fill up the buffer as much as possible before
         // flushing, whereas `write` prefers not split incoming bufs.
 
-        // Bypass the buffer if the the incoming write is larger than the whole
-        // buffer.
-        if buf.len() >= self.capacity() {
-            self.flush_buf()?;
-            return self.get_mut().write_all(buf);
-        }
+        let buf = match buf.len() >= self.capacity() {
+            false => buf,
+            // Bypass the buffer if the the incoming write is larger than the
+            // whole buffer. Use a vectored write to attempt to write the new
+            // data and the existing buffer in a single operation
+            true => match tail!(self.flush_buf_vectored(buf)?) {
+                // If the vectored write flushed everything at once, we're done!
+                [] => return Ok(()),
+
+                // If what's left after the vector flush is *still* larger than
+                // the buffer, bypass the buffer and forward it directly
+                tail if tail.len() >= self.capacity() => return self.get_mut().write_all(tail),
+
+                // Otherwise, we're going to buffer whatever's left of the user input
+                tail => tail,
+            },
+        };
 
         // In order to reduce net writes in aggregate, we buffer as much as
         // possible, then forward, then buffer the rest
-        let amt_buffered = self.write_to_buf(buf);
-        if amt_buffered < buf.len() {
-            self.flush_buf()?;
+        let buf = tail!(self.write_to_buf(buf));
+
+        if !buf.is_empty() {
+            let buf = tail!(self.flush_buf_vectored(buf)?);
+
             // At this point, because we know that buf.len() < self.buf.len(),
             // we know that this will succeed in totality
-            self.buf.extend_from_slice(&buf[amt_buffered..]);
+            self.buf.extend_from_slice(buf);
         }
+
         Ok(())
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        if self.get_ref().is_write_vectored() {
+        if let [buf] = bufs {
+            // If there's exactly 1 incoming buffer, `Self::write` can make
+            // use of self.inner.write_vectored to attempt to combine flushing
+            // the existing buffer with writing the new one.
+            self.write(buf)
+        } else if self.get_ref().is_write_vectored() {
             let total_len: usize = bufs.iter().map(|buf| buf.len()).sum();
 
             if total_len + self.buffer().len() > self.capacity() {
@@ -383,11 +503,12 @@ impl<W: Write> Write for BufWriter<W> {
     }
 
     fn is_write_vectored(&self) -> bool {
-        self.get_ref().is_write_vectored()
+        true
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.flush_buf().and_then(|()| self.get_mut().flush())
+        self.flush_buf()?;
+        self.get_mut().flush()
     }
 }
 
@@ -398,7 +519,7 @@ where
 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_struct("BufWriter")
-            .field("writer", &self.inner.as_ref().unwrap())
+            .field("writer", self.get_ref())
             .field("buffer", &format_args!("{}/{}", self.buf.len(), self.buf.capacity()))
             .finish()
     }
@@ -418,9 +539,8 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
-        if self.inner.is_some() && !self.panicked {
-            // dtors should not panic, so we ignore a failed flush
-            let _r = self.flush_buf();
+        if !self.panicked {
+            let _ = self.flush_buf();
         }
     }
 }

@@ -20,6 +20,13 @@ impl<'a, W: Write> LineWriterShim<'a, W> {
         Self { buffer }
     }
 
+    /// Get a reference to the inner writer (that is, the writer wrapped by
+    /// the BufWriter). Be careful with this writer, as writes to it will
+    /// bypass the buffer.
+    fn inner_ref(&self) -> &W {
+        self.buffer.get_ref()
+    }
+
     /// Get a mutable reference to the inner writer (that is, the writer
     /// wrapped by the BufWriter). Be careful with this writer, as writes to
     /// it will bypass the buffer.
@@ -71,25 +78,29 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
             Some(newline_idx) => newline_idx + 1,
         };
 
+        // This is what we're going to try to write directly to the inner
+        // writer. The rest will be buffered, if nothing goes wrong.
+        let lines = &buf[..newline_idx];
+
         // Flush existing content to prepare for our write. We have to do this
         // before attempting to write `buf` in order to maintain consistency;
         // if we add `buf` to the buffer then try to flush it all at once,
         // we're obligated to return Ok(), which would mean suppressing any
         // errors that occur during flush.
-        self.buffer.flush_buf()?;
+        //
+        // We can, however, use a vectored write to attempt to write the lines
+        // at the same time as the buffer.
+        let flushed = match self.buffer.flush_buf_vectored(lines)? {
+            // Write `lines` directly to the inner writer. In keeping with the
+            // `write` convention, make at most one attempt to add new (unbuffered)
+            // data. Because this write doesn't touch the BufWriter state directly,
+            // and the buffer is known to be empty, we don't need to worry about
+            // self.buffer.panicked here.
+            0 => self.inner_mut().write(lines)?,
+            flushed => flushed,
+        };
 
-        // This is what we're going to try to write directly to the inner
-        // writer. The rest will be buffered, if nothing goes wrong.
-        let lines = &buf[..newline_idx];
-
-        // Write `lines` directly to the inner writer. In keeping with the
-        // `write` convention, make at most one attempt to add new (unbuffered)
-        // data. Because this write doesn't touch the BufWriter state directly,
-        // and the buffer is known to be empty, we don't need to worry about
-        // self.buffer.panicked here.
-        let flushed = self.inner_mut().write(lines)?;
-
-        // If buffer returns Ok(0), propagate that to the caller without
+        // If the write returns Ok(0), propagate that to the caller without
         // doing additional buffering; otherwise we're just guaranteeing
         // an "ErrorKind::WriteZero" later.
         if flushed == 0 {
@@ -159,9 +170,16 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// get the benefits of more granular partial-line handling without losing
     /// anything in efficiency
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // TODO: BufWriter recently received some optimized handling of
+        // vectored writes; update this method to take advantage of those
+        // updates. In particular, BufWriter::is_write_vectored is always true,
+        // because BufWriter::write_vectored takes special care to buffer
+        // together the incoming sub-buffers when !W::is_write_vectored, while
+        // still using W::write_vectored when it is.
+
         // If there's no specialized behavior for write_vectored, just use
         // write. This has the benefit of more granular partial-line handling.
-        if !self.is_write_vectored() {
+        if !self.inner_ref().is_write_vectored() {
             return match bufs.iter().find(|buf| !buf.is_empty()) {
                 Some(buf) => self.write(buf),
                 None => Ok(0),
@@ -178,7 +196,6 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         // If there are no new newlines (that is, if this write is less than
         // one line), just do a regular buffered write
         let last_newline_buf_idx = match last_newline_buf_idx {
-            // No newlines; just do a normal buffered write
             None => {
                 self.flush_if_completed_line()?;
                 return self.buffer.write_vectored(bufs);

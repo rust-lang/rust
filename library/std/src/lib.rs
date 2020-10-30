@@ -279,6 +279,7 @@
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
+#![feature(min_const_generics)]
 #![feature(min_specialization)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]

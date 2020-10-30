@@ -14,7 +14,11 @@ pub struct ShortReader {
 // rustfmt-on-save.
 impl Read for ShortReader {
     fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-        if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
+        if self.lengths.is_empty() {
+            Ok(0)
+        } else {
+            Ok(self.lengths.remove(0))
+        }
     }
 }
 
@@ -243,8 +247,11 @@ fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
     assert_eq!(reader.buffer().len(), 0);
 }
 
+/// Basic tests of BufWriter when the wrapped writer supports vectored writes.
+/// BufWriter will use vectored writes to attempt to combine buffer flushes
+/// with incoming writes.
 #[test]
-fn test_buffered_writer() {
+fn test_buffered_writer_inner_vectored() {
     let inner = Vec::new();
     let mut writer = BufWriter::with_capacity(2, inner);
 
@@ -270,8 +277,8 @@ fn test_buffered_writer() {
     assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
 
     writer.write(&[6]).unwrap();
-    assert_eq!(writer.buffer(), [6]);
-    assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5]);
+    assert_eq!(writer.buffer(), []);
+    assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6]);
 
     writer.write(&[7, 8]).unwrap();
     assert_eq!(writer.buffer(), []);
@@ -451,7 +458,7 @@ fn bench_buffered_writer(b: &mut test::Bencher) {
 /// A simple `Write` target, designed to be wrapped by `LineWriter` /
 /// `BufWriter` / etc, that can have its `write` & `flush` behavior
 /// configured
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 struct ProgrammableSink {
     // Writes append to this slice
     pub buffer: Vec<u8>,
@@ -511,6 +518,19 @@ impl Write for ProgrammableSink {
             self.flushed = true;
             Ok(())
         }
+    }
+}
+
+/// PartialEq allows for easy comparison of the contents of a ProgrammableSink
+impl PartialEq<[u8]> for ProgrammableSink {
+    fn eq(&self, other: &[u8]) -> bool {
+        self.buffer == other
+    }
+}
+
+impl<const N: usize> PartialEq<[u8; N]> for ProgrammableSink {
+    fn eq(&self, other: &[u8; N]) -> bool {
+        self.buffer == other
     }
 }
 
