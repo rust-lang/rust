@@ -1403,11 +1403,6 @@ fn add_local_crate_metadata_objects(
         {
             cmd.add_object(obj);
         }
-    } else if crate_type == CrateType::Cdylib {
-        if let Some(obj) = codegen_results.metadata_module.as_ref().and_then(|m| m.object.as_ref())
-        {
-            cmd.add_object(obj);
-        }
     }
 }
 
@@ -1437,7 +1432,7 @@ fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'
     //
     // The rationale behind this ordering is that those items lower down in the
     // list can't depend on items higher up in the list. For example nothing can
-    // depend on what we just generated (that'd be a circular dependency).
+    // depend on what we just generated (e.g., that'd be a circular dependency).
     // Upstream rust libraries are not allowed to depend on our local native
     // libraries as that would violate the structure of the DAG, in that
     // scenario they are required to link to them as well in a shared fashion.
