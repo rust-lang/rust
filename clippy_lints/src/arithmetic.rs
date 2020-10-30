@@ -90,12 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for Arithmetic {
                 if l_ty.peel_refs().is_integral() && r_ty.peel_refs().is_integral() {
                     match op.node {
                         hir::BinOpKind::Div | hir::BinOpKind::Rem => match &r.kind {
-                            hir::ExprKind::Lit(lit) => {
-                                if let rustc_ast::ast::LitKind::Int(0, _) = lit.node {
-                                    span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
-                                    self.expr_span = Some(expr.span);
-                                }
-                            },
+                            hir::ExprKind::Lit(_lit) => (),
                             hir::ExprKind::Unary(hir::UnOp::UnNeg, expr) => {
                                 if let hir::ExprKind::Lit(lit) = &expr.kind {
                                     if let rustc_ast::ast::LitKind::Int(1, _) = lit.node {

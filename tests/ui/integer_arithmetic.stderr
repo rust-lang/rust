@@ -76,12 +76,6 @@ LL |     i *= 2;
    |     ^^^^^^
 
 error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:37:5
-   |
-LL |     i /= 0;
-   |     ^^^^^^
-
-error: integer arithmetic detected
   --> $DIR/integer_arithmetic.rs:38:11
    |
 LL |     i /= -1;
@@ -98,12 +92,6 @@ error: integer arithmetic detected
    |
 LL |     i /= var2;
    |     ^^^^^^^^^
-
-error: integer arithmetic detected
-  --> $DIR/integer_arithmetic.rs:42:5
-   |
-LL |     i %= 0;
-   |     ^^^^^^
 
 error: integer arithmetic detected
   --> $DIR/integer_arithmetic.rs:43:11
@@ -177,5 +165,5 @@ error: integer arithmetic detected
 LL |     (&x + &y)
    |     ^^^^^^^^^
 
-error: aborting due to 29 previous errors
+error: aborting due to 27 previous errors
 
