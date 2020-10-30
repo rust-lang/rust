@@ -37,8 +37,8 @@ jobs:
       - name: Install cargo-make
         uses: actions-rs/cargo@v1
         with:
-          command: build
-          args: --release
+          command: install
+          args: --force cargo-make
 
       - name: Build release binaries
         uses: actions-rs/cargo@v1
