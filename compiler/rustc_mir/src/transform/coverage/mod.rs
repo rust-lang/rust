@@ -74,9 +74,6 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             trace!("InstrumentCoverage skipped for {:?} (not an FnLikeNode)", mir_source.def_id());
             return;
         }
-        // FIXME(richkadel): By comparison, the MIR pass `ConstProp` includes associated constants,
-        // with functions, methods, and closures. I assume Miri is used for associated constants as
-        // well. If not, we may need to include them here too.
 
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
         Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
@@ -121,7 +118,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut graphviz_data = debug::GraphvizData::new();
         let mut debug_used_expressions = debug::UsedExpressions::new();
 
-        let dump_graphviz = tcx.sess.opts.debugging_opts.dump_mir_graphviz;
+        let dump_mir = pretty::dump_enabled(tcx, self.pass_name, def_id);
+        let dump_graphviz = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_graphviz;
+        let dump_spanview = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_spanview.is_some();
+
         if dump_graphviz {
             graphviz_data.enable();
             self.coverage_counters.enable_debug();
@@ -139,7 +139,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             &self.basic_coverage_blocks,
         );
 
-        if pretty::dump_enabled(tcx, self.pass_name, def_id) {
+        if dump_spanview {
             debug::dump_coverage_spanview(
                 tcx,
                 self.mir_body,
@@ -174,6 +174,13 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 ////////////////////////////////////////////////////
                 // Remove the counter or edge counter from of each `CoverageSpan`s associated
                 // `BasicCoverageBlock`, and inject a `Coverage` statement into the MIR.
+                //
+                // `Coverage` statements injected from `CoverageSpan`s will include the code regions
+                // (source code start and end positions) to be counted by the associated counter.
+                //
+                // These `CoverageSpan`-associated counters are removed from their associated
+                // `BasicCoverageBlock`s so that the only remaining counters in the `CoverageGraph`
+                // are indirect counters (to be injected next, without associated code regions).
                 self.inject_coverage_span_counters(
                     coverage_spans,
                     &mut graphviz_data,
@@ -262,6 +269,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
             };
             graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
+            // FIXME(#78542): Can spans for `TerminatorKind::Goto` be improved to avoid special
+            // cases?
             let some_code_region = if self.is_code_region_redundant(bcb, span, body_span) {
                 None
             } else {
@@ -280,6 +289,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     ///
     /// If this method returns `true`, the counter (which other `Expressions` may depend on) is
     /// still injected, but without an associated code region.
+    // FIXME(#78542): Can spans for `TerminatorKind::Goto` be improved to avoid special cases?
     fn is_code_region_redundant(
         &self,
         bcb: BasicCoverageBlock,

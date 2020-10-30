@@ -82,6 +82,8 @@ impl CoverageGraph {
         // each block terminator's `successors()`. Coverage spans must map to actual source code,
         // so compiler generated blocks and paths can be ignored. To that end, the CFG traversal
         // intentionally omits unwind paths.
+        // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
+        // `catch_unwind()` handlers.
         let mir_cfg_without_unwind = ShortCircuitPreorder::new(&mir_body, bcb_filtered_successors);
 
         let mut basic_blocks = Vec::new();
@@ -288,7 +290,8 @@ rustc_index::newtype_index! {
 ///   * The BCB CFG ignores (trims) branches not relevant to coverage, such as unwind-related code,
 ///     that is injected by the Rust compiler but has no physical source code to count. This also
 ///     means a BasicBlock with a `Call` terminator can be merged into its primary successor target
-///     block, in the same BCB.
+///     block, in the same BCB. (But, note: Issue #78544: "MIR InstrumentCoverage: Improve coverage
+///     of `#[should_panic]` tests and `catch_unwind()` handlers")
 ///   * Some BasicBlock terminators support Rust-specific concerns--like borrow-checking--that are
 ///     not relevant to coverage analysis. `FalseUnwind`, for example, can be treated the same as
 ///     a `Goto`, and merged with its successor into the same BCB.
@@ -329,7 +332,6 @@ impl BasicCoverageBlockData {
         &mir_body[self.last_bb()].terminator()
     }
 
-    #[inline(always)]
     pub fn set_counter(
         &mut self,
         counter_kind: CoverageKind,
@@ -342,16 +344,15 @@ impl BasicCoverageBlockData {
             "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
         );
         let operand = counter_kind.as_operand_id();
-        let expect_none = self.counter_kind.replace(counter_kind);
-        if expect_none.is_some() {
-            return Error::from_string(format!(
+        if let Some(replaced) = self.counter_kind.replace(counter_kind) {
+            Error::from_string(format!(
                 "attempt to set a BasicCoverageBlock coverage counter more than once; \
                 {:?} already had counter {:?}",
-                self,
-                expect_none.unwrap(),
-            ));
+                self, replaced,
+            ))
+        } else {
+            Ok(operand)
         }
-        Ok(operand)
     }
 
     #[inline(always)]
@@ -364,7 +365,6 @@ impl BasicCoverageBlockData {
         self.counter_kind.take()
     }
 
-    #[inline(always)]
     pub fn set_edge_counter_from(
         &mut self,
         from_bcb: BasicCoverageBlock,
@@ -383,22 +383,22 @@ impl BasicCoverageBlockData {
             }
         }
         let operand = counter_kind.as_operand_id();
-        let expect_none = self
+        if let Some(replaced) = self
             .edge_from_bcbs
             .get_or_insert_with(|| FxHashMap::default())
-            .insert(from_bcb, counter_kind);
-        if expect_none.is_some() {
-            return Error::from_string(format!(
+            .insert(from_bcb, counter_kind)
+        {
+            Error::from_string(format!(
                 "attempt to set an edge counter more than once; from_bcb: \
                 {:?} already had counter {:?}",
-                from_bcb,
-                expect_none.unwrap(),
-            ));
+                from_bcb, replaced,
+            ))
+        } else {
+            Ok(operand)
         }
-        Ok(operand)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn edge_counter_from(&self, from_bcb: BasicCoverageBlock) -> Option<&CoverageKind> {
         if let Some(edge_from_bcbs) = &self.edge_from_bcbs {
             edge_from_bcbs.get(&from_bcb)
@@ -407,7 +407,7 @@ impl BasicCoverageBlockData {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn take_edge_counters(
         &mut self,
     ) -> Option<impl Iterator<Item = (BasicCoverageBlock, CoverageKind)>> {
@@ -476,6 +476,9 @@ impl std::fmt::Debug for BcbBranch {
     }
 }
 
+// Returns the `Terminator`s non-unwind successors.
+// FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
+// `catch_unwind()` handlers.
 fn bcb_filtered_successors<'a, 'tcx>(
     body: &'tcx &'a mir::Body<'tcx>,
     term_kind: &'tcx TerminatorKind<'tcx>,
@@ -495,6 +498,7 @@ fn bcb_filtered_successors<'a, 'tcx>(
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
 /// CoverageGraph outside all loops. This supports traversing the BCB CFG in a way that
 /// ensures a loop is completely traversed before processing Blocks after the end of the loop.
+// FIXME(richkadel): Add unit tests for TraversalContext.
 #[derive(Debug)]
 pub(crate) struct TraversalContext {
     /// From one or more backedges returning to a loop header.
@@ -644,7 +648,27 @@ fn find_loop_backedges(
     let num_bcbs = basic_coverage_blocks.num_nodes();
     let mut backedges = IndexVec::from_elem_n(Vec::<BasicCoverageBlock>::new(), num_bcbs);
 
-    // Identify loops by their backedges
+    // Identify loops by their backedges.
+    //
+    // The computational complexity is bounded by: n(s) x d where `n` is the number of
+    // `BasicCoverageBlock` nodes (the simplified/reduced representation of the CFG derived from the
+    // MIR); `s` is the average number of successors per node (which is most likely less than 2, and
+    // independent of the size of the function, so it can be treated as a constant);
+    // and `d` is the average number of dominators per node.
+    //
+    // The average number of dominators depends on the size and complexity of the function, and
+    // nodes near the start of the function's control flow graph typically have less dominators
+    // than nodes near the end of the CFG. Without doing a detailed mathematical analysis, I
+    // think the resulting complexity has the characteristics of O(n log n).
+    //
+    // The overall complexity appears to be comparable to many other MIR transform algorithms, and I
+    // don't expect that this function is creating a performance hot spot, but if this becomes an
+    // issue, there may be ways to optimize the `is_dominated_by` algorithm (as indicated by an
+    // existing `FIXME` comment in that code), or possibly ways to optimize it's usage here, perhaps
+    // by keeping track of results for visited `BasicCoverageBlock`s if they can be used to short
+    // circuit downstream `is_dominated_by` checks.
+    //
+    // For now, that kind of optimization seems unnecessarily complicated.
     for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
         for &successor in &basic_coverage_blocks.successors[bcb] {
             if basic_coverage_blocks.is_dominated_by(bcb, successor) {

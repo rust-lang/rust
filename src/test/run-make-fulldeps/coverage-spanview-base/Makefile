@@ -26,6 +26,7 @@ endif
 			-Zinstrument-coverage \
 			-Clink-dead-code=$(LINK_DEAD_CODE) \
 			-Zdump-mir=InstrumentCoverage \
+			-Zdump-mir-spanview \
 			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@
 
 	for path in "$(TMPDIR)"/mir_dump.$@/*; do \

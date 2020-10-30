@@ -656,7 +656,9 @@ fn filtered_statement_span(statement: &'a Statement<'tcx>, body_span: Span) -> O
         // Ignore `Nop`s
         | StatementKind::Nop => None,
 
-        // FIXME(richkadel): Look into a possible issue assigning the span to a
+        // FIXME(#78546): MIR InstrumentCoverage - Can the source_info.span for `FakeRead`
+        // statements be more consistent?
+        //
         // FakeReadCause::ForGuardBinding, in this example:
         //     match somenum {
         //         x if x < 1 => { ... }
@@ -669,15 +671,7 @@ fn filtered_statement_span(statement: &'a Statement<'tcx>, body_span: Span) -> O
         //     _4 = &_1; (at the span for the first `x`)
         // and `_1` is the `Place` for `somenum`.
         //
-        // The arm code BasicBlock already has its own assignment for `x` itself, `_3 = 1`, and I've
-        // decided it's reasonable for that span (even though outside the arm code) to be part of
-        // the counted coverage of the arm code execution, but I can't justify including the literal
-        // `1` in the arm code. I'm pretty sure that, if the `FakeRead(ForGuardBinding)` has a
-        // purpose in codegen, it's probably in the right BasicBlock, but if so, the `Statement`s
-        // `source_info.span` can't be right.
-        //
-        // Consider correcting the span assignment, assuming there is a better solution, and see if
-        // the following pattern can be removed here:
+        // If and when the Issue is resolved, remove this special case match pattern:
         StatementKind::FakeRead(cause, _) if cause == FakeReadCause::ForGuardBinding => None,
 
         // Retain spans from all other statements
@@ -710,13 +704,7 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
         // `FalseEdge`.
         | TerminatorKind::FalseEdge { .. } => None,
 
-        // FIXME(richkadel): Note that `Goto` was initially filtered out (by returning `None`, as
-        // with the `TerminatorKind`s above) because its `Span` was way to broad to be beneficial,
-        // and, at the time, `Goto` didn't seem to provide any additional contributions to the
-        // coverage analysis. Upon further review, `Goto` terminated blocks do appear to benefit
-        // the coverage analysis, and the BCB CFG. To overcome the issues with the `Spans`, the
-        // coverage algorithms--and the final coverage map generation--include some exceptional
-        // behaviors.
+        // FIXME(#78542): Can spans for `TerminatorKind::Goto` be improved to avoid special cases?
         //
         // `Goto`s are often the targets of `SwitchInt` branches, and certain important
         // optimizations to replace some `Counter`s with `Expression`s require a separate
@@ -750,7 +738,7 @@ fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -
     }
 }
 
-#[inline(always)]
+#[inline]
 fn function_source_span(span: Span, body_span: Span) -> Span {
     let span = original_sp(span, body_span).with_ctxt(SyntaxContext::root());
     if body_span.contains(span) { span } else { body_span }
