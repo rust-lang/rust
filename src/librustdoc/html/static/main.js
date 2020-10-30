@@ -4,6 +4,7 @@
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
 /* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
+/* global hideThemeButtonState */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -137,10 +138,6 @@ function defocusSearchBar() {
                 sidebar.appendChild(div);
             }
         }
-        var themePickers = document.getElementsByClassName("theme-picker");
-        if (themePickers && themePickers.length > 0) {
-            themePickers[0].style.display = "none";
-        }
     }
 
     function hideSidebar() {
@@ -155,10 +152,6 @@ function defocusSearchBar() {
             filler.remove();
         }
         document.getElementsByTagName("body")[0].style.marginTop = "";
-        var themePickers = document.getElementsByClassName("theme-picker");
-        if (themePickers && themePickers.length > 0) {
-            themePickers[0].style.display = null;
-        }
     }
 
     function showSearchResults(search) {
@@ -376,6 +369,7 @@ function defocusSearchBar() {
             document.title = titleBeforeSearch;
         }
         defocusSearchBar();
+        hideThemeButtonState();
     }
 
     function handleShortcut(ev) {
