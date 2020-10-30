@@ -4,7 +4,7 @@
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
 /* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
-/* global hideThemeButtonState */
+/* global hideThemeButtonState, showThemeButtonState */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -46,6 +46,14 @@ function getSearchInput() {
 
 function getSearchElement() {
     return document.getElementById("search");
+}
+
+function getThemesElement() {
+    return document.getElementById("theme-choices");
+}
+
+function getThemePickerElement() {
+    return document.getElementById("theme-picker");
 }
 
 // Sets the focus on the search bar at the top of the page
@@ -406,7 +414,57 @@ function defocusSearchBar() {
             case "?":
                 displayHelp(true, ev);
                 break;
+
+            default:
+                var themePicker = getThemePickerElement();
+                if (themePicker.parentNode.contains(ev.target)) {
+                    handleThemeKeyDown(ev);
+                }
             }
+        }
+    }
+
+    function handleThemeKeyDown(ev) {
+        var active = document.activeElement;
+        var themes = getThemesElement();
+        switch (getVirtualKey(ev)) {
+        case "ArrowUp":
+            ev.preventDefault();
+            if (active.previousElementSibling && ev.target.id !== "theme-picker") {
+                active.previousElementSibling.focus();
+            } else {
+                showThemeButtonState();
+                themes.lastElementChild.focus();
+            }
+            break;
+        case "ArrowDown":
+            ev.preventDefault();
+            if (active.nextElementSibling && ev.target.id !== "theme-picker") {
+                active.nextElementSibling.focus();
+            } else {
+                showThemeButtonState();
+                themes.firstElementChild.focus();
+            }
+            break;
+        case "Enter":
+        case "Return":
+        case "Space":
+            if (ev.target.id === "theme-picker" && themes.style.display === "none") {
+                ev.preventDefault();
+                showThemeButtonState();
+                themes.firstElementChild.focus();
+            }
+            break;
+        case "Home":
+            ev.preventDefault();
+            themes.firstElementChild.focus();
+            break;
+        case "End":
+            ev.preventDefault();
+            themes.lastElementChild.focus();
+            break;
+        // The escape key is handled in handleEscape, not here,
+        // so that pressing escape will close the menu even if it isn't focused
         }
     }
 

@@ -807,58 +807,8 @@ function handleThemeButtonsBlur(e) {{
     }}
 }}
 
-function handleThemeKeyDown(e) {{
-    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {{ return; }}
-    if (!themePicker.parentNode.contains(e.target)) {{ return; }}
-    var active = document.activeElement;
-    switch (e.key) {{
-        case "ArrowUp":
-            e.preventDefault();
-            if (active.previousElementSibling && e.target.id !== "theme-picker") {{
-                active.previousElementSibling.focus();
-            }} else {{
-                showThemeButtonState();
-                themes.lastElementChild.focus();
-            }}
-            break;
-        case "ArrowDown":
-            e.preventDefault();
-            if (active.nextElementSibling && e.target.id !== "theme-picker") {{
-                active.nextElementSibling.focus();
-            }} else {{
-                showThemeButtonState();
-                themes.firstElementChild.focus();
-            }}
-            break;
-        case "Enter":
-        case "Return":
-        case "Space":
-            if (e.target.id === "theme-picker" && themes.style.display === "none") {{
-                e.preventDefault();
-                showThemeButtonState();
-                themes.firstElementChild.focus();
-            }}
-            break;
-        case "Home":
-            e.preventDefault();
-            themes.firstElementChild.focus();
-            break;
-        case "End":
-            e.preventDefault();
-            themes.lastElementChild.focus();
-            break;
-        // The escape key is handled in main.js, instead of here, for two reasons:
-        //
-        // 1 Escape should close the menu, even if it's not focused.
-        // 2 The escape event handler is bound to both keydown and keypress, to work
-        //   around browser inconsistencies. That sort of logic doesn't apply to the
-        //   rest of these keybindings.
-    }}
-}};
-
 themePicker.onclick = switchThemeButtonState;
 themePicker.onblur = handleThemeButtonsBlur;
-document.addEventListener("keydown", handleThemeKeyDown);
 {}.forEach(function(item) {{
     var but = document.createElement("button");
     but.textContent = item;
