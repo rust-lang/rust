@@ -488,7 +488,10 @@ impl<W: Write> Write for BufWriter<W> {
                     }
                 }
 
-                // Buffer as much as possible until we reach full capacity
+                // Buffer as much as possible until we reach full capacity.
+                // Once we've buffered at least 1 byte, we're obligated to
+                // return Ok(..) before attempting any fallible i/o operations,
+                // so once the buffer is full we immediately return.
                 total_buffered += self.write_to_buf(buf);
                 if self.buffer().len() == self.capacity() {
                     break;
