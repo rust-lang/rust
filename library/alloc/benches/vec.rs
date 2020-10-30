@@ -570,6 +570,8 @@ fn bench_in_place_collect_droppable(b: &mut Bencher) {
     })
 }
 
+const LEN: usize = 16384;
+
 #[bench]
 fn bench_chain_collect(b: &mut Bencher) {
     let data = black_box([0; LEN]);
@@ -612,8 +614,6 @@ pub fn map_fast(l: &[(u32, u32)]) -> Vec<u32> {
     }
     result
 }
-
-const LEN: usize = 16384;
 
 #[bench]
 fn bench_range_map_collect(b: &mut Bencher) {
