@@ -719,12 +719,13 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let x = 6.0f32;
+    /// let x = 1e-8_f32;
     ///
-    /// // e^(ln(6)) - 1
-    /// let abs_difference = (x.ln().exp_m1() - 5.0).abs();
+    /// // for very small x, e^x is approximately 1 + x + x^2 / 2
+    /// let approx = x + x * x / 2.0;
+    /// let abs_difference = (x.exp_m1() - approx).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference < 1e-10);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -739,12 +740,13 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// let x = std::f32::consts::E - 1.0;
+    /// let x = 1e-8_f32;
     ///
-    /// // ln(1 + (e - 1)) == ln(e) == 1
-    /// let abs_difference = (x.ln_1p() - 1.0).abs();
+    /// // for very small x, ln(1 + x) is approximately x - x^2 / 2
+    /// let approx = x - x * x / 2.0;
+    /// let abs_difference = (x.ln_1p() - approx).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference < 1e-10);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
