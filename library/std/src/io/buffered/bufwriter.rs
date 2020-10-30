@@ -2,6 +2,7 @@ use crate::fmt;
 use crate::io::{
     self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
+use crate::iter::FusedIterator;
 
 /// Helper macro for a common write pattern. Write a buffer using the given
 /// function call, then use the returned usize to get the unwritten tail of
