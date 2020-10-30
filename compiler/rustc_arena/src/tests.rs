@@ -14,7 +14,7 @@ struct Point {
 #[test]
 pub fn test_unused() {
     let arena: TypedArena<Point> = TypedArena::default();
-    assert!(arena.chunks.borrow().is_empty());
+    assert!(arena.chunks.take().is_empty());
 }
 
 #[test]
@@ -101,37 +101,6 @@ pub fn test_typed_arena_zero_sized() {
     }
 }
 
-#[test]
-pub fn test_typed_arena_clear() {
-    let mut arena = TypedArena::default();
-    for _ in 0..10 {
-        arena.clear();
-        for _ in 0..10000 {
-            arena.alloc(Point { x: 1, y: 2, z: 3 });
-        }
-    }
-}
-
-#[bench]
-pub fn bench_typed_arena_clear(b: &mut Bencher) {
-    let mut arena = TypedArena::default();
-    b.iter(|| {
-        arena.alloc(Point { x: 1, y: 2, z: 3 });
-        arena.clear();
-    })
-}
-
-#[bench]
-pub fn bench_typed_arena_clear_100(b: &mut Bencher) {
-    let mut arena = TypedArena::default();
-    b.iter(|| {
-        for _ in 0..100 {
-            arena.alloc(Point { x: 1, y: 2, z: 3 });
-        }
-        arena.clear();
-    })
-}
-
 // Drop tests
 
 struct DropCounter<'a> {
@@ -155,20 +124,6 @@ fn test_typed_arena_drop_count() {
         }
     };
     assert_eq!(counter.get(), 100);
-}
-
-#[test]
-fn test_typed_arena_drop_on_clear() {
-    let counter = Cell::new(0);
-    let mut arena: TypedArena<DropCounter<'_>> = TypedArena::default();
-    for i in 0..10 {
-        for _ in 0..100 {
-            // Allocate something with drop glue to make sure it doesn't leak.
-            arena.alloc(DropCounter { count: &counter });
-        }
-        arena.clear();
-        assert_eq!(counter.get(), i * 100 + 100);
-    }
 }
 
 thread_local! {
