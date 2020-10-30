@@ -37,3 +37,8 @@ endif
 # tests can be simplified to always test with `-C link-dead-code`.
 
 UNAME = $(shell uname)
+
+# FIXME(richkadel): Can any of the features tested by `run-make-fulldeps/coverage-*` tests be tested
+# just as completely by more focused unit tests of the code logic itself, to reduce the number of
+# test result files generated and maintained, and to help identify specific test failures and root
+# causes more easily?

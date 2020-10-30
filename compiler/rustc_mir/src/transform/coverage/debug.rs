@@ -1,3 +1,113 @@
+//! The `InstrumentCoverage` MIR pass implementation includes debugging tools and options
+//! to help developers understand and/or improve the analysis and instrumentation of a MIR.
+//!
+//! To enable coverage, include the rustc command line option:
+//!
+//!   * `-Z instrument-coverage`
+//!
+//! MIR Dump Files, with additional `CoverageGraph` graphviz and `CoverageSpan` spanview
+//! ------------------------------------------------------------------------------------
+//!
+//! Additional debugging options include:
+//!
+//!   * `-Z dump-mir=InstrumentCoverage` - Generate `.mir` files showing the state of the MIR,
+//!     before and after the `InstrumentCoverage` pass, for each compiled function.
+//!
+//!   * `-Z dump-mir-graphviz` - If `-Z dump-mir` is also enabled for the current MIR node path,
+//!     each MIR dump is accompanied by a before-and-after graphical view of the MIR, in Graphviz
+//!     `.dot` file format (which can be visually rendered as a graph using any of a number of free
+//!     Graphviz viewers and IDE extensions).
+//!
+//!     For the `InstrumentCoverage` pass, this option also enables generation of an additional
+//!     Graphviz `.dot` file for each function, rendering the `CoverageGraph`: the control flow
+//!     graph (CFG) of `BasicCoverageBlocks` (BCBs), as nodes, internally labeled to show the
+//!     `CoverageSpan`-based MIR elements each BCB represents (`BasicBlock`s, `Statement`s and
+//!     `Terminator`s), assigned coverage counters and/or expressions, and edge counters, as needed.
+//!
+//!     (Note the additional option, `-Z graphviz-dark-mode`, can be added, to change the rendered
+//!     output from its default black-on-white background to a dark color theme, if desired.)
+//!
+//!   * `-Z dump-mir-spanview` - If `-Z dump-mir` is also enabled for the current MIR node path,
+//!     each MIR dump is accompanied by a before-and-after `.html` document showing the function's
+//!     original source code, highlighted by it's MIR spans, at the `statement`-level (by default),
+//!     `terminator` only, or encompassing span for the `Terminator` plus all `Statement`s, in each
+//!     `block` (`BasicBlock`).
+//!
+//!     For the `InstrumentCoverage` pass, this option also enables generation of an additional
+//!     spanview `.html` file for each function, showing the aggregated `CoverageSpan`s that will
+//!     require counters (or counter expressions) for accurate coverage analysis.
+//!
+//! Debug Logging
+//! -------------
+//!
+//! The `InstrumentCoverage` pass includes debug logging messages at various phases and decision
+//! points, which can be enabled via environment variable:
+//!
+//! ```shell
+//! RUSTC_LOG=rustc_mir::transform::coverage=debug
+//! ```
+//!
+//! Other module paths with coverage-related debug logs may also be of interest, particularly for
+//! debugging the coverage map data, injected as global variables in the LLVM IR (during rustc's
+//! code generation pass). For example:
+//!
+//! ```shell
+//! RUSTC_LOG=rustc_mir::transform::coverage,rustc_codegen_ssa::coverageinfo,rustc_codegen_llvm::coverageinfo=debug
+//! ```
+//!
+//! Coverage Debug Options
+//! ---------------------------------
+//!
+//! Additional debugging options can be enabled using the environment variable:
+//!
+//! ```shell
+//! RUSTC_COVERAGE_DEBUG_OPTIONS=<options>
+//! ```
+//!
+//! These options are comma-separated, and specified in the format `option-name=value`. For example:
+//!
+//! ```shell
+//! $ RUSTC_COVERAGE_DEBUG_OPTIONS=counter-format=id+operation,allow-unused-expressions=yes cargo build
+//! ```
+//!
+//! Coverage debug options include:
+//!
+//!   * `allow-unused-expressions=yes` or `no` (default: `no`)
+//!
+//!     The `InstrumentCoverage` algorithms _should_ only create and assign expressions to a
+//!     `BasicCoverageBlock`, or an incoming edge, if that expression is either (a) required to
+//!     count a `CoverageSpan`, or (b) a dependency of some other required counter expression.
+//!
+//!     If an expression is generated that does not map to a `CoverageSpan` or dependency, this
+//!     probably indicates there was a bug in the algorithm that creates and assigns counters
+//!     and expressions.
+//!
+//!     When this kind of bug is encountered, the rustc compiler will panic by default. Setting:
+//!     `allow-unused-expressions=yes` will log a warning message instead of panicking (effectively
+//!     ignoring the unused expressions), which may be helpful when debugging the root cause of
+//!     the problem.
+//!
+//!   * `counter-format=<choices>`, where `<choices>` can be any plus-separated combination of `id`,
+//!     `block`, and/or `operation` (default: `block+operation`)
+//!
+//!     This option effects both the `CoverageGraph` (graphviz `.dot` files) and debug logging, when
+//!     generating labels for counters and expressions.
+//!
+//!     Depending on the values and combinations, counters can be labeled by:
+//!
+//!         * `id` - counter or expression ID (ascending counter IDs, starting at 1, or descending
+//!           expression IDs, starting at `u32:MAX`)
+//!         * `block` - the `BasicCoverageBlock` label (for example, `bcb0`) or edge label (for
+//!           example `bcb0->bcb1`), for counters or expressions assigned to count a
+//!           `BasicCoverageBlock` or edge. Intermediate expressions (not directly associated with
+//!           a BCB or edge) will be labeled by their expression ID, unless `operation` is also
+//!           specified.
+//!         * `operation` - applied to expressions only, labels include the left-hand-side counter
+//!           or expression label (lhs operand), the operator (`+` or `-`), and the right-hand-side
+//!           counter or expression (rhs operand). Expression operand labels are generated
+//!           recursively, generating labels with nested operations, enclosed in parentheses
+//!           (for example: `bcb2 + (bcb0 - bcb1)`).
+
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
 
@@ -20,13 +130,11 @@ const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
     static DEBUG_OPTIONS: SyncOnceCell<DebugOptions> = SyncOnceCell::new();
 
-    &DEBUG_OPTIONS.get_or_init(|| DebugOptions::new())
+    &DEBUG_OPTIONS.get_or_init(|| DebugOptions::from_env())
 }
 
 /// Parses and maintains coverage-specific debug options captured from the environment variable
-/// "RUSTC_COVERAGE_DEBUG_OPTIONS", if set. Options can be set on the command line by, for example:
-///
-///     $ RUSTC_COVERAGE_DEBUG_OPTIONS=counter-format=block,allow_unused_expressions=n cargo build
+/// "RUSTC_COVERAGE_DEBUG_OPTIONS", if set.
 #[derive(Debug, Clone)]
 pub(crate) struct DebugOptions {
     pub allow_unused_expressions: bool,
@@ -34,7 +142,7 @@ pub(crate) struct DebugOptions {
 }
 
 impl DebugOptions {
-    fn new() -> Self {
+    fn from_env() -> Self {
         let mut allow_unused_expressions = true;
         let mut counter_format = ExpressionFormat::default();
 
@@ -152,10 +260,11 @@ impl DebugCounters {
     }
 
     pub fn enable(&mut self) {
+        debug_assert!(!self.is_enabled());
         self.some_counters.replace(FxHashMap::default());
     }
 
-    pub fn is_enabled(&mut self) -> bool {
+    pub fn is_enabled(&self) -> bool {
         self.some_counters.is_some()
     }
 
@@ -294,12 +403,13 @@ impl GraphvizData {
     }
 
     pub fn enable(&mut self) {
+        debug_assert!(!self.is_enabled());
         self.some_bcb_to_coverage_spans_with_counters = Some(FxHashMap::default());
         self.some_bcb_to_dependency_counters = Some(FxHashMap::default());
         self.some_edge_to_counter = Some(FxHashMap::default());
     }
 
-    pub fn is_enabled(&mut self) -> bool {
+    pub fn is_enabled(&self) -> bool {
         self.some_bcb_to_coverage_spans_with_counters.is_some()
     }
 
@@ -399,11 +509,12 @@ impl UsedExpressions {
     }
 
     pub fn enable(&mut self) {
+        debug_assert!(!self.is_enabled());
         self.some_used_expression_operands = Some(FxHashMap::default());
         self.some_unused_expressions = Some(Vec::new());
     }
 
-    pub fn is_enabled(&mut self) -> bool {
+    pub fn is_enabled(&self) -> bool {
         self.some_used_expression_operands.is_some()
     }
 
@@ -416,7 +527,7 @@ impl UsedExpressions {
         }
     }
 
-    pub fn expression_is_used(&mut self, expression: &CoverageKind) -> bool {
+    pub fn expression_is_used(&self, expression: &CoverageKind) -> bool {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
             used_expression_operands.contains_key(&expression.as_operand_id())
         } else {

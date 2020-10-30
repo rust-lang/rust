@@ -1,5 +1,3 @@
-use super::counters;
-
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{Coverage, CoverageInfo, Location};
@@ -44,11 +42,16 @@ struct CoverageVisitor {
 }
 
 impl CoverageVisitor {
+    /// Updates `num_counters` to the maximum encountered zero-based counter_id plus 1. Note the
+    /// final computed number of counters should be the number of all `CoverageKind::Counter`
+    /// statements in the MIR *plus one* for the implicit `ZERO` counter.
     #[inline(always)]
     fn update_num_counters(&mut self, counter_id: u32) {
         self.info.num_counters = std::cmp::max(self.info.num_counters, counter_id + 1);
     }
 
+    /// Computes an expression index for each expression ID, and updates `num_expressions` to the
+    /// maximum encountered index plus 1.
     #[inline(always)]
     fn update_num_expressions(&mut self, expression_id: u32) {
         let expression_index = u32::MAX - expression_id;
@@ -59,10 +62,18 @@ impl CoverageVisitor {
         if operand_id >= self.info.num_counters {
             let operand_as_expression_index = u32::MAX - operand_id;
             if operand_as_expression_index >= self.info.num_expressions {
-                if operand_id <= counters::MAX_COUNTER_GUARD {
-                    // Since the complete range of counter and expression IDs is not known here, the
-                    // only way to determine if the ID is a counter ID or an expression ID is to
-                    // assume a maximum possible counter ID value.
+                // The operand ID is outside the known range of counter IDs and also outside the
+                // known range of expression IDs. In either case, the result of a missing operand
+                // (if and when used in an expression) will be zero, so from a computation
+                // perspective, it doesn't matter whether it is interepretted as a counter or an
+                // expression.
+                //
+                // However, the `num_counters` and `num_expressions` query results are used to
+                // allocate arrays when generating the coverage map (during codegen), so choose
+                // the type that grows either `num_counters` or `num_expressions` the least.
+                if operand_id - self.info.num_counters
+                    < operand_as_expression_index - self.info.num_expressions
+                {
                     self.update_num_counters(operand_id)
                 } else {
                     self.update_num_expressions(operand_id)
@@ -100,7 +111,8 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
     let mir_body = tcx.optimized_mir(def_id);
 
     let mut coverage_visitor = CoverageVisitor {
-        info: CoverageInfo { num_counters: 0, num_expressions: 0 },
+        // num_counters always has at least the `ZERO` counter.
+        info: CoverageInfo { num_counters: 1, num_expressions: 0 },
         add_missing_operands: false,
     };
 
