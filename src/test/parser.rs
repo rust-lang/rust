@@ -43,6 +43,13 @@ fn assert_parser_error(filename: &str) {
 }
 
 #[test]
+fn parser_creation_errors_on_entry_new_parser_from_file_panic() {
+    // See also https://github.com/rust-lang/rustfmt/issues/4418
+    let filename = "tests/parser/issue_4418.rs";
+    assert_parser_error(filename);
+}
+
+#[test]
 fn crate_parsing_errors_on_unclosed_delims() {
     // See also https://github.com/rust-lang/rustfmt/issues/4466
     let filename = "tests/parser/unclosed-delims/issue_4466.rs";
