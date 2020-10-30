@@ -807,7 +807,7 @@ function handleThemeButtonsBlur(e) {{
     }}
 }}
 
-function handleThemeKeyPress(e) {{
+function handleThemeKeyDown(e) {{
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {{ return; }}
     if (!themePicker.parentNode.contains(e.target)) {{ return; }}
     var active = document.activeElement;
@@ -847,12 +847,18 @@ function handleThemeKeyPress(e) {{
             e.preventDefault();
             themes.lastElementChild.focus();
             break;
+        // The escape key is handled in main.js, instead of here, for two reasons:
+        //
+        // 1 Escape should close the menu, even if it's not focused.
+        // 2 The escape event handler is bound to both keydown and keypress, to work
+        //   around browser inconsistencies. That sort of logic doesn't apply to the
+        //   rest of these keybindings.
     }}
 }};
 
 themePicker.onclick = switchThemeButtonState;
 themePicker.onblur = handleThemeButtonsBlur;
-document.addEventListener("keydown", handleThemeKeyPress);
+document.addEventListener("keydown", handleThemeKeyDown);
 {}.forEach(function(item) {{
     var but = document.createElement("button");
     but.textContent = item;
