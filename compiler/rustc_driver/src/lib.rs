@@ -1283,10 +1283,22 @@ pub fn init_env_logger(env: &str) {
         Ok(s) if s.is_empty() => return,
         Ok(_) => {}
     }
+    let color_logs = match std::env::var(String::from(env) + "_COLOR") {
+        Ok(value) => match value.as_ref() {
+            "always" => true,
+            "never" => false,
+            "auto" => stdout_isatty(),
+            _ => panic!("invalid log color value '{}': expected one of always, never, or auto", value),
+        },
+        Err(std::env::VarError::NotPresent) => stdout_isatty(),
+        Err(std::env::VarError::NotUnicode(_value)) => {
+            panic!("non-unicode log color value: expected one of always, never, or auto")
+        }
+    };
     let filter = tracing_subscriber::EnvFilter::from_env(env);
     let layer = tracing_tree::HierarchicalLayer::default()
         .with_indent_lines(true)
-        .with_ansi(stdout_isatty())
+        .with_ansi(color_logs)
         .with_targets(true)
         .with_thread_ids(true)
         .with_thread_names(true)
