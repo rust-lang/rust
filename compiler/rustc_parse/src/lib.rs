@@ -249,29 +249,30 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // came from. Here we attempt to extract these lossless token streams
     // before we fall back to the stringification.
 
-    let convert_tokens = |tokens: Option<LazyTokenStream>| tokens.map(|t| t.into_token_stream());
+    let convert_tokens =
+        |tokens: &Option<LazyTokenStream>| tokens.as_ref().map(|t| t.create_token_stream());
 
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => prepend_attrs(&item.attrs, item.tokens.as_ref()),
-        Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.clone()),
+        Nonterminal::NtBlock(ref block) => convert_tokens(&block.tokens),
         Nonterminal::NtStmt(ref stmt) => {
             // FIXME: We currently only collect tokens for `:stmt`
             // matchers in `macro_rules!` macros. When we start collecting
             // tokens for attributes on statements, we will need to prepend
             // attributes here
-            convert_tokens(stmt.tokens.clone())
+            convert_tokens(&stmt.tokens)
         }
-        Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.clone()),
-        Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.clone()),
+        Nonterminal::NtPat(ref pat) => convert_tokens(&pat.tokens),
+        Nonterminal::NtTy(ref ty) => convert_tokens(&ty.tokens),
         Nonterminal::NtIdent(ident, is_raw) => {
             Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
         }
         Nonterminal::NtLifetime(ident) => {
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
-        Nonterminal::NtMeta(ref attr) => convert_tokens(attr.tokens.clone()),
-        Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.clone()),
-        Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.clone()),
+        Nonterminal::NtMeta(ref attr) => convert_tokens(&attr.tokens),
+        Nonterminal::NtPath(ref path) => convert_tokens(&path.tokens),
+        Nonterminal::NtVis(ref vis) => convert_tokens(&vis.tokens),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
         Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {
@@ -604,7 +605,7 @@ fn prepend_attrs(
     attrs: &[ast::Attribute],
     tokens: Option<&tokenstream::LazyTokenStream>,
 ) -> Option<tokenstream::TokenStream> {
-    let tokens = tokens?.clone().into_token_stream();
+    let tokens = tokens?.create_token_stream();
     if attrs.is_empty() {
         return Some(tokens);
     }
@@ -617,9 +618,9 @@ fn prepend_attrs(
         );
         builder.push(
             attr.tokens
-                .clone()
+                .as_ref()
                 .unwrap_or_else(|| panic!("Attribute {:?} is missing tokens!", attr))
-                .into_token_stream(),
+                .create_token_stream(),
         );
     }
     builder.push(tokens);
