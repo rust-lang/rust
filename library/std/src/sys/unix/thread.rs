@@ -178,7 +178,8 @@ impl Thread {
                     tv_nsec: nsecs,
                 };
                 secs -= ts.tv_sec as u64;
-                if libc::nanosleep(&ts, &mut ts) == -1 {
+                let ts_ptr = &mut ts as *mut _;
+                if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
                     assert_eq!(os::errno(), libc::EINTR);
                     secs += ts.tv_sec as u64;
                     nsecs = ts.tv_nsec;
