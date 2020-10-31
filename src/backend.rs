@@ -198,8 +198,9 @@ pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
         cranelift_module::default_libcall_names(),
     )
     .unwrap();
-    if std::env::var("CG_CLIF_FUNCTION_SECTIONS").is_ok() {
-        builder.per_function_section(true);
-    }
+    // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
+    // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
+    // can easily double the amount of time necessary to perform linking.
+    builder.per_function_section(sess.opts.debugging_opts.function_sections.unwrap_or(false));
     ObjectModule::new(builder)
 }
