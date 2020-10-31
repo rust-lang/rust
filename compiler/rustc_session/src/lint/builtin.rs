@@ -2556,7 +2556,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    //TODO: Add explanation.
+    //FIXME: Add explanation.
     pub FALL_BACK_TO_NEVER_TYPE,
     Deny,
     "Unresolved variable might fall back to never_type `!`"
