@@ -1,3 +1,5 @@
+// compile-flags: -Zmiri-track-raw-pointers
+// ignore-windows (FIXME: tracking raw pointers does not work on Windows)
 #![feature(new_uninit)]
 #![feature(get_mut_unchecked)]
 
