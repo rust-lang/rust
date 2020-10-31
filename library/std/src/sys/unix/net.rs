@@ -195,7 +195,6 @@ impl Socket {
         // glibc 2.10 and musl 0.9.5.
         cfg_if::cfg_if! {
             if #[cfg(any(
-                target_os = "android",
                 target_os = "dragonfly",
                 target_os = "freebsd",
                 target_os = "illumos",
@@ -207,6 +206,13 @@ impl Socket {
                     libc::accept4(self.0.raw(), storage, len, libc::SOCK_CLOEXEC)
                 })?;
                 Ok(Socket(FileDesc::new(fd)))
+            // While the Android kernel supports the syscall,
+            // it is not included in all versions of Android's libc.
+            } else if #[cfg(target_os = "android")] {
+                let fd = cvt_r(|| unsafe {
+                    libc::syscall(libc::SYS_accept4, self.0.raw(), storage, len, libc::SOCK_CLOEXEC)
+                })?;
+                Ok(Socket(FileDesc::new(fd as c_int)))
             } else {
                 let fd = cvt_r(|| unsafe { libc::accept(self.0.raw(), storage, len) })?;
                 let fd = FileDesc::new(fd);
