@@ -89,18 +89,18 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let data = db.function_data(func);
         let body = db.body(func.into());
 
-        // 1. Recursively validate inner scope items, such as static variables and constants.
+        // Recursively validate inner scope items, such as static variables and constants.
         for (item_id, _) in body.item_scope.values() {
             let mut validator = DeclValidator::new(item_id, self.sink);
             validator.validate_item(db);
         }
 
-        // 2. Check whether non-snake case identifiers are allowed for this function.
+        // Check whether non-snake case identifiers are allowed for this function.
         if self.allowed(db, func.into(), allow::NON_SNAKE_CASE) {
             return;
         }
 
-        // 2. Check the function name.
+        // Check the function name.
         let function_name = data.name.to_string();
         let fn_name_replacement = if let Some(new_name) = to_lower_snake_case(&function_name) {
             let replacement = Replacement {
@@ -113,7 +113,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             None
         };
 
-        // 3. Check the param names.
+        // Check the param names.
         let mut fn_param_replacements = Vec::new();
 
         for pat_id in body.params.iter().cloned() {
@@ -135,7 +135,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             }
         }
 
-        // 4. Check the patterns inside the function body.
+        // Check the patterns inside the function body.
         let mut pats_replacements = Vec::new();
 
         for (pat_idx, pat) in body.pats.iter() {
@@ -160,7 +160,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             }
         }
 
-        // 5. If there is at least one element to spawn a warning on, go to the source map and generate a warning.
+        // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
         self.create_incorrect_case_diagnostic_for_func(
             func,
             db,
@@ -187,7 +187,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let fn_loc = func.lookup(db.upcast());
         let fn_src = fn_loc.source(db.upcast());
 
-        // 1. Diagnostic for function name.
+        // Diagnostic for function name.
         if let Some(replacement) = fn_name_replacement {
             let ast_ptr = match fn_src.value.name() {
                 Some(name) => name,
@@ -214,7 +214,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             self.sink.push(diagnostic);
         }
 
-        // 2. Diagnostics for function params.
+        // Diagnostics for function params.
         let fn_params_list = match fn_src.value.param_list() {
             Some(params) => params,
             None => {
@@ -334,7 +334,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             self.allowed(db, struct_id.into(), allow::NON_CAMEL_CASE_TYPES);
         let non_snake_case_allowed = self.allowed(db, struct_id.into(), allow::NON_SNAKE_CASE);
 
-        // 1. Check the structure name.
+        // Check the structure name.
         let struct_name = data.name.to_string();
         let struct_name_replacement = if let Some(new_name) = to_camel_case(&struct_name) {
             let replacement = Replacement {
@@ -351,7 +351,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             None
         };
 
-        // 2. Check the field names.
+        // Check the field names.
         let mut struct_fields_replacements = Vec::new();
 
         if !non_snake_case_allowed {
@@ -370,7 +370,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             }
         }
 
-        // 3. If there is at least one element to spawn a warning on, go to the source map and generate a warning.
+        // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
         self.create_incorrect_case_diagnostic_for_struct(
             struct_id,
             db,
@@ -470,12 +470,12 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     fn validate_enum(&mut self, db: &dyn HirDatabase, enum_id: EnumId) {
         let data = db.enum_data(enum_id);
 
-        // 1. Check whether non-camel case names are allowed for this enum.
+        // Check whether non-camel case names are allowed for this enum.
         if self.allowed(db, enum_id.into(), allow::NON_CAMEL_CASE_TYPES) {
             return;
         }
 
-        // 2. Check the enum name.
+        // Check the enum name.
         let enum_name = data.name.to_string();
         let enum_name_replacement = if let Some(new_name) = to_camel_case(&enum_name) {
             let replacement = Replacement {
@@ -488,7 +488,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             None
         };
 
-        // 3. Check the field names.
+        // Check the field names.
         let mut enum_fields_replacements = Vec::new();
 
         for (_, variant) in data.variants.iter() {
@@ -503,7 +503,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             }
         }
 
-        // 4. If there is at least one element to spawn a warning on, go to the source map and generate a warning.
+        // If there is at least one element to spawn a warning on, go to the source map and generate a warning.
         self.create_incorrect_case_diagnostic_for_enum(
             enum_id,
             db,
