@@ -31,6 +31,8 @@ enum AnnotationKind {
     Required,
     // Annotation is useless, reject it
     Prohibited,
+    // Deprecation annotation is useless, reject it. (Stability attribute is still required.)
+    DeprecationProhibited,
     // Annotation itself is useless, but it can be propagated to children
     Container,
 }
@@ -89,7 +91,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if let Some(depr) = &depr {
             is_deprecated = true;
 
-            if kind == AnnotationKind::Prohibited {
+            if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
                 self.tcx.sess.span_err(item_sp, "This deprecation annotation is useless");
             }
 
@@ -322,6 +324,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             }
             hir::ItemKind::Impl { of_trait: Some(_), .. } => {
                 self.in_trait_impl = true;
+                kind = AnnotationKind::DeprecationProhibited;
             }
             hir::ItemKind::Struct(ref sd, _) => {
                 if let Some(ctor_hir_id) = sd.ctor_hir_id() {
