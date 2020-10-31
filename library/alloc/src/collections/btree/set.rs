@@ -950,7 +950,8 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
+    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    pub const fn len(&self) -> usize {
         self.map.len()
     }
 
@@ -967,7 +968,8 @@ impl<T> BTreeSet<T> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 }
