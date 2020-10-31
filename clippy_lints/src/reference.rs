@@ -46,13 +46,19 @@ impl EarlyLintPass for DerefAddrOf {
             if !in_macro(addrof_target.span);
             then {
                 let mut applicability = Applicability::MachineApplicable;
+                let sugg = if e.span.from_expansion() {
+                    let snip = snippet_with_applicability(cx, e.span, "_", &mut applicability);
+                    snip.trim_start_matches(|c| c == '&' || c == '*').to_string()
+                } else {
+                    snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability).to_string()
+                };
                 span_lint_and_sugg(
                     cx,
                     DEREF_ADDROF,
                     e.span,
                     "immediately dereferencing a reference",
                     "try this",
-                    format!("{}", snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability)),
+                    sugg,
                     applicability,
                 );
             }
