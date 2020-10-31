@@ -134,11 +134,11 @@ impl CreateTokenStream for TokenStream {
 /// of an actual `TokenStream` until it is needed.
 /// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
-pub struct LazyTokenStream(Lrc<Box<dyn CreateTokenStream>>);
+pub struct LazyTokenStream(Lrc<dyn CreateTokenStream>);
 
 impl LazyTokenStream {
     pub fn new(inner: impl CreateTokenStream + 'static) -> LazyTokenStream {
-        LazyTokenStream(Lrc::new(Box::new(inner)))
+        LazyTokenStream(Lrc::new(inner))
     }
 
     pub fn create_token_stream(&self) -> TokenStream {
