@@ -7,8 +7,8 @@ RUN sh /scripts/android-base-apt-get.sh
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
     download_ndk android-ndk-r15c-linux-x86_64.zip && \
-    make_standalone_toolchain arm 14 && \
-    make_standalone_toolchain x86 14 && \
+    make_standalone_toolchain arm 21 && \
+    make_standalone_toolchain x86 21 && \
     make_standalone_toolchain arm64 21 && \
     make_standalone_toolchain x86_64 21 && \
     remove_ndk
@@ -24,10 +24,10 @@ ENV TARGETS=$TARGETS,x86_64-linux-android
 ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --enable-profiler \
-      --arm-linux-androideabi-ndk=/android/ndk/arm-14 \
-      --armv7-linux-androideabi-ndk=/android/ndk/arm-14 \
-      --thumbv7neon-linux-androideabi-ndk=/android/ndk/arm-14 \
-      --i686-linux-android-ndk=/android/ndk/x86-14 \
+      --arm-linux-androideabi-ndk=/android/ndk/arm-21 \
+      --armv7-linux-androideabi-ndk=/android/ndk/arm-21 \
+      --thumbv7neon-linux-androideabi-ndk=/android/ndk/arm-21 \
+      --i686-linux-android-ndk=/android/ndk/x86-21 \
       --aarch64-linux-android-ndk=/android/ndk/arm64-21 \
       --x86_64-linux-android-ndk=/android/ndk/x86_64-21 \
       --disable-docs
