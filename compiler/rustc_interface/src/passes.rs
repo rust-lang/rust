@@ -681,20 +681,22 @@ fn write_out_deps(
 
             match file_hash {
                 Some(FileHash::SourceFile(src_file)) => {
+                    let bytes = src_file.src_hash.hash_bytes();
+                    let mut hash_as_hex = String::with_capacity(bytes.len() * 2);
+                    for byte in bytes {
+                        hash_as_hex.push_str(&format!("{:x}", byte));
+                    }
                     writeln!(
                         file,
-                        "# size:{} {}:{:?}",
+                        "# size:{} {}:{}",
                         src_file.byte_length(),
                         src_file.src_hash.kind.to_string(),
-                        src_file.src_hash.hash_bytes()
+                        hash_as_hex
                     )?;
                 }
                 Some(FileHash::BinaryHash(size, svh)) => {
                     writeln!(file, "# size:{} {}:{}", size, "svh", svh)?;
                 }
-                // Some(FileHash::HashInFilename(size)) => {
-                //     writeln!(file, "# size:{} {}:0", size, "hash_in_filename",)?;
-                // }
                 None => {}
             }
         }
