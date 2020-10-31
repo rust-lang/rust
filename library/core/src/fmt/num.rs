@@ -595,7 +595,6 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
     // 2^128 is about 3*10^38, so 39 gives an extra byte of space
     let mut buf = [MaybeUninit::<u8>::uninit(); 39];
     let mut curr = buf.len() as isize;
-    let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
 
     let (n, rem) = udiv_1e19(n);
     parse_u64_into(rem, &mut buf, &mut curr);
@@ -606,7 +605,11 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
         // SAFETY: Guaranteed that we wrote at most 19 bytes, and there must be space
         // remaining since it has length 39
         unsafe {
-            ptr::write_bytes(buf_ptr.offset(target), b'0', (curr - target) as usize);
+            ptr::write_bytes(
+                MaybeUninit::slice_as_mut_ptr(&mut buf).offset(target),
+                b'0',
+                (curr - target) as usize,
+            );
         }
         curr = target;
 
@@ -615,6 +618,9 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
         // Should this following branch be annotated with unlikely?
         if n != 0 {
             let target = (buf.len() - 38) as isize;
+            // The raw `buf_ptr` pointer is only valid until `buf` is used the next time,
+            // buf `buf` is not used in this scope so we are good.
+            let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
             // SAFETY: At this point we wrote at most 38 bytes, pad up to that point,
             // There can only be at most 1 digit remaining.
             unsafe {
@@ -629,7 +635,7 @@ fn fmt_u128(n: u128, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::R
     // UTF-8 since `DEC_DIGITS_LUT` is
     let buf_slice = unsafe {
         str::from_utf8_unchecked(slice::from_raw_parts(
-            buf_ptr.offset(curr),
+            MaybeUninit::slice_as_mut_ptr(&mut buf).offset(curr),
             buf.len() - curr as usize,
         ))
     };
