@@ -10,8 +10,8 @@ use rustc_middle::mir::{
     visit::{PlaceContext, Visitor},
 };
 use rustc_middle::mir::{
-    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, Rvalue,
-    SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
+    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceRef,
+    Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
 };
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
@@ -46,8 +46,16 @@ impl<'tcx> MirPass<'tcx> for Validator {
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 
-        TypeChecker { when: &self.when, body, tcx, param_env, mir_phase, storage_liveness }
-            .visit_body(body);
+        TypeChecker {
+            when: &self.when,
+            body,
+            tcx,
+            param_env,
+            mir_phase,
+            storage_liveness,
+            place_cache: Vec::new(),
+        }
+        .visit_body(body);
     }
 }
 
@@ -150,6 +158,7 @@ struct TypeChecker<'a, 'tcx> {
     param_env: ParamEnv<'tcx>,
     mir_phase: MirPhase,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
+    place_cache: Vec<PlaceRef<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -391,7 +400,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, *unwind, EdgeKind::Unwind);
                 }
             }
-            TerminatorKind::Call { func, destination, cleanup, .. } => {
+            TerminatorKind::Call { func, args, destination, cleanup, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -405,6 +414,32 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
                 if let Some(cleanup) = cleanup {
                     self.check_edge(location, *cleanup, EdgeKind::Unwind);
+                }
+
+                // The call destination place and Operand::Move place used as an argument might be
+                // passed by a reference to the callee. Consequently they must be non-overlapping.
+                // Currently this simply checks for duplicate places.
+                self.place_cache.clear();
+                if let Some((destination, _)) = destination {
+                    self.place_cache.push(destination.as_ref());
+                }
+                for arg in args {
+                    if let Operand::Move(place) = arg {
+                        self.place_cache.push(place.as_ref());
+                    }
+                }
+                let all_len = self.place_cache.len();
+                self.place_cache.sort_unstable();
+                self.place_cache.dedup();
+                let has_duplicates = all_len != self.place_cache.len();
+                if has_duplicates {
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered overlapping memory in `Call` terminator: {:?}",
+                            terminator.kind,
+                        ),
+                    );
                 }
             }
             TerminatorKind::Assert { cond, target, cleanup, .. } => {
