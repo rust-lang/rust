@@ -164,7 +164,7 @@ pub(crate) fn trans_const_value<'tcx>(
 
     if layout.is_zst() {
         return CValue::by_ref(
-            crate::Pointer::const_addr(fx, i64::try_from(layout.align.pref.bytes()).unwrap()),
+            crate::Pointer::dangling(layout.align.pref),
             layout,
         );
     }
