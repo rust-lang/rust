@@ -70,6 +70,17 @@ impl mut_visit::MutVisitor for TokenStripper {
         i.tokens = None;
         mut_visit::noop_flat_map_foreign_item(i, self)
     }
+    fn flat_map_trait_item(
+        &mut self,
+        mut i: P<ast::AssocItem>,
+    ) -> SmallVec<[P<ast::AssocItem>; 1]> {
+        i.tokens = None;
+        mut_visit::noop_flat_map_assoc_item(i, self)
+    }
+    fn flat_map_impl_item(&mut self, mut i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
+        i.tokens = None;
+        mut_visit::noop_flat_map_assoc_item(i, self)
+    }
     fn visit_block(&mut self, b: &mut P<ast::Block>) {
         b.tokens = None;
         mut_visit::noop_visit_block(b, self);

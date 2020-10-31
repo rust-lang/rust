@@ -1527,6 +1527,13 @@ fn test_send() {
     }
 }
 
+#[allow(dead_code)]
+fn test_const() {
+    const MAP: &'static BTreeMap<(), ()> = &BTreeMap::new();
+    const LEN: usize = MAP.len();
+    const IS_EMPTY: bool = MAP.is_empty();
+}
+
 #[test]
 fn test_occupied_entry_key() {
     let mut a = BTreeMap::new();
