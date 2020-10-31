@@ -41,7 +41,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
     def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
@@ -601,6 +601,37 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
     let mut visitor = RetCallFinder { found: false };
     visitor.visit_expr(expr);
     visitor.found
+}
+
+struct FindMacroCalls<'a> {
+    names: Vec<&'a str>,
+    result: Vec<Span>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for FindMacroCalls<'a> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        if self.names.iter().any(|fun| is_expn_of(expr.span, fun).is_some()) {
+            self.result.push(expr.span);
+        }
+        // and check sub-expressions
+        intravisit::walk_expr(self, expr);
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+/// Finds calls of the specified macros in a function body.
+pub fn find_macro_calls(names: Vec<&str>, body: &'tcx Body<'tcx>) -> Vec<Span> {
+    let mut fmc = FindMacroCalls {
+        names,
+        result: Vec::new(),
+    };
+    fmc.visit_expr(&body.value);
+    fmc.result
 }
 
 /// Converts a span to a code snippet if available, otherwise use default.
