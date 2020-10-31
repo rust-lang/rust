@@ -26,7 +26,8 @@
 //! | `AtomicU64`             | `Cell<u64>`         | `atomic::AtomicU64`             |
 //! | `AtomicUsize`           | `Cell<usize>`       | `atomic::AtomicUsize`           |
 //! |                         |                     |                                 |
-//! | `Lock<T>`               | `RefCell<T>`        | `parking_lot::Mutex<T>`         |
+//! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
+//! |                         |                     | `parking_lot::Mutex<T>`         |
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
 //! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
 //! | `MTLockRef<'a, T>` [^2] | `&'a mut MTLock<T>` | `&'a MTLock<T>`                 |
@@ -44,6 +45,9 @@ use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 use std::ops::{Deref, DerefMut};
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+
+mod lock;
+pub use lock::{Lock, LockGuard};
 
 mod worker_local;
 pub use worker_local::{Registry, WorkerLocal};
@@ -75,6 +79,13 @@ mod mode {
         }
     }
 
+    // Whether thread safety might be enabled.
+    #[inline]
+    #[cfg(parallel_compiler)]
+    pub fn might_be_dyn_thread_safe() -> bool {
+        DYN_THREAD_SAFE_MODE.load(Ordering::Relaxed) != DYN_NOT_THREAD_SAFE
+    }
+
     // Only set by the `-Z threads` compile option
     pub fn set_dyn_thread_safe_mode(mode: bool) {
         let set: u8 = if mode { DYN_THREAD_SAFE } else { DYN_NOT_THREAD_SAFE };
@@ -94,13 +105,14 @@ pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 
 cfg_if! {
     if #[cfg(not(parallel_compiler))] {
+        use std::ops::Add;
+        use std::cell::Cell;
+
         pub unsafe auto trait Send {}
         pub unsafe auto trait Sync {}
 
         unsafe impl<T> Send for T {}
         unsafe impl<T> Sync for T {}
-
-        use std::ops::Add;
 
         /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
         /// It has explicit ordering arguments and is only intended for use with
@@ -255,15 +267,11 @@ cfg_if! {
         pub use std::cell::Ref as MappedReadGuard;
         pub use std::cell::RefMut as WriteGuard;
         pub use std::cell::RefMut as MappedWriteGuard;
-        pub use std::cell::RefMut as LockGuard;
         pub use std::cell::RefMut as MappedLockGuard;
 
         pub use std::cell::OnceCell;
 
         use std::cell::RefCell as InnerRwLock;
-        use std::cell::RefCell as InnerLock;
-
-        use std::cell::Cell;
 
         pub type MTLockRef<'a, T> = &'a mut MTLock<T>;
 
@@ -305,6 +313,8 @@ cfg_if! {
             }
         }
     } else {
+        use parking_lot::Mutex;
+
         pub use std::marker::Send as Send;
         pub use std::marker::Sync as Sync;
 
@@ -313,7 +323,6 @@ cfg_if! {
         pub use parking_lot::RwLockWriteGuard as WriteGuard;
         pub use parking_lot::MappedRwLockWriteGuard as MappedWriteGuard;
 
-        pub use parking_lot::MutexGuard as LockGuard;
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
         pub use std::sync::OnceLock as OnceCell;
@@ -355,7 +364,6 @@ cfg_if! {
             }
         }
 
-        use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
 
         use std::thread;
@@ -441,7 +449,7 @@ cfg_if! {
         ) {
             if mode::is_dyn_thread_safe() {
                 let for_each = FromDyn::from(for_each);
-                let panic: Lock<Option<_>> = Lock::new(None);
+                let panic: Mutex<Option<_>> = Mutex::new(None);
                 t.into_par_iter().for_each(|i| if let Err(p) = catch_unwind(AssertUnwindSafe(|| for_each(i))) {
                     let mut l = panic.lock();
                     if l.is_none() {
@@ -479,7 +487,7 @@ cfg_if! {
             map: impl Fn(I) -> R + DynSync + DynSend
         ) -> C {
             if mode::is_dyn_thread_safe() {
-                let panic: Lock<Option<_>> = Lock::new(None);
+                let panic: Mutex<Option<_>> = Mutex::new(None);
                 let map = FromDyn::from(map);
                 // We catch panics here ensuring that all the loop iterations execute.
                 let r = t.into_par_iter().filter_map(|i| {
@@ -539,81 +547,6 @@ pub trait HashMapExt<K, V> {
 impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> {
     fn insert_same(&mut self, key: K, value: V) {
         self.entry(key).and_modify(|old| assert!(*old == value)).or_insert(value);
-    }
-}
-
-#[derive(Debug)]
-pub struct Lock<T>(InnerLock<T>);
-
-impl<T> Lock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        Lock(InnerLock::new(inner))
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_lock()
-    }
-
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_borrow_mut().ok()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    #[track_caller]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_lock().expect("lock was already held")
-        } else {
-            self.0.lock()
-        }
-    }
-
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
-    #[track_caller]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        self.0.borrow_mut()
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    pub fn with_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
-        f(&mut *self.lock())
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    pub fn borrow(&self) -> LockGuard<'_, T> {
-        self.lock()
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    pub fn borrow_mut(&self) -> LockGuard<'_, T> {
-        self.lock()
-    }
-}
-
-impl<T: Default> Default for Lock<T> {
-    #[inline]
-    fn default() -> Self {
-        Lock::new(T::default())
     }
 }
 
