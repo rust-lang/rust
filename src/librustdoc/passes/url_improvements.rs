@@ -19,8 +19,8 @@ pub const CHECK_URL_IMPROVEMENTS: Pass = Pass {
 const URL_REGEX: &str = concat!(
     r"https?://",                          // url scheme
     r"([-a-zA-Z0-9@:%._\+~#=]{2,256}\.)+", // one or more subdomains
-    r"[a-zA-Z]{2,4}",                      // root domain
-    r"\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)"     // optional query or url fragments
+    r"[a-zA-Z]{2,63}",                     // root domain
+    r"\b([-a-zA-Z0-9@:%_\+.~#?&/=]*)"      // optional query or url fragments
 );
 
 struct UrlImprovementsLinter<'a, 'tcx> {
@@ -101,8 +101,9 @@ impl<'a, 'tcx> DocFolder for UrlImprovementsLinter<'a, 'tcx> {
                         while let Some((event, range)) = p.next() {
                             match event {
                                 Event::End(Tag::Link(_, url, _)) => {
-                                    // NOTE: links cannot be nested, so we don't need to check `kind`
-                                    if url.as_ref() == title && !ignore {
+                                    // NOTE: links cannot be nested, so we don't need to
+                                    // check `kind`
+                                    if url.as_ref() == title && !ignore && self.regex.matches(url) {
                                         report_diag(
                                             self.cx,
                                             "unneeded long form for URL",
