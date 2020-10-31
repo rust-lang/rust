@@ -224,8 +224,8 @@ impl TcpStream {
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
 
-        let (addrp, len) = addr.into_inner();
-        cvt_r(|| unsafe { c::connect(sock.as_raw(), addrp, len) })?;
+        let (addr, len) = addr.into_inner();
+        cvt_r(|| unsafe { c::connect(sock.as_raw(), addr.as_ptr(), len) })?;
         Ok(TcpStream { inner: sock })
     }
 
@@ -395,8 +395,8 @@ impl TcpListener {
         setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
 
         // Bind our new socket
-        let (addrp, len) = addr.into_inner();
-        cvt(unsafe { c::bind(sock.as_raw(), addrp, len as _) })?;
+        let (addr, len) = addr.into_inner();
+        cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
 
         cfg_if::cfg_if! {
             if #[cfg(target_os = "horizon")] {
@@ -500,8 +500,8 @@ impl UdpSocket {
         init();
 
         let sock = Socket::new(addr, c::SOCK_DGRAM)?;
-        let (addrp, len) = addr.into_inner();
-        cvt(unsafe { c::bind(sock.as_raw(), addrp, len as _) })?;
+        let (addr, len) = addr.into_inner();
+        cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
         Ok(UdpSocket { inner: sock })
     }
 
@@ -531,14 +531,14 @@ impl UdpSocket {
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
-        let (dstp, dstlen) = dst.into_inner();
+        let (dst, dstlen) = dst.into_inner();
         let ret = cvt(unsafe {
             c::sendto(
                 self.inner.as_raw(),
                 buf.as_ptr() as *const c_void,
                 len,
                 MSG_NOSIGNAL,
-                dstp,
+                dst.as_ptr(),
                 dstlen,
             )
         })?;
@@ -677,8 +677,8 @@ impl UdpSocket {
     }
 
     pub fn connect(&self, addr: io::Result<&SocketAddr>) -> io::Result<()> {
-        let (addrp, len) = addr?.into_inner();
-        cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addrp, len) }).map(drop)
+        let (addr, len) = addr?.into_inner();
+        cvt_r(|| unsafe { c::connect(self.inner.as_raw(), addr.as_ptr(), len) }).map(drop)
     }
 }
 
