@@ -299,6 +299,13 @@ vec![
         module: "comparison_chain",
     },
     Lint {
+        name: "comparison_to_empty",
+        group: "style",
+        desc: "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead",
+        deprecation: None,
+        module: "len_zero",
+    },
+    Lint {
         name: "copy_iterator",
         group: "pedantic",
         desc: "implementing `Iterator` on a `Copy` type",
@@ -1221,6 +1228,13 @@ vec![
         desc: "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types",
         deprecation: None,
         module: "map_clone",
+    },
+    Lint {
+        name: "map_collect_result_unit",
+        group: "style",
+        desc: "using `.map(_).collect::<Result<(),_>()`, which can be replaced with `try_for_each`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "map_entry",
