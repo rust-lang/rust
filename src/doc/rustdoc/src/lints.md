@@ -286,7 +286,7 @@ warning: unclosed HTML tag `h1`
 warning: 2 warnings emitted
 ```
 
-## url_improvements
+## non_autolinks
 
 This lint is **nightly-only** and **warns by default**. It detects links which
 could use the "automatic" link syntax. For example:
@@ -309,7 +309,7 @@ warning: this URL is not a hyperlink
 1 | /// http://example.org
   |     ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.org>`
   |
-  = note: `#[warn(url_improvements)]` on by default
+  = note: `#[warn(non_autolinks)]` on by default
 
 warning: unneeded long form for URL
  --> foo.rs:2:5

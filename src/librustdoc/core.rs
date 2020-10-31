@@ -330,7 +330,7 @@ pub fn run_core(
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
     let invalid_html_tags = rustc_lint::builtin::INVALID_HTML_TAGS.name;
     let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
-    let url_improvements = rustc_lint::builtin::URL_IMPROVEMENTS.name;
+    let non_autolinks = rustc_lint::builtin::NON_AUTOLINKS.name;
     let unknown_lints = rustc_lint::builtin::UNKNOWN_LINTS.name;
 
     // In addition to those specific lints, we also need to allow those given through
@@ -345,7 +345,7 @@ pub fn run_core(
         invalid_html_tags.to_owned(),
         renamed_and_removed_lints.to_owned(),
         unknown_lints.to_owned(),
-        url_improvements.to_owned(),
+        non_autolinks.to_owned(),
     ];
 
     let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {

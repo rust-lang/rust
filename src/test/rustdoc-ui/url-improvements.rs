@@ -1,11 +1,11 @@
-#![deny(url_improvements)]
+#![deny(non_autolinks)]
 
-/// [http://a.com](http://a.com)
+/// [http://aa.com](http://aa.com)
 //~^ ERROR unneeded long form for URL
-/// [http://b.com]
+/// [http://bb.com]
 //~^ ERROR unneeded long form for URL
 ///
-/// [http://b.com]: http://b.com
+/// [http://bb.com]: http://bb.com
 ///
 /// [http://c.com][http://c.com]
 pub fn a() {}
@@ -59,7 +59,7 @@ pub fn c() {}
 /// [should_not.lint](should_not.lint)
 pub fn everything_is_fine_here() {}
 
-#[allow(url_improvements)]
+#[allow(non_autolinks)]
 pub mod foo {
     /// https://somewhere.com/a?hello=12&bye=11#xyz
     pub fn bar() {}
