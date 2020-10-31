@@ -557,8 +557,10 @@ impl Command {
     ///
     /// [`args`]: Command::args
     ///
-    /// Note that the argument is passed to the program directly as is, so you shouldn't wrap it in quotes
-    /// or escape special characters the same way you would do that when running the program from terminal.
+    /// Note that the argument is not passed through a shell, but given
+    /// literally to the program. This means that shell syntax like quotes,
+    /// escaped characters, word splitting, glob patterns, substitution, etc.
+    /// have no effect.
     ///
     /// # Examples
     ///
@@ -585,8 +587,10 @@ impl Command {
     ///
     /// [`arg`]: Command::arg
     ///
-    /// Note that each argument is passed to the program directly as is, so you shouldn't wrap it in quotes
-    /// or escape special characters the same way you would do that when running the program from terminal directly.
+    /// Note that the arguments are not passed through a shell, but given
+    /// literally to the program. This means that shell syntax like quotes,
+    /// escaped characters, word splitting, glob patterns, substitution, etc.
+    /// have no effect.
     ///
     /// # Examples
     ///
