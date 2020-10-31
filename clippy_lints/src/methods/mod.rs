@@ -3111,7 +3111,7 @@ fn lint_search_is_some<'tcx>(
             then {
                 let msg = "called `is_some()` after calling `find()` \
                     on a string. This is more succinctly expressed by calling \
-                    `contains()`";
+                    `contains()`.";
                 let mut applicability = Applicability::MachineApplicable;
                 let find_arg = snippet_with_applicability(cx, search_args[1].span, "..", &mut applicability);
                 span_lint_and_sugg(
