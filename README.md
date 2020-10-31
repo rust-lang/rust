@@ -411,7 +411,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [TiKV creating overlapping mutable reference and raw pointer](https://github.com/tikv/tikv/pull/7709)
 * [Windows `Env` iterator using a raw pointer outside its valid memory area](https://github.com/rust-lang/rust/pull/70479)
 * [`VecDeque::iter_mut` creating overlapping mutable references](https://github.com/rust-lang/rust/issues/74029)
-* [Standard library `SipHasher` using a raw pointer outside its valid memory area](https://github.com/rust-lang/rust/pull/78484)
+* [Various standard library aliasing issues involving raw pointers](https://github.com/rust-lang/rust/pull/78602)
 
 ## License
 
