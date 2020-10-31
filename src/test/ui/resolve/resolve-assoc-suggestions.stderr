@@ -20,7 +20,7 @@ error[E0412]: cannot find type `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:23:16
    |
 LL |         let _: Type;
-   |                ^^^^ help: try: `Self::Type`
+   |                ^^^^ help: you might have meant to use the associated type: `Self::Type`
 
 error[E0531]: cannot find tuple struct or tuple variant `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:25:13
@@ -50,7 +50,7 @@ error[E0425]: cannot find value `method` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:34:9
    |
 LL |         method;
-   |         ^^^^^^ help: try: `self.method`
+   |         ^^^^^^ help: you might have meant to call the method: `self.method`
 
 error: aborting due to 9 previous errors
 

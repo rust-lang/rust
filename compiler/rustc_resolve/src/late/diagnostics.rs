@@ -30,7 +30,21 @@ type Res = def::Res<ast::NodeId>;
 enum AssocSuggestion {
     Field,
     MethodWithSelf,
-    AssocItem,
+    AssocFn,
+    AssocType,
+    AssocConst,
+}
+
+impl AssocSuggestion {
+    fn action(&self) -> &'static str {
+        match self {
+            AssocSuggestion::Field => "use the available field",
+            AssocSuggestion::MethodWithSelf => "call the method with the fully-qualified path",
+            AssocSuggestion::AssocFn => "call the associated function",
+            AssocSuggestion::AssocConst => "use the associated `const`",
+            AssocSuggestion::AssocType => "use the associated type",
+        }
+    }
 }
 
 crate enum MissingLifetimeSpot<'tcx> {
@@ -386,15 +400,18 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     AssocSuggestion::MethodWithSelf if self_is_available => {
                         err.span_suggestion(
                             span,
-                            "try",
+                            "you might have meant to call the method",
                             format!("self.{}", path_str),
                             Applicability::MachineApplicable,
                         );
                     }
-                    AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
+                    AssocSuggestion::MethodWithSelf
+                    | AssocSuggestion::AssocFn
+                    | AssocSuggestion::AssocConst
+                    | AssocSuggestion::AssocType => {
                         err.span_suggestion(
                             span,
-                            "try",
+                            &format!("you might have meant to {}", candidate.action()),
                             format!("Self::{}", path_str),
                             Applicability::MachineApplicable,
                         );
@@ -1062,9 +1079,19 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
 
-        for assoc_type_ident in &self.diagnostic_metadata.current_trait_assoc_types {
-            if *assoc_type_ident == ident {
-                return Some(AssocSuggestion::AssocItem);
+        if let Some(items) = self.diagnostic_metadata.current_trait_assoc_items {
+            for assoc_item in &items[..] {
+                if assoc_item.ident == ident {
+                    return Some(match &assoc_item.kind {
+                        ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
+                        ast::AssocItemKind::Fn(_, sig, ..) if sig.decl.has_self() => {
+                            AssocSuggestion::MethodWithSelf
+                        }
+                        ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn,
+                        ast::AssocItemKind::TyAlias(..) => AssocSuggestion::AssocType,
+                        ast::AssocItemKind::MacCall(_) => continue,
+                    });
+                }
             }
         }
 
@@ -1080,11 +1107,20 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
-                    return Some(if self.r.has_self.contains(&res.def_id()) {
-                        AssocSuggestion::MethodWithSelf
+                    if self.r.has_self.contains(&res.def_id()) {
+                        return Some(AssocSuggestion::MethodWithSelf);
                     } else {
-                        AssocSuggestion::AssocItem
-                    });
+                        match res {
+                            Res::Def(DefKind::AssocFn, _) => return Some(AssocSuggestion::AssocFn),
+                            Res::Def(DefKind::AssocConst, _) => {
+                                return Some(AssocSuggestion::AssocConst);
+                            }
+                            Res::Def(DefKind::AssocTy, _) => {
+                                return Some(AssocSuggestion::AssocType);
+                            }
+                            _ => {}
+                        }
+                    }
                 }
             }
         }
