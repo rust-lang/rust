@@ -19,6 +19,7 @@ use rustc_session::Session;
 use rustc_session::{early_error, CompilerIO};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
+use std::cell::OnceCell;
 use std::path::PathBuf;
 use std::result;
 
@@ -58,9 +59,25 @@ impl Compiler {
     }
 }
 
+fn registry_setup() {
+    thread_local! {
+        static ONCE: OnceCell<()> = OnceCell::new();
+    }
+
+    // Create a dummy registry to allow `WorkerLocal` construction.
+    // We use `OnceCell` so we only register one dummy registry per thread.
+    ONCE.with(|once| {
+        once.get_or_init(|| {
+            rustc_data_structures::sync::Registry::new(1).register();
+        });
+    });
+}
+
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     rustc_span::create_default_session_if_not_set_then(move |_| {
+        registry_setup();
+
         let cfg = cfgspecs
             .into_iter()
             .map(|s| {
@@ -120,6 +137,8 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
 pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
     rustc_span::create_default_session_if_not_set_then(move |_| {
+        registry_setup();
+
         let mut cfg = CheckCfg::default();
 
         'specs: for s in specs {
