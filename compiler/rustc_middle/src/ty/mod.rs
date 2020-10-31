@@ -1683,34 +1683,59 @@ pub struct BoundConst<'tcx> {
 
 pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 
-/// A `DefId` which is potentially bundled with its corresponding generic parameter
-/// in case `did` is a const argument.
+/// A `DefId` which, in case it is a const argument, is potentially bundled with
+/// the `DefId` of the generic parameter it instantiates.
 ///
-/// This is used to prevent cycle errors during typeck
-/// as `type_of(const_arg)` depends on `typeck(owning_body)`
-/// which once again requires the type of its generic arguments.
-///
-/// Luckily we only need to deal with const arguments once we
-/// know their corresponding parameters. We (ab)use this by
-/// calling `type_of(param_did)` for these arguments.
+/// This is used to avoid calls to `type_of` for const arguments during typeck
+/// which cause cycle errors.
 ///
 /// ```rust
 /// #![feature(const_generics)]
 ///
 /// struct A;
 /// impl A {
-///     fn foo<const N: usize>(&self) -> usize { N }
+///     fn foo<const N: usize>(&self) -> [u8; N] { [0; N] }
+///     //           ^ const parameter
 /// }
 /// struct B;
 /// impl B {
-///     fn foo<const N: u8>(&self) -> usize { 42 }
+///     fn foo<const M: u8>(&self) -> usize { 42 }
+///     //           ^ const parameter
 /// }
 ///
 /// fn main() {
 ///     let a = A;
-///     a.foo::<7>();
+///     let _b = a.foo::<{ 3 + 7 }>();
+///     //               ^^^^^^^^^ const argument
 /// }
 /// ```
+///
+/// Let's look at the call `a.foo::<{ 3 + 7 }>()` here. We do not know
+/// which `foo` is used until we know the type of `a`.
+///
+/// We only know the type of `a` once we are inside of `typeck(main)`.
+/// We also end up normalizing the type of `_b` during `typeck(main)` which
+/// requires us to evaluate the const argument.
+///
+/// To evaluate that const argument we need to know its type,
+/// which we would get using `type_of(const_arg)`. This requires us to
+/// resolve `foo` as it can be either `usize` or `u8` in this example.
+/// However, resolving `foo` once again requires `typeck(main)` to get the type of `a`,
+/// which results in a cycle.
+///
+/// In short we must not call `type_of(const_arg)` during `typeck(main)`.
+///
+/// When first creating the `ty::Const` of the const argument inside of `typeck` we have
+/// already resolved `foo` so we know which const parameter this argument instantiates.
+/// This means that we also know the expected result of `type_of(const_arg)` even if we
+/// aren't allowed to call that query: it is equal to `type_of(const_param)` which is
+/// trivial to compute.
+///
+/// If we now want to use that constant in a place which potentionally needs its type
+/// we also pass the type of its `const_param`. This is the point of `WithOptConstParam`,
+/// except that instead of a `Ty` we bundle the `DefId` of the const parameter.
+/// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
+/// to get the type of `did`.
 #[derive(Copy, Clone, Debug, TypeFoldable, Lift, TyEncodable, TyDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
@@ -1721,7 +1746,7 @@ pub struct WithOptConstParam<T> {
     ///
     /// Note that even if `did` is a const argument, this may still be `None`.
     /// All queries taking `WithOptConstParam` start by calling `tcx.opt_const_param_of(def.did)`
-    /// to potentially update `param_did` in case it `None`.
+    /// to potentially update `param_did` in the case it is `None`.
     pub const_param_did: Option<DefId>,
 }
 
