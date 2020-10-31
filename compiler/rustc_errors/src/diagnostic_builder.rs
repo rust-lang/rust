@@ -1,5 +1,6 @@
-use crate::{Applicability, Handler, Level, StashKey};
 use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString};
+use crate::{Handler, Level, StashKey};
+use rustc_lint_defs::Applicability;
 
 use rustc_span::{MultiSpan, Span};
 use std::fmt::{self, Debug};

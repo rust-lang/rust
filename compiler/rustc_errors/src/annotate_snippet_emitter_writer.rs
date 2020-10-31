@@ -72,6 +72,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
         Level::Help => AnnotationType::Help,
         // FIXME(#59346): Not sure how to map these two levels
         Level::Cancelled | Level::FailureNote => AnnotationType::Error,
+        Level::Allow => panic!("Should not call with Allow"),
     }
 }
 
@@ -143,7 +144,8 @@ impl AnnotateSnippetEmitterWriter {
                 title: Some(Annotation {
                     label: Some(&message),
                     id: code.as_ref().map(|c| match c {
-                        DiagnosticId::Error(val) | DiagnosticId::Lint(val) => val.as_str(),
+                        DiagnosticId::Error(val)
+                        | DiagnosticId::Lint { name: val, has_future_breakage: _ } => val.as_str(),
                     }),
                     annotation_type: annotation_type_for_level(*level),
                 }),

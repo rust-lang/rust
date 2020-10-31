@@ -3,7 +3,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, OutputType, PrintRequest, SanitizerSet, SwitchWithOptPath};
 use crate::filesearch;
-use crate::lint;
+use crate::lint::{self, LintId};
 use crate::parse::ParseSess;
 use crate::search_paths::{PathKind, SearchPath};
 
@@ -21,7 +21,8 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_lint_defs::FutureBreakage;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
@@ -39,6 +40,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+
+pub trait SessionLintStore: sync::Send + sync::Sync {
+    fn name_to_lint(&self, lint_name: &str) -> LintId;
+}
 
 pub struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -130,6 +135,8 @@ pub struct Session {
     pub crate_disambiguator: OnceCell<CrateDisambiguator>,
 
     features: OnceCell<rustc_feature::Features>,
+
+    lint_store: OnceCell<Lrc<dyn SessionLintStore>>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -297,6 +304,35 @@ impl Session {
     pub fn finish_diagnostics(&self, registry: &Registry) {
         self.check_miri_unleashed_features();
         self.diagnostic().print_error_count(registry);
+        self.emit_future_breakage();
+    }
+
+    fn emit_future_breakage(&self) {
+        if !self.opts.debugging_opts.emit_future_incompat_report {
+            return;
+        }
+
+        let diags = self.diagnostic().take_future_breakage_diagnostics();
+        if diags.is_empty() {
+            return;
+        }
+        // If any future-breakage lints were registered, this lint store
+        // should be available
+        let lint_store = self.lint_store.get().expect("`lint_store` not initialized!");
+        let diags_and_breakage: Vec<(FutureBreakage, Diagnostic)> = diags
+            .into_iter()
+            .map(|diag| {
+                let lint_name = match &diag.code {
+                    Some(DiagnosticId::Lint { name, has_future_breakage: true }) => name,
+                    _ => panic!("Unexpected code in diagnostic {:?}", diag),
+                };
+                let lint = lint_store.name_to_lint(&lint_name);
+                let future_breakage =
+                    lint.lint.future_incompatible.unwrap().future_breakage.unwrap();
+                (future_breakage, diag)
+            })
+            .collect();
+        self.parse_sess.span_diagnostic.emit_future_breakage_report(diags_and_breakage);
     }
 
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
@@ -336,6 +372,12 @@ impl Session {
     }
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
+    }
+    pub fn struct_span_allow<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_span_allow(sp, msg)
+    }
+    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_allow(msg)
     }
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err(sp, msg)
@@ -609,6 +651,13 @@ impl Session {
             Ok(()) => {}
             Err(_) => panic!("`features` was initialized twice"),
         }
+    }
+
+    pub fn init_lint_store(&self, lint_store: Lrc<dyn SessionLintStore>) {
+        self.lint_store
+            .set(lint_store)
+            .map_err(|_| ())
+            .expect("`lint_store` was initialized twice");
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -1388,6 +1437,7 @@ pub fn build_session(
         crate_types: OnceCell::new(),
         crate_disambiguator: OnceCell::new(),
         features: OnceCell::new(),
+        lint_store: OnceCell::new(),
         recursion_limit: OnceCell::new(),
         type_length_limit: OnceCell::new(),
         const_eval_limit: OnceCell::new(),

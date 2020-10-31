@@ -18,3 +18,4 @@ rustc_span = { path = "../rustc_span" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 num_cpus = "1.0"
 rustc_ast = { path = "../rustc_ast" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
