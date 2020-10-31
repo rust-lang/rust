@@ -385,6 +385,7 @@ pub struct DocFragment {
     pub parent_module: Option<DefId>,
     pub doc: String,
     pub kind: DocFragmentKind,
+    pub style: AttrStyle,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -421,7 +422,6 @@ pub struct Attributes {
     pub span: Option<rustc_span::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
     pub links: Vec<ItemLink>,
-    pub inner_docs: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -559,6 +559,7 @@ impl Attributes {
                     doc: value,
                     kind,
                     parent_module,
+                    style: attr.style,
                 });
 
                 if sp.is_none() {
@@ -584,6 +585,7 @@ impl Attributes {
                                 doc: contents,
                                 kind: DocFragmentKind::Include { filename },
                                 parent_module: parent_module,
+                                style: attr.style,
                             });
                         }
                     }
@@ -618,18 +620,12 @@ impl Attributes {
             }
         }
 
-        let inner_docs = attrs
-            .iter()
-            .find(|a| a.doc_str().is_some())
-            .map_or(true, |a| a.style == AttrStyle::Inner);
-
         Attributes {
             doc_strings,
             other_attrs,
             cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
             span: sp,
             links: vec![],
-            inner_docs,
         }
     }
 

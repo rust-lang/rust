@@ -179,7 +179,9 @@ crate fn source_span_for_markdown_range(
         return None;
     }
 
+    trace!("markdown is {}", markdown);
     let snippet = cx.sess().source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
+    trace!("snippet is {}", snippet);
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();
@@ -196,7 +198,9 @@ crate fn source_span_for_markdown_range(
 
     'outer: for (line_no, md_line) in md_lines.enumerate() {
         loop {
-            let source_line = src_lines.next().expect("could not find markdown in source");
+            let source_line = src_lines.next().unwrap_or_else(|| {
+                panic!("could not find markdown range {:?} in source", md_range)
+            });
             match source_line.find(md_line) {
                 Some(offset) => {
                     if line_no == starting_line {

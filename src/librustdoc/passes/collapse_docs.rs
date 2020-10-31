@@ -39,7 +39,9 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
             if matches!(*curr_kind, DocFragmentKind::Include { .. })
                 || curr_kind != new_kind
                 || curr_frag.parent_module != frag.parent_module
+                || curr_frag.style != frag.style
             {
+                // Keep these as two separate attributes
                 if *curr_kind == DocFragmentKind::SugaredDoc
                     || *curr_kind == DocFragmentKind::RawDoc
                 {
@@ -49,6 +51,7 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
                 docs.push(curr_frag);
                 last_frag = Some(frag);
             } else {
+                // Combine both attributes into one
                 curr_frag.doc.push('\n');
                 curr_frag.doc.push_str(&frag.doc);
                 curr_frag.span = curr_frag.span.to(frag.span);

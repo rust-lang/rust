@@ -737,6 +737,7 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_
 
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
+        use rustc_ast::AttrStyle;
         use rustc_middle::ty::DefIdTree;
 
         let parent_node = if item.is_fake() {
@@ -773,7 +774,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         let current_item = match item.inner {
             ModuleItem(..) => {
-                if item.attrs.inner_docs {
+                // FIXME: this will be wrong if there are both inner and outer docs.
+                if item.attrs.doc_strings.iter().any(|attr| attr.style == AttrStyle::Inner) {
                     if item.def_id.is_top_level_module() { item.name.clone() } else { None }
                 } else {
                     match parent_node.or(self.mod_ids.last().copied()) {
@@ -797,10 +799,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             MacroItem(..) => None,
             _ => item.name.clone(),
         };
-
-        if item.is_mod() && item.attrs.inner_docs {
-            self.mod_ids.push(item.def_id);
-        }
 
         // find item's parent to resolve `Self` in item's docs below
         let parent_name = self.cx.as_local_hir_id(item.def_id).and_then(|item_hir| {
@@ -839,6 +837,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
         });
 
+        // If there are both inner and outer docs, we want to only resolve the inner docs
+        // within the module.
+        let mut seen_inner_docs = false;
+
         // We want to resolve in the lexical scope of the documentation.
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
@@ -849,10 +851,14 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             // we want `///` and `#[doc]` to count as the same attribute,
             // but currently it will treat them as separate.
             // As a workaround, combine all attributes with the same parent module into the same attribute.
+            // NOTE: this can combine attributes across different spans,
+            // for example both inside and outside a crate.
             let mut combined_docs = attr.doc.clone();
             loop {
                 match attrs.peek() {
-                    Some(next) if next.parent_module == attr.parent_module => {
+                    Some(next)
+                        if next.parent_module == attr.parent_module && next.style == attr.style =>
+                    {
                         combined_docs.push('\n');
                         combined_docs.push_str(&attrs.next().unwrap().doc);
                     }
@@ -868,15 +874,39 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 trace!("no parent found for {:?}", attr.doc);
                 (item.def_id.krate, parent_node)
             };
+
+            // In order to correctly resolve intra-doc-links we need to
+            // pick a base AST node to work from.  If the documentation for
+            // this module came from an inner comment (//!) then we anchor
+            // our name resolution *inside* the module.  If, on the other
+            // hand it was an outer comment (///) then we anchor the name
+            // resolution in the parent module on the basis that the names
+            // used are more likely to be intended to be parent names.  For
+            // this, we set base_node to None for inner comments since
+            // we've already pushed this node onto the resolution stack but
+            // for outer comments we explicitly try and resolve against the
+            // parent_node first.
+
+            // NOTE: there is an implicit assumption here that outer docs will always come
+            // before inner docs.
+            let base_node = if !seen_inner_docs && item.is_mod() && attr.style == AttrStyle::Inner {
+                // FIXME(jynelson): once `Self` handling is cleaned up I think we can get rid
+                // of `mod_ids` altogether
+                self.mod_ids.push(item.def_id);
+                seen_inner_docs = true;
+                Some(item.def_id)
+            } else {
+                parent_node
+            };
+
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
-            // FIXME: this will break links that start in `#[doc = ...]` and end as a sugared doc. Should this be supported?
             for (ori_link, link_range) in markdown_links(&combined_docs) {
                 let link = self.resolve_link(
                     &item,
                     &combined_docs,
                     &current_item,
-                    parent_node,
+                    base_node,
                     &parent_name,
                     krate,
                     ori_link,
@@ -888,11 +918,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
         }
 
-        if item.is_mod() && !item.attrs.inner_docs {
-            self.mod_ids.push(item.def_id);
-        }
-
         if item.is_mod() {
+            if !seen_inner_docs {
+                self.mod_ids.push(item.def_id);
+            }
             let ret = self.fold_item_recur(item);
 
             self.mod_ids.pop();
@@ -910,7 +939,7 @@ impl LinkCollector<'_, '_> {
         item: &Item,
         dox: &str,
         current_item: &Option<String>,
-        parent_node: Option<DefId>,
+        base_node: Option<DefId>,
         parent_name: &Option<String>,
         krate: CrateNum,
         ori_link: String,
@@ -967,23 +996,6 @@ impl LinkCollector<'_, '_> {
             link_text = disambiguator
                 .map(|d| d.display_for(path_str))
                 .unwrap_or_else(|| path_str.to_owned());
-
-            // In order to correctly resolve intra-doc-links we need to
-            // pick a base AST node to work from.  If the documentation for
-            // this module came from an inner comment (//!) then we anchor
-            // our name resolution *inside* the module.  If, on the other
-            // hand it was an outer comment (///) then we anchor the name
-            // resolution in the parent module on the basis that the names
-            // used are more likely to be intended to be parent names.  For
-            // this, we set base_node to None for inner comments since
-            // we've already pushed this node onto the resolution stack but
-            // for outer comments we explicitly try and resolve against the
-            // parent_node first.
-            let base_node = if item.is_mod() && item.attrs.inner_docs {
-                self.mod_ids.last().copied()
-            } else {
-                parent_node
-            };
 
             let mut module_id = if let Some(id) = base_node {
                 id
@@ -1185,6 +1197,8 @@ impl LinkCollector<'_, '_> {
         ori_link: &str,
         link_range: Option<Range<usize>>,
     ) -> Option<(Res, Option<String>)> {
+        debug!("resolving {} relative to {:?}", path_str, base_node);
+
         match disambiguator.map(Disambiguator::ns) {
             Some(ns @ (ValueNS | TypeNS)) => {
                 match self.resolve(path_str, ns, &current_item, base_node, &extra_fragment) {
