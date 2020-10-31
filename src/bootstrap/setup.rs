@@ -89,7 +89,7 @@ pub fn setup(src_path: &Path, profile: Profile) {
         std::process::exit(1);
     }
 
-    let path = cfg_file.unwrap_or_else(|| src_path.join("config.toml"));
+    let path = cfg_file.unwrap_or("config.toml".into());
     let settings = format!(
         "# Includes one of the default files in src/bootstrap/defaults\n\
     profile = \"{}\"\n\
