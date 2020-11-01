@@ -497,7 +497,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .tcx
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
-    let destination = destination.map(|(place, bb)| (trans_place(fx, place), bb));
+    let destination = destination.map(|(place, bb)| (codegen_place(fx, place), bb));
 
     // Handle special calls like instrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
@@ -550,8 +550,8 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     // Unpack arguments tuple for closures
     let args = if fn_sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
-        let self_arg = trans_operand(fx, &args[0]);
-        let pack_arg = trans_operand(fx, &args[1]);
+        let self_arg = codegen_operand(fx, &args[0]);
+        let pack_arg = codegen_operand(fx, &args[1]);
 
         let tupled_arguments = match pack_arg.layout().ty.kind() {
             ty::Tuple(ref tupled_arguments) => tupled_arguments,
@@ -566,7 +566,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         args
     } else {
         args.iter()
-            .map(|arg| trans_operand(fx, arg))
+            .map(|arg| codegen_operand(fx, arg))
             .collect::<Vec<_>>()
     };
 
@@ -610,7 +610,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(nop_inst, "indirect call");
             }
-            let func = trans_operand(fx, func).load_scalar(fx);
+            let func = codegen_operand(fx, func).load_scalar(fx);
             (
                 Some(func),
                 args.get(0)

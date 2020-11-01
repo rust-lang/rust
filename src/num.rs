@@ -89,10 +89,10 @@ pub(crate) fn codegen_binop<'tcx>(
     }
 
     match in_lhs.layout().ty.kind() {
-        ty::Bool => crate::num::trans_bool_binop(fx, bin_op, in_lhs, in_rhs),
-        ty::Uint(_) | ty::Int(_) => crate::num::trans_int_binop(fx, bin_op, in_lhs, in_rhs),
-        ty::Float(_) => crate::num::trans_float_binop(fx, bin_op, in_lhs, in_rhs),
-        ty::RawPtr(..) | ty::FnPtr(..) => crate::num::trans_ptr_binop(fx, bin_op, in_lhs, in_rhs),
+        ty::Bool => crate::num::codegen_bool_binop(fx, bin_op, in_lhs, in_rhs),
+        ty::Uint(_) | ty::Int(_) => crate::num::codegen_int_binop(fx, bin_op, in_lhs, in_rhs),
+        ty::Float(_) => crate::num::codegen_float_binop(fx, bin_op, in_lhs, in_rhs),
+        ty::RawPtr(..) | ty::FnPtr(..) => crate::num::codegen_ptr_binop(fx, bin_op, in_lhs, in_rhs),
         _ => unreachable!(
             "{:?}({:?}, {:?})",
             bin_op,
@@ -102,7 +102,7 @@ pub(crate) fn codegen_binop<'tcx>(
     }
 }
 
-pub(crate) fn trans_bool_binop<'tcx>(
+pub(crate) fn codegen_bool_binop<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
@@ -123,7 +123,7 @@ pub(crate) fn trans_bool_binop<'tcx>(
     CValue::by_val(res, fx.layout_of(fx.tcx.types.bool))
 }
 
-pub(crate) fn trans_int_binop<'tcx>(
+pub(crate) fn codegen_int_binop<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
@@ -196,7 +196,7 @@ pub(crate) fn trans_int_binop<'tcx>(
     CValue::by_val(val, in_lhs.layout())
 }
 
-pub(crate) fn trans_checked_int_binop<'tcx>(
+pub(crate) fn codegen_checked_int_binop<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
@@ -357,7 +357,7 @@ pub(crate) fn trans_checked_int_binop<'tcx>(
     out_place.to_cvalue(fx)
 }
 
-pub(crate) fn trans_float_binop<'tcx>(
+pub(crate) fn codegen_float_binop<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
@@ -402,7 +402,7 @@ pub(crate) fn trans_float_binop<'tcx>(
     CValue::by_val(res, in_lhs.layout())
 }
 
-pub(crate) fn trans_ptr_binop<'tcx>(
+pub(crate) fn codegen_ptr_binop<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,

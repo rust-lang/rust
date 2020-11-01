@@ -31,10 +31,10 @@ macro intrinsic_arg {
         $arg
     },
     (c $fx:expr, $arg:ident) => {
-        trans_operand($fx, $arg)
+        codegen_operand($fx, $arg)
     },
     (v $fx:expr, $arg:ident) => {
-        trans_operand($fx, $arg).load_scalar($fx)
+        codegen_operand($fx, $arg).load_scalar($fx)
     }
 }
 
@@ -90,7 +90,7 @@ macro call_intrinsic_match {
                     assert!($substs.is_noop());
                     if let [$(ref $arg),*] = *$args {
                         let ($($arg,)*) = (
-                            $(trans_operand($fx, $arg),)*
+                            $(codegen_operand($fx, $arg),)*
                         );
                         let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
                         $ret.write_cvalue($fx, res);
@@ -577,7 +577,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 "unchecked_shr" => BinOp::Shr,
                 _ => unreachable!("intrinsic {}", intrinsic),
             };
-            let res = crate::num::trans_int_binop(fx, bin_op, x, y);
+            let res = crate::num::codegen_int_binop(fx, bin_op, x, y);
             ret.write_cvalue(fx, res);
         };
         _ if intrinsic.ends_with("_with_overflow"), (c x, c y) {
@@ -589,7 +589,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 _ => unreachable!("intrinsic {}", intrinsic),
             };
 
-            let res = crate::num::trans_checked_int_binop(
+            let res = crate::num::codegen_checked_int_binop(
                 fx,
                 bin_op,
                 x,
@@ -605,7 +605,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 "wrapping_mul" => BinOp::Mul,
                 _ => unreachable!("intrinsic {}", intrinsic),
             };
-            let res = crate::num::trans_int_binop(
+            let res = crate::num::codegen_int_binop(
                 fx,
                 bin_op,
                 x,
@@ -623,7 +623,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             let signed = type_sign(T);
 
-            let checked_res = crate::num::trans_checked_int_binop(
+            let checked_res = crate::num::codegen_checked_int_binop(
                 fx,
                 bin_op,
                 lhs,
@@ -867,7 +867,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         size_of | pref_align_of | min_align_of | needs_drop | type_id | type_name | variant_count, () {
             let const_val =
                 fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
-            let val = crate::constant::trans_const_value(
+            let val = crate::constant::codegen_const_value(
                 fx,
                 const_val,
                 ret.layout().ty,
@@ -886,12 +886,12 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
 
         ptr_guaranteed_eq, (c a, c b) {
-            let val = crate::num::trans_ptr_binop(fx, BinOp::Eq, a, b);
+            let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b);
             ret.write_cvalue(fx, val);
         };
 
         ptr_guaranteed_ne, (c a, c b) {
-            let val = crate::num::trans_ptr_binop(fx, BinOp::Ne, a, b);
+            let val = crate::num::codegen_ptr_binop(fx, BinOp::Ne, a, b);
             ret.write_cvalue(fx, val);
         };
 
@@ -1069,7 +1069,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
 
         fadd_fast | fsub_fast | fmul_fast | fdiv_fast | frem_fast, (c x, c y) {
-            let res = crate::num::trans_float_binop(fx, match intrinsic {
+            let res = crate::num::codegen_float_binop(fx, match intrinsic {
                 "fadd_fast" => BinOp::Add,
                 "fsub_fast" => BinOp::Sub,
                 "fmul_fast" => BinOp::Mul,
