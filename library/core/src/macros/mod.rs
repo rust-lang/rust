@@ -327,7 +327,7 @@ macro_rules! r#try {
 ///
 /// See [`std::fmt`] for more information on the format string syntax.
 ///
-/// [`std::fmt`]: crate::fmt
+/// [`std::fmt`]: ../std/fmt/index.html
 /// [`fmt::Write`]: crate::fmt::Write
 /// [`io::Write`]: ../std/io/trait.Write.html
 /// [`fmt::Result`]: crate::fmt::Result
