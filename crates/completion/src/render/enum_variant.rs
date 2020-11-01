@@ -93,3 +93,77 @@ impl<'a> EnumVariantRender<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use test_utils::mark;
+
+    use crate::test_utils::check_edit;
+
+    #[test]
+    fn inserts_parens_for_tuple_enums() {
+        mark::check!(inserts_parens_for_tuple_enums);
+        check_edit(
+            "Some",
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main() -> Option<i32> {
+    Som<|>
+}
+"#,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main() -> Option<i32> {
+    Some($0)
+}
+"#,
+        );
+        check_edit(
+            "Some",
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main(value: Option<i32>) {
+    match value {
+        Som<|>
+    }
+}
+"#,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+fn main(value: Option<i32>) {
+    match value {
+        Some($0)
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn dont_duplicate_pattern_parens() {
+        mark::check!(dont_duplicate_pattern_parens);
+        check_edit(
+            "Var",
+            r#"
+enum E { Var(i32) }
+fn main() {
+    match E::Var(92) {
+        E::<|>(92) => (),
+    }
+}
+"#,
+            r#"
+enum E { Var(i32) }
+fn main() {
+    match E::Var(92) {
+        E::Var(92) => (),
+    }
+}
+"#,
+        );
+    }
+}
