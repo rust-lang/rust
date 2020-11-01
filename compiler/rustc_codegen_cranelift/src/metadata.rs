@@ -4,7 +4,7 @@ use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;
 
-use rustc_codegen_ssa::METADATA_FILENAME;
+use rustc_codegen_ssa::{METADATA_FILE_EXTENSION, METADATA_FILE_PREFIX};
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
@@ -23,7 +23,10 @@ impl MetadataLoader for CraneliftMetadataLoader {
         // Iterate over all entries in the archive:
         while let Some(entry_result) = archive.next_entry() {
             let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
-            if entry.header().identifier() == METADATA_FILENAME.as_bytes() {
+            let filename = String::from_utf8_lossy(entry.header().identifier());
+            if filename.starts_with(METADATA_FILE_PREFIX)
+                && filename.ends_with(METADATA_FILE_EXTENSION)
+            {
                 let mut buf = Vec::with_capacity(
                     usize::try_from(entry.header().size())
                         .expect("Rlib metadata file too big to load into memory."),
@@ -94,9 +97,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
-    FrameEncoder::new(&mut compressed)
-        .write_all(&metadata.raw_data)
-        .unwrap();
+    FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
 
     product.add_rustc_section(
         rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),
