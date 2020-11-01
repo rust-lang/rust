@@ -106,7 +106,7 @@ fn codegen_static_ref<'tcx>(
     CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)
 }
 
-pub(crate) fn trans_constant<'tcx>(
+pub(crate) fn codegen_constant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
@@ -151,10 +151,10 @@ pub(crate) fn trans_constant<'tcx>(
         | ConstKind::Error(_) => unreachable!("{:?}", const_),
     };
 
-    trans_const_value(fx, const_val, const_.ty)
+    codegen_const_value(fx, const_val, const_.ty)
 }
 
-pub(crate) fn trans_const_value<'tcx>(
+pub(crate) fn codegen_const_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     const_val: ConstValue<'tcx>,
     ty: Ty<'tcx>,
