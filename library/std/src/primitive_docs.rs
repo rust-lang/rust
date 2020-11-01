@@ -807,10 +807,10 @@ mod prim_tuple {}
 ///
 /// Additionally, `f32` can represent some special values:
 ///
-/// - `-0`: this value exists due to how floats are encoded. -0 == 0 is true, but for other
-///   operations they are not equal and the difference can be useful to certain algorithms.
-///   For example, operations on negative numbers that underflow to 0 will usually generate -0
-///   instead of +0.
+/// - -0.0: IEEE 754 floating point numbers have a bit that indicates their sign, so -0.0 is a
+///   possible value. For comparison `-0.0 == +0.0` is true but floating point operations can
+///   carry the sign bit through arithmetic operations. This means `-1.0 * 0.0` produces -0.0 and
+///   a negative number rounded to a value smaller than a float can represent also produces -0.0.
 /// - [∞](#associatedconstant.INFINITY) and
 ///   [−∞](#associatedconstant.NEG_INFINITY): these result from calculations
 ///   like `1.0 / 0.0`.
