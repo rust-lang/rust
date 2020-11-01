@@ -327,9 +327,23 @@ struct LiteralExpander;
 impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
     fn fold_pattern(&mut self, pat: &Pat<'tcx>) -> Pat<'tcx> {
         debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind(), pat.kind);
-        match (pat.ty.kind(), &*pat.kind) {
-            (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => s.fold_with(self),
-            (_, &PatKind::AscribeUserType { subpattern: ref s, .. }) => s.fold_with(self),
+        match (pat.ty.kind(), pat.kind.as_ref()) {
+            (_, PatKind::Binding { subpattern: Some(s), .. }) => s.fold_with(self),
+            (_, PatKind::AscribeUserType { subpattern: s, .. }) => s.fold_with(self),
+            (ty::Ref(_, t, _), PatKind::Constant { .. }) if t.is_str() => {
+                // Treat string literal patterns as deref patterns to a `str` constant, i.e.
+                // `&CONST`. This expands them like other const patterns. This could have been done
+                // in `const_to_pat`, but that causes issues with the rest of the matching code.
+                let mut new_pat = pat.super_fold_with(self);
+                // Make a fake const pattern of type `str` (instead of `&str`). That the carried
+                // constant value still knows it is of type `&str`.
+                new_pat.ty = t;
+                Pat {
+                    kind: Box::new(PatKind::Deref { subpattern: new_pat }),
+                    span: pat.span,
+                    ty: pat.ty,
+                }
+            }
             _ => pat.super_fold_with(self),
         }
     }
@@ -788,7 +802,7 @@ enum Constructor<'tcx> {
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
     NonExhaustive,
     /// Fake constructor for those types for which we can't list constructors explicitly, like
-    /// `f64` and `&str`.
+    /// `f64` and `str`.
     Unlistable,
     /// Wildcard pattern.
     Wildcard,
@@ -931,7 +945,12 @@ impl<'tcx> Constructor<'tcx> {
             // Otherwise, only a wildcard pattern can match the special extra constructor.
             (Unlistable, _) => false,
 
-            _ => bug!("trying to compare incompatible constructors {:?} and {:?}", self, other),
+            _ => span_bug!(
+                pcx.span,
+                "trying to compare incompatible constructors {:?} and {:?}",
+                self,
+                other
+            ),
         }
     }
 
@@ -1009,6 +1028,10 @@ impl<'tcx> Constructor<'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
+                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+                // be careful to reconstruct the correct constant pattern here. However a string
+                // literal pattern will never be reported as a non-exhaustiveness witness, so we
+                // can ignore this issue.
                 ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, pcx.ty),
                 _ => PatKind::Wild,
@@ -1303,9 +1326,13 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ///     [Some(0), ..] => {}
     /// }
     /// ```
+    /// This is guaranteed to preserve the number of patterns in `self`.
     fn replace_with_pattern_arguments(&self, pat: &'p Pat<'tcx>) -> Self {
         match pat.kind.as_ref() {
-            PatKind::Deref { subpattern } => Self::from_single_pattern(subpattern),
+            PatKind::Deref { subpattern } => {
+                assert_eq!(self.len(), 1);
+                Fields::from_single_pattern(subpattern)
+            }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 self.replace_with_fieldpats(subpatterns)
             }
@@ -1596,9 +1623,8 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             vec![make_range(0, max)]
         }
         _ if cx.is_uninhabited(pcx.ty) => vec![],
-        ty::Adt(..) | ty::Tuple(..) => vec![Single],
-        ty::Ref(_, t, _) if !t.is_str() => vec![Single],
-        // This type is one for which we don't know how to list constructors, like `&str` or `f64`.
+        ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => vec![Single],
+        // This type is one for which we don't know how to list constructors, like `str` or `f64`.
         _ => vec![Unlistable],
     }
 }
@@ -2161,20 +2187,23 @@ fn pat_constructor<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     pat: &'p Pat<'tcx>,
 ) -> Constructor<'tcx> {
-    match *pat.kind {
+    match pat.kind.as_ref() {
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
         PatKind::Binding { .. } | PatKind::Wild => Wildcard,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
-        PatKind::Variant { adt_def, variant_index, .. } => {
+        &PatKind::Variant { adt_def, variant_index, .. } => {
             Variant(adt_def.variants[variant_index].def_id)
         }
         PatKind::Constant { value } => {
             if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value, pat.span) {
                 IntRange(int_range)
             } else {
-                match value.ty.kind() {
+                match pat.ty.kind() {
                     ty::Float(_) => FloatRange(value, value, RangeEnd::Included),
-                    ty::Ref(_, t, _) if t.is_str() => Str(value),
+                    // In `expand_pattern`, we convert string literals to `&CONST` patterns with
+                    // `CONST` a pattern of type `str`. In truth this contains a constant of type
+                    // `&str`.
+                    ty::Str => Str(value),
                     // All constants that can be structurally matched have already been expanded
                     // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
                     // opaque.
@@ -2182,7 +2211,7 @@ fn pat_constructor<'p, 'tcx>(
                 }
             }
         }
-        PatKind::Range(PatRange { lo, hi, end }) => {
+        &PatKind::Range(PatRange { lo, hi, end }) => {
             let ty = lo.ty;
             if let Some(int_range) = IntRange::from_range(
                 cx.tcx,
@@ -2197,8 +2226,7 @@ fn pat_constructor<'p, 'tcx>(
                 FloatRange(lo, hi, end)
             }
         }
-        PatKind::Array { ref prefix, ref slice, ref suffix }
-        | PatKind::Slice { ref prefix, ref slice, ref suffix } => {
+        PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
             let array_len = match pat.ty.kind() {
                 ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env)),
                 ty::Slice(_) => None,
