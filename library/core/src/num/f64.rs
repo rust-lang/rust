@@ -890,6 +890,10 @@ impl f64 {
     /// - Positive signaling NaN
     /// - Positive quiet NaN
     ///
+    /// Note that this function does not always agree with the [`PartialOrd`]
+    /// and [`PartialEq`] implementations of `f64`. In particular, they regard
+    /// negative and positive zero as equal, while `total_cmp` doesn't.
+    ///
     /// # Example
     /// ```
     /// #![feature(total_cmp)]
