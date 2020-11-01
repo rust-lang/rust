@@ -1,6 +1,6 @@
 use rustc_middle::mir;
 use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::{self, ScalarInt, Ty};
+use rustc_middle::ty::{self, Ty};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
@@ -199,7 +199,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // is in bounds, because if they are in bounds, the pointer can't be null.
             // Inequality with integers other than null can never be known for sure.
             (Scalar::Int(int), Scalar::Ptr(ptr)) | (Scalar::Ptr(ptr), Scalar::Int(int)) => {
-                int == ScalarInt::null(int.size()) && !self.memory.ptr_may_be_null(ptr)
+                int.is_null() && !self.memory.ptr_may_be_null(ptr)
             }
             // FIXME: return `true` for at least some comparisons where we can reliably
             // determine the result of runtime inequality tests at compile-time.

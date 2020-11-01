@@ -188,6 +188,11 @@ impl ScalarInt {
         Self { data: 0, size: size.bytes() as u8 }
     }
 
+    #[inline]
+    pub fn is_null(self) -> bool {
+        self.data == 0
+    }
+
     pub(crate) fn ptr_sized_op<'tcx>(
         self,
         dl: &TargetDataLayout,
