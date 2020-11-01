@@ -276,7 +276,7 @@ fn data_id_for_alloc_id(
 ) -> DataId {
     module
         .declare_data(
-            &format!("__alloc_{:x}", alloc_id.0),
+            &format!(".L__alloc_{:x}", alloc_id.0),
             Linkage::Local,
             mutability == rustc_hir::Mutability::Mut,
             false,
