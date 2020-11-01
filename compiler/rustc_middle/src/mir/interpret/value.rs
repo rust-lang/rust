@@ -358,6 +358,14 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn assert_int(self) -> ScalarInt {
+        match self {
+            Scalar::Ptr(_) => bug!("expected an int but got an abstract pointer"),
+            Scalar::Int(int) => int,
+        }
+    }
+
+    #[inline]
     pub fn assert_ptr(self) -> Pointer<Tag> {
         match self {
             Scalar::Ptr(p) => p,
