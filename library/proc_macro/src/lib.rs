@@ -923,6 +923,31 @@ impl fmt::Debug for Ident {
     }
 }
 
+#[stable(feature = "proc_macro_ident_eq", since = "1.49.0")]
+impl PartialEq<str> for Ident {
+    fn eq(&self, rhs: &str) -> bool {
+        self.0.eq(rhs)
+    }
+}
+
+#[stable(feature = "proc_macro_ident_eq", since = "1.49.0")]
+impl PartialEq<String> for Ident {
+    fn eq(&self, rhs: &String) -> bool {
+        <Self as PartialEq<str>>::eq(self, rhs.as_str())
+    }
+}
+
+#[stable(feature = "proc_macro_ident_eq", since = "1.49.0")]
+impl<'a, T> PartialEq<&'a T> for Ident
+where
+    T: ?Sized,
+    Ident: PartialEq<T>,
+{
+    fn eq(&self, rhs: &&T) -> bool {
+        <Self as PartialEq<T>>::eq(self, *rhs)
+    }
+}
+
 /// A literal string (`"hello"`), byte string (`b"hello"`),
 /// character (`'a'`), byte character (`b'a'`), an integer or floating point number
 /// with or without a suffix (`1`, `1u8`, `2.3`, `2.3f32`).

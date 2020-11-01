@@ -513,6 +513,9 @@ impl server::Ident for Rustc<'_> {
     fn new(&mut self, string: &str, span: Self::Span, is_raw: bool) -> Self::Ident {
         Ident::new(self.sess, Symbol::intern(string), is_raw, span)
     }
+    fn eq(&mut self, ident: Self::Ident, rhs: &str) -> bool {
+        ident.sym.as_str() == rhs
+    }
     fn span(&mut self, ident: Self::Ident) -> Self::Span {
         ident.span
     }

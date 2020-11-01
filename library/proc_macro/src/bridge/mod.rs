@@ -101,6 +101,7 @@ macro_rules! with_api {
             },
             Ident {
                 fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
+                fn eq($self: $S::Ident, rhs: &str) -> bool;
                 fn span($self: $S::Ident) -> $S::Span;
                 fn with_span($self: $S::Ident, span: $S::Span) -> $S::Ident;
             },
