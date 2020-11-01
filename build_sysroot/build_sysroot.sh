@@ -9,6 +9,9 @@ pushd ../ >/dev/null
 source ./scripts/config.sh
 popd >/dev/null
 
+# We expect the target dir in the default location. Guard against the user changing it.
+export CARGO_TARGET_DIR=target
+
 # Cleanup for previous run
 #     v Clean target dir except for build scripts and incremental cache
 rm -r target/*/{debug,release}/{build,deps,examples,libsysroot*,native} 2>/dev/null || true
