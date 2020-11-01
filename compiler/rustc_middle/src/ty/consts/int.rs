@@ -133,7 +133,7 @@ impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
         // directly, because `hash_stable` takes `&self` and would thus borrow `self.data`.
         // Since `Self` is a packed struct, that would create a possibly unaligned reference,
-        // which is UB on a lot of platforms.
+        // which is UB.
         { self.data }.hash_stable(hcx, hasher);
         self.size.hash_stable(hcx, hasher);
     }
@@ -174,7 +174,7 @@ impl ScalarInt {
         // directly, because `assert_eq` takes references to its arguments and formatting
         // arguments and would thus borrow `self.data`. Since `Self`
         // is a packed struct, that would create a possibly unaligned reference, which
-        // is UB on a lot of platforms.
+        // is UB.
         debug_assert_eq!(
             truncate(self.data, self.size()),
             { self.data },
@@ -348,7 +348,7 @@ impl fmt::LowerHex for ScalarInt {
         // directly, because `write!` takes references to its formatting arguments and
         // would thus borrow `self.data`. Since `Self`
         // is a packed struct, that would create a possibly unaligned reference, which
-        // is UB on a lot of platforms.
+        // is UB.
         write!(f, "{:01$x}", { self.data }, self.size as usize * 2)
     }
 }
@@ -362,7 +362,7 @@ impl fmt::UpperHex for ScalarInt {
         // directly, because `write!` takes references to its formatting arguments and
         // would thus borrow `self.data`. Since `Self`
         // is a packed struct, that would create a possibly unaligned reference, which
-        // is UB on a lot of platforms.
+        // is UB.
         write!(f, "{:01$X}", { self.data }, self.size as usize * 2)
     }
 }
