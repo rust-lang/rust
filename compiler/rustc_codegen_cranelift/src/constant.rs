@@ -186,7 +186,7 @@ pub(crate) fn codegen_const_value<'tcx>(
             }
 
             match x {
-                Scalar::Raw(int) => {
+                Scalar::Int(int) => {
                     CValue::const_val(fx, layout, int)
                 }
                 Scalar::Ptr(ptr) => {

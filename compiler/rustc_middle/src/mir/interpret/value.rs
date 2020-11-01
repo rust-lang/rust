@@ -103,7 +103,7 @@ impl<'tcx> ConstValue<'tcx> {
 #[derive(HashStable)]
 pub enum Scalar<Tag = ()> {
     /// The raw bytes of a simple value.
-    Raw(ScalarInt),
+    Int(ScalarInt),
 
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
@@ -120,7 +120,7 @@ impl<Tag: fmt::Debug> fmt::Debug for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr) => write!(f, "{:?}", ptr),
-            Scalar::Raw(int) => write!(f, "{:?}", int),
+            Scalar::Int(int) => write!(f, "{:?}", int),
         }
     }
 }
@@ -129,7 +129,7 @@ impl<Tag: fmt::Debug> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr) => write!(f, "pointer to {}", ptr),
-            Scalar::Raw { .. } => fmt::Debug::fmt(self, f),
+            Scalar::Int { .. } => fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -156,7 +156,7 @@ impl Scalar<()> {
     pub fn with_tag<Tag>(self, new_tag: Tag) -> Scalar<Tag> {
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.with_tag(new_tag)),
-            Scalar::Raw(int) => Scalar::Raw(int),
+            Scalar::Int(int) => Scalar::Int(int),
         }
     }
 }
@@ -169,18 +169,18 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn erase_tag(self) -> Scalar {
         match self {
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_tag()),
-            Scalar::Raw(int) => Scalar::Raw(int),
+            Scalar::Int(int) => Scalar::Int(int),
         }
     }
 
     #[inline]
     pub fn null_ptr(cx: &impl HasDataLayout) -> Self {
-        Scalar::Raw(ScalarInt::null(cx.data_layout().pointer_size))
+        Scalar::Int(ScalarInt::null(cx.data_layout().pointer_size))
     }
 
     #[inline]
     pub fn zst() -> Self {
-        Scalar::Raw(ScalarInt::zst())
+        Scalar::Int(ScalarInt::zst())
     }
 
     #[inline(always)]
@@ -191,7 +191,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         f_ptr: impl FnOnce(Pointer<Tag>) -> InterpResult<'tcx, Pointer<Tag>>,
     ) -> InterpResult<'tcx, Self> {
         match self {
-            Scalar::Raw(int) => Ok(Scalar::Raw(int.ptr_sized_op(dl, f_int)?)),
+            Scalar::Int(int) => Ok(Scalar::Int(int.ptr_sized_op(dl, f_int)?)),
             Scalar::Ptr(ptr) => Ok(Scalar::Ptr(f_ptr(ptr)?)),
         }
     }
@@ -232,17 +232,17 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_bool(b: bool) -> Self {
-        Scalar::Raw(b.into())
+        Scalar::Int(b.into())
     }
 
     #[inline]
     pub fn from_char(c: char) -> Self {
-        Scalar::Raw(c.into())
+        Scalar::Int(c.into())
     }
 
     #[inline]
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
-        ScalarInt::try_from_uint(i, size).map(Scalar::Raw)
+        ScalarInt::try_from_uint(i, size).map(Scalar::Int)
     }
 
     #[inline]
@@ -254,22 +254,22 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_u8(i: u8) -> Self {
-        Scalar::Raw(i.into())
+        Scalar::Int(i.into())
     }
 
     #[inline]
     pub fn from_u16(i: u16) -> Self {
-        Scalar::Raw(i.into())
+        Scalar::Int(i.into())
     }
 
     #[inline]
     pub fn from_u32(i: u32) -> Self {
-        Scalar::Raw(i.into())
+        Scalar::Int(i.into())
     }
 
     #[inline]
     pub fn from_u64(i: u64) -> Self {
-        Scalar::Raw(i.into())
+        Scalar::Int(i.into())
     }
 
     #[inline]
@@ -279,7 +279,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn try_from_int(i: impl Into<i128>, size: Size) -> Option<Self> {
-        ScalarInt::try_from_int(i, size).map(Scalar::Raw)
+        ScalarInt::try_from_int(i, size).map(Scalar::Int)
     }
 
     #[inline]
@@ -316,12 +316,12 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn from_f32(f: Single) -> Self {
-        Scalar::Raw(f.into())
+        Scalar::Int(f.into())
     }
 
     #[inline]
     pub fn from_f64(f: Double) -> Self {
-        Scalar::Raw(f.into())
+        Scalar::Int(f.into())
     }
 
     /// This is very rarely the method you want!  You should dispatch on the type
@@ -336,7 +336,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     ) -> Result<u128, Pointer<Tag>> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
-            Scalar::Raw(int) => Ok(int.assert_bits(target_size)),
+            Scalar::Int(int) => Ok(int.assert_bits(target_size)),
             Scalar::Ptr(ptr) => {
                 assert_eq!(target_size, cx.data_layout().pointer_size);
                 Err(ptr)
@@ -350,7 +350,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
-            Scalar::Raw(int) => int.to_bits(target_size),
+            Scalar::Int(int) => int.to_bits(target_size),
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
         }
     }
@@ -364,14 +364,14 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn assert_ptr(self) -> Pointer<Tag> {
         match self {
             Scalar::Ptr(p) => p,
-            Scalar::Raw { .. } => bug!("expected a Pointer but got Raw bits"),
+            Scalar::Int { .. } => bug!("expected a Pointer but got Raw bits"),
         }
     }
 
     /// Do not call this method!  Dispatch based on the type instead.
     #[inline]
     pub fn is_bits(self) -> bool {
-        matches!(self, Scalar::Raw { .. })
+        matches!(self, Scalar::Int { .. })
     }
 
     /// Do not call this method!  Dispatch based on the type instead.

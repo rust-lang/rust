@@ -230,11 +230,11 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn scalar_to_backend(&self, cv: Scalar, layout: &abi::Scalar, llty: &'ll Type) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
         match cv {
-            Scalar::Raw(ScalarInt::ZST) => {
+            Scalar::Int(ScalarInt::ZST) => {
                 assert_eq!(0, layout.value.size(self).bytes());
                 self.const_undef(self.type_ix(0))
             }
-            Scalar::Raw(int) => {
+            Scalar::Int(int) => {
                 let data = int.assert_bits(layout.value.size(self));
                 let llval = self.const_uint_big(self.type_ix(bitsize), data);
                 if layout.value == Pointer {

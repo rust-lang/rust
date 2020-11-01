@@ -40,7 +40,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
             let bbs = &mut body.basic_blocks_mut();
             let bb = &mut bbs[opt.bb_idx];
             let new_value = match opt.branch_value_scalar {
-                Scalar::Raw(int) => {
+                Scalar::Int(int) => {
                     let layout = tcx
                         .layout_of(param_env.and(opt.branch_value_ty))
                         .expect("if we have an evaluated constant we must know the layout");

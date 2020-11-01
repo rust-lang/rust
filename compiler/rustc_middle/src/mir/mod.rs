@@ -1952,7 +1952,7 @@ impl<'tcx> Operand<'tcx> {
                 .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
                 .size;
             let scalar_size = match val {
-                Scalar::Raw(int) => int.size(),
+                Scalar::Int(int) => int.size(),
                 _ => panic!("Invalid scalar type {:?}", val),
             };
             scalar_size == type_size

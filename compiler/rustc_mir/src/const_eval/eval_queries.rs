@@ -137,7 +137,7 @@ pub(super) fn op_to_const<'tcx>(
             let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
-        Scalar::Raw(int) => {
+        Scalar::Int(int) => {
             assert!(mplace.layout.is_zst());
             assert_eq!(
                 int.assert_bits(ecx.tcx.data_layout.pointer_size)
@@ -162,7 +162,7 @@ pub(super) fn op_to_const<'tcx>(
                     Scalar::Ptr(ptr) => {
                         (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
                     }
-                    Scalar::Raw { .. } => (
+                    Scalar::Int { .. } => (
                         ecx.tcx
                             .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
                         0,

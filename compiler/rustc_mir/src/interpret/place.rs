@@ -721,7 +721,7 @@ where
                     dest.layout.size,
                     "Size mismatch when writing pointer"
                 ),
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Raw(int))) => {
+                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Int(int))) => {
                     assert_eq!(int.size(), dest.layout.size, "Size mismatch when writing bits")
                 }
                 Immediate::Scalar(ScalarMaybeUninit::Uninit) => {} // uninit can have any size

@@ -630,7 +630,7 @@ pub fn write_allocations<'tcx>(
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr)) => {
                 Either::Left(Either::Left(std::iter::once(ptr.alloc_id)))
             }
-            ConstValue::Scalar(interpret::Scalar::Raw { .. }) => {
+            ConstValue::Scalar(interpret::Scalar::Int { .. }) => {
                 Either::Left(Either::Right(std::iter::empty()))
             }
             ConstValue::ByRef { alloc, .. } | ConstValue::Slice { data: alloc, .. } => {

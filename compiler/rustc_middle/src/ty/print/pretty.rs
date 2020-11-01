@@ -982,27 +982,27 @@ pub trait PrettyPrinter<'tcx>:
                 None => p!("<dangling pointer>"),
             },
             // Bool
-            (Scalar::Raw(int), ty::Bool) if int == ScalarInt::FALSE => p!("false"),
-            (Scalar::Raw(int), ty::Bool) if int == ScalarInt::TRUE => p!("true"),
+            (Scalar::Int(int), ty::Bool) if int == ScalarInt::FALSE => p!("false"),
+            (Scalar::Int(int), ty::Bool) if int == ScalarInt::TRUE => p!("true"),
             // Float
-            (Scalar::Raw(int), ty::Float(ast::FloatTy::F32)) => {
+            (Scalar::Int(int), ty::Float(ast::FloatTy::F32)) => {
                 p!(write("{}f32", Single::try_from(int).unwrap()))
             }
-            (Scalar::Raw(int), ty::Float(ast::FloatTy::F64)) => {
+            (Scalar::Int(int), ty::Float(ast::FloatTy::F64)) => {
                 p!(write("{}f64", Double::try_from(int).unwrap()))
             }
             // Int
-            (Scalar::Raw(int), ty::Uint(_) | ty::Int(_)) => {
+            (Scalar::Int(int), ty::Uint(_) | ty::Int(_)) => {
                 let int =
                     ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
                 if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             // Char
-            (Scalar::Raw(int), ty::Char) if char::try_from(int).is_ok() => {
+            (Scalar::Int(int), ty::Char) if char::try_from(int).is_ok() => {
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Raw pointers
-            (Scalar::Raw(int), ty::RawPtr(_)) => {
+            (Scalar::Int(int), ty::RawPtr(_)) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
@@ -1025,11 +1025,11 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             // For function type zsts just printing the path is enough
-            (Scalar::Raw(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {
+            (Scalar::Int(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {
                 p!(print_value_path(*d, s))
             }
             // Nontrivial types with scalar bit representation
-            (Scalar::Raw(int), _) => {
+            (Scalar::Int(int), _) => {
                 let print = |mut this: Self| {
                     if int.size() == Size::ZERO {
                         write!(this, "transmute(())")?;
