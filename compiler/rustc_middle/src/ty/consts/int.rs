@@ -225,10 +225,9 @@ impl ScalarInt {
 
     #[inline]
     pub fn assert_bits(self, target_size: Size) -> u128 {
-        assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        assert_eq!(target_size.bytes(), u64::from(self.size));
-        self.check_data();
-        self.data
+        self.to_bits(target_size).unwrap_or_else(|size| {
+            bug!("int of size {}, but is {}", target_size.bytes(), size.bytes())
+        })
     }
 
     #[inline]
