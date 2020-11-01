@@ -561,7 +561,7 @@ impl<W: Write> Drop for BufWriter<W> {
 /// matching that predicate. Used to check if there is exactly one non-empty
 /// buffer in a list input to write_vectored.
 ///
-/// TODO: delete this function and replace it with slice::trim if that becomes
+/// FIXME: delete this function and replace it with slice::trim if that becomes
 /// a things (https://github.com/rust-lang/rfcs/issues/2547)
 fn only_one<I, T>(iter: I, filter: impl FnMut(&T) -> bool) -> Option<T>
 where

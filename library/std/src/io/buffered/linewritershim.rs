@@ -170,7 +170,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// get the benefits of more granular partial-line handling without losing
     /// anything in efficiency
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        // TODO: BufWriter recently received some optimized handling of
+        // FIXME: BufWriter recently received some optimized handling of
         // vectored writes; update this method to take advantage of those
         // updates. In particular, BufWriter::is_write_vectored is always true,
         // because BufWriter::write_vectored takes special care to buffer
