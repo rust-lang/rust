@@ -842,6 +842,13 @@ impl fmt::Debug for Punct {
     }
 }
 
+#[stable(feature = "proc_macro_punct_eq", since = "1.49.0")]
+impl PartialEq<char> for Punct {
+    fn eq(&self, rhs: &char) -> bool {
+        self.as_char() == *rhs
+    }
+}
+
 /// An identifier (`ident`).
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
