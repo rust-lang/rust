@@ -155,6 +155,7 @@ pub struct AtomicBool {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for AtomicBool {
     /// Creates an `AtomicBool` initialized to `false`.
+    #[inline]
     fn default() -> Self {
         Self::new(false)
     }
@@ -1212,6 +1213,7 @@ macro_rules! atomic_int {
 
         #[$stable]
         impl Default for $atomic_type {
+            #[inline]
             fn default() -> Self {
                 Self::new(Default::default())
             }
