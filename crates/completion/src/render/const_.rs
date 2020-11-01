@@ -1,3 +1,5 @@
+//! Renderer for `const` fields.
+
 use hir::HasSource;
 use syntax::{
     ast::{Const, NameOwner},

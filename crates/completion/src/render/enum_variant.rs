@@ -1,3 +1,5 @@
+//! Renderer for `enum` variants.
+
 use hir::{HasAttrs, HirDisplay, ModPath, StructKind};
 use itertools::Itertools;
 use test_utils::mark;

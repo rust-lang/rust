@@ -1,3 +1,5 @@
+//! Renderer for function calls.
+
 use hir::{HasSource, Type};
 use syntax::{ast::Fn, display::function_declaration};
 

@@ -1,3 +1,5 @@
+//! Renderer for macro invocations.
+
 use hir::{Documentation, HasSource};
 use syntax::display::macro_label;
 use test_utils::mark;
@@ -66,7 +68,11 @@ impl<'a> MacroRender<'a> {
     }
 
     fn label(&self) -> String {
-        format!("{}!{}…{}", self.name, self.bra, self.ket)
+        if self.needs_bang() && self.ctx.snippet_cap().is_some() {
+            format!("{}!{}…{}", self.name, self.bra, self.ket)
+        } else {
+            self.banged_name()
+        }
     }
 
     fn snippet(&self) -> String {

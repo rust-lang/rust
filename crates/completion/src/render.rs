@@ -23,11 +23,13 @@ pub(crate) use crate::render::{
     macro_::MacroRender, type_alias::TypeAliasRender,
 };
 
+/// Generic renderer for completion items.
 #[derive(Debug)]
 pub(crate) struct Render<'a> {
     ctx: RenderContext<'a>,
 }
 
+/// Interface for data and methods required for items rendering.
 #[derive(Debug)]
 pub(crate) struct RenderContext<'a> {
     completion: &'a CompletionContext<'a>,

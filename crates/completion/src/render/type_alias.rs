@@ -1,3 +1,5 @@
+//! Renderer for type aliases.
+
 use hir::HasSource;
 use syntax::{
     ast::{NameOwner, TypeAlias},
