@@ -41,10 +41,16 @@ LL |     #[deprecated("test")]
    |                  ^^^^^^
 
 error[E0550]: multiple deprecated attributes
-  --> $DIR/deprecation-sanity.rs:28:1
+  --> $DIR/deprecation-sanity.rs:27:1
    |
-LL | fn multiple1() { }
-   | ^^^^^^^^^^^^^^^^^^
+LL | #[deprecated(since = "a", note = "b")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first deprecation attribute here
+  --> $DIR/deprecation-sanity.rs:26:1
+   |
+LL | #[deprecated(since = "a", note = "b")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0538]: multiple 'since' items
   --> $DIR/deprecation-sanity.rs:30:27
