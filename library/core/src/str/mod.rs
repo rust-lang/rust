@@ -843,8 +843,8 @@ impl str {
     /// a line feed (`\r\n`).
     ///
     /// The final line ending is optional. A string that ends with a final line
-    /// ending (carriage return or line feed) will return the same lines as an
-    /// otherwise identical string without a final line ending.
+    /// ending will return the same lines as an otherwise identical string
+    /// without a final line ending.
     ///
     /// # Examples
     ///
