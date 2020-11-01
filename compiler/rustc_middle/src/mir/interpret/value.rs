@@ -180,7 +180,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn zst() -> Self {
-        Scalar::Int(ScalarInt::zst())
+        Scalar::Int(ScalarInt::ZST)
     }
 
     #[inline(always)]

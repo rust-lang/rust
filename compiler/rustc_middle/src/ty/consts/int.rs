@@ -184,11 +184,6 @@ impl ScalarInt {
     }
 
     #[inline]
-    pub fn zst() -> Self {
-        Self::null(Size::ZERO)
-    }
-
-    #[inline]
     pub fn null(size: Size) -> Self {
         Self { data: 0, size: size.bytes() as u8 }
     }
