@@ -46,7 +46,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     // #[doc = "another"]
     //
     // In this case, you want "hello! another" and not "hello!  another".
-    let add = if !docs.windows(2).all(|arr| arr[0].kind == arr[1].kind)
+    let add = if docs.windows(2).any(|arr| arr[0].kind != arr[1].kind)
         && docs.iter().any(|d| d.kind == DocFragmentKind::SugaredDoc)
     {
         // In case we have a mix of sugared doc comments and "raw" ones, we want the sugared one to
@@ -87,27 +87,28 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     };
 
     for fragment in docs {
-        let lines: Vec<_> = fragment.doc.lines().collect();
-
-        if !lines.is_empty() {
-            let min_indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
-                min_indent - add
-            } else {
-                min_indent
-            };
-
-            fragment.doc = lines
-                .iter()
-                .map(|&line| {
-                    if line.chars().all(|c| c.is_whitespace()) {
-                        line.to_string()
-                    } else {
-                        assert!(line.len() >= min_indent);
-                        line[min_indent..].to_string()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
+        if fragment.doc.lines().count() == 0 {
+            continue;
         }
+
+        let min_indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
+            min_indent - add
+        } else {
+            min_indent
+        };
+
+        fragment.doc = fragment
+            .doc
+            .lines()
+            .map(|line| {
+                if line.chars().all(|c| c.is_whitespace()) {
+                    line.to_string()
+                } else {
+                    assert!(line.len() >= min_indent);
+                    line[min_indent..].to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
     }
 }
