@@ -1,5 +1,5 @@
 // Meta test for compiletest: check that when we give the right error
-// patterns, the test passes. See all `meta-revision-bad.rs`.
+// patterns, the test passes. See all `revision-bad.rs`.
 
 // run-fail
 // revisions: foo bar
