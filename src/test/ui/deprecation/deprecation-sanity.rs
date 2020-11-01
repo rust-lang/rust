@@ -30,4 +30,13 @@ fn multiple1() { }
 #[deprecated(since = "a", since = "b", note = "c")] //~ ERROR multiple 'since' items
 fn f1() { }
 
+struct X;
+
+#[deprecated = "hello"] //~ ERROR this `#[deprecated]' annotation has no effect
+impl Default for X {
+    fn default() -> Self {
+        X
+    }
+}
+
 fn main() { }

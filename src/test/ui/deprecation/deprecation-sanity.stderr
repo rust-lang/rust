@@ -58,7 +58,15 @@ error[E0538]: multiple 'since' items
 LL | #[deprecated(since = "a", since = "b", note = "c")]
    |                           ^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: this `#[deprecated]' annotation has no effect
+  --> $DIR/deprecation-sanity.rs:35:1
+   |
+LL | #[deprecated = "hello"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the deprecation attribute
+   |
+   = note: `#[deny(useless_deprecated)]` on by default
+
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0538, E0541, E0550, E0551, E0565.
 For more information about an error, try `rustc --explain E0538`.
