@@ -15,7 +15,7 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{DeprecationEntry, Index};
 use rustc_middle::ty::{self, query::Providers, TyCtxt};
 use rustc_session::lint;
-use rustc_session::lint::builtin::INEFFECTIVE_UNSTABLE_TRAIT_IMPL;
+use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -91,16 +91,16 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             is_deprecated = true;
 
             if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
-                self.tcx
-                    .sess
-                    .struct_span_err(*span, "this deprecation annotation is useless")
-                    .span_suggestion(
-                        *span,
-                        "try removing the deprecation attribute",
-                        String::new(),
-                        rustc_errors::Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.tcx.struct_span_lint_hir(USELESS_DEPRECATED, hir_id, *span, |lint| {
+                    lint.build("this `#[deprecated]' annotation has no effect")
+                        .span_suggestion(
+                            *span,
+                            "try removing the deprecation attribute",
+                            String::new(),
+                            rustc_errors::Applicability::MachineApplicable,
+                        )
+                        .emit()
+                });
             }
 
             // `Deprecation` is just two pointers, no need to intern it
