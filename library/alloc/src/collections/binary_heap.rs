@@ -1036,8 +1036,9 @@ impl<'a, T> Hole<'a, T> {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
         unsafe {
-            let index_ptr: *const _ = self.data.get_unchecked(index);
-            let hole_ptr = self.data.get_unchecked_mut(self.pos);
+            let ptr = self.data.as_mut_ptr();
+            let index_ptr: *const _ = ptr.add(index);
+            let hole_ptr = ptr.add(self.pos);
             ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
         }
         self.pos = index;
