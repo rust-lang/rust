@@ -1,4 +1,4 @@
-use hir::{Documentation, HasAttrs, HasSource};
+use hir::{Documentation, HasSource};
 use syntax::display::macro_label;
 use test_utils::mark;
 
@@ -23,7 +23,7 @@ impl<'a> MacroRender<'a> {
         name: String,
         macro_: hir::MacroDef,
     ) -> MacroRender<'a> {
-        let docs = macro_.docs(ctx.db());
+        let docs = ctx.docs(macro_);
         let docs_str = docs.as_ref().map_or("", |s| s.as_str());
         let (bra, ket) = guess_macro_braces(&name, docs_str);
 

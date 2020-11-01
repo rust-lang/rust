@@ -5,15 +5,17 @@ mod macro_;
 mod function;
 mod builder_ext;
 mod enum_variant;
+mod const_;
 
-use hir::HasAttrs;
+use hir::{Documentation, HasAttrs};
 use ide_db::RootDatabase;
 use syntax::TextRange;
 
 use crate::{config::SnippetCap, CompletionContext};
 
 pub(crate) use crate::render::{
-    enum_variant::EnumVariantRender, function::FunctionRender, macro_::MacroRender,
+    const_::ConstRender, enum_variant::EnumVariantRender, function::FunctionRender,
+    macro_::MacroRender,
 };
 
 #[derive(Debug)]
@@ -40,6 +42,10 @@ impl<'a> RenderContext<'a> {
 
     pub fn is_deprecated(&self, node: impl HasAttrs) -> bool {
         node.attrs(self.db()).by_key("deprecated").exists()
+    }
+
+    pub fn docs(&self, node: impl HasAttrs) -> Option<Documentation> {
+        node.docs(self.db())
     }
 }
 

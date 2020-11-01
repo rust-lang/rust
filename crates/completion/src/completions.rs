@@ -20,7 +20,7 @@ use test_utils::mark;
 
 use crate::{
     item::Builder,
-    render::{EnumVariantRender, FunctionRender, MacroRender},
+    render::{ConstRender, EnumVariantRender, FunctionRender, MacroRender},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionScore,
     RootDatabase,
 };
@@ -194,7 +194,6 @@ impl Completions {
             Some(it) => it,
             None => return,
         };
-
         if let Some(item) = MacroRender::new(ctx.into(), name, macro_).render() {
             self.add(item);
         }
@@ -207,24 +206,13 @@ impl Completions {
         local_name: Option<String>,
     ) {
         let item = FunctionRender::new(ctx.into(), local_name, func).render();
-
         self.add(item)
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        let ast_node = constant.source(ctx.db).value;
-        let name = match ast_node.name() {
-            Some(name) => name,
-            _ => return,
-        };
-        let detail = const_label(&ast_node);
-
-        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
-            .kind(CompletionItemKind::Const)
-            .set_documentation(constant.docs(ctx.db))
-            .set_deprecated(is_deprecated(constant, ctx.db))
-            .detail(detail)
-            .add_to(self);
+        if let Some(item) = ConstRender::new(ctx.into(), constant).render() {
+            self.add(item);
+        }
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {

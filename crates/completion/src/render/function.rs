@@ -1,4 +1,4 @@
-use hir::{Documentation, HasAttrs, HasSource, Type};
+use hir::{HasSource, Type};
 use syntax::{ast::Fn, display::function_declaration};
 
 use crate::{
@@ -30,7 +30,7 @@ impl<'a> FunctionRender<'a> {
         let params = self.params();
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), self.name.clone())
             .kind(self.kind())
-            .set_documentation(self.docs())
+            .set_documentation(self.ctx.docs(self.fn_))
             .set_deprecated(self.ctx.is_deprecated(self.fn_))
             .detail(self.detail())
             .add_call_parens(self.ctx.completion, self.name, params)
@@ -45,8 +45,8 @@ impl<'a> FunctionRender<'a> {
         if let Some(derefed_ty) = ty.remove_ref() {
             for (name, local) in self.ctx.completion.locals.iter() {
                 if name == arg && local.ty(self.ctx.db()) == derefed_ty {
-                    return (if ty.is_mutable_reference() { "&mut " } else { "&" }).to_string()
-                        + &arg.to_string();
+                    let mutability = if ty.is_mutable_reference() { "&mut " } else { "&" };
+                    return format!("{}{}", mutability, arg);
                 }
             }
         }
@@ -79,9 +79,5 @@ impl<'a> FunctionRender<'a> {
         } else {
             CompletionItemKind::Function
         }
-    }
-
-    fn docs(&self) -> Option<Documentation> {
-        self.fn_.docs(self.ctx.db())
     }
 }
