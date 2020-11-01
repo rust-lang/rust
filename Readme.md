@@ -4,13 +4,20 @@
 
 The goal of this project is to create an alternative codegen backend for the rust compiler based on [Cranelift](https://github.com/bytecodealliance/wasmtime/blob/master/cranelift). This has the potential to improve compilation times in debug mode. If your project doesn't use any of the things listed under "Not yet supported", it should work fine. If not please open an issue.
 
-## Building
+## Building and testing
 
 ```bash
 $ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
 $ cd rustc_codegen_cranelift
 $ ./prepare.sh # download and patch sysroot src and install hyperfine for benchmarking
 $ ./test.sh --release
+```
+
+If you want to only build but not test you should replace the last command with:
+
+```bash
+$ cargo build --release
+$ ./build_sysroot/build_sysroot.sh
 ```
 
 ## Usage
