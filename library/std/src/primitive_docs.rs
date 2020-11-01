@@ -805,10 +805,12 @@ mod prim_tuple {}
 /// often discard insignificant digits: `println!("{}", 1.0f32 / 5.0f32)` will
 /// print `0.2`.
 ///
-/// Additionally, `f32` can represent a couple of special values:
+/// Additionally, `f32` can represent some special values:
 ///
-/// - `-0`: this is just due to how floats are encoded. It is semantically
-///   equivalent to `0` and `-0.0 == 0.0` results in `true`.
+/// - `-0`: this value exists due to how floats are encoded. -0 == 0 is true, but for other
+///   operations they are not equal and the difference can be useful to certain algorithms.
+///   For example, operations on negative numbers that underflow to 0 will usually generate -0
+///   instead of +0.
 /// - [∞](#associatedconstant.INFINITY) and
 ///   [−∞](#associatedconstant.NEG_INFINITY): these result from calculations
 ///   like `1.0 / 0.0`.
