@@ -113,7 +113,6 @@ impl std::fmt::Debug for ConstInt {
     }
 }
 
-// FIXME: reuse in `super::int::ConstInt` and `Scalar::Bits`
 /// The raw bytes of a simple value.
 ///
 /// This is a packed struct in order to allow this type to be optimally embedded in enums
