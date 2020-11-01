@@ -194,7 +194,7 @@ impl ScalarInt {
         f_int: impl FnOnce(u64) -> InterpResult<'tcx, u64>,
     ) -> InterpResult<'tcx, Self> {
         assert_eq!(u64::from(self.size), dl.pointer_size.bytes());
-        Ok(Self { data: u128::from(f_int(u64::try_from(self.data).unwrap())?), size: self.size })
+        Ok(Self::try_from_uint(f_int(u64::try_from(self.data).unwrap())?, self.size).unwrap())
     }
 
     #[inline]
