@@ -799,11 +799,9 @@ enum Constructor<'tcx> {
     /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
     /// don't count towards making a match exhaustive.
     Opaque,
-    /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
+    /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
+    /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
-    /// Fake constructor for those types for which we can't list constructors explicitly, like
-    /// `f64` and `str`.
-    Unlistable,
     /// Wildcard pattern.
     Wildcard,
 }
@@ -897,6 +895,7 @@ impl<'tcx> Constructor<'tcx> {
     /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
     fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
+        // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -939,11 +938,6 @@ impl<'tcx> Constructor<'tcx> {
             (Opaque, _) | (_, Opaque) => false,
             // Only a wildcard pattern can match the special extra constructor.
             (NonExhaustive, _) => false,
-            // If we encounter a `Single` here, this means there was only one constructor for this
-            // type after all.
-            (Unlistable, Single) => true,
-            // Otherwise, only a wildcard pattern can match the special extra constructor.
-            (Unlistable, _) => false,
 
             _ => span_bug!(
                 pcx.span,
@@ -955,7 +949,8 @@ impl<'tcx> Constructor<'tcx> {
     }
 
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
-    /// assumed to be built from `matrix.head_ctors()`, and `self` is assumed to have been split.
+    /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
+    /// assumed to have been split from a wildcard.
     fn is_covered_by_any<'p>(
         &self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
@@ -965,8 +960,9 @@ impl<'tcx> Constructor<'tcx> {
             return false;
         }
 
+        // This must be kept in sync with `is_covered_by`.
         match self {
-            // `used_ctors` cannot contain anything else than `Single`s.
+            // If `self` is `Single`, `used_ctors` cannot contain anything else than `Single`s.
             Single => !used_ctors.is_empty(),
             Variant(_) => used_ctors.iter().any(|c| c == self),
             IntRange(range) => used_ctors
@@ -979,8 +975,6 @@ impl<'tcx> Constructor<'tcx> {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            // This constructor is only covered by `Single`s
-            Unlistable => used_ctors.iter().any(|c| *c == Single),
             Str(..) | FloatRange(..) | Opaque | Wildcard => {
                 bug!("found unexpected ctor in all_ctors: {:?}", self)
             }
@@ -1064,7 +1058,7 @@ impl<'tcx> Constructor<'tcx> {
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(pcx.cx.tcx),
-            NonExhaustive | Unlistable => PatKind::Wild,
+            NonExhaustive => PatKind::Wild,
             Opaque => bug!("we should not try to apply an opaque constructor"),
             Wildcard => bug!(
                 "trying to apply a wildcard constructor; this should have been done in `apply_constructors`"
@@ -1213,8 +1207,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Unlistable
-            | Wildcard => Fields::empty(),
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Wildcard => {
+                Fields::empty()
+            }
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -1624,8 +1619,8 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
         }
         _ if cx.is_uninhabited(pcx.ty) => vec![],
         ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => vec![Single],
-        // This type is one for which we don't know how to list constructors, like `str` or `f64`.
-        _ => vec![Unlistable],
+        // This type is one for which we cannot list constructors, like `str` or `f64`.
+        _ => vec![NonExhaustive],
     }
 }
 
