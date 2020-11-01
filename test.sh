@@ -22,7 +22,7 @@ rm -r target/out || true
 no_sysroot_tests
 
 echo "[BUILD] sysroot"
-time ./build_sysroot/build_sysroot.sh --release
+time ./build_sysroot/build_sysroot.sh
 
 base_sysroot_tests
 

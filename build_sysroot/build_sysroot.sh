@@ -5,6 +5,10 @@
 set -e
 cd $(dirname "$0")
 
+if [ -z $CHANNEL ]; then
+export CHANNEL='release'
+fi
+
 pushd ../ >/dev/null
 source ./scripts/config.sh
 popd >/dev/null
@@ -24,7 +28,7 @@ export RUSTFLAGS=$RUSTFLAGS" --clif"
 
 # Build libs
 export RUSTFLAGS="$RUSTFLAGS -Zforce-unstable-if-unmarked -Cpanic=abort"
-if [[ "$1" == "--release" ]]; then
+if [[ "$1" != "--debug" ]]; then
     sysroot_channel='release'
     # FIXME Enable incremental again once rust-lang/rust#74946 is fixed
     # FIXME Enable -Zmir-opt-level=2 again once it doesn't ice anymore
