@@ -27,14 +27,38 @@ use rustc_span::Span;
 /// employing the ExprUseVisitor.
 pub trait Delegate<'tcx> {
     // The value found at `place` is either copied or moved, depending
-    // on mode.
-    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, mode: ConsumeMode);
+    // on mode. Where `diag_expr_id` is the id used for diagnostics for `place`.
+    //
+    // The reson for a separate expr_id for diagonostics is to support cases
+    // like `let pat = upvar`, in such scenarios reporting the pattern (lhs)
+    // looks confusing. Instead we prefer to report the discriminant (rhs)
+    fn consume(
+        &mut self,
+        place_with_id: &PlaceWithHirId<'tcx>,
+        diag_expr_id: hir::HirId,
+        mode: ConsumeMode,
+    );
 
     // The value found at `place` is being borrowed with kind `bk`.
-    fn borrow(&mut self, place_with_id: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind);
+    // `diag_expr_id` is the id used for diagnostics for `place`.
+    //
+    // The reson for a separate expr_id for diagonostics is to support cases
+    // like `let pat = upvar`, in such scenarios reporting the pattern (lhs)
+    // looks confusing. Instead we prefer to report the discriminant (rhs)
+    fn borrow(
+        &mut self,
+        place_with_id: &PlaceWithHirId<'tcx>,
+        diag_expr_id: hir::HirId,
+        bk: ty::BorrowKind,
+    );
 
-    // The path at `place_with_id` is being assigned to.
-    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>);
+    // The path at `assignee_place` is being assigned to.
+    // `diag_expr_id` is the id used for diagnostics for `place`.
+    //
+    // The reson for a separate expr_id for diagonostics is to support cases
+    // like `let pat = upvar`, in such scenarios reporting the pattern (lhs)
+    // looks confusing. Instead we prefer to report the discriminant (rhs)
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -116,11 +140,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         self.mc.tcx()
     }
 
-    fn delegate_consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>) {
+    fn delegate_consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
         debug!("delegate_consume(place_with_id={:?})", place_with_id);
 
         let mode = copy_or_move(&self.mc, place_with_id);
-        self.delegate.consume(place_with_id, mode);
+        self.delegate.consume(place_with_id, diag_expr_id, mode);
     }
 
     fn consume_exprs(&mut self, exprs: &[hir::Expr<'_>]) {
@@ -133,13 +157,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("consume_expr(expr={:?})", expr);
 
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate_consume(&place_with_id);
+        self.delegate_consume(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr);
     }
 
     fn mutate_expr(&mut self, expr: &hir::Expr<'_>) {
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.mutate(&place_with_id);
+        self.delegate.mutate(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr);
     }
 
@@ -147,7 +171,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
 
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.borrow(&place_with_id, bk);
+        self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk);
 
         self.walk_expr(expr)
     }
@@ -404,7 +428,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             with_field.ty(self.tcx(), substs),
                             ProjectionKind::Field(f_index as u32, VariantIdx::new(0)),
                         );
-                        self.delegate_consume(&field_place);
+                        self.delegate_consume(&field_place, field_place.hir_id);
                     }
                 }
             }
@@ -436,7 +460,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 adjustment::Adjust::NeverToAny | adjustment::Adjust::Pointer(_) => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
-                    self.delegate_consume(&place_with_id);
+                    self.delegate_consume(&place_with_id, place_with_id.hir_id);
                 }
 
                 adjustment::Adjust::Deref(None) => {}
@@ -448,7 +472,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // this is an autoref of `x`.
                 adjustment::Adjust::Deref(Some(ref deref)) => {
                     let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
-                    self.delegate.borrow(&place_with_id, bk);
+                    self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk);
                 }
 
                 adjustment::Adjust::Borrow(ref autoref) => {
@@ -476,13 +500,17 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         match *autoref {
             adjustment::AutoBorrow::Ref(_, m) => {
-                self.delegate.borrow(base_place, ty::BorrowKind::from_mutbl(m.into()));
+                self.delegate.borrow(
+                    base_place,
+                    base_place.hir_id,
+                    ty::BorrowKind::from_mutbl(m.into()),
+                );
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {
                 debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
 
-                self.delegate.borrow(base_place, ty::BorrowKind::from_mutbl(m));
+                self.delegate.borrow(base_place, base_place.hir_id, ty::BorrowKind::from_mutbl(m));
             }
         }
     }
@@ -525,19 +553,22 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     // binding being produced.
                     let def = Res::Local(canonical_id);
                     if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
-                        delegate.mutate(binding_place);
+                        delegate.mutate(binding_place, binding_place.hir_id);
                     }
 
                     // It is also a borrow or copy/move of the value being matched.
+                    // In a cases of pattern like `let pat = upvar`, don't use the span
+                    // of the pattern, as this just looks confusing, instead use the span
+                    // of the discriminant.
                     match bm {
                         ty::BindByReference(m) => {
                             let bk = ty::BorrowKind::from_mutbl(m);
-                            delegate.borrow(place, bk);
+                            delegate.borrow(place, discr_place.hir_id, bk);
                         }
                         ty::BindByValue(..) => {
-                            let mode = copy_or_move(mc, place);
+                            let mode = copy_or_move(mc, &place);
                             debug!("walk_pat binding consuming pat");
-                            delegate.consume(place, mode);
+                            delegate.consume(place, discr_place.hir_id, mode);
                         }
                     }
                 }
@@ -564,10 +595,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 match upvar_capture {
                     ty::UpvarCapture::ByValue(_) => {
                         let mode = copy_or_move(&self.mc, &captured_place);
-                        self.delegate.consume(&captured_place, mode);
+                        self.delegate.consume(&captured_place, captured_place.hir_id, mode);
                     }
                     ty::UpvarCapture::ByRef(upvar_borrow) => {
-                        self.delegate.borrow(&captured_place, upvar_borrow.kind);
+                        self.delegate.borrow(
+                            &captured_place,
+                            captured_place.hir_id,
+                            upvar_borrow.kind,
+                        );
                     }
                 }
             }

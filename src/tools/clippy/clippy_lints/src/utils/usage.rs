@@ -68,15 +68,15 @@ impl<'tcx> MutVarsDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt)
         }
     }
 
-    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         self.update(&cmt)
     }
 }
