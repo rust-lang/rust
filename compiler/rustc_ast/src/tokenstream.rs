@@ -153,8 +153,9 @@ impl fmt::Debug for LazyTokenStream {
 }
 
 impl<S: Encoder> Encodable<S> for LazyTokenStream {
-    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
-        panic!("Attempted to encode LazyTokenStream");
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        // Used by AST json printing.
+        Encodable::encode(&self.create_token_stream(), s)
     }
 }
 
