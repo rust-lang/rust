@@ -7,7 +7,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{DefId, DefIndex, DefPathHash};
+use rustc_hir::def_id::{DefId, DefIndex, DefPathHash, LOCAL_CRATE};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
@@ -15,7 +15,7 @@ use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
-use rustc_middle::ty::{self, ReprOptions, Ty};
+use rustc_middle::ty::{self, ReprOptions, Ty, TyCtxt};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::CrateDisambiguator;
@@ -41,6 +41,10 @@ crate fn rustc_version() -> String {
     format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
 }
 
+crate fn crate_svh(tcx: TyCtxt<'_>) -> String {
+    tcx.crate_hash(LOCAL_CRATE).to_string()
+}
+
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
@@ -50,7 +54,7 @@ const METADATA_VERSION: u8 = 5;
 ///
 /// This header is followed by the position of the `CrateRoot`,
 /// which is encoded as a 32-bit big-endian unsigned integer,
-/// and further followed by the rustc version string.
+/// and further followed by the rustc version string and the svh.
 crate const METADATA_HEADER: &[u8; 8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
