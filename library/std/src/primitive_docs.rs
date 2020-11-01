@@ -492,7 +492,7 @@ mod prim_pointer {}
 /// Arrays of *any* size implement the following traits if the element type allows it:
 ///
 /// - [`Debug`]
-/// - [`FromIterator`]
+/// - [`iter::FromIterator`]
 /// - [`IntoIterator`] (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]
 /// - [`Hash`]
