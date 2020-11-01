@@ -51,10 +51,13 @@ fn emit_module(
 
     let product = map_product(product);
 
-    let tmp_file = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&name));
+    let tmp_file = tcx
+        .output_filenames(LOCAL_CRATE)
+        .temp_path(OutputType::Object, Some(&name));
     let obj = product.object.write().unwrap();
     if let Err(err) = std::fs::write(&tmp_file, obj) {
-        tcx.sess.fatal(&format!("error writing object file: {}", err));
+        tcx.sess
+            .fatal(&format!("error writing object file: {}", err));
     }
 
     let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
@@ -68,7 +71,12 @@ fn emit_module(
     };
 
     ModuleCodegenResult(
-        CompiledModule { name, kind, object: Some(tmp_file), bytecode: None },
+        CompiledModule {
+            name,
+            kind,
+            object: Some(tmp_file),
+            bytecode: None,
+        },
         work_product,
     )
 }
@@ -116,7 +124,11 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     // Initialize the global atomic mutex using a constructor for proc-macros.
     // FIXME implement atomic instructions in Cranelift.
     let mut init_atomics_mutex_from_constructor = None;
-    if tcx.sess.crate_types().contains(&rustc_session::config::CrateType::ProcMacro) {
+    if tcx
+        .sess
+        .crate_types()
+        .contains(&rustc_session::config::CrateType::ProcMacro)
+    {
         if mono_items.iter().any(|(mono_item, _)| match mono_item {
             rustc_middle::mir::mono::MonoItem::Static(def_id) => tcx
                 .symbol_name(Instance::mono(tcx, *def_id))
@@ -184,7 +196,9 @@ pub(super) fn run_aot(
         cgus.iter()
             .map(|cgu| {
                 let cgu_reuse = determine_cgu_reuse(tcx, cgu);
-                tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
+                tcx.sess
+                    .cgu_reuse_tracker
+                    .set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
 
                 match cgu_reuse {
                     _ if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() => {}
@@ -261,7 +275,8 @@ pub(super) fn run_aot(
             });
 
             if let Err(err) = std::fs::write(&tmp_file, obj) {
-                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+                tcx.sess
+                    .fatal(&format!("error writing metadata object file: {}", err));
             }
 
             (metadata_cgu_name, tmp_file)
@@ -291,7 +306,6 @@ pub(super) fn run_aot(
             windows_subsystem: None, // Windows is not yet supported
             linker_info: LinkerInfo::new(tcx),
             crate_info: CrateInfo::new(tcx),
-            crate_hash: tcx.crate_hash(LOCAL_CRATE),
         },
         work_products,
     ))
@@ -319,7 +333,8 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
                 "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift",
             );
         } else {
-            tcx.sess.fatal("asm! and global_asm! are not yet supported on macOS and Windows");
+            tcx.sess
+                .fatal("asm! and global_asm! are not yet supported on macOS and Windows");
         }
     }
 
@@ -329,12 +344,19 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
     // Remove all LLVM style comments
     let global_asm = global_asm
         .lines()
-        .map(|line| if let Some(index) = line.find("//") { &line[0..index] } else { line })
+        .map(|line| {
+            if let Some(index) = line.find("//") {
+                &line[0..index]
+            } else {
+                line
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
-    let output_object_file =
-        tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(cgu_name));
+    let output_object_file = tcx
+        .output_filenames(LOCAL_CRATE)
+        .temp_path(OutputType::Object, Some(cgu_name));
 
     // Assemble `global_asm`
     let global_asm_object_file = add_file_stem_postfix(output_object_file.clone(), ".asm");
@@ -344,10 +366,16 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
         .stdin(Stdio::piped())
         .spawn()
         .expect("Failed to spawn `as`.");
-    child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(global_asm.as_bytes())
+        .unwrap();
     let status = child.wait().expect("Failed to wait for `as`.");
     if !status.success() {
-        tcx.sess.fatal(&format!("Failed to assemble `{}`", global_asm));
+        tcx.sess
+            .fatal(&format!("Failed to assemble `{}`", global_asm));
     }
 
     // Link the global asm and main object file together
@@ -391,7 +419,11 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
     }
 
     let work_product_id = &cgu.work_product_id();
-    if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
+    if tcx
+        .dep_graph
+        .previous_work_product(work_product_id)
+        .is_none()
+    {
         // We don't have anything cached for this CGU. This can happen
         // if the CGU did not exist in the previous session.
         return CguReuse::No;
