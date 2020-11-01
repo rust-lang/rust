@@ -608,7 +608,6 @@ fn escape_dep_env(symbol: Symbol) -> String {
 enum FileHash {
     SourceFile(Lrc<SourceFile>),
     BinaryHash(u64, String),
-    //HashInFilename(u64),
 }
 
 fn write_out_deps(
@@ -743,30 +742,6 @@ fn hash_bin(path: &PathBuf, svh: &Svh) -> io::Result<FileHash> {
     let svh_str = format!("{}", svh);
     Ok(FileHash::BinaryHash(size, svh_str))
 }
-
-/// For files with svh in their filename we indicate that we should
-/// trust the contents are correct without further checks.
-/// FIXME: is that really an svh in the filename - that's potentially overridden by an arg.
-/// not sure we can trust it.
-// fn hash_bin_with_svh(path: &PathBuf) -> io::Result<FileHash> {
-//     let size = fs::metadata(path)?.len();
-//     Ok(FileHash::HashInFilename(size))
-// }
-
-// fn md5_hash_file(path: &PathBuf) -> io::Result<Vec<u8>> {
-//     let mut reader = io::BufReader::new(fs::File::open(&path)?);
-
-//     let mut hasher = Md5::new();
-//     let mut buffer = [0; 1024];
-//     loop {
-//         let count = reader.read(&mut buffer)?;
-//         if count == 0 {
-//             break;
-//         }
-//         hasher.input(&buffer[..count]);
-//     }
-//     Ok(hasher.result().as_slice().to_vec())
-// }
 
 pub fn prepare_outputs(
     sess: &Session,
@@ -1078,11 +1053,11 @@ fn encode_and_write_metadata(
         .crate_types()
         .iter()
         .map(|ty| match *ty {
-            CrateType::Executable | CrateType::Staticlib => MetadataKind::None,
+            CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => MetadataKind::None,
 
             CrateType::Rlib => MetadataKind::Uncompressed,
 
-            CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
+            CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
         })
         .max()
         .unwrap_or(MetadataKind::None);

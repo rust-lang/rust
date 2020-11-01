@@ -43,7 +43,6 @@ use std::ffi::CString;
 use std::time::Instant;
 
 pub fn write_compressed_metadata<'tcx>(
-    //    backend: &T,
     tcx: TyCtxt<'tcx>,
     metadata: &EncodedMetadata,
     llvm_module: &mut ModuleLlvm,
