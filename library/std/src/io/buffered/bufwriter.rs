@@ -240,7 +240,7 @@ impl<W: Write> BufWriter<W> {
                             return Err(Error::new(
                                 ErrorKind::WriteZero,
                                 "failed to write the buffered data",
-                            ))
+                            ));
                         }
                         Ok(n) => guard.consume(n),
                         Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
