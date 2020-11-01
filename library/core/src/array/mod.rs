@@ -240,13 +240,13 @@ impl<T, const N: usize> FillError<T, N> {
     /// Returns an immutable slice of all initialized elements.
     pub fn as_slice(&self) -> &[T] {
         // SAFETY: We know that all elements from 0 to len are properly initialized.
-        unsafe { MaybeUninit::slice_get_ref(&self.array[0..self.len]) }
+        unsafe { MaybeUninit::slice_assume_init_ref(&self.array[0..self.len]) }
     }
 
     /// Returns a mutable slice of all initialized elements.
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: We know that all elements from 0 to len are properly initialized.
-        unsafe { MaybeUninit::slice_get_mut(&mut self.array[0..self.len]) }
+        unsafe { MaybeUninit::slice_assume_init_mut(&mut self.array[0..self.len]) }
     }
 
     /// Tries to initialize the left-over elements using `iter`.
@@ -256,6 +256,7 @@ impl<T, const N: usize> FillError<T, N> {
         for i in self.len..N {
             if let Some(value) = iter.next() {
                 self.array[i].write(value);
+                self.len += 1;
             } else {
                 self.len = i;
                 return Err(self);
@@ -502,7 +503,6 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T) -> U,
     {
-        use crate::mem::MaybeUninit;
         struct Guard<T, const N: usize> {
             dst: *mut T,
             initialized: usize,
