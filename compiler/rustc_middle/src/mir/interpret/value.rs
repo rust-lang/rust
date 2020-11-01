@@ -347,7 +347,13 @@ impl<'tcx, Tag> Scalar<Tag> {
     fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
-            Scalar::Int(int) => int.to_bits(target_size),
+            Scalar::Int(int) => int.to_bits(target_size).map_err(|size| {
+                err_ub!(ScalarSizeMismatch {
+                    target_size: target_size.bytes(),
+                    data_size: size.bytes(),
+                })
+                .into()
+            }),
             Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
         }
     }

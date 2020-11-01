@@ -1,5 +1,4 @@
-use crate::mir::interpret::{sign_extend, truncate, InterpErrorInfo, InterpResult};
-use crate::throw_ub;
+use crate::mir::interpret::{sign_extend, truncate, InterpResult};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -233,16 +232,14 @@ impl ScalarInt {
     }
 
     #[inline]
-    pub fn to_bits(self, target_size: Size) -> InterpResult<'static, u128> {
+    pub fn to_bits(self, target_size: Size) -> Result<u128, Size> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        if target_size.bytes() != u64::from(self.size) {
-            throw_ub!(ScalarSizeMismatch {
-                target_size: target_size.bytes(),
-                data_size: u64::from(self.size),
-            });
+        if target_size.bytes() == u64::from(self.size) {
+            self.check_data();
+            Ok(self.data)
+        } else {
+            Err(self.size())
         }
-        self.check_data();
-        Ok(self.data)
     }
 }
 
@@ -266,9 +263,9 @@ macro_rules! try_from {
     ($($ty:ty),*) => {
         $(
             impl TryFrom<ScalarInt> for $ty {
-                type Error = InterpErrorInfo<'static>;
+                type Error = Size;
                 #[inline]
-                fn try_from(int: ScalarInt) -> InterpResult<'static, Self> {
+                fn try_from(int: ScalarInt) -> Result<Self, Size> {
                     int.to_bits(Size::from_bytes(std::mem::size_of::<$ty>())).map(|u| u.try_into().unwrap())
                 }
             }
@@ -287,9 +284,9 @@ impl From<char> for ScalarInt {
 }
 
 impl TryFrom<ScalarInt> for char {
-    type Error = InterpErrorInfo<'static>;
+    type Error = Size;
     #[inline]
-    fn try_from(int: ScalarInt) -> InterpResult<'static, Self> {
+    fn try_from(int: ScalarInt) -> Result<Self, Size> {
         int.to_bits(Size::from_bytes(std::mem::size_of::<char>()))
             .map(|u| char::from_u32(u.try_into().unwrap()).unwrap())
     }
@@ -304,9 +301,9 @@ impl From<Single> for ScalarInt {
 }
 
 impl TryFrom<ScalarInt> for Single {
-    type Error = InterpErrorInfo<'static>;
+    type Error = Size;
     #[inline]
-    fn try_from(int: ScalarInt) -> InterpResult<'static, Self> {
+    fn try_from(int: ScalarInt) -> Result<Self, Size> {
         int.to_bits(Size::from_bytes(4)).map(Self::from_bits)
     }
 }
@@ -320,9 +317,9 @@ impl From<Double> for ScalarInt {
 }
 
 impl TryFrom<ScalarInt> for Double {
-    type Error = InterpErrorInfo<'static>;
+    type Error = Size;
     #[inline]
-    fn try_from(int: ScalarInt) -> InterpResult<'static, Self> {
+    fn try_from(int: ScalarInt) -> Result<Self, Size> {
         int.to_bits(Size::from_bytes(8)).map(Self::from_bits)
     }
 }
