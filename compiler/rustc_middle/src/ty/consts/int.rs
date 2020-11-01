@@ -194,7 +194,7 @@ impl ScalarInt {
         f_int: impl FnOnce(u64) -> InterpResult<'tcx, u64>,
     ) -> InterpResult<'tcx, Self> {
         assert_eq!(u64::from(self.size), dl.pointer_size.bytes());
-        Ok(Self::try_from_uint(f_int(u64::try_from(self.data).unwrap())?, self.size).unwrap())
+        Ok(Self::try_from_uint(f_int(u64::try_from(self.data).unwrap())?, self.size()).unwrap())
     }
 
     #[inline]
@@ -328,6 +328,7 @@ impl fmt::Debug for ScalarInt {
             self.check_data();
             write!(f, "<ZST>")
         } else {
+            // Dispatch to LowerHex below.
             write!(f, "0x{:x}", self)
         }
     }
