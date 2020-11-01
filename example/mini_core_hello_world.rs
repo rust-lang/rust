@@ -287,6 +287,8 @@ fn main() {
     assert_eq!(repeat[0], Some(42));
     assert_eq!(repeat[1], Some(42));
 
+    from_decimal_string();
+
     #[cfg(not(jit))]
     test_tls();
 
@@ -445,4 +447,24 @@ fn check_niche_behavior () {
     if let E2::V1 { .. } = E2::V3::<Infallible> {
         intrinsics::abort();
     }
+}
+
+fn from_decimal_string() {
+    loop {
+        let multiplier = 1;
+
+        take_multiplier_ref(&multiplier);
+
+        if multiplier == 1 {
+            break;
+        }
+
+        unreachable();
+    }
+}
+
+fn take_multiplier_ref(_multiplier: &u128) {}
+
+fn unreachable() -> ! {
+    panic("unreachable")
 }
