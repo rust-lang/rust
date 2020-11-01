@@ -165,9 +165,8 @@ impl ScalarInt {
     }
 
     /// Make sure the `data` fits in `size`.
-    /// This is guaranteed by all constructors here, but since the enum variants are public,
-    /// it could still be violated (even though no code outside this file should
-    /// construct `Scalar`s).
+    /// This is guaranteed by all constructors here, but having had this check saved us from
+    /// bugs many times in the past, so keeping it around is definitely worth it.
     #[inline(always)]
     fn check_data(self) {
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
