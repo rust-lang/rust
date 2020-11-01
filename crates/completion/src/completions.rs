@@ -14,14 +14,15 @@ pub(crate) mod macro_in_item_position;
 pub(crate) mod trait_impl;
 pub(crate) mod mod_;
 
-use hir::{HasAttrs, HasSource, HirDisplay, ModPath, Mutability, ScopeDef, StructKind, Type};
-use itertools::Itertools;
+use hir::{HasAttrs, HasSource, HirDisplay, ModPath, Mutability, ScopeDef, Type};
 use syntax::{ast::NameOwner, display::*};
 use test_utils::mark;
 
 use crate::{
-    item::Builder, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
-    CompletionScore, RootDatabase,
+    item::Builder,
+    render::{EnumVariantRender, FunctionRender, MacroRender},
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionScore,
+    RootDatabase,
 };
 
 /// Represents an in-progress set of completions being built.
@@ -189,50 +190,14 @@ impl Completions {
         name: Option<String>,
         macro_: hir::MacroDef,
     ) {
-        // FIXME: Currently proc-macro do not have ast-node,
-        // such that it does not have source
-        if macro_.is_proc_macro() {
-            return;
-        }
-
         let name = match name {
             Some(it) => it,
             None => return,
         };
 
-        let ast_node = macro_.source(ctx.db).value;
-        let detail = macro_label(&ast_node);
-
-        let docs = macro_.docs(ctx.db);
-
-        let mut builder = CompletionItem::new(
-            CompletionKind::Reference,
-            ctx.source_range(),
-            &format!("{}!", name),
-        )
-        .kind(CompletionItemKind::Macro)
-        .set_documentation(docs.clone())
-        .set_deprecated(is_deprecated(macro_, ctx.db))
-        .detail(detail);
-
-        let needs_bang = ctx.use_item_syntax.is_none() && !ctx.is_macro_call;
-        builder = match ctx.config.snippet_cap {
-            Some(cap) if needs_bang => {
-                let docs = docs.as_ref().map_or("", |s| s.as_str());
-                let (bra, ket) = guess_macro_braces(&name, docs);
-                builder
-                    .insert_snippet(cap, format!("{}!{}$0{}", name, bra, ket))
-                    .label(format!("{}!{}…{}", name, bra, ket))
-                    .lookup_by(format!("{}!", name))
-            }
-            None if needs_bang => builder.insert_text(format!("{}!", name)),
-            _ => {
-                mark::hit!(dont_insert_macro_call_parens_unncessary);
-                builder.insert_text(name)
-            }
-        };
-
-        self.add(builder.build());
+        if let Some(item) = MacroRender::new(ctx.into(), name, macro_).render() {
+            self.add(item);
+        }
     }
 
     pub(crate) fn add_function(
@@ -241,50 +206,9 @@ impl Completions {
         func: hir::Function,
         local_name: Option<String>,
     ) {
-        fn add_arg(arg: &str, ty: &Type, ctx: &CompletionContext) -> String {
-            if let Some(derefed_ty) = ty.remove_ref() {
-                for (name, local) in ctx.locals.iter() {
-                    if name == arg && local.ty(ctx.db) == derefed_ty {
-                        return (if ty.is_mutable_reference() { "&mut " } else { "&" }).to_string()
-                            + &arg.to_string();
-                    }
-                }
-            }
-            arg.to_string()
-        };
-        let name = local_name.unwrap_or_else(|| func.name(ctx.db).to_string());
-        let ast_node = func.source(ctx.db).value;
+        let item = FunctionRender::new(ctx.into(), local_name, func).render();
 
-        let mut builder =
-            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
-                .kind(if func.self_param(ctx.db).is_some() {
-                    CompletionItemKind::Method
-                } else {
-                    CompletionItemKind::Function
-                })
-                .set_documentation(func.docs(ctx.db))
-                .set_deprecated(is_deprecated(func, ctx.db))
-                .detail(function_declaration(&ast_node));
-
-        let params_ty = func.params(ctx.db);
-        let params = ast_node
-            .param_list()
-            .into_iter()
-            .flat_map(|it| it.params())
-            .zip(params_ty)
-            .flat_map(|(it, param_ty)| {
-                if let Some(pat) = it.pat() {
-                    let name = pat.to_string();
-                    let arg = name.trim_start_matches("mut ").trim_start_matches('_');
-                    return Some(add_arg(arg, param_ty.ty(), ctx));
-                }
-                None
-            })
-            .collect();
-
-        builder = builder.add_call_parens(ctx, name, Params::Named(params));
-
-        self.add(builder.build())
+        self.add(item)
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
@@ -325,7 +249,8 @@ impl Completions {
         variant: hir::EnumVariant,
         path: ModPath,
     ) {
-        self.add_enum_variant_impl(ctx, variant, None, Some(path))
+        let item = EnumVariantRender::new(ctx.into(), None, variant, Some(path)).render();
+        self.add(item);
     }
 
     pub(crate) fn add_enum_variant(
@@ -334,63 +259,8 @@ impl Completions {
         variant: hir::EnumVariant,
         local_name: Option<String>,
     ) {
-        self.add_enum_variant_impl(ctx, variant, local_name, None)
-    }
-
-    fn add_enum_variant_impl(
-        &mut self,
-        ctx: &CompletionContext,
-        variant: hir::EnumVariant,
-        local_name: Option<String>,
-        path: Option<ModPath>,
-    ) {
-        let is_deprecated = is_deprecated(variant, ctx.db);
-        let name = local_name.unwrap_or_else(|| variant.name(ctx.db).to_string());
-        let (qualified_name, short_qualified_name) = match &path {
-            Some(path) => {
-                let full = path.to_string();
-                let short =
-                    path.segments[path.segments.len().saturating_sub(2)..].iter().join("::");
-                (full, short)
-            }
-            None => (name.to_string(), name.to_string()),
-        };
-        let detail_types = variant
-            .fields(ctx.db)
-            .into_iter()
-            .map(|field| (field.name(ctx.db), field.signature_ty(ctx.db)));
-        let variant_kind = variant.kind(ctx.db);
-        let detail = match variant_kind {
-            StructKind::Tuple | StructKind::Unit => format!(
-                "({})",
-                detail_types.map(|(_, t)| t.display(ctx.db).to_string()).format(", ")
-            ),
-            StructKind::Record => format!(
-                "{{ {} }}",
-                detail_types
-                    .map(|(n, t)| format!("{}: {}", n, t.display(ctx.db).to_string()))
-                    .format(", ")
-            ),
-        };
-        let mut res = CompletionItem::new(
-            CompletionKind::Reference,
-            ctx.source_range(),
-            qualified_name.clone(),
-        )
-        .kind(CompletionItemKind::EnumVariant)
-        .set_documentation(variant.docs(ctx.db))
-        .set_deprecated(is_deprecated)
-        .detail(detail);
-
-        if variant_kind == StructKind::Tuple {
-            mark::hit!(inserts_parens_for_tuple_enums);
-            let params = Params::Anonymous(variant.fields(ctx.db).len());
-            res = res.add_call_parens(ctx, short_qualified_name, params)
-        } else if path.is_some() {
-            res = res.lookup_by(short_qualified_name);
-        }
-
-        res.add_to(self);
+        let item = EnumVariantRender::new(ctx.into(), local_name, variant, None).render();
+        self.add(item);
     }
 }
 
@@ -434,110 +304,8 @@ fn compute_score(ctx: &CompletionContext, ty: &Type, name: &str) -> Option<Compl
     compute_score_from_active(&active_type, &active_name, ty, name)
 }
 
-enum Params {
-    Named(Vec<String>),
-    Anonymous(usize),
-}
-
-impl Params {
-    fn len(&self) -> usize {
-        match self {
-            Params::Named(xs) => xs.len(),
-            Params::Anonymous(len) => *len,
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-impl Builder {
-    fn add_call_parens(mut self, ctx: &CompletionContext, name: String, params: Params) -> Builder {
-        if !ctx.config.add_call_parenthesis {
-            return self;
-        }
-        if ctx.use_item_syntax.is_some() {
-            mark::hit!(no_parens_in_use_item);
-            return self;
-        }
-        if ctx.is_pattern_call {
-            mark::hit!(dont_duplicate_pattern_parens);
-            return self;
-        }
-        if ctx.is_call {
-            return self;
-        }
-
-        // Don't add parentheses if the expected type is some function reference.
-        if let Some(ty) = &ctx.expected_type {
-            if ty.is_fn() {
-                mark::hit!(no_call_parens_if_fn_ptr_needed);
-                return self;
-            }
-        }
-
-        let cap = match ctx.config.snippet_cap {
-            Some(it) => it,
-            None => return self,
-        };
-        // If not an import, add parenthesis automatically.
-        mark::hit!(inserts_parens_for_function_calls);
-
-        let (snippet, label) = if params.is_empty() {
-            (format!("{}()$0", name), format!("{}()", name))
-        } else {
-            self = self.trigger_call_info();
-            let snippet = match (ctx.config.add_call_argument_snippets, params) {
-                (true, Params::Named(params)) => {
-                    let function_params_snippet =
-                        params.iter().enumerate().format_with(", ", |(index, param_name), f| {
-                            f(&format_args!("${{{}:{}}}", index + 1, param_name))
-                        });
-                    format!("{}({})$0", name, function_params_snippet)
-                }
-                _ => {
-                    mark::hit!(suppress_arg_snippets);
-                    format!("{}($0)", name)
-                }
-            };
-
-            (snippet, format!("{}(…)", name))
-        };
-        self.lookup_by(name).label(label).insert_snippet(cap, snippet)
-    }
-}
-
 fn is_deprecated(node: impl HasAttrs, db: &RootDatabase) -> bool {
     node.attrs(db).by_key("deprecated").exists()
-}
-
-fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static str) {
-    let mut votes = [0, 0, 0];
-    for (idx, s) in docs.match_indices(&macro_name) {
-        let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
-        // Ensure to match the full word
-        if after.starts_with('!')
-            && !before.ends_with(|c: char| c == '_' || c.is_ascii_alphanumeric())
-        {
-            // It may have spaces before the braces like `foo! {}`
-            match after[1..].chars().find(|&c| !c.is_whitespace()) {
-                Some('{') => votes[0] += 1,
-                Some('[') => votes[1] += 1,
-                Some('(') => votes[2] += 1,
-                _ => {}
-            }
-        }
-    }
-
-    // Insert a space before `{}`.
-    // We prefer the last one when some votes equal.
-    let (_vote, (bra, ket)) = votes
-        .iter()
-        .zip(&[(" {", "}"), ("[", "]"), ("(", ")")])
-        .max_by_key(|&(&vote, _)| vote)
-        .unwrap();
-    (*bra, *ket)
 }
 
 #[cfg(test)]
