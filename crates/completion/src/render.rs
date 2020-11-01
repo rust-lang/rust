@@ -6,6 +6,7 @@ mod function;
 mod builder_ext;
 mod enum_variant;
 mod const_;
+mod type_alias;
 
 use hir::{Documentation, HasAttrs};
 use ide_db::RootDatabase;
@@ -15,7 +16,7 @@ use crate::{config::SnippetCap, CompletionContext};
 
 pub(crate) use crate::render::{
     const_::ConstRender, enum_variant::EnumVariantRender, function::FunctionRender,
-    macro_::MacroRender,
+    macro_::MacroRender, type_alias::TypeAliasRender,
 };
 
 #[derive(Debug)]

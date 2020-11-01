@@ -14,13 +14,12 @@ pub(crate) mod macro_in_item_position;
 pub(crate) mod trait_impl;
 pub(crate) mod mod_;
 
-use hir::{HasAttrs, HasSource, HirDisplay, ModPath, Mutability, ScopeDef, Type};
-use syntax::{ast::NameOwner, display::*};
+use hir::{HasAttrs, HirDisplay, ModPath, Mutability, ScopeDef, Type};
 use test_utils::mark;
 
 use crate::{
     item::Builder,
-    render::{ConstRender, EnumVariantRender, FunctionRender, MacroRender},
+    render::{ConstRender, EnumVariantRender, FunctionRender, MacroRender, TypeAliasRender},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionScore,
     RootDatabase,
 };
@@ -216,19 +215,9 @@ impl Completions {
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
-        let type_def = type_alias.source(ctx.db).value;
-        let name = match type_def.name() {
-            Some(name) => name,
-            _ => return,
-        };
-        let detail = type_label(&type_def);
-
-        CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.text().to_string())
-            .kind(CompletionItemKind::TypeAlias)
-            .set_documentation(type_alias.docs(ctx.db))
-            .set_deprecated(is_deprecated(type_alias, ctx.db))
-            .detail(detail)
-            .add_to(self);
+        if let Some(item) = TypeAliasRender::new(ctx.into(), type_alias).render() {
+            self.add(item)
+        }
     }
 
     pub(crate) fn add_qualified_enum_variant(
