@@ -44,7 +44,6 @@ use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
-use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;

@@ -3638,6 +3638,7 @@ dependencies = [
  "annotate-snippets 0.8.0",
  "atty",
  "rustc_data_structures",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
@@ -3828,6 +3829,18 @@ dependencies = [
  "rustc_trait_selection",
  "tracing",
  "unicode-security",
+]
+
+[[package]]
+name = "rustc_lint_defs"
+version = "0.0.0"
+dependencies = [
+ "rustc_ast",
+ "rustc_data_structures",
+ "rustc_macros",
+ "rustc_serialize",
+ "rustc_span",
+ "tracing",
 ]
 
 [[package]]
@@ -4112,6 +4125,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fs_util",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",

@@ -21,6 +21,8 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
+use rustc_lint_defs::FutureBreakage;
+pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Loc, MultiSpan, Span};
 
@@ -48,30 +50,6 @@ pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 // (See also the comment on `DiagnosticBuilderInner`.)
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
-
-/// Indicates the confidence in the correctness of a suggestion.
-///
-/// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
-/// to determine whether it should be automatically applied or if the user should be consulted
-/// before applying the suggestion.
-#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
-pub enum Applicability {
-    /// The suggestion is definitely what the user intended. This suggestion should be
-    /// automatically applied.
-    MachineApplicable,
-
-    /// The suggestion may be what the user intended, but it is uncertain. The suggestion should
-    /// result in valid Rust code if it is applied.
-    MaybeIncorrect,
-
-    /// The suggestion contains placeholders like `(...)` or `{ /* fields */ }`. The suggestion
-    /// cannot be applied automatically because it will not result in valid Rust code. The user
-    /// will need to fill in the placeholders.
-    HasPlaceholders,
-
-    /// The applicability of the suggestion is unknown.
-    Unspecified,
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
 pub enum SuggestionStyle {
@@ -321,6 +299,8 @@ struct HandlerInner {
 
     /// The warning count, used for a recap upon finishing
     deduplicated_warn_count: usize,
+
+    future_breakage_diagnostics: Vec<Diagnostic>,
 }
 
 /// A key denoting where from a diagnostic was stashed.
@@ -434,6 +414,7 @@ impl Handler {
                 emitted_diagnostic_codes: Default::default(),
                 emitted_diagnostics: Default::default(),
                 stashed_diagnostics: Default::default(),
+                future_breakage_diagnostics: Vec::new(),
             }),
         }
     }
@@ -503,6 +484,17 @@ impl Handler {
         result
     }
 
+    /// Construct a builder at the `Allow` level at the given `span` and with the `msg`.
+    pub fn struct_span_allow(
+        &self,
+        span: impl Into<MultiSpan>,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
+        let mut result = self.struct_allow(msg);
+        result.set_span(span);
+        result
+    }
+
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     /// Also include a code.
     pub fn struct_span_warn_with_code(
@@ -523,6 +515,11 @@ impl Handler {
             result.cancel();
         }
         result
+    }
+
+    /// Construct a builder at the `Allow` level with the `msg`.
+    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Allow, msg)
     }
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
@@ -693,6 +690,10 @@ impl Handler {
         self.inner.borrow_mut().print_error_count(registry)
     }
 
+    pub fn take_future_breakage_diagnostics(&self) -> Vec<Diagnostic> {
+        std::mem::take(&mut self.inner.borrow_mut().future_breakage_diagnostics)
+    }
+
     pub fn abort_if_errors(&self) {
         self.inner.borrow_mut().abort_if_errors()
     }
@@ -723,6 +724,10 @@ impl Handler {
         self.inner.borrow_mut().emit_artifact_notification(path, artifact_type)
     }
 
+    pub fn emit_future_breakage_report(&self, diags: Vec<(FutureBreakage, Diagnostic)>) {
+        self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
+    }
+
     pub fn delay_as_bug(&self, diagnostic: Diagnostic) {
         self.inner.borrow_mut().delay_as_bug(diagnostic)
     }
@@ -748,11 +753,22 @@ impl HandlerInner {
             return;
         }
 
+        if diagnostic.has_future_breakage() {
+            self.future_breakage_diagnostics.push(diagnostic.clone());
+        }
+
         if diagnostic.level == Warning && !self.flags.can_emit_warnings {
+            if diagnostic.has_future_breakage() {
+                (*TRACK_DIAGNOSTICS)(diagnostic);
+            }
             return;
         }
 
         (*TRACK_DIAGNOSTICS)(diagnostic);
+
+        if diagnostic.level == Allow {
+            return;
+        }
 
         if let Some(ref code) = diagnostic.code {
             self.emitted_diagnostic_codes.insert(code.clone());
@@ -992,6 +1008,7 @@ pub enum Level {
     Help,
     Cancelled,
     FailureNote,
+    Allow,
 }
 
 impl fmt::Display for Level {
@@ -1017,7 +1034,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Cancelled => unreachable!(),
+            Allow | Cancelled => unreachable!(),
         }
         spec
     }
@@ -1031,6 +1048,7 @@ impl Level {
             Help => "help",
             FailureNote => "failure-note",
             Cancelled => panic!("Shouldn't call on cancelled error"),
+            Allow => panic!("Shouldn't call on allowed error"),
         }
     }
 
@@ -1039,11 +1057,46 @@ impl Level {
     }
 }
 
-#[macro_export]
-macro_rules! pluralize {
-    ($x:expr) => {
-        if $x != 1 { "s" } else { "" }
+pub fn add_elided_lifetime_in_path_suggestion(
+    source_map: &SourceMap,
+    db: &mut DiagnosticBuilder<'_>,
+    n: usize,
+    path_span: Span,
+    incl_angl_brckt: bool,
+    insertion_span: Span,
+    anon_lts: String,
+) {
+    let (replace_span, suggestion) = if incl_angl_brckt {
+        (insertion_span, anon_lts)
+    } else {
+        // When possible, prefer a suggestion that replaces the whole
+        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
+        // at a point (which makes for an ugly/confusing label)
+        if let Ok(snippet) = source_map.span_to_snippet(path_span) {
+            // But our spans can get out of whack due to macros; if the place we think
+            // we want to insert `'_` isn't even within the path expression's span, we
+            // should bail out of making any suggestion rather than panicking on a
+            // subtract-with-overflow or string-slice-out-out-bounds (!)
+            // FIXME: can we do better?
+            if insertion_span.lo().0 < path_span.lo().0 {
+                return;
+            }
+            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
+            if insertion_index > snippet.len() {
+                return;
+            }
+            let (before, after) = snippet.split_at(insertion_index);
+            (path_span, format!("{}{}{}", before, anon_lts, after))
+        } else {
+            (insertion_span, anon_lts)
+        }
     };
+    db.span_suggestion(
+        replace_span,
+        &format!("indicate the anonymous lifetime{}", pluralize!(n)),
+        suggestion,
+        Applicability::MachineApplicable,
+    );
 }
 
 // Useful type to use with `Result<>` indicate that an error has already

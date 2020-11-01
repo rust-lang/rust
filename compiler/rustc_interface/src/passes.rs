@@ -286,7 +286,10 @@ pub fn register_plugins<'a>(
         }
     });
 
-    Ok((krate, Lrc::new(lint_store)))
+    let lint_store = Lrc::new(lint_store);
+    sess.init_lint_store(lint_store.clone());
+
+    Ok((krate, lint_store))
 }
 
 fn pre_expansion_lint(sess: &Session, lint_store: &LintStore, krate: &ast::Crate) {

@@ -893,6 +893,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         all `statement`s (including terminators), only `terminator` spans, or \
         computed `block` spans (one span encompassing a block's terminator and \
         all statements)."),
+    emit_future_incompat_report: bool = (false, parse_bool, [UNTRACKED],
+        "emits a future-incompatibility report for lints (RFC 2834)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     fewer_names: bool = (false, parse_bool, [TRACKED],
