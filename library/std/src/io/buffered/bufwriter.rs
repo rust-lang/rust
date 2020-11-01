@@ -549,10 +549,9 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
-        if !self.panicked {
-            if self.inner.is_some() {
-                let _ = self.flush_buf();
-            }
+        if self.inner.is_some() && !self.panicked {
+            // dtors should not panic, so we ignore a failed flush
+            let _r = self.flush_buf();
         }
     }
 }
