@@ -842,13 +842,13 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
-        this as *const [MaybeUninit<T>] as *const T
+        this.as_ptr() as *const T
     }
 
     /// Gets a mutable pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
-        this as *mut [MaybeUninit<T>] as *mut T
+        this.as_mut_ptr() as *mut T
     }
 }
