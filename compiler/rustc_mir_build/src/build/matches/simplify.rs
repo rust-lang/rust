@@ -131,7 +131,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Binding { name, mutability, mode, var, ty, ref subpattern, is_primary: _ } => {
-                candidate.bindings.push(Binding {
+                // issue #69971: the binding order should be right to left if there are more
+                // bindings after `@` to please the borrow checker
+                // Ex
+                // struct NonCopyStruct {
+                //     copy_field: u32,
+                // }
+                //
+                // fn foo1(x: NonCopyStruct) {
+                //     let y @ NonCopyStruct { copy_field: z } = x;
+                //     // the above should turn into
+                //     let z = x.copy_field;
+                //     let y = x;
+                // }
+                candidate.bindings.insert(0, Binding {
                     name,
                     mutability,
                     span: match_pair.pattern.span,
