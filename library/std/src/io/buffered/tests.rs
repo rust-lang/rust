@@ -294,6 +294,121 @@ fn test_buffered_writer_inner_vectored() {
 }
 
 #[test]
+fn test_buffered_writer_write() {
+    let inner = ProgrammableSink::default();
+    let mut writer = BufWriter::with_capacity(4, inner);
+
+    writer.write(b"ab").unwrap();
+    assert_eq!(writer.get_ref(), b"");
+    assert_eq!(writer.buffer(), b"ab");
+
+    // `write` prefers to avoid split writes
+    writer.write(b"cde").unwrap();
+    assert_eq!(writer.get_ref(), b"ab");
+    assert_eq!(writer.buffer(), b"cde");
+
+    let inner = ProgrammableSink::default();
+    let mut writer = BufWriter::with_capacity(4, inner);
+
+    // `write` skips the buffer if the write is >= capacity
+    writer.write(b"abcd").unwrap();
+    assert_eq!(writer.get_ref(), b"abcd");
+    assert_eq!(writer.buffer(), b"");
+
+    writer.write(b"efghi").unwrap();
+    assert_eq!(writer.get_ref(), b"abcdefghi");
+    assert_eq!(writer.buffer(), b"");
+
+    // `write` fills the buffer
+    writer.write(b"jk").unwrap();
+    writer.write(b"lm").unwrap();
+    assert_eq!(writer.get_ref(), b"abcdefghi");
+    assert_eq!(writer.buffer(), b"jklm");
+}
+
+#[test]
+fn test_buffered_writer_write_all_unvectored() {
+    let inner = ProgrammableSink::default();
+    let mut writer = BufWriter::with_capacity(4, inner);
+
+    // write_all will perform split writes as necessary such that the minimal
+    // number of writes are performed on inner. Additionally, it will eagerly
+    // flush if a write_all fully fills the buffer
+    writer.write_all(b"abc").unwrap();
+    writer.write_all(b"abc").unwrap();
+
+    assert_eq!(writer.buffer(), b"bc");
+    assert_eq!(writer.get_ref(), b"abca");
+
+    writer.write_all(b"abc").unwrap();
+    writer.write_all(b"abc").unwrap();
+
+    assert_eq!(writer.buffer(), b"");
+    assert_eq!(writer.get_ref(), b"abcabcabcabc");
+    assert_eq!(writer.get_ref().write_count, 3);
+}
+
+#[test]
+fn test_buffered_writer_write_all_vectored() {
+    let inner = ProgrammableSink { enable_vectored: true, ..ProgrammableSink::default() };
+    let mut writer = BufWriter::with_capacity(10, inner);
+
+    writer.write_all(b"abc").unwrap();
+    writer.write_all(b"abc").unwrap();
+    writer.write_all(b"abc").unwrap();
+
+    assert_eq!(writer.buffer(), b"abcabcabc");
+    assert_eq!(writer.get_ref(), b"");
+    assert_eq!(writer.get_ref().write_count, 0);
+
+    // This should be used to fill the buffer, but then the whole thing should
+    // be sent as a single vectored write
+    writer.write_all(b"aaaaaa").unwrap();
+
+    assert_eq!(writer.buffer(), b"");
+    assert_eq!(writer.get_ref(), b"abcabcabcaaaaaa");
+    assert_eq!(writer.get_ref().write_count, 1);
+}
+
+#[test]
+fn test_buffered_writer_write_vectored() {
+    let inner = ProgrammableSink::default();
+    let mut writer = BufWriter::with_capacity(4, inner);
+
+    // A vectored write is buffered, even if the total size is larger than the
+    // buffer
+    let input =
+        [IoSlice::new(b"aa"), IoSlice::new(b"bb"), IoSlice::new(b"cc"), IoSlice::new(b"dd")];
+
+    assert_eq!(writer.write_vectored(&input).unwrap(), 4);
+    assert_eq!(writer.buffer(), b"aabb");
+    assert_eq!(writer.get_ref(), b"");
+
+    let inner = ProgrammableSink::default();
+    let mut writer = BufWriter::with_capacity(4, inner);
+
+    // If the first encountered buffer is large, it is forwarded directly
+    let input = [IoSlice::new(b""), IoSlice::new(b"abcdefg")];
+
+    assert_eq!(writer.write_vectored(&input).unwrap(), 7);
+    assert_eq!(writer.buffer(), b"");
+    assert_eq!(writer.get_ref(), b"abcdefg");
+    assert_eq!(writer.get_ref().write_count, 1);
+
+    let inner = ProgrammableSink::default();
+    let mut writer = BufWriter::with_capacity(4, inner);
+
+    // if a subsequent encountered buffer is large, it is buffered (because of
+    // the infallibility requirement)
+    let input = [IoSlice::new(b"a"), IoSlice::new(b"bcdefg")];
+
+    assert_eq!(writer.write_vectored(&input).unwrap(), 4);
+    assert_eq!(writer.buffer(), b"abcd");
+    assert_eq!(writer.get_ref(), b"");
+    assert_eq!(writer.get_ref().write_count, 0);
+}
+
+#[test]
 fn test_buffered_writer_inner_flushes() {
     let mut w = BufWriter::with_capacity(3, Vec::new());
     w.write(&[0, 1]).unwrap();
@@ -460,29 +575,36 @@ fn bench_buffered_writer(b: &mut test::Bencher) {
 /// configured
 #[derive(Default, Debug, Clone)]
 struct ProgrammableSink {
-    // Writes append to this slice
+    /// Writes append to this slice
     pub buffer: Vec<u8>,
 
-    // Flush sets this flag
+    /// Flush sets this flag
     pub flushed: bool,
 
-    // If true, writes will always be an error
+    /// Each `write` call increments this
+    pub write_count: usize,
+
+    /// If true, writes will always be an error
     pub always_write_error: bool,
 
-    // If true, flushes will always be an error
+    /// If true, flushes will always be an error
     pub always_flush_error: bool,
 
-    // If set, only up to this number of bytes will be written in a single
-    // call to `write`
+    /// If set, only up to this number of bytes will be written in a single
+    /// call to `write`
     pub accept_prefix: Option<usize>,
 
-    // If set, counts down with each write, and writes return an error
-    // when it hits 0
+    /// If set, counts down with each write, and writes return an error
+    /// when it hits 0
     pub max_writes: Option<usize>,
 
-    // If set, attempting to write when max_writes == Some(0) will be an
-    // error; otherwise, it will return Ok(0).
+    /// If set, attempting to write when max_writes == Some(0) will be an
+    /// error; otherwise, it will return Ok(0).
     pub error_after_max_writes: bool,
+
+    /// If set, vectored writes are enabled. All of the above configuration
+    /// will apply to each write_vectored call as though it was a single write.
+    pub enable_vectored: bool,
 }
 
 impl Write for ProgrammableSink {
@@ -507,6 +629,7 @@ impl Write for ProgrammableSink {
 
         let data = &data[..len];
         self.buffer.extend_from_slice(data);
+        self.write_count += 1;
 
         Ok(len)
     }
@@ -518,6 +641,60 @@ impl Write for ProgrammableSink {
             self.flushed = true;
             Ok(())
         }
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        if !self.enable_vectored {
+            // If we're not vectored, use the default behavior, which is to
+            // write the first non-empty buf with write.
+            return match bufs.iter().find(|b| !b.is_empty()) {
+                Some(buf) => self.write(buf),
+                None => Ok(0),
+            };
+        }
+
+        if self.always_write_error {
+            return Err(io::Error::new(io::ErrorKind::Other, "test - always_write_error"));
+        }
+
+        match self.max_writes {
+            Some(0) if self.error_after_max_writes => {
+                return Err(io::Error::new(io::ErrorKind::Other, "test - max_writes"));
+            }
+            Some(0) => return Ok(0),
+            Some(ref mut count) => *count -= 1,
+            None => {}
+        }
+
+        let total_written = match self.accept_prefix {
+            None => bufs.iter().fold(0, |len, buf| {
+                self.buffer.extend_from_slice(buf);
+                len + buf.len()
+            }),
+            Some(mut len) => {
+                let mut written = 0;
+
+                for buf in bufs {
+                    if len == 0 {
+                        break;
+                    }
+
+                    let buf = &buf[..buf.len().min(len)];
+                    self.buffer.extend_from_slice(buf);
+                    written += buf.len();
+                    len -= buf.len();
+                }
+
+                written
+            }
+        };
+
+        self.write_count += 1;
+        Ok(total_written)
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        self.enable_vectored
     }
 }
 

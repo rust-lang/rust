@@ -394,9 +394,8 @@ impl<W: Write> Write for BufWriter<W> {
         // However, if the vectored flush successfully wrote some of `buf`,
         // we're now obligated to return Ok(..) before trying any more
         // fallible i/o operations.
-        let tail_written = if tail.len() < self.available() {
-            self.buf.extend_from_slice(tail);
-            tail.len()
+        let tail_written = if tail.len() < self.capacity() {
+            self.write_to_buf(tail)
         } else if written > 0 {
             0
         } else {
@@ -439,7 +438,14 @@ impl<W: Write> Write for BufWriter<W> {
             // At this point, because we know that buf.len() < self.buf.len(),
             // and that the buffer has been flushed we know that this will
             // succeed in totality
-            self.buf.extend_from_slice(buf);
+            self.write_to_buf(buf);
+        }
+
+        // If, at this point, the buffer is full, we may as well eagerly
+        // attempt to flush, so that the next write will have an empty
+        // buffer.
+        if self.available() == 0 {
+            self.flush_buf()?;
         }
 
         Ok(())
@@ -458,7 +464,7 @@ impl<W: Write> Write for BufWriter<W> {
                 self.flush_buf()?;
             }
 
-            if total_len >= self.available() {
+            if total_len >= self.capacity() {
                 self.get_mut().write_vectored(bufs)
             } else {
                 // Correctness note: we've already verified that none of these
@@ -544,7 +550,9 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
         if !self.panicked {
-            let _ = self.flush_buf();
+            if self.inner.is_some() {
+                let _ = self.flush_buf();
+            }
         }
     }
 }
