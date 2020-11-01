@@ -111,7 +111,7 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///         assert_eq!(lhs.len(), rhs.len());
 ///         Self(lhs.iter()
 ///                 .zip(rhs.iter())
-///                 .map(|(x, y)| *x && *y)
+///                 .map(|(x, y)| *x & *y)
 ///                 .collect())
 ///     }
 /// }
@@ -207,7 +207,10 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     fn bitor(self, Self(rhs): Self) -> Self::Output {
 ///         let Self(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
-///         Self(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x || *y).collect())
+///         Self(lhs.iter()
+///                 .zip(rhs.iter())
+///                 .map(|(x, y)| *x | *y)
+///                 .collect())
 ///     }
 /// }
 ///
@@ -304,7 +307,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///         assert_eq!(lhs.len(), rhs.len());
 ///         Self(lhs.iter()
 ///                 .zip(rhs.iter())
-///                 .map(|(x, y)| (*x || *y) && !(*x && *y))
+///                 .map(|(x, y)| *x ^ *y))
 ///                 .collect())
 ///     }
 /// }
@@ -646,7 +649,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///         *self = Self(self.0
 ///                          .iter()
 ///                          .zip(rhs.0.iter())
-///                          .map(|(x, y)| *x && *y)
+///                          .map(|(x, y)| *x & *y)
 ///                          .collect());
 ///     }
 /// }
