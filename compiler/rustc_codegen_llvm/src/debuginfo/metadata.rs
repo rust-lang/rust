@@ -801,6 +801,7 @@ fn file_metadata_raw(
                     let kind = match hash.kind {
                         rustc_span::SourceFileHashAlgorithm::Md5 => llvm::ChecksumKind::MD5,
                         rustc_span::SourceFileHashAlgorithm::Sha1 => llvm::ChecksumKind::SHA1,
+                        rustc_span::SourceFileHashAlgorithm::Sha256 => llvm::ChecksumKind::SHA256,
                     };
                     (kind, hex_encode(hash.hash_bytes()))
                 }
