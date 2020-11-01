@@ -41,8 +41,6 @@ use rustc_typeck as typeck;
 use smallvec::SmallVec;
 use tracing::{info, warn};
 
-//use md5::{Digest, Md5};
-
 use rustc_serialize::json;
 use tempfile::Builder as TempFileBuilder;
 

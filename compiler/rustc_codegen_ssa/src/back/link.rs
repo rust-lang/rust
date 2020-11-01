@@ -367,8 +367,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     //   not be correctly inferred once 'foo.o' is removed.
     //
     // Basically, all this means is that this code should not move above the
-    // code above. @audit rlib add here
-
+    // code above.
     match flavor {
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
