@@ -259,7 +259,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 return Ok(Some(ImmTy {
                     // zero-sized type
-                    imm: Scalar::zst().into(),
+                    imm: Scalar::ZST.into(),
                     layout: mplace.layout,
                 }));
             }
@@ -358,7 +358,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let field_layout = op.layout.field(self, field)?;
         if field_layout.is_zst() {
-            let immediate = Scalar::zst().into();
+            let immediate = Scalar::ZST.into();
             return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });
         }
         let offset = op.layout.fields.offset(field);
@@ -443,7 +443,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = if layout.is_zst() {
             // Do not read from ZST, they might not be initialized
-            Operand::Immediate(Scalar::zst().into())
+            Operand::Immediate(Scalar::ZST.into())
         } else {
             M::access_local(&self, frame, local)?
         };

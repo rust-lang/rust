@@ -178,10 +178,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         Scalar::Int(ScalarInt::null(cx.data_layout().pointer_size))
     }
 
-    #[inline]
-    pub fn zst() -> Self {
-        Scalar::Int(ScalarInt::ZST)
-    }
+    pub const ZST: Self = Scalar::Int(ScalarInt::ZST);
 
     #[inline(always)]
     fn ptr_op(

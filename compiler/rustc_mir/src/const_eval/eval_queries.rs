@@ -146,7 +146,7 @@ pub(super) fn op_to_const<'tcx>(
                 "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
             );
-            ConstValue::Scalar(Scalar::zst())
+            ConstValue::Scalar(Scalar::ZST)
         }
     };
     match immediate {
