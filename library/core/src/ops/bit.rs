@@ -307,7 +307,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///         assert_eq!(lhs.len(), rhs.len());
 ///         Self(lhs.iter()
 ///                 .zip(rhs.iter())
-///                 .map(|(x, y)| *x ^ *y))
+///                 .map(|(x, y)| *x ^ *y)
 ///                 .collect())
 ///     }
 /// }
