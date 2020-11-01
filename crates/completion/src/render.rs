@@ -24,6 +24,11 @@ pub(crate) use crate::render::{
 };
 
 #[derive(Debug)]
+pub(crate) struct Render<'a> {
+    ctx: RenderContext<'a>,
+}
+
+#[derive(Debug)]
 pub(crate) struct RenderContext<'a> {
     completion: &'a CompletionContext<'a>,
 }
@@ -71,11 +76,6 @@ impl<'a> From<&'a CompletionContext<'a>> for RenderContext<'a> {
     fn from(ctx: &'a CompletionContext<'a>) -> RenderContext<'a> {
         RenderContext::new(ctx)
     }
-}
-
-#[derive(Debug)]
-pub(crate) struct Render<'a> {
-    ctx: RenderContext<'a>,
 }
 
 impl<'a> Render<'a> {
