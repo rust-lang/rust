@@ -244,7 +244,6 @@ impl GlobalState {
                     }
 
                     self.report_progress("indexing", state, message.clone(), Some(fraction));
-                    eprintln!("progress reported: {:?}", message);
                 }
             }
             Event::Vfs(mut task) => {
