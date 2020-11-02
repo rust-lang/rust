@@ -427,12 +427,13 @@ fn try_execute_query<CTX, C>(
     span: Span,
     key: C::Key,
     lookup: QueryLookup,
+    dep_node: Option<DepNode<CTX::DepKind>>,
     query: &QueryVtable<CTX, C::Key, C::Value>,
     compute: fn(CTX::DepContext, C::Key) -> C::Value,
-) -> C::Stored
+) -> (C::Stored, Option<DepNodeIndex>)
 where
     C: QueryCache,
-    C::Key: DepNodeParams<CTX::DepContext>,
+    C::Key: Clone + DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
     let job = match JobOwner::<'_, CTX::DepKind, C>::try_start(
@@ -445,11 +446,10 @@ where
         query,
     ) {
         TryGetJob::NotYetStarted(job) => job,
-        TryGetJob::Cycle(result) => return result,
+        TryGetJob::Cycle(result) => return (result, None),
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted((v, index)) => {
-            tcx.dep_context().dep_graph().read_index(index);
-            return v;
+            return (v, Some(index));
         }
     };
 
@@ -461,10 +461,11 @@ where
         let result = tcx.start_query(job.id, None, || compute(*tcx.dep_context(), key));
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-        return job.complete(result, dep_node_index);
+        let result = job.complete(result, dep_node_index);
+        return (result, None);
     }
 
-    if query.anon {
+    let (result, dep_node_index) = if query.anon {
         let prof_timer = tcx.dep_context().profiler().query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
@@ -477,20 +478,21 @@ where
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-        dep_graph.read_index(dep_node_index);
-
         let side_effects = QuerySideEffects { diagnostics };
 
         if unlikely!(!side_effects.is_empty()) {
             tcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         }
 
-        return job.complete(result, dep_node_index);
-    }
-
-    let dep_node = query.to_dep_node(*tcx.dep_context(), &key);
-
-    if !query.eval_always {
+        let result = job.complete(result, dep_node_index);
+        (result, dep_node_index)
+    } else if query.eval_always {
+        // `to_dep_node` is expensive for some `DepKind`s.
+        let dep_node = dep_node.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
+        force_query_with_job(tcx, key, job, dep_node, query, compute)
+    } else {
+        // `to_dep_node` is expensive for some `DepKind`s.
+        let dep_node = dep_node.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
         // The diagnostics for this query will be
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
@@ -498,13 +500,13 @@ where
             try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query, compute)
         });
         if let Some((result, dep_node_index)) = loaded {
-            return job.complete(result, dep_node_index);
+            let result = job.complete(result, dep_node_index);
+            (result, dep_node_index)
+        } else {
+            force_query_with_job(tcx, key, job, dep_node, query, compute)
         }
-    }
-
-    let (result, dep_node_index) = force_query_with_job(tcx, key, job, dep_node, query, compute);
-    dep_graph.read_index(dep_node_index);
-    result
+    };
+    (result, Some(dep_node_index))
 }
 
 fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
@@ -524,7 +526,6 @@ where
 
     let (prev_dep_node_index, dep_node_index) =
         tcx.dep_context().dep_graph().try_mark_green(tcx, &dep_node)?;
-    tcx.dep_context().dep_graph().read_index(dep_node_index);
 
     debug_assert!(tcx.dep_context().dep_graph().is_green(dep_node));
 
@@ -700,7 +701,12 @@ where
     C: QueryCache,
     C::Key: DepNodeParams<CTX::DepContext>,
 {
-    try_execute_query(tcx, state, cache, span, key, lookup, query, compute)
+    let (result, dep_node_index) =
+        try_execute_query(tcx, state, cache, span, key, lookup, None, query, compute);
+    if let Some(dep_node_index) = dep_node_index {
+        tcx.dep_context().dep_graph().read_index(dep_node_index)
+    }
+    result
 }
 
 /// Ensure that either this query has all green inputs or been executed.
@@ -779,23 +785,8 @@ where
         Err(lookup) => lookup,
     };
 
-    let job = match JobOwner::<'_, CTX::DepKind, C>::try_start(
-        tcx,
-        state,
-        cache,
-        DUMMY_SP,
-        key.clone(),
-        lookup,
-        query,
-    ) {
-        TryGetJob::NotYetStarted(job) => job,
-        TryGetJob::Cycle(_) => return true,
-        #[cfg(parallel_compiler)]
-        TryGetJob::JobCompleted(_) => return true,
-    };
-
-    force_query_with_job(tcx, key, job, dep_node, query, compute);
-
+    let _ =
+        try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), query, compute);
     true
 }
 
