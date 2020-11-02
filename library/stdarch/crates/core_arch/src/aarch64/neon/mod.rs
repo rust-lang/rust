@@ -290,6 +290,40 @@ extern "C" {
     fn vcvtq_u32_f32_(a: float32x4_t) -> uint32x4_t;
     #[link_name = "llvm.aarch64.neon.fcvtzs.v4i32.v4f32"]
     fn vcvtq_s32_f32_(a: float32x4_t) -> int32x4_t;
+
+    #[link_name = "llvm.aarch64.neon.vsli.v8i8"]
+    fn vsli_n_s8_(a: int8x8_t, b: int8x8_t, n: i32) -> int8x8_t;
+    #[link_name = "llvm.aarch64.neon.vsli.v16i8"]
+    fn vsliq_n_s8_(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t;
+    #[link_name = "llvm.aarch64.neon.vsli.v4i16"]
+    fn vsli_n_s16_(a: int16x4_t, b: int16x4_t, n: i32) -> int16x4_t;
+    #[link_name = "llvm.aarch64.neon.vsli.v8i16"]
+    fn vsliq_n_s16_(a: int16x8_t, b: int16x8_t, n: i32) -> int16x8_t;
+    #[link_name = "llvm.aarch64.neon.vsli.v2i32"]
+    fn vsli_n_s32_(a: int32x2_t, b: int32x2_t, n: i32) -> int32x2_t;
+    #[link_name = "llvm.aarch64.neon.vsli.v4i32"]
+    fn vsliq_n_s32_(a: int32x4_t, b: int32x4_t, n: i32) -> int32x4_t;
+    #[link_name = "llvm.aarch64.neon.vsli.v1i64"]
+    fn vsli_n_s64_(a: int64x1_t, b: int64x1_t, n: i32) -> int64x1_t;
+    #[link_name = "llvm.aarch64.neon.vsli.v2i64"]
+    fn vsliq_n_s64_(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t;
+
+    #[link_name = "llvm.aarch64.neon.vsri.v8i8"]
+    fn vsri_n_s8_(a: int8x8_t, b: int8x8_t, n: i32) -> int8x8_t;
+    #[link_name = "llvm.aarch64.neon.vsri.v16i8"]
+    fn vsriq_n_s8_(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t;
+    #[link_name = "llvm.aarch64.neon.vsri.v4i16"]
+    fn vsri_n_s16_(a: int16x4_t, b: int16x4_t, n: i32) -> int16x4_t;
+    #[link_name = "llvm.aarch64.neon.vsri.v8i16"]
+    fn vsriq_n_s16_(a: int16x8_t, b: int16x8_t, n: i32) -> int16x8_t;
+    #[link_name = "llvm.aarch64.neon.vsri.v2i32"]
+    fn vsri_n_s32_(a: int32x2_t, b: int32x2_t, n: i32) -> int32x2_t;
+    #[link_name = "llvm.aarch64.neon.vsri.v4i32"]
+    fn vsriq_n_s32_(a: int32x4_t, b: int32x4_t, n: i32) -> int32x4_t;
+    #[link_name = "llvm.aarch64.neon.vsri.v1i64"]
+    fn vsri_n_s64_(a: int64x1_t, b: int64x1_t, n: i32) -> int64x1_t;
+    #[link_name = "llvm.aarch64.neon.vsri.v2i64"]
+    fn vsriq_n_s64_(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t;
 }
 
 /// Absolute Value (wrapping).
@@ -1858,6 +1892,368 @@ pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
     vcvtq_u32_f32_(a)
 }
 
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_s8(a: int8x8_t, b: int8x8_t, n: i32) -> int8x8_t {
+    assert!(0 <= n && n <= 7, "must have 0 ≤ n ≤ 7, but n = {}", n);
+    vsli_n_s8_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_s8(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t {
+    assert!(0 <= n && n <= 7, "must have 0 ≤ n ≤ 7, but n = {}", n);
+    vsliq_n_s8_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_s16(a: int16x4_t, b: int16x4_t, n: i32) -> int16x4_t {
+    assert!(0 <= n && n <= 15, "must have 0 ≤ n ≤ 15, but n = {}", n);
+    vsli_n_s16_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_s16(a: int16x8_t, b: int16x8_t, n: i32) -> int16x8_t {
+    assert!(0 <= n && n <= 15, "must have 0 ≤ n ≤ 15, but n = {}", n);
+    vsliq_n_s16_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_s32(a: int32x2_t, b: int32x2_t, n: i32) -> int32x2_t {
+    assert!(0 <= n && n <= 31, "must have 0 ≤ n ≤ 31, but n = {}", n);
+    vsli_n_s32_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_s32(a: int32x4_t, b: int32x4_t, n: i32) -> int32x4_t {
+    assert!(0 <= n && n <= 31, "must have 0 ≤ n ≤ 31, but n = {}", n);
+    vsliq_n_s32_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_s64(a: int64x1_t, b: int64x1_t, n: i32) -> int64x1_t {
+    assert!(0 <= n && n <= 63, "must have 0 ≤ n ≤ 63, but n = {}", n);
+    vsli_n_s64_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_s64(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t {
+    assert!(0 <= n && n <= 63, "must have 0 ≤ n ≤ 63, but n = {}", n);
+    vsliq_n_s64_(a, b, n)
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_u8(a: uint8x8_t, b: uint8x8_t, n: i32) -> uint8x8_t {
+    assert!(0 <= n && n <= 7, "must have 0 ≤ n ≤ 7, but n = {}", n);
+    transmute(vsli_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_u8(a: uint8x16_t, b: uint8x16_t, n: i32) -> uint8x16_t {
+    assert!(0 <= n && n <= 7, "must have 0 ≤ n ≤ 7, but n = {}", n);
+    transmute(vsliq_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_u16(a: uint16x4_t, b: uint16x4_t, n: i32) -> uint16x4_t {
+    assert!(0 <= n && n <= 15, "must have 0 ≤ n ≤ 15, but n = {}", n);
+    transmute(vsli_n_s16_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_u16(a: uint16x8_t, b: uint16x8_t, n: i32) -> uint16x8_t {
+    assert!(0 <= n && n <= 15, "must have 0 ≤ n ≤ 15, but n = {}", n);
+    transmute(vsliq_n_s16_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_u32(a: uint32x2_t, b: uint32x2_t, n: i32) -> uint32x2_t {
+    assert!(0 <= n && n <= 31, "must have 0 ≤ n ≤ 31, but n = {}", n);
+    transmute(vsli_n_s32_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_u32(a: uint32x4_t, b: uint32x4_t, n: i32) -> uint32x4_t {
+    assert!(0 <= n && n <= 31, "must have 0 ≤ n ≤ 31, but n = {}", n);
+    transmute(vsliq_n_s32_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_u64(a: uint64x1_t, b: uint64x1_t, n: i32) -> uint64x1_t {
+    assert!(0 <= n && n <= 63, "must have 0 ≤ n ≤ 63, but n = {}", n);
+    transmute(vsli_n_s64_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_u64(a: uint64x2_t, b: uint64x2_t, n: i32) -> uint64x2_t {
+    assert!(0 <= n && n <= 63, "must have 0 ≤ n ≤ 63, but n = {}", n);
+    transmute(vsliq_n_s64_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_p8(a: poly8x8_t, b: poly8x8_t, n: i32) -> poly8x8_t {
+    assert!(0 <= n && n <= 7, "must have 0 ≤ n ≤ 7, but n = {}", n);
+    transmute(vsli_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_p8(a: poly8x16_t, b: poly8x16_t, n: i32) -> poly8x16_t {
+    assert!(0 <= n && n <= 7, "must have 0 ≤ n ≤ 7, but n = {}", n);
+    transmute(vsliq_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsli_n_p16(a: poly16x4_t, b: poly16x4_t, n: i32) -> poly16x4_t {
+    assert!(0 <= n && n <= 15, "must have 0 ≤ n ≤ 15, but n = {}", n);
+    transmute(vsli_n_s16_(transmute(a), transmute(b), n))
+}
+/// Shift Left and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sli, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsliq_n_p16(a: poly16x8_t, b: poly16x8_t, n: i32) -> poly16x8_t {
+    assert!(0 <= n && n <= 15, "must have 0 ≤ n ≤ 15, but n = {}", n);
+    transmute(vsliq_n_s16_(transmute(a), transmute(b), n))
+}
+
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_s8(a: int8x8_t, b: int8x8_t, n: i32) -> int8x8_t {
+    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
+    vsri_n_s8_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_s8(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t {
+    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
+    vsriq_n_s8_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_s16(a: int16x4_t, b: int16x4_t, n: i32) -> int16x4_t {
+    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
+    vsri_n_s16_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_s16(a: int16x8_t, b: int16x8_t, n: i32) -> int16x8_t {
+    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
+    vsriq_n_s16_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_s32(a: int32x2_t, b: int32x2_t, n: i32) -> int32x2_t {
+    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
+    vsri_n_s32_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_s32(a: int32x4_t, b: int32x4_t, n: i32) -> int32x4_t {
+    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
+    vsriq_n_s32_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_s64(a: int64x1_t, b: int64x1_t, n: i32) -> int64x1_t {
+    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
+    vsri_n_s64_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_s64(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t {
+    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
+    vsriq_n_s64_(a, b, n)
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_u8(a: uint8x8_t, b: uint8x8_t, n: i32) -> uint8x8_t {
+    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
+    transmute(vsri_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_u8(a: uint8x16_t, b: uint8x16_t, n: i32) -> uint8x16_t {
+    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
+    transmute(vsriq_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_u16(a: uint16x4_t, b: uint16x4_t, n: i32) -> uint16x4_t {
+    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
+    transmute(vsri_n_s16_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_u16(a: uint16x8_t, b: uint16x8_t, n: i32) -> uint16x8_t {
+    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
+    transmute(vsriq_n_s16_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_u32(a: uint32x2_t, b: uint32x2_t, n: i32) -> uint32x2_t {
+    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
+    transmute(vsri_n_s32_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_u32(a: uint32x4_t, b: uint32x4_t, n: i32) -> uint32x4_t {
+    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
+    transmute(vsriq_n_s32_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_u64(a: uint64x1_t, b: uint64x1_t, n: i32) -> uint64x1_t {
+    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
+    transmute(vsri_n_s64_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_u64(a: uint64x2_t, b: uint64x2_t, n: i32) -> uint64x2_t {
+    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
+    transmute(vsriq_n_s64_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_p8(a: poly8x8_t, b: poly8x8_t, n: i32) -> poly8x8_t {
+    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
+    transmute(vsri_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_p8(a: poly8x16_t, b: poly8x16_t, n: i32) -> poly8x16_t {
+    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
+    transmute(vsriq_n_s8_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsri_n_p16(a: poly16x4_t, b: poly16x4_t, n: i32) -> poly16x4_t {
+    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
+    transmute(vsri_n_s16_(transmute(a), transmute(b), n))
+}
+/// Shift Right and Insert (immediate)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sri, n = 1))]
+#[rustc_args_required_const(2)]
+pub unsafe fn vsriq_n_p16(a: poly16x8_t, b: poly16x8_t, n: i32) -> poly16x8_t {
+    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
+    transmute(vsriq_n_s16_(transmute(a), transmute(b), n))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core_arch::aarch64::test_support::*;
@@ -3063,3 +3459,7 @@ mod tests {
 #[cfg(target_endian = "little")]
 #[path = "../../arm/neon/table_lookup_tests.rs"]
 mod table_lookup_tests;
+
+#[cfg(test)]
+#[path = "../../arm/neon/shift_and_insert_tests.rs"]
+mod shift_and_insert_tests;
