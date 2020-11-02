@@ -53,7 +53,7 @@ modules=($modules)
 use_git=""
 urls="$(git config --file .gitmodules --get-regexp '\.url$' | cut -d' ' -f2)"
 urls=($urls)
-for i in ${!modules[@]}; do
+for i in "${!modules[@]}"; do
     module=${modules[$i]}
     if [[ " $included " = *" $module "* ]]; then
         commit="$(git ls-tree HEAD $module | awk '{print $3}')"

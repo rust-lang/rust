@@ -10,7 +10,7 @@ cmd=$1
 shift || true
 
 if [[ "$cmd" = "jit" ]]; then
-cargo +${TOOLCHAIN} rustc $@ -- --jit
+cargo +${TOOLCHAIN} rustc "$@" -- --jit
 else
-cargo +${TOOLCHAIN} $cmd $@
+cargo +${TOOLCHAIN} $cmd "$@"
 fi
