@@ -1216,8 +1216,8 @@ impl<'a> Builder<'a> {
             lint_flags.push("-Wunused_lifetimes");
 
             if self.config.deny_warnings {
-                lint_flags.push("-Dwarnings");
-                rustdocflags.arg("-Dwarnings");
+                //lint_flags.push("-Dwarnings");
+                //rustdocflags.arg("-Dwarnings");
             }
 
             // FIXME(#58633) hide "unused attribute" errors in incremental
