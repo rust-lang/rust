@@ -137,7 +137,7 @@ impl TreeDiff {
     }
 }
 
-/// Finds minimal the diff, which, applied to `from`, will result in `to`.
+/// Finds a (potentially minimal) diff, which, applied to `from`, will result in `to`.
 ///
 /// Specifically, returns a structure that consists of a replacements, insertions and deletions
 /// such that applying this map on `from` will result in `to`.
@@ -151,7 +151,6 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
     };
     let (from, to) = (from.clone().into(), to.clone().into());
 
-    // FIXME: this is horrible inefficient. I bet there's a cool algorithm to diff trees properly.
     if !syntax_element_eq(&from, &to) {
         go(&mut diff, from, to);
     }
@@ -169,6 +168,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
             }
     }
 
+    // FIXME: this is horrible inefficient. I bet there's a cool algorithm to diff trees properly.
     fn go(diff: &mut TreeDiff, lhs: SyntaxElement, rhs: SyntaxElement) {
         let (lhs, rhs) = match lhs.as_node().zip(rhs.as_node()) {
             Some((lhs, rhs)) => (lhs, rhs),
@@ -178,6 +178,8 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                 return;
             }
         };
+
+        let mut look_ahead_scratch = Vec::default();
 
         let mut rhs_children = rhs.children_with_tokens();
         let mut lhs_children = lhs.children_with_tokens();
@@ -204,7 +206,31 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                     diff.deletions.push(element);
                 }
                 (Some(ref lhs_ele), Some(ref rhs_ele)) if syntax_element_eq(lhs_ele, rhs_ele) => {}
-                (Some(lhs_ele), Some(rhs_ele)) => go(diff, lhs_ele, rhs_ele),
+                (Some(lhs_ele), Some(rhs_ele)) => {
+                    // nodes differ, look for lhs_ele in rhs, if its found we can mark everything up
+                    // until that element as insertions. This is important to keep the diff minimal
+                    // in regards to insertions that have been actually done, this is important for
+                    // use insertions as we do not want to replace the entire module node.
+                    look_ahead_scratch.push(rhs_ele.clone());
+                    let mut rhs_children_clone = rhs_children.clone();
+                    let mut insert = false;
+                    while let Some(rhs_child) = rhs_children_clone.next() {
+                        if syntax_element_eq(&lhs_ele, &rhs_child) {
+                            mark::hit!(diff_insertions);
+                            insert = true;
+                            break;
+                        } else {
+                            look_ahead_scratch.push(rhs_child);
+                        }
+                    }
+                    let drain = look_ahead_scratch.drain(..);
+                    if let Some(prev) = last_lhs.clone().filter(|_| insert) {
+                        diff.insertions.entry(prev).or_insert_with(Vec::new).extend(drain);
+                        rhs_children = rhs_children_clone;
+                    } else {
+                        go(diff, lhs_ele, rhs_ele)
+                    }
+                }
             }
             last_lhs = lhs_child.or(last_lhs);
         }
@@ -292,7 +318,6 @@ fn _replace_children(
 #[derive(Debug, PartialEq, Eq, Hash)]
 enum InsertPos {
     FirstChildOf(SyntaxNode),
-    // Before(SyntaxElement),
     After(SyntaxElement),
 }
 
@@ -603,31 +628,6 @@ mod tests {
     }
 
     #[test]
-    fn insert() {
-        mark::check!(diff_insert);
-        check_diff(
-            r#"use foo;"#,
-            r#"use foo;
-use bar;"#,
-            expect![[r#"
-                insertions:
-
-                Line 0: Node(USE@0..8)
-                -> "\n"
-                -> use bar;
-
-                replacements:
-
-
-
-                deletions:
-
-
-            "#]],
-        );
-    }
-
-    #[test]
     fn replace_parent() {
         mark::check!(diff_replace_parent);
         check_diff(
@@ -650,7 +650,92 @@ use bar;"#,
     }
 
     #[test]
-    fn delete() {
+    fn insert_last() {
+        mark::check!(diff_insert);
+        check_diff(
+            r#"
+use foo;
+use bar;"#,
+            r#"
+use foo;
+use bar;
+use baz;"#,
+            expect![[r#"
+                insertions:
+
+                Line 2: Node(USE@10..18)
+                -> "\n"
+                -> use baz;
+
+                replacements:
+
+
+
+                deletions:
+
+
+            "#]],
+        );
+    }
+
+    #[test]
+    fn insert_middle() {
+        check_diff(
+            r#"
+use foo;
+use baz;"#,
+            r#"
+use foo;
+use bar;
+use baz;"#,
+            expect![[r#"
+                insertions:
+
+                Line 2: Token(WHITESPACE@9..10 "\n")
+                -> use bar;
+                -> "\n"
+
+                replacements:
+
+
+
+                deletions:
+
+
+            "#]],
+        )
+    }
+
+    #[test]
+    fn insert_first() {
+        check_diff(
+            r#"
+use bar;
+use baz;"#,
+            r#"
+use foo;
+use bar;
+use baz;"#,
+            expect![[r#"
+                insertions:
+
+                Line 0: Token(WHITESPACE@0..1 "\n")
+                -> use foo;
+                -> "\n"
+
+                replacements:
+
+
+
+                deletions:
+
+
+            "#]],
+        )
+    }
+
+    #[test]
+    fn delete_last() {
         mark::check!(diff_delete);
         check_diff(
             r#"use foo;
@@ -674,52 +759,50 @@ use bar;"#,
     }
 
     #[test]
-    fn insert_use() {
+    fn delete_middle() {
+        mark::check!(diff_insertions);
         check_diff(
-            r#"
-use expect_test::{expect, Expect};
-
-use crate::AstNode;
-"#,
             r#"
 use expect_test::{expect, Expect};
 use text_edit::TextEdit;
 
 use crate::AstNode;
 "#,
+            r#"
+use expect_test::{expect, Expect};
+
+use crate::AstNode;
+"#,
             expect![[r#"
                 insertions:
 
-                Line 4: Token(WHITESPACE@56..57 "\n")
+                Line 1: Node(USE@1..35)
+                -> "\n\n"
                 -> use crate::AstNode;
-                -> "\n"
 
                 replacements:
 
-                Line 2: Token(WHITESPACE@35..37 "\n\n") -> "\n"
-                Line 4: Token(CRATE_KW@41..46 "crate") -> text_edit
-                Line 4: Token(IDENT@48..55 "AstNode") -> TextEdit
-                Line 4: Token(WHITESPACE@56..57 "\n") -> "\n\n"
+
 
                 deletions:
 
-
+                Line 2: use text_edit::TextEdit;
+                Line 3: "\n\n"
+                Line 4: use crate::AstNode;
+                Line 5: "\n"
             "#]],
         )
     }
 
     #[test]
-    fn remove_use() {
+    fn delete_first() {
         check_diff(
             r#"
-use expect_test::{expect, Expect};
 use text_edit::TextEdit;
 
 use crate::AstNode;
 "#,
             r#"
-use expect_test::{expect, Expect};
-
 use crate::AstNode;
 "#,
             expect![[r#"
@@ -729,15 +812,14 @@ use crate::AstNode;
 
                 replacements:
 
-                Line 2: Token(WHITESPACE@35..36 "\n") -> "\n\n"
-                Line 3: Node(NAME_REF@40..49) -> crate
-                Line 3: Token(IDENT@51..59 "TextEdit") -> AstNode
-                Line 3: Token(WHITESPACE@60..62 "\n\n") -> "\n"
+                Line 2: Node(NAME_REF@5..14) -> crate
+                Line 2: Token(IDENT@16..24 "TextEdit") -> AstNode
+                Line 2: Token(WHITESPACE@25..27 "\n\n") -> "\n"
 
                 deletions:
 
-                Line 4: use crate::AstNode;
-                Line 5: "\n"
+                Line 3: use crate::AstNode;
+                Line 4: "\n"
             "#]],
         )
     }
@@ -814,17 +896,15 @@ fn main() {
                         _ => return,
                     }
                 -> ;
-                Line 5: Token(R_CURLY@64..65 "}")
-                -> "\n"
-                -> }
+                Line 3: Node(IF_EXPR@17..63)
+                -> "\n    "
+                -> foo(x);
 
                 replacements:
 
                 Line 3: Token(IF_KW@17..19 "if") -> let
                 Line 3: Token(LET_KW@20..23 "let") -> x
                 Line 3: Node(BLOCK_EXPR@40..63) -> =
-                Line 5: Token(WHITESPACE@63..64 "\n") -> "\n    "
-                Line 5: Token(R_CURLY@64..65 "}") -> foo(x);
 
                 deletions:
 

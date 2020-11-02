@@ -613,7 +613,7 @@ fn main() {
 pub struct Foo { pub a: i32, pub b: i32 }
 "#,
             r#"
-fn some(, b: ()} {}
+fn some(, b: ()) {}
 fn items() {}
 fn here() {}
 
