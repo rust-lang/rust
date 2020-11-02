@@ -26,13 +26,13 @@ pub(crate) enum ImportCandidate {
 
 #[derive(Debug)]
 pub(crate) struct TraitImportCandidate {
-    pub ty: hir::Type,
-    pub name: ast::NameRef,
+    pub(crate) ty: hir::Type,
+    pub(crate) name: ast::NameRef,
 }
 
 #[derive(Debug)]
 pub(crate) struct PathImportCandidate {
-    pub name: ast::NameRef,
+    pub(crate) name: ast::NameRef,
 }
 
 #[derive(Debug)]

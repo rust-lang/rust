@@ -278,13 +278,13 @@ impl CargoWorkspace {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct ExternResources {
+pub(crate) struct ExternResources {
     out_dirs: FxHashMap<PackageId, AbsPathBuf>,
     proc_dylib_paths: FxHashMap<PackageId, AbsPathBuf>,
     cfgs: FxHashMap<PackageId, Vec<CfgFlag>>,
 }
 
-pub fn load_extern_resources(
+pub(crate) fn load_extern_resources(
     cargo_toml: &Path,
     cargo_features: &CargoConfig,
 ) -> Result<ExternResources> {

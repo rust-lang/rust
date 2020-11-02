@@ -17,13 +17,13 @@ use syntax::{
 use test_utils::mark;
 
 #[derive(Debug)]
-pub enum ImportScope {
+pub(crate) enum ImportScope {
     File(ast::SourceFile),
     Module(ast::ItemList),
 }
 
 impl ImportScope {
-    pub fn from(syntax: SyntaxNode) -> Option<Self> {
+    pub(crate) fn from(syntax: SyntaxNode) -> Option<Self> {
         if let Some(module) = ast::Module::cast(syntax.clone()) {
             module.item_list().map(ImportScope::Module)
         } else if let this @ Some(_) = ast::SourceFile::cast(syntax.clone()) {

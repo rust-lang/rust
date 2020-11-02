@@ -14,7 +14,7 @@ use rustc_hash::FxHashSet;
     crate::db::AstDatabaseStorage
 )]
 #[derive(Default)]
-pub struct TestDB {
+pub(crate) struct TestDB {
     storage: salsa::Storage<TestDB>,
     events: Mutex<Option<Vec<salsa::Event>>>,
 }

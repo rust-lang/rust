@@ -464,7 +464,7 @@ impl ToChalk for CallableDefId {
     }
 }
 
-pub struct TypeAliasAsAssocType(pub TypeAliasId);
+pub(crate) struct TypeAliasAsAssocType(pub(crate) TypeAliasId);
 
 impl ToChalk for TypeAliasAsAssocType {
     type Chalk = AssocTypeId;
@@ -478,7 +478,7 @@ impl ToChalk for TypeAliasAsAssocType {
     }
 }
 
-pub struct TypeAliasAsForeignType(pub TypeAliasId);
+pub(crate) struct TypeAliasAsForeignType(pub(crate) TypeAliasId);
 
 impl ToChalk for TypeAliasAsForeignType {
     type Chalk = ForeignDefId;
@@ -492,7 +492,7 @@ impl ToChalk for TypeAliasAsForeignType {
     }
 }
 
-pub struct TypeAliasAsValue(pub TypeAliasId);
+pub(crate) struct TypeAliasAsValue(pub(crate) TypeAliasId);
 
 impl ToChalk for TypeAliasAsValue {
     type Chalk = AssociatedTyValueId;

@@ -4,13 +4,13 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub struct TestDir {
+pub(crate) struct TestDir {
     path: PathBuf,
     keep: bool,
 }
 
 impl TestDir {
-    pub fn new() -> TestDir {
+    pub(crate) fn new() -> TestDir {
         let base = std::env::temp_dir().join("testdir");
         let pid = std::process::id();
 
@@ -27,11 +27,11 @@ impl TestDir {
         panic!("Failed to create a temporary directory")
     }
     #[allow(unused)]
-    pub fn keep(mut self) -> TestDir {
+    pub(crate) fn keep(mut self) -> TestDir {
         self.keep = true;
         self
     }
-    pub fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 }

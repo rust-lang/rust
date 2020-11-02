@@ -88,7 +88,7 @@ enum State {
 }
 
 impl FormatStrParser {
-    pub fn new(input: String) -> Self {
+    pub(crate) fn new(input: String) -> Self {
         Self {
             input: input.into(),
             output: String::new(),
@@ -98,7 +98,7 @@ impl FormatStrParser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<(), ()> {
+    pub(crate) fn parse(&mut self) -> Result<(), ()> {
         let mut current_expr = String::new();
 
         let mut placeholder_id = 1;
@@ -194,7 +194,7 @@ impl FormatStrParser {
         Ok(())
     }
 
-    pub fn into_suggestion(&self, macro_name: &str) -> String {
+    pub(crate) fn into_suggestion(&self, macro_name: &str) -> String {
         assert!(self.parsed, "Attempt to get a suggestion from not parsed expression");
 
         let expressions_as_string = self.extracted_expressions.join(", ");

@@ -17,7 +17,7 @@ pub struct Sysroot {
     crates: Arena<SysrootCrateData>,
 }
 
-pub type SysrootCrate = Idx<SysrootCrateData>;
+pub(crate) type SysrootCrate = Idx<SysrootCrateData>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SysrootCrateData {

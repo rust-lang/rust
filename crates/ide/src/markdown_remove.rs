@@ -1,11 +1,10 @@
 //! Removes markdown from strings.
-
 use pulldown_cmark::{Event, Parser, Tag};
 
 /// Removes all markdown, keeping the text and code blocks
 ///
 /// Currently limited in styling, i.e. no ascii tables or lists
-pub fn remove_markdown(markdown: &str) -> String {
+pub(crate) fn remove_markdown(markdown: &str) -> String {
     let mut out = String::new();
     let parser = Parser::new(markdown);
 

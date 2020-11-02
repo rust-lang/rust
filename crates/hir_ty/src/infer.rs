@@ -94,7 +94,7 @@ enum BindingMode {
 }
 
 impl BindingMode {
-    pub fn convert(annotation: BindingAnnotation) -> BindingMode {
+    fn convert(annotation: BindingAnnotation) -> BindingMode {
         match annotation {
             BindingAnnotation::Unannotated | BindingAnnotation::Mutable => BindingMode::Move,
             BindingAnnotation::Ref => BindingMode::Ref(Mutability::Shared),

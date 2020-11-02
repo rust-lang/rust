@@ -2,7 +2,7 @@ mod format;
 mod html;
 mod injection;
 mod macro_rules;
-mod tags;
+pub(crate) mod tags;
 #[cfg(test)]
 mod tests;
 
@@ -20,12 +20,13 @@ use syntax::{
 };
 
 use crate::{
-    syntax_highlighting::{format::FormatStringHighlighter, macro_rules::MacroRulesHighlighter},
-    FileId,
+    syntax_highlighting::{
+        format::FormatStringHighlighter, macro_rules::MacroRulesHighlighter, tags::Highlight,
+    },
+    FileId, HighlightModifier, HighlightTag,
 };
 
 pub(crate) use html::highlight_as_html;
-pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
 
 #[derive(Debug, Clone)]
 pub struct HighlightedRange {

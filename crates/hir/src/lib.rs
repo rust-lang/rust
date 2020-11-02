@@ -36,7 +36,7 @@ pub use crate::{
         Access, Adt, AsAssocItem, AssocItem, AssocItemContainer, Callable, CallableKind, Const,
         Crate, CrateDependency, DefWithBody, Enum, EnumVariant, Field, FieldSource, Function,
         GenericDef, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, ScopeDef, Static,
-        Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef, Visibility,
+        Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
     },
     has_source::HasSource,
     semantics::{original_range, PathResolution, Semantics, SemanticsScope},
@@ -53,6 +53,7 @@ pub use hir_def::{
     nameres::ModuleSource,
     path::{ModPath, PathKind},
     type_ref::{Mutability, TypeRef},
+    visibility::Visibility,
 };
 pub use hir_expand::{
     name::known, name::AsName, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc,

@@ -27,7 +27,7 @@ pub struct StructureNode {
 //
 // | VS Code | kbd:[Ctrl+Shift+O]
 // |===
-pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
+pub(crate) fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 

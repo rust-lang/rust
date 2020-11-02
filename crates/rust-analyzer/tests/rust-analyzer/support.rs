@@ -24,7 +24,7 @@ use vfs::AbsPathBuf;
 
 use crate::testdir::TestDir;
 
-pub struct Project<'a> {
+pub(crate) struct Project<'a> {
     fixture: &'a str,
     with_sysroot: bool,
     tmp_dir: Option<TestDir>,
@@ -33,11 +33,11 @@ pub struct Project<'a> {
 }
 
 impl<'a> Project<'a> {
-    pub fn with_fixture(fixture: &str) -> Project {
+    pub(crate) fn with_fixture(fixture: &str) -> Project {
         Project { fixture, tmp_dir: None, roots: vec![], with_sysroot: false, config: None }
     }
 
-    pub fn tmp_dir(mut self, tmp_dir: TestDir) -> Project<'a> {
+    pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Project<'a> {
         self.tmp_dir = Some(tmp_dir);
         self
     }
@@ -47,17 +47,17 @@ impl<'a> Project<'a> {
         self
     }
 
-    pub fn with_sysroot(mut self, sysroot: bool) -> Project<'a> {
+    pub(crate) fn with_sysroot(mut self, sysroot: bool) -> Project<'a> {
         self.with_sysroot = sysroot;
         self
     }
 
-    pub fn with_config(mut self, config: impl Fn(&mut Config) + 'static) -> Project<'a> {
+    pub(crate) fn with_config(mut self, config: impl Fn(&mut Config) + 'static) -> Project<'a> {
         self.config = Some(Box::new(config));
         self
     }
 
-    pub fn server(self) -> Server {
+    pub(crate) fn server(self) -> Server {
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| TestDir::new());
         static INIT: Once = Once::new();
         INIT.call_once(|| {
@@ -103,11 +103,11 @@ impl<'a> Project<'a> {
     }
 }
 
-pub fn project(fixture: &str) -> Server {
+pub(crate) fn project(fixture: &str) -> Server {
     Project::with_fixture(fixture).server()
 }
 
-pub struct Server {
+pub(crate) struct Server {
     req_id: Cell<u64>,
     messages: RefCell<Vec<Message>>,
     _thread: jod_thread::JoinHandle<()>,
@@ -128,12 +128,12 @@ impl Server {
         Server { req_id: Cell::new(1), dir, messages: Default::default(), client, _thread }
     }
 
-    pub fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
+    pub(crate) fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
         let path = self.dir.path().join(rel_path);
         TextDocumentIdentifier { uri: Url::from_file_path(path).unwrap() }
     }
 
-    pub fn notification<N>(&self, params: N::Params)
+    pub(crate) fn notification<N>(&self, params: N::Params)
     where
         N: lsp_types::notification::Notification,
         N::Params: Serialize,
@@ -142,7 +142,7 @@ impl Server {
         self.send_notification(r)
     }
 
-    pub fn request<R>(&self, params: R::Params, expected_resp: Value)
+    pub(crate) fn request<R>(&self, params: R::Params, expected_resp: Value)
     where
         R: lsp_types::request::Request,
         R::Params: Serialize,
@@ -159,7 +159,7 @@ impl Server {
         }
     }
 
-    pub fn send_request<R>(&self, params: R::Params) -> Value
+    pub(crate) fn send_request<R>(&self, params: R::Params) -> Value
     where
         R: lsp_types::request::Request,
         R::Params: Serialize,
@@ -202,7 +202,7 @@ impl Server {
         }
         panic!("no response");
     }
-    pub fn wait_until_workspace_is_loaded(self) -> Server {
+    pub(crate) fn wait_until_workspace_is_loaded(self) -> Server {
         self.wait_for_message_cond(1, &|msg: &Message| match msg {
             Message::Notification(n) if n.method == "$/progress" => {
                 match n.clone().extract::<ProgressParams>("$/progress").unwrap() {
@@ -241,7 +241,7 @@ impl Server {
         self.client.sender.send(Message::Notification(not)).unwrap();
     }
 
-    pub fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         self.dir.path()
     }
 }

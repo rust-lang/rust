@@ -35,7 +35,7 @@ where
 
 #[derive(Debug)]
 pub(super) struct Canonicalized<T> {
-    pub value: Canonical<T>,
+    pub(super) value: Canonical<T>,
     free_vars: Vec<InferTy>,
 }
 
