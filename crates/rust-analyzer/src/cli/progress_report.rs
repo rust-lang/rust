@@ -4,7 +4,7 @@
 use std::io::Write;
 
 /// A Simple ASCII Progress Bar
-pub struct ProgressReport {
+pub(crate) struct ProgressReport {
     curr: f32,
     text: String,
     hidden: bool,
@@ -15,7 +15,7 @@ pub struct ProgressReport {
 }
 
 impl ProgressReport {
-    pub fn new(len: u64) -> ProgressReport {
+    pub(crate) fn new(len: u64) -> ProgressReport {
         ProgressReport {
             curr: 0.0,
             text: String::new(),
@@ -26,7 +26,7 @@ impl ProgressReport {
         }
     }
 
-    pub fn hidden() -> ProgressReport {
+    pub(crate) fn hidden() -> ProgressReport {
         ProgressReport {
             curr: 0.0,
             text: String::new(),
@@ -37,18 +37,18 @@ impl ProgressReport {
         }
     }
 
-    pub fn set_message(&mut self, msg: &str) {
+    pub(crate) fn set_message(&mut self, msg: &str) {
         self.msg = msg.to_string();
         self.tick();
     }
 
-    pub fn println<I: Into<String>>(&mut self, msg: I) {
+    pub(crate) fn println<I: Into<String>>(&mut self, msg: I) {
         self.clear();
         println!("{}", msg.into());
         self.tick();
     }
 
-    pub fn inc(&mut self, delta: u64) {
+    pub(crate) fn inc(&mut self, delta: u64) {
         self.pos += delta;
         if self.len == 0 {
             self.set_value(0.0)
@@ -58,11 +58,11 @@ impl ProgressReport {
         self.tick();
     }
 
-    pub fn finish_and_clear(&mut self) {
+    pub(crate) fn finish_and_clear(&mut self) {
         self.clear();
     }
 
-    pub fn tick(&mut self) {
+    pub(crate) fn tick(&mut self) {
         if self.hidden {
             return;
         }

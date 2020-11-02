@@ -25,7 +25,7 @@ use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePos
 /// A [Diagnostic] that potentially has a fix available.
 ///
 /// [Diagnostic]: hir::diagnostics::Diagnostic
-pub trait DiagnosticWithFix: Diagnostic {
+pub(crate) trait DiagnosticWithFix: Diagnostic {
     fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix>;
 }
 

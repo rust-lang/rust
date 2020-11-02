@@ -120,7 +120,7 @@ impl VfsPath {
 
 #[cfg(windows)]
 mod windows_paths {
-    pub trait Encode {
+    pub(crate) trait Encode {
         fn encode(&self, buf: &mut Vec<u8>);
     }
 
@@ -149,7 +149,7 @@ mod windows_paths {
         }
     }
 
-    pub const SEP: &str = "\\";
+    pub(crate) const SEP: &str = "\\";
     const VERBATIM: &str = "\\\\?\\";
     const UNC: &str = "UNC";
     const DEVICE: &str = "\\\\.\\";

@@ -72,18 +72,20 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
     prime_caches::PrimeCachesProgress,
-    references::{
-        Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult, RenameError,
-    },
+    references::{rename::RenameError, Declaration, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
-        Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
+        tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag},
+        HighlightedRange,
     },
 };
 pub use completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
 };
-pub use ide_db::call_info::CallInfo;
+pub use ide_db::{
+    call_info::CallInfo,
+    search::{Reference, ReferenceAccess, ReferenceKind},
+};
 
 pub use assists::{
     utils::MergeBehaviour, Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist,
@@ -503,7 +505,7 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Result<RangeInfo<SourceChange>, RenameError>> {
-        self.with_db(|db| references::rename(db, position, new_name))
+        self.with_db(|db| references::rename::rename(db, position, new_name))
     }
 
     pub fn structural_search_replace(

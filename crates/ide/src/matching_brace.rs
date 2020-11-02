@@ -15,7 +15,7 @@ use test_utils::mark;
 //
 // | VS Code | **Rust Analyzer: Find matching brace**
 // |===
-pub fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
+pub(crate) fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
     const BRACES: &[SyntaxKind] =
         &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>], T![|], T![|]];
     let (brace_token, brace_idx) = file

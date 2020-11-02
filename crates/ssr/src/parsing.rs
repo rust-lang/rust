@@ -42,7 +42,7 @@ pub(crate) struct Placeholder {
 
 /// Represents a `$var` in an SSR query.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Var(pub String);
+pub(crate) struct Var(pub(crate) String);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Constraint {

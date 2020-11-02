@@ -81,7 +81,7 @@ mod tracing_setup {
     use tracing_subscriber::Registry;
     use tracing_tree::HierarchicalLayer;
 
-    pub fn setup_tracing() -> super::Result<()> {
+    pub(crate) fn setup_tracing() -> super::Result<()> {
         let filter = EnvFilter::from_env("CHALK_DEBUG");
         let layer = HierarchicalLayer::default()
             .with_indent_lines(true)

@@ -21,7 +21,7 @@ pub(crate) struct SubtreeTokenSource<'a> {
 impl<'a> SubtreeTokenSource<'a> {
     // Helper function used in test
     #[cfg(test)]
-    pub fn text(&self) -> SmolStr {
+    pub(crate) fn text(&self) -> SmolStr {
         match *self.get(self.curr.1) {
             Some(ref tt) => tt.text.clone(),
             _ => SmolStr::new(""),

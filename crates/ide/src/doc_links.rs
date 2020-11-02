@@ -1,7 +1,6 @@
 //! Resolves and rewrites links in markdown documentation.
 
-use std::convert::TryFrom;
-use std::iter::once;
+use std::{convert::TryFrom, iter::once};
 
 use itertools::Itertools;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
@@ -21,10 +20,10 @@ use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset,
 
 use crate::{FilePosition, Semantics};
 
-pub type DocumentationLink = String;
+pub(crate) type DocumentationLink = String;
 
 /// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)
-pub fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> String {
+pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> String {
     let mut cb = |link: BrokenLink| {
         Some((
             /*url*/ link.reference.to_owned().into(),
@@ -63,7 +62,7 @@ pub fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition)
 }
 
 /// Remove all links in markdown documentation.
-pub fn remove_links(markdown: &str) -> String {
+pub(crate) fn remove_links(markdown: &str) -> String {
     let mut drop_link = false;
 
     let mut opts = Options::empty();

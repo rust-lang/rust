@@ -14,7 +14,8 @@ pub(crate) mod rename;
 use hir::Semantics;
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
-    search::SearchScope,
+    search::Reference,
+    search::{ReferenceAccess, ReferenceKind, SearchScope},
     RootDatabase,
 };
 use syntax::{
@@ -24,11 +25,6 @@ use syntax::{
 };
 
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
-
-pub(crate) use self::rename::rename;
-pub use self::rename::RenameError;
-
-pub use ide_db::search::{Reference, ReferenceAccess, ReferenceKind};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {

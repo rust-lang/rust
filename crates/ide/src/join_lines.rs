@@ -18,7 +18,7 @@ use text_edit::{TextEdit, TextEditBuilder};
 //
 // | VS Code | **Rust Analyzer: Join lines**
 // |===
-pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
+pub(crate) fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);

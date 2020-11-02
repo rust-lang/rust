@@ -27,7 +27,7 @@ use mapping::{
     TypeAliasAsValue,
 };
 
-pub use self::interner::*;
+pub(crate) use self::interner::*;
 
 pub(super) mod tls;
 mod interner;

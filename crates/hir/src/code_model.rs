@@ -4,7 +4,6 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use either::Either;
-use hir_def::find_path::PrefixKind;
 use hir_def::{
     adt::ReprKind,
     adt::StructKind,
@@ -12,16 +11,18 @@ use hir_def::{
     builtin_type::BuiltinType,
     expr::{BindingAnnotation, Pat, PatId},
     import_map,
+    item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     path::ModPath,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocContainerId, AttrDefId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId,
-    HasModule, ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId,
-    StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, DefWithBodyId, EnumId,
+    FunctionId, GenericDefId, HasModule, ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId,
+    Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
 };
+use hir_def::{find_path::PrefixKind, item_scope::ItemInNs, visibility::Visibility};
 use hir_expand::{
     diagnostics::DiagnosticSink,
     name::{name, AsName},
@@ -274,11 +275,6 @@ impl ModuleDef {
         hir_ty::diagnostics::validate_module_item(db, id, sink)
     }
 }
-
-pub use hir_def::{
-    attr::Attrs, item_scope::ItemInNs, item_tree::ItemTreeNode, visibility::Visibility,
-    AssocItemId, AssocItemLoc,
-};
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {

@@ -4,13 +4,13 @@
 //! are splitting the hir.
 
 use hir_def::{
-    expr::PatId, AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId,
-    ModuleDefId, VariantId,
+    expr::PatId, item_scope::ItemInNs, AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId,
+    GenericDefId, ModuleDefId, VariantId,
 };
 
 use crate::{
-    code_model::ItemInNs, Adt, AssocItem, DefWithBody, EnumVariant, Field, GenericDef, Local,
-    MacroDef, ModuleDef, VariantDef,
+    Adt, AssocItem, DefWithBody, EnumVariant, Field, GenericDef, Local, MacroDef, ModuleDef,
+    VariantDef,
 };
 
 macro_rules! from_id {

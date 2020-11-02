@@ -6,14 +6,13 @@ use hir_def::{
     src::{HasChildSource, HasSource as _},
     Lookup, VariantId,
 };
+use hir_expand::InFile;
 use syntax::ast;
 
 use crate::{
     db::HirDatabase, Const, Enum, EnumVariant, Field, FieldSource, Function, ImplDef, MacroDef,
     Module, Static, Struct, Trait, TypeAlias, TypeParam, Union,
 };
-
-pub use hir_expand::InFile;
 
 pub trait HasSource {
     type Ast;
