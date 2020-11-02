@@ -1,4 +1,3 @@
-Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-cov show --debug --Xdemangler=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/stage0-tools-bin/rust-demangler --show-line-counts-or-regions --instr-profile=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/tight_infinite_loop.profdata /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/tight_infinite_loop 
 Counter in file 0 2:8 -> 2:13, #1
 Counter in file 0 5:1 -> 5:2, (#1 - #2)
 Emitting segments for file: ../coverage/tight_infinite_loop.rs

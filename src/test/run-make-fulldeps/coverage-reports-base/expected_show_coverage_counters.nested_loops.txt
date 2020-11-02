@@ -1,4 +1,3 @@
-Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-cov show --debug --Xdemangler=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/stage0-tools-bin/rust-demangler --show-line-counts-or-regions --instr-profile=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/nested_loops.profdata /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-base/coverage-reports-base/nested_loops 
 Counter in file 0 2:9 -> 3:27, #1
 Counter in file 0 5:19 -> 5:32, (#1 + #2)
 Counter in file 0 6:13 -> 7:24, ((#1 + #2) - #3)

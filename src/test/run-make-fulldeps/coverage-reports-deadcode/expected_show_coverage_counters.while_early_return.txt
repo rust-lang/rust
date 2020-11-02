@@ -1,4 +1,3 @@
-Args: /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/llvm/build/bin/llvm-cov show --debug --Xdemangler=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/stage0-tools-bin/rust-demangler --show-line-counts-or-regions --instr-profile=/usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-deadcode/coverage-reports-deadcode/while_early_return.profdata /usr/local/google/home/richkadel/rust/build/x86_64-unknown-linux-gnu/test/run-make-fulldeps/coverage-reports-deadcode/coverage-reports-deadcode/while_early_return 
 Counter in file 0 5:9 -> 5:27, #1
 Counter in file 0 7:9 -> 9:10, (#1 + #2)
 Counter in file 0 12:13 -> 14:14, ((#1 + #2) - #3)
