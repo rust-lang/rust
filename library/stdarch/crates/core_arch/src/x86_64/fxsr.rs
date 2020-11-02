@@ -6,9 +6,9 @@ use stdarch_test::assert_instr;
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.fxsave64"]
-    fn fxsave64(p: *mut u8) -> ();
+    fn fxsave64(p: *mut u8);
     #[link_name = "llvm.x86.fxrstor64"]
-    fn fxrstor64(p: *const u8) -> ();
+    fn fxrstor64(p: *const u8);
 }
 
 /// Saves the `x87` FPU, `MMX` technology, `XMM`, and `MXCSR` registers to the

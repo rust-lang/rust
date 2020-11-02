@@ -7,19 +7,19 @@ use stdarch_test::assert_instr;
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.xsave"]
-    fn xsave(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsave(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xrstor"]
-    fn xrstor(p: *const u8, hi: u32, lo: u32) -> ();
+    fn xrstor(p: *const u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xsetbv"]
-    fn xsetbv(v: u32, hi: u32, lo: u32) -> ();
+    fn xsetbv(v: u32, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xsaveopt"]
-    fn xsaveopt(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsaveopt(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xsavec"]
-    fn xsavec(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsavec(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xsaves"]
-    fn xsaves(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsaves(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xrstors"]
-    fn xrstors(p: *const u8, hi: u32, lo: u32) -> ();
+    fn xrstors(p: *const u8, hi: u32, lo: u32);
 }
 
 /// Performs a full or partial save of the enabled processor states to memory at

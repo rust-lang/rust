@@ -8,17 +8,17 @@ use stdarch_test::assert_instr;
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.xsave64"]
-    fn xsave64(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsave64(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xrstor64"]
-    fn xrstor64(p: *const u8, hi: u32, lo: u32) -> ();
+    fn xrstor64(p: *const u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xsaveopt64"]
-    fn xsaveopt64(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsaveopt64(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xsavec64"]
-    fn xsavec64(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsavec64(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xsaves64"]
-    fn xsaves64(p: *mut u8, hi: u32, lo: u32) -> ();
+    fn xsaves64(p: *mut u8, hi: u32, lo: u32);
     #[link_name = "llvm.x86.xrstors64"]
-    fn xrstors64(p: *const u8, hi: u32, lo: u32) -> ();
+    fn xrstors64(p: *const u8, hi: u32, lo: u32);
 }
 
 /// Performs a full or partial save of the enabled processor states to memory at

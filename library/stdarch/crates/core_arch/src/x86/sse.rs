@@ -3106,8 +3106,8 @@ mod tests {
         let mut p = vals.as_mut_ptr();
 
         if (p as usize) & 0xf != 0 {
-            ofs = (16 - (p as usize) & 0xf) >> 2;
-            p = p.offset(ofs as isize);
+            ofs = ((16 - (p as usize)) & 0xf) >> 2;
+            p = p.add(ofs);
         }
 
         _mm_store1_ps(p, *black_box(&a));
@@ -3132,8 +3132,8 @@ mod tests {
 
         // Align p to 16-byte boundary
         if (p as usize) & 0xf != 0 {
-            ofs = (16 - (p as usize) & 0xf) >> 2;
-            p = p.offset(ofs as isize);
+            ofs = ((16 - (p as usize)) & 0xf) >> 2;
+            p = p.add(ofs);
         }
 
         _mm_store_ps(p, *black_box(&a));
@@ -3158,8 +3158,8 @@ mod tests {
 
         // Align p to 16-byte boundary
         if (p as usize) & 0xf != 0 {
-            ofs = (16 - (p as usize) & 0xf) >> 2;
-            p = p.offset(ofs as isize);
+            ofs = ((16 - (p as usize)) & 0xf) >> 2;
+            p = p.add(ofs);
         }
 
         _mm_storer_ps(p, *black_box(&a));

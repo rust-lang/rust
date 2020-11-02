@@ -1,11 +1,12 @@
 //use crate::{
+//
 //    core_arch::{simd::*, simd_llvm::*, x86::*},
 //    mem::transmute,
 //};
 
 #[cfg(test)]
 mod tests {
-    use std;
+
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
@@ -2123,7 +2124,7 @@ mod tests {
         let e = _mm512_set1_pd(0.3333333333333333);
         assert_eq_m512d(r, e);
         let r = _mm512_div_round_pd(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
-        let e = _mm512_set1_pd(0.33333333333333334);
+        let e = _mm512_set1_pd(0.3333333333333333);
         assert_eq_m512d(r, e);
     }
 

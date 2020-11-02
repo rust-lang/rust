@@ -179,7 +179,7 @@ impl syn::parse::Parse for Invoc {
                 continue;
             }
             if input.parse::<Token![.]>().is_ok() {
-                instr.push_str(".");
+                instr.push('.');
                 continue;
             }
             if let Ok(s) = input.parse::<syn::LitStr>() {

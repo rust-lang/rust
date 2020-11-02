@@ -193,8 +193,8 @@ fn verify_all_signatures() {
         }
 
         use std::convert::TryFrom;
-        let intrinsic: MsaIntrinsic =
-            TryFrom::try_from(line).expect(&format!("failed to parse line: \"{}\"", line));
+        let intrinsic: MsaIntrinsic = TryFrom::try_from(line)
+            .unwrap_or_else(|_| panic!("failed to parse line: \"{}\"", line));
         assert!(!intrinsics.contains_key(&intrinsic.id));
         intrinsics.insert(intrinsic.id.clone(), intrinsic);
     }
@@ -293,10 +293,7 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
             | MsaTy::imm_n1024_1022
             | MsaTy::imm_n2048_2044
             | MsaTy::imm_n4096_4088
-                if **rust_arg == I32 =>
-            {
-                ()
-            }
+                if **rust_arg == I32 => {}
             MsaTy::i32 if **rust_arg == I32 => (),
             MsaTy::i64 if **rust_arg == I64 => (),
             MsaTy::u32 if **rust_arg == U32 => (),
@@ -310,21 +307,21 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
             ),
         }
 
-        let is_const = match mips_arg {
+        let is_const = matches!(
+            mips_arg,
             MsaTy::imm0_1
-            | MsaTy::imm0_3
-            | MsaTy::imm0_7
-            | MsaTy::imm0_15
-            | MsaTy::imm0_31
-            | MsaTy::imm0_63
-            | MsaTy::imm0_255
-            | MsaTy::imm_n16_15
-            | MsaTy::imm_n512_511
-            | MsaTy::imm_n1024_1022
-            | MsaTy::imm_n2048_2044
-            | MsaTy::imm_n4096_4088 => true,
-            _ => false,
-        };
+                | MsaTy::imm0_3
+                | MsaTy::imm0_7
+                | MsaTy::imm0_15
+                | MsaTy::imm0_31
+                | MsaTy::imm0_63
+                | MsaTy::imm0_255
+                | MsaTy::imm_n16_15
+                | MsaTy::imm_n512_511
+                | MsaTy::imm_n1024_1022
+                | MsaTy::imm_n2048_2044
+                | MsaTy::imm_n4096_4088
+        );
         if is_const {
             nconst += 1;
             if !rust.required_const.contains(&i) {

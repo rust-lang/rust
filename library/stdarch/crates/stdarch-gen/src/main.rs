@@ -476,7 +476,7 @@ pub unsafe fn {}(a: {}, b: {}) -> {} {{
 }
 
 fn expand_intrinsic(intr: &str, t: &str) -> String {
-    if intr.ends_with(".") {
+    if intr.ends_with('.') {
         let ext = match t {
             "int8x8_t" => "i8",
             "int8x16_t" => "i8",

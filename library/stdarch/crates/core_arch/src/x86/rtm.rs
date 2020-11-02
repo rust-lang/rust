@@ -20,9 +20,9 @@ extern "C" {
     #[link_name = "llvm.x86.xbegin"]
     fn x86_xbegin() -> i32;
     #[link_name = "llvm.x86.xend"]
-    fn x86_xend() -> ();
+    fn x86_xend();
     #[link_name = "llvm.x86.xabort"]
-    fn x86_xabort(imm8: i8) -> ();
+    fn x86_xabort(imm8: i8);
     #[link_name = "llvm.x86.xtest"]
     fn x86_xtest() -> i32;
 }

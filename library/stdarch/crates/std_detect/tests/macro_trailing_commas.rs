@@ -1,5 +1,5 @@
 #![feature(stdsimd)]
-#![allow(clippy::option_unwrap_used, clippy::use_debug, clippy::print_stdout)]
+#![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
 
 #[cfg(any(
     target_arch = "arm",

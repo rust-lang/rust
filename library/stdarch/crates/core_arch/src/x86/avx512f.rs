@@ -22727,7 +22727,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use std;
+
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;

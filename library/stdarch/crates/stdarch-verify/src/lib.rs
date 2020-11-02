@@ -336,7 +336,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
                 } else if let Ok(ident) = instrs.call(syn::Ident::parse_any) {
                     instr.push_str(&ident.to_string());
                 } else if instrs.parse::<Token![.]>().is_ok() {
-                    instr.push_str(".");
+                    instr.push('.');
                 } else if instrs.parse::<Token![,]>().is_ok() {
                     // consume everything remaining
                     drop(instrs.parse::<proc_macro2::TokenStream>());

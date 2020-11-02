@@ -16,9 +16,9 @@
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(target_arch = "wasm32", feature(wasm_simd))]
 #![allow(
-    clippy::result_unwrap_used,
+    clippy::unwrap_used,
     clippy::print_stdout,
-    clippy::option_unwrap_used,
+    clippy::unwrap_used,
     clippy::shadow_reuse,
     clippy::cast_possible_wrap,
     clippy::cast_ptr_alignment,

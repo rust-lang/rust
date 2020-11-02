@@ -483,7 +483,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 
         let rust_feature = rust
             .target_feature
-            .expect(&format!("no target feature listed for {}", rust.name));
+            .unwrap_or_else(|| panic!("no target feature listed for {}", rust.name));
 
         if rust_feature.contains(&fixed_cpuid) {
             continue;
@@ -554,10 +554,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         .iter()
         .cloned()
         .chain(rust.ret)
-        .any(|arg| match *arg {
-            Type::PrimSigned(64) | Type::PrimUnsigned(64) => true,
-            _ => false,
-        });
+        .any(|arg| matches!(*arg, Type::PrimSigned(64) | Type::PrimUnsigned(64)));
     let any_i64_exempt = match rust.name {
         // These intrinsics have all been manually verified against Clang's
         // headers to be available on x86, and the u64 arguments seem
@@ -621,7 +618,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
     intel = intel.replace("const *", "const*");
     // Normalize mutability modifier to after the type:
     // const float* foo => float const*
-    if intel.starts_with("const") && intel.ends_with("*") {
+    if intel.starts_with("const") && intel.ends_with('*') {
         intel = intel.replace("const ", "");
         intel = intel.replace("*", " const*");
     }
