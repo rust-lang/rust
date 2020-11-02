@@ -86,13 +86,9 @@ error[E0550]: multiple deprecated attributes
   --> $DIR/stability-attribute-sanity.rs:62:1
    |
 LL | #[rustc_deprecated(since = "b", reason = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: first deprecation attribute here
-  --> $DIR/stability-attribute-sanity.rs:61:1
-   |
+   | ------------------------------------------------- first deprecation attribute
 LL | #[rustc_deprecated(since = "b", reason = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ repeated deprecation attribute
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:64:1

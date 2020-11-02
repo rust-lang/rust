@@ -32,7 +32,7 @@ fn f1() { }
 
 struct X;
 
-#[deprecated = "hello"] //~ ERROR this `#[deprecated]' annotation has no effect
+#[deprecated = "hello"] //~ ERROR this `#[deprecated]` annotation has no effect
 impl Default for X {
     fn default() -> Self {
         X

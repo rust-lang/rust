@@ -92,10 +92,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
                 self.tcx.struct_span_lint_hir(USELESS_DEPRECATED, hir_id, *span, |lint| {
-                    lint.build("this `#[deprecated]' annotation has no effect")
-                        .span_suggestion(
+                    lint.build("this `#[deprecated]` annotation has no effect")
+                        .span_suggestion_short(
                             *span,
-                            "try removing the deprecation attribute",
+                            "remove the unnecessary deprecation attribute",
                             String::new(),
                             rustc_errors::Applicability::MachineApplicable,
                         )

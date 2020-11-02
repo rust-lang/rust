@@ -656,7 +656,8 @@ where
 
         if let Some((_, span)) = &depr {
             struct_span_err!(diagnostic, attr.span, E0550, "multiple deprecated attributes")
-                .span_note(*span, "first deprecation attribute here")
+                .span_label(attr.span, "repeated deprecation attribute")
+                .span_label(*span, "first deprecation attribute")
                 .emit();
             break;
         }

@@ -44,13 +44,9 @@ error[E0550]: multiple deprecated attributes
   --> $DIR/deprecation-sanity.rs:27:1
    |
 LL | #[deprecated(since = "a", note = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: first deprecation attribute here
-  --> $DIR/deprecation-sanity.rs:26:1
-   |
+   | -------------------------------------- first deprecation attribute
 LL | #[deprecated(since = "a", note = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ repeated deprecation attribute
 
 error[E0538]: multiple 'since' items
   --> $DIR/deprecation-sanity.rs:30:27
@@ -58,11 +54,11 @@ error[E0538]: multiple 'since' items
 LL | #[deprecated(since = "a", since = "b", note = "c")]
    |                           ^^^^^^^^^^^
 
-error: this `#[deprecated]' annotation has no effect
+error: this `#[deprecated]` annotation has no effect
   --> $DIR/deprecation-sanity.rs:35:1
    |
 LL | #[deprecated = "hello"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the deprecation attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove the unnecessary deprecation attribute
    |
    = note: `#[deny(useless_deprecated)]` on by default
 
