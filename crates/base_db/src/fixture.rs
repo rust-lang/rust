@@ -150,6 +150,8 @@ impl ChangeFixture {
                 entry.text.clone()
             };
 
+            let explicit_root = entry.explicit_root;
+
             let meta = FileMeta::from(entry);
             assert!(meta.path.starts_with(&source_root_prefix));
 
@@ -169,7 +171,7 @@ impl ChangeFixture {
                     let dep = CrateName::normalize_dashes(&dep);
                     crate_deps.push((crate_name.clone(), dep))
                 }
-            } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
+            } else if meta.path == "/main.rs" || meta.path == "/lib.rs" || explicit_root {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_cfg = meta.cfg;
