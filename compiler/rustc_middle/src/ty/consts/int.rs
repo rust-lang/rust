@@ -226,7 +226,7 @@ impl ScalarInt {
     #[inline]
     pub fn assert_bits(self, target_size: Size) -> u128 {
         self.to_bits(target_size).unwrap_or_else(|size| {
-            bug!("int of size {}, but is {}", target_size.bytes(), size.bytes())
+            bug!("expected int of size {}, but got size {}", target_size.bytes(), size.bytes())
         })
     }
 
