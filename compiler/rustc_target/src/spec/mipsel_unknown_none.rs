@@ -1,4 +1,4 @@
-//! Bare MIPS32r2, little endian, softfloat
+//! Bare MIPS32r2, little endian, softfloat, O32 calling convention
 //!
 //! Can be used for MIPS M4K core (e.g. on PIC32MX devices)
 
