@@ -323,7 +323,7 @@ pub struct Baz;
 fn module_resolution_relative_path_outside_root() {
     check(
         r#"
-//- /a/b/c/d/e/main.rs root:
+//- /a/b/c/d/e/main.rs crate:main
 #[path="../../../../../outside.rs"]
 mod foo;
 

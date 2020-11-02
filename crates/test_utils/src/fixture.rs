@@ -8,7 +8,6 @@ use stdx::{lines_with_ends, split_once, trim_indent};
 pub struct Fixture {
     pub path: String,
     pub text: String,
-    pub explicit_root: bool,
     pub krate: Option<String>,
     pub deps: Vec<String>,
     pub cfg_atoms: Vec<String>,
@@ -65,7 +64,6 @@ impl Fixture {
         let path = components[0].to_string();
         assert!(path.starts_with('/'));
 
-        let mut explicit_root = false;
         let mut krate = None;
         let mut deps = Vec::new();
         let mut edition = None;
@@ -75,7 +73,6 @@ impl Fixture {
         for component in components[1..].iter() {
             let (key, value) = split_once(component, ':').unwrap();
             match key {
-                "root" => explicit_root = true,
                 "crate" => krate = Some(value.to_string()),
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
                 "edition" => edition = Some(value.to_string()),
@@ -101,7 +98,6 @@ impl Fixture {
         Fixture {
             path,
             text: String::new(),
-            explicit_root: explicit_root,
             krate: krate,
             deps,
             cfg_atoms,
