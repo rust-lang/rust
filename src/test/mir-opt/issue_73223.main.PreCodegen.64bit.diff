@@ -89,10 +89,10 @@
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ issue_73223[317d]::main), const_param_did: None }, [], Some(promoted[1])) }
           (_5.1: &i32) = move _6;          // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageLive(_7);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _7 = (_5.0: &i32);               // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _8 = (_5.1: &i32);               // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_7);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _7 = (_5.0: &i32);               // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_9);                 // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_10);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_11);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -106,8 +106,8 @@
   
       bb1: {
           StorageDead(_9);                 // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_7);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
           StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
@@ -133,8 +133,8 @@
           _19 = &_20;                      // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           (_17.1: &&i32) = move _19;       // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           StorageDead(_19);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          _25 = (_17.0: &&i32);            // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _28 = (_17.1: &&i32);            // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          _25 = (_17.0: &&i32);            // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _24 = <&i32 as Debug>::fmt as for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> (Pointer(ReifyFnPointer)); // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
