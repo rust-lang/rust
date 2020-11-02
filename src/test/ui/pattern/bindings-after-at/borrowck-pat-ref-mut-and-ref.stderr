@@ -442,12 +442,12 @@ error[E0502]: cannot borrow value as immutable because it is also borrowed as mu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:123:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
-   |         ^^^^^^^^^^^^^^^^^^^^---------^
-   |         |                   |
-   |         |                   mutable borrow occurs here
+   |         ^^^^^^^^^---------^^^^^^^^^^^^
+   |         |        |
+   |         |        mutable borrow occurs here
    |         immutable borrow occurs here
 ...
-LL |     *c = U;
+LL |     *b = U;
    |     ------ mutable borrow later used here
 
 error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
@@ -466,12 +466,12 @@ error[E0502]: cannot borrow value as immutable because it is also borrowed as mu
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:135:9
    |
 LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
-   |         ^^^^^^^^^^^^^^^^^^^^---------^
-   |         |                   |
-   |         |                   mutable borrow occurs here
+   |         ^^^^^^^^^---------^^^^^^^^^^^^
+   |         |        |
+   |         |        mutable borrow occurs here
    |         immutable borrow occurs here
-...
-LL |     *c = U;
+LL |
+LL |     *b = U;
    |     ------ mutable borrow later used here
 
 error[E0382]: borrow of moved value

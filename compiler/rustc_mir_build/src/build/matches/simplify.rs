@@ -44,6 +44,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
+        debug!("simplify_candidate(candidate={:?})", candidate);
+        let mut new_bindings = Vec::new();
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
@@ -56,7 +58,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let mut changed = false;
             for match_pair in match_pairs {
-                match self.simplify_match_pair(match_pair, candidate) {
+                match self.simplify_match_pair(match_pair, candidate, &mut new_bindings) {
                     Ok(()) => {
                         changed = true;
                     }
@@ -65,6 +67,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
+            // issue #69971: the binding order should be right to left if there are more
+            // bindings after `@` to please the borrow checker
+            // Ex
+            // struct NonCopyStruct {
+            //     copy_field: u32,
+            // }
+            //
+            // fn foo1(x: NonCopyStruct) {
+            //     let y @ NonCopyStruct { copy_field: z } = x;
+            //     // the above should turn into
+            //     let z = x.copy_field;
+            //     let y = x;
+            // }
+            new_bindings.extend_from_slice(&candidate.bindings);
+            mem::swap(&mut candidate.bindings, &mut new_bindings);
+            new_bindings.clear();
+
             if !changed {
                 // Move or-patterns to the end, because they can result in us
                 // creating additional candidates, so we want to test them as
@@ -72,6 +91,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate
                     .match_pairs
                     .sort_by_key(|pair| matches!(*pair.pattern.kind, PatKind::Or { .. }));
+                debug!("simplify_candidate: simplifed {:?}", candidate);
                 return false; // if we were not able to simplify any, done.
             }
         }
@@ -104,6 +124,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pair: MatchPair<'pat, 'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
+        bindings: &mut Vec<Binding<'tcx>>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
@@ -131,20 +152,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Binding { name, mutability, mode, var, ty, ref subpattern, is_primary: _ } => {
-                // issue #69971: the binding order should be right to left if there are more
-                // bindings after `@` to please the borrow checker
-                // Ex
-                // struct NonCopyStruct {
-                //     copy_field: u32,
-                // }
-                //
-                // fn foo1(x: NonCopyStruct) {
-                //     let y @ NonCopyStruct { copy_field: z } = x;
-                //     // the above should turn into
-                //     let z = x.copy_field;
-                //     let y = x;
-                // }
-                candidate.bindings.insert(0, Binding {
+                bindings.push(Binding {
                     name,
                     mutability,
                     span: match_pair.pattern.span,
