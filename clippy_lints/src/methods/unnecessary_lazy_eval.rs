@@ -35,7 +35,8 @@ pub(super) fn lint<'tcx>(
                 let applicability = if body
                     .params
                     .iter()
-                    .all(|param| matches!(param.pat.kind, hir::PatKind::Wild))
+                    // bindings are checked to be unused above
+                    .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
                 {
                     Applicability::MachineApplicable
                 } else {
