@@ -243,7 +243,7 @@ impl GlobalState {
                         self.report_progress("indexing", Progress::Begin, None, Some(0.0));
                     }
 
-                    self.report_progress("indexing", state, message.clone(), Some(fraction));
+                    self.report_progress("indexing", state, message, Some(fraction));
                 }
             }
             Event::Vfs(mut task) => {
