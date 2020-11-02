@@ -1,0 +1,44 @@
+name: Bootstrap rustc using cg_clif
+
+on:
+  - push
+
+jobs:
+  bootstrap_rustc:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Cache cargo installed crates
+      uses: actions/cache@v2
+      with:
+        path: ~/.cargo/bin
+        key: ${{ runner.os }}-cargo-installed-crates
+
+    - name: Cache cargo registry and index
+      uses: actions/cache@v2
+      with:
+        path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+        key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo target dir
+      uses: actions/cache@v2
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Prepare dependencies
+      run: |
+        git config --global user.email "user@example.com"
+        git config --global user.name "User"
+        ./prepare.sh
+
+    - name: Test
+      run: |
+        # Enable backtraces for easier debugging
+        export RUST_BACKTRACE=1
+
+        ./scripts/test_bootstrap.sh
