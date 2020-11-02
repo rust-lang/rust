@@ -1,11 +1,10 @@
 use crate::utils::{in_macro, snippet_opt, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
-use rustc_ast::ast::{Expr, ExprKind, UnOp, Mutability};
+use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::BytePos;
-// use rustc_span::source_map::{BytePos, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.
@@ -53,31 +52,29 @@ impl EarlyLintPass for DerefAddrOf {
                         // Remove leading whitespace from the given span
                         // e.g: ` $visitor` turns into `$visitor`
                         let trim_leading_whitespaces = |span| {
-                            if let Some(start_no_whitespace) = snippet_opt(cx, span).and_then(|snip| {
+                            snippet_opt(cx, span).and_then(|snip| {
+                                #[allow(clippy::cast_possible_truncation)]
                                 snip.find(|c: char| !c.is_whitespace()).map(|pos| {
                                     span.lo() + BytePos(pos as u32)
                                 })
-                            }) {
-                                e.span.with_lo(start_no_whitespace)
-                            } else {
-                                span
-                            }
+                            }).map_or(span, |start_no_whitespace| e.span.with_lo(start_no_whitespace))
                         };
 
                         let rpos = if *mutability == Mutability::Mut {
                             macro_source.rfind("mut").expect("already checked this is a mutable reference") + "mut".len()
                         } else {
-                            macro_source.rfind("&").expect("already checked this is a reference") + "&".len()
+                            macro_source.rfind('&').expect("already checked this is a reference") + "&".len()
                         };
+                        #[allow(clippy::cast_possible_truncation)]
                         let span_after_ref = e.span.with_lo(BytePos(e.span.lo().0 + rpos as u32));
                         let span = trim_leading_whitespaces(span_after_ref);
-                        snippet_with_applicability(cx, span, "_", &mut applicability).to_string()
+                        snippet_with_applicability(cx, span, "_", &mut applicability)
                     } else {
-                        snippet_with_applicability(cx, e.span, "_", &mut applicability).to_string()
+                        snippet_with_applicability(cx, e.span, "_", &mut applicability)
                     }
                 } else {
-                    snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability).to_string()
-                };
+                    snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability)
+                }.to_string();
                 span_lint_and_sugg(
                     cx,
                     DEREF_ADDROF,

@@ -92,13 +92,9 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
 
                 let expr_err_ty = cx.typeck_results().expr_ty(err_arg);
 
-                // println!("\n\n{:?}", in_macro(expr.span));
-                // println!("{:#?}", snippet(cx, err_arg.span, "_"));
                 let origin_snippet = if err_arg.span.from_expansion() && !in_macro(expr.span) {
-                    // println!("from expansion");
                     snippet_with_macro_callsite(cx, err_arg.span, "_")
                 } else {
-                    // println!("just a snippet");
                     snippet(cx, err_arg.span, "_")
                 };
                 let suggestion = if err_ty == expr_err_ty {
@@ -106,8 +102,6 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 } else {
                     format!("return {}{}.into(){}", prefix, origin_snippet, suffix)
                 };
-                // println!("origin_snippet: {:#?}", origin_snippet);
-                // println!("suggestion: {:#?}", suggestion);
 
                 span_lint_and_sugg(
                     cx,

@@ -38,6 +38,7 @@ fn main() {
     let b = *aref;
 }
 
+#[rustfmt::skip]
 macro_rules! m {
     ($visitor: expr) => {
         $visitor
