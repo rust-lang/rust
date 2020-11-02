@@ -30,6 +30,7 @@ log = "0.4"
 shell-escape = "0.1.4"
 hex = "0.4.0"
 rand = "0.7"
+smallvec = "1.4.2"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`

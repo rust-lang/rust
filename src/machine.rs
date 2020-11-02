@@ -109,12 +109,15 @@ impl fmt::Display for MiriMemoryKind {
 pub struct AllocExtra {
     /// Stacked Borrows state is only added if it is enabled.
     pub stacked_borrows: Option<stacked_borrows::AllocExtra>,
+    /// Data race detection via the use of a vector-clock.
+    pub data_race: data_race::AllocExtra,
 }
 
 /// Extra global memory data
 #[derive(Clone, Debug)]
 pub struct MemoryExtra {
     pub stacked_borrows: Option<stacked_borrows::MemoryExtra>,
+    pub data_race: data_race::MemoryExtra,
     pub intptrcast: intptrcast::MemoryExtra,
 
     /// Mapping extern static names to their canonical allocation.
@@ -144,8 +147,10 @@ impl MemoryExtra {
         } else {
             None
         };
+        let data_race = Rc::new(data_race::GlobalState::new());
         MemoryExtra {
             stacked_borrows,
+            data_race,
             intptrcast: Default::default(),
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
@@ -467,6 +472,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 // No stacks, no tag.
                 (None, Tag::Untagged)
             };
+        let race_alloc = data_race::AllocExtra::new_allocation(&memory_extra.data_race, alloc.size);
         let mut stacked_borrows = memory_extra.stacked_borrows.as_ref().map(|sb| sb.borrow_mut());
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
             |alloc| {
@@ -478,7 +484,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                     Tag::Untagged
                 }
             },
-            AllocExtra { stacked_borrows: stacks },
+            AllocExtra { stacked_borrows: stacks, data_race: race_alloc },
         );
         (Cow::Owned(alloc), base_tag)
     }
@@ -584,6 +590,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
+        alloc.extra.data_race.read(ptr, size)?;
         if let Some(stacked_borrows) = &alloc.extra.stacked_borrows {
             stacked_borrows.memory_read(ptr, size)
         } else {
@@ -597,6 +604,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
+        alloc.extra.data_race.write(ptr, size)?;
         if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
             stacked_borrows.memory_written(ptr, size)
         } else {
@@ -610,6 +618,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
+        alloc.extra.data_race.deallocate(ptr, size)?;
         if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
             stacked_borrows.memory_deallocated(ptr, size)
         } else {

@@ -22,6 +22,7 @@ extern crate rustc_mir;
 extern crate rustc_span;
 extern crate rustc_target;
 
+mod data_race;
 mod diagnostics;
 mod eval;
 mod helpers;
@@ -52,6 +53,10 @@ pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 
+pub use crate::data_race::{
+    AtomicReadOp, AtomicWriteOp, AtomicRWOp, AtomicFenceOp, DataRaceLockHandle,
+    EvalContextExt as DataRaceEvalContextExt
+};
 pub use crate::diagnostics::{
     register_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
     TerminationInfo, NonHaltingDiagnostic,
