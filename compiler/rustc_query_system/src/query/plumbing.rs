@@ -646,20 +646,6 @@ where
     C: QueryCache,
     CTX: QueryContext,
 {
-    // If the following assertion triggers, it can have two reasons:
-    // 1. Something is wrong with DepNode creation, either here or
-    //    in `DepGraph::try_mark_green()`.
-    // 2. Two distinct query keys get mapped to the same `DepNode`
-    //    (see for example #48923).
-    assert!(
-        !tcx.dep_context().dep_graph().dep_node_exists(&dep_node),
-        "forcing query with already existing `DepNode`\n\
-                 - query-key: {:?}\n\
-                 - dep-node: {:?}",
-        key,
-        dep_node
-    );
-
     let prof_timer = tcx.dep_context().profiler().query_provider();
 
     let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {

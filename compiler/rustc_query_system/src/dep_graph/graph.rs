@@ -11,6 +11,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use parking_lot::Mutex;
 use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering::Relaxed;
@@ -208,7 +209,7 @@ impl<K: DepKind> DepGraph<K> {
     ///   `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
-    pub fn with_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
+    pub fn with_task<Ctxt: HasDepContext<DepKind = K>, A: Debug, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -234,7 +235,7 @@ impl<K: DepKind> DepGraph<K> {
         )
     }
 
-    fn with_task_impl<Ctxt: HasDepContext<DepKind = K>, A, R>(
+    fn with_task_impl<Ctxt: HasDepContext<DepKind = K>, A: Debug, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -244,6 +245,20 @@ impl<K: DepKind> DepGraph<K> {
         hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if let Some(ref data) = self.data {
+            // If the following assertion triggers, it can have two reasons:
+            // 1. Something is wrong with DepNode creation, either here or
+            //    in `DepGraph::try_mark_green()`.
+            // 2. Two distinct query keys get mapped to the same `DepNode`
+            //    (see for example #48923).
+            assert!(
+                !self.dep_node_exists(&key),
+                "forcing query with already existing `DepNode`\n\
+                 - query-key: {:?}\n\
+                 - dep-node: {:?}",
+                arg,
+                key
+            );
+
             let dcx = cx.dep_context();
             let task_deps = create_task(key).map(Lock::new);
             let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
@@ -359,7 +374,7 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "eval-always" task which is a task
     /// that runs whenever anything changes.
-    pub fn with_eval_always_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
+    pub fn with_eval_always_task<Ctxt: HasDepContext<DepKind = K>, A: Debug, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
