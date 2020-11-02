@@ -7,7 +7,7 @@ use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use rustc_ast::{self as ast, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
@@ -127,34 +127,19 @@ impl<'a> Parser<'a> {
 
         let (mut item, tokens) = if needs_tokens {
             let (item, tokens) = self.collect_tokens(parse_item)?;
-            (item, Some(tokens))
+            (item, tokens)
         } else {
             (parse_item(self)?, None)
         };
-
-        self.unclosed_delims.append(&mut unclosed_delims);
-
-        // Once we've parsed an item and recorded the tokens we got while
-        // parsing we may want to store `tokens` into the item we're about to
-        // return. Note, though, that we specifically didn't capture tokens
-        // related to outer attributes. The `tokens` field here may later be
-        // used with procedural macros to convert this item back into a token
-        // stream, but during expansion we may be removing attributes as we go
-        // along.
-        //
-        // If we've got inner attributes then the `tokens` we've got above holds
-        // these inner attributes. If an inner attribute is expanded we won't
-        // actually remove it from the token stream, so we'll just keep yielding
-        // it (bad!). To work around this case for now we just avoid recording
-        // `tokens` if we detect any inner attributes. This should help keep
-        // expansion correct, but we should fix this bug one day!
-        if let Some(tokens) = tokens {
-            if let Some(item) = &mut item {
-                if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                    item.tokens = tokens;
-                }
+        if let Some(item) = &mut item {
+            // If we captured tokens during parsing (due to encountering an `NtItem`),
+            // use those instead
+            if item.tokens.is_none() {
+                item.tokens = tokens;
             }
         }
+
+        self.unclosed_delims.append(&mut unclosed_delims);
         Ok(item)
     }
 
