@@ -156,7 +156,11 @@ pub fn target_machine_factory(
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
-    let relax_elf_relocations = sess.target.options.relax_elf_relocations;
+    let relax_elf_relocations = sess
+        .opts
+        .debugging_opts
+        .relax_elf_relocations
+        .unwrap_or(sess.target.options.relax_elf_relocations);
 
     let use_init_array = !sess
         .opts
