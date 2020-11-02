@@ -732,7 +732,7 @@ impl<'a> Builder<'a> {
             .env("RUSTC_BOOTSTRAP", "1")
             .arg("-Winvalid_codeblock_attributes");
         if self.config.deny_warnings {
-            cmd.arg("-Dwarnings");
+            //cmd.arg("-Dwarnings");
         }
 
         // Remove make-related flags that can cause jobserver problems.
