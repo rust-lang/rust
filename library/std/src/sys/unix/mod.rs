@@ -174,6 +174,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
         libc::EADDRINUSE => ErrorKind::AddrInUse,
         libc::ENOENT => ErrorKind::NotFound,
+        libc::ENOSPC => ErrorKind::NoStorageSpace,
         libc::EINTR => ErrorKind::Interrupted,
         libc::EINVAL => ErrorKind::InvalidInput,
         libc::ETIMEDOUT => ErrorKind::TimedOut,

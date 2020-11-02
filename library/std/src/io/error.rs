@@ -156,6 +156,11 @@ pub enum ErrorKind {
     /// [`Ok(0)`]: Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
+    /// The underlying storage (typically, a filesystem) is full.
+    ///
+    /// This does not include out of quota errors.
+    #[stable(feature = "io_error_no_storage_space", since = "1.51.0")]
+    NoStorageSpace,
     /// This operation was interrupted.
     ///
     /// Interrupted operations can typically be retried.
@@ -199,6 +204,7 @@ impl ErrorKind {
             ErrorKind::TimedOut => "timed out",
             ErrorKind::WriteZero => "write zero",
             ErrorKind::Interrupted => "operation interrupted",
+            ErrorKind::NoStorageSpace => "no storage space",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
         }
