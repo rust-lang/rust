@@ -282,7 +282,7 @@ macro_rules! eprintln {
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
     () => {
-        $crate::eprintln!("[{}:{}]", $crate::file!(), $crate::line!());
+        $crate::eprintln!("[{}:{}]", $crate::file!(), $crate::line!())
     };
     ($val:expr $(,)?) => {
         // Use of `match` here is intentional because it affects the lifetimes

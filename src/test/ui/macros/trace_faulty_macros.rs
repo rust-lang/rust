@@ -10,7 +10,7 @@ macro_rules! my_faulty_macro {
 
 macro_rules! pat_macro {
     () => {
-        pat_macro!(A{a:a, b:0, c:_, ..});
+        pat_macro!(A{a:a, b:0, c:_, ..})
     };
     ($a:pat) => {
         $a //~ ERROR expected expression

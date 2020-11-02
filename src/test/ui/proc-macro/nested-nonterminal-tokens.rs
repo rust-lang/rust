@@ -17,7 +17,7 @@ macro_rules! wrap {
     (first, $e:expr) => { wrap!(second, $e + 1) };
     (second, $e:expr) => { wrap!(third, $e + 2) };
     (third, $e:expr) => {
-        print_bang!($e + 3);
+        print_bang!($e + 3)
     };
 }
 
