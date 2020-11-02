@@ -25,7 +25,7 @@ use crate::{db::DefDatabase, ModuleDefId};
     crate::db::DefDatabaseStorage
 )]
 #[derive(Default)]
-pub struct TestDB {
+pub(crate) struct TestDB {
     storage: salsa::Storage<TestDB>,
     events: Mutex<Option<Vec<salsa::Event>>>,
 }
@@ -72,7 +72,7 @@ impl FileLoader for TestDB {
 }
 
 impl TestDB {
-    pub fn module_for_file(&self, file_id: FileId) -> crate::ModuleId {
+    pub(crate) fn module_for_file(&self, file_id: FileId) -> crate::ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules.iter() {
@@ -84,13 +84,13 @@ impl TestDB {
         panic!("Can't find module for file")
     }
 
-    pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
+    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
         *self.events.lock().unwrap() = Some(Vec::new());
         f();
         self.events.lock().unwrap().take().unwrap()
     }
 
-    pub fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
+    pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
         let events = self.log(f);
         events
             .into_iter()
@@ -105,7 +105,7 @@ impl TestDB {
             .collect()
     }
 
-    pub fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
+    pub(crate) fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
@@ -129,7 +129,7 @@ impl TestDB {
             .collect()
     }
 
-    pub fn diagnostics<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
+    pub(crate) fn diagnostics<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
             let crate_def_map = self.crate_def_map(krate);
@@ -148,7 +148,7 @@ impl TestDB {
         }
     }
 
-    pub fn check_diagnostics(&self) {
+    pub(crate) fn check_diagnostics(&self) {
         let db: &TestDB = self;
         let annotations = db.extract_annotations();
         assert!(!annotations.is_empty());

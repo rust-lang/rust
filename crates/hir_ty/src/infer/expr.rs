@@ -107,7 +107,7 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    pub fn callable_sig(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
+    pub(crate) fn callable_sig(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
         match ty.callable_sig(self.db) {
             Some(sig) => Some((sig.params().to_vec(), sig.ret().clone())),
             None => self.callable_sig_from_fn_trait(ty, num_args),

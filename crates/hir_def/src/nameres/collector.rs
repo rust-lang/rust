@@ -122,13 +122,13 @@ enum ImportSource {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Import {
-    pub path: ModPath,
-    pub alias: Option<ImportAlias>,
-    pub visibility: RawVisibility,
-    pub is_glob: bool,
-    pub is_prelude: bool,
-    pub is_extern_crate: bool,
-    pub is_macro_use: bool,
+    path: ModPath,
+    alias: Option<ImportAlias>,
+    visibility: RawVisibility,
+    is_glob: bool,
+    is_prelude: bool,
+    is_extern_crate: bool,
+    is_macro_use: bool,
     source: ImportSource,
 }
 

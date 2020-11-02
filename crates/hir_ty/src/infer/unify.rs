@@ -127,7 +127,7 @@ where
 }
 
 impl<T> Canonicalized<T> {
-    pub fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
+    pub(super) fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
         ty.walk_mut_binders(
             &mut |ty, binders| {
                 if let &mut Ty::Bound(bound) = ty {
@@ -141,7 +141,11 @@ impl<T> Canonicalized<T> {
         ty
     }
 
-    pub fn apply_solution(&self, ctx: &mut InferenceContext<'_>, solution: Canonical<Substs>) {
+    pub(super) fn apply_solution(
+        &self,
+        ctx: &mut InferenceContext<'_>,
+        solution: Canonical<Substs>,
+    ) {
         // the solution may contain new variables, which we need to convert to new inference vars
         let new_vars = Substs(
             solution
@@ -164,7 +168,7 @@ impl<T> Canonicalized<T> {
     }
 }
 
-pub fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substs> {
+pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substs> {
     let mut table = InferenceTable::new();
     let vars = Substs(
         tys.kinds
@@ -199,41 +203,46 @@ pub(crate) struct InferenceTable {
 }
 
 impl InferenceTable {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         InferenceTable { var_unification_table: InPlaceUnificationTable::new() }
     }
 
-    pub fn new_type_var(&mut self) -> Ty {
+    pub(crate) fn new_type_var(&mut self) -> Ty {
         Ty::Infer(InferTy::TypeVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
     }
 
-    pub fn new_integer_var(&mut self) -> Ty {
+    pub(crate) fn new_integer_var(&mut self) -> Ty {
         Ty::Infer(InferTy::IntVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
     }
 
-    pub fn new_float_var(&mut self) -> Ty {
+    pub(crate) fn new_float_var(&mut self) -> Ty {
         Ty::Infer(InferTy::FloatVar(self.var_unification_table.new_key(TypeVarValue::Unknown)))
     }
 
-    pub fn new_maybe_never_type_var(&mut self) -> Ty {
+    pub(crate) fn new_maybe_never_type_var(&mut self) -> Ty {
         Ty::Infer(InferTy::MaybeNeverTypeVar(
             self.var_unification_table.new_key(TypeVarValue::Unknown),
         ))
     }
 
-    pub fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
+    pub(crate) fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
         self.resolve_ty_completely_inner(&mut Vec::new(), ty)
     }
 
-    pub fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
+    pub(crate) fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
         self.resolve_ty_as_possible_inner(&mut Vec::new(), ty)
     }
 
-    pub fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+    pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
         self.unify_inner(ty1, ty2, 0)
     }
 
-    pub fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs, depth: usize) -> bool {
+    pub(crate) fn unify_substs(
+        &mut self,
+        substs1: &Substs,
+        substs2: &Substs,
+        depth: usize,
+    ) -> bool {
         substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth))
     }
 
@@ -331,7 +340,7 @@ impl InferenceTable {
 
     /// If `ty` is a type variable with known type, returns that type;
     /// otherwise, return ty.
-    pub fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
+    pub(crate) fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
         let mut ty = Cow::Borrowed(ty);
         // The type variable could resolve to a int/float variable. Hence try
         // resolving up to three times; each type of variable shouldn't occur

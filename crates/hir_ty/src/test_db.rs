@@ -21,7 +21,7 @@ use test_utils::extract_annotations;
     crate::db::HirDatabaseStorage
 )]
 #[derive(Default)]
-pub struct TestDB {
+pub(crate) struct TestDB {
     storage: salsa::Storage<TestDB>,
     events: Mutex<Option<Vec<salsa::Event>>>,
 }
@@ -113,13 +113,13 @@ impl TestDB {
 }
 
 impl TestDB {
-    pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
+    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event> {
         *self.events.lock().unwrap() = Some(Vec::new());
         f();
         self.events.lock().unwrap().take().unwrap()
     }
 
-    pub fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
+    pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
         let events = self.log(f);
         events
             .into_iter()

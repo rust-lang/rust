@@ -59,12 +59,12 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
     }
 }
 
-pub struct UnsafeExpr {
-    pub expr: ExprId,
-    pub inside_unsafe_block: bool,
+pub(crate) struct UnsafeExpr {
+    pub(crate) expr: ExprId,
+    pub(crate) inside_unsafe_block: bool,
 }
 
-pub fn unsafe_expressions(
+pub(crate) fn unsafe_expressions(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
     def: DefWithBodyId,

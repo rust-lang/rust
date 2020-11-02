@@ -61,16 +61,16 @@ macro_rules! err {
 
 #[derive(Debug, Default)]
 pub(super) struct Match {
-    pub bindings: Bindings,
+    pub(super) bindings: Bindings,
     /// We currently just keep the first error and count the rest to compare matches.
-    pub err: Option<ExpandError>,
-    pub err_count: usize,
+    pub(super) err: Option<ExpandError>,
+    pub(super) err_count: usize,
     /// How many top-level token trees were left to match.
-    pub unmatched_tts: usize,
+    pub(super) unmatched_tts: usize,
 }
 
 impl Match {
-    pub fn add_err(&mut self, err: ExpandError) {
+    pub(super) fn add_err(&mut self, err: ExpandError) {
         let prev_err = self.err.take();
         self.err = prev_err.or(Some(err));
         self.err_count += 1;

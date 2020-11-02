@@ -6,7 +6,7 @@
 
 /// Converts an identifier to an UpperCamelCase form.
 /// Returns `None` if the string is already is UpperCamelCase.
-pub fn to_camel_case(ident: &str) -> Option<String> {
+pub(crate) fn to_camel_case(ident: &str) -> Option<String> {
     if is_camel_case(ident) {
         return None;
     }
@@ -59,7 +59,7 @@ pub fn to_camel_case(ident: &str) -> Option<String> {
 
 /// Converts an identifier to a lower_snake_case form.
 /// Returns `None` if the string is already in lower_snake_case.
-pub fn to_lower_snake_case(ident: &str) -> Option<String> {
+pub(crate) fn to_lower_snake_case(ident: &str) -> Option<String> {
     if is_lower_snake_case(ident) {
         return None;
     } else if is_upper_snake_case(ident) {
@@ -71,7 +71,7 @@ pub fn to_lower_snake_case(ident: &str) -> Option<String> {
 
 /// Converts an identifier to an UPPER_SNAKE_CASE form.
 /// Returns `None` if the string is already is UPPER_SNAKE_CASE.
-pub fn to_upper_snake_case(ident: &str) -> Option<String> {
+pub(crate) fn to_upper_snake_case(ident: &str) -> Option<String> {
     if is_upper_snake_case(ident) {
         return None;
     } else if is_lower_snake_case(ident) {

@@ -12,9 +12,7 @@ use cfg::CfgOptions;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
 use tt::TokenExpander;
-use vfs::{file_set::FileSet, VfsPath};
-
-pub use vfs::FileId;
+use vfs::{file_set::FileSet, FileId, VfsPath};
 
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a

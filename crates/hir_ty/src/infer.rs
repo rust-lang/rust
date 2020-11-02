@@ -214,9 +214,9 @@ struct InferenceContext<'a> {
 
 #[derive(Clone, Debug)]
 struct BreakableContext {
-    pub may_break: bool,
-    pub break_ty: Ty,
-    pub label: Option<name::Name>,
+    may_break: bool,
+    break_ty: Ty,
+    label: Option<name::Name>,
 }
 
 fn find_breakable<'c>(

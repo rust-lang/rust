@@ -1,7 +1,7 @@
 //! Lexing, bridging to parser (which does the actual parsing) and
 //! incremental reparsing.
 
-mod lexer;
+pub(crate) mod lexer;
 mod text_token_source;
 mod text_tree_sink;
 mod reparsing;
@@ -10,7 +10,7 @@ use crate::{syntax_node::GreenNode, AstNode, SyntaxError, SyntaxNode};
 use text_token_source::TextTokenSource;
 use text_tree_sink::TextTreeSink;
 
-pub use lexer::*;
+pub(crate) use lexer::*;
 
 pub(crate) use self::reparsing::incremental_reparse;
 use parser::SyntaxKind;

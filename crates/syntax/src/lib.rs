@@ -46,16 +46,19 @@ use text_edit::Indel;
 pub use crate::{
     algo::InsertPosition,
     ast::{AstNode, AstToken},
-    parsing::{lex_single_syntax_kind, lex_single_valid_syntax_kind, tokenize, Token},
+    parsing::lexer::{lex_single_syntax_kind, lex_single_valid_syntax_kind, tokenize, Token},
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::SyntaxError,
     syntax_node::{
-        Direction, GreenNode, NodeOrToken, SyntaxElement, SyntaxElementChildren, SyntaxNode,
-        SyntaxNodeChildren, SyntaxToken, SyntaxTreeBuilder,
+        SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren, SyntaxToken,
+        SyntaxTreeBuilder,
     },
 };
 pub use parser::{SyntaxKind, T};
-pub use rowan::{SmolStr, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent};
+pub use rowan::{
+    Direction, GreenNode, NodeOrToken, SmolStr, SyntaxText, TextRange, TextSize, TokenAtOffset,
+    WalkEvent,
+};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

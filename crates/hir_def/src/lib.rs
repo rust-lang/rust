@@ -486,12 +486,12 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
 /// Helper wrapper for `AstId` with `ModPath`
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct AstIdWithPath<T: ast::AstNode> {
-    pub ast_id: AstId<T>,
-    pub path: path::ModPath,
+    ast_id: AstId<T>,
+    path: path::ModPath,
 }
 
 impl<T: ast::AstNode> AstIdWithPath<T> {
-    pub fn new(file_id: HirFileId, ast_id: FileAstId<T>, path: path::ModPath) -> AstIdWithPath<T> {
+    fn new(file_id: HirFileId, ast_id: FileAstId<T>, path: path::ModPath) -> AstIdWithPath<T> {
         AstIdWithPath { ast_id: AstId::new(file_id, ast_id), path }
     }
 }

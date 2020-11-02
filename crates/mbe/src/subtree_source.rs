@@ -7,9 +7,9 @@ use tt::buffer::{Cursor, TokenBuffer};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct TtToken {
-    pub kind: SyntaxKind,
-    pub is_joint_to_next: bool,
-    pub text: SmolStr,
+    kind: SyntaxKind,
+    is_joint_to_next: bool,
+    text: SmolStr,
 }
 
 pub(crate) struct SubtreeTokenSource<'a> {
@@ -30,7 +30,7 @@ impl<'a> SubtreeTokenSource<'a> {
 }
 
 impl<'a> SubtreeTokenSource<'a> {
-    pub fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
+    pub(crate) fn new(buffer: &'a TokenBuffer) -> SubtreeTokenSource<'a> {
         let cursor = buffer.begin();
 
         let mut res = SubtreeTokenSource {
