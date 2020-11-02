@@ -404,8 +404,9 @@ impl AtomicReleaseSequences {
     fn clear_and_retain(&mut self, thread: ThreadId) {
         match self {
             Self::ReleaseOneOrEmpty(id, rel_clock) => {
-                // Keep or forget depending on id
-                if *id == Some(thread) {
+                // If the id is the same, then reatin the value
+                //  otherwise delete and clear the release vector clock
+                if *id != Some(thread) {
                     *id = None;
                     rel_clock.set_zero_vector();
                 }
