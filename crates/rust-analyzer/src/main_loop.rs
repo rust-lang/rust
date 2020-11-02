@@ -190,15 +190,35 @@ impl GlobalState {
                 }
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
-            Event::Task(task) => match task {
-                Task::Response(response) => self.respond(response),
-                Task::Diagnostics(diagnostics_per_file) => {
-                    for (file_id, diagnostics) in diagnostics_per_file {
-                        self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+            Event::Task(mut task) => {
+                let _p = profile::span("GlobalState::handle_event/task");
+                let mut prime_caches_started = false;
+                let mut prime_caches_progress = None;
+                loop {
+                    match task {
+                        Task::Response(response) => self.respond(response),
+                        Task::Diagnostics(diagnostics_per_file) => {
+                            for (file_id, diagnostics) in diagnostics_per_file {
+                                self.diagnostics.set_native_diagnostics(file_id, diagnostics)
+                            }
+                        }
+                        Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
+                        Task::PrimeCaches(progress) => {
+                            if let PrimeCachesProgress::Started = progress {
+                                prime_caches_started = true;
+                            }
+
+                            prime_caches_progress = Some(progress);
+                        }
                     }
+                    // Coalesce multiple task events into one loop turn
+                    task = match self.task_pool.receiver.try_recv() {
+                        Ok(task) => task,
+                        Err(_) => break,
+                    };
                 }
-                Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
-                Task::PrimeCaches(progress) => {
+
+                if let Some(progress) = prime_caches_progress {
                     let (state, message, fraction);
                     match progress {
                         PrimeCachesProgress::Started => {
@@ -218,9 +238,14 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("indexing", state, message, Some(fraction));
+                    if state != Progress::Begin && prime_caches_started {
+                        // Progress indicator needs to be created first.
+                        self.report_progress("indexing", Progress::Begin, None, Some(0.0));
+                    }
+
+                    self.report_progress("indexing", state, message.clone(), Some(fraction));
                 }
-            },
+            }
             Event::Vfs(mut task) => {
                 let _p = profile::span("GlobalState::handle_event/vfs");
                 loop {
