@@ -176,19 +176,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let mut current_state = alloc.global.current_thread_state_mut();
             if atomic == AtomicReadOp::Relaxed {
                 // Perform relaxed atomic load
-                for range in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
+                for (_,range) in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
                     range.load_relaxed(&mut *current_state);
                 }
             }else{
                 // Perform acquire(or seq-cst) atomic load
-                for range in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
+                for (_,range) in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
                     range.acquire(&mut *current_state);
                 }
             }
 
             // Log changes to atomic memory
             if log::log_enabled!(log::Level::Trace) {
-                for range in alloc.alloc_ranges.get_mut().iter(offset, size) {
+                for (_,range) in alloc.alloc_ranges.get_mut().iter(offset, size) {
                     log::trace!(
                         "  updated atomic memory({:?}, offset={}, size={}) to {:#?}",
                         place.ptr.assert_ptr().alloc_id, offset.bytes(), size.bytes(),
@@ -227,19 +227,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             if atomic == AtomicWriteOp::Relaxed {
                 // Perform relaxed atomic store
-                for range in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
+                for (_,range) in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
                     range.store_relaxed(&mut *current_state, current_thread);
                 }
             }else{
                 // Perform release(or seq-cst) atomic store
-                for range in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
+                for (_,range) in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
                     range.release(&mut *current_state, current_thread);
                 }
             }
 
             // Log changes to atomic memory
             if log::log_enabled!(log::Level::Trace) {
-                for range in alloc.alloc_ranges.get_mut().iter(offset, size) {
+                for (_,range) in alloc.alloc_ranges.get_mut().iter(offset, size) {
                     log::trace!(
                         "  updated atomic memory({:?}, offset={}, size={}) to {:#?}",
                         place.ptr.assert_ptr().alloc_id, offset.bytes(), size.bytes(),
@@ -279,7 +279,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
             let release = matches!(atomic, Release | AcqRel | SeqCst);
-            for range in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
+            for (_,range) in alloc.alloc_ranges.get_mut().iter_mut(offset, size) {
                 //FIXME: this is probably still slightly wrong due to the quirks
                 // in the c++11 memory model
                 if acquire {
@@ -298,7 +298,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Log changes to atomic memory
             if log::log_enabled!(log::Level::Trace) {
-                for range in alloc.alloc_ranges.get_mut().iter(offset, size) {
+                for (_,range) in alloc.alloc_ranges.get_mut().iter(offset, size) {
                     log::trace!(
                         "  updated atomic memory({:?}, offset={}, size={}) to {:#?}",
                         place.ptr.assert_ptr().alloc_id, offset.bytes(), size.bytes(),
@@ -733,7 +733,7 @@ impl VClockAlloc {
             // The alloc-ranges are not split, however changes are not going to be made
             //  to the ranges being tested, so this is ok
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
-            for range in alloc_ranges.iter_mut(pointer.offset, len) {
+            for (_,range) in alloc_ranges.iter_mut(pointer.offset, len) {
                 if range.read_race_detect(&*current_state, current_thread) {
                     // Report data-race
                     return Self::report_data_race(
@@ -754,7 +754,7 @@ impl VClockAlloc {
         if self.global.multi_threaded.get() {
             let current_thread = self.global.current_thread();
             let current_state = self.global.current_thread_state();
-            for range in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
+            for (_,range) in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
                 if range.write_race_detect(&*current_state, current_thread) {
                     // Report data-race
                     return Self::report_data_race(
@@ -775,7 +775,7 @@ impl VClockAlloc {
         if self.global.multi_threaded.get() {
             let current_thread = self.global.current_thread();
             let current_state = self.global.current_thread_state();
-            for range in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
+            for (_,range) in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
                 if range.write_race_detect(&*current_state, current_thread) {
                     // Report data-race
                     return Self::report_data_race(
