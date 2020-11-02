@@ -24,7 +24,7 @@ error[E0597]: `x` does not live long enough
   --> $DIR/send-is-not-static-std-sync-2.rs:31:25
    |
 LL |     let (_tx, rx) = {
-   |          --- borrow later used here
+   |               -- borrow later used here
 ...
 LL |         let _ = tx.send(&x);
    |                         ^^ borrowed value does not live long enough
