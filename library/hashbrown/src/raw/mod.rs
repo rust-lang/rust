@@ -44,6 +44,8 @@ use self::imp::Group;
 #[cfg(feature = "nightly")]
 use core::intrinsics::{likely, unlikely};
 
+// On stable we can use #[cold] to get a equivalent effect: this attributes
+// suggests that the function is unlikely to be called
 #[cfg(not(feature = "nightly"))]
 #[inline]
 #[cold]
@@ -56,7 +58,6 @@ fn likely(b: bool) -> bool {
     b
 }
 #[cfg(not(feature = "nightly"))]
-#[cold]
 #[inline]
 fn unlikely(b: bool) -> bool {
     if b { cold() }
