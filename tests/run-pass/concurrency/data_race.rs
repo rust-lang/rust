@@ -1,3 +1,6 @@
+// ignore-windows: Concurrency on Windows is not supported yet.
+
+
 use std::sync::atomic::{AtomicUsize, fence, Ordering};
 use std::thread::spawn;
 
