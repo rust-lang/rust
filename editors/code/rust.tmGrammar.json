@@ -140,6 +140,12 @@
             },
             "patterns": [
                 {
+                    "include": "#block-comments"
+                },
+                {
+                    "include": "#comments"
+                },
+                {
                     "include": "#keywords"
                 },
                 {
