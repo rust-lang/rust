@@ -4,7 +4,7 @@
 @.str.1 = private unnamed_addr constant [5 x i8] c"%f \0A\00", align 1
 
 ; Function Attrs: noinline nounwind uwtable
-declare dso_local double @read() local_unnamed_addr #0
+declare dso_local double @readDouble() local_unnamed_addr #0
 
 ; Function Attrs: argmemonly nounwind
 declare void @llvm.lifetime.start.p0i8(i64, i8* nocapture) #1
@@ -18,7 +18,7 @@ declare void @llvm.lifetime.end.p0i8(i64, i8* nocapture) #1
 ; Function Attrs: noinline nounwind uwtable
 define dso_local double @sub(double %x) local_unnamed_addr #0 {
 entry:
-  %call = tail call fast double @read() #3
+  %call = tail call fast double @readDouble() #3
   %mul = fmul fast double %call, %x
   %call1 = tail call fast float @flread() #3
   %conv = fpext float %call1 to double
@@ -76,7 +76,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ float, double } @augmented_sub(double %x)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = tail call fast double @read()
+; CHECK-NEXT:   %call = tail call fast double @readDouble()
 ; CHECK-NEXT:   %call1 = tail call fast float @flread()
 ; CHECK-NEXT:   %[[insertcache1:.+]] = insertvalue { float, double } undef, float %call1, 0
 ; CHECK-NEXT:   %[[insertcache2:.+]] = insertvalue { float, double } %[[insertcache1]], double %call, 1

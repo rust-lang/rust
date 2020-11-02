@@ -53,6 +53,10 @@
 llvm::cl::opt<bool> PrintType("enzyme-print-type", cl::init(false), cl::Hidden,
                               cl::desc("Print type analysis algorithm"));
 
+llvm::cl::opt<bool> RustTypeRules("enzyme-rust-type", cl::init(false),
+                                  cl::Hidden,
+                                  cl::desc("Enable rust-specific type rules"));
+
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
     : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(),
@@ -206,6 +210,9 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
       Result |= getConstantAnalysis(GV->getInitializer(), nfti, TA);
       return Result.Only(-1);
     }
+    if (GV->getName() == "__cxa_thread_atexit_impl") {
+      return TypeTree(BaseType::Pointer).Only(-1);
+    }
     auto globalSize = DL.getTypeSizeInBits(GV->getValueType()) / 8;
     // Since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any
     // Single byte object must be integral
@@ -338,48 +345,6 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
   } else if (auto Arg = dyn_cast<Argument>(Val))
     assert(fntypeinfo.Function == Arg->getParent());
 
-  bool pointerUse = false;
-  if (Instruction *I = dyn_cast<Instruction>(Val)) {
-    for (auto user : Val->users()) {
-      if (isa<LoadInst>(user)) {
-        pointerUse = true;
-        break;
-      }
-      if (auto SI = dyn_cast<StoreInst>(user)) {
-        if (SI->getPointerOperand() == Val) {
-          pointerUse = true;
-          break;
-        }
-      }
-      if (auto GEP = dyn_cast<GetElementPtrInst>(user)) {
-        if (GEP->getPointerOperand() == Val) {
-          pointerUse = true;
-          break;
-        }
-      }
-    }
-    if (isa<GetElementPtrInst>(I))
-      pointerUse = true;
-  }
-
-  // If this is a deinite ptr type and we find instead this is an integer, error
-  // early This is unlikely to occur in real codes and a very good way to
-  // identify TypeAnalysis bugs
-  /*
-  if (pointerUse && Data.Inner0() == BaseType::Integer) {
-    if (direction != BOTH) {
-      Invalid = true;
-      return;
-    }
-    llvm::errs() << *fntypeinfo.Function << "\n";
-    dump();
-    llvm::errs() << "illegal ptr update for val: " << *Val << "\n";
-    if (Origin)
-      llvm::errs() << " + " << *Origin << "\n";
-    assert(0 && "illegal ptr update");
-  }
-  */
-
   // Attempt to update the underlying analysis
   bool LegalOr = true;
   bool Changed =
@@ -390,6 +355,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
       Invalid = true;
       return;
     }
+    llvm::errs() << *fntypeinfo.Function->getParent() << "\n";
     llvm::errs() << *fntypeinfo.Function << "\n";
     dump();
     llvm::errs() << "Illegal updateAnalysis prev:" << analysis[Val].str()
@@ -815,6 +781,25 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
   auto StoreSize =
       (DL.getTypeSizeInBits(I.getValueOperand()->getType()) + 7) / 8;
 
+  // Rust specific rule, if storing an integer equal to the alignment
+  // of a store, assuming nothing (or assume it is a pointer)
+  // https://doc.rust-lang.org/src/core/ptr/non_null.rs.html#70-78
+  if (RustTypeRules)
+    if (auto CI = dyn_cast<ConstantInt>(I.getValueOperand())) {
+#if LLVM_VERSION_MAJOR >= 11
+      auto alignment = I.getAlign().value();
+#elif LLVM_VERSION_MAJOR >= 10
+      auto alignment =
+          I.getAlign().hasValue() ? I.getAlign().getValue().value() : 10000;
+#else
+      auto alignment = I.getAlignment();
+#endif
+
+      if (CI->getLimitedValue() == alignment) {
+        return;
+      }
+    }
+
   // Only propagate mappings in range that aren't "Anything" into the pointer
   auto ptr = TypeTree(BaseType::Pointer);
   auto purged = getAnalysis(I.getValueOperand())
@@ -824,6 +809,7 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
 
   if (direction & UP) {
     updateAnalysis(I.getPointerOperand(), ptr.Only(-1), &I);
+
     // Note that we also must purge anything from ptr => value in case we store
     // to a nullptr which has type [-1, -1]: Anything. While storing to a
     // nullptr is obviously bad, this doesn't mean the value we're storing is an
@@ -2080,6 +2066,10 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       return;
     }
+    if (ci->getName().startswith("_ZN3std2io5stdio6_print") ||
+        ci->getName().startswith("_ZN4core3fmt")) {
+      return;
+    }
     if (ci->getName() == "posix_memalign") {
       TypeTree ptrptr;
       ptrptr.insert({-1}, BaseType::Pointer);
@@ -2088,6 +2078,27 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
+    if (ci->getName() == "calloc") {
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
+    if (ci->getName() == "malloc") {
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
+    if (ci->getName() == "malloc_usable_size" ||
+        ci->getName() == "malloc_size" || ci->getName() == "_msize") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       return;
     }
@@ -2102,6 +2113,16 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         updateAnalysis(call.getOperand(0), getAnalysis(&call), &call);
       }
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
+    if (ci->getName() == "sigaction") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
       return;
     }
@@ -2129,6 +2150,19 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
+    if (ci->getName() == "pthread_mutex_lock" ||
+        ci->getName() == "pthread_mutex_trylock" ||
+        ci->getName() == "pthread_rwlock_rdlock" ||
+        ci->getName() == "pthread_rwlock_unlock" ||
+        ci->getName() == "pthread_attr_init" ||
+        ci->getName() == "pthread_attr_destroy" ||
+        ci->getName() == "pthread_rwlock_unlock" ||
+        ci->getName() == "pthread_mutex_unlock") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      return;
+    }
     if (isDeallocationFunction(*ci, interprocedural.TLI)) {
       size_t Idx = 0;
       for (auto &Arg : ci->args()) {
@@ -2145,7 +2179,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       assert(ci->getReturnType()->isVoidTy());
       return;
     }
-    if (ci->getName() == "memchr") {
+    if (ci->getName() == "memchr" || ci->getName() == "memrchr") {
       updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
@@ -2183,6 +2217,38 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
+    if (ci->getName() == "dladdr") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      return;
+    }
+    if (ci->getName() == "__errno_location") {
+      TypeTree ptrint;
+      ptrint.insert({-1, -1}, BaseType::Integer);
+      ptrint.insert({-1}, BaseType::Pointer);
+      updateAnalysis(&call, ptrint, &call);
+      return;
+    }
+    if (ci->getName() == "getenv") {
+      TypeTree ptrint;
+      ptrint.insert({-1, -1}, BaseType::Integer);
+      ptrint.insert({-1}, BaseType::Pointer);
+      updateAnalysis(&call, ptrint, &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      return;
+    }
+    if (ci->getName() == "getcwd") {
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
     if (ci->getName() == "mprotect") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
@@ -2203,8 +2269,30 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
+    if (ci->getName() == "signal") {
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      return;
+    }
+    if (ci->getName() == "write" || ci->getName() == "read" ||
+        ci->getName() == "writev" || ci->getName() == "readv") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      // FD type not going to be defined here
+      // updateAnalysis(call.getOperand(0),
+      // TypeTree(BaseType::Pointer).Only(-1),
+      //               &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      return;
+    }
 
     // CONSIDER(__lgamma_r_finite)
+
     CONSIDER2(frexp, double, double, int *)
 
     CONSIDER(frexpf)

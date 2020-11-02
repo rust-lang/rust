@@ -58,6 +58,8 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
       goto add;
     }
 
+    assert(!isa<FunctionType>(From) && !isa<FunctionType>(To));
+
     // Only consider casts of non-opaque types
     // This requirement exists because we need the sizes
     // of types to ensure bounds are appropriately applied

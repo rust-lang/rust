@@ -221,8 +221,6 @@ public:
       assert(placeholder->getType() == type);
       gutils->invertedPointers.erase(&LI);
 
-      // TODO consider optimizing when you know it isnt a pointer and thus don't
-      // need to store
       if (!constantval) {
         IRBuilder<> BuilderZ(placeholder);
         Value *newip = nullptr;
@@ -2108,7 +2106,9 @@ public:
     }
 
     if (called &&
-        (called->getName() == "printf" || called->getName() == "puts")) {
+        (called->getName() == "printf" || called->getName() == "puts" ||
+         called->getName().startswith("_ZN3std2io5stdio6_print") ||
+         called->getName().startswith("_ZN4core3fmt"))) {
       if (Mode == DerivativeMode::Reverse) {
         eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
       }
@@ -2441,7 +2441,8 @@ public:
       auto argType = argi->getType();
 
       if (!argType->isFPOrFPVectorTy() &&
-          TR.query(orig->getArgOperand(i)).Inner0().isPossiblePointer()) {
+          (TR.query(orig->getArgOperand(i)).Inner0().isPossiblePointer() ||
+           foreignFunction)) {
         DIFFE_TYPE ty = DIFFE_TYPE::DUP_ARG;
         if (argType->isPointerTy()) {
 #if LLVM_VERSION_MAJOR >= 12
@@ -2473,10 +2474,23 @@ public:
         assert(whatType(argType) == DIFFE_TYPE::DUP_ARG ||
                whatType(argType) == DIFFE_TYPE::CONSTANT);
       } else {
+        if (foreignFunction)
+          assert(!argType->isIntOrIntVectorTy());
         argsInverted.push_back(DIFFE_TYPE::OUT_DIFF);
         assert(whatType(argType) == DIFFE_TYPE::OUT_DIFF ||
                whatType(argType) == DIFFE_TYPE::CONSTANT);
       }
+    }
+    if (called) {
+      if (orig->getNumArgOperands() !=
+          cast<Function>(called)->getFunctionType()->getNumParams()) {
+        llvm::errs() << *gutils->oldFunc << "\n";
+        llvm::errs() << *orig << "\n";
+      }
+      assert(orig->getNumArgOperands() ==
+             cast<Function>(called)->getFunctionType()->getNumParams());
+      assert(argsInverted.size() ==
+             cast<Function>(called)->getFunctionType()->getNumParams());
     }
 
     DIFFE_TYPE subretType;

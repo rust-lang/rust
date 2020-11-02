@@ -104,36 +104,40 @@ static inline bool couldFunctionArgumentCapture(CallInst *CI, Value *val) {
   return false;
 }
 
-const char *KnownInactiveFunctions[] = {
-    "__assert_fail",
-    "__cxa_guard_acquire",
-    "__cxa_guard_release",
-    "__cxa_guard_abort",
-    "posix_memalign",
-    "printf",
-    "puts",
-    "__enzyme_float",
-    "__enzyme_double",
-    "__enzyme_integer",
-    "__enzyme_pointer",
-    "__kmpc_for_static_init_4",
-    "__kmpc_for_static_init_4u",
-    "__kmpc_for_static_init_8",
-    "__kmpc_for_static_init_8u",
-    "__kmpc_for_static_fini",
-    "__kmpc_dispatch_init_4",
-    "__kmpc_dispatch_init_4u",
-    "__kmpc_dispatch_init_8",
-    "__kmpc_dispatch_init_8u",
-    "__kmpc_dispatch_next_4",
-    "__kmpc_dispatch_next_4u",
-    "__kmpc_dispatch_next_8",
-    "__kmpc_dispatch_next_8u",
-    "__kmpc_dispatch_fini_4",
-    "__kmpc_dispatch_fini_4u",
-    "__kmpc_dispatch_fini_8",
-    "__kmpc_dispatch_fini_8u",
-};
+const char *KnownInactiveFunctionsStartingWith[] = {"_ZN4core3fmt",
+                                                    "_ZN3std2io5stdio6_print"};
+
+const char *KnownInactiveFunctions[] = {"__assert_fail",
+                                        "__cxa_guard_acquire",
+                                        "__cxa_guard_release",
+                                        "__cxa_guard_abort",
+                                        "posix_memalign",
+                                        "printf",
+                                        "puts",
+                                        "__enzyme_float",
+                                        "__enzyme_double",
+                                        "__enzyme_integer",
+                                        "__enzyme_pointer",
+                                        "__kmpc_for_static_init_4",
+                                        "__kmpc_for_static_init_4u",
+                                        "__kmpc_for_static_init_8",
+                                        "__kmpc_for_static_init_8u",
+                                        "__kmpc_for_static_fini",
+                                        "__kmpc_dispatch_init_4",
+                                        "__kmpc_dispatch_init_4u",
+                                        "__kmpc_dispatch_init_8",
+                                        "__kmpc_dispatch_init_8u",
+                                        "__kmpc_dispatch_next_4",
+                                        "__kmpc_dispatch_next_4u",
+                                        "__kmpc_dispatch_next_8",
+                                        "__kmpc_dispatch_next_8u",
+                                        "__kmpc_dispatch_fini_4",
+                                        "__kmpc_dispatch_fini_4u",
+                                        "__kmpc_dispatch_fini_8",
+                                        "__kmpc_dispatch_fini_8u",
+                                        "malloc_usable_size",
+                                        "malloc_size",
+                                        "_msize"};
 
 /// Is the use of value val as an argument of call CI known to be inactive
 /// This tool can only be used when in DOWN mode
@@ -151,6 +155,12 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   // of arguments
   if (isAllocationFunction(*F, TLI) || isDeallocationFunction(*F, TLI))
     return true;
+
+  for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+    if (Name.startswith(FuncName)) {
+      return true;
+    }
+  }
   for (auto FuncName : KnownInactiveFunctions) {
     if (Name == FuncName)
       return true;
@@ -1122,7 +1132,11 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
           called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
         return true;
       }
-
+      for (auto FuncName : KnownInactiveFunctionsStartingWith) {
+        if (called->getName().startswith(FuncName)) {
+          return true;
+        }
+      }
       for (auto FuncName : KnownInactiveFunctions) {
         if (called->getName() == FuncName)
           return true;
@@ -1256,19 +1270,20 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
                  << "\n";
 
   bool seenuse = false;
-
-  std::deque<User *> todo;
+  // user, predecessor
+  std::deque<std::pair<User *, Value *>> todo;
   for (const auto a : val->users()) {
-    todo.push_back(a);
+    todo.push_back(std::make_pair(a, val));
   }
-  std::set<Value *> done = {val};
+  std::set<std::pair<User *, Value *>> done = {};
 
   while (todo.size()) {
-    User *a = todo.front();
+    auto pair = todo.front();
     todo.pop_front();
-    if (done.count(a))
+    if (done.count(pair))
       continue;
-    done.insert(a);
+    done.insert(pair);
+    User *a = pair.first;
 
     if (printconst)
       llvm::errs() << "      considering use of " << *val << " - " << *a
@@ -1315,7 +1330,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     }
 
     if (auto call = dyn_cast<CallInst>(a)) {
-      bool ConstantArg = isFunctionArgumentConstant(call, val);
+      bool ConstantArg = isFunctionArgumentConstant(call, pair.second);
       if (ConstantArg) {
         if (printconst) {
           llvm::errs() << "Value found constant callinst use:" << *val
@@ -1334,7 +1349,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
           continue;
         }
         for (auto u : I->users()) {
-          todo.push_back(u);
+          todo.push_back(std::make_pair(u, (Value *)I));
         }
         continue;
       }

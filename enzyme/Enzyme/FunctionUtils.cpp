@@ -368,11 +368,56 @@ OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
       if (success)
         continue;
     }
-    llvm::errs() << *NewF->getParent() << "\n";
-    llvm::errs() << *NewF << "\n";
+
+    // llvm::errs() << *NewF->getParent() << "\n";
+    // llvm::errs() << *NewF << "\n";
     EmitFailure("DynamicReallocSize", Loc->getDebugLoc(), Loc,
                 "could not statically determine size of realloc ", *Loc,
                 " - because of - ", *next.first);
+
+    std::string allocName;
+    switch (llvm::Triple(NewF->getParent()->getTargetTriple()).getOS()) {
+    case llvm::Triple::Linux:
+    case llvm::Triple::FreeBSD:
+    case llvm::Triple::NetBSD:
+    case llvm::Triple::OpenBSD:
+    case llvm::Triple::Fuchsia:
+      allocName = "malloc_usable_size";
+      break;
+
+    case llvm::Triple::Darwin:
+    case llvm::Triple::IOS:
+    case llvm::Triple::MacOSX:
+    case llvm::Triple::WatchOS:
+    case llvm::Triple::TvOS:
+      allocName = "malloc_size";
+      break;
+
+    case llvm::Triple::Win32:
+      allocName = "_msize";
+      break;
+
+    default:
+      llvm_unreachable("unknown reallocation for OS");
+    }
+
+    AttributeList list;
+    list = list.addAttribute(NewF->getContext(), AttributeList::FunctionIndex,
+                             Attribute::ReadOnly);
+    list = list.addParamAttribute(NewF->getContext(), 0, Attribute::ReadNone);
+    list = list.addParamAttribute(NewF->getContext(), 0, Attribute::NoCapture);
+    auto allocSize = NewF->getParent()->getOrInsertFunction(
+        allocName,
+        FunctionType::get(
+            IntegerType::get(NewF->getContext(), 8 * sizeof(size_t)),
+            {Type::getInt8PtrTy(NewF->getContext())}, /*isVarArg*/ false),
+        list);
+
+    B.SetInsertPoint(Loc);
+    Value *sz = B.CreateZExtOrTrunc(B.CreateCall(allocSize, {Ptr}), T);
+    B.CreateStore(sz, AI);
+    return AI;
+
     llvm_unreachable("DynamicReallocSize");
   }
   return AI;
@@ -489,6 +534,11 @@ static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
           if (CI->getCalledFunction() == nullptr)
             continue;
           if (CI->getCalledFunction()->empty())
+            continue;
+          if (CI->getCalledFunction()->getName().startswith(
+                  "_ZN3std2io5stdio6_print"))
+            continue;
+          if (CI->getCalledFunction()->getName().startswith("_ZN4core3fmt"))
             continue;
           if (CI->getCalledFunction()->hasFnAttribute(
                   Attribute::ReturnsTwice) ||

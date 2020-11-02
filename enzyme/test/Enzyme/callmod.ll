@@ -1,10 +1,10 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -instsimplify -simplifycfg -S | FileCheck %s
 
-; extern double read();
+; extern double readDouble();
 ;
 ; __attribute__((noinline))
 ; double sub(double x) {
-;     return x * read();
+;     return x * readDouble();
 ; }
 ;
 ; double read2();
@@ -24,7 +24,7 @@
 @.str.1 = private unnamed_addr constant [5 x i8] c"%f \0A\00", align 1
 
 ; Function Attrs: noinline nounwind uwtable
-define dso_local double @read() local_unnamed_addr #0 {
+define dso_local double @readDouble() local_unnamed_addr #0 {
 entry:
   %x = alloca double, align 8
   %0 = bitcast double* %x to i8*
@@ -47,7 +47,7 @@ declare void @llvm.lifetime.end.p0i8(i64, i8* nocapture) #1
 ; Function Attrs: noinline nounwind uwtable
 define dso_local double @sub(double %x) local_unnamed_addr #0 {
 entry:
-  %call = tail call fast double @read()
+  %call = tail call fast double @readDouble()
   %mul = fmul fast double %call, %x
   ret double %mul
 }
@@ -109,7 +109,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}double @augmented_sub(double %x)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = tail call fast double @read()
+; CHECK-NEXT:   %call = tail call fast double @readDouble()
 ; CHECK-NEXT:   ret double %call
 ; CHECK-NEXT: }
 

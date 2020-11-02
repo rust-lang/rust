@@ -366,6 +366,8 @@ static inline bool isCertainMallocOrFree(llvm::Function *called) {
   if (called == nullptr)
     return false;
   if (called->getName() == "printf" || called->getName() == "puts" ||
+      called->getName().startswith("_ZN3std2io5stdio6_print") ||
+      called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "malloc" || called->getName() == "_Znwm" ||
       called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
       called->getName() == "free")
@@ -395,6 +397,8 @@ static inline bool isCertainPrintOrFree(llvm::Function *called) {
     return false;
 
   if (called->getName() == "printf" || called->getName() == "puts" ||
+      called->getName().startswith("_ZN3std2io5stdio6_print") ||
+      called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
       called->getName() == "free")
     return true;
@@ -422,6 +426,8 @@ static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
     return false;
 
   if (called->getName() == "printf" || called->getName() == "puts" ||
+      called->getName().startswith("_ZN3std2io5stdio6_print") ||
+      called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "malloc" || called->getName() == "_Znwm" ||
       called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
       called->getName() == "free")

@@ -105,6 +105,7 @@ void CacheUtility::erase(Instruction *I) {
   SE.eraseValueFromMap(I);
 
   if (!I->use_empty()) {
+    llvm::errs() << *newFunc->getParent() << "\n";
     llvm::errs() << *newFunc << "\n";
     llvm::errs() << *I << "\n";
   }
