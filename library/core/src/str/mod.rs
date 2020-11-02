@@ -842,7 +842,9 @@ impl str {
     /// Lines are ended with either a newline (`\n`) or a carriage return with
     /// a line feed (`\r\n`).
     ///
-    /// The final line ending is optional.
+    /// The final line ending is optional. A string that ends with a final line
+    /// ending will return the same lines as an otherwise identical string
+    /// without a final line ending.
     ///
     /// # Examples
     ///
