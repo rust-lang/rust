@@ -518,7 +518,10 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 self.possible_borrower.add(borrowed.local, lhs);
             },
             other => {
-                if ContainsRegion.visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty).is_continue() {
+                if ContainsRegion
+                    .visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty)
+                    .is_continue()
+                {
                     return;
                 }
                 rvalue_locals(other, |rhs| {

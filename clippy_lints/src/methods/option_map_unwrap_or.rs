@@ -53,15 +53,15 @@ pub(super) fn lint<'tcx>(
         // lint message
         // comparing the snippet from source to raw text ("None") below is safe
         // because we already have checked the type.
-        let arg = if unwrap_snippet == "None" { "None" } else { "a" };
+        let arg = if unwrap_snippet == "None" { "None" } else { "<a>" };
         let unwrap_snippet_none = unwrap_snippet == "None";
         let suggest = if unwrap_snippet_none {
-            "and_then(f)"
+            "and_then(<f>)"
         } else {
-            "map_or(a, f)"
+            "map_or(<a>, <f>)"
         };
         let msg = &format!(
-            "called `map(f).unwrap_or({})` on an `Option` value. \
+            "called `map(<f>).unwrap_or({})` on an `Option` value. \
             This can be done more directly by calling `{}` instead",
             arg, suggest
         );

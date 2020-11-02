@@ -1665,6 +1665,7 @@ Released 2018-09-13
 [`cognitive_complexity`]: https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity
 [`collapsible_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
 [`comparison_chain`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_chain
+[`comparison_to_empty`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_to_empty
 [`copy_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#copy_iterator
 [`create_dir`]: https://rust-lang.github.io/rust-clippy/master/index.html#create_dir
 [`crosspointer_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#crosspointer_transmute
@@ -1802,6 +1803,7 @@ Released 2018-09-13
 [`manual_unwrap_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_unwrap_or
 [`many_single_char_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names
 [`map_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_clone
+[`map_collect_result_unit`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_collect_result_unit
 [`map_entry`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_entry
 [`map_err_ignore`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_err_ignore
 [`map_flatten`]: https://rust-lang.github.io/rust-clippy/master/index.html#map_flatten
