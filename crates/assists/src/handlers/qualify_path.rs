@@ -56,12 +56,14 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         ImportCandidate::QualifierStart(_) => {
             mark::hit!(qualify_path_qualifier_start);
             let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
-            let segment = path.segment()?;
-            QualifyCandidate::QualifierStart(segment)
+            let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
+            QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
         }
         ImportCandidate::UnqualifiedName(_) => {
             mark::hit!(qualify_path_unqualified_name);
-            QualifyCandidate::UnqualifiedName
+            let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+            let generics = path.segment()?.generic_arg_list();
+            QualifyCandidate::UnqualifiedName(generics)
         }
         ImportCandidate::TraitAssocItem(_) => {
             mark::hit!(qualify_path_trait_assoc_item);
@@ -96,22 +98,25 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 }
 
 enum QualifyCandidate<'db> {
-    QualifierStart(ast::PathSegment),
-    UnqualifiedName,
+    QualifierStart(ast::PathSegment, Option<ast::GenericArgList>),
+    UnqualifiedName(Option<ast::GenericArgList>),
     TraitAssocItem(ast::Path, ast::PathSegment),
     TraitMethod(&'db RootDatabase, ast::MethodCallExpr),
 }
 
 impl QualifyCandidate<'_> {
     fn qualify(&self, mut replacer: impl FnMut(String), import: hir::ModPath, item: hir::ItemInNs) {
+        let import = mod_path_to_ast(&import);
         match self {
-            QualifyCandidate::QualifierStart(segment) => {
-                let import = mod_path_to_ast(&import);
-                replacer(format!("{}::{}", import, segment));
+            QualifyCandidate::QualifierStart(segment, generics) => {
+                let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
+                replacer(format!("{}{}::{}", import, generics, segment));
             }
-            QualifyCandidate::UnqualifiedName => replacer(mod_path_to_ast(&import).to_string()),
+            QualifyCandidate::UnqualifiedName(generics) => {
+                let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
+                replacer(format!("{}{}", import.to_string(), generics));
+            }
             QualifyCandidate::TraitAssocItem(qualifier, segment) => {
-                let import = mod_path_to_ast(&import);
                 replacer(format!("<{} as {}>::{}", qualifier, import, segment));
             }
             &QualifyCandidate::TraitMethod(db, ref mcall_expr) => {
@@ -124,25 +129,27 @@ impl QualifyCandidate<'_> {
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
         mut replacer: impl FnMut(String),
-        import: hir::ModPath,
+        import: ast::Path,
         item: hir::ItemInNs,
     ) -> Option<()> {
         let receiver = mcall_expr.receiver()?;
         let trait_method_name = mcall_expr.name_ref()?;
+        let generics =
+            mcall_expr.generic_arg_list().as_ref().map_or_else(String::new, ToString::to_string);
         let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
         let trait_ = item_as_trait(item)?;
         let method = find_trait_method(db, trait_, &trait_method_name)?;
         if let Some(self_access) = method.self_param(db).map(|sp| sp.access(db)) {
-            let import = mod_path_to_ast(&import);
             let receiver = match self_access {
                 hir::Access::Shared => make::expr_ref(receiver, false),
                 hir::Access::Exclusive => make::expr_ref(receiver, true),
                 hir::Access::Owned => receiver,
             };
             replacer(format!(
-                "{}::{}{}",
+                "{}::{}{}{}",
                 import,
                 trait_method_name,
+                generics,
                 match arg_list.clone() {
                     Some(args) => make::arg_list(iter::once(receiver).chain(args)),
                     None => make::arg_list(iter::once(receiver)),
@@ -1043,6 +1050,155 @@ fn main() {
     dep::FMT;
 }
 ",
+        );
+    }
+
+    #[test]
+    fn keep_generic_annotations() {
+        check_assist(
+            qualify_path,
+            r"
+//- /lib.rs crate:dep
+pub mod generic { pub struct Thing<'a, T>(&'a T); }
+
+//- /main.rs crate:main deps:dep
+fn foo() -> Thin<|>g<'static, ()> {}
+
+fn main() {}
+",
+            r"
+fn foo() -> dep::generic::Thing<'static, ()> {}
+
+fn main() {}
+",
+        );
+    }
+
+    #[test]
+    fn keep_generic_annotations_leading_colon() {
+        check_assist(
+            qualify_path,
+            r"
+//- /lib.rs crate:dep
+pub mod generic { pub struct Thing<'a, T>(&'a T); }
+
+//- /main.rs crate:main deps:dep
+fn foo() -> Thin<|>g::<'static, ()> {}
+
+fn main() {}
+",
+            r"
+fn foo() -> dep::generic::Thing::<'static, ()> {}
+
+fn main() {}
+",
+        );
+    }
+
+    #[test]
+    fn associated_struct_const_generic() {
+        check_assist(
+            qualify_path,
+            r"
+            mod test_mod {
+                pub struct TestStruct<T> {}
+                impl<T> TestStruct<T> {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                TestStruct::<()>::TEST_CONST<|>
+            }
+            ",
+            r"
+            mod test_mod {
+                pub struct TestStruct<T> {}
+                impl<T> TestStruct<T> {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                test_mod::TestStruct::<()>::TEST_CONST
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn associated_trait_const_generic() {
+        check_assist(
+            qualify_path,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    const TEST_CONST: u8;
+                }
+                pub struct TestStruct<T> {}
+                impl<T> TestTrait for TestStruct<T> {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                test_mod::TestStruct::<()>::TEST_CONST<|>
+            }
+            ",
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    const TEST_CONST: u8;
+                }
+                pub struct TestStruct<T> {}
+                impl<T> TestTrait for TestStruct<T> {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                <test_mod::TestStruct::<()> as test_mod::TestTrait>::TEST_CONST
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn trait_method_generic() {
+        check_assist(
+            qualify_path,
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method<T>(&self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method<T>(&self) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_struct.test_meth<|>od::<()>()
+            }
+            ",
+            r"
+            mod test_mod {
+                pub trait TestTrait {
+                    fn test_method<T>(&self);
+                }
+                pub struct TestStruct {}
+                impl TestTrait for TestStruct {
+                    fn test_method<T>(&self) {}
+                }
+            }
+
+            fn main() {
+                let test_struct = test_mod::TestStruct {};
+                test_mod::TestTrait::test_method::<()>(&test_struct)
+            }
+            ",
         );
     }
 }
