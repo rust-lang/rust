@@ -4,15 +4,15 @@ use std::ops;
 use arena::Arena;
 
 #[derive(Default)]
-pub struct Tree<T> {
+pub(crate) struct Tree<T> {
     nodes: Arena<Node<T>>,
     current_path: Vec<(Idx<T>, Option<Idx<T>>)>,
 }
 
-pub type Idx<T> = arena::Idx<Node<T>>;
+pub(crate) type Idx<T> = arena::Idx<Node<T>>;
 
 impl<T> Tree<T> {
-    pub fn start(&mut self)
+    pub(crate) fn start(&mut self)
     where
         T: Default,
     {
@@ -30,19 +30,19 @@ impl<T> Tree<T> {
         self.current_path.push((me, None));
     }
 
-    pub fn finish(&mut self, data: T) {
+    pub(crate) fn finish(&mut self, data: T) {
         let (me, _last_child) = self.current_path.pop().unwrap();
         self.nodes[me].data = data;
     }
 
-    pub fn root(&self) -> Option<Idx<T>> {
+    pub(crate) fn root(&self) -> Option<Idx<T>> {
         self.nodes.iter().next().map(|(idx, _)| idx)
     }
 
-    pub fn children(&self, idx: Idx<T>) -> impl Iterator<Item = Idx<T>> + '_ {
+    pub(crate) fn children(&self, idx: Idx<T>) -> impl Iterator<Item = Idx<T>> + '_ {
         NodeIter { nodes: &self.nodes, next: self.nodes[idx].first_child }
     }
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.nodes.clear();
         self.current_path.clear();
     }
@@ -55,7 +55,7 @@ impl<T> ops::Index<Idx<T>> for Tree<T> {
     }
 }
 
-pub struct Node<T> {
+pub(crate) struct Node<T> {
     data: T,
     first_child: Option<Idx<T>>,
     next_sibling: Option<Idx<T>>,

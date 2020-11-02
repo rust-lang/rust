@@ -17,17 +17,10 @@ use crate::{
     ApplicationTy, InferenceResult, Ty, TypeCtor,
 };
 
-pub use hir_def::{
-    body::{
-        scope::{ExprScopes, ScopeEntry, ScopeId},
-        Body, BodySourceMap, ExprPtr, ExprSource, PatPtr, PatSource,
-    },
-    expr::{
-        ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
-        MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
-    },
-    src::HasSource,
-    LocalFieldId, Lookup, VariantId,
+pub(crate) use hir_def::{
+    body::{Body, BodySourceMap},
+    expr::{Expr, ExprId, MatchArm, Pat, PatId},
+    LocalFieldId, VariantId,
 };
 
 pub(super) struct ExprValidator<'a, 'b: 'a> {

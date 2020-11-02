@@ -1,6 +1,5 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
-
 #[allow(unused)]
 macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
@@ -1115,5 +1114,5 @@ pub struct ReturnTypeImplTraits {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
-    pub bounds: Binders<Vec<GenericPredicate>>,
+    pub(crate) bounds: Binders<Vec<GenericPredicate>>,
 }

@@ -30,7 +30,7 @@ pub(crate) struct ProcMacroProcessThread {
 }
 
 impl ProcMacroProcessSrv {
-    pub fn run(
+    pub(crate) fn run(
         process_path: PathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<(ProcMacroProcessThread, ProcMacroProcessSrv)> {
@@ -48,7 +48,7 @@ impl ProcMacroProcessSrv {
         Ok((thread, srv))
     }
 
-    pub fn find_proc_macros(
+    pub(crate) fn find_proc_macros(
         &self,
         dylib_path: &Path,
     ) -> Result<Vec<(String, ProcMacroKind)>, tt::ExpansionError> {
@@ -58,7 +58,7 @@ impl ProcMacroProcessSrv {
         Ok(result.macros)
     }
 
-    pub fn custom_derive(
+    pub(crate) fn custom_derive(
         &self,
         dylib_path: &Path,
         subtree: &Subtree,
@@ -75,7 +75,7 @@ impl ProcMacroProcessSrv {
         Ok(result.expansion)
     }
 
-    pub fn send_task<R>(&self, req: Request) -> Result<R, tt::ExpansionError>
+    pub(crate) fn send_task<R>(&self, req: Request) -> Result<R, tt::ExpansionError>
     where
         R: TryFrom<Response, Error = &'static str>,
     {

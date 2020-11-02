@@ -12,7 +12,7 @@ env:
   CARGO_NET_RETRY: 10
   CI: 1
   RUST_BACKTRACE: short
-  RUSTFLAGS: -D warnings
+  RUSTFLAGS: "-D warnings " # -W unreachable-pub"
   RUSTUP_MAX_RETRIES: 10
 
 jobs:

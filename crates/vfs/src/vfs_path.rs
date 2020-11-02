@@ -287,7 +287,7 @@ impl VirtualPath {
         Some(res)
     }
 
-    pub fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
+    pub(crate) fn name_and_extension(&self) -> Option<(&str, Option<&str>)> {
         let file_path = if self.0.ends_with('/') { &self.0[..&self.0.len() - 1] } else { &self.0 };
         let file_name = match file_path.rfind('/') {
             Some(position) => &file_path[position + 1..],

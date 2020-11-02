@@ -27,7 +27,7 @@ pub fn init_from(spec: &str) {
     filter.install();
 }
 
-pub type Label = &'static str;
+type Label = &'static str;
 
 /// This function starts a profiling scope in the current execution stack with a given description.
 /// It returns a `Profile` struct that measures elapsed time between this method invocation and `Profile` struct drop.
@@ -173,7 +173,7 @@ impl ProfileStack {
         true
     }
 
-    pub fn pop(&mut self, label: Label, detail: Option<String>) {
+    fn pop(&mut self, label: Label, detail: Option<String>) {
         let start = self.starts.pop().unwrap();
         let duration = start.elapsed();
         self.messages.finish(Message { duration, label, detail });

@@ -45,14 +45,14 @@ pub(crate) struct LowerCtx {
 }
 
 impl LowerCtx {
-    pub fn new(db: &dyn DefDatabase, file_id: HirFileId) -> Self {
+    pub(crate) fn new(db: &dyn DefDatabase, file_id: HirFileId) -> Self {
         LowerCtx { hygiene: Hygiene::new(db.upcast(), file_id) }
     }
-    pub fn with_hygiene(hygiene: &Hygiene) -> Self {
+    pub(crate) fn with_hygiene(hygiene: &Hygiene) -> Self {
         LowerCtx { hygiene: hygiene.clone() }
     }
 
-    pub fn lower_path(&self, ast: ast::Path) -> Option<Path> {
+    pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
         Path::from_src(ast, &self.hygiene)
     }
 }

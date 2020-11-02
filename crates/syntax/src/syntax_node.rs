@@ -10,9 +10,7 @@ use rowan::{GreenNodeBuilder, Language};
 
 use crate::{Parse, SmolStr, SyntaxError, SyntaxKind, TextSize};
 
-pub use rowan::GreenNode;
-
-pub(crate) use rowan::GreenToken;
+pub(crate) use rowan::{GreenNode, GreenToken, NodeOrToken};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RustLanguage {}
@@ -33,8 +31,6 @@ pub type SyntaxToken = rowan::SyntaxToken<RustLanguage>;
 pub type SyntaxElement = rowan::SyntaxElement<RustLanguage>;
 pub type SyntaxNodeChildren = rowan::SyntaxNodeChildren<RustLanguage>;
 pub type SyntaxElementChildren = rowan::SyntaxElementChildren<RustLanguage>;
-
-pub use rowan::{Direction, NodeOrToken};
 
 #[derive(Default)]
 pub struct SyntaxTreeBuilder {

@@ -14,11 +14,11 @@ pub use crate::{
     change::Change,
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, Dependency, Edition, Env,
-        FileId, ProcMacroId, SourceRoot, SourceRootId,
+        ProcMacroId, SourceRoot, SourceRootId,
     },
 };
 pub use salsa;
-pub use vfs::{file_set::FileSet, VfsPath};
+pub use vfs::{file_set::FileSet, FileId, VfsPath};
 
 #[macro_export]
 macro_rules! impl_intern_key {

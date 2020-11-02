@@ -1,8 +1,8 @@
 //! This file is actually hand-written, but the submodules are indeed generated.
 #[rustfmt::skip]
-mod nodes;
+pub(crate) mod nodes;
 #[rustfmt::skip]
-mod tokens;
+pub(crate) mod tokens;
 
 use crate::{
     AstNode,
@@ -10,7 +10,7 @@ use crate::{
     SyntaxNode,
 };
 
-pub use {nodes::*, tokens::*};
+pub(crate) use nodes::*;
 
 // Stmt is the only nested enum, so it's easier to just hand-write it
 impl AstNode for Stmt {

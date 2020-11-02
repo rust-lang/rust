@@ -65,7 +65,7 @@ fn mk_token(pos: usize, token_offset_pairs: &[(Token, TextSize)]) -> parser::Tok
 
 impl<'t> TextTokenSource<'t> {
     /// Generate input from tokens(expect comment and whitespace).
-    pub fn new(text: &'t str, raw_tokens: &'t [Token]) -> TextTokenSource<'t> {
+    pub(crate) fn new(text: &'t str, raw_tokens: &'t [Token]) -> TextTokenSource<'t> {
         let token_offset_pairs: Vec<_> = raw_tokens
             .iter()
             .filter_map({

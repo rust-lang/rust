@@ -45,15 +45,15 @@ pub fn generate_parser_tests(mode: Mode) -> Result<()> {
 
 #[derive(Debug)]
 struct Test {
-    pub name: String,
-    pub text: String,
-    pub ok: bool,
+    name: String,
+    text: String,
+    ok: bool,
 }
 
 #[derive(Default, Debug)]
 struct Tests {
-    pub ok: HashMap<String, Test>,
-    pub err: HashMap<String, Test>,
+    ok: HashMap<String, Test>,
+    err: HashMap<String, Test>,
 }
 
 fn collect_tests(s: &str) -> Vec<Test> {

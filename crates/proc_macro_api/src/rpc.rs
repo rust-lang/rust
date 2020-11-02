@@ -75,18 +75,18 @@ struct TokenIdDef(u32);
 #[serde(remote = "Delimiter")]
 struct DelimiterDef {
     #[serde(with = "TokenIdDef")]
-    pub id: TokenId,
+    id: TokenId,
     #[serde(with = "DelimiterKindDef")]
-    pub kind: DelimiterKind,
+    kind: DelimiterKind,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Subtree")]
 struct SubtreeDef {
     #[serde(default, with = "opt_delimiter_def")]
-    pub delimiter: Option<Delimiter>,
+    delimiter: Option<Delimiter>,
     #[serde(with = "vec_token_tree")]
-    pub token_trees: Vec<TokenTree>,
+    token_trees: Vec<TokenTree>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -112,19 +112,19 @@ enum LeafDef {
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Literal")]
 struct LiteralDef {
-    pub text: SmolStr,
+    text: SmolStr,
     #[serde(with = "TokenIdDef")]
-    pub id: TokenId,
+    id: TokenId,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Punct")]
 struct PunctDef {
-    pub char: char,
+    char: char,
     #[serde(with = "SpacingDef")]
-    pub spacing: Spacing,
+    spacing: Spacing,
     #[serde(with = "TokenIdDef")]
-    pub id: TokenId,
+    id: TokenId,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -137,16 +137,16 @@ enum SpacingDef {
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Ident")]
 struct IdentDef {
-    pub text: SmolStr,
+    text: SmolStr,
     #[serde(with = "TokenIdDef")]
-    pub id: TokenId,
+    id: TokenId,
 }
 
 mod opt_delimiter_def {
     use super::{Delimiter, DelimiterDef};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    pub fn serialize<S>(value: &Option<Delimiter>, serializer: S) -> Result<S::Ok, S::Error>
+    pub(super) fn serialize<S>(value: &Option<Delimiter>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -155,7 +155,7 @@ mod opt_delimiter_def {
         value.as_ref().map(Helper).serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Delimiter>, D::Error>
+    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Option<Delimiter>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -170,7 +170,7 @@ mod opt_subtree_def {
     use super::{Subtree, SubtreeDef};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    pub fn serialize<S>(value: &Option<Subtree>, serializer: S) -> Result<S::Ok, S::Error>
+    pub(super) fn serialize<S>(value: &Option<Subtree>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -179,7 +179,7 @@ mod opt_subtree_def {
         value.as_ref().map(Helper).serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Subtree>, D::Error>
+    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Option<Subtree>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -194,7 +194,7 @@ mod vec_token_tree {
     use super::{TokenTree, TokenTreeDef};
     use serde::{ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer};
 
-    pub fn serialize<S>(value: &Vec<TokenTree>, serializer: S) -> Result<S::Ok, S::Error>
+    pub(super) fn serialize<S>(value: &Vec<TokenTree>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -209,7 +209,7 @@ mod vec_token_tree {
         seq.end()
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<TokenTree>, D::Error>
+    pub(super) fn deserialize<'de, D>(deserializer: D) -> Result<Vec<TokenTree>, D::Error>
     where
         D: Deserializer<'de>,
     {
