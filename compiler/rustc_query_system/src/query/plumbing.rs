@@ -495,7 +495,7 @@ where
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         let loaded = tcx.start_query(job.id, None, || {
-            try_load_from_disk_and_cache_in_memory(tcx, key.clone(), &dep_node, query, compute)
+            try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query, compute)
         });
         if let Some((result, dep_node_index)) = loaded {
             return job.complete(result, dep_node_index);
@@ -509,12 +509,13 @@ where
 
 fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
     tcx: CTX,
-    key: K,
+    key: &K,
     dep_node: &DepNode<CTX::DepKind>,
     query: &QueryVtable<CTX, K, V>,
     compute: fn(CTX::DepContext, K) -> V,
 ) -> Option<(V, DepNodeIndex)>
 where
+    K: Clone,
     CTX: QueryContext,
     V: Debug,
 {
@@ -527,7 +528,7 @@ where
     debug_assert!(tcx.dep_context().dep_graph().is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
-    let result = if query.cache_on_disk(tcx, &key, None) {
+    let result = if query.cache_on_disk(tcx, key, None) {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
         let result = query.try_load_from_disk(tcx, prev_dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -559,7 +560,8 @@ where
         let prof_timer = tcx.dep_context().profiler().query_provider();
 
         // The dep-graph for this computation is already in-place.
-        let result = tcx.dep_context().dep_graph().with_ignore(|| compute(*tcx.dep_context(), key));
+        let result =
+            tcx.dep_context().dep_graph().with_ignore(|| compute(*tcx.dep_context(), key.clone()));
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
