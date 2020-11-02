@@ -246,7 +246,7 @@ impl Ctx {
 
 The difference is that `Ctx` is an impl detail here.
 
-Sometimes a middle ground is acceptable if this can safe some busywork:
+Sometimes a middle ground is acceptable if this can save some busywork:
 
 ```rust
 ThingDoer::do(arg1, arg2);
