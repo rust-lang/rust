@@ -211,6 +211,60 @@ impl Foo {
 
 Prefer `Default` even it has to be implemented manually.
 
+## Functions Over Objects
+
+Avoid creating "doer" objects.
+That is, objects which are created only to execute a single action.
+
+```rust
+// Good
+do_thing(arg1, arg2);
+
+// Not as good
+ThingDoer::new(arg1, arg2).do();
+```
+
+Note that this concerns only outward API.
+When implementing `do_thing`, it might be very useful to create a context object.
+
+```rust
+pub fn do_thing(arg1: Arg1, arg2: Arg2) -> Res {
+    let mut ctx = Ctx { arg1, arg2 }
+    ctx.run()
+}
+
+struct Ctx {
+    arg1: Arg1, arg2: Arg2
+}
+
+impl Ctx {
+    fn run(self) -> Res {
+        ...
+    }
+}
+```
+
+The difference is that `Ctx` is an impl detail here.
+
+Sometimes a middle ground is acceptable if this can safe some busywork:
+
+```rust
+ThingDoer::do(arg1, arg2);
+
+pub struct ThingDoer {
+    arg1: Arg1, arg2: Arg2,
+}
+
+impl ThingDoer {
+    pub fn do(arg1: Arg1, arg2: Arg2) -> Res {
+        ThingDoer { arg1, arg2 }.run()
+    }
+    fn run(self) -> Res {
+        ...
+    }
+}
+```
+
 ## Avoid Monomorphization
 
 Rust uses monomorphization to compile generic code, meaning that for each instantiation of a generic functions with concrete types, the function is compiled afresh, *per crate*.
