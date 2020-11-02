@@ -61,7 +61,13 @@ endif
 			--instr-profile="$(TMPDIR)"/$@.profdata \
 			$(call BIN,"$(TMPDIR)"/$@) \
 		> "$(TMPDIR)"/actual_show_coverage.$@.txt \
-		2> "$(TMPDIR)"/actual_show_coverage_counters.$@.txt
+		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt
+
+	# The first line (beginning with "Args:" contains hard-coded, build-specific
+	# file paths. Strip that line and keep the remaining lines with counter debug
+	# data.
+	tail -n +2 "$(TMPDIR)"/show_coverage_stderr.$@.txt \
+		> "$(TMPDIR)"/actual_show_coverage_counters.$@.txt
 
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/actual_show_coverage.$@.txt \
