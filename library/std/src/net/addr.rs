@@ -12,7 +12,7 @@ use crate::option;
 use crate::slice;
 use crate::sys::net::netc as c;
 use crate::sys_common::net::LookupHost;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{FromInner, IntoInner};
 use crate::vec;
 
 /// An internet socket address, either IPv4 or IPv6.
@@ -528,17 +528,14 @@ impl SocketAddrV6 {
 
 impl FromInner<c::sockaddr_in> for SocketAddrV4 {
     fn from_inner(addr: c::sockaddr_in) -> SocketAddrV4 {
-        SocketAddrV4 {
-            ip: unsafe { *(&addr.sin_addr as *const c::in_addr as *const Ipv4Addr) },
-            port: ntohs(addr.sin_port),
-        }
+        SocketAddrV4 { ip: Ipv4Addr::from_inner(addr.sin_addr), port: ntohs(addr.sin_port) }
     }
 }
 
 impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
     fn from_inner(addr: c::sockaddr_in6) -> SocketAddrV6 {
         SocketAddrV6 {
-            ip: unsafe { *(&addr.sin6_addr as *const c::in6_addr as *const Ipv6Addr) },
+            ip: Ipv6Addr::from_inner(addr.sin6_addr),
             port: ntohs(addr.sin6_port),
             flowinfo: addr.sin6_flowinfo,
             scope_id: addr.sin6_scope_id,
@@ -562,7 +559,7 @@ impl IntoInner<c::sockaddr_in6> for SocketAddrV6 {
         c::sockaddr_in6 {
             sin6_family: c::AF_INET6 as c::sa_family_t,
             sin6_port: htons(self.port),
-            sin6_addr: *self.ip.as_inner(),
+            sin6_addr: self.ip.into_inner(),
             sin6_flowinfo: self.flowinfo,
             sin6_scope_id: self.scope_id,
             ..unsafe { mem::zeroed() }

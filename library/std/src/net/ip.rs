@@ -4,11 +4,10 @@ mod tests;
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write as FmtWrite};
-use crate::hash;
 use crate::io::Write as IoWrite;
 use crate::mem::transmute;
 use crate::sys::net::netc as c;
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{FromInner, IntoInner};
 
 /// An IP address, either IPv4 or IPv6.
 ///
@@ -77,10 +76,10 @@ pub enum IpAddr {
 /// assert!("0000000.0.0.0".parse::<Ipv4Addr>().is_err()); // first octet is a zero in octal
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
-#[derive(Copy)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
-    inner: c::in_addr,
+    octets: [u8; 4],
 }
 
 /// An IPv6 address.
@@ -162,10 +161,10 @@ pub struct Ipv4Addr {
 /// assert_eq!("::1".parse(), Ok(localhost));
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
-#[derive(Copy)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
-    inner: c::in6_addr,
+    octets: [u8; 16],
 }
 
 /// Scope of an [IPv6 multicast address] as defined in [IETF RFC 7346 section 2].
@@ -461,9 +460,7 @@ impl Ipv4Addr {
     #[must_use]
     #[inline]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
-        // `s_addr` is stored as BE on all machine and the array is in BE order.
-        // So the native endian conversion method is used so that it's never swapped.
-        Ipv4Addr { inner: c::in_addr { s_addr: u32::from_ne_bytes([a, b, c, d]) } }
+        Ipv4Addr { octets: [a, b, c, d] }
     }
 
     /// An IPv4 address with the address pointing to localhost: `127.0.0.1`
@@ -523,8 +520,7 @@ impl Ipv4Addr {
     #[must_use]
     #[inline]
     pub const fn octets(&self) -> [u8; 4] {
-        // This returns the order we want because s_addr is stored in big-endian.
-        self.inner.s_addr.to_ne_bytes()
+        self.octets
     }
 
     /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
@@ -547,7 +543,7 @@ impl Ipv4Addr {
     #[must_use]
     #[inline]
     pub const fn is_unspecified(&self) -> bool {
-        self.inner.s_addr == 0
+        u32::from_be_bytes(self.octets) == 0
     }
 
     /// Returns [`true`] if this is a loopback address (`127.0.0.0/8`).
@@ -910,9 +906,7 @@ impl Ipv4Addr {
     #[inline]
     pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
-        Ipv6Addr {
-            inner: c::in6_addr { s6_addr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d] },
-        }
+        Ipv6Addr { octets: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d] }
     }
 
     /// Converts this address to an [IPv4-mapped] [`IPv6` address].
@@ -937,9 +931,7 @@ impl Ipv4Addr {
     #[inline]
     pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
-        Ipv6Addr {
-            inner: c::in6_addr { s6_addr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d] },
-        }
+        Ipv6Addr { octets: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d] }
     }
 }
 
@@ -1034,22 +1026,6 @@ impl fmt::Debug for Ipv4Addr {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Clone for Ipv4Addr {
-    #[inline]
-    fn clone(&self) -> Ipv4Addr {
-        *self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl PartialEq for Ipv4Addr {
-    #[inline]
-    fn eq(&self, other: &Ipv4Addr) -> bool {
-        self.inner.s_addr == other.inner.s_addr
-    }
-}
-
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<Ipv4Addr> for IpAddr {
     #[inline]
@@ -1069,21 +1045,6 @@ impl PartialEq<IpAddr> for Ipv4Addr {
             IpAddr::V4(v4) => self == v4,
             IpAddr::V6(_) => false,
         }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Eq for Ipv4Addr {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl hash::Hash for Ipv4Addr {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        // NOTE:
-        // * hash in big endian order
-        // * in netbsd, `in_addr` has `repr(packed)`, we need to
-        //   copy `s_addr` to avoid unsafe borrowing
-        { self.inner.s_addr }.hash(s)
     }
 }
 
@@ -1121,15 +1082,21 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 impl Ord for Ipv4Addr {
     #[inline]
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
-        // Compare as native endian
-        u32::from_be(self.inner.s_addr).cmp(&u32::from_be(other.inner.s_addr))
+        self.octets.cmp(&other.octets)
     }
 }
 
 impl IntoInner<c::in_addr> for Ipv4Addr {
     #[inline]
     fn into_inner(self) -> c::in_addr {
-        self.inner
+        // `s_addr` is stored as BE on all machines and the array is in BE order.
+        // So the native endian conversion method is used so that it's never swapped.
+        c::in_addr { s_addr: u32::from_ne_bytes(self.octets) }
+    }
+}
+impl FromInner<c::in_addr> for Ipv4Addr {
+    fn from_inner(addr: c::in_addr) -> Ipv4Addr {
+        Ipv4Addr { octets: addr.s_addr.to_ne_bytes() }
     }
 }
 
@@ -1147,8 +1114,7 @@ impl From<Ipv4Addr> for u32 {
     /// ```
     #[inline]
     fn from(ip: Ipv4Addr) -> u32 {
-        let ip = ip.octets();
-        u32::from_be_bytes(ip)
+        u32::from_be_bytes(ip.octets)
     }
 }
 
@@ -1166,7 +1132,7 @@ impl From<u32> for Ipv4Addr {
     /// ```
     #[inline]
     fn from(ip: u32) -> Ipv4Addr {
-        Ipv4Addr::from(ip.to_be_bytes())
+        Ipv4Addr { octets: ip.to_be_bytes() }
     }
 }
 
@@ -1184,7 +1150,7 @@ impl From<[u8; 4]> for Ipv4Addr {
     /// ```
     #[inline]
     fn from(octets: [u8; 4]) -> Ipv4Addr {
-        Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
+        Ipv4Addr { octets }
     }
 }
 
@@ -1234,13 +1200,9 @@ impl Ipv6Addr {
             h.to_be(),
         ];
         Ipv6Addr {
-            inner: c::in6_addr {
-                // All elements in `addr16` are big endian.
-                // SAFETY: `[u16; 8]` is always safe to transmute to `[u8; 16]`.
-                // rustc_allow_const_fn_unstable: the transmute could be written as stable const
-                // code, but that leads to worse code generation (#75085)
-                s6_addr: unsafe { transmute::<_, [u8; 16]>(addr16) },
-            },
+            // All elements in `addr16` are big endian.
+            // SAFETY: `[u16; 8]` is always safe to transmute to `[u8; 16]`.
+            octets: unsafe { transmute::<_, [u8; 16]>(addr16) },
         }
     }
 
@@ -1285,11 +1247,9 @@ impl Ipv6Addr {
     #[must_use]
     #[inline]
     pub const fn segments(&self) -> [u16; 8] {
-        // All elements in `s6_addr` must be big endian.
+        // All elements in `self.octets` must be big endian.
         // SAFETY: `[u8; 16]` is always safe to transmute to `[u16; 8]`.
-        // rustc_allow_const_fn_unstable: the transmute could be written as stable const code, but
-        // that leads to worse code generation (#75085)
-        let [a, b, c, d, e, f, g, h] = unsafe { transmute::<_, [u16; 8]>(self.inner.s6_addr) };
+        let [a, b, c, d, e, f, g, h] = unsafe { transmute::<_, [u16; 8]>(self.octets) };
         // We want native endian u16
         [
             u16::from_be(a),
@@ -1748,7 +1708,7 @@ impl Ipv6Addr {
     #[must_use]
     #[inline]
     pub const fn octets(&self) -> [u8; 16] {
-        self.inner.s6_addr
+        self.octets
     }
 }
 
@@ -1856,22 +1816,6 @@ impl fmt::Debug for Ipv6Addr {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Clone for Ipv6Addr {
-    #[inline]
-    fn clone(&self) -> Ipv6Addr {
-        *self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl PartialEq for Ipv6Addr {
-    #[inline]
-    fn eq(&self, other: &Ipv6Addr) -> bool {
-        self.inner.s6_addr == other.inner.s6_addr
-    }
-}
-
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<IpAddr> for Ipv6Addr {
     #[inline]
@@ -1891,17 +1835,6 @@ impl PartialEq<Ipv6Addr> for IpAddr {
             IpAddr::V4(_) => false,
             IpAddr::V6(v6) => v6 == other,
         }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Eq for Ipv6Addr {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl hash::Hash for Ipv6Addr {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        self.inner.s6_addr.hash(s)
     }
 }
 
@@ -1943,16 +1876,15 @@ impl Ord for Ipv6Addr {
     }
 }
 
-impl AsInner<c::in6_addr> for Ipv6Addr {
-    #[inline]
-    fn as_inner(&self) -> &c::in6_addr {
-        &self.inner
+impl IntoInner<c::in6_addr> for Ipv6Addr {
+    fn into_inner(self) -> c::in6_addr {
+        c::in6_addr { s6_addr: self.octets }
     }
 }
 impl FromInner<c::in6_addr> for Ipv6Addr {
     #[inline]
     fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
-        Ipv6Addr { inner: addr }
+        Ipv6Addr { octets: addr.s6_addr }
     }
 }
 
@@ -1973,8 +1905,7 @@ impl From<Ipv6Addr> for u128 {
     /// ```
     #[inline]
     fn from(ip: Ipv6Addr) -> u128 {
-        let ip = ip.octets();
-        u128::from_be_bytes(ip)
+        u128::from_be_bytes(ip.octets)
     }
 }
 #[stable(feature = "i128", since = "1.26.0")]
@@ -2025,8 +1956,7 @@ impl From<[u8; 16]> for Ipv6Addr {
     /// ```
     #[inline]
     fn from(octets: [u8; 16]) -> Ipv6Addr {
-        let inner = c::in6_addr { s6_addr: octets };
-        Ipv6Addr::from_inner(inner)
+        Ipv6Addr { octets }
     }
 }
 

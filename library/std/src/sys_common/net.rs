@@ -10,7 +10,7 @@ use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::ptr;
 use crate::sys::net::netc as c;
 use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
-use crate::sys_common::{AsInner, FromInner, IntoInner};
+use crate::sys_common::{FromInner, IntoInner};
 use crate::time::Duration;
 
 use libc::{c_int, c_void};
@@ -621,7 +621,7 @@ impl UdpSocket {
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
-            ipv6mr_multiaddr: *multiaddr.as_inner(),
+            ipv6mr_multiaddr: multiaddr.into_inner(),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq)
@@ -637,7 +637,7 @@ impl UdpSocket {
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         let mreq = c::ipv6_mreq {
-            ipv6mr_multiaddr: *multiaddr.as_inner(),
+            ipv6mr_multiaddr: multiaddr.into_inner(),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
         setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq)
