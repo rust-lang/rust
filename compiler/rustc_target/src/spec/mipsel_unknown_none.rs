@@ -1,5 +1,6 @@
-// Bare MIPS32r2, little endian, softfloat
-// can be used for MIPS M4K core (e.g. on PIC32MX devices)
+//! Bare MIPS32r2, little endian, softfloat
+//!
+//! Can be used for MIPS M4K core (e.g. on PIC32MX devices)
 
 use crate::spec::abi::Abi;
 use crate::spec::{LinkerFlavor, LldFlavor, RelocModel};
