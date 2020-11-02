@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::MultiSpan;
+use rustc_span::{sym, MultiSpan};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -181,7 +181,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
         }
 
         if let ty::Ref(_, ty, Mutability::Not) = ty.kind() {
-            if is_type_diagnostic_item(cx, ty, sym!(vec_type)) {
+            if is_type_diagnostic_item(cx, ty, sym::vec_type) {
                 let mut ty_snippet = None;
                 if_chain! {
                     if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).kind;
@@ -225,7 +225,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
+            } else if is_type_diagnostic_item(cx, ty, sym::string_type) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                     span_lint_and_then(
                         cx,

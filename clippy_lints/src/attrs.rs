@@ -16,6 +16,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};
 use semver::Version;
 
@@ -286,14 +287,14 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     },
                     _ => {},
                 }
-                if items.is_empty() || !attr.has_name(sym!(deprecated)) {
+                if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
                 }
                 for item in items {
                     if_chain! {
                         if let NestedMetaItem::MetaItem(mi) = &item;
                         if let MetaItemKind::NameValue(lit) = &mi.kind;
-                        if mi.has_name(sym!(since));
+                        if mi.has_name(sym::since);
                         then {
                             check_semver(cx, item.span(), lit);
                         }
@@ -309,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
         }
         match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = item.attrs.iter().any(|attr| attr.has_name(sym!(macro_use)));
+                let skip_unused_imports = item.attrs.iter().any(|attr| attr.has_name(sym::macro_use));
 
                 for attr in item.attrs {
                     if in_external_macro(cx.sess(), attr.span) {
@@ -326,7 +327,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                         match item.kind {
                                             ItemKind::Use(..) => {
                                                 if is_word(lint, sym!(unused_imports))
-                                                    || is_word(lint, sym!(deprecated))
+                                                    || is_word(lint, sym::deprecated)
                                                     || is_word(lint, sym!(unreachable_pub))
                                                     || is_word(lint, sym!(unused))
                                                     || extract_clippy_lint(lint)
@@ -411,8 +412,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
     let lint_store = cx.lints();
     for lint in items {
         if let Some(lint_name) = extract_clippy_lint(lint) {
-            if let CheckLintNameResult::Tool(Err((None, _))) =
-                lint_store.check_lint_name(&lint_name, Some(sym!(clippy)))
+            if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(&lint_name, Some(sym::clippy))
             {
                 span_lint_and_then(
                     cx,
@@ -529,10 +529,10 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
 
     for attr in attrs {
         if let Some(values) = attr.meta_item_list() {
-            if values.len() != 1 || !attr.has_name(sym!(inline)) {
+            if values.len() != 1 || !attr.has_name(sym::inline) {
                 continue;
             }
-            if is_word(&values[0], sym!(always)) {
+            if is_word(&values[0], sym::always) {
                 span_lint(
                     cx,
                     INLINE_ALWAYS,
@@ -623,12 +623,12 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
 fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
     if_chain! {
         // check cfg_attr
-        if attr.has_name(sym!(cfg_attr));
+        if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();
         if items.len() == 2;
         // check for `rustfmt`
         if let Some(feature_item) = items[0].meta_item();
-        if feature_item.has_name(sym!(rustfmt));
+        if feature_item.has_name(sym::rustfmt);
         // check for `rustfmt_skip` and `rustfmt::skip`
         if let Some(skip_item) = &items[1].meta_item();
         if skip_item.has_name(sym!(rustfmt_skip)) ||
@@ -690,7 +690,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
     }
 
     if_chain! {
-        if attr.has_name(sym!(cfg));
+        if attr.has_name(sym::cfg);
         if let Some(list) = attr.meta_item_list();
         let mismatched = find_mismatched_target_os(&list);
         if !mismatched.is_empty();

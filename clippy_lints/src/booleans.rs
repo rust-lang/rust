@@ -11,6 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for boolean expressions that can be written more
@@ -253,8 +254,8 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
         },
         ExprKind::MethodCall(path, _, args, _) if args.len() == 1 => {
             let type_of_receiver = cx.typeck_results().expr_ty(&args[0]);
-            if !is_type_diagnostic_item(cx, type_of_receiver, sym!(option_type))
-                && !is_type_diagnostic_item(cx, type_of_receiver, sym!(result_type))
+            if !is_type_diagnostic_item(cx, type_of_receiver, sym::option_type)
+                && !is_type_diagnostic_item(cx, type_of_receiver, sym::result_type)
             {
                 return None;
             }

@@ -7,7 +7,7 @@ use rustc_hir::{self, HirId, Path};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{sym, Symbol};
 
 use super::MAP_UNWRAP_OR;
 
@@ -20,7 +20,7 @@ pub(super) fn lint<'tcx>(
     map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type)) {
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type) {
         if !is_copy(cx, cx.typeck_results().expr_ty(&unwrap_args[1])) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument
