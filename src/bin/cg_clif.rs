@@ -31,11 +31,6 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
                 .unwrap()
                 .parent()
                 .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join("build_sysroot")
                 .join("sysroot"),
         );
     }

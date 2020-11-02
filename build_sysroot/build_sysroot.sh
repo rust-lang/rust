@@ -3,28 +3,24 @@
 # Requires the CHANNEL env var to be set to `debug` or `release.`
 
 set -e
-cd $(dirname "$0")
 
-if [ -z $CHANNEL ]; then
-export CHANNEL='release'
-fi
+source ./config.sh
 
-pushd ../ >/dev/null
-source ./scripts/config.sh
-popd >/dev/null
-
-# We expect the target dir in the default location. Guard against the user changing it.
-export CARGO_TARGET_DIR=target
-
-# Cleanup for previous run
-#     v Clean target dir except for build scripts and incremental cache
-rm -r target/*/{debug,release}/{build,deps,examples,libsysroot*,native} 2>/dev/null || true
-rm -r sysroot/ 2>/dev/null || true
+dir=$(pwd)
 
 # Use rustc with cg_clif as hotpluggable backend instead of the custom cg_clif driver so that
 # build scripts are still compiled using cg_llvm.
-export RUSTC=$(pwd)/../"target/"$CHANNEL"/cg_clif_build_sysroot"
+export RUSTC=$dir"/cg_clif_build_sysroot"
 export RUSTFLAGS=$RUSTFLAGS" --clif"
+
+cd $(dirname "$0")
+
+# Cleanup for previous run
+#     v Clean target dir except for build scripts and incremental cache
+#rm -r target/*/{debug,release}/{build,deps,examples,libsysroot*,native} 2>/dev/null || true
+
+# We expect the target dir in the default location. Guard against the user changing it.
+export CARGO_TARGET_DIR=target
 
 # Build libs
 export RUSTFLAGS="$RUSTFLAGS -Zforce-unstable-if-unmarked -Cpanic=abort"
@@ -39,5 +35,5 @@ else
 fi
 
 # Copy files to sysroot
-mkdir -p sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
-cp -r target/$TARGET_TRIPLE/$sysroot_channel/deps/* sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
+mkdir -p $dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
+cp -a target/$TARGET_TRIPLE/$sysroot_channel/deps/* $dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
