@@ -99,7 +99,6 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
     let group = import_group_message(import_assets.import_candidate());
     let scope = ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), ctx)?;
-    let syntax = scope.as_syntax_node();
     for (import, _) in proposed_imports {
         acc.add_group(
             &group,
@@ -107,9 +106,9 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             format!("Import `{}`", &import),
             range,
             |builder| {
-                let new_syntax =
+                let rewriter =
                     insert_use(&scope, mod_path_to_ast(&import), ctx.config.insert_use.merge);
-                builder.replace(syntax.text_range(), new_syntax.to_string())
+                builder.rewrite(rewriter);
             },
         );
     }
