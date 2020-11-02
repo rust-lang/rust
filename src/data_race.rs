@@ -65,12 +65,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn read_immediate_racy(&self, op: MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
         let this = self.eval_context_ref();
         let data_race = &*this.memory.extra.data_race;
-        let old = data_race.multi_threaded.get();
 
-        data_race.multi_threaded.set(false);
+        let old = data_race.multi_threaded.replace(false);
         let res = this.read_immediate(op.into());
-
         data_race.multi_threaded.set(old);
+
         res
     }
     
@@ -80,9 +79,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let data_race = &*this.memory.extra.data_race;
-        let old = data_race.multi_threaded.get();
+        let old = data_race.multi_threaded.replace(false);
 
-        data_race.multi_threaded.set(false);
         let imm = this.write_immediate(src, dest.into());
 
         let data_race = &*this.memory.extra.data_race;
