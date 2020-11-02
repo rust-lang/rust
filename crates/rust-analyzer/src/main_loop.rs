@@ -192,8 +192,7 @@ impl GlobalState {
             },
             Event::Task(mut task) => {
                 let _p = profile::span("GlobalState::handle_event/task");
-                let mut prime_caches_started = false;
-                let mut prime_caches_progress = None;
+                let mut prime_caches_progress = Vec::new();
                 loop {
                     match task {
                         Task::Response(response) => self.respond(response),
@@ -203,13 +202,19 @@ impl GlobalState {
                             }
                         }
                         Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
-                        Task::PrimeCaches(progress) => {
-                            if let PrimeCachesProgress::Started = progress {
-                                prime_caches_started = true;
+                        Task::PrimeCaches(progress) => match progress {
+                            PrimeCachesProgress::Started => prime_caches_progress.push(progress),
+                            PrimeCachesProgress::StartedOnCrate { .. } => {
+                                match prime_caches_progress.last_mut() {
+                                    Some(last @ PrimeCachesProgress::StartedOnCrate { .. }) => {
+                                        // Coalesce subsequent update events.
+                                        *last = progress;
+                                    }
+                                    _ => prime_caches_progress.push(progress),
+                                }
                             }
-
-                            prime_caches_progress = Some(progress);
-                        }
+                            PrimeCachesProgress::Finished => prime_caches_progress.push(progress),
+                        },
                     }
                     // Coalesce multiple task events into one loop turn
                     task = match self.task_pool.receiver.try_recv() {
@@ -218,7 +223,7 @@ impl GlobalState {
                     };
                 }
 
-                if let Some(progress) = prime_caches_progress {
+                for progress in prime_caches_progress {
                     let (state, message, fraction);
                     match progress {
                         PrimeCachesProgress::Started => {
@@ -237,11 +242,6 @@ impl GlobalState {
                             fraction = 1.0;
                         }
                     };
-
-                    if state != Progress::Begin && prime_caches_started {
-                        // Progress indicator needs to be created first.
-                        self.report_progress("indexing", Progress::Begin, None, Some(0.0));
-                    }
 
                     self.report_progress("indexing", state, message, Some(fraction));
                 }
