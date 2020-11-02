@@ -40,7 +40,14 @@ fn main() {
 
 macro_rules! m {
     ($visitor: expr) => {
-        *&$visitor
+        *& $visitor
+    };
+}
+
+#[rustfmt::skip]
+macro_rules! m_mut {
+    ($visitor: expr) => {
+        *& mut $visitor
     };
 }
 
@@ -48,5 +55,8 @@ pub struct S;
 impl S {
     pub fn f(&self) -> &Self {
         m!(self)
+    }
+    pub fn f_mut(&self) -> &Self {
+        m_mut!(self)
     }
 }
