@@ -126,6 +126,29 @@ impl<W> IntoInnerError<W> {
     pub fn into_inner(self) -> W {
         self.0
     }
+
+    #[doc(test(attr(cfg(os = "linux"))))]
+    /// Consumes the [`IntoInnerError`] and returns the error which caused the call to
+    /// [`BufWriter::into_inner()`] to fail, and the underlying writer.
+    ///
+    /// This can be used to simply obtain ownership of the underlying error; it can also be used for
+    /// advanced error recovery.
+    ///
+    /// # Example (requires `/dev/full`, which is available on Linux)
+    /// ```
+    /// use std::io::{BufWriter, ErrorKind, Write};
+    /// use std::fs::File;
+    ///
+    /// let mut stream = BufWriter::new(File::create("/dev/full").unwrap());
+    /// write!(stream, "this cannot be actually written").unwrap();
+    /// let into_inner_err = stream.into_inner().expect_err("now we discover the ENOSPC");
+    /// let (err, _writer) = into_inner_err.into_parts();
+    /// assert_eq!(err.kind(), ErrorKind::NoStorageSpace);
+    /// ```
+    #[stable(feature = "std_io_into_inner_error_into_inner_parts", since = "1.51.0")]
+    pub fn into_parts(self) -> (Error, W) {
+        (self.1, self.0)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
