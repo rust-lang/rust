@@ -1166,6 +1166,7 @@ impl<'test> TestCx<'test> {
                 .arg(&lldb_script_path)
                 .arg(test_executable)
                 .arg(debugger_script)
+                .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
                 .env("PYTHONPATH", self.config.lldb_python_dir.as_ref().unwrap()),
         )
     }
