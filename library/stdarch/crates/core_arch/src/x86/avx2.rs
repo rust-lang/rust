@@ -372,7 +372,7 @@ pub unsafe fn _mm_blend_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     let b = b.as_i32x4();
     macro_rules! blend2 {
         ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, b, [$a, $b, $c, $d]);
+            simd_shuffle4(a, b, [$a, $b, $c, $d])
         };
     }
     macro_rules! blend1 {
@@ -417,7 +417,7 @@ pub unsafe fn _mm256_blend_epi32(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
             $g:expr,
             $h:expr
         ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! blend3 {
@@ -2443,7 +2443,7 @@ pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i64x4();
     macro_rules! permute4 {
         ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, zero, [$a, $b, $c, $d]);
+            simd_shuffle4(a, zero, [$a, $b, $c, $d])
         };
     }
     macro_rules! permute3 {
@@ -2746,7 +2746,7 @@ pub unsafe fn _mm256_shufflehi_epi16(a: __m256i, imm8: i32) -> __m256i {
                         simd_shuffle16(a, a, [
                             0, 1, 2, 3, 4+$x01, 4+$x23, 4+$x45, 4+$x67,
                             8, 9, 10, 11, 12+$x01, 12+$x23, 12+$x45, 12+$x67
-                        ]);
+                        ])
         };
     }
     macro_rules! shuffle_x67 {
@@ -2807,7 +2807,7 @@ pub unsafe fn _mm256_shufflelo_epi16(a: __m256i, imm8: i32) -> __m256i {
                         simd_shuffle16(a, a, [
                             0+$x01, 0+$x23, 0+$x45, 0+$x67, 4, 5, 6, 7,
                             8+$x01, 8+$x23, 8+$x45, 8+$x67, 12, 13, 14, 15,
-                        ]);
+                        ])
         };
     }
     macro_rules! shuffle_x67 {

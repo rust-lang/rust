@@ -11962,7 +11962,7 @@ pub unsafe fn _mm512_shuffle_epi32(a: __m512i, imm8: _MM_PERM_ENUM) -> __m512i {
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12045,7 +12045,7 @@ pub unsafe fn _mm512_mask_shuffle_epi32(
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12123,7 +12123,7 @@ pub unsafe fn _mm512_maskz_shuffle_epi32(k: __mmask16, a: __m512i, imm8: _MM_PER
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12201,7 +12201,7 @@ pub unsafe fn _mm512_shuffle_ps(a: __m512, b: __m512, imm8: i32) -> __m512 {
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12283,7 +12283,7 @@ pub unsafe fn _mm512_mask_shuffle_ps(
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12361,7 +12361,7 @@ pub unsafe fn _mm512_maskz_shuffle_ps(k: __mmask16, a: __m512, b: __m512, imm8: 
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12417,7 +12417,7 @@ pub unsafe fn _mm512_shuffle_pd(a: __m512d, b: __m512d, imm8: i32) -> __m512d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle8 {
         ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle7 {
@@ -12500,7 +12500,7 @@ pub unsafe fn _mm512_mask_shuffle_pd(
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle8 {
         ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle7 {
@@ -12579,7 +12579,7 @@ pub unsafe fn _mm512_maskz_shuffle_pd(k: __mmask8, a: __m512d, b: __m512d, imm8:
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle8 {
         ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle7 {
@@ -12684,7 +12684,7 @@ pub unsafe fn _mm512_shuffle_i32x4(a: __m512i, b: __m512i, imm8: i32) -> __m512i
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12770,7 +12770,7 @@ pub unsafe fn _mm512_mask_shuffle_i32x4(
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12855,7 +12855,7 @@ pub unsafe fn _mm512_maskz_shuffle_i32x4(
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -12920,7 +12920,7 @@ pub unsafe fn _mm512_shuffle_i64x2(a: __m512i, b: __m512i, imm8: i32) -> __m512i
             $g:expr,
             $h:expr
         ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle3 {
@@ -12988,7 +12988,7 @@ pub unsafe fn _mm512_mask_shuffle_i64x2(
             $g:expr,
             $h:expr
         ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle3 {
@@ -13057,7 +13057,7 @@ pub unsafe fn _mm512_maskz_shuffle_i64x2(
             $g:expr,
             $h:expr
         ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle3 {
@@ -13136,7 +13136,7 @@ pub unsafe fn _mm512_shuffle_f32x4(a: __m512, b: __m512, imm8: i32) -> __m512 {
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -13218,7 +13218,7 @@ pub unsafe fn _mm512_mask_shuffle_f32x4(
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -13296,7 +13296,7 @@ pub unsafe fn _mm512_maskz_shuffle_f32x4(k: __mmask16, a: __m512, b: __m512, imm
                 [
                     $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
                 ],
-            );
+            )
         };
     }
     macro_rules! shuffle3 {
@@ -13361,7 +13361,7 @@ pub unsafe fn _mm512_shuffle_f64x2(a: __m512d, b: __m512d, imm8: i32) -> __m512d
             $g:expr,
             $h:expr
         ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle3 {
@@ -13429,7 +13429,7 @@ pub unsafe fn _mm512_mask_shuffle_f64x2(
             $g:expr,
             $h:expr
         ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle3 {
@@ -13498,7 +13498,7 @@ pub unsafe fn _mm512_maskz_shuffle_f64x2(
             $g:expr,
             $h:expr
         ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
+            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
         };
     }
     macro_rules! shuffle3 {
