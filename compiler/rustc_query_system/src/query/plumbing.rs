@@ -2,8 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeParams};
-use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{
@@ -496,21 +495,7 @@ where
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         let loaded = tcx.start_query(job.id, None, || {
-            let marked = dep_graph.try_mark_green_and_read(tcx, &dep_node);
-            marked.map(|(prev_dep_node_index, dep_node_index)| {
-                (
-                    load_from_disk_and_cache_in_memory(
-                        tcx,
-                        key.clone(),
-                        prev_dep_node_index,
-                        dep_node_index,
-                        &dep_node,
-                        query,
-                        compute,
-                    ),
-                    dep_node_index,
-                )
-            })
+            try_load_from_disk_and_cache_in_memory(tcx, key.clone(), &dep_node, query, compute)
         });
         if let Some((result, dep_node_index)) = loaded {
             return job.complete(result, dep_node_index);
@@ -522,20 +507,22 @@ where
     result
 }
 
-fn load_from_disk_and_cache_in_memory<CTX, K, V: Debug>(
+fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
     tcx: CTX,
     key: K,
-    prev_dep_node_index: SerializedDepNodeIndex,
-    dep_node_index: DepNodeIndex,
     dep_node: &DepNode<CTX::DepKind>,
     query: &QueryVtable<CTX, K, V>,
     compute: fn(CTX::DepContext, K) -> V,
-) -> V
+) -> Option<(V, DepNodeIndex)>
 where
     CTX: QueryContext,
+    V: Debug,
 {
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
+
+    let (prev_dep_node_index, dep_node_index) =
+        tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node)?;
 
     debug_assert!(tcx.dep_context().dep_graph().is_green(dep_node));
 
@@ -558,7 +545,7 @@ where
         None
     };
 
-    if let Some(result) = result {
+    let result = if let Some(result) = result {
         // If `-Zincremental-verify-ich` is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
         if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
@@ -588,7 +575,9 @@ where
         incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
 
         result
-    }
+    };
+
+    Some((result, dep_node_index))
 }
 
 fn incremental_verify_ich<CTX, K, V: Debug>(
