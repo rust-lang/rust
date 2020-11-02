@@ -1,3 +1,4 @@
+#![allow(clippy::unnecessary_wrap)]
 #[warn(clippy::result_unit_err)]
 #[allow(unused)]
 

@@ -1,5 +1,5 @@
 error: `map_err(|_|...` ignores the original error
-  --> $DIR/map_err.rs:22:32
+  --> $DIR/map_err.rs:23:32
    |
 LL |     println!("{:?}", x.map_err(|_| Errors::Ignored));
    |                                ^^^
