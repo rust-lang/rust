@@ -25,6 +25,11 @@ $ ./test.sh
 This will implicitly build cg_clif too. Both `build.sh` and `test.sh` accept a `--debug` argument to
 build in debug mode.
 
+Alternatively you can download a pre built version from [GHA]. It is listed in the artifacts section
+of workflow runs. Unfortunately due to GHA restrictions you need to be logged in to access it.
+
+[GHA]: https://github.com/bjorn3/rustc_codegen_cranelift/actions?query=branch%3Amaster+event%3Apush+is%3Asuccess
+
 ## Usage
 
 rustc_codegen_cranelift can be used as a near-drop-in replacement for `cargo build` or `cargo run` for existing projects.
