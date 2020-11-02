@@ -162,6 +162,8 @@ impl Scalar<()> {
 }
 
 impl<'tcx, Tag> Scalar<Tag> {
+    pub const ZST: Self = Scalar::Int(ScalarInt::ZST);
+
     /// Erase the tag from the scalar, if any.
     ///
     /// Used by error reporting code to avoid having the error type depend on `Tag`.
@@ -177,8 +179,6 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn null_ptr(cx: &impl HasDataLayout) -> Self {
         Scalar::Int(ScalarInt::null(cx.data_layout().pointer_size))
     }
-
-    pub const ZST: Self = Scalar::Int(ScalarInt::ZST);
 
     #[inline(always)]
     fn ptr_op(
