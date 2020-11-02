@@ -167,6 +167,7 @@ pub fn initialize_available_targets() {
         LLVMInitializeWebAssemblyTargetInfo,
         LLVMInitializeWebAssemblyTarget,
         LLVMInitializeWebAssemblyTargetMC,
-        LLVMInitializeWebAssemblyAsmPrinter
+        LLVMInitializeWebAssemblyAsmPrinter,
+        LLVMInitializeWebAssemblyAsmParser
     );
 }
