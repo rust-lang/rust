@@ -1629,11 +1629,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 future_or_generator, trait_explanation, an_await_or_yield
                             ),
                         );
-                        err.span_note(scope_span, &format!("{} is later dropped here", snippet));
-                        err.span_note(
-                            interior_span,
-                            &format!("this has type `{}` which {}", target_ty, trait_explanation),
-                        );
+                        if source_map.is_multiline(interior_span) {
+                            err.span_note(scope_span, &format!("{} is later dropped here", snippet));
+                            err.span_note(
+                                interior_span,
+                                &format!("this has type `{}` which {}", target_ty, trait_explanation),
+                            );
+                        } else {
+                            let mut span = MultiSpan::from_span(scope_span);
+                            span.push_span_label(
+                                interior_span,
+                                format!("has type `{}` which {}", target_ty, trait_explanation),
+                            );
+                            err.span_note(span, &format!("{} is later dropped here", snippet));
+                        }
                     } else {
                         span.push_span_label(
                             yield_span,
