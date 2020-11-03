@@ -860,8 +860,6 @@ pub fn provide_both(providers: &mut Providers) {
 
     providers.dllimport_foreign_items = |tcx, krate| {
         let module_map = tcx.foreign_modules(krate);
-        let module_map =
-            module_map.iter().map(|lib| (lib.def_id, lib)).collect::<FxHashMap<_, _>>();
 
         let dllimports = tcx
             .native_libraries(krate)

@@ -6,12 +6,14 @@ use crate::rmeta::{self, encoder};
 
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
+use rustc_middle::middle::cstore::ForeignModule;
 use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
@@ -266,9 +268,8 @@ pub fn provide(providers: &mut Providers) {
                         Some(id) => id,
                         None => return false,
                     };
-                    tcx.foreign_modules(id.krate)
-                        .iter()
-                        .find(|m| m.def_id == fm_id)
+                    let map = tcx.foreign_modules(id.krate);
+                    map.get(&fm_id)
                         .expect("failed to find foreign module")
                         .foreign_items
                         .contains(&id)
@@ -281,7 +282,9 @@ pub fn provide(providers: &mut Providers) {
         },
         foreign_modules: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            &tcx.arena.alloc(foreign_modules::collect(tcx))[..]
+            let modules: FxHashMap<DefId, ForeignModule> =
+                foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect();
+            Lrc::new(modules)
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
