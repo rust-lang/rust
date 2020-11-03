@@ -462,7 +462,7 @@
                             "name": "punctuation.brackets.angle.rust"
                         }
                     },
-                    "end": "\\{",
+                    "end": "\\{|;",
                     "endCaptures": {
                         "0": {
                             "name": "punctuation.brackets.curly.rust"
