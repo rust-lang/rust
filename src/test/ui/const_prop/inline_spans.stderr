@@ -1,0 +1,13 @@
+error: this arithmetic operation will overflow
+  --> $DIR/inline_spans.rs:7:13
+   |
+LL |     let _ = add(u8::MAX, 1);
+   |             ^^^^^^^^^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
+...
+LL |     x + y
+   |     ----- in the inlined copy of this code
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: aborting due to previous error
+

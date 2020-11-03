@@ -10,10 +10,10 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
         debug err => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify_try.rs:8:14: 8:15
         scope 3 {
             scope 7 (inlined <i32 as From<i32>>::from) { // at $DIR/simplify_try.rs:8:14: 8:15
-                debug t => ((_0 as Err).0: i32); // in scope 7 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+                debug t => ((_0 as Err).0: i32); // in scope 7 at $DIR/simplify_try.rs:8:14: 8:15
             }
             scope 8 (inlined <std::result::Result<u32, i32> as Try>::from_error) { // at $DIR/simplify_try.rs:8:13: 8:15
-                debug v => ((_0 as Err).0: i32); // in scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
+                debug v => ((_0 as Err).0: i32); // in scope 8 at $DIR/simplify_try.rs:8:13: 8:15
             }
         }
     }
@@ -23,7 +23,7 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
         }
     }
     scope 6 (inlined <std::result::Result<u32, i32> as Try>::into_result) { // at $DIR/simplify_try.rs:8:13: 8:15
-        debug self => _0;                // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
+        debug self => _0;                // in scope 6 at $DIR/simplify_try.rs:8:13: 8:15
     }
 
     bb0: {

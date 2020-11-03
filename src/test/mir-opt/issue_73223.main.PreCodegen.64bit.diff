@@ -36,30 +36,30 @@
                       debug arg0 => _25;   // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                       debug arg1 => _28;   // in scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                       scope 6 (inlined ArgumentV1::new::<&i32>) { // at $SRC_DIR/std/src/macros.rs:LL:COL
-                          debug x => _25;  // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          debug f => _24;  // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _23: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _24: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _25: &&i32; // in scope 6 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          debug x => _25;  // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          debug f => _24;  // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _23: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _24: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _25: &&i32; // in scope 6 at $SRC_DIR/std/src/macros.rs:LL:COL
                           scope 7 {
                           }
                       }
                       scope 8 (inlined ArgumentV1::new::<&i32>) { // at $SRC_DIR/std/src/macros.rs:LL:COL
-                          debug x => _28;  // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          debug f => _27;  // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _26: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _27: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                          let mut _28: &&i32; // in scope 8 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                          debug x => _28;  // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          debug f => _27;  // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _26: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _27: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
+                          let mut _28: &&i32; // in scope 8 at $SRC_DIR/std/src/macros.rs:LL:COL
                           scope 9 {
                           }
                       }
                   }
                   scope 10 (inlined Arguments::new_v1) { // at $SRC_DIR/std/src/macros.rs:LL:COL
-                      debug pieces => _29; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                      debug args => _31;   // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                      let mut _29: &[&str]; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                      let mut _30: std::option::Option<&[std::fmt::rt::v1::Argument]>; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-                      let mut _31: &[std::fmt::ArgumentV1]; // in scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                      debug pieces => _29; // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+                      debug args => _31;   // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+                      let mut _29: &[&str]; // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+                      let mut _30: std::option::Option<&[std::fmt::rt::v1::Argument]>; // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+                      let mut _31: &[std::fmt::ArgumentV1]; // in scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
                   }
               }
           }
@@ -139,53 +139,53 @@
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {<&i32 as std::fmt::Debug>::fmt}, val: Value(Scalar(<ZST>)) }
-          StorageLive(_23);                // scope 7 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          _23 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>(move _24) -> bb3; // scope 7 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageLive(_23);                // scope 7 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _23 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>(move _24) -> bb3; // scope 7 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) -> for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {std::intrinsics::transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>}, val: Value(Scalar(<ZST>)) }
       }
   
       bb3: {
-          (_21.0: &core::fmt::Opaque) = transmute::<&&i32, &core::fmt::Opaque>(move _25) -> bb4; // scope 7 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          (_21.0: &core::fmt::Opaque) = transmute::<&&i32, &core::fmt::Opaque>(move _25) -> bb4; // scope 7 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&&i32) -> &core::fmt::Opaque {std::intrinsics::transmute::<&&i32, &core::fmt::Opaque>}, val: Value(Scalar(<ZST>)) }
       }
   
       bb4: {
-          (_21.1: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) = move _23; // scope 7 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          StorageDead(_23);                // scope 7 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          (_21.1: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) = move _23; // scope 7 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_23);                // scope 7 at $SRC_DIR/std/src/macros.rs:LL:COL
           _27 = <&i32 as Debug>::fmt as for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> (Pointer(ReifyFnPointer)); // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {<&i32 as std::fmt::Debug>::fmt}, val: Value(Scalar(<ZST>)) }
-          StorageLive(_26);                // scope 9 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          _26 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>(move _27) -> bb5; // scope 9 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageLive(_26);                // scope 9 at $SRC_DIR/std/src/macros.rs:LL:COL
+          _26 = transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>(move _27) -> bb5; // scope 9 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) -> for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error> {std::intrinsics::transmute::<for<'r, 's, 't0> fn(&'r &i32, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>, for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>>}, val: Value(Scalar(<ZST>)) }
       }
   
       bb5: {
-          (_22.0: &core::fmt::Opaque) = transmute::<&&i32, &core::fmt::Opaque>(move _28) -> bb6; // scope 9 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          (_22.0: &core::fmt::Opaque) = transmute::<&&i32, &core::fmt::Opaque>(move _28) -> bb6; // scope 9 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&&i32) -> &core::fmt::Opaque {std::intrinsics::transmute::<&&i32, &core::fmt::Opaque>}, val: Value(Scalar(<ZST>)) }
       }
   
       bb6: {
-          (_22.1: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) = move _26; // scope 9 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          StorageDead(_26);                // scope 9 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          (_22.1: for<'r, 's, 't0> fn(&'r core::fmt::Opaque, &'s mut std::fmt::Formatter<'t0>) -> std::result::Result<(), std::fmt::Error>) = move _26; // scope 9 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_26);                // scope 9 at $SRC_DIR/std/src/macros.rs:LL:COL
           _16 = [move _21, move _22];      // scope 5 at $SRC_DIR/std/src/macros.rs:LL:COL
           _15 = &_16;                      // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           _31 = move _15 as &[std::fmt::ArgumentV1] (Pointer(Unsize)); // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          StorageLive(_30);                // scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          discriminant(_30) = 0;           // scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          (_13.0: &[&str]) = move _29;     // scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          (_13.1: std::option::Option<&[std::fmt::rt::v1::Argument]>) = move _30; // scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          (_13.2: &[std::fmt::ArgumentV1]) = move _31; // scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-          StorageDead(_30);                // scope 10 at $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+          StorageLive(_30);                // scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+          discriminant(_30) = 0;           // scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+          (_13.0: &[&str]) = move _29;     // scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+          (_13.1: std::option::Option<&[std::fmt::rt::v1::Argument]>) = move _30; // scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+          (_13.2: &[std::fmt::ArgumentV1]) = move _31; // scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageDead(_30);                // scope 10 at $SRC_DIR/std/src/macros.rs:LL:COL
           _12 = &_13;                      // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
           begin_panic_fmt(move _12);       // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant

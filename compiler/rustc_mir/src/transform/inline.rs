@@ -8,6 +8,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc_span::{hygiene::ExpnKind, ExpnData, Span};
 use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -471,6 +472,8 @@ impl Inliner<'tcx> {
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
                     tcx: self.tcx,
+                    callsite_span: callsite.source_info.span,
+                    body_span: callee_body.span,
                 };
 
                 // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -682,6 +685,8 @@ struct Integrator<'a, 'tcx> {
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
+    callsite_span: Span,
+    body_span: Span,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
@@ -724,6 +729,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: &mut SourceScope) {
         *scope = self.map_scope(*scope);
+    }
+
+    fn visit_span(&mut self, span: &mut Span) {
+        // Make sure that all spans track the fact that they were inlined.
+        *span = self.callsite_span.fresh_expansion(ExpnData {
+            def_site: self.body_span,
+            ..ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None)
+        });
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {

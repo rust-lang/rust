@@ -10,10 +10,10 @@ fn main() -> () {
     scope 1 {
         debug f => _1;                   // in scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:5:9: 5:10
         scope 2 (inlined main::{closure#0}) { // at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
-            debug x => _5;               // in scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:5:14: 5:15
-            let _6: ();                  // in scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:5:23: 5:24
+            debug x => _5;               // in scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
+            let _6: ();                  // in scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
             scope 3 {
-                debug y => _6;           // in scope 3 at $DIR/issue-76997-inline-scopes-parenting.rs:5:23: 5:24
+                debug y => _6;           // in scope 3 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
             }
         }
     }
@@ -27,10 +27,10 @@ fn main() -> () {
         (_3.0: ()) = move _4;            // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         StorageLive(_5);                 // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         _5 = move (_3.0: ());            // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
-        StorageLive(_6);                 // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:5:23: 5:24
-        _6 = const ();                   // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:5:27: 5:28
-        _0 = const ();                   // scope 3 at $DIR/issue-76997-inline-scopes-parenting.rs:5:30: 5:31
-        StorageDead(_6);                 // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:5:32: 5:33
+        StorageLive(_6);                 // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
+        _6 = const ();                   // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
+        _0 = const ();                   // scope 3 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
+        StorageDead(_6);                 // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         StorageDead(_5);                 // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         StorageDead(_4);                 // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:9: 6:10
         StorageDead(_3);                 // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:9: 6:10
