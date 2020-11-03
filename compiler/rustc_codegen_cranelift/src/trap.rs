@@ -67,4 +67,3 @@ pub(crate) fn trap_unimplemented(fx: &mut FunctionCx<'_, '_, impl Module>, msg: 
     let true_ = fx.bcx.ins().iconst(types::I32, 1);
     fx.bcx.ins().trapnz(true_, TrapCode::User(!0));
 }
-

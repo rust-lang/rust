@@ -315,13 +315,13 @@ fn test_checked_mul() {
     assert_eq!(1i8.checked_mul(-128i8), Some(-128i8));
     assert_eq!((-128i8).checked_mul(-128i8), None);
 
-    assert_eq!(1u64.checked_mul(u64::max_value()), Some(u64::max_value()));
-    assert_eq!(u64::max_value().checked_mul(u64::max_value()), None);
-    assert_eq!(1i64.checked_mul(i64::max_value()), Some(i64::max_value()));
-    assert_eq!(i64::max_value().checked_mul(i64::max_value()), None);
-    assert_eq!((-1i64).checked_mul(i64::min_value() + 1), Some(i64::max_value()));
-    assert_eq!(1i64.checked_mul(i64::min_value()), Some(i64::min_value()));
-    assert_eq!(i64::min_value().checked_mul(i64::min_value()), None);
+    assert_eq!(1u64.checked_mul(u64::MAX), Some(u64::MAX));
+    assert_eq!(u64::MAX.checked_mul(u64::MAX), None);
+    assert_eq!(1i64.checked_mul(i64::MAX), Some(i64::MAX));
+    assert_eq!(i64::MAX.checked_mul(i64::MAX), None);
+    assert_eq!((-1i64).checked_mul(i64::MIN + 1), Some(i64::MAX));
+    assert_eq!(1i64.checked_mul(i64::MIN), Some(i64::MIN));
+    assert_eq!(i64::MIN.checked_mul(i64::MIN), None);
 }
 
 #[derive(PartialEq)]

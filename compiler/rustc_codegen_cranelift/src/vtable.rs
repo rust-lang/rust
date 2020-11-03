@@ -108,14 +108,14 @@ fn build_vtable<'tcx>(
         (&[]).iter()
     };
     let methods = methods.cloned().map(|opt_mth| {
-        opt_mth.map_or(None, |(def_id, substs)| {
-            Some(import_function(
+        opt_mth.map(|(def_id, substs)| {
+            import_function(
                 tcx,
                 &mut fx.cx.module,
                 Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs)
                     .unwrap()
                     .polymorphize(fx.tcx),
-            ))
+            )
         })
     });
     components.extend(methods);
@@ -137,15 +137,7 @@ fn build_vtable<'tcx>(
         }
     }
 
-    data_ctx.set_align(
-        fx.tcx
-            .data_layout
-            .pointer_align
-            .pref
-            .bytes()
-            .try_into()
-            .unwrap(),
-    );
+    data_ctx.set_align(fx.tcx.data_layout.pointer_align.pref.bytes());
 
     let data_id = fx
         .cx

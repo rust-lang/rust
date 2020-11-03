@@ -94,7 +94,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let args = ::std::env::var("CG_CLIF_JIT_ARGS").unwrap_or_else(|_| String::new());
     let args = std::iter::once(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string())
-        .chain(args.split(" "))
+        .chain(args.split(' '))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
     let mut argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
@@ -151,7 +151,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
             }
             let dlsym_name = if cfg!(target_os = "macos") {
                 // On macOS `dlsym` expects the name without leading `_`.
-                assert!(name.starts_with("_"), "{:?}", name);
+                assert!(name.starts_with('_'), "{:?}", name);
                 &name[1..]
             } else {
                 &name
