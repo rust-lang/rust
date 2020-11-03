@@ -811,29 +811,6 @@ pub struct RenderedLink {
 }
 
 impl Attributes {
-    /// Extracts the content from an attribute `#[doc(cfg(content))]`.
-    crate fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use rustc_ast::NestedMetaItem::MetaItem;
-
-        if let ast::MetaItemKind::List(ref nmis) = mi.kind {
-            if nmis.len() == 1 {
-                if let MetaItem(ref cfg_mi) = nmis[0] {
-                    if cfg_mi.has_name(sym::cfg) {
-                        if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.kind {
-                            if cfg_nmis.len() == 1 {
-                                if let MetaItem(ref content_mi) = cfg_nmis[0] {
-                                    return Some(content_mi);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
     /// Reads a `MetaItem` from within an attribute, looks for whether it is a
     /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
     /// its expansion.
@@ -893,10 +870,10 @@ impl Attributes {
         diagnostic: &::rustc_errors::Handler,
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
+        doc_cfg_active: bool,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
         let mut sp = None;
-        let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
         fn update_need_backline(doc_strings: &mut Vec<DocFragment>, frag: &DocFragment) {
@@ -943,36 +920,27 @@ impl Attributes {
                 if sp.is_none() {
                     sp = Some(attr.span);
                 }
-                None
-            } else {
-                if attr.has_name(sym::doc) {
-                    if let Some(mi) = attr.meta() {
-                        if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
-                            // Extracted #[doc(cfg(...))]
-                            match Cfg::parse(cfg_mi) {
-                                Ok(new_cfg) => cfg &= new_cfg,
-                                Err(e) => diagnostic.span_err(e.span, e.msg),
-                            }
-                        } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
-                        {
-                            let line = doc_line;
-                            doc_line += contents.as_str().lines().count();
-                            let frag = DocFragment {
-                                line,
-                                span: attr.span,
-                                doc: contents,
-                                kind: DocFragmentKind::Include { filename },
-                                parent_module,
-                                need_backline: false,
-                                indent: 0,
-                            };
-                            update_need_backline(&mut doc_strings, &frag);
-                            doc_strings.push(frag);
-                        }
+                return None;
+            } else if attr.has_name(sym::doc) {
+                if let Some(mi) = attr.meta() {
+                    if let Some((filename, contents)) = Attributes::extract_include(&mi) {
+                        let line = doc_line;
+                        doc_line += contents.as_str().lines().count();
+                        let frag = DocFragment {
+                            line,
+                            span: attr.span,
+                            doc: contents,
+                            kind: DocFragmentKind::Include { filename },
+                            parent_module,
+                            need_backline: false,
+                            indent: 0,
+                        };
+                        update_need_backline(&mut doc_strings, &frag);
+                        doc_strings.push(frag);
                     }
                 }
-                Some(attr.clone())
             }
+            Some(attr.clone())
         };
 
         // Additional documentation should be shown before the original documentation
@@ -983,6 +951,49 @@ impl Attributes {
             .chain(attrs.iter().map(|attr| (attr, None)))
             .filter_map(clean_attr)
             .collect();
+
+        trait SingleExt {
+            type Item;
+            fn single(self) -> Option<Self::Item>;
+        }
+
+        impl<T: IntoIterator> SingleExt for T {
+            type Item = T::Item;
+            fn single(self) -> Option<Self::Item> {
+                let mut iter = self.into_iter();
+                let item = iter.next()?;
+                iter.next().is_none().then_some(())?;
+                Some(item)
+            }
+        }
+
+        let mut cfg = if doc_cfg_active {
+            let mut doc_cfg = attrs
+                .iter()
+                .filter(|attr| attr.has_name(sym::doc))
+                .filter_map(|attr| Some(attr.meta_item_list()?.single()?))
+                .filter(|attr| attr.has_name(sym::cfg))
+                .filter_map(|attr| Some(attr.meta_item_list()?.single()?.meta_item()?.clone()))
+                .peekable();
+            if doc_cfg.peek().is_some() {
+                doc_cfg
+                    .filter_map(|attr| {
+                        Cfg::parse(&attr).map_err(|e| diagnostic.span_err(e.span, e.msg)).ok()
+                    })
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            } else {
+                attrs
+                    .iter()
+                    .filter(|attr| attr.has_name(sym::cfg))
+                    .filter_map(|attr| Some(attr.meta_item_list()?.single()?.meta_item()?.clone()))
+                    .filter_map(|attr| {
+                        Cfg::parse(&attr).map_err(|e| diagnostic.span_err(e.span, e.msg)).ok()
+                    })
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            }
+        } else {
+            Cfg::True
+        };
 
         // treat #[target_feature(enable = "feat")] attributes as if they were
         // #[doc(cfg(target_feature = "feat"))] attributes as well

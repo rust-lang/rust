@@ -124,7 +124,8 @@ impl Clean<Item> for doctree::Module<'_> {
 
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &mut DocContext<'_>) -> Attributes {
-        Attributes::from_ast(cx.sess().diagnostic(), self, None)
+        let doc_cfg_active = cx.tcx.features().doc_cfg;
+        Attributes::from_ast(cx.sess().diagnostic(), self, None, doc_cfg_active)
     }
 }
 

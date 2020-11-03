@@ -4,6 +4,7 @@
 )]
 #![feature(rustc_private)]
 #![feature(array_methods)]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
