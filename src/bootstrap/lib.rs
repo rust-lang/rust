@@ -1119,6 +1119,10 @@ impl Build {
             let krate = &self.crates[&krate];
             ret.push(krate);
             for dep in &krate.deps {
+                if !self.crates.contains_key(dep) {
+                    // Ignore non-workspace members.
+                    continue;
+                }
                 // Don't include optional deps if their features are not
                 // enabled. Ideally this would be computed from `cargo
                 // metadata --features …`, but that is somewhat slow. Just
