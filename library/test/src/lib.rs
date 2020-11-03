@@ -25,7 +25,7 @@
 #![feature(nll)]
 #![feature(bool_to_option)]
 #![feature(available_concurrency)]
-#![feature(set_stdio)]
+#![feature(internal_output_capture)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
@@ -530,11 +530,9 @@ fn run_test_in_process(
     // Buffer for capturing standard I/O
     let data = Arc::new(Mutex::new(Vec::new()));
 
-    let oldio = if !nocapture {
-        Some((io::set_print(Some(data.clone())), io::set_panic(Some(data.clone()))))
-    } else {
-        None
-    };
+    if !nocapture {
+        io::set_output_capture(Some(data.clone()));
+    }
 
     let start = report_time.then(Instant::now);
     let result = catch_unwind(AssertUnwindSafe(testfn));
@@ -543,10 +541,7 @@ fn run_test_in_process(
         TestExecTime(duration)
     });
 
-    if let Some((printio, panicio)) = oldio {
-        io::set_print(printio);
-        io::set_panic(panicio);
-    }
+    io::set_output_capture(None);
 
     let test_result = match result {
         Ok(()) => calc_result(&desc, Ok(()), &time_opts, &exec_time),

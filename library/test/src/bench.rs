@@ -184,18 +184,14 @@ where
     let mut bs = Bencher { mode: BenchMode::Auto, summary: None, bytes: 0 };
 
     let data = Arc::new(Mutex::new(Vec::new()));
-    let oldio = if !nocapture {
-        Some((io::set_print(Some(data.clone())), io::set_panic(Some(data.clone()))))
-    } else {
-        None
-    };
+
+    if !nocapture {
+        io::set_output_capture(Some(data.clone()));
+    }
 
     let result = catch_unwind(AssertUnwindSafe(|| bs.bench(f)));
 
-    if let Some((printio, panicio)) = oldio {
-        io::set_print(printio);
-        io::set_panic(panicio);
-    }
+    io::set_output_capture(None);
 
     let test_result = match result {
         //bs.bench(f) {

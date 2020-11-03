@@ -1,7 +1,7 @@
 // run-pass
 // ignore-emscripten no threads support
 
-#![feature(set_stdio)]
+#![feature(internal_output_capture)]
 
 use std::io;
 use std::str;
@@ -13,7 +13,7 @@ fn main() {
     let res = thread::Builder::new().spawn({
         let data = data.clone();
         move || {
-            io::set_panic(Some(data));
+            io::set_output_capture(Some(data));
             panic!("Hello, world!")
         }
     }).unwrap().join();

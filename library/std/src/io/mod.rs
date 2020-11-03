@@ -269,19 +269,17 @@ pub use self::buffered::{BufReader, BufWriter, LineWriter};
 pub use self::cursor::Cursor;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::error::{Error, ErrorKind, Result};
+#[unstable(feature = "internal_output_capture", issue = "none")]
+#[doc(no_inline, hidden)]
+pub use self::stdio::set_output_capture;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
-#[unstable(feature = "libstd_io_internals", issue = "42788")]
-#[doc(no_inline, hidden)]
-pub use self::stdio::{set_panic, set_print};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, empty, repeat, sink, Empty, Repeat, Sink};
-
-pub(crate) use self::stdio::clone_io;
 
 mod buffered;
 mod cursor;
