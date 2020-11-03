@@ -62,7 +62,8 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
                     }
                     // \\?\cat_pics
                     _ => {
-                        let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
+                        let idx =
+                            path.iter().position(|&b| is_verbatim_sep(b)).unwrap_or(path.len());
                         let slice = &path[..idx];
                         return Some(Verbatim(unsafe { u8_slice_as_os_str(slice) }));
                     }
@@ -70,7 +71,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
             }
         } else if let Some(path) = path.strip_prefix(b".\\") {
             // \\.\COM42
-            let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
+            let idx = path.iter().position(|&b| is_sep_byte(b)).unwrap_or(path.len());
             let slice = &path[..idx];
             return Some(DeviceNS(unsafe { u8_slice_as_os_str(slice) }));
         }
