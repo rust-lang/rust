@@ -27,10 +27,6 @@ impl MutVisitor for Marker {
     fn visit_span(&mut self, span: &mut Span) {
         *span = span.apply_mark(self.0, self.1)
     }
-
-    fn visit_mac(&mut self, mac: &mut MacCall) {
-        mut_visit::noop_visit_mac(mac, self)
-    }
 }
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).

@@ -176,13 +176,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
         walk_lifetime(self, lifetime)
     }
-    fn visit_mac(&mut self, _mac: &'ast MacCall) {
-        panic!("visit_mac disabled by default");
-        // N.B., see note about macros above.
-        // if you really want a visitor that
-        // works on macros, use this
-        // definition in your trait impl:
-        // visit::walk_mac(self, _mac)
+    fn visit_mac(&mut self, mac: &'ast MacCall) {
+        walk_mac(self, mac)
     }
     fn visit_mac_def(&mut self, _mac: &'ast MacroDef, _id: NodeId) {
         // Nothing to do

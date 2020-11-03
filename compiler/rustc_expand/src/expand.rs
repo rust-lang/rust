@@ -850,8 +850,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 visit::walk_item(self, item);
             }
-
-            fn visit_mac(&mut self, _: &'ast ast::MacCall) {}
         }
 
         if !self.cx.ecfg.proc_macro_hygiene() {

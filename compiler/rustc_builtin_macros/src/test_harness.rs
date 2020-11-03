@@ -130,10 +130,6 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         }
         smallvec![P(item)]
     }
-
-    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
-        // Do nothing.
-    }
 }
 
 // Beware, this is duplicated in librustc_passes/entry.rs (with
@@ -200,10 +196,6 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         };
 
         smallvec![item]
-    }
-
-    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
-        // Do nothing.
     }
 }
 

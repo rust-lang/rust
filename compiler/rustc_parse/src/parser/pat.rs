@@ -570,10 +570,6 @@ impl<'a> Parser<'a> {
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
-            fn visit_mac(&mut self, mac: &mut MacCall) {
-                noop_visit_mac(mac, self);
-            }
-
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
                 if let PatKind::Ident(BindingMode::ByValue(m @ Mutability::Not), ..) = &mut pat.kind
                 {

@@ -149,9 +149,6 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             _ => walk_pat(self, pat),
         }
     }
-    fn visit_mac(&mut self, _mac: &MacCall) {
-        // do not check macs
-    }
 }
 
 #[must_use]
@@ -355,9 +352,6 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
     }
     fn visit_item(&mut self, _: &Item) {
         // do not recurse into inner items
-    }
-    fn visit_mac(&mut self, _mac: &MacCall) {
-        // do not check macs
     }
 }
 

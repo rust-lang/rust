@@ -344,10 +344,6 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         visit::walk_item(self, item);
         self.in_root = prev_in_root;
     }
-
-    fn visit_mac(&mut self, mac: &'a ast::MacCall) {
-        visit::walk_mac(self, mac)
-    }
 }
 
 // Creates a new module which looks like:
