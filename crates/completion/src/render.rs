@@ -1,12 +1,13 @@
 //! `render` module provides utilities for rendering completion suggestions
 //! into code pieces that will be presented to user.
 
-mod macro_;
-mod function;
+pub(crate) mod macro_;
+pub(crate) mod function;
+pub(crate) mod enum_variant;
+pub(crate) mod const_;
+pub(crate) mod type_alias;
+
 mod builder_ext;
-mod enum_variant;
-mod const_;
-mod type_alias;
 
 use hir::{Documentation, HasAttrs, HirDisplay, Mutability, ScopeDef, Type};
 use ide_db::RootDatabase;
@@ -18,10 +19,7 @@ use crate::{
     CompletionScore,
 };
 
-pub(crate) use crate::render::{
-    const_::render_const, enum_variant::render_enum_variant, function::render_fn,
-    macro_::render_macro, type_alias::render_type_alias,
-};
+use crate::render::{enum_variant::render_enum_variant, function::render_fn, macro_::render_macro};
 
 pub(crate) fn render_field<'a>(
     ctx: RenderContext<'a>,

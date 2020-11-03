@@ -16,7 +16,15 @@ pub(crate) mod mod_;
 
 use hir::{ModPath, ScopeDef, Type};
 
-use crate::{item::Builder, render::*, CompletionContext, CompletionItem};
+use crate::{
+    item::Builder,
+    render::{
+        const_::render_const, enum_variant::render_enum_variant, function::render_fn,
+        macro_::render_macro, render_field, render_resolution, render_tuple_field,
+        type_alias::render_type_alias, RenderContext,
+    },
+    CompletionContext, CompletionItem,
+};
 
 /// Represents an in-progress set of completions being built.
 #[derive(Debug, Default)]
