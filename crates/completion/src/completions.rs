@@ -52,12 +52,12 @@ impl Completions {
     }
 
     pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &Type) {
-        let item = Render::new(RenderContext::new(ctx)).add_field(field, ty);
+        let item = render_field(RenderContext::new(ctx), field, ty);
         self.add(item);
     }
 
     pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
-        let item = Render::new(RenderContext::new(ctx)).add_tuple_field(field, ty);
+        let item = render_tuple_field(RenderContext::new(ctx), field, ty);
         self.add(item);
     }
 
@@ -67,9 +67,7 @@ impl Completions {
         local_name: String,
         resolution: &ScopeDef,
     ) {
-        if let Some(item) =
-            Render::new(RenderContext::new(ctx)).render_resolution(local_name, resolution)
-        {
+        if let Some(item) = render_resolution(RenderContext::new(ctx), local_name, resolution) {
             self.add(item);
         }
     }
@@ -84,7 +82,7 @@ impl Completions {
             Some(it) => it,
             None => return,
         };
-        if let Some(item) = MacroRender::new(RenderContext::new(ctx), name, macro_).render() {
+        if let Some(item) = render_macro(RenderContext::new(ctx), name, macro_) {
             self.add(item);
         }
     }
@@ -95,18 +93,18 @@ impl Completions {
         func: hir::Function,
         local_name: Option<String>,
     ) {
-        let item = FunctionRender::new(RenderContext::new(ctx), local_name, func).render();
+        let item = render_fn(RenderContext::new(ctx), local_name, func);
         self.add(item)
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        if let Some(item) = ConstRender::new(RenderContext::new(ctx), constant).render() {
+        if let Some(item) = render_const(RenderContext::new(ctx), constant) {
             self.add(item);
         }
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
-        if let Some(item) = TypeAliasRender::new(RenderContext::new(ctx), type_alias).render() {
+        if let Some(item) = render_type_alias(RenderContext::new(ctx), type_alias) {
             self.add(item)
         }
     }
@@ -117,8 +115,7 @@ impl Completions {
         variant: hir::EnumVariant,
         path: ModPath,
     ) {
-        let item =
-            EnumVariantRender::new(RenderContext::new(ctx), None, variant, Some(path)).render();
+        let item = render_enum_variant(RenderContext::new(ctx), None, variant, Some(path));
         self.add(item);
     }
 
@@ -128,8 +125,7 @@ impl Completions {
         variant: hir::EnumVariant,
         local_name: Option<String>,
     ) {
-        let item =
-            EnumVariantRender::new(RenderContext::new(ctx), local_name, variant, None).render();
+        let item = render_enum_variant(RenderContext::new(ctx), local_name, variant, None);
         self.add(item);
     }
 }

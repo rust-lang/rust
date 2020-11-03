@@ -8,8 +8,16 @@ use crate::{
     render::{builder_ext::Params, RenderContext},
 };
 
+pub(crate) fn render_fn<'a>(
+    ctx: RenderContext<'a>,
+    local_name: Option<String>,
+    fn_: hir::Function,
+) -> CompletionItem {
+    FunctionRender::new(ctx, local_name, fn_).render()
+}
+
 #[derive(Debug)]
-pub(crate) struct FunctionRender<'a> {
+struct FunctionRender<'a> {
     ctx: RenderContext<'a>,
     name: String,
     fn_: hir::Function,
@@ -17,7 +25,7 @@ pub(crate) struct FunctionRender<'a> {
 }
 
 impl<'a> FunctionRender<'a> {
-    pub(crate) fn new(
+    fn new(
         ctx: RenderContext<'a>,
         local_name: Option<String>,
         fn_: hir::Function,
@@ -28,7 +36,7 @@ impl<'a> FunctionRender<'a> {
         FunctionRender { ctx, name, fn_, ast_node }
     }
 
-    pub(crate) fn render(self) -> CompletionItem {
+    fn render(self) -> CompletionItem {
         let params = self.params();
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), self.name.clone())
             .kind(self.kind())

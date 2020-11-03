@@ -9,8 +9,17 @@ use crate::{
     render::{builder_ext::Params, RenderContext},
 };
 
+pub(crate) fn render_enum_variant<'a>(
+    ctx: RenderContext<'a>,
+    local_name: Option<String>,
+    variant: hir::EnumVariant,
+    path: Option<ModPath>,
+) -> CompletionItem {
+    EnumVariantRender::new(ctx, local_name, variant, path).render()
+}
+
 #[derive(Debug)]
-pub(crate) struct EnumVariantRender<'a> {
+struct EnumVariantRender<'a> {
     ctx: RenderContext<'a>,
     name: String,
     variant: hir::EnumVariant,
@@ -21,7 +30,7 @@ pub(crate) struct EnumVariantRender<'a> {
 }
 
 impl<'a> EnumVariantRender<'a> {
-    pub(crate) fn new(
+    fn new(
         ctx: RenderContext<'a>,
         local_name: Option<String>,
         variant: hir::EnumVariant,
@@ -51,7 +60,7 @@ impl<'a> EnumVariantRender<'a> {
         }
     }
 
-    pub(crate) fn render(self) -> CompletionItem {
+    fn render(self) -> CompletionItem {
         let mut builder = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),

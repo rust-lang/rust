@@ -19,14 +19,32 @@ use crate::{
 };
 
 pub(crate) use crate::render::{
-    const_::ConstRender, enum_variant::EnumVariantRender, function::FunctionRender,
-    macro_::MacroRender, type_alias::TypeAliasRender,
+    const_::render_const, enum_variant::render_enum_variant, function::render_fn,
+    macro_::render_macro, type_alias::render_type_alias,
 };
 
-/// Generic renderer for completion items.
-#[derive(Debug)]
-pub(crate) struct Render<'a> {
+pub(crate) fn render_field<'a>(
     ctx: RenderContext<'a>,
+    field: hir::Field,
+    ty: &Type,
+) -> CompletionItem {
+    Render::new(ctx).add_field(field, ty)
+}
+
+pub(crate) fn render_tuple_field<'a>(
+    ctx: RenderContext<'a>,
+    field: usize,
+    ty: &Type,
+) -> CompletionItem {
+    Render::new(ctx).add_tuple_field(field, ty)
+}
+
+pub(crate) fn render_resolution<'a>(
+    ctx: RenderContext<'a>,
+    local_name: String,
+    resolution: &ScopeDef,
+) -> Option<CompletionItem> {
+    Render::new(ctx).render_resolution(local_name, resolution)
 }
 
 /// Interface for data and methods required for items rendering.
@@ -74,12 +92,18 @@ impl<'a> RenderContext<'a> {
     }
 }
 
+/// Generic renderer for completion items.
+#[derive(Debug)]
+struct Render<'a> {
+    ctx: RenderContext<'a>,
+}
+
 impl<'a> Render<'a> {
-    pub(crate) fn new(ctx: RenderContext<'a>) -> Render<'a> {
+    fn new(ctx: RenderContext<'a>) -> Render<'a> {
         Render { ctx }
     }
 
-    pub(crate) fn add_field(&mut self, field: hir::Field, ty: &Type) -> CompletionItem {
+    fn add_field(&mut self, field: hir::Field, ty: &Type) -> CompletionItem {
         let is_deprecated = self.ctx.is_deprecated(field);
         let name = field.name(self.ctx.db());
         let mut item = CompletionItem::new(
@@ -96,17 +120,17 @@ impl<'a> Render<'a> {
             item = item.set_score(score);
         }
 
-        return item.build();
+        item.build()
     }
 
-    pub(crate) fn add_tuple_field(&mut self, field: usize, ty: &Type) -> CompletionItem {
+    fn add_tuple_field(&mut self, field: usize, ty: &Type) -> CompletionItem {
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), field.to_string())
             .kind(CompletionItemKind::Field)
             .detail(ty.display(self.ctx.db()).to_string())
             .build()
     }
 
-    pub(crate) fn render_resolution(
+    fn render_resolution(
         self,
         local_name: String,
         resolution: &ScopeDef,
@@ -120,15 +144,15 @@ impl<'a> Render<'a> {
 
         let kind = match resolution {
             ScopeDef::ModuleDef(Function(func)) => {
-                let item = FunctionRender::new(self.ctx, Some(local_name), *func).render();
+                let item = render_fn(self.ctx, Some(local_name), *func);
                 return Some(item);
             }
             ScopeDef::ModuleDef(EnumVariant(var)) => {
-                let item = EnumVariantRender::new(self.ctx, Some(local_name), *var, None).render();
+                let item = render_enum_variant(self.ctx, Some(local_name), *var, None);
                 return Some(item);
             }
             ScopeDef::MacroDef(mac) => {
-                let item = MacroRender::new(self.ctx, local_name, *mac).render();
+                let item = render_macro(self.ctx, local_name, *mac);
                 return item;
             }
 

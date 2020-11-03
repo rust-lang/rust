@@ -9,8 +9,16 @@ use crate::{
     render::RenderContext,
 };
 
+pub(crate) fn render_macro<'a>(
+    ctx: RenderContext<'a>,
+    name: String,
+    macro_: hir::MacroDef,
+) -> Option<CompletionItem> {
+    MacroRender::new(ctx, name, macro_).render()
+}
+
 #[derive(Debug)]
-pub(crate) struct MacroRender<'a> {
+struct MacroRender<'a> {
     ctx: RenderContext<'a>,
     name: String,
     macro_: hir::MacroDef,
@@ -20,11 +28,7 @@ pub(crate) struct MacroRender<'a> {
 }
 
 impl<'a> MacroRender<'a> {
-    pub(crate) fn new(
-        ctx: RenderContext<'a>,
-        name: String,
-        macro_: hir::MacroDef,
-    ) -> MacroRender<'a> {
+    fn new(ctx: RenderContext<'a>, name: String, macro_: hir::MacroDef) -> MacroRender<'a> {
         let docs = ctx.docs(macro_);
         let docs_str = docs.as_ref().map_or("", |s| s.as_str());
         let (bra, ket) = guess_macro_braces(&name, docs_str);
@@ -32,7 +36,7 @@ impl<'a> MacroRender<'a> {
         MacroRender { ctx, name, macro_, docs, bra, ket }
     }
 
-    pub(crate) fn render(&self) -> Option<CompletionItem> {
+    fn render(&self) -> Option<CompletionItem> {
         // FIXME: Currently proc-macro do not have ast-node,
         // such that it does not have source
         if self.macro_.is_proc_macro() {

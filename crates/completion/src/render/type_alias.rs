@@ -11,20 +11,27 @@ use crate::{
     render::RenderContext,
 };
 
+pub(crate) fn render_type_alias<'a>(
+    ctx: RenderContext<'a>,
+    type_alias: hir::TypeAlias,
+) -> Option<CompletionItem> {
+    TypeAliasRender::new(ctx, type_alias).render()
+}
+
 #[derive(Debug)]
-pub(crate) struct TypeAliasRender<'a> {
+struct TypeAliasRender<'a> {
     ctx: RenderContext<'a>,
     type_alias: hir::TypeAlias,
     ast_node: TypeAlias,
 }
 
 impl<'a> TypeAliasRender<'a> {
-    pub(crate) fn new(ctx: RenderContext<'a>, type_alias: hir::TypeAlias) -> TypeAliasRender<'a> {
+    fn new(ctx: RenderContext<'a>, type_alias: hir::TypeAlias) -> TypeAliasRender<'a> {
         let ast_node = type_alias.source(ctx.db()).value;
         TypeAliasRender { ctx, type_alias, ast_node }
     }
 
-    pub(crate) fn render(self) -> Option<CompletionItem> {
+    fn render(self) -> Option<CompletionItem> {
         let name = self.name()?;
         let detail = self.detail();
 

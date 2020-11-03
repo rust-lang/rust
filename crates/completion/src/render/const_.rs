@@ -11,20 +11,27 @@ use crate::{
     render::RenderContext,
 };
 
+pub(crate) fn render_const<'a>(
+    ctx: RenderContext<'a>,
+    const_: hir::Const,
+) -> Option<CompletionItem> {
+    ConstRender::new(ctx, const_).render()
+}
+
 #[derive(Debug)]
-pub(crate) struct ConstRender<'a> {
+struct ConstRender<'a> {
     ctx: RenderContext<'a>,
     const_: hir::Const,
     ast_node: Const,
 }
 
 impl<'a> ConstRender<'a> {
-    pub(crate) fn new(ctx: RenderContext<'a>, const_: hir::Const) -> ConstRender<'a> {
+    fn new(ctx: RenderContext<'a>, const_: hir::Const) -> ConstRender<'a> {
         let ast_node = const_.source(ctx.db()).value;
         ConstRender { ctx, const_, ast_node }
     }
 
-    pub(crate) fn render(self) -> Option<CompletionItem> {
+    fn render(self) -> Option<CompletionItem> {
         let name = self.name()?;
         let detail = self.detail();
 
