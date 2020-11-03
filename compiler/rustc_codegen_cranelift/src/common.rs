@@ -361,13 +361,11 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
     where
         T: TypeFoldable<'tcx> + Copy,
     {
-        if let Some(substs) = self.instance.substs_for_mir_body() {
-            self.tcx
-                .subst_and_normalize_erasing_regions(substs, ty::ParamEnv::reveal_all(), value)
-        } else {
-            self.tcx
-                .normalize_erasing_regions(ty::ParamEnv::reveal_all(), *value)
-        }
+        self.instance.subst_mir_and_normalize_erasing_regions(
+            self.tcx,
+            ty::ParamEnv::reveal_all(),
+            value
+        )
     }
 
     pub(crate) fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {

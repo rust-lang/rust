@@ -1,6 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::subst::InternalSubsts;
+use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
@@ -470,8 +470,31 @@ impl<'tcx> Instance<'tcx> {
     /// This function returns `Some(substs)` in the former case and `None` otherwise -- i.e., if
     /// this function returns `None`, then the MIR body does not require substitution during
     /// codegen.
-    pub fn substs_for_mir_body(&self) -> Option<SubstsRef<'tcx>> {
+    fn substs_for_mir_body(&self) -> Option<SubstsRef<'tcx>> {
         if self.def.has_polymorphic_mir_body() { Some(self.substs) } else { None }
+    }
+
+    pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: &T) -> T
+    where
+        T: TypeFoldable<'tcx> + Copy,
+    {
+        if let Some(substs) = self.substs_for_mir_body() { v.subst(tcx, substs) } else { *v }
+    }
+
+    pub fn subst_mir_and_normalize_erasing_regions<T>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        v: &T,
+    ) -> T
+    where
+        T: TypeFoldable<'tcx> + Clone,
+    {
+        if let Some(substs) = self.substs_for_mir_body() {
+            tcx.subst_and_normalize_erasing_regions(substs, param_env, v)
+        } else {
+            tcx.normalize_erasing_regions(param_env, v.clone())
+        }
     }
 
     /// Returns a new `Instance` where generic parameters in `instance.substs` are replaced by
