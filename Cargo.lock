@@ -1929,6 +1929,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "md-5"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5a279bb9607f9f53c22d496eade00d138d1bdcccd07d74650387cf94942a15"
+dependencies = [
+ "block-buffer 0.9.0",
+ "digest 0.9.0",
+ "opaque-debug 0.3.0",
+]
+
+[[package]]
 name = "mdbook"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2467,7 +2478,7 @@ checksum = "54be6e404f5317079812fc8f9f5279de376d8856929e21c184ecf6bbd692a11d"
 dependencies = [
  "maplit",
  "pest",
- "sha-1",
+ "sha-1 0.8.2",
 ]
 
 [[package]]
@@ -3281,14 +3292,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c267f15c3cfc82a8a441d2bf86bcccf299d1eb625822468e3d8ee6f7c5a1c89"
 dependencies = [
  "cfg-if 0.1.10",
- "md-5",
+ "md-5 0.8.0",
  "rustc-ap-rustc_arena",
  "rustc-ap-rustc_data_structures",
  "rustc-ap-rustc_index",
  "rustc-ap-rustc_macros",
  "rustc-ap-rustc_serialize",
  "scoped-tls",
- "sha-1",
+ "sha-1 0.8.2",
  "tracing",
  "unicode-width",
 ]
@@ -4138,14 +4149,15 @@ name = "rustc_span"
 version = "0.0.0"
 dependencies = [
  "cfg-if 0.1.10",
- "md-5",
+ "md-5 0.9.1",
  "rustc_arena",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
  "scoped-tls",
- "sha-1",
+ "sha-1 0.9.1",
+ "sha2",
  "tracing",
  "unicode-width",
 ]
@@ -4508,6 +4520,19 @@ dependencies = [
  "digest 0.8.1",
  "fake-simd",
  "opaque-debug 0.2.3",
+]
+
+[[package]]
+name = "sha-1"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "170a36ea86c864a3f16dd2687712dd6646f7019f301e57537c7f4dc9f5916770"
+dependencies = [
+ "block-buffer 0.9.0",
+ "cfg-if 0.1.10",
+ "cpuid-bool",
+ "digest 0.9.0",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
