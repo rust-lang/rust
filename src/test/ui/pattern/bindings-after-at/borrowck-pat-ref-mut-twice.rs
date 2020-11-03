@@ -84,14 +84,14 @@ fn main() {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
             //~^ ERROR cannot borrow value as mutable more than once at a time
             //~| ERROR cannot borrow value as mutable more than once at a time
-            //~| ERROR cannot borrow value as mutable more than once at a time
-            //~| ERROR cannot borrow value as mutable more than once at a time
             *b = U;
         }
     }
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
             //~^ ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
             //~| ERROR cannot borrow value as mutable more than once at a time
             *a = Err(U);
 
@@ -102,6 +102,8 @@ fn main() {
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {
             //~^ ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
+            //~| ERROR cannot borrow value as mutable more than once at a time
             //~| ERROR cannot borrow value as mutable more than once at a time
             drop(a);
         }

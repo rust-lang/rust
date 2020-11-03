@@ -140,7 +140,7 @@ LL |         ref mut a @ Some([b, mut c]) => {}
    |         value borrowed, by `a`, here
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:67:9
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:66:9
    |
 LL |         ref a @ Some(b) => {}
    |         -----^^^^^^^^-^
@@ -149,7 +149,7 @@ LL |         ref a @ Some(b) => {}
    |         value borrowed, by `a`, here
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:73:9
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:71:9
    |
 LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |         -----^^^^^^^^^^^^^^^^^-----^^^^^^^^^^-^^
@@ -159,7 +159,7 @@ LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |         value borrowed, by `a`, here
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:73:23
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:71:23
    |
 LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |                       -----^^^-----
@@ -168,7 +168,7 @@ LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |                       value borrowed, by `b`, here
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:73:38
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:71:38
    |
 LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |                                      -----^^^-
@@ -177,7 +177,7 @@ LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |                                      value borrowed, by `d`, here
 
 error: cannot move out of value because it is borrowed
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:82:9
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:80:9
    |
 LL |         ref mut a @ Some([b, mut c]) => {}
    |         ---------^^^^^^^^^-^^-----^^
@@ -286,38 +286,8 @@ LL |     let ref mut a @ [b, mut c] = [u(), u()];
    |
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
-error[E0382]: borrow of partially moved value
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:61:9
-   |
-LL |         ref mut a @ Some([b, mut c]) => {}
-   |         ^^^^^^^^^^^^^^^^^^^^^-----^^
-   |         |                    |
-   |         |                    value partially moved here
-   |         value borrowed here after partial move
-   |
-   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving the value
-   |
-LL |         ref mut a @ Some([b, ref mut c]) => {}
-   |                              ^^^
-
-error[E0382]: borrow of partially moved value
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:67:9
-   |
-LL |         ref a @ Some(b) => {}
-   |         ^^^^^^^^^^^^^-^
-   |         |            |
-   |         |            value partially moved here
-   |         value borrowed here after partial move
-   |
-   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving the value
-   |
-LL |         ref a @ Some(ref b) => {}
-   |                      ^^^
-
 error[E0382]: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:73:23
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:71:23
    |
 LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |                       ^^^^^^^^-----
@@ -332,7 +302,7 @@ LL |         ref a @ Some((ref b @ ref mut c, ref d @ e)) => {}
    |                               ^^^
 
 error[E0382]: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:73:38
+  --> $DIR/borrowck-pat-by-move-and-ref.rs:71:38
    |
 LL |         ref a @ Some((ref b @ mut c, ref d @ e)) => {}
    |                                      ^^^^^^^^-
@@ -345,21 +315,6 @@ help: borrow this field in the pattern to avoid moving the value
    |
 LL |         ref a @ Some((ref b @ mut c, ref d @ ref e)) => {}
    |                                              ^^^
-
-error[E0382]: borrow of partially moved value
-  --> $DIR/borrowck-pat-by-move-and-ref.rs:82:9
-   |
-LL |         ref mut a @ Some([b, mut c]) => {}
-   |         ^^^^^^^^^^^^^^^^^^^^^-----^^
-   |         |                    |
-   |         |                    value partially moved here
-   |         value borrowed here after partial move
-   |
-   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving the value
-   |
-LL |         ref mut a @ Some([b, ref mut c]) => {}
-   |                              ^^^
 
 error[E0382]: borrow of moved value
   --> $DIR/borrowck-pat-by-move-and-ref.rs:13:11
@@ -404,6 +359,6 @@ LL |     fn f3(ref mut a @ [b, mut c]: [U; 2]) {}
    |
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
-error: aborting due to 39 previous errors
+error: aborting due to 36 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

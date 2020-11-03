@@ -155,7 +155,7 @@ LL |         mut a @ Some([ref b, ref mut c]) => {}
    |         move occurs because `a` has type `Option<[U; 2]>` which does not implement the `Copy` trait
 
 error: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:62:9
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:63:9
    |
 LL |         a @ Some(ref b) => {}
    |         -^^^^^^^^-----^
@@ -165,7 +165,7 @@ LL |         a @ Some(ref b) => {}
    |         move occurs because `a` has type `Option<U>` which does not implement the `Copy` trait
 
 error: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:67:9
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:69:9
    |
 LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |         -^^^^^^^^^^^^^^^^^---------^^^^^^-----^^
@@ -176,7 +176,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |         move occurs because `a` has type `Option<(U, U)>` which does not implement the `Copy` trait
 
 error: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:67:19
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:69:19
    |
 LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                   -----^^^---------
@@ -186,7 +186,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                   move occurs because `b` has type `U` which does not implement the `Copy` trait
 
 error: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:67:38
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:69:38
    |
 LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                                      -^^^-----
@@ -196,7 +196,7 @@ LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
    |                                      move occurs because `d` has type `U` which does not implement the `Copy` trait
 
 error: borrow of moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:75:9
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:77:9
    |
 LL |         mut a @ Some([ref b, ref mut c]) => {}
    |         -----^^^^^^^^^-----^^---------^^
@@ -280,35 +280,60 @@ LL |     let a @ (mut b @ ref mut c, d @ ref e) = (u(), u());
    |
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
-error[E0382]: use of partially moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:49:9
+error[E0382]: use of moved value
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:49:38
    |
+LL |     match Some((U, U)) {
+   |           ------------ move occurs because value has type `Option<(U, U)>`, which does not implement the `Copy` trait
 LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^^
+   |         -----------------------------^^^^^^^^^--
    |         |                            |
-   |         |                            value partially moved here
-   |         value used here after partial move
-   |
-   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving the value
-   |
-LL |         a @ Some((mut b @ ref mut c, ref d @ ref e)) => {}
-   |                                      ^^^
+   |         |                            value used here after move
+   |         value moved here
 
-error[E0382]: use of partially moved value
-  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:67:9
+error[E0382]: borrow of moved value
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:57:30
    |
+LL |     match Some([U, U]) {
+   |           ------------ move occurs because value has type `Option<[U; 2]>`, which does not implement the `Copy` trait
+LL |         mut a @ Some([ref b, ref mut c]) => {}
+   |         ---------------------^^^^^^^^^--
+   |         |                    |
+   |         |                    value borrowed here after move
+   |         value moved here
+
+error[E0382]: borrow of moved value
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:63:18
+   |
+LL |     match Some(u()) {
+   |           --------- move occurs because value has type `Option<U>`, which does not implement the `Copy` trait
+LL |         a @ Some(ref b) => {}
+   |         ---------^^^^^-
+   |         |        |
+   |         |        value borrowed here after move
+   |         value moved here
+
+error[E0382]: use of moved value
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:69:38
+   |
+LL |     match Some((u(), u())) {
+   |           ---------------- move occurs because value has type `Option<(U, U)>`, which does not implement the `Copy` trait
 LL |         a @ Some((mut b @ ref mut c, d @ ref e)) => {}
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^^
+   |         -----------------------------^^^^^^^^^--
    |         |                            |
-   |         |                            value partially moved here
-   |         value used here after partial move
+   |         |                            value used here after move
+   |         value moved here
+
+error[E0382]: borrow of moved value
+  --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:77:30
    |
-   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving the value
-   |
-LL |         a @ Some((mut b @ ref mut c, ref d @ ref e)) => {}
-   |                                      ^^^
+LL |     match Some([u(), u()]) {
+   |           ---------------- move occurs because value has type `Option<[U; 2]>`, which does not implement the `Copy` trait
+LL |         mut a @ Some([ref b, ref mut c]) => {}
+   |         ---------------------^^^^^^^^^--
+   |         |                    |
+   |         |                    value borrowed here after move
+   |         value moved here
 
 error[E0382]: use of partially moved value
   --> $DIR/borrowck-pat-by-move-and-ref-inverse.rs:16:11
@@ -321,6 +346,6 @@ LL |     fn f2(mut a @ (b @ ref c, mut d @ ref e): (U, U)) {}
    |
    = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
-error: aborting due to 30 previous errors
+error: aborting due to 33 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

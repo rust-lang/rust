@@ -60,13 +60,11 @@ fn main() {
     match Some([U, U]) {
         ref mut a @ Some([b, mut c]) => {}
         //~^ ERROR cannot move out of value because it is borrowed
-        //~| ERROR borrow of partially moved value
         None => {}
     }
     match Some(u()) {
         ref a @ Some(b) => {}
         //~^ ERROR cannot move out of value because it is borrowed
-        //~| ERROR borrow of partially moved value
         None => {}
     }
     match Some((u(), u())) {
@@ -81,7 +79,6 @@ fn main() {
     match Some([u(), u()]) {
         ref mut a @ Some([b, mut c]) => {}
         //~^ ERROR cannot move out of value because it is borrowed
-        //~| ERROR borrow of partially moved value
         None => {}
     }
 }

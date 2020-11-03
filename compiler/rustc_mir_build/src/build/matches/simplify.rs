@@ -45,6 +45,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
         debug!("simplify_candidate(candidate={:?})", candidate);
+
+        // exisiting_bindings and new_bindings exists to keep the semantics in order
+        // reversing the binding order for bindings after `@` change binding order in places
+        // it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`
+        //
+        // To avoid this, the binding occurs in the following manner:
+        // * the bindings for one iteration of the following loop occurs in order (i.e. left to
+        // right)
+        // * the bindings from the previous iteration of the loop is prepended to the bindings from
+        // the current iteration (in the implementation this is done by mem::swap and extend)
+        // * after all iterations, these new bindings are then appended to the bindings that were
+        // prexisting (i.e. `candidate.binding` when the function was called).
+        //
+        // example:
+        // candidate.bindings = [1, 2, 3]
+        // binding in iter 1: [4, 5]
+        // binding in iter 2: [6, 7]
+        //
+        // final binding: [1, 2, 3, 6, 7, 4, 5]
+        let mut exisiting_bindings = mem::take(&mut candidate.bindings);
         let mut new_bindings = Vec::new();
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
@@ -52,13 +72,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
                 *match_pairs
             {
+                exisiting_bindings.extend_from_slice(&new_bindings);
+                mem::swap(&mut candidate.bindings, &mut exisiting_bindings);
                 candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
                 return true;
             }
 
             let mut changed = false;
             for match_pair in match_pairs {
-                match self.simplify_match_pair(match_pair, candidate, &mut new_bindings) {
+                match self.simplify_match_pair(match_pair, candidate) {
                     Ok(()) => {
                         changed = true;
                     }
@@ -80,11 +102,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             //     let z = x.copy_field;
             //     let y = x;
             // }
-            new_bindings.extend_from_slice(&candidate.bindings);
+            candidate.bindings.extend_from_slice(&new_bindings);
             mem::swap(&mut candidate.bindings, &mut new_bindings);
-            new_bindings.clear();
+            candidate.bindings.clear();
 
             if !changed {
+                exisiting_bindings.extend_from_slice(&new_bindings);
+                mem::swap(&mut candidate.bindings, &mut exisiting_bindings);
                 // Move or-patterns to the end, because they can result in us
                 // creating additional candidates, so we want to test them as
                 // late as possible.
@@ -124,7 +148,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pair: MatchPair<'pat, 'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
-        bindings: &mut Vec<Binding<'tcx>>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.hir.tcx();
         match *match_pair.pattern.kind {
@@ -152,7 +175,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Binding { name, mutability, mode, var, ty, ref subpattern, is_primary: _ } => {
-                bindings.push(Binding {
+                candidate.bindings.push(Binding {
                     name,
                     mutability,
                     span: match_pair.pattern.span,
