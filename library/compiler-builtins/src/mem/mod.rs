@@ -11,8 +11,32 @@ use core::ops::{BitOr, Shl};
 
 // memcpy/memmove/memset have optimized implementations on some architectures
 #[cfg_attr(all(feature = "asm", target_arch = "x86_64"), path = "x86_64.rs")]
-mod memcpy;
-pub use self::memcpy::*;
+mod impls;
+
+#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
+pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    impls::copy_forward(dest, src, n);
+    dest
+}
+
+#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
+pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    let delta = (dest as usize).wrapping_sub(src as usize);
+    if delta >= n {
+        // We can copy forwards because either dest is far enough ahead of src,
+        // or src is ahead of dest (and delta overflowed).
+        impls::copy_forward(dest, src, n);
+    } else {
+        impls::copy_backward(dest, src, n);
+    }
+    dest
+}
+
+#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
+pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) -> *mut u8 {
+    impls::set_bytes(s, c as u8, n);
+    s
+}
 
 #[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
 pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
