@@ -272,6 +272,28 @@ impl SelfProfilerRef {
         })
     }
 
+    #[inline(always)]
+    pub fn generic_activity_with_args(
+        &self,
+        event_label: &'static str,
+        event_args: &[String],
+    ) -> TimingGuard<'_> {
+        self.exec(EventFilter::GENERIC_ACTIVITIES, |profiler| {
+            let builder = EventIdBuilder::new(&profiler.profiler);
+            let event_label = profiler.get_or_alloc_cached_string(event_label);
+            let event_id = if profiler.event_filter_mask.contains(EventFilter::FUNCTION_ARGS) {
+                let event_args: Vec<_> = event_args
+                    .iter()
+                    .map(|s| profiler.get_or_alloc_cached_string(&s[..]))
+                    .collect();
+                builder.from_label_and_args(event_label, &event_args)
+            } else {
+                builder.from_label(event_label)
+            };
+            TimingGuard::start(profiler, profiler.generic_activity_event_kind, event_id)
+        })
+    }
+
     /// Start profiling a query provider. Profiling continues until the
     /// TimingGuard returned from this call is dropped.
     #[inline(always)]
