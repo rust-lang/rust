@@ -358,6 +358,71 @@ impl ast::Literal {
             _ => unreachable!(),
         }
     }
+
+    // FIXME: should probably introduce string token type?
+    // https://github.com/rust-analyzer/rust-analyzer/issues/6308
+    pub fn int_value(&self) -> Option<(Radix, u128)> {
+        let suffix = match self.kind() {
+            LiteralKind::IntNumber { suffix } => suffix,
+            _ => return None,
+        };
+
+        let token = self.token();
+        let mut text = token.text().as_str();
+        text = &text[..text.len() - suffix.map_or(0, |it| it.len())];
+
+        let buf;
+        if text.contains("_") {
+            buf = text.replace('_', "");
+            text = buf.as_str();
+        };
+
+        let radix = Radix::identify(text)?;
+        let digits = &text[radix.prefix_len()..];
+        let value = u128::from_str_radix(digits, radix as u32).ok()?;
+        Some((radix, value))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum Radix {
+    Binary = 2,
+    Octal = 8,
+    Decimal = 10,
+    Hexadecimal = 16,
+}
+
+impl Radix {
+    pub const ALL: &'static [Radix] =
+        &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
+
+    fn identify(literal_text: &str) -> Option<Self> {
+        // We cannot express a literal in anything other than decimal in under 3 characters, so we return here if possible.
+        if literal_text.len() < 3 && literal_text.chars().all(|c| c.is_digit(10)) {
+            return Some(Self::Decimal);
+        }
+
+        let res = match &literal_text[..2] {
+            "0b" => Radix::Binary,
+            "0o" => Radix::Octal,
+            "0x" => Radix::Hexadecimal,
+            _ => Radix::Decimal,
+        };
+
+        // Checks that all characters after the base prefix are all valid digits for that base.
+        if literal_text[res.prefix_len()..].chars().all(|c| c.is_digit(res as u32)) {
+            Some(res)
+        } else {
+            None
+        }
+    }
+
+    const fn prefix_len(&self) -> usize {
+        match self {
+            Self::Decimal => 0,
+            _ => 2,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
