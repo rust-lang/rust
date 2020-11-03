@@ -88,12 +88,64 @@ declare_lint! {
     "unused result of an expression in a statement"
 }
 
-declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
+declare_lint! {
+    /// The `unused_must_bind` lint detects attempts to "bind" to `_` value of a type marked with
+    /// `#[must_bind]`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(unused_must_bind)]
+    ///
+    /// #[must_use]
+    /// #[must_bind]
+    /// struct SemaphoreGuard;
+    ///
+    /// fn acquire() -> SemaphoreGuard {
+    ///     SemaphoreGuard
+    /// }
+    ///
+    /// fn main() {
+    ///     let _ = acquire();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The `#[must_bind]` attribute is an indicator that it is a mistake to
+    /// let the value be dropped imediately after acquiring it. See [the reference] for more details.
+    ///
+    /// [the reference]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_bind-attribute
+    pub UNUSED_MUST_BIND,
+    Warn,
+    "Bogus `_` binding of a type flagged as `#[must_bind]`. Use something like `_guard`.",
+    report_in_external_macro
+}
+
+declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS, UNUSED_MUST_BIND]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
-        let expr = match s.kind {
-            hir::StmtKind::Semi(ref expr) => &**expr,
+        #[derive(Clone, Copy)]
+        enum WhatAttrToCheck {
+            MustUse,
+            MustBind,
+        }
+        let (expr, attr_to_check) = match s.kind {
+            hir::StmtKind::Semi(ref expr) => (&**expr, WhatAttrToCheck::MustUse),
+            hir::StmtKind::Local(ref local) => {
+                match local.pat.kind {
+                    hir::PatKind::Wild => (),
+                    _ => return,
+                }
+                if let Some(ref init) = local.init {
+                    (&**init, WhatAttrToCheck::MustBind)
+                } else {
+                    return;
+                }
+            }
             _ => return,
         };
 
@@ -102,7 +154,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         let ty = cx.typeck_results().expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
+        let type_permits_lack_of_use =
+            check_must_use_ty(cx, ty, &expr, s.span, "", "", 1, attr_to_check);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -124,7 +177,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             _ => None,
         };
         if let Some(def_id) = maybe_def_id {
-            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
+            fn_warned =
+                check_must_use_def(cx, def_id, s.span, "return value of ", "", attr_to_check);
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
@@ -158,15 +212,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             _ => None,
         };
 
-        if let Some(must_use_op) = must_use_op {
-            cx.struct_span_lint(UNUSED_MUST_USE, expr.span, |lint| {
-                lint.build(&format!("unused {} that must be used", must_use_op)).emit()
-            });
-            op_warned = true;
-        }
+        match attr_to_check {
+            WhatAttrToCheck::MustUse => {
+                if let Some(must_use_op) = must_use_op {
+                    cx.struct_span_lint(UNUSED_MUST_USE, expr.span, |lint| {
+                        lint.build(&format!("unused {} that must be used", must_use_op)).emit()
+                    });
+                    op_warned = true;
+                }
 
-        if !(type_permits_lack_of_use || fn_warned || op_warned) {
-            cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| lint.build("unused result").emit());
+                if !(type_permits_lack_of_use || fn_warned || op_warned) {
+                    cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| {
+                        lint.build("unused result").emit()
+                    });
+                }
+            }
+            _ => (),
         }
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
@@ -178,6 +239,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_pre: &str,
             descr_post: &str,
             plural_len: usize,
+            attr_to_check: WhatAttrToCheck,
         ) -> bool {
             if ty.is_unit()
                 || cx.tcx.is_ty_uninhabited_from(
@@ -195,9 +257,20 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 ty::Adt(..) if ty.is_box() => {
                     let boxed_ty = ty.boxed_ty();
                     let descr_pre = &format!("{}boxed ", descr_pre);
-                    check_must_use_ty(cx, boxed_ty, expr, span, descr_pre, descr_post, plural_len)
+                    check_must_use_ty(
+                        cx,
+                        boxed_ty,
+                        expr,
+                        span,
+                        descr_pre,
+                        descr_post,
+                        plural_len,
+                        attr_to_check,
+                    )
                 }
-                ty::Adt(def, _) => check_must_use_def(cx, def.did, span, descr_pre, descr_post),
+                ty::Adt(def, _) => {
+                    check_must_use_def(cx, def.did, span, descr_pre, descr_post, attr_to_check)
+                }
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
                     for &(predicate, _) in cx.tcx.explicit_item_bounds(def) {
@@ -208,7 +281,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             let def_id = poly_trait_predicate.trait_ref.def_id;
                             let descr_pre =
                                 &format!("{}implementer{} of ", descr_pre, plural_suffix,);
-                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
+                            if check_must_use_def(
+                                cx,
+                                def_id,
+                                span,
+                                descr_pre,
+                                descr_post,
+                                attr_to_check,
+                            ) {
                                 has_emitted = true;
                                 break;
                             }
@@ -223,7 +303,14 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             let def_id = trait_ref.def_id;
                             let descr_post =
                                 &format!(" trait object{}{}", plural_suffix, descr_post,);
-                            if check_must_use_def(cx, def_id, span, descr_pre, descr_post) {
+                            if check_must_use_def(
+                                cx,
+                                def_id,
+                                span,
+                                descr_pre,
+                                descr_post,
+                                attr_to_check,
+                            ) {
                                 has_emitted = true;
                                 break;
                             }
@@ -242,8 +329,16 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
                         let descr_post = &format!(" in tuple element {}", i);
                         let span = *spans.get(i).unwrap_or(&span);
-                        if check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, plural_len)
-                        {
+                        if check_must_use_ty(
+                            cx,
+                            ty,
+                            expr,
+                            span,
+                            descr_pre,
+                            descr_post,
+                            plural_len,
+                            attr_to_check,
+                        ) {
                             has_emitted = true;
                         }
                     }
@@ -255,31 +350,46 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.
                     Some(n) => {
                         let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix,);
-                        check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, n as usize + 1)
+                        check_must_use_ty(
+                            cx,
+                            ty,
+                            expr,
+                            span,
+                            descr_pre,
+                            descr_post,
+                            n as usize + 1,
+                            attr_to_check,
+                        )
                     }
                 },
-                ty::Closure(..) => {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        let mut err = lint.build(&format!(
-                            "unused {}closure{}{} that must be used",
-                            descr_pre, plural_suffix, descr_post,
-                        ));
-                        err.note("closures are lazy and do nothing unless called");
-                        err.emit();
-                    });
-                    true
-                }
-                ty::Generator(..) => {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        let mut err = lint.build(&format!(
-                            "unused {}generator{}{} that must be used",
-                            descr_pre, plural_suffix, descr_post,
-                        ));
-                        err.note("generators are lazy and do nothing unless resumed");
-                        err.emit();
-                    });
-                    true
-                }
+                ty::Closure(..) => match attr_to_check {
+                    WhatAttrToCheck::MustUse => {
+                        cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                            let mut err = lint.build(&format!(
+                                "unused {}closure{}{} that must be used",
+                                descr_pre, plural_suffix, descr_post,
+                            ));
+                            err.note("closures are lazy and do nothing unless called");
+                            err.emit();
+                        });
+                        true
+                    }
+                    _ => false,
+                },
+                ty::Generator(..) => match attr_to_check {
+                    WhatAttrToCheck::MustUse => {
+                        cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                            let mut err = lint.build(&format!(
+                                "unused {}generator{}{} that must be used",
+                                descr_pre, plural_suffix, descr_post,
+                            ));
+                            err.note("generators are lazy and do nothing unless resumed");
+                            err.emit();
+                        });
+                        true
+                    }
+                    _ => false,
+                },
                 _ => false,
             }
         }
@@ -295,16 +405,33 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             span: Span,
             descr_pre_path: &str,
             descr_post_path: &str,
+            attr_to_check: WhatAttrToCheck,
         ) -> bool {
+            let attr_name = match attr_to_check {
+                WhatAttrToCheck::MustUse => sym::must_use,
+                WhatAttrToCheck::MustBind => sym::must_bind,
+            };
             for attr in cx.tcx.get_attrs(def_id).iter() {
-                if cx.sess().check_name(attr, sym::must_use) {
-                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
-                        let msg = format!(
-                            "unused {}`{}`{} that must be used",
-                            descr_pre_path,
-                            cx.tcx.def_path_str(def_id),
-                            descr_post_path
-                        );
+                if cx.sess().check_name(attr, attr_name) {
+                    let lint_type = match attr_to_check {
+                        WhatAttrToCheck::MustUse => UNUSED_MUST_USE,
+                        WhatAttrToCheck::MustBind => UNUSED_MUST_BIND,
+                    };
+                    cx.struct_span_lint(lint_type, span, |lint| {
+                        let msg = match attr_to_check {
+                            WhatAttrToCheck::MustUse => format!(
+                                "unused {}`{}`{} that must be used",
+                                descr_pre_path,
+                                cx.tcx.def_path_str(def_id),
+                                descr_post_path
+                            ),
+                            WhatAttrToCheck::MustBind => format!(
+                                "Bogus `let _ =` binding of {}`{}`{}.  Use something like `let _guard =`.",
+                                descr_pre_path,
+                                cx.tcx.def_path_str(def_id),
+                                descr_post_path
+                            ),
+                        };
                         let mut err = lint.build(&msg);
                         // check for #[must_use = "..."]
                         if let Some(note) = attr.value_str() {

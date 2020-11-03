@@ -702,6 +702,7 @@ symbols! {
         mul,
         mul_assign,
         mul_with_overflow,
+        must_bind,
         must_use,
         mut_ptr,
         mut_slice_ptr,
