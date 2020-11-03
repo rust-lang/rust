@@ -784,7 +784,7 @@ Language
 - [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
   that you can create an enum that has the exact layout and ABI of the type
   it contains.
-- [It is no longer disallowed to apply an attribute procedural macro to a module.][64273]
+- [You can now use outer attribute procedural macros on inline modules.][64273]
 - [There are some *syntax-only* changes:][67131]
    - `default` is syntactically allowed before items in `trait` definitions.
    - Items in `impl`s (i.e. `const`s, `type`s, and `fn`s) may syntactically
