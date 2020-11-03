@@ -33,9 +33,9 @@ use crate::{
 };
 
 mod allow {
-    pub const NON_SNAKE_CASE: &str = "non_snake_case";
-    pub const NON_UPPER_CASE_GLOBAL: &str = "non_upper_case_globals";
-    pub const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
+    pub(super) const NON_SNAKE_CASE: &str = "non_snake_case";
+    pub(super) const NON_UPPER_CASE_GLOBAL: &str = "non_upper_case_globals";
+    pub(super) const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
 }
 
 pub(super) struct DeclValidator<'a, 'b: 'a> {
@@ -342,10 +342,10 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                 suggested_text: new_name,
                 expected_case: CaseType::UpperCamelCase,
             };
-            if !non_camel_case_allowed {
-                Some(replacement)
-            } else {
+            if non_camel_case_allowed {
                 None
+            } else {
+                Some(replacement)
             }
         } else {
             None
