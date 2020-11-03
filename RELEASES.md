@@ -846,6 +846,7 @@ Compatibility Notes
 [67935]: https://github.com/rust-lang/rust/pull/67935/
 [68339]: https://github.com/rust-lang/rust/pull/68339/
 [68122]: https://github.com/rust-lang/rust/pull/68122/
+[78690]: https://github.com/rust-lang/rust/pull/78690/
 [67712]: https://github.com/rust-lang/rust/pull/67712/
 [67887]: https://github.com/rust-lang/rust/pull/67887/
 [67131]: https://github.com/rust-lang/rust/pull/67131/
