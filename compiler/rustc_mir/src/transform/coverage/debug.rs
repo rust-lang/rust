@@ -127,7 +127,7 @@ pub const NESTED_INDENT: &str = "    ";
 
 const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 
-pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
+pub(super) fn debug_options<'a>() -> &'a DebugOptions {
     static DEBUG_OPTIONS: SyncOnceCell<DebugOptions> = SyncOnceCell::new();
 
     &DEBUG_OPTIONS.get_or_init(|| DebugOptions::from_env())
@@ -136,7 +136,7 @@ pub(crate) fn debug_options<'a>() -> &'a DebugOptions {
 /// Parses and maintains coverage-specific debug options captured from the environment variable
 /// "RUSTC_COVERAGE_DEBUG_OPTIONS", if set.
 #[derive(Debug, Clone)]
-pub(crate) struct DebugOptions {
+pub(super) struct DebugOptions {
     pub allow_unused_expressions: bool,
     counter_format: ExpressionFormat,
 }
@@ -250,7 +250,7 @@ impl Default for ExpressionFormat {
 ///
 /// `DebugCounters` supports a recursive rendering of `Expression` counters, so they can be
 /// presented as nested expressions such as `(bcb3 - (bcb0 + bcb1))`.
-pub(crate) struct DebugCounters {
+pub(super) struct DebugCounters {
     some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
 }
 
@@ -386,7 +386,7 @@ impl DebugCounter {
 
 /// If enabled, this data structure captures additional debugging information used when generating
 /// a Graphviz (.dot file) representation of the `CoverageGraph`, for debugging purposes.
-pub(crate) struct GraphvizData {
+pub(super) struct GraphvizData {
     some_bcb_to_coverage_spans_with_counters:
         Option<FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, CoverageKind)>>>,
     some_bcb_to_dependency_counters: Option<FxHashMap<BasicCoverageBlock, Vec<CoverageKind>>>,
@@ -496,7 +496,7 @@ impl GraphvizData {
 /// directly or indirectly, to compute the coverage counts for all `CoverageSpan`s, and any that are
 /// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
 /// and/or a `CoverageGraph` graphviz output).
-pub(crate) struct UsedExpressions {
+pub(super) struct UsedExpressions {
     some_used_expression_operands:
         Option<FxHashMap<ExpressionOperandId, Vec<InjectedExpressionId>>>,
     some_unused_expressions:
@@ -626,7 +626,7 @@ impl UsedExpressions {
 }
 
 /// Generates the MIR pass `CoverageSpan`-specific spanview dump file.
-pub(crate) fn dump_coverage_spanview(
+pub(super) fn dump_coverage_spanview(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
@@ -666,7 +666,7 @@ fn span_viewables(
 }
 
 /// Generates the MIR pass coverage-specific graphviz dump file.
-pub(crate) fn dump_coverage_graphviz(
+pub(super) fn dump_coverage_graphviz(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     pass_name: &str,
@@ -815,7 +815,7 @@ fn bcb_to_string_sections(
 
 /// Returns a simple string representation of a `TerminatorKind` variant, indenpendent of any
 /// values it might hold.
-pub(crate) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
+pub(super) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
     match kind {
         TerminatorKind::Goto { .. } => "Goto",
         TerminatorKind::SwitchInt { .. } => "SwitchInt",
