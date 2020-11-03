@@ -545,7 +545,64 @@
                             "include": "#lvariables"
                         },
                         {
+                            "include": "#constants"
+                        },
+                        {
+                            "include": "#gtypes"
+                        },
+                        {
+                            "include": "#functions"
+                        },
+                        {
+                            "include": "#lifetimes"
+                        },
+                        {
+                            "include": "#macros"
+                        },
+                        {
                             "include": "#namespaces"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#strings"
+                        },
+                        {
+                            "include": "#types"
+                        },
+                        {
+                            "include": "#variables"
+                        }
+                    ]
+                },
+                {
+                    "comment": "function/method calls with turbofish",
+                    "name": "meta.function.call.rust",
+                    "begin": "((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)(?=::<.*>\\()",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "entity.name.function.rust"
+                        }
+                    },
+                    "end": "\\)",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.brackets.round.rust"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#block-comments"
+                        },
+                        {
+                            "include": "#comments"
+                        },
+                        {
+                            "include": "#keywords"
+                        },
+                        {
+                            "include": "#lvariables"
                         },
                         {
                             "include": "#constants"
@@ -561,6 +618,9 @@
                         },
                         {
                             "include": "#macros"
+                        },
+                        {
+                            "include": "#namespaces"
                         },
                         {
                             "include": "#punctuation"
