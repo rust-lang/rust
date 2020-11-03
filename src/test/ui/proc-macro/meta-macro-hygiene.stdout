@@ -40,7 +40,7 @@ macro_rules! produce_it
     }
 }
 
-fn main /* 0#0 */() { }
+fn main /* 0#0 */() { ; }
 
 /*
 Expansions:
