@@ -14,9 +14,7 @@ use crate::versions::{PkgType, Versions};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 static HOSTS: &[&str] = &[
     "aarch64-apple-darwin",
@@ -200,29 +198,10 @@ struct Builder {
     output: PathBuf,
     s3_address: String,
     date: String,
-
-    legacy: bool,
-    legacy_gpg_passphrase: String,
 }
 
 fn main() {
-    // Up until Rust 1.48 the release process relied on build-manifest to create the SHA256
-    // checksums of released files and to sign the tarballs. That was moved over to promote-release
-    // in time for the branching of Rust 1.48, but the old release process still had to work the
-    // old way.
-    //
-    // When running build-manifest through the old ./x.py dist hash-and-sign the environment
-    // variable will be set, enabling the legacy behavior of generating the .sha256 files and
-    // signing the tarballs.
-    //
-    // Once the old release process is fully decommissioned, the environment variable, all the
-    // related code in this tool and ./x.py dist hash-and-sign can be removed.
-    let legacy = env::var_os("BUILD_MANIFEST_LEGACY").is_some();
-
-    let num_threads = if legacy {
-        // Avoid overloading the old server in legacy mode.
-        1
-    } else if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
+    let num_threads = if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
         num.to_str().unwrap().parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
     } else {
         num_cpus::get()
@@ -239,13 +218,6 @@ fn main() {
     let s3_address = args.next().unwrap();
     let channel = args.next().unwrap();
 
-    // Do not ask for a passphrase while manually testing
-    let mut passphrase = String::new();
-    if legacy {
-        // `x.py` passes the passphrase via stdin.
-        t!(io::stdin().read_to_string(&mut passphrase));
-    }
-
     Builder {
         versions: Versions::new(&channel, &input).unwrap(),
         checksums: t!(Checksums::new()),
@@ -255,9 +227,6 @@ fn main() {
         output,
         s3_address,
         date,
-
-        legacy,
-        legacy_gpg_passphrase: passphrase,
     }
     .build();
 }
@@ -265,9 +234,6 @@ fn main() {
 impl Builder {
     fn build(&mut self) {
         self.check_toolstate();
-        if self.legacy {
-            self.digest_and_sign();
-        }
         let manifest = self.build_manifest();
 
         let channel = self.versions.channel().to_string();
@@ -307,15 +273,6 @@ impl Builder {
         if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
             println!("Miri tests are not passing, removing component");
             self.versions.disable_version(&PkgType::Miri);
-        }
-    }
-
-    /// Hash all files, compute their signatures, and collect the hashes in `self.digests`.
-    fn digest_and_sign(&mut self) {
-        for file in t!(self.input.read_dir()).map(|e| t!(e).path()) {
-            file.file_name().unwrap().to_str().unwrap();
-            self.hash(&file);
-            self.sign(&file);
         }
     }
 
@@ -584,51 +541,6 @@ impl Builder {
         format!("{}/{}/{}", self.s3_address, self.date, file_name)
     }
 
-    fn hash(&self, path: &Path) -> String {
-        let sha = t!(Command::new("shasum")
-            .arg("-a")
-            .arg("256")
-            .arg(path.file_name().unwrap())
-            .current_dir(path.parent().unwrap())
-            .output());
-        assert!(sha.status.success());
-
-        let filename = path.file_name().unwrap().to_str().unwrap();
-        let sha256 = self.output.join(format!("{}.sha256", filename));
-        t!(fs::write(&sha256, &sha.stdout));
-
-        let stdout = String::from_utf8_lossy(&sha.stdout);
-        stdout.split_whitespace().next().unwrap().to_string()
-    }
-
-    fn sign(&self, path: &Path) {
-        if !self.legacy {
-            return;
-        }
-
-        let filename = path.file_name().unwrap().to_str().unwrap();
-        let asc = self.output.join(format!("{}.asc", filename));
-        println!("signing: {:?}", path);
-        let mut cmd = Command::new("gpg");
-        cmd.arg("--pinentry-mode=loopback")
-            .arg("--no-tty")
-            .arg("--yes")
-            .arg("--batch")
-            .arg("--passphrase-fd")
-            .arg("0")
-            .arg("--personal-digest-preferences")
-            .arg("SHA512")
-            .arg("--armor")
-            .arg("--output")
-            .arg(&asc)
-            .arg("--detach-sign")
-            .arg(path)
-            .stdin(Stdio::piped());
-        let mut child = t!(cmd.spawn());
-        t!(child.stdin.take().unwrap().write_all(self.legacy_gpg_passphrase.as_bytes()));
-        assert!(t!(child.wait()).success());
-    }
-
     fn write_channel_files(&mut self, channel_name: &str, manifest: &Manifest) {
         self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
         self.write(&manifest.date, channel_name, "-date.txt");
@@ -645,10 +557,6 @@ impl Builder {
 
         let dst = self.output.join(name);
         t!(fs::write(&dst, contents));
-        if self.legacy {
-            self.hash(&dst);
-            self.sign(&dst);
-        }
     }
 
     fn write_shipped_files(&self, path: &Path) {
