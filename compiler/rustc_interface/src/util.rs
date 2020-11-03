@@ -405,14 +405,13 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
         "cannot load the default codegen backend twice"
     );
 
-    let target = session::config::host_triple();
     let sysroot_candidates = sysroot_candidates();
 
     let sysroot = sysroot_candidates
         .iter()
         .map(|sysroot| {
-            let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir).with_file_name("codegen-backends")
+            let libdir = filesearch::find_libdir(&sysroot);
+            sysroot.join(libdir.as_ref()).with_file_name("codegen-backends")
         })
         .filter(|f| {
             info!("codegen backend candidate: {}", f.display());
@@ -446,8 +445,14 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
 
     let mut file: Option<PathBuf> = None;
 
-    let expected_name =
-        format!("rustc_codegen_{}-{}", backend_name, release_str().expect("CFG_RELEASE"));
+    // We search for both `rustc_codegen_$NAME-$RELEASE` and `rustc_codegen-$NAME`. The former is
+    // the name used by rustbuild. The second makes it easier for users to add their own codegen
+    // backend to the sysroot that can be used with `-Zcodegen-backend=foo` instead of
+    // `-Zcodegen-backend=/path/to/librustc_codegen_foo.so`.
+    let expected_names = vec![
+        format!("rustc_codegen_{}-{}", backend_name, release_str().expect("CFG_RELEASE")),
+        format!("rustc_codegen_{}", backend_name),
+    ];
     for entry in d.filter_map(|e| e.ok()) {
         let path = entry.path();
         let filename = match path.file_name().and_then(|s| s.to_str()) {
@@ -458,7 +463,7 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
             continue;
         }
         let name = &filename[DLL_PREFIX.len()..filename.len() - DLL_SUFFIX.len()];
-        if name != expected_name {
+        if !expected_names.iter().any(|expected_name| name == expected_name) {
             continue;
         }
         if let Some(ref prev) = file {

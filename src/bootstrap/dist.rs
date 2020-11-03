@@ -509,7 +509,7 @@ impl Step for Rustc {
             let backends_rel = backends_src
                 .strip_prefix(&src)
                 .unwrap()
-                .strip_prefix(builder.sysroot_libdir_relative(compiler))
+                .strip_prefix(builder.libdir_relative(compiler))
                 .unwrap();
             // Don't use custom libdir here because ^lib/ will be resolved again with installer
             let backends_dst = image.join("lib").join(&backends_rel);

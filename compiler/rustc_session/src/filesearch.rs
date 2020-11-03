@@ -134,8 +134,8 @@ pub fn get_or_default_sysroot() -> PathBuf {
     }
 }
 
-// The name of the directory rustc expects libraries to be located.
-fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
+/// The name of the directory rustc expects libraries to be located.
+pub fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // FIXME: This is a quick hack to make the rustc binary able to locate
     // Rust libraries in Linux environments where libraries might be installed
     // to lib64/lib32. This would be more foolproof by basing the sysroot off
