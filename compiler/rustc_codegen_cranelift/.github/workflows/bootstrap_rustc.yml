@@ -1,17 +1,11 @@
-name: CI
+name: Bootstrap rustc using cg_clif
 
 on:
   - push
-  - pull_request
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  bootstrap_rustc:
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -47,17 +41,4 @@ jobs:
         # Enable backtraces for easier debugging
         export RUST_BACKTRACE=1
 
-        # Reduce amount of benchmark runs as they are slow
-        export COMPILE_RUNS=2
-        export RUN_RUNS=2
-
-        ./test.sh
-
-    - name: Package prebuilt cg_clif
-      run: tar cvfJ cg_clif.tar.xz build
-
-    - name: Upload prebuilt cg_clif
-      uses: actions/upload-artifact@v2
-      with:
-        name: cg_clif-${{ runner.os }}
-        path: cg_clif.tar.xz
+        ./scripts/test_bootstrap.sh

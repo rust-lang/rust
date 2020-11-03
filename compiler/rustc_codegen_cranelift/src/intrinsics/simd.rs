@@ -127,7 +127,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 );
             };
 
-            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
+            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
             let (_lane_type, lane_count) = lane_type_and_count(fx.tcx, base.layout());
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count));
@@ -149,7 +149,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 );
             };
 
-            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
+            let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
             let (_lane_type, lane_count) = lane_type_and_count(fx.tcx, v.layout());
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));

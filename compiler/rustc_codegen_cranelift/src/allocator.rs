@@ -123,7 +123,7 @@ fn codegen_inner(
         .unwrap();
 
     let mut ctx = Context::new();
-    ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig.clone());
+    ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig);
     {
         let mut func_ctx = FunctionBuilderContext::new();
         let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
@@ -131,7 +131,7 @@ fn codegen_inner(
         let block = bcx.create_block();
         bcx.switch_to_block(block);
         let args = (&[usize_ty, usize_ty])
-            .into_iter()
+            .iter()
             .map(|&ty| bcx.append_block_param(block, ty))
             .collect::<Vec<Value>>();
 

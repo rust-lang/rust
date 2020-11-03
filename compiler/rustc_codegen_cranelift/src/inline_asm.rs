@@ -50,7 +50,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 inputs.push((
                     reg,
                     new_slot(reg.reg_class()),
-                    crate::base::trans_operand(fx, value).load_scalar(fx),
+                    crate::base::codegen_operand(fx, value).load_scalar(fx),
                 ));
             }
             InlineAsmOperand::Out {
@@ -64,7 +64,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                     outputs.push((
                         reg,
                         new_slot(reg.reg_class()),
-                        crate::base::trans_place(fx, place),
+                        crate::base::codegen_place(fx, place),
                     ));
                 }
             }
@@ -79,13 +79,13 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 inputs.push((
                     reg,
                     new_slot(reg.reg_class()),
-                    crate::base::trans_operand(fx, in_value).load_scalar(fx),
+                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
                 ));
                 if let Some(out_place) = out_place {
                     outputs.push((
                         reg,
                         new_slot(reg.reg_class()),
-                        crate::base::trans_place(fx, out_place),
+                        crate::base::codegen_place(fx, out_place),
                     ));
                 }
             }

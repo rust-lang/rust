@@ -1,19 +1,13 @@
 #!/bin/bash
 
-if [ -z $CHANNEL ]; then
-export CHANNEL='release'
-fi
-
-pushd $(dirname "$0") >/dev/null
-source scripts/config.sh
+dir=$(dirname "$0")
+source $dir/config.sh
 
 # read nightly compiler from rust-toolchain file
-TOOLCHAIN=$(cat rust-toolchain)
-
-popd >/dev/null
+TOOLCHAIN=$(cat $dir/rust-toolchain)
 
 cmd=$1
-shift
+shift || true
 
 if [[ "$cmd" = "jit" ]]; then
 cargo +${TOOLCHAIN} rustc $@ -- --jit
