@@ -49,7 +49,7 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
 
 pub(crate) const MD5_LEN: usize = 16;
 
-pub fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
+pub(crate) fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
     if hash.kind == SourceFileHashAlgorithm::Md5 {
         let mut buf = [0u8; MD5_LEN];
         buf.copy_from_slice(hash.hash_bytes());
@@ -190,7 +190,7 @@ impl<'tcx> DebugContext<'tcx> {
             if current_file_changed {
                 let file_id = line_program_add_file(line_program, line_strings, &file);
                 line_program.row().file = file_id;
-                last_file = Some(file.clone());
+                last_file = Some(file);
             }
 
             line_program.row().line = line;

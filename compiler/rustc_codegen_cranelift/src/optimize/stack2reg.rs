@@ -228,7 +228,8 @@ pub(super) fn optimize_function(
             match *potential_stores {
                 [] => {
                     #[cfg(debug_assertions)]
-                    clif_comments.add_comment(load, format!("[BUG?] Reading uninitialized memory"));
+                    clif_comments
+                        .add_comment(load, "[BUG?] Reading uninitialized memory".to_string());
                 }
                 [store]
                     if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full

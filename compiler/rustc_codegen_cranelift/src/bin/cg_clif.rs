@@ -24,22 +24,16 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
         self.time_passes = config.opts.prints.is_empty()
             && (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
 
-        // FIXME workaround for an ICE
-        config.opts.debugging_opts.trim_diagnostic_paths = false;
-
         config.opts.cg.panic = Some(PanicStrategy::Abort);
         config.opts.debugging_opts.panic_abort_tests = true;
         config.opts.maybe_sysroot = Some(
-            std::env::current_exe()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join("build_sysroot")
-                .join("sysroot"),
+            config.opts.maybe_sysroot.clone().unwrap_or(
+                std::env::current_exe()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join("sysroot"),
+            ),
         );
     }
 }

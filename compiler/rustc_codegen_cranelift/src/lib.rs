@@ -9,6 +9,7 @@
 )]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
+#![warn(unreachable_pub)]
 
 #[cfg(feature = "jit")]
 extern crate libc;
@@ -110,7 +111,7 @@ mod prelude {
     pub(crate) use cranelift_module::{self, DataContext, DataId, FuncId, Linkage, Module};
 
     pub(crate) use crate::abi::*;
-    pub(crate) use crate::base::{trans_operand, trans_place};
+    pub(crate) use crate::base::{codegen_operand, codegen_place};
     pub(crate) use crate::cast::*;
     pub(crate) use crate::common::*;
     pub(crate) use crate::debuginfo::{DebugContext, UnwindContext};
