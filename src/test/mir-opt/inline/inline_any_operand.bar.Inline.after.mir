@@ -9,10 +9,10 @@ fn bar() -> bool {
     scope 1 {
         debug f => _1;                   // in scope 1 at $DIR/inline-any-operand.rs:11:9: 11:10
         scope 2 (inlined foo) {          // at $DIR/inline-any-operand.rs:12:5: 12:13
-            debug x => _3;               // in scope 2 at $DIR/inline-any-operand.rs:16:8: 16:9
-            debug y => _4;               // in scope 2 at $DIR/inline-any-operand.rs:16:16: 16:17
-            let mut _5: i32;             // in scope 2 at $DIR/inline-any-operand.rs:17:5: 17:6
-            let mut _6: i32;             // in scope 2 at $DIR/inline-any-operand.rs:17:10: 17:11
+            debug x => _3;               // in scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+            debug y => _4;               // in scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+            let mut _5: i32;             // in scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+            let mut _6: i32;             // in scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
         }
     }
 
@@ -28,13 +28,13 @@ fn bar() -> bool {
         _3 = const 1_i32;                // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         StorageLive(_4);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         _4 = const -1_i32;               // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
-        StorageLive(_5);                 // scope 2 at $DIR/inline-any-operand.rs:17:5: 17:6
-        _5 = _3;                         // scope 2 at $DIR/inline-any-operand.rs:17:5: 17:6
-        StorageLive(_6);                 // scope 2 at $DIR/inline-any-operand.rs:17:10: 17:11
-        _6 = _4;                         // scope 2 at $DIR/inline-any-operand.rs:17:10: 17:11
-        _0 = Eq(move _5, move _6);       // scope 2 at $DIR/inline-any-operand.rs:17:5: 17:11
-        StorageDead(_6);                 // scope 2 at $DIR/inline-any-operand.rs:17:10: 17:11
-        StorageDead(_5);                 // scope 2 at $DIR/inline-any-operand.rs:17:10: 17:11
+        StorageLive(_5);                 // scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+        _5 = _3;                         // scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+        StorageLive(_6);                 // scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+        _6 = _4;                         // scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+        _0 = Eq(move _5, move _6);       // scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+        StorageDead(_6);                 // scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
+        StorageDead(_5);                 // scope 2 at $DIR/inline-any-operand.rs:12:5: 12:13
         StorageDead(_4);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         StorageDead(_3);                 // scope 1 at $DIR/inline-any-operand.rs:12:5: 12:13
         StorageDead(_2);                 // scope 1 at $DIR/inline-any-operand.rs:12:12: 12:13
