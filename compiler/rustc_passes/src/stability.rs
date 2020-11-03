@@ -15,7 +15,7 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{DeprecationEntry, Index};
 use rustc_middle::ty::{self, query::Providers, TyCtxt};
 use rustc_session::lint;
-use rustc_session::lint::builtin::INEFFECTIVE_UNSTABLE_TRAIT_IMPL;
+use rustc_session::lint::builtin::{INEFFECTIVE_UNSTABLE_TRAIT_IMPL, USELESS_DEPRECATED};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
@@ -31,6 +31,8 @@ enum AnnotationKind {
     Required,
     // Annotation is useless, reject it
     Prohibited,
+    // Deprecation annotation is useless, reject it. (Stability attribute is still required.)
+    DeprecationProhibited,
     // Annotation itself is useless, but it can be propagated to children
     Container,
 }
@@ -83,14 +85,22 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             did_error = self.forbid_staged_api_attrs(hir_id, attrs, inherit_deprecation.clone());
         }
 
-        let depr =
-            if did_error { None } else { attr::find_deprecation(&self.tcx.sess, attrs, item_sp) };
+        let depr = if did_error { None } else { attr::find_deprecation(&self.tcx.sess, attrs) };
         let mut is_deprecated = false;
-        if let Some(depr) = &depr {
+        if let Some((depr, span)) = &depr {
             is_deprecated = true;
 
-            if kind == AnnotationKind::Prohibited {
-                self.tcx.sess.span_err(item_sp, "This deprecation annotation is useless");
+            if kind == AnnotationKind::Prohibited || kind == AnnotationKind::DeprecationProhibited {
+                self.tcx.struct_span_lint_hir(USELESS_DEPRECATED, hir_id, *span, |lint| {
+                    lint.build("this `#[deprecated]` annotation has no effect")
+                        .span_suggestion_short(
+                            *span,
+                            "remove the unnecessary deprecation attribute",
+                            String::new(),
+                            rustc_errors::Applicability::MachineApplicable,
+                        )
+                        .emit()
+                });
             }
 
             // `Deprecation` is just two pointers, no need to intern it
@@ -114,7 +124,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         } else {
             self.recurse_with_stability_attrs(
-                depr.map(|d| DeprecationEntry::local(d, hir_id)),
+                depr.map(|(d, _)| DeprecationEntry::local(d, hir_id)),
                 None,
                 None,
                 visit_children,
@@ -139,11 +149,11 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if depr.as_ref().map_or(false, |d| d.is_since_rustc_version) {
+        if let Some((rustc_attr::Deprecation { is_since_rustc_version: true, .. }, span)) = &depr {
             if stab.is_none() {
                 struct_span_err!(
                     self.tcx.sess,
-                    item_sp,
+                    *span,
                     E0549,
                     "rustc_deprecated attribute must be paired with \
                     either stable or unstable attribute"
@@ -166,7 +176,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             // Check if deprecated_since < stable_since. If it is,
             // this is *almost surely* an accident.
             if let (&Some(dep_since), &attr::Stable { since: stab_since }) =
-                (&depr.as_ref().and_then(|d| d.since), &stab.level)
+                (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
             {
                 // Explicit version of iter::order::lt to handle parse errors properly
                 for (dep_v, stab_v) in
@@ -212,7 +222,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         self.recurse_with_stability_attrs(
-            depr.map(|d| DeprecationEntry::local(d, hir_id)),
+            depr.map(|(d, _)| DeprecationEntry::local(d, hir_id)),
             stab,
             const_stab,
             visit_children,
@@ -322,6 +332,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             }
             hir::ItemKind::Impl { of_trait: Some(_), .. } => {
                 self.in_trait_impl = true;
+                kind = AnnotationKind::DeprecationProhibited;
             }
             hir::ItemKind::Struct(ref sd, _) => {
                 if let Some(ctor_hir_id) = sd.ctor_hir_id() {
