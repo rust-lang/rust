@@ -73,6 +73,19 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             // a temporary and retag on that.
             is_stable(place.as_ref()) && may_be_reference(place.ty(&*local_decls, tcx).ty)
         };
+        let place_base_raw = |place: &Place<'tcx>| {
+            // If this is a `Deref`, get the type of what we are deref'ing.
+            let deref_base =
+                place.projection.iter().rposition(|p| matches!(p, ProjectionElem::Deref));
+            if let Some(deref_base) = deref_base {
+                let base_proj = &place.projection[..deref_base];
+                let ty = Place::ty_from(place.local, base_proj, &*local_decls, tcx).ty;
+                ty.is_unsafe_ptr()
+            } else {
+                // Not a deref, and thus not raw.
+                false
+            }
+        };
 
         // PART 1
         // Retag arguments at the beginning of the start block.
@@ -136,13 +149,14 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
                 let (retag_kind, place) = match block_data.statements[i].kind {
-                    // Retag-as-raw after escaping to a raw pointer.
-                    StatementKind::Assign(box (place, Rvalue::AddressOf(..))) => {
-                        (RetagKind::Raw, place)
+                    // Retag-as-raw after escaping to a raw pointer, if the referent
+                    // is not already a raw pointer.
+                    StatementKind::Assign(box (lplace, Rvalue::AddressOf(_, ref rplace)))
+                        if !place_base_raw(rplace) =>
+                    {
+                        (RetagKind::Raw, lplace)
                     }
-                    // Assignments of reference or ptr type are the ones where we may have
-                    // to update tags.  This includes `x = &[mut] ...` and hence
-                    // we also retag after taking a reference!
+                    // Retag after assignments of reference type.
                     StatementKind::Assign(box (ref place, ref rvalue)) if needs_retag(place) => {
                         let kind = match rvalue {
                             Rvalue::Ref(_, borrow_kind, _)
