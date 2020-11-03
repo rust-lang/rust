@@ -351,6 +351,23 @@ pub fn visibility_pub_crate() -> ast::Visibility {
     ast_from_text("pub(crate) struct S")
 }
 
+pub fn visibility_pub() -> ast::Visibility {
+    ast_from_text("pub struct S")
+}
+
+pub fn tuple_field_list(fields: impl IntoIterator<Item = ast::TupleField>) -> ast::TupleFieldList {
+    let fields = fields.into_iter().join(", ");
+    ast_from_text(&format!("struct f({});", fields))
+}
+
+pub fn tuple_field(visibility: Option<ast::Visibility>, ty: ast::Type) -> ast::TupleField {
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{} ", it),
+    };
+    ast_from_text(&format!("struct f({}{});", visibility, ty))
+}
+
 pub fn fn_(
     visibility: Option<ast::Visibility>,
     fn_name: ast::Name,
@@ -370,6 +387,26 @@ pub fn fn_(
     ast_from_text(&format!(
         "{}fn {}{}{} {}{}",
         visibility, fn_name, type_params, params, ret_type, body
+    ))
+}
+
+pub fn struct_(
+    visibility: Option<ast::Visibility>,
+    strukt_name: ast::Name,
+    type_params: Option<ast::GenericParamList>,
+    field_list: ast::FieldList,
+) -> ast::Struct {
+    let semicolon = if matches!(field_list, ast::FieldList::TupleFieldList(_)) { ";" } else { "" };
+    let type_params =
+        if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{} ", it),
+    };
+
+    ast_from_text(&format!(
+        "{}struct {}{}{}{}",
+        visibility, strukt_name, type_params, field_list, semicolon
     ))
 }
 

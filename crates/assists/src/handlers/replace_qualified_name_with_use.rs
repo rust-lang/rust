@@ -45,10 +45,9 @@ pub(crate) fn replace_qualified_name_with_use(
             // affected (that is, all paths inside the node we added the `use` to).
             let mut rewriter = SyntaxRewriter::default();
             shorten_paths(&mut rewriter, syntax.clone(), &path);
-            let rewritten_syntax = rewriter.rewrite(&syntax);
-            if let Some(ref import_scope) = ImportScope::from(rewritten_syntax) {
-                let new_syntax = insert_use(import_scope, path, ctx.config.insert_use.merge);
-                builder.replace(syntax.text_range(), new_syntax.to_string())
+            if let Some(ref import_scope) = ImportScope::from(syntax.clone()) {
+                rewriter += insert_use(import_scope, path, ctx.config.insert_use.merge);
+                builder.rewrite(rewriter);
             }
         },
     )

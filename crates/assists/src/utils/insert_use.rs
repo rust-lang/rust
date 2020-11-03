@@ -1,12 +1,9 @@
 //! Handle syntactic aspects of inserting a new `use`.
-use std::{
-    cmp::Ordering,
-    iter::{self, successors},
-};
+use std::{cmp::Ordering, iter::successors};
 
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
-    algo,
+    algo::SyntaxRewriter,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
@@ -88,20 +85,19 @@ impl ImportScope {
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
-pub(crate) fn insert_use(
+pub(crate) fn insert_use<'a>(
     scope: &ImportScope,
     path: ast::Path,
     merge: Option<MergeBehaviour>,
-) -> SyntaxNode {
+) -> SyntaxRewriter<'a> {
+    let mut rewriter = SyntaxRewriter::default();
     let use_item = make::use_(make::use_tree(path.clone(), None, None, false));
     // merge into existing imports if possible
     if let Some(mb) = merge {
         for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
-                let to_delete: SyntaxElement = existing_use.syntax().clone().into();
-                let to_delete = to_delete.clone()..=to_delete;
-                let to_insert = iter::once(merged.syntax().clone().into());
-                return algo::replace_children(scope.as_syntax_node(), to_delete, to_insert);
+                rewriter.replace(existing_use.syntax(), merged.syntax());
+                return rewriter;
             }
         }
     }
@@ -157,7 +153,15 @@ pub(crate) fn insert_use(
         buf
     };
 
-    algo::insert_children(scope.as_syntax_node(), insert_position, to_insert)
+    match insert_position {
+        InsertPosition::First => {
+            rewriter.insert_many_as_first_children(scope.as_syntax_node(), to_insert)
+        }
+        InsertPosition::Last => return rewriter, // actually unreachable
+        InsertPosition::Before(anchor) => rewriter.insert_many_before(&anchor, to_insert),
+        InsertPosition::After(anchor) => rewriter.insert_many_after(&anchor, to_insert),
+    }
+    rewriter
 }
 
 fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
@@ -1101,7 +1105,8 @@ use foo::bar::baz::Qux;",
             .find_map(ast::Path::cast)
             .unwrap();
 
-        let result = insert_use(&file, path, mb).to_string();
+        let rewriter = insert_use(&file, path, mb);
+        let result = rewriter.rewrite(file.as_syntax_node()).to_string();
         assert_eq_text!(&result, ra_fixture_after);
     }
 

@@ -1,16 +1,14 @@
-use hir::{EnumVariant, Module, ModuleDef, Name};
-use ide_db::base_db::FileId;
+use hir::{AsName, EnumVariant, Module, ModuleDef, Name};
 use ide_db::{defs::Definition, search::Reference, RootDatabase};
-use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::find_node_at_offset,
-    ast::{self, edit::IndentLevel, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
-    SourceFile, TextRange, TextSize,
+    algo::SyntaxRewriter,
+    ast::{self, edit::IndentLevel, make, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
+    SourceFile, SyntaxElement,
 };
 
 use crate::{
-    assist_context::AssistBuilder,
     utils::{insert_use, mod_path_to_ast, ImportScope},
     AssistContext, AssistId, AssistKind, Assists,
 };
@@ -43,7 +41,7 @@ pub(crate) fn extract_struct_from_enum_variant(
         return None;
     }
 
-    let variant_name = variant.name()?.to_string();
+    let variant_name = variant.name()?;
     let variant_hir = ctx.sema.to_def(&variant)?;
     if existing_struct_def(ctx.db(), &variant_name, &variant_hir) {
         return None;
@@ -62,14 +60,18 @@ pub(crate) fn extract_struct_from_enum_variant(
         |builder| {
             let definition = Definition::ModuleDef(ModuleDef::EnumVariant(variant_hir));
             let res = definition.usages(&ctx.sema).all();
-            let start_offset = variant.parent_enum().syntax().text_range().start();
+
             let mut visited_modules_set = FxHashSet::default();
             visited_modules_set.insert(current_module);
+            let mut rewriters = FxHashMap::default();
             for reference in res {
+                let rewriter = rewriters
+                    .entry(reference.file_range.file_id)
+                    .or_insert_with(SyntaxRewriter::default);
                 let source_file = ctx.sema.parse(reference.file_range.file_id);
                 update_reference(
                     ctx,
-                    builder,
+                    rewriter,
                     reference,
                     &source_file,
                     &enum_module_def,
@@ -77,34 +79,39 @@ pub(crate) fn extract_struct_from_enum_variant(
                     &mut visited_modules_set,
                 );
             }
+            let mut rewriter =
+                rewriters.remove(&ctx.frange.file_id).unwrap_or_else(SyntaxRewriter::default);
+            for (file_id, rewriter) in rewriters {
+                builder.edit_file(file_id);
+                builder.rewrite(rewriter);
+            }
+            builder.edit_file(ctx.frange.file_id);
+            update_variant(&mut rewriter, &variant_name, &field_list);
             extract_struct_def(
-                builder,
+                &mut rewriter,
                 &enum_ast,
-                &variant_name,
-                &field_list.to_string(),
-                start_offset,
-                ctx.frange.file_id,
-                &visibility,
+                variant_name.clone(),
+                &field_list,
+                &variant.parent_enum().syntax().clone().into(),
+                visibility,
             );
-            let list_range = field_list.syntax().text_range();
-            update_variant(builder, &variant_name, ctx.frange.file_id, list_range);
+            builder.rewrite(rewriter);
         },
     )
 }
 
-fn existing_struct_def(db: &RootDatabase, variant_name: &str, variant: &EnumVariant) -> bool {
+fn existing_struct_def(db: &RootDatabase, variant_name: &ast::Name, variant: &EnumVariant) -> bool {
     variant
         .parent_enum(db)
         .module(db)
         .scope(db, None)
         .into_iter()
-        .any(|(name, _)| name.to_string() == variant_name)
+        .any(|(name, _)| name == variant_name.as_name())
 }
 
-#[allow(dead_code)]
 fn insert_import(
     ctx: &AssistContext,
-    builder: &mut AssistBuilder,
+    rewriter: &mut SyntaxRewriter,
     path: &ast::PathExpr,
     module: &Module,
     enum_module_def: &ModuleDef,
@@ -116,69 +123,59 @@ fn insert_import(
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
         let scope = ImportScope::find_insert_use_container(path.syntax(), ctx)?;
-        let syntax = scope.as_syntax_node();
 
-        let new_syntax =
-            insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use.merge);
-        // FIXME: this will currently panic as multiple imports will have overlapping text ranges
-        builder.replace(syntax.text_range(), new_syntax.to_string())
+        *rewriter += insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use.merge);
     }
     Some(())
 }
 
-// FIXME: this should use strongly-typed `make`, rather than string manipulation.
 fn extract_struct_def(
-    builder: &mut AssistBuilder,
+    rewriter: &mut SyntaxRewriter,
     enum_: &ast::Enum,
-    variant_name: &str,
-    variant_list: &str,
-    start_offset: TextSize,
-    file_id: FileId,
-    visibility: &Option<ast::Visibility>,
+    variant_name: ast::Name,
+    variant_list: &ast::TupleFieldList,
+    start_offset: &SyntaxElement,
+    visibility: Option<ast::Visibility>,
 ) -> Option<()> {
-    let visibility_string = if let Some(visibility) = visibility {
-        format!("{} ", visibility.to_string())
-    } else {
-        "".to_string()
-    };
-    let indent = IndentLevel::from_node(enum_.syntax());
-    let struct_def = format!(
-        r#"{}struct {}{};
-
-{}"#,
-        visibility_string,
-        variant_name,
-        list_with_visibility(variant_list),
-        indent
+    let variant_list = make::tuple_field_list(
+        variant_list
+            .fields()
+            .flat_map(|field| Some(make::tuple_field(Some(make::visibility_pub()), field.ty()?))),
     );
-    builder.edit_file(file_id);
-    builder.insert(start_offset, struct_def);
+
+    rewriter.insert_before(
+        start_offset,
+        make::struct_(visibility, variant_name, None, variant_list.into()).syntax(),
+    );
+    rewriter.insert_before(start_offset, &make::tokens::blank_line());
+
+    if let indent_level @ 1..=usize::MAX = IndentLevel::from_node(enum_.syntax()).0 as usize {
+        rewriter
+            .insert_before(start_offset, &make::tokens::whitespace(&" ".repeat(4 * indent_level)));
+    }
     Some(())
 }
 
 fn update_variant(
-    builder: &mut AssistBuilder,
-    variant_name: &str,
-    file_id: FileId,
-    list_range: TextRange,
+    rewriter: &mut SyntaxRewriter,
+    variant_name: &ast::Name,
+    field_list: &ast::TupleFieldList,
 ) -> Option<()> {
-    let inside_variant_range = TextRange::new(
-        list_range.start().checked_add(TextSize::from(1))?,
-        list_range.end().checked_sub(TextSize::from(1))?,
-    );
-    builder.edit_file(file_id);
-    builder.replace(inside_variant_range, variant_name);
+    let (l, r): (SyntaxElement, SyntaxElement) =
+        (field_list.l_paren_token()?.into(), field_list.r_paren_token()?.into());
+    let replacement = vec![l, variant_name.syntax().clone().into(), r];
+    rewriter.replace_with_many(field_list.syntax(), replacement);
     Some(())
 }
 
 fn update_reference(
     ctx: &AssistContext,
-    builder: &mut AssistBuilder,
+    rewriter: &mut SyntaxRewriter,
     reference: Reference,
     source_file: &SourceFile,
-    _enum_module_def: &ModuleDef,
-    _variant_hir_name: &Name,
-    _visited_modules_set: &mut FxHashSet<Module>,
+    enum_module_def: &ModuleDef,
+    variant_hir_name: &Name,
+    visited_modules_set: &mut FxHashSet<Module>,
 ) -> Option<()> {
     let path_expr: ast::PathExpr = find_node_at_offset::<ast::PathExpr>(
         source_file.syntax(),
@@ -187,35 +184,21 @@ fn update_reference(
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let list = call.arg_list()?;
     let segment = path_expr.path()?.segment()?;
-    let _module = ctx.sema.scope(&path_expr.syntax()).module()?;
-    let list_range = list.syntax().text_range();
-    let inside_list_range = TextRange::new(
-        list_range.start().checked_add(TextSize::from(1))?,
-        list_range.end().checked_sub(TextSize::from(1))?,
-    );
-    builder.edit_file(reference.file_range.file_id);
-    /* FIXME: this most likely requires AST-based editing, see `insert_import`
+    let module = ctx.sema.scope(&path_expr.syntax()).module()?;
     if !visited_modules_set.contains(&module) {
-        if insert_import(ctx, builder, &path_expr, &module, enum_module_def, variant_hir_name)
+        if insert_import(ctx, rewriter, &path_expr, &module, enum_module_def, variant_hir_name)
             .is_some()
         {
             visited_modules_set.insert(module);
         }
     }
-    */
-    builder.replace(inside_list_range, format!("{}{}", segment, list));
-    Some(())
-}
 
-fn list_with_visibility(list: &str) -> String {
-    list.split(',')
-        .map(|part| {
-            let index = if part.chars().next().unwrap() == '(' { 1usize } else { 0 };
-            let mut mod_part = part.trim().to_string();
-            mod_part.insert_str(index, "pub ");
-            mod_part
-        })
-        .join(", ")
+    let lparen = syntax::SyntaxElement::from(list.l_paren_token()?);
+    let rparen = syntax::SyntaxElement::from(list.r_paren_token()?);
+    rewriter.insert_after(&lparen, segment.syntax());
+    rewriter.insert_after(&lparen, &lparen);
+    rewriter.insert_before(&rparen, &rparen);
+    Some(())
 }
 
 #[cfg(test)]
@@ -250,7 +233,6 @@ pub enum A { One(One) }"#,
     }
 
     #[test]
-    #[ignore] // FIXME: this currently panics if `insert_import` is used
     fn test_extract_struct_with_complex_imports() {
         check_assist(
             extract_struct_from_enum_variant,
