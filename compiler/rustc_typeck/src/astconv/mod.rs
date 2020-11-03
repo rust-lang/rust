@@ -49,9 +49,10 @@ pub trait AstConv<'tcx> {
 
     fn default_constness_for_trait_bounds(&self) -> Constness;
 
-    /// Returns predicates in scope of the form `X: Foo`, where `X` is
-    /// a type parameter `X` with the given id `def_id`. This is a
-    /// subset of the full set of predicates.
+    /// Returns predicates in scope of the form `X: Foo<T>`, where `X`
+    /// is a type parameter `X` with the given id `def_id` and T
+    /// matches assoc_name. This is a subset of the full set of
+    /// predicates.
     ///
     /// This is used for one specific purpose: resolving "short-hand"
     /// associated type references like `T::Item`. In principle, we
@@ -60,7 +61,12 @@ pub trait AstConv<'tcx> {
     /// but this can lead to cycle errors. The problem is that we have
     /// to do this resolution *in order to create the predicates in
     /// the first place*. Hence, we have this "special pass".
-    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx>;
+    fn get_type_parameter_bounds(
+        &self,
+        span: Span,
+        def_id: DefId,
+        assoc_name: Ident,
+    ) -> ty::GenericPredicates<'tcx>;
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
     fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
@@ -1361,8 +1367,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty_param_def_id, assoc_name, span,
         );
 
-        let predicates =
-            &self.get_type_parameter_bounds(span, ty_param_def_id.to_def_id()).predicates;
+        let predicates = &self
+            .get_type_parameter_bounds(span, ty_param_def_id.to_def_id(), assoc_name)
+            .predicates;
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 

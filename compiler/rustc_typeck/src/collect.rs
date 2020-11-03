@@ -310,8 +310,17 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         }
     }
 
-    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
-        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id.expect_local()))
+    fn get_type_parameter_bounds(
+        &self,
+        span: Span,
+        def_id: DefId,
+        assoc_name: Ident,
+    ) -> ty::GenericPredicates<'tcx> {
+        self.tcx.at(span).type_param_predicates((
+            self.item_def_id,
+            def_id.expect_local(),
+            assoc_name,
+        ))
     }
 
     fn re_infer(&self, _: Option<&ty::GenericParamDef>, _: Span) -> Option<ty::Region<'tcx>> {
@@ -492,7 +501,7 @@ fn get_new_lifetime_name<'tcx>(
 /// `X: Foo` where `X` is the type parameter `def_id`.
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
-    (item_def_id, def_id): (DefId, LocalDefId),
+    (item_def_id, def_id, assoc_name): (DefId, LocalDefId, Ident),
 ) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
 
@@ -517,7 +526,7 @@ fn type_param_predicates(
     let mut result = parent
         .map(|parent| {
             let icx = ItemCtxt::new(tcx, parent);
-            icx.get_type_parameter_bounds(DUMMY_SP, def_id.to_def_id())
+            icx.get_type_parameter_bounds(DUMMY_SP, def_id.to_def_id(), assoc_name)
         })
         .unwrap_or_default();
     let mut extend = None;
@@ -560,12 +569,18 @@ fn type_param_predicates(
 
     let icx = ItemCtxt::new(tcx, item_def_id);
     let extra_predicates = extend.into_iter().chain(
-        icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, OnlySelfBounds(true))
-            .into_iter()
-            .filter(|(predicate, _)| match predicate.skip_binders() {
-                ty::PredicateAtom::Trait(data, _) => data.self_ty().is_param(index),
-                _ => false,
-            }),
+        icx.type_parameter_bounds_in_generics(
+            ast_generics,
+            param_id,
+            ty,
+            OnlySelfBounds(true),
+            Some(assoc_name),
+        )
+        .into_iter()
+        .filter(|(predicate, _)| match predicate.skip_binders() {
+            ty::PredicateAtom::Trait(data, _) => data.self_ty().is_param(index),
+            _ => false,
+        }),
     );
     result.predicates =
         tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(extra_predicates));
@@ -583,6 +598,7 @@ impl ItemCtxt<'tcx> {
         param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
+        assoc_name: Option<Ident>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         let constness = self.default_constness_for_trait_bounds();
         let from_ty_params = ast_generics
@@ -593,6 +609,10 @@ impl ItemCtxt<'tcx> {
                 _ => None,
             })
             .flat_map(|bounds| bounds.iter())
+            .filter(|b| match assoc_name {
+                Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
+                None => true,
+            })
             .flat_map(|b| predicates_from_bound(self, ty, b, constness));
 
         let from_where_clauses = ast_generics
@@ -611,11 +631,42 @@ impl ItemCtxt<'tcx> {
                 } else {
                     None
                 };
-                bp.bounds.iter().filter_map(move |b| bt.map(|bt| (bt, b)))
+                bp.bounds
+                    .iter()
+                    .filter(|b| match assoc_name {
+                        Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
+                        None => true,
+                    })
+                    .filter_map(move |b| bt.map(|bt| (bt, b)))
             })
             .flat_map(|(bt, b)| predicates_from_bound(self, bt, b, constness));
 
         from_ty_params.chain(from_where_clauses).collect()
+    }
+
+    fn bound_defines_assoc_item(&self, b: &hir::GenericBound<'_>, assoc_name: Ident) -> bool {
+        debug!("bound_defines_assoc_item(b={:?}, assoc_name={:?})", b, assoc_name);
+
+        match b {
+            hir::GenericBound::Trait(poly_trait_ref, _) => {
+                let trait_ref = &poly_trait_ref.trait_ref;
+                let trait_did = trait_ref.trait_def_id().unwrap();
+                let traits_did = super_traits_of(self.tcx, trait_did);
+
+                traits_did.iter().any(|trait_did| {
+                    self.tcx
+                        .associated_items(*trait_did)
+                        .find_by_name_and_kind(
+                            self.tcx,
+                            assoc_name,
+                            ty::AssocKind::Type,
+                            *trait_did,
+                        )
+                        .is_some()
+                })
+            }
+            _ => false,
+        }
     }
 }
 
@@ -1017,6 +1068,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
         item.hir_id,
         self_param_ty,
         OnlySelfBounds(!is_trait_alias),
+        None,
     );
 
     // Combine the two lists to form the complete set of superbounds:
@@ -1032,6 +1084,45 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
     }
 
     ty::GenericPredicates { parent: None, predicates: superbounds }
+}
+
+pub fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
+    let mut set = FxHashSet::default();
+    let mut stack = vec![trait_def_id];
+    while let Some(trait_did) = stack.pop() {
+        if !set.insert(trait_did) {
+            continue;
+        }
+
+        if trait_did.is_local() {
+            let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_did.expect_local());
+
+            let item = match tcx.hir().get(trait_hir_id) {
+                Node::Item(item) => item,
+                _ => bug!("super_trait_of {} is not an item", trait_hir_id),
+            };
+
+            let supertraits = match item.kind {
+                hir::ItemKind::Trait(.., ref supertraits, _) => supertraits,
+                hir::ItemKind::TraitAlias(_, ref supertraits) => supertraits,
+                _ => span_bug!(item.span, "super_trait_of invoked on non-trait"),
+            };
+
+            for supertrait in supertraits.iter() {
+                let trait_ref = supertrait.trait_ref();
+                if let Some(trait_did) = trait_ref.and_then(|trait_ref| trait_ref.trait_def_id()) {
+                    stack.push(trait_did);
+                }
+            }
+        } else {
+            let generic_predicates = tcx.super_predicates_of(trait_did);
+            for (predicate, _) in generic_predicates.predicates {
+                if let ty::PredicateAtom::Trait(data, _) = predicate.skip_binders() {
+                    stack.push(data.def_id());
+                }
+            }
+        }
+    }
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {

@@ -20,6 +20,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::Session;
+use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 
@@ -183,7 +184,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn get_type_parameter_bounds(&self, _: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
+    fn get_type_parameter_bounds(
+        &self,
+        _: Span,
+        def_id: DefId,
+        assoc_name: Ident,
+    ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let item_id = tcx.hir().ty_param_owner(hir_id);
@@ -196,9 +202,23 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
                     match predicate.skip_binders() {
                         ty::PredicateAtom::Trait(data, _) if data.self_ty().is_param(index) => {
-                            // HACK(eddyb) should get the original `Span`.
-                            let span = tcx.def_span(def_id);
-                            Some((predicate, span))
+                            let trait_did = data.def_id();
+                            if tcx
+                                .associated_items(trait_did)
+                                .find_by_name_and_kind(
+                                    tcx,
+                                    assoc_name,
+                                    ty::AssocKind::Type,
+                                    trait_did,
+                                )
+                                .is_some()
+                            {
+                                // HACK(eddyb) should get the original `Span`.
+                                let span = tcx.def_span(def_id);
+                                Some((predicate, span))
+                            } else {
+                                None
+                            }
                         }
                         _ => None,
                     }
