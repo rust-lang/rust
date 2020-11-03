@@ -44,10 +44,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
-        debug!("simplify_candidate(candidate={:?})", candidate);
+        debug!(?candidate, "simplify_candidate");
 
-        // exisiting_bindings and new_bindings exists to keep the semantics in order
-        // reversing the binding order for bindings after `@` change binding order in places
+        // existing_bindings and new_bindings exists to keep the semantics in order.
+        // Reversing the binding order for bindings after `@` changes the binding order in places
         // it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`
         //
         // To avoid this, the binding occurs in the following manner:
@@ -64,7 +64,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // binding in iter 2: [6, 7]
         //
         // final binding: [1, 2, 3, 6, 7, 4, 5]
-        let mut exisiting_bindings = mem::take(&mut candidate.bindings);
+        let mut existing_bindings = mem::take(&mut candidate.bindings);
         let mut new_bindings = Vec::new();
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
@@ -72,8 +72,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
                 *match_pairs
             {
-                exisiting_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut exisiting_bindings);
+                existing_bindings.extend_from_slice(&new_bindings);
+                mem::swap(&mut candidate.bindings, &mut existing_bindings);
                 candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
                 return true;
             }
@@ -89,7 +89,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
-            // issue #69971: the binding order should be right to left if there are more
+            // Avoid issue #69971: the binding order should be right to left if there are more
             // bindings after `@` to please the borrow checker
             // Ex
             // struct NonCopyStruct {
@@ -107,15 +107,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             candidate.bindings.clear();
 
             if !changed {
-                exisiting_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut exisiting_bindings);
+                existing_bindings.extend_from_slice(&new_bindings);
+                mem::swap(&mut candidate.bindings, &mut existing_bindings);
                 // Move or-patterns to the end, because they can result in us
                 // creating additional candidates, so we want to test them as
                 // late as possible.
                 candidate
                     .match_pairs
                     .sort_by_key(|pair| matches!(*pair.pattern.kind, PatKind::Or { .. }));
-                debug!("simplify_candidate: simplifed {:?}", candidate);
+                debug!(simplified = ?candidate, "simplify_candidate");
                 return false; // if we were not able to simplify any, done.
             }
         }
