@@ -421,7 +421,7 @@ impl Item {
             kind,
             box ast_attrs.clean(cx),
             cx,
-            ast_attrs.cfg(cx.sess()),
+            ast_attrs.cfg(cx.tcx),
         )
     }
 
@@ -747,7 +747,7 @@ crate trait AttributesExt {
 
     fn other_attrs(&self) -> Vec<ast::Attribute>;
 
-    fn cfg(&self, sess: &Session) -> Option<Arc<Cfg>>;
+    fn cfg(&self, tcx: TyCtxt<'_>) -> Option<Arc<Cfg>>;
 }
 
 impl AttributesExt for [ast::Attribute] {
@@ -772,8 +772,52 @@ impl AttributesExt for [ast::Attribute] {
         self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
     }
 
-    fn cfg(&self, sess: &Session) -> Option<Arc<Cfg>> {
-        let mut cfg = Cfg::True;
+    fn cfg(&self, tcx: TyCtxt<'_>) -> Option<Arc<Cfg>> {
+        let sess = tcx.sess;
+        let doc_cfg_active = tcx.features().doc_cfg;
+
+        trait SingleExt {
+            type Item;
+            fn single(self) -> Option<Self::Item>;
+        }
+
+        impl<T: IntoIterator> SingleExt for T {
+            type Item = T::Item;
+            fn single(self) -> Option<Self::Item> {
+                let mut iter = self.into_iter();
+                let item = iter.next()?;
+                iter.next().is_none().then_some(())?;
+                Some(item)
+            }
+        }
+
+        let mut cfg = if doc_cfg_active {
+            let mut doc_cfg = self
+                .iter()
+                .filter(|attr| attr.has_name(sym::doc))
+                .filter_map(|attr| Some(attr.meta_item_list()?.single()?))
+                .filter(|attr| attr.has_name(sym::cfg))
+                .filter_map(|attr| Some(attr.meta_item_list()?.single()?.meta_item()?.clone()))
+                .peekable();
+            if doc_cfg.peek().is_some() {
+                doc_cfg
+                    .filter_map(|attr| {
+                        Cfg::parse(&attr).map_err(|e| sess.diagnostic().span_err(e.span, e.msg)).ok()
+                    })
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            } else {
+                self
+                    .iter()
+                    .filter(|attr| attr.has_name(sym::cfg))
+                    .filter_map(|attr| Some(attr.meta_item_list()?.single()?.meta_item()?.clone()))
+                    .filter_map(|attr| {
+                        Cfg::parse(&attr).map_err(|e| sess.diagnostic().span_err(e.span, e.msg)).ok()
+                    })
+                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+            }
+        } else {
+            Cfg::True
+        };
 
         for attr in self.iter() {
             // #[doc]
