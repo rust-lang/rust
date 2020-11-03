@@ -1,3 +1,4 @@
+#!/bin/sh
 hide_output() {
   set +x
   on_err="

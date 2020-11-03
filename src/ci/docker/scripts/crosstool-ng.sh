@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 url="https://github.com/crosstool-ng/crosstool-ng/archive/crosstool-ng-1.22.0.tar.gz"

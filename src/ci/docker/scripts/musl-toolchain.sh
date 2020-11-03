@@ -1,3 +1,4 @@
+#!/bin/sh
 # This script runs `musl-cross-make` to prepare C toolchain (Binutils, GCC, musl itself)
 # and builds static libunwind that we distribute for static target.
 #

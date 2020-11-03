@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 curl -f https://ftp.gnu.org/gnu/make/make-3.81.tar.gz | tar xzf -

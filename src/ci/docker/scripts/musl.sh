@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 hide_output() {
