@@ -2,7 +2,7 @@ use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability};
-use rustc_span::{symbol::kw, BytePos, Span};
+use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
@@ -648,37 +648,72 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Rptr(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
-                Some(match *lifetime {
-                    Some(ref lifetime) => {
-                        let lt_budget = shape.width.checked_sub(2 + mut_len)?;
-                        let lt_str = lifetime.rewrite(
+                let mut result = String::with_capacity(128);
+                result.push_str("&");
+                let ref_hi = context.snippet_provider.span_after(self.span(), "&");
+                let mut cmnt_lo = ref_hi;
+
+                if let Some(ref lifetime) = *lifetime {
+                    let lt_budget = shape.width.checked_sub(2 + mut_len)?;
+                    let lt_str = lifetime.rewrite(
+                        context,
+                        Shape::legacy(lt_budget, shape.indent + 2 + mut_len),
+                    )?;
+                    let before_lt_span = mk_sp(cmnt_lo, lifetime.ident.span.lo());
+                    if contains_comment(context.snippet(before_lt_span)) {
+                        result = combine_strs_with_missing_comments(
                             context,
-                            Shape::legacy(lt_budget, shape.indent + 2 + mut_len),
+                            &result,
+                            &lt_str,
+                            before_lt_span,
+                            shape,
+                            true,
                         )?;
-                        let lt_len = lt_str.len();
-                        let budget = shape.width.checked_sub(2 + mut_len + lt_len)?;
-                        format!(
-                            "&{} {}{}",
-                            lt_str,
-                            mut_str,
-                            mt.ty.rewrite(
-                                context,
-                                Shape::legacy(budget, shape.indent + 2 + mut_len + lt_len)
-                            )?
-                        )
+                    } else {
+                        result.push_str(&lt_str);
                     }
-                    None => {
-                        let budget = shape.width.checked_sub(1 + mut_len)?;
-                        format!(
-                            "&{}{}",
+                    result.push_str(" ");
+                    cmnt_lo = lifetime.ident.span.hi();
+                }
+
+                if ast::Mutability::Mut == mt.mutbl {
+                    let mut_hi = context.snippet_provider.span_after(self.span(), "mut");
+                    let before_mut_span = mk_sp(cmnt_lo, mut_hi - BytePos::from_usize(3));
+                    if contains_comment(context.snippet(before_mut_span)) {
+                        result = combine_strs_with_missing_comments(
+                            context,
+                            result.trim_end(),
                             mut_str,
-                            mt.ty.rewrite(
-                                context,
-                                Shape::legacy(budget, shape.indent + 1 + mut_len)
-                            )?
-                        )
+                            before_mut_span,
+                            shape,
+                            true,
+                        )?;
+                    } else {
+                        result.push_str(mut_str);
                     }
-                })
+                    cmnt_lo = mut_hi;
+                }
+
+                let before_ty_span = mk_sp(cmnt_lo, mt.ty.span.lo());
+                if contains_comment(context.snippet(before_ty_span)) {
+                    result = combine_strs_with_missing_comments(
+                        context,
+                        result.trim_end(),
+                        &mt.ty.rewrite(&context, shape)?,
+                        before_ty_span,
+                        shape,
+                        true,
+                    )?;
+                } else {
+                    let used_width = last_line_width(&result);
+                    let budget = shape.width.checked_sub(used_width)?;
+                    let ty_str = mt
+                        .ty
+                        .rewrite(&context, Shape::legacy(budget, shape.indent + used_width))?;
+                    result.push_str(&ty_str);
+                }
+
+                Some(result)
             }
             // FIXME: we drop any comments here, even though it's a silly place to put
             // comments.
