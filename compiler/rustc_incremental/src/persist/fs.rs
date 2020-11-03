@@ -765,7 +765,6 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
     // Now garbage collect the valid session directories.
     let mut deletion_candidates = vec![];
-    let mut definitely_delete = vec![];
 
     for (lock_file_name, directory_name) in &lock_file_to_session_dir {
         debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
@@ -842,8 +841,11 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
                             successfully acquired lock"
                     );
 
-                    // Note that we are holding on to the lock
-                    definitely_delete.push((crate_directory.join(directory_name), Some(lock)));
+                    delete_old(sess, &crate_directory.join(directory_name));
+
+                    // Let's make it explicit that the file lock is released at this point,
+                    // or rather, that we held on to it until here
+                    mem::drop(lock);
                 }
                 Err(_) => {
                     debug!(
@@ -880,26 +882,21 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
         mem::drop(lock);
     }
 
-    for (path, lock) in definitely_delete {
-        debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
-
-        if let Err(err) = safe_remove_dir_all(&path) {
-            sess.warn(&format!(
-                "Failed to garbage collect incremental \
-                                compilation session directory `{}`: {}",
-                path.display(),
-                err
-            ));
-        } else {
-            delete_session_dir_lock_file(sess, &lock_file_path(&path));
-        }
-
-        // Let's make it explicit that the file lock is released at this point,
-        // or rather, that we held on to it until here
-        mem::drop(lock);
-    }
-
     Ok(())
+}
+
+fn delete_old(sess: &Session, path: &Path) {
+    debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
+
+    if let Err(err) = safe_remove_dir_all(&path) {
+        sess.warn(&format!(
+            "Failed to garbage collect incremental compilation session directory `{}`: {}",
+            path.display(),
+            err
+        ));
+    } else {
+        delete_session_dir_lock_file(sess, &lock_file_path(&path));
+    }
 }
 
 fn all_except_most_recent(

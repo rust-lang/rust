@@ -153,7 +153,8 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
         let total_node_count = serialized_graph.nodes.len();
         let total_edge_count = serialized_graph.edge_list_data.len();
 
-        let mut counts: FxHashMap<_, Stat> = FxHashMap::default();
+        let mut counts: FxHashMap<_, Stat> =
+            FxHashMap::with_capacity_and_hasher(total_node_count, Default::default());
 
         for (i, &node) in serialized_graph.nodes.iter_enumerated() {
             let stat = counts.entry(node.kind).or_insert(Stat {
@@ -169,14 +170,6 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
 
         let mut counts: Vec<_> = counts.values().cloned().collect();
         counts.sort_by_key(|s| -(s.node_counter as i64));
-
-        let percentage_of_all_nodes: Vec<f64> = counts
-            .iter()
-            .map(|s| (100.0 * (s.node_counter as f64)) / (total_node_count as f64))
-            .collect();
-
-        let average_edges_per_kind: Vec<f64> =
-            counts.iter().map(|s| (s.edge_counter as f64) / (s.node_counter as f64)).collect();
 
         println!("[incremental]");
         println!("[incremental] DepGraph Statistics");
@@ -207,13 +200,13 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
                   |------------------|"
         );
 
-        for (i, stat) in counts.iter().enumerate() {
+        for stat in counts.iter() {
             println!(
                 "[incremental]  {:<36}|{:>16.1}% |{:>12} |{:>17.1} |",
                 format!("{:?}", stat.kind),
-                percentage_of_all_nodes[i],
+                (100.0 * (stat.node_counter as f64)) / (total_node_count as f64), // percentage of all nodes
                 stat.node_counter,
-                average_edges_per_kind[i]
+                (stat.edge_counter as f64) / (stat.node_counter as f64), // average edges per kind
             );
         }
 

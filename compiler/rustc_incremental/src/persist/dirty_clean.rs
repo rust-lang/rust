@@ -160,7 +160,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         let mut all_attrs = FindAllAttrs {
             tcx,
-            attr_names: vec![sym::rustc_dirty, sym::rustc_clean],
+            attr_names: &[sym::rustc_dirty, sym::rustc_clean],
             found_attrs: vec![],
         };
         intravisit::walk_crate(&mut all_attrs, krate);
@@ -299,7 +299,7 @@ impl DirtyCleanVisitor<'tcx> {
 
                     // Represents a Trait Declaration
                     // FIXME(michaelwoerister): trait declaration is buggy because sometimes some of
-                    // the depnodes don't exist (because they legitametely didn't need to be
+                    // the depnodes don't exist (because they legitimately didn't need to be
                     // calculated)
                     //
                     // michaelwoerister and vitiral came up with a possible solution,
@@ -512,17 +512,17 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
 }
 
 // A visitor that collects all #[rustc_dirty]/#[rustc_clean] attributes from
-// the HIR. It is used to verfiy that we really ran checks for all annotated
+// the HIR. It is used to verify that we really ran checks for all annotated
 // nodes.
-pub struct FindAllAttrs<'tcx> {
+pub struct FindAllAttrs<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    attr_names: Vec<Symbol>,
+    attr_names: &'a [Symbol],
     found_attrs: Vec<&'tcx Attribute>,
 }
 
-impl FindAllAttrs<'tcx> {
+impl FindAllAttrs<'_, 'tcx> {
     fn is_active_attr(&mut self, attr: &Attribute) -> bool {
-        for attr_name in &self.attr_names {
+        for attr_name in self.attr_names {
             if self.tcx.sess.check_name(attr, *attr_name) && check_config(self.tcx, attr) {
                 return true;
             }
@@ -543,7 +543,7 @@ impl FindAllAttrs<'tcx> {
     }
 }
 
-impl intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
+impl intravisit::Visitor<'tcx> for FindAllAttrs<'_, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
