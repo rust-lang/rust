@@ -9,7 +9,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "powerpc64le-unknown-linux-musl".to_string(),
         pointer_width: 64,
-        data_layout: "e-m:e-i64:64-n32:64".to_string(),
+        data_layout: "e-m:e-i64:64-n32:64-v256:256:256-v512:512:512".to_string(),
         arch: "powerpc64".to_string(),
         options: TargetOptions { mcount: "_mcount".to_string(), ..base },
     }

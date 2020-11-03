@@ -430,7 +430,13 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(attrs);
-                llvm::Attribute::StructRet.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
+                unsafe {
+                    llvm::LLVMRustAddStructRetAttr(
+                        llfn,
+                        llvm::AttributePlace::Argument(i).as_uint(),
+                        self.ret.layout.llvm_type(cx),
+                    );
+                }
             }
             _ => {}
         }
@@ -486,8 +492,13 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(attrs);
-                llvm::Attribute::StructRet
-                    .apply_callsite(llvm::AttributePlace::Argument(i), callsite);
+                unsafe {
+                    llvm::LLVMRustAddStructRetCallSiteAttr(
+                        callsite,
+                        llvm::AttributePlace::Argument(i).as_uint(),
+                        self.ret.layout.llvm_type(bx),
+                    );
+                }
             }
             _ => {}
         }

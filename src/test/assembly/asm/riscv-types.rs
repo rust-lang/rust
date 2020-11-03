@@ -5,6 +5,7 @@
 //[riscv32] compile-flags: --target riscv32imac-unknown-none-elf
 // compile-flags: -C target-feature=+d
 // needs-llvm-components: riscv
+// min-system-llvm-version: 12.0
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]
@@ -99,45 +100,45 @@ macro_rules! check_reg {
 
 // CHECK-LABEL: reg_i8:
 // CHECK: #APP
-// CHECK: add {{[a-z0-9]+}}, zero, {{[a-z0-9]+}}
+// CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_i8 i8 reg "mv");
 
 // CHECK-LABEL: reg_i16:
 // CHECK: #APP
-// CHECK: add {{[a-z0-9]+}}, zero, {{[a-z0-9]+}}
+// CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_i16 i16 reg "mv");
 
 // CHECK-LABEL: reg_i32:
 // CHECK: #APP
-// CHECK: add {{[a-z0-9]+}}, zero, {{[a-z0-9]+}}
+// CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_i32 i32 reg "mv");
 
 // CHECK-LABEL: reg_f32:
 // CHECK: #APP
-// CHECK: add {{[a-z0-9]+}}, zero, {{[a-z0-9]+}}
+// CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_f32 f32 reg "mv");
 
 // riscv64-LABEL: reg_i64:
 // riscv64: #APP
-// riscv64: add {{[a-z0-9]+}}, zero, {{[a-z0-9]+}}
+// riscv64: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // riscv64: #NO_APP
 #[cfg(riscv64)]
 check!(reg_i64 i64 reg "mv");
 
 // riscv64-LABEL: reg_f64:
 // riscv64: #APP
-// riscv64: add {{[a-z0-9]+}}, zero, {{[a-z0-9]+}}
+// riscv64: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // riscv64: #NO_APP
 #[cfg(riscv64)]
 check!(reg_f64 f64 reg "mv");
 
 // CHECK-LABEL: reg_ptr:
 // CHECK: #APP
-// CHECK: add {{[a-z0-9]+}}, zero, {{[a-z0-9]+}}
+// CHECK: mv {{[a-z0-9]+}}, {{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr ptr reg "mv");
 
@@ -155,45 +156,45 @@ check!(freg_f64 f64 freg "fmv.d");
 
 // CHECK-LABEL: a0_i8:
 // CHECK: #APP
-// CHECK: add a0, zero, a0
+// CHECK: mv a0, a0
 // CHECK: #NO_APP
 check_reg!(a0_i8 i8 "a0" "mv");
 
 // CHECK-LABEL: a0_i16:
 // CHECK: #APP
-// CHECK: add a0, zero, a0
+// CHECK: mv a0, a0
 // CHECK: #NO_APP
 check_reg!(a0_i16 i16 "a0" "mv");
 
 // CHECK-LABEL: a0_i32:
 // CHECK: #APP
-// CHECK: add a0, zero, a0
+// CHECK: mv a0, a0
 // CHECK: #NO_APP
 check_reg!(a0_i32 i32 "a0" "mv");
 
 // CHECK-LABEL: a0_f32:
 // CHECK: #APP
-// CHECK: add a0, zero, a0
+// CHECK: mv a0, a0
 // CHECK: #NO_APP
 check_reg!(a0_f32 f32 "a0" "mv");
 
 // riscv64-LABEL: a0_i64:
 // riscv64: #APP
-// riscv64: add a0, zero, a0
+// riscv64: mv a0, a0
 // riscv64: #NO_APP
 #[cfg(riscv64)]
 check_reg!(a0_i64 i64 "a0" "mv");
 
 // riscv64-LABEL: a0_f64:
 // riscv64: #APP
-// riscv64: add a0, zero, a0
+// riscv64: mv a0, a0
 // riscv64: #NO_APP
 #[cfg(riscv64)]
 check_reg!(a0_f64 f64 "a0" "mv");
 
 // CHECK-LABEL: a0_ptr:
 // CHECK: #APP
-// CHECK: add a0, zero, a0
+// CHECK: mv a0, a0
 // CHECK: #NO_APP
 check_reg!(a0_ptr ptr "a0" "mv");
 
