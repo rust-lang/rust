@@ -310,8 +310,44 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
         };
 
         if style == ast::MacStmtStyle::Semicolon {
+            // Implement the proposal described in
+            // https://github.com/rust-lang/rust/issues/61733#issuecomment-509626449
+            //
+            // The macro invocation expands to the list of statements.
+            // If the list of statements is empty, then 'parse'
+            // the trailing semicolon on the original invocation
+            // as an empty statement. That is:
+            //
+            // `empty();` is parsed as a single `StmtKind::Empty`
+            //
+            // If the list of statements is non-empty, see if the
+            // final statement alreayd has a trailing semicolon.
+            //
+            // If it doesn't have a semicolon, then 'parse' the trailing semicolon
+            // from the invocation as part of the final statement,
+            // using `stmt.add_trailing_semicolon()`
+            //
+            // If it does have a semicolon, then 'parse' the trailing semicolon
+            // from the invocation as a new StmtKind::Empty
+
+            // FIXME: We will need to preserve the original
+            // semicolon token and span as part of #15701
+            let empty_stmt = ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                kind: ast::StmtKind::Empty,
+                span: DUMMY_SP,
+                tokens: None,
+            };
+
             if let Some(stmt) = stmts.pop() {
-                stmts.push(stmt.add_trailing_semicolon());
+                if stmt.has_trailing_semicolon() {
+                    stmts.push(stmt);
+                    stmts.push(empty_stmt);
+                } else {
+                    stmts.push(stmt.add_trailing_semicolon());
+                }
+            } else {
+                stmts.push(empty_stmt);
             }
         }
 

@@ -42,6 +42,11 @@ impl EarlyLintPass for RedundantSemicolons {
 
 fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, bool)>) {
     if let Some((span, multiple)) = seq.take() {
+        // FIXME: Find a better way of ignoring the trailing
+        // semicolon from macro expansion
+        if span == rustc_span::DUMMY_SP {
+            return;
+        }
         cx.struct_span_lint(REDUNDANT_SEMICOLONS, span, |lint| {
             let (msg, rem) = if multiple {
                 ("unnecessary trailing semicolons", "remove these semicolons")
