@@ -14,8 +14,8 @@
 //! those that are created by the expansion of a macro.
 
 use crate::ast::*;
-use crate::token::Token;
-use crate::tokenstream::{TokenStream, TokenTree};
+use crate::token;
+use crate::tokenstream::TokenTree;
 
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -208,14 +208,6 @@ pub trait Visitor<'ast>: Sized {
     fn visit_attribute(&mut self, attr: &'ast Attribute) {
         walk_attribute(self, attr)
     }
-    fn visit_tt(&mut self, tt: TokenTree) {
-        walk_tt(self, tt)
-    }
-    fn visit_tts(&mut self, tts: TokenStream) {
-        walk_tts(self, tts)
-    }
-    fn visit_token(&mut self, _t: Token) {}
-    // FIXME: add `visit_interpolated` and `walk_interpolated`
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
@@ -902,20 +894,19 @@ pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) 
 pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
     match args {
         MacArgs::Empty => {}
-        MacArgs::Delimited(_dspan, _delim, tokens) => visitor.visit_tts(tokens.clone()),
-        MacArgs::Eq(_eq_span, tokens) => visitor.visit_tts(tokens.clone()),
-    }
-}
-
-pub fn walk_tt<'a, V: Visitor<'a>>(visitor: &mut V, tt: TokenTree) {
-    match tt {
-        TokenTree::Token(token) => visitor.visit_token(token),
-        TokenTree::Delimited(_, _, tts) => visitor.visit_tts(tts),
-    }
-}
-
-pub fn walk_tts<'a, V: Visitor<'a>>(visitor: &mut V, tts: TokenStream) {
-    for tt in tts.trees() {
-        visitor.visit_tt(tt);
+        MacArgs::Delimited(_dspan, _delim, _tokens) => {}
+        // The value in `#[key = VALUE]` must be visited as an expression for backward
+        // compatibility, so that macros can be expanded in that position.
+        MacArgs::Eq(_eq_span, tokens) => match tokens.trees_ref().next() {
+            Some(TokenTree::Token(token)) => match &token.kind {
+                token::Interpolated(nt) => match &**nt {
+                    token::NtExpr(expr) => visitor.visit_expr(expr),
+                    t => panic!("unexpected token in key-value attribute: {:?}", t),
+                },
+                token::Literal(..) | token::Ident(..) => {}
+                t => panic!("unexpected token in key-value attribute: {:?}", t),
+            },
+            t => panic!("unexpected token in key-value attribute: {:?}", t),
+        },
     }
 }

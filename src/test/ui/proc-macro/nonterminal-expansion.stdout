@@ -1,0 +1,42 @@
+PRINT-ATTR_ARGS INPUT (DISPLAY): a, line!(), b
+PRINT-ATTR_ARGS RE-COLLECTED (DISPLAY): a, line ! (), b
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "a",
+        span: $DIR/nonterminal-expansion.rs:13:27: 13:28 (#4),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/nonterminal-expansion.rs:13:28: 13:29 (#4),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "line",
+                span: $DIR/nonterminal-expansion.rs:19:19: 19:23 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/nonterminal-expansion.rs:19:23: 19:24 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [],
+                span: $DIR/nonterminal-expansion.rs:19:24: 19:26 (#0),
+            },
+        ],
+        span: $DIR/nonterminal-expansion.rs:13:30: 13:35 (#4),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/nonterminal-expansion.rs:13:35: 13:36 (#4),
+    },
+    Ident {
+        ident: "b",
+        span: $DIR/nonterminal-expansion.rs:13:37: 13:38 (#4),
+    },
+]

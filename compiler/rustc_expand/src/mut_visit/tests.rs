@@ -15,6 +15,9 @@ fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
 struct ToZzIdentMutVisitor;
 
 impl MutVisitor for ToZzIdentMutVisitor {
+    fn token_visiting_enabled(&self) -> bool {
+        true
+    }
     fn visit_ident(&mut self, ident: &mut Ident) {
         *ident = Ident::from_str("zz");
     }

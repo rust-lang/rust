@@ -20,6 +20,10 @@ use std::mem;
 struct Marker(ExpnId, Transparency);
 
 impl MutVisitor for Marker {
+    fn token_visiting_enabled(&self) -> bool {
+        true
+    }
+
     fn visit_span(&mut self, span: &mut Span) {
         *span = span.apply_mark(self.0, self.1)
     }
@@ -277,7 +281,7 @@ pub(super) fn transcribe<'a>(
             // preserve syntax context.
             mbe::TokenTree::Token(token) => {
                 let mut tt = TokenTree::Token(token);
-                marker.visit_tt(&mut tt);
+                mut_visit::visit_tt(&mut tt, &mut marker);
                 result.push(tt.into());
             }
 
