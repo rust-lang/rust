@@ -643,6 +643,7 @@ where
     }
     if options.contains(&RenderOption::DarkTheme) {
         graph_attrs.push(r#"bgcolor="black""#);
+        graph_attrs.push(r#"fontcolor="white""#);
         content_attrs.push(r#"color="white""#);
         content_attrs.push(r#"fontcolor="white""#);
     }

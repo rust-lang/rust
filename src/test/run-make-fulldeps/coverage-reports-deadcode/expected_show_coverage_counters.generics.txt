@@ -1,0 +1,48 @@
+Counter in file 0 17:24 -> 19:6, #1
+Counter in file 0 17:24 -> 19:6, #1
+Counter in file 0 23:9 -> 28:28, #1
+Counter in file 0 30:8 -> 30:12, (#1 + 0)
+Counter in file 0 31:9 -> 32:22, #2
+Counter in file 0 38:1 -> 38:2, (#2 + 0)
+Counter in file 0 10:49 -> 12:6, #1
+Counter in file 0 10:49 -> 12:6, #1
+Emitting segments for file: ../coverage/generics.rs
+Combined regions:
+  10:49 -> 12:6 (count=3)
+  17:24 -> 19:6 (count=2)
+  23:9 -> 28:28 (count=1)
+  30:8 -> 30:12 (count=1)
+  31:9 -> 32:22 (count=1)
+  38:1 -> 38:2 (count=1)
+Segment at 10:49 (count = 3), RegionEntry
+Segment at 12:6 (count = 0), Skipped
+Segment at 17:24 (count = 2), RegionEntry
+Segment at 19:6 (count = 0), Skipped
+Segment at 23:9 (count = 1), RegionEntry
+Segment at 28:28 (count = 0), Skipped
+Segment at 30:8 (count = 1), RegionEntry
+Segment at 30:12 (count = 0), Skipped
+Segment at 31:9 (count = 1), RegionEntry
+Segment at 32:22 (count = 0), Skipped
+Segment at 38:1 (count = 1), RegionEntry
+Segment at 38:2 (count = 0), Skipped
+Emitting segments for function: _RNvMCs4fqI2P2rA04_8genericsINtB2_8FireworkdE12set_strengthB2_
+Combined regions:
+  10:49 -> 12:6 (count=2)
+Segment at 10:49 (count = 2), RegionEntry
+Segment at 12:6 (count = 0), Skipped
+Emitting segments for function: _RNvMCs4fqI2P2rA04_8genericsINtB2_8FireworklE12set_strengthB2_
+Combined regions:
+  10:49 -> 12:6 (count=1)
+Segment at 10:49 (count = 1), RegionEntry
+Segment at 12:6 (count = 0), Skipped
+Emitting segments for function: _RNvXs_Cs4fqI2P2rA04_8genericsINtB4_8FireworklENtNtNtCs7f2nZg1zwMz_4core3ops4drop4Drop4dropB4_
+Combined regions:
+  17:24 -> 19:6 (count=1)
+Segment at 17:24 (count = 1), RegionEntry
+Segment at 19:6 (count = 0), Skipped
+Emitting segments for function: _RNvXs_Cs4fqI2P2rA04_8genericsINtB4_8FireworkdENtNtNtCs7f2nZg1zwMz_4core3ops4drop4Drop4dropB4_
+Combined regions:
+  17:24 -> 19:6 (count=1)
+Segment at 17:24 (count = 1), RegionEntry
+Segment at 19:6 (count = 0), Skipped

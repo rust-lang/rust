@@ -21,6 +21,7 @@ clear_expected_if_blessed:
 ifdef RUSTC_BLESS_TEST
 	rm -f expected_export_coverage.*.json
 	rm -f expected_show_coverage.*.txt
+	rm -f expected_show_coverage_counters.*.txt
 endif
 
 -include clear_expected_if_blessed
@@ -54,20 +55,39 @@ endif
 	# when comparing the JSON `export`, the `show` output may be useful when
 	# debugging.
 	"$(LLVM_BIN_DIR)"/llvm-cov show \
+			--debug \
 			--Xdemangler="$(RUST_DEMANGLER)" \
 			--show-line-counts-or-regions \
 			--instr-profile="$(TMPDIR)"/$@.profdata \
 			$(call BIN,"$(TMPDIR)"/$@) \
-		> "$(TMPDIR)"/actual_show_coverage.$@.txt
+		> "$(TMPDIR)"/actual_show_coverage.$@.txt \
+		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt
+
+	# The first line (beginning with "Args:" contains hard-coded, build-specific
+	# file paths. Strip that line and keep the remaining lines with counter debug
+	# data.
+	tail -n +2 "$(TMPDIR)"/show_coverage_stderr.$@.txt \
+		> "$(TMPDIR)"/actual_show_coverage_counters.$@.txt
 
 ifdef RUSTC_BLESS_TEST
-	cp "$(TMPDIR)"/actual_show_coverage.$@.txt expected_show_coverage.$@.txt
+	cp "$(TMPDIR)"/actual_show_coverage.$@.txt \
+			expected_show_coverage.$@.txt
+	cp "$(TMPDIR)"/actual_show_coverage_counters.$@.txt \
+			expected_show_coverage_counters.$@.txt
 else
 	# Compare the show coverage output (`--bless` refreshes `typical` files)
 	# Note `llvm-cov show` output for some programs can vary, but can be ignored
 	# by inserting `// ignore-llvm-cov-show-diffs` at the top of the source file.
 
 	$(DIFF) expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
+		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
+			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
+		) || \
+		( >&2 echo 'diff failed, and not suppressed without `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs'; \
+			false \
+		)
+
+	$(DIFF) expected_show_coverage_counters.$@.txt "$(TMPDIR)"/actual_show_coverage_counters.$@.txt || \
 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
 		) || \

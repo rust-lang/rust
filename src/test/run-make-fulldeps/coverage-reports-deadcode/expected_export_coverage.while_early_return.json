@@ -16,9 +16,9 @@
               "percent": 100
             },
             "lines": {
-              "count": 18,
-              "covered": 16,
-              "percent": 88.88888888888889
+              "count": 17,
+              "covered": 15,
+              "percent": 88.23529411764706
             },
             "regions": {
               "count": 9,
@@ -41,9 +41,9 @@
           "percent": 100
         },
         "lines": {
-          "count": 18,
-          "covered": 16,
-          "percent": 88.88888888888889
+          "count": 17,
+          "covered": 15,
+          "percent": 88.23529411764706
         },
         "regions": {
           "count": 9,

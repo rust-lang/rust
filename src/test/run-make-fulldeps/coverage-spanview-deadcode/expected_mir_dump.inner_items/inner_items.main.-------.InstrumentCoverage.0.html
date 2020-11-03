@@ -1,4 +1,14 @@
 <!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.inner_items/inner_items.main.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
 <html>
 <head>
 <title>inner_items.main - Coverage Spans</title>
@@ -86,11 +96,14 @@
 9:9-9:22: @3[3]: FakeRead(ForLet, _5)">    let mut countdown = 0<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="10:8-10:15: @3[6]: _7 = _1
 10:8-10:15: @3[7]: FakeRead(ForMatchedPlace, _7)"><span class="annotation">@0,1,2,3⦊</span>is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="11:9-11:23: @6[0]: _5 = const 10_u32
-10:16-12:6: @6[1]: _6 = const ()"><span class="annotation">@4,6⦊</span>{</span></span>
+10:16-12:6: @6[1]: _6 = const ()
+12:6-12:6: @6.Goto: goto -&gt; bb7"><span class="annotation">@4,6⦊</span>{</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:23: @6[0]: _5 = const 10_u32
-10:16-12:6: @6[1]: _6 = const ()">        countdown = 10;</span></span>
+10:16-12:6: @6[1]: _6 = const ()
+12:6-12:6: @6.Goto: goto -&gt; bb7">        countdown = 10;</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:23: @6[0]: _5 = const 10_u32
-10:16-12:6: @6[1]: _6 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span class="code" style="--layer: 0"></span></span>
+10:16-12:6: @6[1]: _6 = const ()
+12:6-12:6: @6.Goto: goto -&gt; bb7">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="12:6-12:6: @5.Goto: goto -&gt; bb7"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    mod in_mod {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        const IN_MOD_CONST: u32 = 1000;</span></span>
@@ -126,16 +139,19 @@
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    type InType = String;</span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="48:8-48:15: @7[4]: _9 = _1
-48:8-48:15: @7[5]: FakeRead(ForMatchedPlace, _9)"><span class="annotation">@7⦊</span>is_true<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code odd" style="--layer: 1" title="48:8-48:15: @7[4]: _9 = _1
+48:8-48:15: @7[5]: FakeRead(ForMatchedPlace, _9)"><span class="annotation">@7⦊</span>is_true<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code even" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
 49:9-49:27: @10.Call: _10 = in_func(move _11) -&gt; [return: bb11, unwind: bb15]
-48:16-50:6: @11[2]: _8 = const ()"><span class="annotation">@8,10,11⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
+48:16-50:6: @11[2]: _8 = const ()
+50:6-50:6: @11.Goto: goto -&gt; bb12"><span class="annotation">@8,10,11⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
 49:9-49:27: @10.Call: _10 = in_func(move _11) -&gt; [return: bb11, unwind: bb15]
-48:16-50:6: @11[2]: _8 = const ()">        in_func(countdown);</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
+48:16-50:6: @11[2]: _8 = const ()
+50:6-50:6: @11.Goto: goto -&gt; bb12">        in_func(countdown);</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="49:17-49:26: @10[2]: _11 = _5
 49:9-49:27: @10.Call: _10 = in_func(move _11) -&gt; [return: bb11, unwind: bb15]
-48:16-50:6: @11[2]: _8 = const ()">    }<span class="annotation">⦉@8,10,11</span></span></span><span class="code" style="--layer: 0"></span></span>
+48:16-50:6: @11[2]: _8 = const ()
+50:6-50:6: @11.Goto: goto -&gt; bb12">    }<span class="annotation">⦉@8,10,11</span></span></span><span><span class="code odd" style="--layer: 1" title="50:6-50:6: @9.Goto: goto -&gt; bb12"><span class="annotation">@9⦊</span>‸<span class="annotation">⦉@9</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="52:19-54:6: @12[3]: _12 = InStruct { in_struct_field: const 101_u32 }
 52:9-52:16: @12[4]: FakeRead(ForLet, _12)

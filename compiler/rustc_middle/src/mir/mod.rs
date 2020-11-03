@@ -1586,21 +1586,10 @@ impl Debug for Statement<'_> {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Coverage(box ref coverage) => {
-                let rgn = &coverage.code_region;
-                match coverage.kind {
-                    CoverageKind::Counter { id, .. } => {
-                        write!(fmt, "Coverage::Counter({:?}) for {:?}", id.index(), rgn)
-                    }
-                    CoverageKind::Expression { id, lhs, op, rhs } => write!(
-                        fmt,
-                        "Coverage::Expression({:?}) = {} {} {} for {:?}",
-                        id.index(),
-                        lhs.index(),
-                        if op == coverage::Op::Add { "+" } else { "-" },
-                        rhs.index(),
-                        rgn
-                    ),
-                    CoverageKind::Unreachable => write!(fmt, "Coverage::Unreachable for {:?}", rgn),
+                if let Some(rgn) = &coverage.code_region {
+                    write!(fmt, "Coverage::{:?} for {:?}", coverage.kind, rgn)
+                } else {
+                    write!(fmt, "Coverage::{:?}", coverage.kind)
                 }
             }
             Nop => write!(fmt, "nop"),
@@ -1611,7 +1600,7 @@ impl Debug for Statement<'_> {
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct Coverage {
     pub kind: CoverageKind,
-    pub code_region: CodeRegion,
+    pub code_region: Option<CodeRegion>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
