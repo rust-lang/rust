@@ -234,6 +234,7 @@ mod macro_use;
 mod main_recursion;
 mod manual_async_fn;
 mod manual_non_exhaustive;
+mod manual_ok_or;
 mod manual_strip;
 mod manual_unwrap_or;
 mod map_clone;
@@ -651,6 +652,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &main_recursion::MAIN_RECURSION,
         &manual_async_fn::MANUAL_ASYNC_FN,
         &manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
+        &manual_ok_or::MANUAL_OK_OR,
         &manual_strip::MANUAL_STRIP,
         &manual_unwrap_or::MANUAL_UNWRAP_OR,
         &map_clone::MAP_CLONE,
@@ -1152,6 +1154,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box unwrap_in_result::UnwrapInResult);
     store.register_late_pass(|| box self_assignment::SelfAssignment);
     store.register_late_pass(|| box manual_unwrap_or::ManualUnwrapOr);
+    store.register_late_pass(|| box manual_ok_or::ManualOkOr);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
     store.register_late_pass(|| box manual_strip::ManualStrip);
@@ -1240,6 +1243,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
         LintId::of(&macro_use::MACRO_USE_IMPORTS),
+        LintId::of(&manual_ok_or::MANUAL_OK_OR),
         LintId::of(&map_err_ignore::MAP_ERR_IGNORE),
         LintId::of(&match_on_vec_items::MATCH_ON_VEC_ITEMS),
         LintId::of(&matches::MATCH_BOOL),
