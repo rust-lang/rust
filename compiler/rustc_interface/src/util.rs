@@ -148,9 +148,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
 
     let main_handler = move || {
         rustc_span::with_session_globals(edition, || {
-            if let Some(stderr) = stderr {
-                io::set_panic(Some(stderr.clone()));
-            }
+            io::set_panic(stderr.clone());
             f()
         })
     };
@@ -188,9 +186,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
             // on the new threads.
             let main_handler = move |thread: rayon::ThreadBuilder| {
                 rustc_span::SESSION_GLOBALS.set(session_globals, || {
-                    if let Some(stderr) = stderr {
-                        io::set_panic(Some(stderr.clone()));
-                    }
+                    io::set_panic(stderr.clone());
                     thread.run()
                 })
             };

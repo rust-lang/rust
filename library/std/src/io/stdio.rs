@@ -16,7 +16,7 @@ use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
-type LocalStream = Arc<Mutex<dyn Write + Send>>;
+type LocalStream = Arc<Mutex<Vec<u8>>>;
 
 thread_local! {
     /// Used by the test crate to capture the output of the print! and println! macros.
@@ -911,13 +911,8 @@ pub fn set_panic(sink: Option<LocalStream>) -> Option<LocalStream> {
         // LOCAL_STDERR is definitely None since LOCAL_STREAMS is false.
         return None;
     }
-    let s =
-        LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|s| {
-            let _ = s.lock().unwrap_or_else(|e| e.into_inner()).flush();
-            Some(s)
-        });
     LOCAL_STREAMS.store(true, Ordering::Relaxed);
-    s
+    LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink))
 }
 
 /// Resets the thread-local stdout handle to the specified writer
@@ -941,13 +936,8 @@ pub fn set_print(sink: Option<LocalStream>) -> Option<LocalStream> {
         // LOCAL_STDOUT is definitely None since LOCAL_STREAMS is false.
         return None;
     }
-    let s =
-        LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|s| {
-            let _ = s.lock().unwrap_or_else(|e| e.into_inner()).flush();
-            Some(s)
-        });
     LOCAL_STREAMS.store(true, Ordering::Relaxed);
-    s
+    LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink))
 }
 
 pub(crate) fn clone_io() -> (Option<LocalStream>, Option<LocalStream>) {
@@ -956,9 +946,10 @@ pub(crate) fn clone_io() -> (Option<LocalStream>, Option<LocalStream>) {
         return (None, None);
     }
 
-    LOCAL_STDOUT.with(|stdout| {
-        LOCAL_STDERR.with(|stderr| (stdout.borrow().clone(), stderr.borrow().clone()))
-    })
+    (
+        LOCAL_STDOUT.with(|s| s.borrow().clone()),
+        LOCAL_STDERR.with(|s| s.borrow().clone()),
+    )
 }
 
 /// Write `args` to output stream `local_s` if possible, `global_s`
@@ -979,28 +970,22 @@ fn print_to<T>(
 ) where
     T: Write,
 {
-    let result = LOCAL_STREAMS
-        .load(Ordering::Relaxed)
-        .then(|| {
-            local_s
-                .try_with(|s| {
-                    // Note that we completely remove a local sink to write to in case
-                    // our printing recursively panics/prints, so the recursive
-                    // panic/print goes to the global sink instead of our local sink.
-                    let prev = s.borrow_mut().take();
-                    if let Some(w) = prev {
-                        let result = w.lock().unwrap_or_else(|e| e.into_inner()).write_fmt(args);
-                        *s.borrow_mut() = Some(w);
-                        return result;
-                    }
-                    global_s().write_fmt(args)
-                })
-                .ok()
-        })
-        .flatten()
-        .unwrap_or_else(|| global_s().write_fmt(args));
+    if LOCAL_STREAMS.load(Ordering::Relaxed)
+        && local_s.try_with(|s| {
+            // Note that we completely remove a local sink to write to in case
+            // our printing recursively panics/prints, so the recursive
+            // panic/print goes to the global sink instead of our local sink.
+            s.take().map(|w| {
+                let _ = w.lock().unwrap_or_else(|e| e.into_inner()).write_fmt(args);
+                *s.borrow_mut() = Some(w);
+            })
+        }) == Ok(Some(()))
+    {
+        // Succesfully wrote to local stream.
+        return;
+    }
 
-    if let Err(e) = result {
+    if let Err(e) = global_s().write_fmt(args) {
         panic!("failed printing to {}: {}", label, e);
     }
 }

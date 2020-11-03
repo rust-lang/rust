@@ -5,7 +5,7 @@
 
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::io::{self, set_panic, Write};
+use std::io::set_panic;
 use std::sync::{Arc, Mutex};
 
 pub struct A;
@@ -16,19 +16,8 @@ impl Display for A {
     }
 }
 
-struct Sink;
-
-impl Write for Sink {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        Ok(buf.len())
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
 fn main() {
-    set_panic(Some(Arc::new(Mutex::new(Sink))));
+    set_panic(Some(Arc::new(Mutex::new(Vec::new()))));
     assert!(std::panic::catch_unwind(|| {
         eprintln!("{}", A);
     })

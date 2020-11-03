@@ -297,6 +297,7 @@
 #![feature(raw)]
 #![feature(raw_ref_macros)]
 #![feature(ready_macro)]
+#![feature(refcell_take)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(shrink_to)]
