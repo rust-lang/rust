@@ -10,22 +10,24 @@ use crate::fmt;
 use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
 use crate::lazy::SyncOnceCell;
 use crate::sync::atomic::{AtomicBool, Ordering};
-use crate::sync::{Mutex, MutexGuard};
+use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread::LocalKey;
 
+type LocalStream = Arc<Mutex<dyn Write + Send>>;
+
 thread_local! {
     /// Used by the test crate to capture the output of the print! and println! macros.
-    static LOCAL_STDOUT: RefCell<Option<Box<dyn LocalOutput>>> = {
+    static LOCAL_STDOUT: RefCell<Option<LocalStream>> = {
         RefCell::new(None)
     }
 }
 
 thread_local! {
     /// Used by the test crate to capture the output of the eprint! and eprintln! macros, and panics.
-    static LOCAL_STDERR: RefCell<Option<Box<dyn LocalOutput>>> = {
+    static LOCAL_STDERR: RefCell<Option<LocalStream>> = {
         RefCell::new(None)
     }
 }
@@ -888,18 +890,6 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
-/// A writer than can be cloned to new threads.
-#[unstable(
-    feature = "set_stdio",
-    reason = "this trait may disappear completely or be replaced \
-                     with a more general mechanism",
-    issue = "none"
-)]
-#[doc(hidden)]
-pub trait LocalOutput: Write + Send {
-    fn clone_box(&self) -> Box<dyn LocalOutput>;
-}
-
 /// Resets the thread-local stderr handle to the specified writer
 ///
 /// This will replace the current thread's stderr handle, returning the old
@@ -915,18 +905,17 @@ pub trait LocalOutput: Write + Send {
     issue = "none"
 )]
 #[doc(hidden)]
-pub fn set_panic(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutput>> {
+pub fn set_panic(sink: Option<LocalStream>) -> Option<LocalStream> {
     use crate::mem;
     if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
         // LOCAL_STDERR is definitely None since LOCAL_STREAMS is false.
         return None;
     }
-    let s = LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
-        |mut s| {
-            let _ = s.flush();
+    let s =
+        LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|s| {
+            let _ = s.lock().unwrap_or_else(|e| e.into_inner()).flush();
             Some(s)
-        },
-    );
+        });
     LOCAL_STREAMS.store(true, Ordering::Relaxed);
     s
 }
@@ -946,35 +935,29 @@ pub fn set_panic(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutp
     issue = "none"
 )]
 #[doc(hidden)]
-pub fn set_print(sink: Option<Box<dyn LocalOutput>>) -> Option<Box<dyn LocalOutput>> {
+pub fn set_print(sink: Option<LocalStream>) -> Option<LocalStream> {
     use crate::mem;
     if sink.is_none() && !LOCAL_STREAMS.load(Ordering::Relaxed) {
         // LOCAL_STDOUT is definitely None since LOCAL_STREAMS is false.
         return None;
     }
-    let s = LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(
-        |mut s| {
-            let _ = s.flush();
+    let s =
+        LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|s| {
+            let _ = s.lock().unwrap_or_else(|e| e.into_inner()).flush();
             Some(s)
-        },
-    );
+        });
     LOCAL_STREAMS.store(true, Ordering::Relaxed);
     s
 }
 
-pub(crate) fn clone_io() -> (Option<Box<dyn LocalOutput>>, Option<Box<dyn LocalOutput>>) {
+pub(crate) fn clone_io() -> (Option<LocalStream>, Option<LocalStream>) {
     // Don't waste time when LOCAL_{STDOUT,STDERR} are definitely None.
     if !LOCAL_STREAMS.load(Ordering::Relaxed) {
         return (None, None);
     }
 
     LOCAL_STDOUT.with(|stdout| {
-        LOCAL_STDERR.with(|stderr| {
-            (
-                stdout.borrow().as_ref().map(|o| o.clone_box()),
-                stderr.borrow().as_ref().map(|o| o.clone_box()),
-            )
-        })
+        LOCAL_STDERR.with(|stderr| (stdout.borrow().clone(), stderr.borrow().clone()))
     })
 }
 
@@ -990,7 +973,7 @@ pub(crate) fn clone_io() -> (Option<Box<dyn LocalOutput>>, Option<Box<dyn LocalO
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
     args: fmt::Arguments<'_>,
-    local_s: &'static LocalKey<RefCell<Option<Box<dyn LocalOutput>>>>,
+    local_s: &'static LocalKey<RefCell<Option<LocalStream>>>,
     global_s: fn() -> T,
     label: &str,
 ) where
@@ -1005,8 +988,8 @@ fn print_to<T>(
                     // our printing recursively panics/prints, so the recursive
                     // panic/print goes to the global sink instead of our local sink.
                     let prev = s.borrow_mut().take();
-                    if let Some(mut w) = prev {
-                        let result = w.write_fmt(args);
+                    if let Some(w) = prev {
+                        let result = w.lock().unwrap_or_else(|e| e.into_inner()).write_fmt(args);
                         *s.borrow_mut() = Some(w);
                         return result;
                     }

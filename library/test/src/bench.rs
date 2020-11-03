@@ -2,8 +2,7 @@
 pub use std::hint::black_box;
 
 use super::{
-    event::CompletedTest, helpers::sink::Sink, options::BenchMode, test_result::TestResult,
-    types::TestDesc, Sender,
+    event::CompletedTest, options::BenchMode, test_result::TestResult, types::TestDesc, Sender,
 };
 
 use crate::stats;
@@ -186,10 +185,7 @@ where
 
     let data = Arc::new(Mutex::new(Vec::new()));
     let oldio = if !nocapture {
-        Some((
-            io::set_print(Some(Sink::new_boxed(&data))),
-            io::set_panic(Some(Sink::new_boxed(&data))),
-        ))
+        Some((io::set_print(Some(data.clone())), io::set_panic(Some(data.clone()))))
     } else {
         None
     };

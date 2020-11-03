@@ -218,10 +218,29 @@ fn default_hook(info: &PanicInfo<'_>) {
         }
     };
 
-    if let Some(mut local) = set_panic(None) {
-        // NB. In `cfg(test)` this uses the forwarding impl
-        // for `dyn ::realstd::io::LocalOutput`.
-        write(&mut local);
+    if let Some(local) = set_panic(None) {
+        let mut stream = local.lock().unwrap_or_else(|e| e.into_inner());
+
+        #[cfg(test)]
+        {
+            use crate::io;
+            struct Wrapper<'a>(&'a mut (dyn ::realstd::io::Write + Send));
+            impl io::Write for Wrapper<'_> {
+                fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                    self.0.write(buf).map_err(|_| io::ErrorKind::Other.into())
+                }
+                fn flush(&mut self) -> io::Result<()> {
+                    self.0.flush().map_err(|_| io::ErrorKind::Other.into())
+                }
+            }
+            write(&mut Wrapper(&mut *stream));
+        }
+
+        #[cfg(not(test))]
+        write(&mut *stream);
+
+        drop(stream);
+
         set_panic(Some(local));
     } else if let Some(mut out) = panic_output() {
         write(&mut out);

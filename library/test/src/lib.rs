@@ -89,7 +89,6 @@ mod tests;
 use event::{CompletedTest, TestEvent};
 use helpers::concurrency::get_concurrency;
 use helpers::exit_code::get_exit_code;
-use helpers::sink::Sink;
 use options::{Concurrent, RunStrategy};
 use test_result::*;
 use time::TestExecTime;
@@ -532,10 +531,7 @@ fn run_test_in_process(
     let data = Arc::new(Mutex::new(Vec::new()));
 
     let oldio = if !nocapture {
-        Some((
-            io::set_print(Some(Sink::new_boxed(&data))),
-            io::set_panic(Some(Sink::new_boxed(&data))),
-        ))
+        Some((io::set_print(Some(data.clone())), io::set_panic(Some(data.clone()))))
     } else {
         None
     };
@@ -556,7 +552,7 @@ fn run_test_in_process(
         Ok(()) => calc_result(&desc, Ok(()), &time_opts, &exec_time),
         Err(e) => calc_result(&desc, Err(e.as_ref()), &time_opts, &exec_time),
     };
-    let stdout = data.lock().unwrap().to_vec();
+    let stdout = data.lock().unwrap_or_else(|e| e.into_inner()).to_vec();
     let message = CompletedTest::new(desc, test_result, exec_time, stdout);
     monitor_ch.send(message).unwrap();
 }
