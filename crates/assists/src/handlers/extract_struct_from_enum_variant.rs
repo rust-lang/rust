@@ -31,19 +31,27 @@ pub(crate) fn extract_struct_from_enum_variant(
     ctx: &AssistContext,
 ) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
+
+    fn is_applicable_variant(variant: &ast::Variant) -> bool {
+        1 < match variant.kind() {
+            ast::StructKind::Record(field_list) => field_list.fields().count(),
+            ast::StructKind::Tuple(field_list) => field_list.fields().count(),
+            ast::StructKind::Unit => 0,
+        }
+    }
+
+    if !is_applicable_variant(&variant) {
+        return None;
+    }
+
     let field_list = match variant.kind() {
         ast::StructKind::Tuple(field_list) => field_list,
         _ => return None,
     };
 
-    // skip 1-tuple variants
-    if field_list.fields().count() == 1 {
-        return None;
-    }
-
     let variant_name = variant.name()?;
     let variant_hir = ctx.sema.to_def(&variant)?;
-    if existing_struct_def(ctx.db(), &variant_name, &variant_hir) {
+    if existing_definition(ctx.db(), &variant_name, &variant_hir) {
         return None;
     }
     let enum_ast = variant.parent_enum();
@@ -100,12 +108,21 @@ pub(crate) fn extract_struct_from_enum_variant(
     )
 }
 
-fn existing_struct_def(db: &RootDatabase, variant_name: &ast::Name, variant: &EnumVariant) -> bool {
+fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &EnumVariant) -> bool {
     variant
         .parent_enum(db)
         .module(db)
         .scope(db, None)
         .into_iter()
+        .filter(|(_, def)| match def {
+            // only check type-namespace
+            hir::ScopeDef::ModuleDef(def) => matches!(def,
+                ModuleDef::Module(_) | ModuleDef::Adt(_) |
+                ModuleDef::EnumVariant(_) | ModuleDef::Trait(_) |
+                ModuleDef::TypeAlias(_) | ModuleDef::BuiltinType(_)
+            ),
+            _ => false,
+        })
         .any(|(name, _)| name == variant_name.as_name())
 }
 
@@ -211,11 +228,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_extract_struct_several_fields() {
+    fn test_extract_struct_several_fields_tuple() {
         check_assist(
             extract_struct_from_enum_variant,
             "enum A { <|>One(u32, u32) }",
             r#"struct One(pub u32, pub u32);
+
+enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_several_fields_named() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            "enum A { <|>One { foo: u32, bar: u32 } }",
+            r#"struct One {
+    pub foo: u32,
+    pub bar: u32
+}
+
+enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_enum_variant_name_value_namespace() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"const One: () = ();
+enum A { <|>One(u32, u32) }"#,
+            r#"const One: () = ();
+struct One(pub u32, pub u32);
 
 enum A { One(One) }"#,
         );
@@ -298,7 +342,7 @@ fn another_fn() {
     fn test_extract_enum_not_applicable_if_struct_exists() {
         check_not_applicable(
             r#"struct One;
-        enum A { <|>One(u8) }"#,
+        enum A { <|>One(u8, u32) }"#,
         );
     }
 
