@@ -28,7 +28,7 @@ except ModuleNotFoundError:
     import _thread as thread
 
 # Set this to True for additional output
-DEBUG_OUTPUT = False
+DEBUG_OUTPUT = True
 
 
 def print_debug(s):
@@ -102,7 +102,7 @@ def execute_command(command_interpreter, command):
                     registered_breakpoints.add(breakpoint_id)
                 else:
                     print("Error while trying to register breakpoint callback, id = " +
-                          str(breakpoint_id))
+                          str(breakpoint_id) + ", message = " + str(res.GetError()))
     else:
         print(res.GetError())
 
