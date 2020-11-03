@@ -167,11 +167,10 @@ You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
 *   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
 
-Note: `allow` in this case means to "allow your code to have the lint without
-warning".  `deny` means "produce an error if your code has the lint".  `warn`
-means "produce a warning, but don't produce an error due to this lint".  An
-error causes clippy to exit with an error code, so is useful in scripts like
-CI/CD.
+Note: `allow` means to suppress the lint for your code. With `warn` the lint
+will only emit a warning, while with `deny` the lint will emit an error, when
+triggering for your code. An error causes clippy to exit with an error code, so
+is useful in scripts like CI/CD.
 
 If you do not want to include your lint levels in your code, you can globally
 enable/disable lints by passing extra flags to Clippy during the run:
