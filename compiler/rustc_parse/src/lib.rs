@@ -611,11 +611,11 @@ fn prepend_attrs(
     }
     let mut builder = tokenstream::TokenStreamBuilder::new();
     for attr in attrs {
-        assert_eq!(
-            attr.style,
-            ast::AttrStyle::Outer,
-            "inner attributes should prevent cached tokens from existing"
-        );
+        // FIXME: Correctly handle tokens for inner attributes.
+        // For now, we fall back to reparsing the original AST node
+        if attr.style == ast::AttrStyle::Inner {
+            return None;
+        }
         builder.push(
             attr.tokens
                 .as_ref()
