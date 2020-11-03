@@ -36,7 +36,7 @@ pub(crate) struct RenderContext<'a> {
 }
 
 impl<'a> RenderContext<'a> {
-    fn new(completion: &'a CompletionContext<'a>) -> RenderContext<'a> {
+    pub(crate) fn new(completion: &'a CompletionContext<'a>) -> RenderContext<'a> {
         RenderContext { completion }
     }
 
@@ -71,12 +71,6 @@ impl<'a> RenderContext<'a> {
         } else {
             None
         }
-    }
-}
-
-impl<'a> From<&'a CompletionContext<'a>> for RenderContext<'a> {
-    fn from(ctx: &'a CompletionContext<'a>) -> RenderContext<'a> {
-        RenderContext::new(ctx)
     }
 }
 
