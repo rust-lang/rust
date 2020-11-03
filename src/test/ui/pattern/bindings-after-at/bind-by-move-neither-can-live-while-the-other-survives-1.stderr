@@ -8,7 +8,7 @@ LL |         Some(ref _y @ _z) => {}
    |              value borrowed, by `_y`, here
 
 error: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:20:14
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:21:14
    |
 LL |         Some(_z @ ref _y) => {}
    |              --^^^------
@@ -27,7 +27,7 @@ LL |         Some(ref mut _y @ _z) => {}
    |              value borrowed, by `_y`, here
 
 error: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:34:14
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:35:14
    |
 LL |         Some(_z @ ref mut _y) => {}
    |              --^^^----------
@@ -37,34 +37,34 @@ LL |         Some(_z @ ref mut _y) => {}
    |              move occurs because `_z` has type `X` which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:20:19
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:14:14
    |
-LL |         Some(_z @ ref _y) => {}
-   |              -----^^^^^^
-   |              |    |
-   |              |    value borrowed here after move
-   |              value moved here
+LL |         Some(ref _y @ _z) => {}
+   |              ^^^^^^^^^--
+   |              |        |
+   |              |        value moved here
+   |              value borrowed here after move
    |
    = note: move occurs because value has type `X`, which does not implement the `Copy` trait
 help: borrow this field in the pattern to avoid moving `x.0`
    |
-LL |         Some(ref _z @ ref _y) => {}
-   |              ^^^
+LL |         Some(ref _y @ ref _z) => {}
+   |                       ^^^
 
 error[E0382]: borrow of moved value
-  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:34:19
+  --> $DIR/bind-by-move-neither-can-live-while-the-other-survives-1.rs:28:14
    |
-LL |         Some(_z @ ref mut _y) => {}
-   |              -----^^^^^^^^^^
-   |              |    |
-   |              |    value borrowed here after move
-   |              value moved here
+LL |         Some(ref mut _y @ _z) => {}
+   |              ^^^^^^^^^^^^^--
+   |              |            |
+   |              |            value moved here
+   |              value borrowed here after move
    |
    = note: move occurs because value has type `X`, which does not implement the `Copy` trait
 help: borrow this field in the pattern to avoid moving `x.0`
    |
-LL |         Some(ref _z @ ref mut _y) => {}
-   |              ^^^
+LL |         Some(ref mut _y @ ref _z) => {}
+   |                           ^^^
 
 error: aborting due to 6 previous errors
 
