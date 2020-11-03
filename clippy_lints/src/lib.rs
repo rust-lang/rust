@@ -714,8 +714,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::RESULT_MAP_OR_INTO_OPTION,
         &methods::SEARCH_IS_SOME,
         &methods::SHOULD_IMPLEMENT_TRAIT,
+        &methods::SINGLE_CHAR_ADD_STR,
         &methods::SINGLE_CHAR_PATTERN,
-        &methods::SINGLE_CHAR_PUSH_STR,
         &methods::SKIP_WHILE_NEXT,
         &methods::STRING_EXTEND_CHARS,
         &methods::SUSPICIOUS_MAP,
@@ -1439,8 +1439,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::RESULT_MAP_OR_INTO_OPTION),
         LintId::of(&methods::SEARCH_IS_SOME),
         LintId::of(&methods::SHOULD_IMPLEMENT_TRAIT),
+        LintId::of(&methods::SINGLE_CHAR_ADD_STR),
         LintId::of(&methods::SINGLE_CHAR_PATTERN),
-        LintId::of(&methods::SINGLE_CHAR_PUSH_STR),
         LintId::of(&methods::SKIP_WHILE_NEXT),
         LintId::of(&methods::STRING_EXTEND_CHARS),
         LintId::of(&methods::SUSPICIOUS_MAP),
@@ -1632,7 +1632,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::OPTION_MAP_OR_NONE),
         LintId::of(&methods::RESULT_MAP_OR_INTO_OPTION),
         LintId::of(&methods::SHOULD_IMPLEMENT_TRAIT),
-        LintId::of(&methods::SINGLE_CHAR_PUSH_STR),
+        LintId::of(&methods::SINGLE_CHAR_ADD_STR),
         LintId::of(&methods::STRING_EXTEND_CHARS),
         LintId::of(&methods::UNNECESSARY_FOLD),
         LintId::of(&methods::UNNECESSARY_LAZY_EVALUATIONS),
@@ -1959,6 +1959,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles");
     ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
     ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
+    ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
 }
 
 // only exists to let the dogfood integration test works.

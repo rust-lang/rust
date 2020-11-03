@@ -22,7 +22,7 @@ Current beta, release 2020-11-19
 * [`map_err_ignore`] [#5998](https://github.com/rust-lang/rust-clippy/pull/5998)
 * [`rc_buffer`] [#6044](https://github.com/rust-lang/rust-clippy/pull/6044)
 * [`to_string_in_display`] [#5831](https://github.com/rust-lang/rust-clippy/pull/5831)
-* [`single_char_push_str`] [#5881](https://github.com/rust-lang/rust-clippy/pull/5881)
+* `single_char_push_str` [#5881](https://github.com/rust-lang/rust-clippy/pull/5881)
 
 ### Moves and Deprecations
 
@@ -1939,8 +1939,8 @@ Released 2018-09-13
 [`should_assert_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_assert_eq
 [`should_implement_trait`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_implement_trait
 [`similar_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#similar_names
+[`single_char_add_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_add_str
 [`single_char_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_pattern
-[`single_char_push_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_push_str
 [`single_component_path_imports`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_component_path_imports
 [`single_element_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_element_loop
 [`single_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_match

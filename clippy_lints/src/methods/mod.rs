@@ -1290,8 +1290,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Warns when using `push_str` with a single-character string literal,
-    /// and `push` with a `char` would work fine.
+    /// **What it does:** Warns when using `push_str`/`insert_str` with a single-character string literal
+    /// where `push`/`insert` with a `char` would work fine.
     ///
     /// **Why is this bad?** It's less clear that we are pushing a single character.
     ///
@@ -1300,16 +1300,18 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let mut string = String::new();
+    /// string.insert_str(0, "R");
     /// string.push_str("R");
     /// ```
     /// Could be written as
     /// ```rust
     /// let mut string = String::new();
+    /// string.insert(0, 'R');
     /// string.push('R');
     /// ```
-    pub SINGLE_CHAR_PUSH_STR,
+    pub SINGLE_CHAR_ADD_STR,
     style,
-    "`push_str()` used with a single-character string literal as parameter"
+    "`push_str()` or `insert_str()` used with a single-character string literal as parameter"
 }
 
 declare_clippy_lint! {
@@ -1390,7 +1392,7 @@ declare_lint_pass!(Methods => [
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
-    SINGLE_CHAR_PUSH_STR,
+    SINGLE_CHAR_ADD_STR,
     SEARCH_IS_SOME,
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
@@ -1521,6 +1523,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     if match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
                         lint_single_char_push_string(cx, expr, args);
+                    } else if match_def_path(cx, fn_def_id, &paths::INSERT_STR) {
+                        lint_single_char_insert_string(cx, expr, args);
                     }
                 }
 
@@ -3202,7 +3206,7 @@ fn get_hint_if_single_char_arg(
         if let hir::ExprKind::Lit(lit) = &arg.kind;
         if let ast::LitKind::Str(r, style) = lit.node;
         let string = r.as_str();
-        if string.len() == 1;
+        if string.chars().count() == 1;
         then {
             let snip = snippet_with_applicability(cx, arg.span, &string, applicability);
             let ch = if let ast::StrStyle::Raw(nhash) = style {
@@ -3241,14 +3245,35 @@ fn lint_single_char_pattern(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, arg: &h
 fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability) {
-        let base_string_snippet = snippet_with_applicability(cx, args[0].span, "..", &mut applicability);
+        let base_string_snippet =
+            snippet_with_applicability(cx, args[0].span.source_callsite(), "..", &mut applicability);
         let sugg = format!("{}.push({})", base_string_snippet, extension_string);
         span_lint_and_sugg(
             cx,
-            SINGLE_CHAR_PUSH_STR,
+            SINGLE_CHAR_ADD_STR,
             expr.span,
             "calling `push_str()` using a single-character string literal",
             "consider using `push` with a character literal",
+            sugg,
+            applicability,
+        );
+    }
+}
+
+/// lint for length-1 `str`s as argument for `insert_str`
+fn lint_single_char_insert_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    let mut applicability = Applicability::MachineApplicable;
+    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[2], &mut applicability) {
+        let base_string_snippet =
+            snippet_with_applicability(cx, args[0].span.source_callsite(), "_", &mut applicability);
+        let pos_arg = snippet_with_applicability(cx, args[1].span, "..", &mut applicability);
+        let sugg = format!("{}.insert({}, {})", base_string_snippet, pos_arg, extension_string);
+        span_lint_and_sugg(
+            cx,
+            SINGLE_CHAR_ADD_STR,
+            expr.span,
+            "calling `insert_str()` using a single-character string literal",
+            "consider using `insert` with a character literal",
             sugg,
             applicability,
         );
