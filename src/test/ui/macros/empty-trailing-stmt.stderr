@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/empty-trailing-stmt.rs:6:7
+   |
+LL |     { true }
+   |       ^^^^ expected `()`, found `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/empty-trailing-stmt.rs:5:13
+   |
+LL | fn foo() -> bool {
+   |    ---      ^^^^ expected `bool`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

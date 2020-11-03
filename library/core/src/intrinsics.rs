@@ -764,7 +764,7 @@ extern "rust-intrinsic" {
     /// More specifically, this is the offset in bytes between successive
     /// items of the same type, including alignment padding.
     ///
-    /// The stabilized version of this intrinsic is [`size_of`].
+    /// The stabilized version of this intrinsic is [`crate::mem::size_of`].
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     pub fn size_of<T>() -> usize;
 

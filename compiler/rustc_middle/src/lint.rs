@@ -22,7 +22,9 @@ pub enum LintSource {
     Node(Symbol, Span, Option<Symbol> /* RFC 2383 reason */),
 
     /// Lint level was set by a command-line flag.
-    CommandLine(Symbol),
+    /// The provided `Level` is the level specified on the command line -
+    /// the actual level may be lower due to `--cap-lints`
+    CommandLine(Symbol, Level),
 }
 
 impl LintSource {
@@ -30,7 +32,7 @@ impl LintSource {
         match *self {
             LintSource::Default => symbol::kw::Default,
             LintSource::Node(name, _, _) => name,
-            LintSource::CommandLine(name) => name,
+            LintSource::CommandLine(name, _) => name,
         }
     }
 
@@ -38,7 +40,7 @@ impl LintSource {
         match *self {
             LintSource::Default => DUMMY_SP,
             LintSource::Node(_, span, _) => span,
-            LintSource::CommandLine(_) => DUMMY_SP,
+            LintSource::CommandLine(_, _) => DUMMY_SP,
         }
     }
 }
@@ -279,12 +281,12 @@ pub fn struct_lint_level<'s, 'd>(
                     &format!("`#[{}({})]` on by default", level.as_str(), name),
                 );
             }
-            LintSource::CommandLine(lint_flag_val) => {
-                let flag = match level {
+            LintSource::CommandLine(lint_flag_val, orig_level) => {
+                let flag = match orig_level {
                     Level::Warn => "-W",
                     Level::Deny => "-D",
                     Level::Forbid => "-F",
-                    Level::Allow => panic!(),
+                    Level::Allow => "-A",
                 };
                 let hyphen_case_lint_name = name.replace("_", "-");
                 if lint_flag_val.as_str() == name {

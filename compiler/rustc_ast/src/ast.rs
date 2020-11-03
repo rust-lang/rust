@@ -905,6 +905,13 @@ pub struct Stmt {
 }
 
 impl Stmt {
+    pub fn has_trailing_semicolon(&self) -> bool {
+        match &self.kind {
+            StmtKind::Semi(_) => true,
+            StmtKind::MacCall(mac) => matches!(mac.style, MacStmtStyle::Semicolon),
+            _ => false,
+        }
+    }
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
