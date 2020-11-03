@@ -58,7 +58,7 @@ fn main() {
         // Initialize the keys we use to check destructor ordering
         for (key, global) in KEYS.iter_mut().zip(GLOBALS.iter_mut()) {
             *key = create(Some(mem::transmute(dtor as unsafe extern fn(*mut u64))));
-            set(*key, global as *const _ as *mut _);
+            set(*key, global as *mut _ as *mut u8);
         }
 
         // Initialize cannary

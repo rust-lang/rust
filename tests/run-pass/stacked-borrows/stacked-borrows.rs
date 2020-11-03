@@ -1,8 +1,12 @@
+// compile-flags: -Zmiri-track-raw-pointers
+// ignore-windows (FIXME: tracking raw pointers does not work on Windows)
+#![feature(raw_ref_macros)]
+use std::ptr;
+    
 // Test various stacked-borrows-related things.
 fn main() {
     read_does_not_invalidate1();
     read_does_not_invalidate2();
-    ref_raw_int_raw();
     mut_raw_then_mut_shr();
     mut_shr_then_mut_raw();
     mut_raw_mut();
@@ -12,6 +16,7 @@ fn main() {
     two_raw();
     shr_and_raw();
     disjoint_mutable_subborrows();
+    raw_ref_to_part();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -35,16 +40,6 @@ fn read_does_not_invalidate2() {
         ret
     }
     assert_eq!(*foo(&mut (1, 2)), 2);
-}
-
-// Just to make sure that casting a ref to raw, to int and back to raw
-// and only then using it works. This rules out ideas like "do escape-to-raw lazily";
-// after casting to int and back, we lost the tag that could have let us do that.
-fn ref_raw_int_raw() {
-    let mut x = 3;
-    let xref = &mut x;
-    let xraw = xref as *mut i32 as usize as *mut i32;
-    assert_eq!(unsafe { *xraw }, 3);
 }
 
 // Escape a mut to raw, then share the same mut and use the share, then the raw.
@@ -161,4 +156,23 @@ fn disjoint_mutable_subborrows() {
     b.push(4);
     a.push_str(" world");
     eprintln!("{:?} {:?}", a, b);
+}
+
+fn raw_ref_to_part() {
+    struct Part {
+        _lame: i32,
+    }
+
+    #[repr(C)]
+    struct Whole {
+        part: Part,
+        extra: i32,
+    }
+
+    let it = Box::new(Whole { part: Part { _lame: 0 }, extra: 42 });
+    let whole = ptr::raw_mut!(*Box::leak(it));
+    let part = unsafe { ptr::raw_mut!((*whole).part) };
+    let typed = unsafe { &mut *(part as *mut Whole) };
+    assert!(typed.extra == 42);
+    drop(unsafe { Box::from_raw(whole) });
 }
