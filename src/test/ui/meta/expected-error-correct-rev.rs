@@ -1,6 +1,6 @@
 // revisions: a
 
-// Counterpart to `meta-expected-error-wrong-rev.rs`
+// Counterpart to `expected-error-wrong-rev.rs`
 
 #[cfg(a)]
 fn foo() {
