@@ -944,6 +944,8 @@ impl<'a> Parser<'a> {
                         lit.token_tree().into()
                     } else if self.check(&token::ModSep) || self.token.ident().is_some() {
                         self.collect_tokens_only(|this| this.parse_path(PathStyle::Mod))?
+                            .expect("parse_path cannot parse empty path")
+                            .create_token_stream()
                     } else {
                         let msg = "expected a literal or ::-separated path";
                         return Err(self.struct_span_err(self.token.span, msg));
@@ -1263,7 +1265,7 @@ impl<'a> Parser<'a> {
     fn collect_tokens_only<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
-    ) -> PResult<'a, TokenStream> {
+    ) -> PResult<'a, Option<LazyTokenStream>> {
         let (_ignored, tokens) = self.collect_tokens(f)?;
         Ok(tokens)
     }
