@@ -653,6 +653,7 @@ supported_targets! {
     ("powerpc64-wrs-vxworks", powerpc64_wrs_vxworks),
 
     ("mipsel-sony-psp", mipsel_sony_psp),
+    ("mipsel-unknown-none", mipsel_unknown_none),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
 }
 
