@@ -270,7 +270,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         self.check_id(id);
     }
 
-    fn visit_mac(&mut self, mac: &'a ast::MacCall) {
+    fn visit_mac_call(&mut self, mac: &'a ast::MacCall) {
         run_early_pass!(self, check_mac, mac);
         ast_visit::walk_mac(self, mac);
     }

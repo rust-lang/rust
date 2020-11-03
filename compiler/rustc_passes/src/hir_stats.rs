@@ -336,7 +336,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_mac(&mut self, mac: &'v ast::MacCall) {
+    fn visit_mac_call(&mut self, mac: &'v ast::MacCall) {
         self.record("MacCall", Id::None, mac);
         ast_visit::walk_mac(self, mac)
     }

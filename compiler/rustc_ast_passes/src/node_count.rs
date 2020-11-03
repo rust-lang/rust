@@ -114,7 +114,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_lifetime(self, lifetime)
     }
-    fn visit_mac(&mut self, mac: &MacCall) {
+    fn visit_mac_call(&mut self, mac: &MacCall) {
         self.count += 1;
         walk_mac(self, mac)
     }

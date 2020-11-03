@@ -1,7 +1,7 @@
 use crate::tests::{matches_codepattern, string_to_crate};
 
 use rustc_ast as ast;
-use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast_pretty::pprust;
 use rustc_span::symbol::Ident;
 use rustc_span::with_default_session_globals;
