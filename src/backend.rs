@@ -73,7 +73,7 @@ impl WriteDebugInfo for ObjectProduct {
         // FIXME use SHT_X86_64_UNWIND for .eh_frame
         let section_id = self.object.add_section(
             segment,
-            name.clone(),
+            name,
             if id == SectionId::EhFrame {
                 SectionKind::ReadOnlyData
             } else {
@@ -198,9 +198,9 @@ pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
         cranelift_module::default_libcall_names(),
     )
     .unwrap();
-    if std::env::var("CG_CLIF_FUNCTION_SECTIONS").is_ok() {
-        builder.per_function_section(true);
-    }
-    let module = ObjectModule::new(builder);
-    module
+    // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
+    // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
+    // can easily double the amount of time necessary to perform linking.
+    builder.per_function_section(sess.opts.debugging_opts.function_sections.unwrap_or(false));
+    ObjectModule::new(builder)
 }

@@ -21,9 +21,9 @@ pub(crate) fn maybe_codegen<'tcx>(
     match bin_op {
         BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
             assert!(!checked);
-            return None;
+            None
         }
-        BinOp::Add | BinOp::Sub if !checked => return None,
+        BinOp::Add | BinOp::Sub if !checked => None,
         BinOp::Add => {
             let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
             return Some(if is_signed {
@@ -57,7 +57,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 };
                 fx.easy_call("__multi3", &[lhs, rhs], val_ty)
             };
-            return Some(res);
+            Some(res)
         }
         BinOp::Div => {
             assert!(!checked);
@@ -77,7 +77,7 @@ pub(crate) fn maybe_codegen<'tcx>(
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => {
             assert!(!checked);
-            return None;
+            None
         }
         BinOp::Shl | BinOp::Shr => {
             let is_overflow = if checked {

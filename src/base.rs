@@ -5,7 +5,7 @@ use rustc_middle::ty::adjustment::PointerCast;
 
 use crate::prelude::*;
 
-pub(crate) fn trans_fn<'tcx>(
+pub(crate) fn codegen_fn<'tcx>(
     cx: &mut crate::CodegenCx<'tcx, impl Module>,
     instance: Instance<'tcx>,
     linkage: Linkage,
@@ -202,7 +202,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
         fx.bcx.ins().nop();
         for stmt in &bb_data.statements {
             fx.set_debug_loc(stmt.source_info);
-            trans_stmt(fx, block, stmt);
+            codegen_stmt(fx, block, stmt);
         }
 
         #[cfg(debug_assertions)]
@@ -258,7 +258,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
                         continue;
                     }
                 }
-                let cond = trans_operand(fx, cond).load_scalar(fx);
+                let cond = codegen_operand(fx, cond).load_scalar(fx);
 
                 let target = fx.get_block(*target);
                 let failure = fx.bcx.create_block();
@@ -276,8 +276,8 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
 
                 match msg {
                     AssertKind::BoundsCheck { ref len, ref index } => {
-                        let len = trans_operand(fx, len).load_scalar(fx);
-                        let index = trans_operand(fx, index).load_scalar(fx);
+                        let len = codegen_operand(fx, len).load_scalar(fx);
+                        let index = codegen_operand(fx, index).load_scalar(fx);
                         let location = fx
                             .get_caller_location(bb_data.terminator().source_info.span)
                             .load_scalar(fx);
@@ -301,7 +301,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
                 switch_ty,
                 targets,
             } => {
-                let discr = trans_operand(fx, discr).load_scalar(fx);
+                let discr = codegen_operand(fx, discr).load_scalar(fx);
 
                 if switch_ty.kind() == fx.tcx.types.bool.kind() {
                     assert_eq!(targets.iter().count(), 1);
@@ -396,14 +396,14 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::GeneratorDrop => {
-                bug!("shouldn't exist at trans {:?}", bb_data.terminator());
+                bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
             }
             TerminatorKind::Drop {
                 place,
                 target,
                 unwind: _,
             } => {
-                let drop_place = trans_place(fx, *place);
+                let drop_place = codegen_place(fx, *place);
                 crate::abi::codegen_drop(fx, bb_data.terminator().source_info.span, drop_place);
 
                 let target_block = fx.get_block(*target);
@@ -416,7 +416,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
     fx.bcx.finalize();
 }
 
-fn trans_stmt<'tcx>(
+fn codegen_stmt<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     #[allow(unused_variables)] cur_block: Block,
     stmt: &Statement<'tcx>,
@@ -439,19 +439,19 @@ fn trans_stmt<'tcx>(
             place,
             variant_index,
         } => {
-            let place = trans_place(fx, **place);
+            let place = codegen_place(fx, **place);
             crate::discriminant::codegen_set_discriminant(fx, place, *variant_index);
         }
         StatementKind::Assign(to_place_and_rval) => {
-            let lval = trans_place(fx, to_place_and_rval.0);
+            let lval = codegen_place(fx, to_place_and_rval.0);
             let dest_layout = lval.layout();
             match &to_place_and_rval.1 {
                 Rvalue::Use(operand) => {
-                    let val = trans_operand(fx, operand);
+                    let val = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-                    let place = trans_place(fx, *place);
+                    let place = codegen_place(fx, *place);
                     let ref_ = place.place_ref(fx, lval.layout());
                     lval.write_cvalue(fx, ref_);
                 }
@@ -460,29 +460,29 @@ fn trans_stmt<'tcx>(
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
-                    let lhs = trans_operand(fx, lhs);
-                    let rhs = trans_operand(fx, rhs);
+                    let lhs = codegen_operand(fx, lhs);
+                    let rhs = codegen_operand(fx, rhs);
 
                     let res = crate::num::codegen_binop(fx, *bin_op, lhs, rhs);
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
-                    let lhs = trans_operand(fx, lhs);
-                    let rhs = trans_operand(fx, rhs);
+                    let lhs = codegen_operand(fx, lhs);
+                    let rhs = codegen_operand(fx, rhs);
 
                     let res = if !fx.tcx.sess.overflow_checks() {
                         let val =
-                            crate::num::trans_int_binop(fx, *bin_op, lhs, rhs).load_scalar(fx);
+                            crate::num::codegen_int_binop(fx, *bin_op, lhs, rhs).load_scalar(fx);
                         let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
                         CValue::by_val_pair(val, is_overflow, lval.layout())
                     } else {
-                        crate::num::trans_checked_int_binop(fx, *bin_op, lhs, rhs)
+                        crate::num::codegen_checked_int_binop(fx, *bin_op, lhs, rhs)
                     };
 
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, operand) => {
-                    let operand = trans_operand(fx, operand);
+                    let operand = codegen_operand(fx, operand);
                     let layout = operand.layout();
                     let val = operand.load_scalar(fx);
                     let res = match un_op {
@@ -500,7 +500,7 @@ fn trans_stmt<'tcx>(
                             ty::Int(IntTy::I128) => {
                                 // FIXME remove this case once ineg.i128 works
                                 let zero = CValue::const_val(fx, layout, 0);
-                                crate::num::trans_int_binop(fx, BinOp::Sub, zero, operand)
+                                crate::num::codegen_int_binop(fx, BinOp::Sub, zero, operand)
                             }
                             ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
                             ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
@@ -534,11 +534,11 @@ fn trans_stmt<'tcx>(
                 | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, to_ty)
                 | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, to_ty) => {
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
-                    let operand = trans_operand(fx, operand);
+                    let operand = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
                 Rvalue::Cast(CastKind::Misc, operand, to_ty) => {
-                    let operand = trans_operand(fx, operand);
+                    let operand = codegen_operand(fx, operand);
                     let from_ty = operand.layout().ty;
                     let to_ty = fx.monomorphize(to_ty);
 
@@ -639,7 +639,7 @@ fn trans_stmt<'tcx>(
                     operand,
                     _to_ty,
                 ) => {
-                    let operand = trans_operand(fx, operand);
+                    let operand = codegen_operand(fx, operand);
                     match *operand.layout().ty.kind() {
                         ty::Closure(def_id, substs) => {
                             let instance = Instance::resolve_closure(
@@ -657,18 +657,18 @@ fn trans_stmt<'tcx>(
                     }
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, _to_ty) => {
-                    let operand = trans_operand(fx, operand);
+                    let operand = codegen_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
-                    let place = trans_place(fx, *place);
+                    let place = codegen_place(fx, *place);
                     let value = place.to_cvalue(fx);
                     let discr =
                         crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
                     lval.write_cvalue(fx, discr);
                 }
                 Rvalue::Repeat(operand, times) => {
-                    let operand = trans_operand(fx, operand);
+                    let operand = codegen_operand(fx, operand);
                     let times = fx
                         .monomorphize(times)
                         .eval(fx.tcx, ParamEnv::reveal_all())
@@ -706,7 +706,7 @@ fn trans_stmt<'tcx>(
                     }
                 }
                 Rvalue::Len(place) => {
-                    let place = trans_place(fx, *place);
+                    let place = codegen_place(fx, *place);
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
                     let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
@@ -753,14 +753,14 @@ fn trans_stmt<'tcx>(
                 }
                 Rvalue::Aggregate(kind, operands) => match **kind {
                     AggregateKind::Array(_ty) => {
-                        for (i, operand) in operands.into_iter().enumerate() {
-                            let operand = trans_operand(fx, operand);
+                        for (i, operand) in operands.iter().enumerate() {
+                            let operand = codegen_operand(fx, operand);
                             let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
                             let to = lval.place_index(fx, index);
                             to.write_cvalue(fx, operand);
                         }
                     }
-                    _ => unreachable!("shouldn't exist at trans {:?}", to_place_and_rval.1),
+                    _ => unreachable!("shouldn't exist at codegen {:?}", to_place_and_rval.1),
                 },
             }
         }
@@ -813,20 +813,20 @@ fn trans_stmt<'tcx>(
                     assert!(!alignstack);
 
                     assert_eq!(inputs.len(), 2);
-                    let leaf = trans_operand(fx, &inputs[0].1).load_scalar(fx); // %eax
-                    let subleaf = trans_operand(fx, &inputs[1].1).load_scalar(fx); // %ecx
+                    let leaf = codegen_operand(fx, &inputs[0].1).load_scalar(fx); // %eax
+                    let subleaf = codegen_operand(fx, &inputs[1].1).load_scalar(fx); // %ecx
 
                     let (eax, ebx, ecx, edx) =
                         crate::intrinsics::codegen_cpuid_call(fx, leaf, subleaf);
 
                     assert_eq!(outputs.len(), 4);
-                    trans_place(fx, outputs[0])
+                    codegen_place(fx, outputs[0])
                         .write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[1])
+                    codegen_place(fx, outputs[1])
                         .write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[2])
+                    codegen_place(fx, outputs[2])
                         .write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
-                    trans_place(fx, outputs[3])
+                    codegen_place(fx, outputs[3])
                         .write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
                 }
                 "xgetbv" => {
@@ -892,7 +892,7 @@ fn codegen_array_len<'tcx>(
     }
 }
 
-pub(crate) fn trans_place<'tcx>(
+pub(crate) fn codegen_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     place: Place<'tcx>,
 ) -> CPlace<'tcx> {
@@ -938,7 +938,7 @@ pub(crate) fn trans_place<'tcx>(
                         let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
-                            fx.layout_of(fx.tcx.mk_array(elem_ty, u64::from(to) - u64::from(from))),
+                            fx.layout_of(fx.tcx.mk_array(elem_ty, to - from)),
                         );
                     }
                     ty::Slice(elem_ty) => {
@@ -964,16 +964,16 @@ pub(crate) fn trans_place<'tcx>(
     cplace
 }
 
-pub(crate) fn trans_operand<'tcx>(
+pub(crate) fn codegen_operand<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     operand: &Operand<'tcx>,
 ) -> CValue<'tcx> {
     match operand {
         Operand::Move(place) | Operand::Copy(place) => {
-            let cplace = trans_place(fx, *place);
+            let cplace = codegen_place(fx, *place);
             cplace.to_cvalue(fx)
         }
-        Operand::Constant(const_) => crate::constant::trans_constant(fx, const_),
+        Operand::Constant(const_) => crate::constant::codegen_constant(fx, const_),
     }
 }
 

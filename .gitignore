@@ -6,7 +6,7 @@ perf.data
 perf.data.old
 *.events
 *.string*
-/build_sysroot/sysroot
+/build
 /build_sysroot/sysroot_src
 /rust
 /rand

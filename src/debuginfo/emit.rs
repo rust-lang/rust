@@ -195,9 +195,7 @@ impl Writer for WriterRelocate {
                     });
                     self.write_udata(0, size)
                 }
-                _ => {
-                    return Err(gimli::write::Error::UnsupportedPointerEncoding(eh_pe));
-                }
+                _ => Err(gimli::write::Error::UnsupportedPointerEncoding(eh_pe)),
             },
         }
     }

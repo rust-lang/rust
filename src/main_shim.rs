@@ -76,7 +76,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             .unwrap();
 
         let mut ctx = Context::new();
-        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig.clone());
+        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig);
         {
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);

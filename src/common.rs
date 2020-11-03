@@ -406,7 +406,7 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
             caller.line as u32,
             caller.col_display as u32 + 1,
         ));
-        crate::constant::trans_const_value(self, const_loc, self.tcx.caller_location_ty())
+        crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
     }
 
     pub(crate) fn triple(&self) -> &target_lexicon::Triple {
