@@ -245,19 +245,6 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
-    pub(crate) fn active_name_and_type(&self) -> Option<(String, Type)> {
-        if let Some(record_field) = &self.record_field_syntax {
-            mark::hit!(record_field_type_match);
-            let (struct_field, _local) = self.sema.resolve_record_field(record_field)?;
-            Some((struct_field.name(self.db).to_string(), struct_field.signature_ty(self.db)))
-        } else if let Some(active_parameter) = &self.active_parameter {
-            mark::hit!(active_param_type_match);
-            Some((active_parameter.name.clone(), active_parameter.ty.clone()))
-        } else {
-            None
-        }
-    }
-
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
