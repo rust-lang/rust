@@ -784,7 +784,7 @@ Language
 - [You can now use `#[repr(transparent)]` on univariant `enum`s.][68122] Meaning
   that you can create an enum that has the exact layout and ABI of the type
   it contains.
-- [It is no longer disallowed to apply an attribute procedural macro to a module.][77098]
+- [It is no longer disallowed to apply an attribute procedural macro to a module.][64273]
 - [There are some *syntax-only* changes:][67131]
    - `default` is syntactically allowed before items in `trait` definitions.
    - Items in `impl`s (i.e. `const`s, `type`s, and `fn`s) may syntactically
@@ -846,7 +846,7 @@ Compatibility Notes
 [67935]: https://github.com/rust-lang/rust/pull/67935/
 [68339]: https://github.com/rust-lang/rust/pull/68339/
 [68122]: https://github.com/rust-lang/rust/pull/68122/
-[78690]: https://github.com/rust-lang/rust/pull/78690/
+[64273]: https://github.com/rust-lang/rust/pull/64273/
 [67712]: https://github.com/rust-lang/rust/pull/67712/
 [67887]: https://github.com/rust-lang/rust/pull/67887/
 [67131]: https://github.com/rust-lang/rust/pull/67131/
