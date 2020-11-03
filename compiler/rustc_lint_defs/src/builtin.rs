@@ -2705,6 +2705,32 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `useless_deprecated` lint detects deprecation attributes with no effect.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// struct X;
+    ///
+    /// #[deprecated = "message"]
+    /// impl Default for X {
+    ///     fn default() -> Self {
+    ///         X
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Deprecation attributes have no effect on trait implementations.
+    pub USELESS_DEPRECATED,
+    Deny,
+    "detects deprecation attributes with no effect",
+}
+
 declare_tool_lint! {
     pub rustc::INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
@@ -2792,6 +2818,7 @@ declare_lint_pass! {
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         UNINHABITED_STATIC,
         FUNCTION_ITEM_REFERENCES,
+        USELESS_DEPRECATED,
     ]
 }
 

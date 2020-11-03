@@ -26,6 +26,15 @@ case $1 in
         git add rust-toolchain build_sysroot/Cargo.lock
         git commit -m "Rustup to $(rustc -V)"
         ;;
+    "push")
+	cg_clif=$(pwd)
+	pushd ../rust
+	branch=update_cg_clif-$(date +%Y-%m-%d)
+	git checkout -b $branch
+	git subtree pull --prefix=compiler/rustc_codegen_cranelift/ https://github.com/bjorn3/rustc_codegen_cranelift.git master
+	git push -u my $branch
+	popd
+	;;
     *)
         echo "Unknown command '$1'"
         echo "Usage: ./rustup.sh prepare|commit"

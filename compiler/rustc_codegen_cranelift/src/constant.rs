@@ -106,7 +106,7 @@ fn codegen_static_ref<'tcx>(
     CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)
 }
 
-pub(crate) fn trans_constant<'tcx>(
+pub(crate) fn codegen_constant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
@@ -151,10 +151,10 @@ pub(crate) fn trans_constant<'tcx>(
         | ConstKind::Error(_) => unreachable!("{:?}", const_),
     };
 
-    trans_const_value(fx, const_val, const_.ty)
+    codegen_const_value(fx, const_val, const_.ty)
 }
 
-pub(crate) fn trans_const_value<'tcx>(
+pub(crate) fn codegen_const_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     const_val: ConstValue<'tcx>,
     ty: Ty<'tcx>,
@@ -164,7 +164,7 @@ pub(crate) fn trans_const_value<'tcx>(
 
     if layout.is_zst() {
         return CValue::by_ref(
-            crate::Pointer::const_addr(fx, i64::try_from(layout.align.pref.bytes()).unwrap()),
+            crate::Pointer::dangling(layout.align.pref),
             layout,
         );
     }
@@ -188,7 +188,7 @@ pub(crate) fn trans_const_value<'tcx>(
             match x {
                 Scalar::Raw { data, size } => {
                     assert_eq!(u64::from(size), layout.size.bytes());
-                    return CValue::const_val(fx, layout, data);
+                    CValue::const_val(fx, layout, data)
                 }
                 Scalar::Ptr(ptr) => {
                     let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);
@@ -232,7 +232,7 @@ pub(crate) fn trans_const_value<'tcx>(
                     } else {
                         base_addr
                     };
-                    return CValue::by_val(val, layout);
+                    CValue::by_val(val, layout)
                 }
             }
         }
@@ -276,7 +276,7 @@ fn data_id_for_alloc_id(
 ) -> DataId {
     module
         .declare_data(
-            &format!("__alloc_{:x}", alloc_id.0),
+            &format!(".L__alloc_{:x}", alloc_id.0),
             Linkage::Local,
             mutability == rustc_hir::Mutability::Mut,
             false,
@@ -293,14 +293,12 @@ fn data_id_for_static(
     let rlinkage = tcx.codegen_fn_attrs(def_id).linkage;
     let linkage = if definition {
         crate::linkage::get_static_linkage(tcx, def_id)
+    } else if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
+        || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
+    {
+        Linkage::Preemptible
     } else {
-        if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
-            || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
-        {
-            Linkage::Preemptible
-        } else {
-            Linkage::Import
-        }
+        Linkage::Import
     };
 
     let instance = Instance::mono(tcx, def_id).polymorphize(tcx);

@@ -9,7 +9,4 @@
     object files when their content should have been changed by a change to cg_clif.</dd>
     <dt>CG_CLIF_DISPLAY_CG_TIME</dt>
     <dd>If "1", display the time it took to perform codegen for a crate</dd>
-    <dt>CG_CLIF_FUNCTION_SECTIONS</dt>
-    <dd>Use a single section for each function. This will often reduce the executable size at the
-        cost of making linking significantly slower.</dd>
 </dl>

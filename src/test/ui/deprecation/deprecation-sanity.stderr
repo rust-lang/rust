@@ -41,10 +41,12 @@ LL |     #[deprecated("test")]
    |                  ^^^^^^
 
 error[E0550]: multiple deprecated attributes
-  --> $DIR/deprecation-sanity.rs:28:1
+  --> $DIR/deprecation-sanity.rs:27:1
    |
-LL | fn multiple1() { }
-   | ^^^^^^^^^^^^^^^^^^
+LL | #[deprecated(since = "a", note = "b")]
+   | -------------------------------------- first deprecation attribute
+LL | #[deprecated(since = "a", note = "b")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ repeated deprecation attribute
 
 error[E0538]: multiple 'since' items
   --> $DIR/deprecation-sanity.rs:30:27
@@ -52,7 +54,15 @@ error[E0538]: multiple 'since' items
 LL | #[deprecated(since = "a", since = "b", note = "c")]
    |                           ^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: this `#[deprecated]` annotation has no effect
+  --> $DIR/deprecation-sanity.rs:35:1
+   |
+LL | #[deprecated = "hello"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove the unnecessary deprecation attribute
+   |
+   = note: `#[deny(useless_deprecated)]` on by default
+
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0538, E0541, E0550, E0551, E0565.
 For more information about an error, try `rustc --explain E0538`.

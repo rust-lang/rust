@@ -44,9 +44,6 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
             return;
         }
 
-        // FIXME workaround for an ICE
-        config.opts.debugging_opts.trim_diagnostic_paths = false;
-
         config.opts.cg.panic = Some(PanicStrategy::Abort);
         config.opts.debugging_opts.panic_abort_tests = true;
         config.opts.maybe_sysroot = Some(

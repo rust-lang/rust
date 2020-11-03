@@ -27,10 +27,10 @@ fn codegen_field<'tcx>(
             return simple(fx);
         }
         match field_layout.ty.kind() {
-            ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(fx),
+            ty::Slice(..) | ty::Str | ty::Foreign(..) => simple(fx),
             ty::Adt(def, _) if def.repr.packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
-                return simple(fx);
+                simple(fx)
             }
             _ => {
                 // We have to align the offset for DST's
@@ -237,15 +237,12 @@ impl<'tcx> CValue<'tcx> {
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();
 
-        match layout.ty.kind() {
-            ty::Bool => {
-                assert!(
-                    const_val == 0 || const_val == 1,
-                    "Invalid bool 0x{:032X}",
-                    const_val
-                );
-            }
-            _ => {}
+        if let ty::Bool = layout.ty.kind() {
+            assert!(
+                const_val == 0 || const_val == 1,
+                "Invalid bool 0x{:032X}",
+                const_val
+            );
         }
 
         let val = match layout.ty.kind() {
@@ -335,7 +332,7 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
-            size: layout.size.bytes() as u32,
+            size: u32::try_from(layout.size.bytes()).unwrap(),
             offset: None,
         });
         CPlace {
@@ -533,6 +530,13 @@ impl<'tcx> CPlace<'tcx> {
             dst_ty: Type,
         ) {
             let src_ty = fx.bcx.func.dfg.value_type(data);
+            assert_eq!(
+                src_ty.bytes(),
+                dst_ty.bytes(),
+                "write_cvalue_transmute: {:?} -> {:?}",
+                src_ty,
+                dst_ty,
+            );
             let data = match (src_ty, dst_ty) {
                 (_, _) if src_ty == dst_ty => data,
 
@@ -543,6 +547,17 @@ impl<'tcx> CPlace<'tcx> {
                 | (types::F64, types::I64) => fx.bcx.ins().bitcast(dst_ty, data),
                 _ if src_ty.is_vector() && dst_ty.is_vector() => {
                     fx.bcx.ins().raw_bitcast(dst_ty, data)
+                }
+                _ if src_ty.is_vector() || dst_ty.is_vector() => {
+                    // FIXME do something more efficient for transmutes between vectors and integers.
+                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                        kind: StackSlotKind::ExplicitSlot,
+                        size: src_ty.bytes(),
+                        offset: None,
+                    });
+                    let ptr = Pointer::stack_slot(stack_slot);
+                    ptr.store(fx, data, MemFlags::trusted());
+                    ptr.load(fx, dst_ty, MemFlags::trusted())
                 }
                 _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
             };

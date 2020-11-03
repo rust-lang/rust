@@ -12,7 +12,7 @@ fi
 
 rm -rf $DST_DIR
 mkdir -p $DST_DIR/library
-cp -r $SRC_DIR/library $DST_DIR/
+cp -a $SRC_DIR/library $DST_DIR/
 
 pushd $DST_DIR
 echo "[GIT] init"
