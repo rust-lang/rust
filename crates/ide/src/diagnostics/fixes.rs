@@ -157,7 +157,8 @@ fn missing_record_expr_field_fix(
         return None;
     }
     let new_field = make::record_field(
-        record_expr_field.field_name()?,
+        None,
+        make::name(record_expr_field.field_name()?.text()),
         make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
     );
 
