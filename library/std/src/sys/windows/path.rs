@@ -8,15 +8,12 @@ mod tests;
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
 
-// The unsafety here stems from converting between `&OsStr` and `&[u8]`
-// and back. This is safe to do because (1) we only look at ASCII
-// contents of the encoding and (2) new &OsStr values are produced
-// only from ASCII-bounded slices of existing &OsStr values.
-fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
-    unsafe { mem::transmute(s) }
-}
-unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
-    mem::transmute(s)
+// Safety: `bytes` must be a valid wtf8 encoded slice
+#[inline]
+unsafe fn bytes_as_os_str(bytes: &[u8]) -> &OsStr {
+    // &OsStr is layout compatible with &Slice, which is compatible with &Wtf8,
+    // which is compatible with &[u8].
+    mem::transmute(bytes)
 }
 
 #[inline]
@@ -29,79 +26,116 @@ pub fn is_verbatim_sep(b: u8) -> bool {
     b == b'\\'
 }
 
-// In most DOS systems, it is not possible to have more than 26 drive letters.
-// See <https://en.wikipedia.org/wiki/Drive_letter_assignment#Common_assignments>.
-pub fn is_valid_drive_letter(disk: u8) -> bool {
-    disk.is_ascii_alphabetic()
-}
-
 pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
     use Prefix::{DeviceNS, Disk, Verbatim, VerbatimDisk, VerbatimUNC, UNC};
 
-    let path = os_str_as_u8_slice(path);
+    if let Some(path) = strip_prefix(path, r"\\") {
+        // \\
+        if let Some(path) = strip_prefix(path, r"?\") {
+            // \\?\
+            if let Some(path) = strip_prefix(path, r"UNC\") {
+                // \\?\UNC\server\share
 
-    // \\
-    if let Some(path) = path.strip_prefix(br"\\") {
-        // \\?\
-        if let Some(path) = path.strip_prefix(br"?\") {
-            // \\?\UNC\server\share
-            if let Some(path) = path.strip_prefix(br"UNC\") {
-                let (server, share) = match get_first_two_components(path, is_verbatim_sep) {
-                    Some((server, share)) => unsafe {
-                        (u8_slice_as_os_str(server), u8_slice_as_os_str(share))
-                    },
-                    None => (unsafe { u8_slice_as_os_str(path) }, OsStr::new("")),
-                };
-                return Some(VerbatimUNC(server, share));
+                let (server, path) = parse_next_component(path, true);
+                let (share, _) = parse_next_component(path, true);
+
+                Some(VerbatimUNC(server, share))
             } else {
-                // \\?\path
-                match path {
-                    // \\?\C:\path
-                    [c, b':', b'\\', ..] if is_valid_drive_letter(*c) => {
-                        return Some(VerbatimDisk(c.to_ascii_uppercase()));
-                    }
-                    // \\?\cat_pics
-                    _ => {
-                        let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
-                        let slice = &path[..idx];
-                        return Some(Verbatim(unsafe { u8_slice_as_os_str(slice) }));
-                    }
+                let (prefix, _) = parse_next_component(path, true);
+
+                // in verbatim paths only recognize an exact drive prefix
+                if let Some(drive) = parse_drive_exact(prefix) {
+                    // \\?\C:
+                    Some(VerbatimDisk(drive))
+                } else {
+                    // \\?\prefix
+                    Some(Verbatim(prefix))
                 }
             }
-        } else if let Some(path) = path.strip_prefix(b".\\") {
+        } else if let Some(path) = strip_prefix(path, r".\") {
             // \\.\COM42
-            let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
-            let slice = &path[..idx];
-            return Some(DeviceNS(unsafe { u8_slice_as_os_str(slice) }));
-        }
-        match get_first_two_components(path, is_sep_byte) {
-            Some((server, share)) if !server.is_empty() && !share.is_empty() => {
+            let (prefix, _) = parse_next_component(path, false);
+            Some(DeviceNS(prefix))
+        } else {
+            let (server, path) = parse_next_component(path, false);
+            let (share, _) = parse_next_component(path, false);
+
+            if !server.is_empty() && !share.is_empty() {
                 // \\server\share
-                return Some(unsafe { UNC(u8_slice_as_os_str(server), u8_slice_as_os_str(share)) });
+                Some(UNC(server, share))
+            } else {
+                // no valid prefix beginning with "\\" recognized
+                None
             }
-            _ => {}
         }
-    } else if let [c, b':', ..] = path {
+    } else if let Some(drive) = parse_drive(path) {
         // C:
-        if is_valid_drive_letter(*c) {
-            return Some(Disk(c.to_ascii_uppercase()));
-        }
+        Some(Disk(drive))
+    } else {
+        // no prefix
+        None
     }
-    None
 }
 
-/// Returns the first two path components with predicate `f`.
-///
-/// The two components returned will be use by caller
-/// to construct `VerbatimUNC` or `UNC` Windows path prefix.
-///
-/// Returns [`None`] if there are no separators in path.
-fn get_first_two_components(path: &[u8], f: fn(u8) -> bool) -> Option<(&[u8], &[u8])> {
-    let idx = path.iter().position(|&x| f(x))?;
-    // Panic safe
-    // The max `idx+1` is `path.len()` and `path[path.len()..]` is a valid index.
-    let (first, path) = (&path[..idx], &path[idx + 1..]);
-    let idx = path.iter().position(|&x| f(x)).unwrap_or(path.len());
-    let second = &path[..idx];
-    Some((first, second))
+// Parses a drive prefix, e.g. "C:" and "C:\whatever"
+fn parse_drive(prefix: &OsStr) -> Option<u8> {
+    // In most DOS systems, it is not possible to have more than 26 drive letters.
+    // See <https://en.wikipedia.org/wiki/Drive_letter_assignment#Common_assignments>.
+    fn is_valid_drive_letter(drive: &u8) -> bool {
+        drive.is_ascii_alphabetic()
+    }
+
+    match prefix.bytes() {
+        [drive, b':', ..] if is_valid_drive_letter(drive) => Some(drive.to_ascii_uppercase()),
+        _ => None,
+    }
+}
+
+// Parses a drive prefix exactly, e.g. "C:"
+fn parse_drive_exact(prefix: &OsStr) -> Option<u8> {
+    // only parse two bytes: the drive letter and the drive separator
+    if prefix.len() == 2 { parse_drive(prefix) } else { None }
+}
+
+fn strip_prefix<'a>(path: &'a OsStr, prefix: &str) -> Option<&'a OsStr> {
+    // `path` and `prefix` are valid wtf8 and utf8 encoded slices respectively, `path[prefix.len()]`
+    // is thus a code point boundary and `path[prefix.len()..]` is a valid wtf8 encoded slice.
+    match path.bytes().strip_prefix(prefix.as_bytes()) {
+        Some(path) => unsafe { Some(bytes_as_os_str(path)) },
+        None => None,
+    }
+}
+
+// Parse the next path component.
+//
+// Returns the next component and the rest of the path excluding the component and separator.
+// Does not recognize `/` as a separator character if `verbatim` is true.
+fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
+    let separator = if verbatim { is_verbatim_sep } else { is_sep_byte };
+
+    match path.bytes().iter().position(|&x| separator(x)) {
+        Some(separator_start) => {
+            let mut separator_end = separator_start + 1;
+
+            // a series of multiple separator characters is treated as a single separator,
+            // except in verbatim paths
+            while !verbatim && separator_end < path.len() && separator(path.bytes()[separator_end])
+            {
+                separator_end += 1;
+            }
+
+            let component = &path.bytes()[..separator_start];
+
+            // Panic safe
+            // The max `separator_end` is `bytes.len()` and `bytes[bytes.len()..]` is a valid index.
+            let path = &path.bytes()[separator_end..];
+
+            // Safety: `path` is a valid wtf8 encoded slice and each of the separators ('/', '\')
+            // is encoded in a single byte, therefore `bytes[separator_start]` and
+            // `bytes[separator_end]` must be code point boundaries and thus
+            // `bytes[..separator_start]` and `bytes[separator_end..]` are valid wtf8 slices.
+            unsafe { (bytes_as_os_str(component), bytes_as_os_str(path)) }
+        }
+        None => (path, OsStr::new("")),
+    }
 }
