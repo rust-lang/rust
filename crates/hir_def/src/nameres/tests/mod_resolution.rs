@@ -323,13 +323,26 @@ pub struct Baz;
 fn module_resolution_relative_path_outside_root() {
     check(
         r#"
-//- /main.rs
+//- /a/b/c/d/e/main.rs crate:main
 #[path="../../../../../outside.rs"]
 mod foo;
+
+//- /outside.rs
+mod bar;
+
+//- /bar.rs
+pub struct Baz;
 "#,
         expect![[r#"
             crate
-        "#]],
+            foo: t
+
+            crate::foo
+            bar: t
+
+            crate::foo::bar
+            Baz: t v
+"#]],
     );
 }
 
