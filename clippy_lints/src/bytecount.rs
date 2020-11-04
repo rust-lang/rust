@@ -8,6 +8,7 @@ use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 use rustc_span::Symbol;
 
 declare_clippy_lint! {
@@ -68,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args, _) =
                                 filter_args[0].kind {
                             let p = path.ident.name;
-                            if (p == sym!(iter) || p == sym!(iter_mut)) && args.len() == 1 {
+                            if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {
                                 &args[0]
                             } else {
                                 &filter_args[0]

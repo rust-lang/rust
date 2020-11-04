@@ -6,6 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `option.map(f)` where f is a function
@@ -206,9 +207,9 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
     let var_arg = &map_args[0];
 
     let (map_type, variant, lint) =
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym!(option_type)) {
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::option_type) {
             ("Option", "Some", OPTION_MAP_UNIT_FN)
-        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym!(result_type)) {
+        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::result_type) {
             ("Result", "Ok", RESULT_MAP_UNIT_FN)
         } else {
             return;

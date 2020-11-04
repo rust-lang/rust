@@ -522,7 +522,7 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                    } else if cx.tcx.is_diagnostic_item(sym!(vec_type), def_id) {
+                    } else if cx.tcx.is_diagnostic_item(sym::vec_type, def_id) {
                         if_chain! {
                             // Get the _ part of Vec<_>
                             if let Some(ref last) = last_path_segment(qpath).args;
@@ -559,7 +559,7 @@ impl Types {
                                 return; // don't recurse into the type
                             }
                         }
-                    } else if cx.tcx.is_diagnostic_item(sym!(option_type), def_id) {
+                    } else if cx.tcx.is_diagnostic_item(sym::option_type, def_id) {
                         if match_type_parameter(cx, qpath, &paths::OPTION).is_some() {
                             span_lint(
                                 cx,
@@ -1610,7 +1610,7 @@ fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         if names.is_empty() {
             return false;
         }
-        if names[0] == sym!(libc) || names[0] == sym::core && *names.last().unwrap() == sym!(c_void) {
+        if names[0] == sym::libc || names[0] == sym::core && *names.last().unwrap() == sym!(c_void) {
             return true;
         }
     }
@@ -2777,7 +2777,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                 }
 
                 if match_path(ty_path, &paths::HASHMAP) {
-                    if method.ident.name == sym!(new) {
+                    if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
                     } else if method.ident.name == sym!(with_capacity) {
@@ -2790,7 +2790,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                         );
                     }
                 } else if match_path(ty_path, &paths::HASHSET) {
-                    if method.ident.name == sym!(new) {
+                    if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());
                     } else if method.ident.name == sym!(with_capacity) {

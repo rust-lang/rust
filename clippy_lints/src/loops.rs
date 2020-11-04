@@ -619,9 +619,9 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
                 }
 
                 let lhs_constructor = last_path_segment(qpath);
-                if method_path.ident.name == sym!(next)
+                if method_path.ident.name == sym::next
                     && match_trait_method(cx, match_expr, &paths::ITERATOR)
-                    && lhs_constructor.ident.name == sym!(Some)
+                    && lhs_constructor.ident.name == sym::Some
                     && (pat_args.is_empty()
                         || !is_refutable(cx, &pat_args[0])
                             && !is_used_inside(cx, iter_expr, &arms[0].body)
@@ -985,13 +985,13 @@ fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || is_type_diagnostic_item(cx, ty, sym!(vec_type)) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
+    is_slice || is_type_diagnostic_item(cx, ty, sym::vec_type) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if_chain! {
         if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
-        if method.ident.name == sym!(clone);
+        if method.ident.name == sym::clone;
         if args.len() == 1;
         if let Some(arg) = args.get(0);
         then { arg } else { expr }
@@ -1355,7 +1355,7 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
             if let Some(self_expr) = args.get(0);
             if let Some(pushed_item) = args.get(1);
             // Check that the method being called is push() on a Vec
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym!(vec_type));
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::vec_type);
             if path.ident.name.as_str() == "push";
             then {
                 return Some((self_expr, pushed_item))
@@ -1736,7 +1736,7 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr:
 /// Checks for `for` loops over `Option`s and `Result`s.
 fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(arg);
-    if is_type_diagnostic_item(cx, ty, sym!(option_type)) {
+    if is_type_diagnostic_item(cx, ty, sym::option_type) {
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,
@@ -1753,7 +1753,7 @@ fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
                 snippet(cx, arg.span, "_")
             ),
         );
-    } else if is_type_diagnostic_item(cx, ty, sym!(result_type)) {
+    } else if is_type_diagnostic_item(cx, ty, sym::result_type) {
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,
@@ -2186,8 +2186,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_chain! {
             // a range index op
             if let ExprKind::MethodCall(ref meth, _, ref args, _) = expr.kind;
-            if (meth.ident.name == sym!(index) && match_trait_method(self.cx, expr, &paths::INDEX))
-                || (meth.ident.name == sym!(index_mut) && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
+            if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
+                || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(&args[1], &args[0], expr);
             then { return }
         }
@@ -2333,7 +2333,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     // will allow further borrows afterwards
     let ty = cx.typeck_results().expr_ty(e);
     is_iterable_array(ty, cx) ||
-    is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
+    is_type_diagnostic_item(cx, ty, sym::vec_type) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
     is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) ||
     is_type_diagnostic_item(cx, ty, sym!(hashset_type)) ||
@@ -2890,7 +2890,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         then {
             let ty = cx.typeck_results().node_type(ty.hir_id);
-            if is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
+            if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                 is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
                 match_type(cx, ty, &paths::BTREEMAP) ||
                 is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {

@@ -1722,7 +1722,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, item.span);
-            if item.ident.name == sym!(new);
+            if item.ident.name == sym::new;
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id);
             let self_ty = TraitRef::identity(cx.tcx, item.hir_id.owner.to_def_id()).self_ty();
@@ -1812,7 +1812,7 @@ fn lint_or_fun_call<'tcx>(
                     _ => (),
                 }
 
-                if is_type_diagnostic_item(cx, ty, sym!(vec_type)) {
+                if is_type_diagnostic_item(cx, ty, sym::vec_type) {
                     return;
                 }
             }
@@ -1909,11 +1909,11 @@ fn lint_expect_fun_call(
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
                 hir::ExprKind::MethodCall(method_name, _, call_args, _) => {
                     if call_args.len() == 1
-                        && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
+                        && (method_name.ident.name == sym::as_str || method_name.ident.name == sym!(as_ref))
                         && {
                             let arg_type = cx.typeck_results().expr_ty(&call_args[0]);
                             let base_type = arg_type.peel_refs();
-                            *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym!(string_type))
+                            *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym::string_type)
                         }
                     {
                         &call_args[0]
@@ -1931,7 +1931,7 @@ fn lint_expect_fun_call(
     // converted to string.
     fn requires_to_string(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
         let arg_ty = cx.typeck_results().expr_ty(arg);
-        if is_type_diagnostic_item(cx, arg_ty, sym!(string_type)) {
+        if is_type_diagnostic_item(cx, arg_ty, sym::string_type) {
             return false;
         }
         if let ty::Ref(_, ty, ..) = arg_ty.kind() {
@@ -2018,9 +2018,9 @@ fn lint_expect_fun_call(
     }
 
     let receiver_type = cx.typeck_results().expr_ty_adjusted(&args[0]);
-    let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym!(option_type)) {
+    let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym::option_type) {
         "||"
-    } else if is_type_diagnostic_item(cx, receiver_type, sym!(result_type)) {
+    } else if is_type_diagnostic_item(cx, receiver_type, sym::result_type) {
         "|_|"
     } else {
         return;
@@ -2207,7 +2207,7 @@ fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::E
         let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
         let ref_str = if *self_ty.kind() == ty::Str {
             ""
-        } else if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
+        } else if is_type_diagnostic_item(cx, self_ty, sym::string_type) {
             "&"
         } else {
             return;
@@ -2233,14 +2233,14 @@ fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::E
 
 fn lint_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let obj_ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
-    if is_type_diagnostic_item(cx, obj_ty, sym!(string_type)) {
+    if is_type_diagnostic_item(cx, obj_ty, sym::string_type) {
         lint_string_extend(cx, expr, args);
     }
 }
 
 fn lint_iter_cloned_collect<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
     if_chain! {
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym!(vec_type));
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::vec_type);
         if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0]));
         if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
 
@@ -2393,7 +2393,7 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
                 );
             }
         }
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(caller_expr), sym!(vec_type))
+    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(caller_expr), sym::vec_type)
         || matches!(
             &cx.typeck_results().expr_ty(caller_expr).peel_refs().kind(),
             ty::Array(_, _)
@@ -2426,7 +2426,7 @@ fn lint_iter_nth<'tcx>(
     let mut_str = if is_mut { "_mut" } else { "" };
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0])).is_some() {
         "slice"
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym!(vec_type)) {
+    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vec_type) {
         "Vec"
     } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
         "VecDeque"
@@ -2479,7 +2479,7 @@ fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args:
     let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym!(vec_type)) {
+    } else if is_type_diagnostic_item(cx, expr_ty, sym::vec_type) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
     } else if is_type_diagnostic_item(cx, expr_ty, sym!(vecdeque_type)) {
@@ -2565,7 +2565,7 @@ fn derefs_to_slice<'tcx>(
         match ty.kind() {
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
-            ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym!(vec_type)),
+            ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym::vec_type),
             ty::Array(_, size) => size
                 .try_eval_usize(cx.tcx, cx.param_env)
                 .map_or(false, |size| size < 32),
@@ -2575,7 +2575,7 @@ fn derefs_to_slice<'tcx>(
     }
 
     if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind {
-        if path.ident.name == sym!(iter) && may_slice(cx, cx.typeck_results().expr_ty(&args[0])) {
+        if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(&args[0])) {
             Some(&args[0])
         } else {
             None
@@ -2600,9 +2600,9 @@ fn derefs_to_slice<'tcx>(
 fn lint_unwrap(cx: &LateContext<'_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::Expr<'_>]) {
     let obj_ty = cx.typeck_results().expr_ty(&unwrap_args[0]).peel_refs();
 
-    let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
+    let mess = if is_type_diagnostic_item(cx, obj_ty, sym::option_type) {
         Some((UNWRAP_USED, "an Option", "None"))
-    } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
+    } else if is_type_diagnostic_item(cx, obj_ty, sym::result_type) {
         Some((UNWRAP_USED, "a Result", "Err"))
     } else {
         None
@@ -2652,7 +2652,7 @@ fn lint_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expect_args: &[hir::E
 fn lint_ok_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ok_args: &[hir::Expr<'_>]) {
     if_chain! {
         // lint if the caller of `ok()` is a `Result`
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&ok_args[0]), sym!(result_type));
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&ok_args[0]), sym::result_type);
         let result_type = cx.typeck_results().expr_ty(&ok_args[0]);
         if let Some(error_type) = get_error_type(cx, result_type);
         if has_debug_impl(error_type, cx);
@@ -2682,7 +2682,7 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
                     _ => map_closure_ty.fn_sig(cx.tcx),
                 };
                 let map_closure_return_ty = cx.tcx.erase_late_bound_regions(&map_closure_sig.output());
-                is_type_diagnostic_item(cx, map_closure_return_ty, sym!(option_type))
+                is_type_diagnostic_item(cx, map_closure_return_ty, sym::option_type)
             },
             _ => false,
         };
@@ -2708,7 +2708,7 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
     }
 
     // lint if caller of `.map().flatten()` is an Option
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type)) {
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type) {
         let func_snippet = snippet(cx, map_args[1].span, "..");
         let hint = format!(".and_then({})", func_snippet);
         span_lint_and_sugg(
@@ -2732,8 +2732,8 @@ fn lint_map_unwrap_or_else<'tcx>(
     unwrap_args: &'tcx [hir::Expr<'_>],
 ) -> bool {
     // lint if the caller of `map()` is an `Option`
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type));
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(result_type));
+    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type);
+    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::result_type);
 
     if is_option || is_result {
         // Don't make a suggestion that may fail to compile due to mutably borrowing
@@ -2786,8 +2786,8 @@ fn lint_map_unwrap_or_else<'tcx>(
 
 /// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
 fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_or_args: &'tcx [hir::Expr<'_>]) {
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_or_args[0]), sym!(option_type));
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_or_args[0]), sym!(result_type));
+    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_or_args[0]), sym::option_type);
+    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_or_args[0]), sym::result_type);
 
     // There are two variants of this `map_or` lint:
     // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`
@@ -3145,7 +3145,7 @@ fn lint_chars_cmp(
         if arg_char.len() == 1;
         if let hir::ExprKind::Path(ref qpath) = fun.kind;
         if let Some(segment) = single_segment_path(qpath);
-        if segment.ident.name == sym!(Some);
+        if segment.ident.name == sym::Some;
         then {
             let mut applicability = Applicability::MachineApplicable;
             let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0][0]).peel_refs();
@@ -3441,7 +3441,7 @@ fn lint_option_as_ref_deref<'tcx>(
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
     let option_ty = cx.typeck_results().expr_ty(&as_ref_args[0]);
-    if !is_type_diagnostic_item(cx, option_ty, sym!(option_type)) {
+    if !is_type_diagnostic_item(cx, option_ty, sym::option_type) {
         return;
     }
 
@@ -3548,7 +3548,7 @@ fn lint_map_collect(
         if match_trait_method(cx, map_expr, &paths::ITERATOR);
         // return of collect `Result<(),_>`
         let collect_ret_ty = cx.typeck_results().expr_ty(expr);
-        if is_type_diagnostic_item(cx, collect_ret_ty, sym!(result_type));
+        if is_type_diagnostic_item(cx, collect_ret_ty, sym::result_type);
         if let ty::Adt(_, substs) = collect_ret_ty.kind();
         if let Some(result_t) = substs.types().next();
         if result_t.is_unit();
@@ -3575,7 +3575,7 @@ fn lint_map_collect(
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind() {
-        ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym!(result_type)) => substs.types().nth(1),
+        ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym::result_type) => substs.types().nth(1),
         _ => None,
     }
 }
