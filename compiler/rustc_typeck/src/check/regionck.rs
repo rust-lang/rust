@@ -577,7 +577,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_pattern(&self, discr_cmt: PlaceWithHirId<'tcx>, root_pat: &hir::Pat<'_>) {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})", discr_cmt, root_pat);
         ignore_err!(self.with_mc(|mc| {
-            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id }| {
+            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id, .. }| {
                 // `ref x` pattern
                 if let PatKind::Binding(..) = kind {
                     if let Some(ty::BindByReference(mutbl)) =
