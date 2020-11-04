@@ -115,7 +115,7 @@ fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, mode: ConsumeMode) {
+    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, mode: ConsumeMode) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
                 if let ConsumeMode::Move = mode {
@@ -135,7 +135,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
                 self.set.remove(&lid);
@@ -143,7 +143,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty() {
             let map = &self.cx.tcx.hir();
             if is_argument(*map, cmt.hir_id) {
