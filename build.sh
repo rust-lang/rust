@@ -34,15 +34,15 @@ else
     cargo build
 fi
 
-rm -rf $target_dir
-mkdir $target_dir
-cp -a target/$CHANNEL/cg_clif{,_build_sysroot} target/$CHANNEL/*rustc_codegen_cranelift* $target_dir/
-cp -a rust-toolchain scripts/config.sh scripts/cargo.sh $target_dir
+rm -rf "$target_dir"
+mkdir "$target_dir"
+cp -a target/$CHANNEL/cg_clif{,_build_sysroot} target/$CHANNEL/*rustc_codegen_cranelift* "$target_dir/"
+cp -a rust-toolchain scripts/config.sh scripts/cargo.sh "$target_dir"
 
 if [[ "$build_sysroot" == "1" ]]; then
     echo "[BUILD] sysroot"
     export CG_CLIF_INCR_CACHE_DISABLED=1
     dir=$(pwd)
-    cd $target_dir
-    time $dir/build_sysroot/build_sysroot.sh
+    cd "$target_dir"
+    time "$dir/build_sysroot/build_sysroot.sh"
 fi
