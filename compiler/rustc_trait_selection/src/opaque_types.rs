@@ -722,11 +722,6 @@ where
                 // Skip lifetime parameters of the enclosing item(s)
 
                 substs.as_closure().tupled_upvars_ty().visit_with(self);
-
-                for upvar_ty in substs.as_closure().upvar_tys() {
-                    upvar_ty.visit_with(self);
-                }
-
                 substs.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
@@ -735,11 +730,6 @@ where
                 // Also skip the witness type, because that has no free regions.
 
                 substs.as_generator().tupled_upvars_ty().visit_with(self);
-
-                for upvar_ty in substs.as_generator().upvar_tys() {
-                    upvar_ty.visit_with(self);
-                }
-
                 substs.as_generator().return_ty().visit_with(self);
                 substs.as_generator().yield_ty().visit_with(self);
                 substs.as_generator().resume_ty().visit_with(self);

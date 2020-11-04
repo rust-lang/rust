@@ -1,0 +1,55 @@
+error: at least one trait must be specified
+  --> $DIR/issue-78720.rs:1:16
+   |
+LL | fn server() -> impl {
+   |                ^^^^
+
+error[E0412]: cannot find type `F` in this scope
+  --> $DIR/issue-78720.rs:13:12
+   |
+LL |     _func: F,
+   |            ^
+   | 
+  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL | pub trait Fn<Args>: FnMut<Args> {
+   | ------------------------------- similarly named trait `Fn` defined here
+   |
+help: a trait with a similar name exists
+   |
+LL |     _func: Fn,
+   |            ^^
+help: you might be missing a type parameter
+   |
+LL | struct Map2<Segment2, F> {
+   |                     ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-78720.rs:7:36
+   |
+LL |     fn map2<F>(self, F) -> Map2<F> {}
+   |                                    ^^ expected struct `Map2`, found `()`
+   |
+   = note: expected struct `Map2<F>`
+           found unit type `()`
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-78720.rs:7:16
+   |
+LL |     fn map2<F>(self, F) -> Map2<F> {}
+   |                ^^^^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting `Self`
+   |
+LL |     fn map2<F>(self, F) -> Map2<F> where Self: Sized {}
+   |                                    ^^^^^^^^^^^^^^^^^
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     fn map2<F>(&self, F) -> Map2<F> {}
+   |                ^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0412.
+For more information about an error, try `rustc --explain E0277`.
