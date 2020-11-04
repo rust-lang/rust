@@ -110,8 +110,16 @@ pub fn record_expr_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::Re
     }
 }
 
-pub fn record_field(name: ast::NameRef, ty: ast::Type) -> ast::RecordField {
-    ast_from_text(&format!("struct S {{ {}: {}, }}", name, ty))
+pub fn record_field(
+    visibility: Option<ast::Visibility>,
+    name: ast::Name,
+    ty: ast::Type,
+) -> ast::RecordField {
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{} ", it),
+    };
+    ast_from_text(&format!("struct S {{ {}{}: {}, }}", visibility, name, ty))
 }
 
 pub fn block_expr(
@@ -360,12 +368,27 @@ pub fn tuple_field_list(fields: impl IntoIterator<Item = ast::TupleField>) -> as
     ast_from_text(&format!("struct f({});", fields))
 }
 
+pub fn record_field_list(
+    fields: impl IntoIterator<Item = ast::RecordField>,
+) -> ast::RecordFieldList {
+    let fields = fields.into_iter().join(", ");
+    ast_from_text(&format!("struct f {{ {} }}", fields))
+}
+
 pub fn tuple_field(visibility: Option<ast::Visibility>, ty: ast::Type) -> ast::TupleField {
     let visibility = match visibility {
         None => String::new(),
         Some(it) => format!("{} ", it),
     };
     ast_from_text(&format!("struct f({}{});", visibility, ty))
+}
+
+pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Variant {
+    let field_list = match field_list {
+        None => String::new(),
+        Some(it) => format!("{}", it),
+    };
+    ast_from_text(&format!("enum f {{ {}{} }}", name, field_list))
 }
 
 pub fn fn_(
