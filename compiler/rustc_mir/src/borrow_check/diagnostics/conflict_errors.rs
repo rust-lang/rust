@@ -120,7 +120,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
                 // `*(_1)` where `_1` is a `Box` is actually a move out.
-                let is_box_move = moved_place.as_ref().projection == &[ProjectionElem::Deref]
+                let is_box_move = moved_place.as_ref().projection == [ProjectionElem::Deref]
                     && self.body.local_decls[moved_place.local].ty.is_box();
 
                 !is_box_move

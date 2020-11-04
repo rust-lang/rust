@@ -499,7 +499,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         Err(ErrorHandled::TooGeneric) => {
                             pending_obligation.stalled_on = substs
                                 .iter()
-                                .filter_map(|ty| TyOrConstInferVar::maybe_from_generic_arg(ty))
+                                .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
                                 .collect();
                             ProcessResult::Unchanged
                         }

@@ -1574,7 +1574,7 @@ fn normalize_src(src: &mut String, start_pos: BytePos) -> Vec<NormalizedPos> {
 
 /// Removes UTF-8 BOM, if any.
 fn remove_bom(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
-    if src.starts_with("\u{feff}") {
+    if src.starts_with('\u{feff}') {
         src.drain(..3);
         normalized_pos.push(NormalizedPos { pos: BytePos(0), diff: 3 });
     }
