@@ -5,7 +5,7 @@
 //! Rice Computer Science TS-06-33870,
 //! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>.
 
-use super::iterate::reverse_post_order;
+use super::iterate::post_order_from;
 use super::ControlFlowGraph;
 use rustc_index::vec::{Idx, IndexVec};
 use std::borrow::BorrowMut;
@@ -16,21 +16,21 @@ mod tests;
 
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     let start_node = graph.start_node();
-    let rpo = reverse_post_order(&graph, start_node);
-    dominators_given_rpo(graph, &rpo)
+    let pof = post_order_from(&graph, start_node);
+    dominators_given_pof(graph, &pof)
 }
 
-fn dominators_given_rpo<G: ControlFlowGraph + BorrowMut<G>>(
+fn dominators_given_pof<G: ControlFlowGraph + BorrowMut<G>>(
     mut graph: G,
-    rpo: &[G::Node],
+    pof: &[G::Node],
 ) -> Dominators<G::Node> {
     let start_node = graph.borrow().start_node();
-    assert_eq!(rpo[0], start_node);
+    assert_eq!(*pof.last().unwrap(), start_node);
 
     // compute the post order index (rank) for each node
     let mut post_order_rank: IndexVec<G::Node, usize> =
         (0..graph.borrow().num_nodes()).map(|_| 0).collect();
-    for (index, node) in rpo.iter().rev().cloned().enumerate() {
+    for (index, node) in pof.iter().cloned().enumerate() {
         post_order_rank[node] = index;
     }
 
@@ -42,7 +42,10 @@ fn dominators_given_rpo<G: ControlFlowGraph + BorrowMut<G>>(
     while changed {
         changed = false;
 
-        for &node in &rpo[1..] {
+        let (_root, children) = pof.split_last().unwrap();
+        let rpo = children.iter().rev();
+
+        for &node in rpo {
             let mut new_idom = None;
             for pred in graph.borrow_mut().predecessors(node) {
                 if immediate_dominators[pred].is_some() {
