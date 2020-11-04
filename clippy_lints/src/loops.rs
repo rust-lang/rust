@@ -547,9 +547,9 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             if block.stmts.is_empty() && block.expr.is_none() && !is_in_panic_handler(cx, expr) {
                 let msg = "empty `loop {}` wastes CPU cycles";
                 let help = if is_no_std_crate(cx.tcx.hir().krate()) {
-                    "You should either use `panic!()` or add a call pausing or sleeping the thread to the loop body."
+                    "you should either use `panic!()` or add a call pausing or sleeping the thread to the loop body"
                 } else {
-                    "You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body."
+                    "you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body"
                 };
                 span_lint_and_help(cx, EMPTY_LOOP, expr.span, msg, None, help);
             }
