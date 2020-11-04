@@ -87,7 +87,7 @@ pub use self::trait_def::TraitDef;
 
 pub use self::query::queries;
 
-pub use self::consts::{Const, ConstInt, ConstKind, InferConst};
+pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt};
 
 pub mod _match;
 pub mod adjustment;

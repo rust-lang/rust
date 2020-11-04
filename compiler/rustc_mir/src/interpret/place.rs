@@ -14,9 +14,9 @@ use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
-    mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ConstAlloc,
-    ImmTy, Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand,
-    Pointer, PointerArithmetic, Scalar, ScalarMaybeUninit,
+    mir_assign_valid_types, AllocId, AllocMap, Allocation, AllocationExtra, ConstAlloc, ImmTy,
+    Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
+    PointerArithmetic, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -721,12 +721,8 @@ where
                     dest.layout.size,
                     "Size mismatch when writing pointer"
                 ),
-                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Raw { size, .. })) => {
-                    assert_eq!(
-                        Size::from_bytes(size),
-                        dest.layout.size,
-                        "Size mismatch when writing bits"
-                    )
+                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Int(int))) => {
+                    assert_eq!(int.size(), dest.layout.size, "Size mismatch when writing bits")
                 }
                 Immediate::Scalar(ScalarMaybeUninit::Uninit) => {} // uninit can have any size
                 Immediate::ScalarPair(_, _) => {
@@ -1077,7 +1073,7 @@ where
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
                 let size = tag_layout.value.size(self);
-                let tag_val = truncate(discr_val, size);
+                let tag_val = size.truncate(discr_val);
 
                 let tag_dest = self.place_field(dest, tag_field)?;
                 self.write_scalar(Scalar::from_uint(tag_val, size), tag_dest)?;

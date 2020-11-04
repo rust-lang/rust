@@ -14,7 +14,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{Abi, LayoutOf};
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
     "The rules on what exactly is undefined behavior aren't clear, \
@@ -137,15 +137,16 @@ pub(super) fn op_to_const<'tcx>(
             let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
-        Scalar::Raw { data, .. } => {
+        Scalar::Int(int) => {
             assert!(mplace.layout.is_zst());
             assert_eq!(
-                u64::try_from(data).unwrap() % mplace.layout.align.abi.bytes(),
+                int.assert_bits(ecx.tcx.data_layout.pointer_size)
+                    % u128::from(mplace.layout.align.abi.bytes()),
                 0,
                 "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
             );
-            ConstValue::Scalar(Scalar::zst())
+            ConstValue::Scalar(Scalar::ZST)
         }
     };
     match immediate {
@@ -161,7 +162,7 @@ pub(super) fn op_to_const<'tcx>(
                     Scalar::Ptr(ptr) => {
                         (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
                     }
-                    Scalar::Raw { .. } => (
+                    Scalar::Int { .. } => (
                         ecx.tcx
                             .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
                         0,

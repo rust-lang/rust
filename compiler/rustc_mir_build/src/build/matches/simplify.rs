@@ -17,7 +17,6 @@ use crate::build::Builder;
 use crate::thir::{self, *};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
-use rustc_middle::mir::interpret::truncate;
 use rustc_middle::mir::Place;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::IntegerExt;
@@ -161,13 +160,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ty::Int(ity) => {
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
-                        let max = truncate(u128::MAX, size);
+                        let max = size.truncate(u128::MAX);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
-                        let max = truncate(u128::MAX, size);
+                        let max = size.truncate(u128::MAX);
                         (Some((0, max, size)), 0)
                     }
                     _ => (None, 0),

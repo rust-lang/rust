@@ -28,7 +28,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
@@ -1952,10 +1951,10 @@ impl<'tcx> Operand<'tcx> {
                 .layout_of(param_env_and_ty)
                 .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
                 .size;
-            let scalar_size = abi::Size::from_bytes(match val {
-                Scalar::Raw { size, .. } => size,
+            let scalar_size = match val {
+                Scalar::Int(int) => int.size(),
                 _ => panic!("Invalid scalar type {:?}", val),
-            });
+            };
             scalar_size == type_size
         });
         Operand::Constant(box Constant {

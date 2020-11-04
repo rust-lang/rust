@@ -13,8 +13,7 @@ use rustc_span::symbol::sym;
 use rustc_target::abi::{Integer, LayoutOf, Variants};
 
 use super::{
-    truncate, util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy,
-    PlaceTy,
+    util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -209,7 +208,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     RawPtr(_) => self.pointer_size(),
                     _ => bug!(),
                 };
-                let v = truncate(v, size);
+                let v = size.truncate(v);
                 Scalar::from_uint(v, size)
             }
 

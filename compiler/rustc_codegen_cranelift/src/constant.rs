@@ -186,9 +186,8 @@ pub(crate) fn codegen_const_value<'tcx>(
             }
 
             match x {
-                Scalar::Raw { data, size } => {
-                    assert_eq!(u64::from(size), layout.size.bytes());
-                    CValue::const_val(fx, layout, data)
+                Scalar::Int(int) => {
+                    CValue::const_val(fx, layout, int)
                 }
                 Scalar::Ptr(ptr) => {
                     let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);

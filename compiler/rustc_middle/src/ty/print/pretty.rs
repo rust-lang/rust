@@ -1,12 +1,9 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::mir::interpret::{AllocId, ConstValue, GlobalAlloc, Pointer, Scalar};
-use crate::ty::layout::IntegerExt;
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
-use crate::ty::{self, ConstInt, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
-use rustc_apfloat::Float;
 use rustc_ast as ast;
-use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -15,12 +12,13 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::ItemKind;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_target::abi::{Integer, Size};
+use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
 use std::char;
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::fmt::{self, Write as _};
 use std::ops::{ControlFlow, Deref, DerefMut};
 
@@ -960,11 +958,7 @@ pub trait PrettyPrinter<'tcx>:
                             ty::Array(
                                 ty::TyS { kind: ty::Uint(ast::UintTy::U8), .. },
                                 ty::Const {
-                                    val:
-                                        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw {
-                                            data,
-                                            ..
-                                        })),
+                                    val: ty::ConstKind::Value(ConstValue::Scalar(int)),
                                     ..
                                 },
                             ),
@@ -974,8 +968,9 @@ pub trait PrettyPrinter<'tcx>:
                 ),
             ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
                 Some(GlobalAlloc::Memory(alloc)) => {
-                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
-                    {
+                    let bytes = int.assert_bits(self.tcx().data_layout.pointer_size);
+                    let size = Size::from_bytes(bytes);
+                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), ptr, size) {
                         p!(pretty_print_byte_str(byte_str))
                     } else {
                         p!("<too short allocation>")
@@ -987,32 +982,28 @@ pub trait PrettyPrinter<'tcx>:
                 None => p!("<dangling pointer>"),
             },
             // Bool
-            (Scalar::Raw { data: 0, .. }, ty::Bool) => p!("false"),
-            (Scalar::Raw { data: 1, .. }, ty::Bool) => p!("true"),
+            (Scalar::Int(int), ty::Bool) if int == ScalarInt::FALSE => p!("false"),
+            (Scalar::Int(int), ty::Bool) if int == ScalarInt::TRUE => p!("true"),
             // Float
-            (Scalar::Raw { data, .. }, ty::Float(ast::FloatTy::F32)) => {
-                p!(write("{}f32", Single::from_bits(data)))
+            (Scalar::Int(int), ty::Float(ast::FloatTy::F32)) => {
+                p!(write("{}f32", Single::try_from(int).unwrap()))
             }
-            (Scalar::Raw { data, .. }, ty::Float(ast::FloatTy::F64)) => {
-                p!(write("{}f64", Double::from_bits(data)))
+            (Scalar::Int(int), ty::Float(ast::FloatTy::F64)) => {
+                p!(write("{}f64", Double::try_from(int).unwrap()))
             }
             // Int
-            (Scalar::Raw { data, .. }, ty::Uint(ui)) => {
-                let size = Integer::from_attr(&self.tcx(), UnsignedInt(*ui)).size();
-                let int = ConstInt::new(data, size, false, ty.is_ptr_sized_integral());
-                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
-            }
-            (Scalar::Raw { data, .. }, ty::Int(i)) => {
-                let size = Integer::from_attr(&self.tcx(), SignedInt(*i)).size();
-                let int = ConstInt::new(data, size, true, ty.is_ptr_sized_integral());
+            (Scalar::Int(int), ty::Uint(_) | ty::Int(_)) => {
+                let int =
+                    ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
                 if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             // Char
-            (Scalar::Raw { data, .. }, ty::Char) if char::from_u32(data as u32).is_some() => {
-                p!(write("{:?}", char::from_u32(data as u32).unwrap()))
+            (Scalar::Int(int), ty::Char) if char::try_from(int).is_ok() => {
+                p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Raw pointers
-            (Scalar::Raw { data, .. }, ty::RawPtr(_)) => {
+            (Scalar::Int(int), ty::RawPtr(_)) => {
+                let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
                         write!(this, "0x{:x}", data)?;
@@ -1034,14 +1025,16 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             // For function type zsts just printing the path is enough
-            (Scalar::Raw { size: 0, .. }, ty::FnDef(d, s)) => p!(print_value_path(*d, s)),
+            (Scalar::Int(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {
+                p!(print_value_path(*d, s))
+            }
             // Nontrivial types with scalar bit representation
-            (Scalar::Raw { data, size }, _) => {
+            (Scalar::Int(int), _) => {
                 let print = |mut this: Self| {
-                    if size == 0 {
+                    if int.size() == Size::ZERO {
                         write!(this, "transmute(())")?;
                     } else {
-                        write!(this, "transmute(0x{:01$x})", data, size as usize * 2)?;
+                        write!(this, "transmute(0x{:x})", int)?;
                     }
                     Ok(this)
                 };

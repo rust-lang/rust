@@ -499,7 +499,7 @@ fn codegen_stmt<'tcx>(
                         UnOp::Neg => match layout.ty.kind() {
                             ty::Int(IntTy::I128) => {
                                 // FIXME remove this case once ineg.i128 works
-                                let zero = CValue::const_val(fx, layout, 0);
+                                let zero = CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
                                 crate::num::codegen_int_binop(fx, BinOp::Sub, zero, operand)
                             }
                             ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
@@ -585,13 +585,11 @@ fn codegen_stmt<'tcx>(
                                     .discriminant_for_variant(fx.tcx, *index)
                                     .unwrap();
                                 let discr = if discr.ty.is_signed() {
-                                    rustc_middle::mir::interpret::sign_extend(
-                                        discr.val,
-                                        fx.layout_of(discr.ty).size,
-                                    )
+                                    fx.layout_of(discr.ty).size.sign_extend(discr.val)
                                 } else {
                                     discr.val
                                 };
+                                let discr = discr.into();
 
                                 let discr = CValue::const_val(fx, fx.layout_of(to_ty), discr);
                                 lval.write_cvalue(fx, discr);

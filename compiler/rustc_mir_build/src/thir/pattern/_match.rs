@@ -304,7 +304,7 @@ use rustc_arena::TypedArena;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
-use rustc_middle::mir::interpret::{truncate, ConstValue};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
@@ -1608,7 +1608,7 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
         }
         &ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
-            let max = truncate(u128::MAX, size);
+            let max = size.truncate(u128::MAX);
             vec![make_range(0, max)]
         }
         _ if cx.is_uninhabited(pcx.ty) => vec![],
