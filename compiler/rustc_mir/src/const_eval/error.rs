@@ -141,7 +141,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
                 return ErrorHandled::TooGeneric;
             }
-            err_inval!(TypeckError(error_reported)) => {
+            err_inval!(AlreadyReported(error_reported)) => {
                 return ErrorHandled::Reported(error_reported);
             }
             // We must *always* hard error on these, even if the caller wants just a lint.
