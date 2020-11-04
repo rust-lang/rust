@@ -27,11 +27,12 @@ use rustc_span::Span;
 /// employing the ExprUseVisitor.
 pub trait Delegate<'tcx> {
     // The value found at `place` is either copied or moved, depending
-    // on mode. Where `diag_expr_id` is the id used for diagnostics for `place`.
+    // on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
     //
-    // The reson for a separate expr_id for diagonostics is to support cases
-    // like `let pat = upvar`, in such scenarios reporting the pattern (lhs)
-    // looks confusing. Instead we prefer to report the discriminant (rhs)
+    // The parameter `diag_expr_id` indicates the HIR id that ought to be used for
+    // diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
+    // id will be the id of the expression `expr` but the place itself will have
+    // the id of the binding in the pattern `pat`.
     fn consume(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -40,11 +41,7 @@ pub trait Delegate<'tcx> {
     );
 
     // The value found at `place` is being borrowed with kind `bk`.
-    // `diag_expr_id` is the id used for diagnostics for `place`.
-    //
-    // The reson for a separate expr_id for diagonostics is to support cases
-    // like `let pat = upvar`, in such scenarios reporting the pattern (lhs)
-    // looks confusing. Instead we prefer to report the discriminant (rhs)
+    // `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn borrow(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,
@@ -53,11 +50,7 @@ pub trait Delegate<'tcx> {
     );
 
     // The path at `assignee_place` is being assigned to.
-    // `diag_expr_id` is the id used for diagnostics for `place`.
-    //
-    // The reson for a separate expr_id for diagonostics is to support cases
-    // like `let pat = upvar`, in such scenarios reporting the pattern (lhs)
-    // looks confusing. Instead we prefer to report the discriminant (rhs)
+    // `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 }
 
