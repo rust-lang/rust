@@ -487,3 +487,12 @@ char Enzyme::ID = 0;
 static RegisterPass<Enzyme> X("enzyme", "Enzyme Pass");
 
 ModulePass *createEnzymePass(bool PostOpt) { return new Enzyme(PostOpt); }
+
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
+
+#include "llvm/IR/LegacyPassManager.h"
+
+extern "C" void AddEnzymePass(LLVMPassManagerRef PM) {
+  unwrap(PM)->add(createEnzymePass(/*PostOpt*/ false));
+}
