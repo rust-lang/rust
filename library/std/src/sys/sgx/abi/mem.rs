@@ -89,3 +89,37 @@ pub fn is_user_range(p: *const u8, len: usize) -> bool {
     let base = image_base() as usize;
     end < base || start > base + (unsafe { ENCLAVE_SIZE } - 1) // unsafe ok: link-time constant
 }
+
+#[repr(C, packed)]
+#[derive(Default)]
+struct TcslsTcsListItem {
+    tcs_offset: u64,
+    next_offset: u64,
+}
+
+extern "C" {
+    fn next_tcsls() -> *const u8;
+    fn static_tcs_offset() -> u64;
+    fn clist_next_offset() -> u64;
+}
+
+/// Returns the location of all TCSes available at compile time in the enclave
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn static_tcses() -> Vec<*const u8> {
+    unsafe {
+        let mut tcsls = next_tcsls();
+        let mut tcses = Vec::new();
+
+        loop {
+            let tcs_addr = rel_ptr(*rel_ptr::<u64>(tcsls as u64 + static_tcs_offset()));
+            tcsls = *(rel_ptr::<*const u8>(tcsls as u64 + clist_next_offset()));
+
+            if tcses.first() != Some(&tcs_addr) {
+                tcses.push(tcs_addr);
+            } else {
+                break;
+            }
+        }
+        tcses
+    }
+}

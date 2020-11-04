@@ -139,9 +139,9 @@ pub fn connect_stream(addr: &str) -> IoResult<(Fd, String, String)> {
 
 /// Usercall `launch_thread`. See the ABI documentation for more information.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub unsafe fn launch_thread() -> IoResult<()> {
+pub unsafe fn launch_thread(tcs: Option<Tcs>) -> IoResult<()> {
     // SAFETY: The caller must uphold the safety contract for `launch_thread`.
-    unsafe { raw::launch_thread().from_sgx_result() }
+    unsafe { raw::launch_thread(tcs).from_sgx_result() }
 }
 
 /// Usercall `exit`. See the ABI documentation for more information.

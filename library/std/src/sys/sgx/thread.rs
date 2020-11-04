@@ -5,6 +5,7 @@ use crate::io;
 use crate::num::NonZeroUsize;
 use crate::time::Duration;
 
+use super::abi::thread;
 use super::abi::usercalls;
 
 pub struct Thread(task_queue::JoinHandle);
@@ -13,8 +14,65 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 pub use self::task_queue::JoinNotifier;
 
+mod tcs_queue {
+    use super::super::abi::mem as sgx_mem;
+    use super::super::abi::thread;
+    use crate::ptr::NonNull;
+    use crate::sync::{Mutex, MutexGuard, Once};
+
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    pub(super) struct Tcs {
+        address: NonNull<u8>,
+    }
+
+    impl Tcs {
+        fn new(address: NonNull<u8>) -> Tcs {
+            Tcs { address }
+        }
+
+        pub(super) fn address(&self) -> &NonNull<u8> {
+            &self.address
+        }
+    }
+
+    /// A queue of not running TCS structs
+    static mut TCS_QUEUE: Option<Mutex<Vec<Tcs>>> = None;
+    static TCS_QUEUE_INIT: Once = Once::new();
+
+    fn init_tcs_queue() -> Vec<Tcs> {
+        sgx_mem::static_tcses()
+            .iter()
+            .filter_map(|addr| if NonNull::new(*addr as _) != Some(thread::current()) {
+                    Some(Tcs::new(NonNull::new(*addr as _).expect("Compile-time value unexpected NULL")))
+                } else {
+                    None
+                })
+            .collect()
+    }
+
+    fn lock() -> MutexGuard<'static, Vec<Tcs>> {
+        unsafe {
+            TCS_QUEUE_INIT.call_once(|| TCS_QUEUE = Some(Mutex::new(init_tcs_queue())));
+            TCS_QUEUE.as_ref().unwrap().lock().unwrap()
+        }
+    }
+
+    pub(super) fn take_tcs() -> Option<Tcs> {
+        let mut tcs_queue = lock();
+        if let Some(tcs) = tcs_queue.pop() { Some(tcs) } else { None }
+    }
+
+    pub(super) fn add_tcs(tcs: Tcs) {
+        let mut tcs_queue = lock();
+        tcs_queue.insert(0, tcs);
+    }
+}
+
 mod task_queue {
+    use super::tcs_queue::{self, Tcs};
     use super::wait_notify;
+    use crate::ptr::NonNull;
+    use crate::sync::mpsc;
     use crate::sync::{Mutex, MutexGuard, Once};
 
     pub type JoinHandle = wait_notify::Waiter;
@@ -30,18 +88,24 @@ mod task_queue {
     pub(super) struct Task {
         p: Box<dyn FnOnce()>,
         done: JoinNotifier,
+        tcs: Tcs,
     }
 
     impl Task {
-        pub(super) fn new(p: Box<dyn FnOnce()>) -> (Task, JoinHandle) {
+        pub(super) fn new(tcs: Tcs, p: Box<dyn FnOnce()>) -> (Task, JoinHandle) {
             let (done, recv) = wait_notify::new();
             let done = JoinNotifier(Some(done));
-            (Task { p, done }, recv)
+            let task = Task { p, done, tcs };
+            (task, recv)
         }
 
         pub(super) fn run(self) -> JoinNotifier {
-            (self.p)();
-            self.done
+            let Task { tcs, p, done } = self;
+
+            p();
+
+            tcs_queue::add_tcs(tcs);
+            done
         }
     }
 
@@ -57,6 +121,13 @@ mod task_queue {
             TASK_QUEUE_INIT.call_once(|| TASK_QUEUE = Some(Default::default()));
             TASK_QUEUE.as_ref().unwrap().lock().unwrap()
         }
+    }
+
+    pub(super) fn take_task(tcs: NonNull<u8>) -> Option<Task> {
+        let mut tasks = lock();
+        let (i, _) = tasks.iter().enumerate().find(|(_i, task)| *task.tcs.address() == tcs)?;
+        let task = tasks.remove(i);
+        Some(task)
     }
 }
 
@@ -105,17 +176,17 @@ pub mod wait_notify {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let mut queue_lock = task_queue::lock();
-        unsafe { usercalls::launch_thread()? };
-        let (task, handle) = task_queue::Task::new(p);
-        queue_lock.push(task);
+        let tcs = tcs_queue::take_tcs().ok_or(io::Error::from(io::ErrorKind::WouldBlock))?;
+        let mut tasks = task_queue::lock();
+        unsafe { usercalls::launch_thread(Some(*tcs.address()))? };
+        let (task, handle) = task_queue::Task::new(tcs, p);
+        tasks.push(task);
         Ok(Thread(handle))
     }
 
     pub(super) fn entry() -> JoinNotifier {
-        let mut pending_tasks = task_queue::lock();
-        let task = rtunwrap!(Some, pending_tasks.pop());
-        drop(pending_tasks); // make sure to not hold the task queue lock longer than necessary
+        let task = task_queue::take_task(thread::current())
+            .expect("enclave entered through TCS unexpectedly");
         task.run()
     }
 

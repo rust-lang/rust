@@ -11,7 +11,7 @@ IMAGE_BASE:
     .long 1                    /* type = NT_VERSION */
 0:  .asciz "toolchain-version" /* name */
 1:  .align 4
-2:  .long 1                    /* desc - toolchain version number, 32-bit LE */
+2:  .long 2                    /* desc - toolchain version number, 32-bit LE */
 3:  .align 4
 
 .section .rodata
@@ -90,15 +90,17 @@ IMAGE_BASE:
 .equ tcsls_last_rsp,            0x10 /*  initialized by loader to 0 */
 .equ tcsls_panic_last_rsp,      0x18 /*  initialized by loader to 0 */
 .equ tcsls_debug_panic_buf_ptr, 0x20 /*  initialized by loader to 0 */
-.equ tcsls_user_rsp,            0x28
-.equ tcsls_user_retip,          0x30
-.equ tcsls_user_rbp,            0x38
-.equ tcsls_user_r12,            0x40
-.equ tcsls_user_r13,            0x48
-.equ tcsls_user_r14,            0x50
-.equ tcsls_user_r15,            0x58
-.equ tcsls_tls_ptr,             0x60
-.equ tcsls_tcs_addr,            0x68
+.equ tcsls_static_tcs_addr,     0x28 /*  initialized by loader to *offset* from image base to static TCS */
+.equ tcsls_clist_next,          0x30 /*  initialized by loader to *offset* from image base to next TCLS, circular linked list */
+.equ tcsls_user_rsp,            0x38
+.equ tcsls_user_retip,          0x40
+.equ tcsls_user_rbp,            0x48
+.equ tcsls_user_r12,            0x50
+.equ tcsls_user_r13,            0x58
+.equ tcsls_user_r14,            0x60
+.equ tcsls_user_r15,            0x68
+.equ tcsls_tls_ptr,             0x70
+.equ tcsls_tcs_addr,            0x78
 
 .macro load_tcsls_flag_secondary_bool reg:req comments:vararg
     .ifne tcsls_flag_secondary /* to convert to a bool, must be the first bit */
@@ -367,6 +369,27 @@ set_tls_ptr:
 take_debug_panic_buf_ptr:
     xor %rax,%rax
     xchg %gs:tcsls_debug_panic_buf_ptr,%rax
+    pop %r11
+    lfence
+    jmp *%r11
+
+.global next_tcsls
+next_tcsls:
+    mov %gs:tcsls_clist_next,%rax
+    pop %r11
+    lfence
+    jmp *%r11
+
+.global static_tcs_offset
+static_tcs_offset:
+    mov $tcsls_static_tcs_addr, %rax
+    pop %r11
+    lfence
+    jmp *%r11
+
+.global clist_next_offset
+clist_next_offset:
+    mov $tcsls_clist_next, %rax
     pop %r11
     lfence
     jmp *%r11
