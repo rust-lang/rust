@@ -143,10 +143,6 @@ pub fn assert_instr(
         fn #assert_name() {
             #to_test
 
-            // Make sure that the shim is not removed by leaking it to unknown
-            // code:
-            unsafe { llvm_asm!("" : : "r"(#shim_name as usize) : "memory" : "volatile") };
-
             ::stdarch_test::assert(#shim_name as usize,
                                    stringify!(#shim_name),
                                    #instr);

@@ -3,6 +3,7 @@
 //! This basically just disassembles the current executable and then parses the
 //! output once globally and then provides the `assert` function which makes
 //! assertions about the disassembly of a function.
+#![feature(test)] // For black_box
 #![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
 extern crate assert_instr_macro;
@@ -16,7 +17,7 @@ extern crate cfg_if;
 
 pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
-use std::{cmp, collections::HashSet, env, hash, str, sync::atomic::AtomicPtr};
+use std::{cmp, collections::HashSet, env, hash, hint::black_box, str, sync::atomic::AtomicPtr};
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
@@ -63,7 +64,10 @@ impl hash::Hash for Function {
 ///
 /// This asserts that the function at `fnptr` contains the instruction
 /// `expected` provided.
-pub fn assert(_fnptr: usize, fnname: &str, expected: &str) {
+pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
+    // Make sure that the shim is not removed
+    black_box(shim_addr);
+
     //eprintln!("shim name: {}", fnname);
     let function = &DISASSEMBLY
         .get(&Function::new(fnname))
