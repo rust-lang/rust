@@ -26,6 +26,7 @@ while [[ $# != 0 ]]; do
 done
 
 # Build cg_clif
+unset CARGO_TARGET_DIR
 export RUSTFLAGS="-Zrun_dsymutil=no"
 if [[ "$CHANNEL" == "release" ]]; then
     cargo build --release
