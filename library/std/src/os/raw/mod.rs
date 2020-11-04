@@ -46,6 +46,7 @@ macro_rules! type_alias {
 }
 
 type_alias! { "char.md", c_char = u8, NonZero_c_char = NonZeroU8;
+#[doc(cfg(all()))]
 #[cfg(any(
     all(
         target_os = "linux",
@@ -88,6 +89,7 @@ type_alias! { "char.md", c_char = u8, NonZero_c_char = NonZeroU8;
     all(target_os = "fuchsia", target_arch = "aarch64")
 ))]}
 type_alias! { "char.md", c_char = i8, NonZero_c_char = NonZeroI8;
+#[doc(cfg(all()))]
 #[cfg(not(any(
     all(
         target_os = "linux",
@@ -136,12 +138,16 @@ type_alias! { "ushort.md", c_ushort = u16, NonZero_c_ushort = NonZeroU16; }
 type_alias! { "int.md", c_int = i32, NonZero_c_int = NonZeroI32; }
 type_alias! { "uint.md", c_uint = u32, NonZero_c_uint = NonZeroU32; }
 type_alias! { "long.md", c_long = i32, NonZero_c_long = NonZeroI32;
+#[doc(cfg(all()))]
 #[cfg(any(target_pointer_width = "32", windows))] }
 type_alias! { "ulong.md", c_ulong = u32, NonZero_c_ulong = NonZeroU32;
+#[doc(cfg(all()))]
 #[cfg(any(target_pointer_width = "32", windows))] }
 type_alias! { "long.md", c_long = i64, NonZero_c_long = NonZeroI64;
+#[doc(cfg(all()))]
 #[cfg(all(target_pointer_width = "64", not(windows)))] }
 type_alias! { "ulong.md", c_ulong = u64, NonZero_c_ulong = NonZeroU64;
+#[doc(cfg(all()))]
 #[cfg(all(target_pointer_width = "64", not(windows)))] }
 type_alias! { "longlong.md", c_longlong = i64, NonZero_c_longlong = NonZeroI64; }
 type_alias! { "ulonglong.md", c_ulonglong = u64, NonZero_c_ulonglong = NonZeroU64; }
