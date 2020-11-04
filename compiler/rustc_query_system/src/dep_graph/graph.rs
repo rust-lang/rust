@@ -1,4 +1,4 @@
-use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, Sharded};
@@ -976,7 +976,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             // Fingerprint::combine() is faster than sending Fingerprint
             // through the StableHasher (at least as long as StableHasher
             // is so slow).
-            hash: self.anon_id_seed.combine(hasher.finish()),
+            hash: PackedFingerprint(self.anon_id_seed.combine(hasher.finish())),
         };
 
         self.intern_node(target_dep_node, task_deps.reads, Fingerprint::ZERO)
