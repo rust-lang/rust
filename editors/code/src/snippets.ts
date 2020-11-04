@@ -3,16 +3,29 @@ import * as vscode from 'vscode';
 import { assert } from './util';
 
 export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
-    assert(edit.entries().length === 1, `bad ws edit: ${JSON.stringify(edit)}`);
-    const [uri, edits] = edit.entries()[0];
+    if (edit.entries().length === 1) {
+        const [uri, edits] = edit.entries()[0];
+        const editor = await editorFromUri(uri);
+        if (editor) await applySnippetTextEdits(editor, edits);
+        return;
+    }
+    for (const [uri, edits] of edit.entries()) {
+        const editor = await editorFromUri(uri);
+        if (editor) await editor.edit((builder) => {
+            for (const indel of edits) {
+                assert(!parseSnippet(indel.newText), `bad ws edit: snippet received with multiple edits: ${JSON.stringify(edit)}`);
+                builder.replace(indel.range, indel.newText);
+            }
+        });
+    }
+}
 
+async function editorFromUri(uri: vscode.Uri): Promise<vscode.TextEditor | undefined> {
     if (vscode.window.activeTextEditor?.document.uri !== uri) {
         // `vscode.window.visibleTextEditors` only contains editors whose contents are being displayed
         await vscode.window.showTextDocument(uri, {});
     }
-    const editor = vscode.window.visibleTextEditors.find((it) => it.document.uri.toString() === uri.toString());
-    if (!editor) return;
-    await applySnippetTextEdits(editor, edits);
+    return vscode.window.visibleTextEditors.find((it) => it.document.uri.toString() === uri.toString());
 }
 
 export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vscode.TextEdit[]) {
