@@ -365,7 +365,8 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    pub fn into_inner(self) -> bool {
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "none")]
+    pub const fn into_inner(self) -> bool {
         self.v.into_inner() != 0
     }
 
@@ -941,7 +942,8 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    pub fn into_inner(self) -> *mut T {
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "none")]
+    pub const fn into_inner(self) -> *mut T {
         self.p.into_inner()
     }
 
@@ -1462,7 +1464,8 @@ assert_eq!(some_var.into_inner(), 5);
 ```"),
                 #[inline]
                 #[$stable_access]
-                pub fn into_inner(self) -> $int_type {
+                #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "none")]
+                pub const fn into_inner(self) -> $int_type {
                     self.v.into_inner()
                 }
             }

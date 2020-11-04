@@ -70,6 +70,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(const_alloc_layout)]
 #![feature(const_discriminant)]
+#![feature(const_cell_into_inner)]
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_float_classify)]
