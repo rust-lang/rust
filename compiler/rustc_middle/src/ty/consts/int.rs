@@ -265,7 +265,10 @@ macro_rules! try_from {
                 type Error = Size;
                 #[inline]
                 fn try_from(int: ScalarInt) -> Result<Self, Size> {
-                    int.to_bits(Size::from_bytes(std::mem::size_of::<$ty>())).map(|u| u.try_into().unwrap())
+                    // The `unwrap` cannot fail because to_bits (if it succeeds)
+                    // is guaranteed to return a value that fits into the size.
+                    int.to_bits(Size::from_bytes(std::mem::size_of::<$ty>()))
+                       .map(|u| u.try_into().unwrap())
                 }
             }
         )*
