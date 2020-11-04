@@ -771,3 +771,30 @@ struct X;
         "#]],
     );
 }
+
+#[test]
+fn circular_mods() {
+    mark::check!(circular_mods);
+    compute_crate_def_map(
+        r#"
+//- /lib.rs
+mod foo;
+//- /foo.rs
+#[path = "./foo.rs"]
+mod foo;
+"#,
+    );
+
+    compute_crate_def_map(
+        r#"
+//- /lib.rs
+mod foo;
+//- /foo.rs
+#[path = "./bar.rs"]
+mod bar;
+//- /bar.rs
+#[path = "./foo.rs"]
+mod foo;
+"#,
+    );
+}
