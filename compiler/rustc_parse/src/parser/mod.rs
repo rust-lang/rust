@@ -1180,8 +1180,7 @@ impl<'a> Parser<'a> {
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
     /// into a `LazyTokenStream`, and returned along with the result
-    /// of the callback. The returned `LazyTokenStream` will be `None`
-    /// if not tokens were captured.
+    /// of the callback.
     ///
     /// Note: If your callback consumes an opening delimiter
     /// (including the case where you call `collect_tokens`
@@ -1203,17 +1202,14 @@ impl<'a> Parser<'a> {
 
         let ret = f(self)?;
 
-        // We didn't capture any tokens
-        let num_calls = self.token_cursor.num_next_calls - cursor_snapshot.num_next_calls;
-        if num_calls == 0 {
-            return Ok((ret, None));
-        }
-
         // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
         // and `num_calls`, we can reconstruct the `TokenStream` seen
         // by the callback. This allows us to avoid producing a `TokenStream`
         // if it is never needed - for example, a captured `macro_rules!`
         // argument that is never passed to a proc macro.
+        // In practice token stream creation happens rarely compared to
+        // calls to `collect_tokens` (see some statistics in #78736),
+        // so we are doing as little up-front work as possible.
         //
         // This also makes `Parser` very cheap to clone, since
         // there is no intermediate collection buffer to clone.
@@ -1247,8 +1243,8 @@ impl<'a> Parser<'a> {
 
         let lazy_impl = LazyTokenStreamImpl {
             start_token,
+            num_calls: self.token_cursor.num_next_calls - cursor_snapshot.num_next_calls,
             cursor_snapshot,
-            num_calls,
             desugar_doc_comments: self.desugar_doc_comments,
         };
         Ok((ret, Some(LazyTokenStream::new(lazy_impl))))
