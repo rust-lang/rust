@@ -80,7 +80,7 @@ pub trait MeetSemiLattice: Eq {
 /// ```
 impl JoinSemiLattice for bool {
     fn join(&mut self, other: &Self) -> bool {
-        if let (false, true) = (*self, *other) {
+        if (false, true) == (*self, *other) {
             *self = true;
             return true;
         }
@@ -91,7 +91,7 @@ impl JoinSemiLattice for bool {
 
 impl MeetSemiLattice for bool {
     fn meet(&mut self, other: &Self) -> bool {
-        if let (true, false) = (*self, *other) {
+        if (true, false) == (*self, *other) {
             *self = false;
             return true;
         }
@@ -104,7 +104,7 @@ impl MeetSemiLattice for bool {
 /// of the least upper bounds of each element of the tuple (or list).
 ///
 /// In other words:
-///     (A₀, A₁, ..., Aₙ) ∨ (B₀, B₁, ..., Bₙ) = (A₀∨B₀, A₁∨B₁, ..., Aₙ∨Bₙ)
+///     (A₀, A₁, ..., An) ∨ (B₀, B₁, ..., Bn) = (A₀ ∨ B₀, A₁ ∨ B₁, ..., An ∨ Bn)
 impl<I: Idx, T: JoinSemiLattice> JoinSemiLattice for IndexVec<I, T> {
     fn join(&mut self, other: &Self) -> bool {
         assert_eq!(self.len(), other.len());
