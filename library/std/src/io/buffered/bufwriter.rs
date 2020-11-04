@@ -328,19 +328,57 @@ impl<W: Write> Write for BufWriter<W> {
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
-        if self.buf.len() + total_len > self.buf.capacity() {
-            self.flush_buf()?;
-        }
-        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
-        if total_len >= self.buf.capacity() {
-            self.panicked = true;
-            let r = self.get_mut().write_vectored(bufs);
-            self.panicked = false;
-            r
+        if self.get_ref().is_write_vectored() {
+            let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
+            if self.buf.len() + total_len > self.buf.capacity() {
+                self.flush_buf()?;
+            }
+            if total_len >= self.buf.capacity() {
+                self.panicked = true;
+                let r = self.get_mut().write_vectored(bufs);
+                self.panicked = false;
+                r
+            } else {
+                bufs.iter().for_each(|b| self.buf.extend_from_slice(b));
+                Ok(total_len)
+            }
         } else {
-            bufs.iter().for_each(|b| self.buf.extend_from_slice(b));
-            Ok(total_len)
+            let mut total_written = 0;
+            let mut iter = bufs.iter();
+            if let Some(buf) = iter.by_ref().find(|&buf| !buf.is_empty()) {
+                // This is the first non-empty slice to write, so if it does
+                // not fit in the buffer, we still get to flush and proceed.
+                if self.buf.len() + buf.len() > self.buf.capacity() {
+                    self.flush_buf()?;
+                }
+                if buf.len() >= self.buf.capacity() {
+                    // The slice is at least as large as the buffering capacity,
+                    // so it's better to write it directly, bypassing the buffer.
+                    self.panicked = true;
+                    let r = self.get_mut().write(buf);
+                    self.panicked = false;
+                    return r;
+                } else {
+                    self.buf.extend_from_slice(buf);
+                    total_written += buf.len();
+                }
+                debug_assert!(total_written != 0);
+            }
+            for buf in iter {
+                if buf.len() >= self.buf.capacity() {
+                    // This slice should be written directly, but we have
+                    // already buffered some of the input. Bail out,
+                    // expecting it to be handled as the first slice in the
+                    // next call to write_vectored.
+                    break;
+                } else {
+                    total_written += self.write_to_buf(buf);
+                    if self.buf.capacity() == self.buf.len() {
+                        break;
+                    }
+                }
+            }
+            Ok(total_written)
         }
     }
 
