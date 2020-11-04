@@ -261,7 +261,7 @@ impl<'tcx> CValue<'tcx> {
                 fx
                     .bcx
                     .ins()
-                    .iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64)
+                    .iconst(clif_ty, const_val.to_bits(layout.size).unwrap() as i64)
             }
             ty::Float(FloatTy::F32) => {
                 fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
