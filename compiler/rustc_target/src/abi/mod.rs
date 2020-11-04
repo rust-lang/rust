@@ -319,7 +319,7 @@ impl Size {
         // Sign-extend it.
         let shift = 128 - size;
         // Shift the unsigned value to the left, then shift back to the right as signed
-        // (essentially fills with FF on the left).
+        // (essentially fills with sign bit on the left).
         (((value << shift) as i128) >> shift) as u128
     }
 
