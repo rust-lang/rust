@@ -307,7 +307,7 @@ impl Size {
         if bytes < dl.obj_size_bound() { Some(Size::from_bytes(bytes)) } else { None }
     }
 
-    /// Truncates `value` to `self` bits and then sign-extend it to 128 bits
+    /// Truncates `value` to `self` bits and then sign-extends it to 128 bits
     /// (i.e., if it is negative, fill with 1's on the left).
     #[inline]
     pub fn sign_extend(self, value: u128) -> u128 {
