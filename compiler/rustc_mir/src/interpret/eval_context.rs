@@ -9,9 +9,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{
-    sign_extend, truncate, GlobalId, InterpResult, Pointer, Scalar,
-};
+use rustc_middle::mir::interpret::{GlobalId, InterpResult, Pointer, Scalar};
 use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
@@ -443,12 +441,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn sign_extend(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         assert!(ty.abi.is_signed());
-        sign_extend(value, ty.size)
+        ty.size.sign_extend(value)
     }
 
     #[inline(always)]
     pub fn truncate(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
-        truncate(value, ty.size)
+        ty.size.truncate(value)
     }
 
     #[inline]

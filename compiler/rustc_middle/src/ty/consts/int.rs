@@ -1,4 +1,4 @@
-use crate::mir::interpret::{sign_extend, truncate, InterpResult};
+use crate::mir::interpret::InterpResult;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -75,7 +75,7 @@ impl std::fmt::Debug for ConstInt {
                 Ok(())
             }
         } else {
-            let max = truncate(u128::MAX, Size::from_bytes(size));
+            let max = Size::from_bytes(size).truncate(u128::MAX);
             if raw == max {
                 match (size, is_ptr_sized_integral) {
                     (_, true) => write!(fmt, "usize::MAX"),
@@ -174,7 +174,7 @@ impl ScalarInt {
         // is a packed struct, that would create a possibly unaligned reference, which
         // is UB.
         debug_assert_eq!(
-            truncate(self.data, self.size()),
+            self.size().truncate(self.data),
             { self.data },
             "Scalar value {:#x} exceeds size of {} bytes",
             { self.data },
@@ -204,7 +204,7 @@ impl ScalarInt {
     #[inline]
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
         let data = i.into();
-        if truncate(data, size) == data {
+        if size.truncate(data) == data {
             Some(Self { data, size: size.bytes() as u8 })
         } else {
             None
@@ -215,8 +215,8 @@ impl ScalarInt {
     pub fn try_from_int(i: impl Into<i128>, size: Size) -> Option<Self> {
         let i = i.into();
         // `into` performed sign extension, we have to truncate
-        let truncated = truncate(i as u128, size);
-        if sign_extend(truncated, size) as i128 == i {
+        let truncated = size.truncate(i as u128);
+        if size.sign_extend(truncated) as i128 == i {
             Some(Self { data: truncated, size: size.bytes() as u8 })
         } else {
             None

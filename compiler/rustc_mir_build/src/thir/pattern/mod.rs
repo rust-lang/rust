@@ -15,7 +15,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{get_slice_bytes, sign_extend, ConstValue};
+use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::mir::UserTypeProjection;
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
@@ -1082,8 +1082,8 @@ crate fn compare_const_vals<'tcx>(
                 use rustc_attr::SignedInt;
                 use rustc_middle::ty::layout::IntegerExt;
                 let size = rustc_target::abi::Integer::from_attr(&tcx, SignedInt(ity)).size();
-                let a = sign_extend(a, size);
-                let b = sign_extend(b, size);
+                let a = size.sign_extend(a);
+                let b = size.sign_extend(b);
                 Some((a as i128).cmp(&(b as i128)))
             }
             _ => Some(a.cmp(&b)),

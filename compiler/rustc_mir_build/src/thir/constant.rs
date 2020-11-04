@@ -1,6 +1,6 @@
 use rustc_ast as ast;
 use rustc_middle::mir::interpret::{
-    truncate, Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
+    Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
 };
 use rustc_middle::ty::{self, ParamEnv, TyCtxt};
 use rustc_span::symbol::Symbol;
@@ -16,7 +16,7 @@ crate fn lit_to_const<'tcx>(
         let param_ty = ParamEnv::reveal_all().and(ty);
         let width = tcx.layout_of(param_ty).map_err(|_| LitToConstError::Reported)?.size;
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
-        let result = truncate(n, width);
+        let result = width.truncate(n);
         trace!("trunc result: {}", result);
         Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
     };

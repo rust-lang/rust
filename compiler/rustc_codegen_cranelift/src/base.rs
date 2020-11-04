@@ -585,10 +585,7 @@ fn codegen_stmt<'tcx>(
                                     .discriminant_for_variant(fx.tcx, *index)
                                     .unwrap();
                                 let discr = if discr.ty.is_signed() {
-                                    rustc_middle::mir::interpret::sign_extend(
-                                        discr.val,
-                                        fx.layout_of(discr.ty).size,
-                                    )
+                                    fx.layout_of(discr.ty).size.sign_extend(discr.val)
                                 } else {
                                     discr.val
                                 };

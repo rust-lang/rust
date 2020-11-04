@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::mir::interpret::{sign_extend, ConstValue};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -506,7 +506,7 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
             let ty = cx.tcx.lift(ct.ty).unwrap();
             let size = cx.tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
-            let sign_extended_data = sign_extend(data, size) as i128;
+            let sign_extended_data = size.sign_extend(data) as i128;
 
             format!(
                 "{}{}",

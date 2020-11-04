@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{sign_extend, truncate};
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
@@ -218,11 +217,11 @@ fn report_bin_hex_error(
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
-                let actually = sign_extend(val, size) as i128;
+                let actually = size.sign_extend(val) as i128;
                 (t.name_str(), actually.to_string())
             }
             attr::IntType::UnsignedInt(t) => {
-                let actually = truncate(val, size);
+                let actually = size.truncate(val);
                 (t.name_str(), actually.to_string())
             }
         };

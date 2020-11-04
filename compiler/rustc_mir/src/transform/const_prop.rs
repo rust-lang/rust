@@ -29,10 +29,9 @@ use rustc_trait_selection::traits;
 
 use crate::const_eval::ConstEvalErr;
 use crate::interpret::{
-    self, compile_time_machine, truncate, AllocId, Allocation, ConstValue, CtfeValidationMode,
-    Frame, ImmTy, Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, Memory,
-    MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer, Scalar, ScalarMaybeUninit,
-    StackPopCleanup,
+    self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
+    Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy,
+    Operand as InterpOperand, PlaceTy, Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup,
 };
 use crate::transform::MirPass;
 
@@ -746,7 +745,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             }
                         }
                         BinOp::BitOr => {
-                            if arg_value == truncate(u128::MAX, const_arg.layout.size)
+                            if arg_value == const_arg.layout.size.truncate(u128::MAX)
                                 || (const_arg.layout.ty.is_bool() && arg_value == 1)
                             {
                                 this.ecx.write_immediate(*const_arg, dest)?;

@@ -10,7 +10,7 @@ use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
 use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 
-use super::{sign_extend, AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
+use super::{AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Clone, HashStable, TyEncodable, TyDecodable)]
@@ -448,7 +448,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     fn to_signed_with_bit_width(self, bits: u64) -> InterpResult<'static, i128> {
         let sz = Size::from_bits(bits);
         let b = self.to_bits(sz)?;
-        Ok(sign_extend(b, sz) as i128)
+        Ok(sz.sign_extend(b) as i128)
     }
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.
@@ -479,7 +479,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
         let sz = cx.data_layout().pointer_size;
         let b = self.to_bits(sz)?;
-        let b = sign_extend(b, sz) as i128;
+        let b = sz.sign_extend(b) as i128;
         Ok(i64::try_from(b).unwrap())
     }
 
