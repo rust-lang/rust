@@ -1,4 +1,3 @@
-use crate::mir::interpret::InterpResult;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -192,11 +191,11 @@ impl ScalarInt {
         self.data == 0
     }
 
-    pub(crate) fn ptr_sized_op<'tcx>(
+    pub(crate) fn ptr_sized_op<E>(
         self,
         dl: &TargetDataLayout,
-        f_int: impl FnOnce(u64) -> InterpResult<'tcx, u64>,
-    ) -> InterpResult<'tcx, Self> {
+        f_int: impl FnOnce(u64) -> Result<u64, E>,
+    ) -> Result<Self, E> {
         assert_eq!(u64::from(self.size), dl.pointer_size.bytes());
         Ok(Self::try_from_uint(f_int(u64::try_from(self.data).unwrap())?, self.size()).unwrap())
     }
