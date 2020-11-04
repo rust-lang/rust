@@ -421,7 +421,7 @@ impl Item {
             kind,
             box ast_attrs.clean(cx),
             cx,
-            ast_attrs.cfg(cx.tcx),
+            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -747,7 +747,7 @@ crate trait AttributesExt {
 
     fn other_attrs(&self) -> Vec<ast::Attribute>;
 
-    fn cfg(&self, tcx: TyCtxt<'_>) -> Option<Arc<Cfg>>;
+    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
 }
 
 impl AttributesExt for [ast::Attribute] {
@@ -772,7 +772,7 @@ impl AttributesExt for [ast::Attribute] {
         self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
     }
 
-    fn cfg(&self, tcx: TyCtxt<'_>) -> Option<Arc<Cfg>> {
+    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
         let sess = tcx.sess;
         let doc_cfg_active = tcx.features().doc_cfg;
 
@@ -813,6 +813,7 @@ impl AttributesExt for [ast::Attribute] {
                     .filter_map(|attr| {
                         Cfg::parse(&attr).map_err(|e| sess.diagnostic().span_err(e.span, e.msg)).ok()
                     })
+                    .filter(|cfg| !hidden_cfg.contains(cfg))
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             }
         } else {
@@ -844,6 +845,8 @@ impl AttributesExt for [ast::Attribute] {
             }
         }
 
+        // treat #[target_feature(enable = "feat")] attributes as if they were
+        // #[doc(cfg(target_feature = "feat"))] attributes as well
         for attr in self.lists(sym::target_feature) {
             if attr.has_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
