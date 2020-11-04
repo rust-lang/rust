@@ -4,7 +4,7 @@ set -e
 
 source build/config.sh
 export CG_CLIF_INCR_CACHE_DISABLED=1
-MY_RUSTC=$RUSTC" "$RUSTFLAGS" -L crate=target/out --out-dir target/out -Cdebuginfo=2"
+MY_RUSTC="$RUSTC $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
 
 function no_sysroot_tests() {
     echo "[BUILD] mini_core"

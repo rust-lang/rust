@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 unamestr=$(uname)
@@ -39,7 +41,7 @@ echo
 export RUSTC_WRAPPER=
 fi
 
-dir=$(cd $(dirname "$BASH_SOURCE"); pwd)
+dir=$(cd "$(dirname "${BASH_SOURCE[0]}")"; pwd)
 
 export RUSTC=$dir"/cg_clif"
 export RUSTFLAGS=$linker
@@ -51,7 +53,8 @@ if [[ $(uname) == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
-export LD_LIBRARY_PATH="$dir:$(rustc --print sysroot)/lib:$dir/target/out:$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib"
+LD_LIBRARY_PATH="$dir:$(rustc --print sysroot)/lib:$dir/target/out:$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib"
+export LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
 
 export CG_CLIF_DISPLAY_CG_TIME=1
