@@ -469,7 +469,6 @@ impl<'a> Builder<'a> {
                 dist::RustDev,
                 dist::Extended,
                 dist::BuildManifest,
-                dist::HashSign
             ),
             Kind::Install => describe!(
                 install::Docs,
