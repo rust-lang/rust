@@ -297,7 +297,13 @@ fn merge_attrs(
         if let Some(new_id) = parent_module {
             let diag = cx.sess().diagnostic();
             let doc_cfg_active = cx.tcx.features().doc_cfg;
-            Attributes::from_ast(diag, old_attrs, Some((inner, new_id)), doc_cfg_active)
+            Attributes::from_ast(
+                diag,
+                old_attrs,
+                Some((inner, new_id)),
+                doc_cfg_active,
+                &cx.hidden_cfg,
+            )
         } else {
             let mut both = inner.to_vec();
             both.extend_from_slice(old_attrs);

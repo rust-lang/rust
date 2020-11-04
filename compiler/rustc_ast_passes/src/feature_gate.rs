@@ -320,6 +320,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_doc!(
                     include => external_doc
                     cfg => doc_cfg
+                    cfg_hide => doc_cfg_hide
                     masked => doc_masked
                     notable_trait => doc_notable_trait
                     keyword => doc_keyword

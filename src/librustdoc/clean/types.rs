@@ -871,6 +871,7 @@ impl Attributes {
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
         doc_cfg_active: bool,
+        hidden_cfg: &FxHashSet<Cfg>,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
         let mut sp = None;
@@ -989,6 +990,7 @@ impl Attributes {
                     .filter_map(|attr| {
                         Cfg::parse(&attr).map_err(|e| diagnostic.span_err(e.span, e.msg)).ok()
                     })
+                    .filter(|cfg| !hidden_cfg.contains(cfg))
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             }
         } else {

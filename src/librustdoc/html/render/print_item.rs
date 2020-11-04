@@ -290,6 +290,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         cx.tcx().get_attrs(import_def_id),
                         None,
                         doc_cfg_active,
+                        &Default::default(), // TODO: this looks wrong
                     ));
 
                     // Just need an item with the correct def_id and attrs

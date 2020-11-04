@@ -1094,7 +1094,13 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
     ) {
         let doc_cfg_active = self.tcx.features().doc_cfg;
         let attrs = self.tcx.hir().attrs(hir_id);
-        let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs, None, doc_cfg_active);
+        let mut attrs = Attributes::from_ast(
+            self.sess.diagnostic(),
+            attrs,
+            None,
+            doc_cfg_active,
+            &FxHashSet::default(),
+        );
         if let Some(ref cfg) = attrs.cfg {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;

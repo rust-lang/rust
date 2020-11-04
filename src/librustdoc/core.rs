@@ -32,7 +32,7 @@ use std::rc::Rc;
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
-use crate::clean::{AttributesExt, TraitWithExtraInfo, MAX_DEF_IDX};
+use crate::clean::{cfg::Cfg, AttributesExt, TraitWithExtraInfo, MAX_DEF_IDX};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::{self, Condition::*, ConditionalPass};
@@ -84,6 +84,8 @@ crate struct DocContext<'tcx> {
     crate inlined: FxHashSet<DefId>,
     /// Used by `calculate_doc_coverage`.
     crate output_format: OutputFormat,
+    /// Cfg that have been hidden via #![doc(cfg_hide(...))]
+    crate hidden_cfg: FxHashSet<Cfg>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -432,6 +434,7 @@ crate fn run_global_ctxt(
         inlined: FxHashSet::default(),
         output_format,
         render_options,
+        hidden_cfg: FxHashSet::default(),
     };
 
     // Small hack to force the Sized trait to be present.

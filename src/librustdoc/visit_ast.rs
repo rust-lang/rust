@@ -3,6 +3,7 @@
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
+use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
@@ -14,7 +15,7 @@ use rustc_span::{self, Span};
 
 use std::mem;
 
-use crate::clean::{self, AttributesExt, NestedAttributesExt};
+use crate::clean::{self, cfg::Cfg, AttributesExt, NestedAttributesExt};
 use crate::core;
 use crate::doctree::*;
 
@@ -71,13 +72,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
+        let tcx = self.cx.tcx;
         let span = krate.item.inner;
         let mut top_level_module = self.visit_mod_contents(
             span,
             &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item,
-            self.cx.tcx.crate_name,
+            tcx.crate_name,
         );
         // Attach the crate's exported macros to the top-level module.
         // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
@@ -93,7 +95,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 top_level_module.macros.push((def, None));
                 continue 'exported_macros;
             }
-            let tcx = self.cx.tcx;
             // Note: this is not the same as `.parent_module()`. Indeed, the latter looks
             // for the closest module _ancestor_, which is not necessarily a direct parent
             // (since a direct parent isn't necessarily a module, c.f. #77828).
@@ -123,6 +124,27 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             assert_eq!(cur_mod_def_id, macro_parent_def_id);
             cur_mod.macros.push((def, None));
         }
+
+        self.cx.hidden_cfg = tcx.hir().attrs(CRATE_HIR_ID)
+            .iter()
+            .filter(|attr| attr.has_name(sym::doc))
+            .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
+            .filter(|attr| attr.has_name(sym::cfg_hide))
+            .flat_map(|attr| {
+                attr.meta_item_list()
+                    .unwrap_or(&[])
+                    .iter()
+                    .filter_map(|attr| {
+                        Some(
+                            Cfg::parse(attr.meta_item()?)
+                                .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
+                                .ok()?,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
         self.cx.cache.exact_paths = self.exact_paths;
         top_level_module
     }
