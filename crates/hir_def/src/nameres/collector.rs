@@ -1116,17 +1116,20 @@ impl ModCollector<'_, '_> {
                     &self.item_tree[module.visibility],
                 );
 
-                ModCollector {
-                    def_collector: &mut *self.def_collector,
-                    macro_depth: self.macro_depth,
-                    module_id,
-                    file_id: self.file_id,
-                    item_tree: self.item_tree,
-                    mod_dir: self.mod_dir.descend_into_definition(&module.name, path_attr),
-                }
-                .collect(&*items);
-                if is_macro_use {
-                    self.import_all_legacy_macros(module_id);
+                if let Some(mod_dir) = self.mod_dir.descend_into_definition(&module.name, path_attr)
+                {
+                    ModCollector {
+                        def_collector: &mut *self.def_collector,
+                        macro_depth: self.macro_depth,
+                        module_id,
+                        file_id: self.file_id,
+                        item_tree: self.item_tree,
+                        mod_dir,
+                    }
+                    .collect(&*items);
+                    if is_macro_use {
+                        self.import_all_legacy_macros(module_id);
+                    }
                 }
             }
             // out of line module, resolve, parse and recurse
