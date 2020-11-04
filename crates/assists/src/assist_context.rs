@@ -205,7 +205,7 @@ pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     file_id: FileId,
     is_snippet: bool,
-    change: SourceChange,
+    source_file_edits: Vec<SourceFileEdit>,
 }
 
 impl AssistBuilder {
@@ -214,20 +214,27 @@ impl AssistBuilder {
             edit: TextEdit::builder(),
             file_id,
             is_snippet: false,
-            change: SourceChange::default(),
+            source_file_edits: Vec::default(),
         }
     }
 
     pub(crate) fn edit_file(&mut self, file_id: FileId) {
+        self.commit();
         self.file_id = file_id;
     }
 
     fn commit(&mut self) {
         let edit = mem::take(&mut self.edit).finish();
         if !edit.is_empty() {
-            let new_edit = SourceFileEdit { file_id: self.file_id, edit };
-            assert!(!self.change.source_file_edits.iter().any(|it| it.file_id == new_edit.file_id));
-            self.change.source_file_edits.push(new_edit);
+            match self.source_file_edits.binary_search_by_key(&self.file_id, |edit| edit.file_id) {
+                Ok(idx) => self.source_file_edits[idx]
+                    .edit
+                    .union(edit)
+                    .expect("overlapping edits for same file"),
+                Err(idx) => self
+                    .source_file_edits
+                    .insert(idx, SourceFileEdit { file_id: self.file_id, edit }),
+            }
         }
     }
 
@@ -280,10 +287,10 @@ impl AssistBuilder {
 
     fn finish(mut self) -> SourceChange {
         self.commit();
-        let mut change = mem::take(&mut self.change);
-        if self.is_snippet {
-            change.is_snippet = true;
+        SourceChange {
+            source_file_edits: mem::take(&mut self.source_file_edits),
+            file_system_edits: Default::default(),
+            is_snippet: self.is_snippet,
         }
-        change
     }
 }
