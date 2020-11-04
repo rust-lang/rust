@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:*** Checks for unnecessary `ok()` in if let.
@@ -45,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for OkIfLet {
             if let ExprKind::MethodCall(_, ok_span, ref result_types, _) = op.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
             if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pat.kind; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&result_types[0]), sym!(result_type));
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&result_types[0]), sym::result_type);
             if rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(x, false)) == "Some";
 
             then {

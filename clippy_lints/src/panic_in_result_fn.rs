@@ -5,7 +5,7 @@ use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `panic!`, `unimplemented!`, `todo!` or `unreachable!` in a function of type result.
@@ -40,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
         hir_id: hir::HirId,
     ) {
         if !matches!(fn_kind, FnKind::Closure(_))
-            && is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type))
+            && is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::result_type)
         {
             lint_impl_body(cx, span, body);
         }

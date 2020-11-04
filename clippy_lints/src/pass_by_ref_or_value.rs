@@ -10,7 +10,7 @@ use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, ItemKind, MutTy, Mutabil
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::Target;
@@ -230,8 +230,8 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 }
                 for a in attrs {
                     if let Some(meta_items) = a.meta_item_list() {
-                        if a.has_name(sym!(proc_macro_derive))
-                            || (a.has_name(sym!(inline)) && attr::list_contains_name(&meta_items, sym!(always)))
+                        if a.has_name(sym::proc_macro_derive)
+                            || (a.has_name(sym::inline) && attr::list_contains_name(&meta_items, sym::always))
                         {
                             return;
                         }

@@ -7,6 +7,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
 use std::cmp::Ordering;
 
@@ -384,7 +385,7 @@ impl EarlyLintPass for NonExpressiveNames {
 }
 
 fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
-    if !attrs.iter().any(|attr| attr.has_name(sym!(test))) {
+    if !attrs.iter().any(|attr| attr.has_name(sym::test)) {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),
             cx,

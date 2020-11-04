@@ -9,6 +9,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usages of `Err(x)?`.
@@ -133,7 +134,7 @@ fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> O
 fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
         if let ty::Adt(_, subst) = ty.kind();
-        if is_type_diagnostic_item(cx, ty, sym!(result_type));
+        if is_type_diagnostic_item(cx, ty, sym::result_type);
         let err_ty = subst.type_at(1);
         then {
             Some(err_ty)
@@ -151,7 +152,7 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
         let ready_ty = subst.type_at(0);
 
         if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
-        if cx.tcx.is_diagnostic_item(sym!(result_type), ready_def.did);
+        if cx.tcx.is_diagnostic_item(sym::result_type, ready_def.did);
         let err_ty = ready_subst.type_at(1);
 
         then {
@@ -170,11 +171,11 @@ fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
         let ready_ty = subst.type_at(0);
 
         if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
-        if cx.tcx.is_diagnostic_item(sym!(option_type), ready_def.did);
+        if cx.tcx.is_diagnostic_item(sym::option_type, ready_def.did);
         let some_ty = ready_subst.type_at(0);
 
         if let ty::Adt(some_def, some_subst) = some_ty.kind();
-        if cx.tcx.is_diagnostic_item(sym!(result_type), some_def.did);
+        if cx.tcx.is_diagnostic_item(sym::result_type, some_def.did);
         let err_ty = some_subst.type_at(1);
 
         then {

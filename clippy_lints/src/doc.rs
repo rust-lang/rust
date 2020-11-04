@@ -15,7 +15,7 @@ use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Span};
-use rustc_span::{FileName, Pos};
+use rustc_span::{sym, FileName, Pos};
 use std::io;
 use std::ops::Range;
 use url::Url;
@@ -237,7 +237,7 @@ fn lint_for_missing_headers<'tcx>(
         );
     }
     if !headers.errors {
-        if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type)) {
+        if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::result_type) {
             span_lint(
                 cx,
                 MISSING_ERRORS_DOC,
@@ -255,7 +255,7 @@ fn lint_for_missing_headers<'tcx>(
                 if let ty::Opaque(_, subs) = ret_ty.kind();
                 if let Some(gen) = subs.types().next();
                 if let ty::Generator(_, subs, _) = gen.kind();
-                if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym!(result_type));
+                if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym::result_type);
                 then {
                     span_lint(
                         cx,
@@ -333,7 +333,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
             let (comment, current_spans) = strip_doc_comment_decoration(&comment.as_str(), comment_kind, attr.span);
             spans.extend_from_slice(&current_spans);
             doc.push_str(&comment);
-        } else if attr.has_name(sym!(doc)) {
+        } else if attr.has_name(sym::doc) {
             // ignore mix of sugared and non-sugared doc
             // don't trigger the safety or errors check
             return DocHeaders {
@@ -479,7 +479,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
                     | ItemKind::ExternCrate(..)
                     | ItemKind::ForeignMod(..) => return false,
                     // We found a main function ...
-                    ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym!(main) => {
+                    ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym::main => {
                         let is_async = matches!(sig.header.asyncness, Async::Yes{..});
                         let returns_nothing = match &sig.decl.output {
                             FnRetTy::Default(..) => true,

@@ -311,7 +311,7 @@ Running our UI test should now produce output that contains the lint message.
 According to [the rustc-dev-guide], the text should be matter of fact and avoid
 capitalization and periods, unless multiple sentences are needed.
 When code or an identifier must appear in a message or label, it should be
-surrounded with single acute accents \`.
+surrounded with single grave accents \`.
 
 [check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
 [diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs

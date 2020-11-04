@@ -8,6 +8,7 @@ use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -97,9 +98,9 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     if_chain! {
         if let ExprKind::Match(scrutinee, match_arms, _) = expr.kind;
         let ty = cx.typeck_results().expr_ty(scrutinee);
-        if let Some(case) = if utils::is_type_diagnostic_item(cx, ty, sym!(option_type)) {
+        if let Some(case) = if utils::is_type_diagnostic_item(cx, ty, sym::option_type) {
             Some(Case::Option)
-        } else if utils::is_type_diagnostic_item(cx, ty, sym!(result_type)) {
+        } else if utils::is_type_diagnostic_item(cx, ty, sym::result_type) {
             Some(Case::Result)
         } else {
             None

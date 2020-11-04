@@ -17,6 +17,7 @@ use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
 use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
+use rustc_span::sym;
 use std::convert::TryFrom;
 use std::ops::ControlFlow;
 
@@ -115,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             let from_borrow = match_def_path(cx, fn_def_id, &paths::CLONE_TRAIT_METHOD)
                 || match_def_path(cx, fn_def_id, &paths::TO_OWNED_METHOD)
                 || (match_def_path(cx, fn_def_id, &paths::TO_STRING_METHOD)
-                    && is_type_diagnostic_item(cx, arg_ty, sym!(string_type)));
+                    && is_type_diagnostic_item(cx, arg_ty, sym::string_type));
 
             let from_deref = !from_borrow
                 && (match_def_path(cx, fn_def_id, &paths::PATH_TO_PATH_BUF)
@@ -518,7 +519,10 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 self.possible_borrower.add(borrowed.local, lhs);
             },
             other => {
-                if ContainsRegion.visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty).is_continue() {
+                if ContainsRegion
+                    .visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty)
+                    .is_continue()
+                {
                     return;
                 }
                 rvalue_locals(other, |rhs| {

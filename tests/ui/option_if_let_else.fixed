@@ -1,6 +1,7 @@
 // run-rustfix
 #![warn(clippy::option_if_let_else)]
 #![allow(clippy::redundant_closure)]
+#![allow(clippy::ref_option_ref)]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {
     string.map_or((false, "hello"), |x| (true, x))

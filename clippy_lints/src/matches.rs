@@ -22,7 +22,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::Bound;
@@ -662,7 +662,7 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             }
         } else {
             // not a block, don't lint
-            return; 
+            return;
         };
 
         let ty = cx.typeck_results().expr_ty(ex);
@@ -840,7 +840,7 @@ fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms
 
 fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
-    if is_type_diagnostic_item(cx, ex_ty, sym!(result_type)) {
+    if is_type_diagnostic_item(cx, ex_ty, sym::result_type) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
                 let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false));
@@ -1509,6 +1509,7 @@ mod redundant_pattern_match {
     use rustc_errors::Applicability;
     use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind, QPath};
     use rustc_lint::LateContext;
+    use rustc_span::sym;
 
     pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
@@ -1552,7 +1553,7 @@ mod redundant_pattern_match {
         if_chain! {
             if keyword == "while";
             if let ExprKind::MethodCall(method_path, _, _, _) = op.kind;
-            if method_path.ident.name == sym!(next);
+            if method_path.ident.name == sym::next;
             if match_trait_method(cx, op, &paths::ITERATOR);
             then {
                 return;
