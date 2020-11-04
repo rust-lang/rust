@@ -46,7 +46,6 @@ use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
-use rustc_span::Span;
 use rustc_symbol_mangling::test as symbol_names_test;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
@@ -364,11 +363,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
 ) -> Option<Bx::Function> {
-    let (main_def_id, span) = match cx.tcx().entry_fn(LOCAL_CRATE) {
-        Some((def_id, _)) => (def_id, cx.tcx().def_span(def_id)),
-        None => return None,
-    };
-
+    let main_def_id = cx.tcx().entry_fn(LOCAL_CRATE).map(|(def_id, _)| def_id)?;
     let instance = Instance::mono(cx.tcx(), main_def_id.to_def_id());
 
     if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
@@ -381,12 +376,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     return cx.tcx().entry_fn(LOCAL_CRATE).map(|(_, et)| {
         let use_start_lang_item = EntryFnType::Start != et;
-        create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, use_start_lang_item)
+        create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item)
     });
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
-        sp: Span,
         rust_main: Bx::Value,
         rust_main_def_id: LocalDefId,
         use_start_lang_item: bool,
@@ -411,8 +405,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             Some(llfn) => llfn,
             None => {
                 // FIXME: We should be smart and show a better diagnostic here.
+                let span = cx.tcx().def_span(rust_main_def_id);
                 cx.sess()
-                    .struct_span_err(sp, "entry symbol `main` declared multiple times")
+                    .struct_span_err(span, "entry symbol `main` declared multiple times")
                     .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
                     .emit();
                 cx.sess().abort_if_errors();
