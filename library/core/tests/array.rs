@@ -374,3 +374,19 @@ fn cell_allows_array_cycle() {
     b3.a[0].set(Some(&b1));
     b3.a[1].set(Some(&b2));
 }
+
+#[test]
+fn array_ref_equality() {
+    let v_ref: &[_; 42] = &[0; 42];
+    let v_mut: &mut [_; 42] = &mut [0; 42];
+    let v: [_; 42] = [0; 42];
+    assert_eq!(v_ref, v_ref);
+    assert_eq!(v_ref, v_mut);
+    assert_eq!(v_ref, v);
+    assert_eq!(v_mut, v_ref);
+    assert_eq!(v_mut, v_mut);
+    assert_eq!(v_mut, v);
+    assert_eq!(v, v_ref);
+    assert_eq!(v, v_mut);
+    assert_eq!(v, v);
+}
