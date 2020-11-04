@@ -919,7 +919,7 @@ pub unsafe fn _mm_round_ss(a: __m128, b: __m128, rounding: i32) -> __m128 {
 /// index
 /// in its second position; all other elements are set to zero.
 ///
-/// This intrinsic corresponds to the <c> VPHMINPOSUW / PHMINPOSUW </c>
+/// This intrinsic corresponds to the `VPHMINPOSUW` / `PHMINPOSUW`
 /// instruction.
 ///
 /// Arguments:
