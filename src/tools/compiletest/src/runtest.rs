@@ -287,6 +287,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
     format!("{:x}", hash.finish())
 }
 
+#[derive(Copy, Clone)]
 struct TestCx<'test> {
     config: &'test Config,
     props: &'test TestProps,
@@ -2208,7 +2209,12 @@ impl<'test> TestCx<'test> {
 
     fn fatal_proc_rec(&self, err: &str, proc_res: &ProcRes) -> ! {
         self.error(err);
-        proc_res.fatal(None);
+        proc_res.fatal(None, || ());
+    }
+
+    fn fatal_proc_rec_with_ctx(&self, err: &str, proc_res: &ProcRes, ctx: impl FnOnce(Self)) -> ! {
+        self.error(err);
+        proc_res.fatal(None, || ctx(*self));
     }
 
     // codegen tests (using FileCheck)
@@ -2325,13 +2331,70 @@ impl<'test> TestCx<'test> {
             let res = self.cmd2procres(
                 Command::new(&self.config.docck_python)
                     .arg(root.join("src/etc/htmldocck.py"))
-                    .arg(out_dir)
+                    .arg(&out_dir)
                     .arg(&self.testpaths.file),
             );
             if !res.status.success() {
-                self.fatal_proc_rec("htmldocck failed!", &res);
+                self.fatal_proc_rec_with_ctx("htmldocck failed!", &res, |mut this| {
+                    this.compare_to_default_rustdoc(&out_dir)
+                });
             }
         }
+    }
+
+    fn compare_to_default_rustdoc(&mut self, out_dir: &Path) {
+        println!("info: generating a diff against nightly rustdoc");
+
+        let suffix =
+            self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
+        let compare_dir = output_base_dir(self.config, self.testpaths, Some(&suffix));
+        let _ = fs::remove_dir_all(&compare_dir);
+        create_dir_all(&compare_dir).unwrap();
+
+        // We need to create a new struct for the lifetimes on `config` to work.
+        let new_rustdoc = TestCx {
+            config: &Config {
+                // FIXME: use beta or a user-specified rustdoc instead of hardcoding
+                // the default toolchain
+                rustdoc_path: Some("rustdoc".into()),
+                ..self.config.clone()
+            },
+            ..*self
+        };
+        let proc_res = new_rustdoc.document(&compare_dir);
+        if !proc_res.status.success() {
+            proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
+        }
+
+        // NOTE: this is fine since compiletest never runs out-of-tree
+        let tidy = concat!(env!("CARGO_MANIFEST_DIR"), "/tidy-rustdoc.sh");
+        // FIXME: this overwrites `out_dir` in place, maybe we should make a copy?
+        let status = Command::new(tidy)
+            .arg(out_dir)
+            .spawn()
+            .expect("tidy-rustdoc not found")
+            .wait()
+            .unwrap();
+        if !status.success() {
+            self.fatal("failed to run tidy - is installed?");
+        }
+        let status = Command::new(tidy).arg(&compare_dir).spawn().unwrap().wait().unwrap();
+        if !status.success() {
+            self.fatal("failed to run tidy");
+        }
+
+        let diff_pid = Command::new("diff")
+            .args(&["-u", "-r"])
+            .args(&[out_dir, &compare_dir])
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("failed to run `diff`");
+        Command::new("delta")
+            .stdin(diff_pid.stdout.unwrap())
+            .spawn()
+            .expect("delta not found")
+            .wait()
+            .unwrap();
     }
 
     fn get_lines<P: AsRef<Path>>(
@@ -3590,7 +3653,7 @@ pub struct ProcRes {
 }
 
 impl ProcRes {
-    pub fn fatal(&self, err: Option<&str>) -> ! {
+    pub fn fatal(&self, err: Option<&str>, ctx: impl FnOnce()) -> ! {
         if let Some(e) = err {
             println!("\nerror: {}", e);
         }
@@ -3612,6 +3675,7 @@ impl ProcRes {
             json::extract_rendered(&self.stdout),
             json::extract_rendered(&self.stderr),
         );
+        ctx();
         // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
         // compiletest, which is unnecessary noise.
         std::panic::resume_unwind(Box::new(()));

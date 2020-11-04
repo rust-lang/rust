@@ -153,11 +153,14 @@ fn parse_line(file_name: &str, line: &str, output: &str, proc_res: &ProcRes) -> 
                 if serde_json::from_str::<FutureIncompatReport>(line).is_ok() {
                     vec![]
                 } else {
-                    proc_res.fatal(Some(&format!(
-                        "failed to decode compiler output as json: \
+                    proc_res.fatal(
+                        Some(&format!(
+                            "failed to decode compiler output as json: \
                          `{}`\nline: {}\noutput: {}",
-                        error, line, output
-                    )));
+                            error, line, output
+                        )),
+                        || (),
+                    );
                 }
             }
         }
