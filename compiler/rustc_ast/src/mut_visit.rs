@@ -656,7 +656,7 @@ pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
-    if vis.token_visiting_enabled() {
+    if vis.token_visiting_enabled() && !tts.is_empty() {
         let tts = Lrc::make_mut(tts);
         visit_vec(tts, |(tree, _is_joint)| visit_tt(tree, vis));
     }
