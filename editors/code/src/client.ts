@@ -2,6 +2,7 @@ import * as lc from 'vscode-languageclient/node';
 import * as vscode from 'vscode';
 import * as ra from '../src/lsp_ext';
 import * as Is from 'vscode-languageclient/lib/common/utils/is';
+import { DocumentSemanticsTokensSignature, DocumentSemanticsTokensEditsSignature, DocumentRangeSemanticTokensSignature } from 'vscode-languageclient/lib/common/semanticTokens';
 import { assert } from './util';
 
 function renderCommand(cmd: ra.CommandLink) {
@@ -16,6 +17,13 @@ function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownStri
     const result = new vscode.MarkdownString(text);
     result.isTrusted = true;
     return result;
+}
+
+// Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576
+async function semanticHighlightingWorkaround<R, F extends (...args: any[]) => vscode.ProviderResult<R>>(next: F, ...args: Parameters<F>): Promise<R> {
+    const res = await next(...args);
+    if (res == null) throw new Error('busy');
+    return res;
 }
 
 export function createClient(serverPath: string, cwd: string): lc.LanguageClient {
@@ -41,6 +49,15 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
         diagnosticCollectionName: "rustc",
         traceOutputChannel,
         middleware: {
+            provideDocumentSemanticTokens(document: vscode.TextDocument, token: vscode.CancellationToken, next: DocumentSemanticsTokensSignature): vscode.ProviderResult<vscode.SemanticTokens> {
+                return semanticHighlightingWorkaround(next, document, token);
+            },
+            provideDocumentSemanticTokensEdits(document: vscode.TextDocument, previousResultId: string, token: vscode.CancellationToken, next: DocumentSemanticsTokensEditsSignature): vscode.ProviderResult<vscode.SemanticTokensEdits | vscode.SemanticTokens> {
+                return semanticHighlightingWorkaround(next, document, previousResultId, token);
+            },
+            provideDocumentRangeSemanticTokens(document: vscode.TextDocument, range: vscode.Range, token: vscode.CancellationToken, next: DocumentRangeSemanticTokensSignature): vscode.ProviderResult<vscode.SemanticTokens> {
+                return semanticHighlightingWorkaround(next, document, range, token);
+            },
             async provideHover(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, _next: lc.ProvideHoverSignature) {
                 return client.sendRequest(lc.HoverRequest.type, client.code2ProtocolConverter.asTextDocumentPositionParams(document, position), token).then(
                     (result) => {
