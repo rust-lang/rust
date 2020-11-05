@@ -739,7 +739,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 "cannot infer {} {} {} `{}`{}",
                 kind_str, preposition, descr, type_name, parent_desc
             )
-            .into()
         }
     }
 }
