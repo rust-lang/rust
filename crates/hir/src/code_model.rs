@@ -787,6 +787,10 @@ impl Function {
     pub fn has_body(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).has_body
     }
+
+    pub fn source(self, db: &dyn HirDatabase) -> InFile<ast::Fn> {
+        self.id.lookup(db.upcast()).source(db.upcast())
+    }
 }
 
 // Note: logically, this belongs to `hir_ty`, but we are not using it there yet.

@@ -513,6 +513,34 @@ fn test_extern_crate() {
     );
 }
 
+#[test]
+fn test_associated_function() {
+    check_highlighting(
+        r#"
+fn not_static() {}
+
+struct foo {}
+
+impl foo {
+    pub fn is_static() {}
+    pub fn is_not_static(&self) {}
+}
+
+trait t {
+    fn t_is_static() {}
+    fn t_is_not_static(&self) {}
+}
+
+impl t for foo {
+    pub fn is_static() {}
+    pub fn is_not_static(&self) {}
+}
+        "#,
+        expect_file!["./test_data/highlight_assoc_functions.html"],
+        false,
+    )
+}
+
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
