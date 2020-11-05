@@ -790,7 +790,7 @@ impl Function {
 
     /// whether this function is associated with some trait/impl
     pub fn is_associated(self, db: &dyn HirDatabase) -> bool {
-        if let Some(_) = self.self_param(db) {
+        if self.self_param(db).is_some() {
             return false;
         }
 
