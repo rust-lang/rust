@@ -945,6 +945,33 @@ pub trait Read {
     }
 }
 
+/// Convenience function for [`Read::read_to_string`].
+///
+/// This avoids having to create a variable first and it provides more type safety
+/// since you can only get the buffer out if there were no errors. (If you use
+/// [`Read::read_to_string`] you have to remember to check whether the read succeeded
+/// because otherwise your buffer will be empty.)
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(io_read_to_string)]
+///
+/// # use std::io;
+/// fn main() -> io::Result<()> {
+///     let stdin = io::read_to_string(&mut io::stdin())?;
+///     println!("Stdin was:");
+///     println!("{}", stdin);
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "io_read_to_string", issue = "80218")]
+pub fn read_to_string<R: Read>(reader: &mut R) -> Result<String> {
+    let mut buf = String::new();
+    reader.read_to_string(&mut buf)?;
+    Ok(buf)
+}
+
 /// A buffer type used with `Read::read_vectored`.
 ///
 /// It is semantically a wrapper around an `&mut [u8]`, but is guaranteed to be
