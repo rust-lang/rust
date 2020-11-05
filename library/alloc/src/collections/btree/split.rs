@@ -9,7 +9,7 @@ impl<K, V> Root<K, V> {
         K: Borrow<Q>,
     {
         debug_assert!(right_root.height() == 0);
-        debug_assert!(right_root.node_as_ref().len() == 0);
+        debug_assert!(right_root.len() == 0);
 
         let left_root = self;
         for _ in 0..left_root.height() {
@@ -17,8 +17,8 @@ impl<K, V> Root<K, V> {
         }
 
         {
-            let mut left_node = left_root.node_as_mut();
-            let mut right_node = right_root.node_as_mut();
+            let mut left_node = left_root.borrow_mut();
+            let mut right_node = right_root.borrow_mut();
 
             loop {
                 let mut split_edge = match search_node(left_node, key) {
@@ -48,7 +48,7 @@ impl<K, V> Root<K, V> {
 
     /// Removes empty levels on the top, but keeps an empty leaf if the entire tree is empty.
     fn fix_top(&mut self) {
-        while self.height() > 0 && self.node_as_ref().len() == 0 {
+        while self.height() > 0 && self.len() == 0 {
             self.pop_internal_level();
         }
     }
@@ -57,7 +57,7 @@ impl<K, V> Root<K, V> {
         self.fix_top();
 
         {
-            let mut cur_node = self.node_as_mut();
+            let mut cur_node = self.borrow_mut();
 
             while let Internal(node) = cur_node.force() {
                 let mut last_kv = node.last_kv().consider_for_balancing();
@@ -83,7 +83,7 @@ impl<K, V> Root<K, V> {
         self.fix_top();
 
         {
-            let mut cur_node = self.node_as_mut();
+            let mut cur_node = self.borrow_mut();
 
             while let Internal(node) = cur_node.force() {
                 let mut first_kv = node.first_kv().consider_for_balancing();

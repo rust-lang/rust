@@ -34,7 +34,7 @@ impl<K, V> Root<K, V> {
     where
         I: Iterator<Item = (K, V)>,
     {
-        let mut cur_node = self.node_as_mut().last_leaf_edge().into_node();
+        let mut cur_node = self.borrow_mut().last_leaf_edge().into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {
             // Try to push key-value pair into the current leaf node.
@@ -86,7 +86,7 @@ impl<K, V> Root<K, V> {
 
     fn fix_right_edge(&mut self) {
         // Handle underfull nodes, start from the top.
-        let mut cur_node = self.node_as_mut();
+        let mut cur_node = self.borrow_mut();
         while let Internal(internal) = cur_node.force() {
             // Check if right-most child is underfull.
             let mut last_kv = internal.last_kv().consider_for_balancing();

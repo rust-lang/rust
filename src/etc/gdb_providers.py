@@ -207,42 +207,43 @@ class StdRefCellProvider:
         yield "borrow", self.borrow
 
 
-# Yields children (in a provider's sense of the word) for a tree headed by a BoxedNode.
-# In particular, yields each key/value pair in the node and in any child nodes.
-def children_of_node(boxed_node, height):
-    def cast_to_internal(node):
-        internal_type_name = node.type.target().name.replace("LeafNode", "InternalNode", 1)
-        internal_type = lookup_type(internal_type_name)
-        return node.cast(internal_type.pointer())
+# Yields children (in a provider's sense of the word) for a BTreeMap.
+def children_of_btree_map(map):
+    # Yields each key/value pair in the node and in any child nodes.
+    def children_of_node(node_ptr, height):
+        def cast_to_internal(node):
+            internal_type_name = node.type.target().name.replace("LeafNode", "InternalNode", 1)
+            internal_type = lookup_type(internal_type_name)
+            return node.cast(internal_type.pointer())
 
-    node_ptr = unwrap_unique_or_non_null(boxed_node["ptr"])
-    leaf = node_ptr.dereference()
-    keys = leaf["keys"]
-    vals = leaf["vals"]
-    edges = cast_to_internal(node_ptr)["edges"] if height > 0 else None
-    length = int(leaf["len"])
+        leaf = node_ptr.dereference()
+        keys = leaf["keys"]
+        vals = leaf["vals"]
+        edges = cast_to_internal(node_ptr)["edges"] if height > 0 else None
+        length = leaf["len"]
 
-    for i in xrange(0, length + 1):
-        if height > 0:
-            boxed_child_node = edges[i]["value"]["value"]
-            for child in children_of_node(boxed_child_node, height - 1):
-                yield child
-        if i < length:
-            # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
-            key = keys[i]["value"]["value"] if keys.type.sizeof > 0 else "()"
-            val = vals[i]["value"]["value"] if vals.type.sizeof > 0 else "()"
-            yield key, val
+        for i in xrange(0, length + 1):
+            if height > 0:
+                boxed_child_node = edges[i]["value"]["value"]
+                child_node = unwrap_unique_or_non_null(boxed_child_node["ptr"])
+                for child in children_of_node(child_node, height - 1):
+                    yield child
+            if i < length:
+                # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
+                key = keys[i]["value"]["value"] if keys.type.sizeof > 0 else "()"
+                val = vals[i]["value"]["value"] if vals.type.sizeof > 0 else "()"
+                yield key, val
 
-
-# Yields children for a BTreeMap.
-def children_of_map(map):
     if map["length"] > 0:
         root = map["root"]
         if root.type.name.startswith("core::option::Option<"):
             root = root.cast(gdb.lookup_type(root.type.name[21:-1]))
-        boxed_root_node = root["node"]
+        node_ptr = root["node"]
+        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+            node_ptr = node_ptr["ptr"]
+        node_ptr = unwrap_unique_or_non_null(node_ptr)
         height = root["height"]
-        for child in children_of_node(boxed_root_node, height):
+        for child in children_of_node(node_ptr, height):
             yield child
 
 
@@ -255,7 +256,7 @@ class StdBTreeSetProvider:
 
     def children(self):
         inner_map = self.valobj["map"]
-        for i, (child, _) in enumerate(children_of_map(inner_map)):
+        for i, (child, _) in enumerate(children_of_btree_map(inner_map)):
             yield "[{}]".format(i), child
 
     @staticmethod
@@ -271,7 +272,7 @@ class StdBTreeMapProvider:
         return "BTreeMap(size={})".format(self.valobj["length"])
 
     def children(self):
-        for i, (key, val) in enumerate(children_of_map(self.valobj)):
+        for i, (key, val) in enumerate(children_of_btree_map(self.valobj)):
             yield "key{}".format(i), key
             yield "val{}".format(i), val
 

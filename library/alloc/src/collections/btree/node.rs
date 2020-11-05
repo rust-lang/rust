@@ -31,7 +31,7 @@
 use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, NonNull};
 
 use crate::alloc::{AllocRef, Global, Layout};
 use crate::boxed::Box;
@@ -114,100 +114,80 @@ impl<K, V> InternalNode<K, V> {
 /// of nodes it actually contains, and, partially due to this lack of information,
 /// has no destructor.
 struct BoxedNode<K, V> {
-    ptr: Unique<LeafNode<K, V>>,
+    ptr: NonNull<LeafNode<K, V>>,
 }
 
 impl<K, V> BoxedNode<K, V> {
-    fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::from(Box::leak(node)) }
-    }
-
-    fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::from(Box::leak(node)).cast() }
+    fn from_owned(ptr: NonNull<LeafNode<K, V>>) -> Self {
+        BoxedNode { ptr }
     }
 
     fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
-        NonNull::from(self.ptr)
+        self.ptr
     }
 }
 
 /// An owned tree.
 ///
 /// Note that this does not have a destructor, and must be cleaned up manually.
-pub struct Root<K, V> {
-    node: BoxedNode<K, V>,
-    /// The number of levels below the root node.
-    height: usize,
-}
-
-unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
-unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
+pub type Root<K, V> = NodeRef<marker::Owned, K, V, marker::LeafOrInternal>;
 
 impl<K, V> Root<K, V> {
-    /// Returns the number of levels below the root.
-    pub fn height(&self) -> usize {
-        self.height
-    }
-
     /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
-        Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
+        NodeRef::new().forget_type()
+    }
+}
+
+impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
+    fn new() -> Self {
+        Self::from_new_leaf(Box::new(unsafe { LeafNode::new() }))
     }
 
-    /// Borrows and returns an immutable reference to the node owned by the root.
-    pub fn node_as_ref(&self) -> NodeRef<marker::Immut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+    fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
+        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
+    }
+}
+
+impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
+    fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
+        NodeRef { height, node: NonNull::from(Box::leak(internal)).cast(), _marker: PhantomData }
+    }
+}
+
+impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
+    /// Mutably borrows the owned node. Unlike `reborrow_mut`, this is safe,
+    /// because the return value cannot be used to destroy the node itself,
+    /// and there cannot be other references to the tree (except during the
+    /// process of `into_iter` or `drop`, but that is a horrific already).
+    pub fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Borrows and returns a mutable reference to the node owned by the root.
-    pub fn node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
-    }
-
-    /// Borrows and returns a mutable reference to the leaf node owned by the root.
-    /// # Safety
-    /// The root node is a leaf.
-    unsafe fn leaf_node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Leaf> {
-        debug_assert!(self.height == 0);
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
-    }
-
-    /// Borrows and returns a mutable reference to the internal node owned by the root.
-    /// # Safety
-    /// The root node is not a leaf.
-    unsafe fn internal_node_as_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
-        debug_assert!(self.height > 0);
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
-    }
-
-    pub fn node_as_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
-    }
-
-    pub fn into_ref(self) -> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
+    /// Slightly mutably borrows the owned node.
+    pub fn borrow_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, Type> {
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
     /// Packs the reference, aware of type and height, into a type-agnostic pointer.
     fn into_boxed_node(self) -> BoxedNode<K, V> {
-        self.node
+        BoxedNode::from_owned(self.node)
     }
+}
 
+impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// Adds a new internal node with a single edge pointing to the previous root node,
     /// make that new node the root node, and return it. This increases the height by 1
     /// and is the opposite of `pop_internal_level`.
     pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].write(unsafe { ptr::read(&mut self.node) });
+        new_node.edges[0].write(BoxedNode::from_owned(self.node));
+        let mut new_root = NodeRef::from_new_internal(new_node, self.height + 1);
+        new_root.borrow_mut().first_edge().correct_parent_link();
+        *self = new_root.forget_type();
 
-        self.node = BoxedNode::from_internal(new_node);
-        self.height += 1;
-
-        unsafe {
-            let mut ret = self.internal_node_as_mut();
-            ret.reborrow_mut().first_edge().correct_parent_link();
-            ret
-        }
+        // `self.borrow_mut()`, except that we just forgot we're internal now:
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
     /// Removes the internal root node, using its first child as the new root node.
@@ -216,19 +196,17 @@ impl<K, V> Root<K, V> {
     /// This decreases the height by 1 and is the opposite of `push_internal_level`.
     ///
     /// Requires exclusive access to the `Root` object but not to the root node;
-    /// it will not invalidate existing handles or references to the root node.
+    /// it will not invalidate other handles or references to the root node.
     ///
     /// Panics if there is no internal level, i.e., if the root node is a leaf.
     pub fn pop_internal_level(&mut self) {
         assert!(self.height > 0);
 
-        let top = BoxedNode::as_ptr(&self.node);
+        let top = self.node;
 
-        let mut internal_node = unsafe { self.internal_node_as_mut() };
-        let internal_node = NodeRef::as_internal_mut(&mut internal_node);
-        self.node = unsafe { internal_node.edges[0].assume_init_read() };
-        self.height -= 1;
-        self.node_as_mut().clear_parent_link();
+        let internal_node = NodeRef { height: self.height, node: top, _marker: PhantomData };
+        *self = internal_node.first_edge().descend();
+        self.borrow_mut().clear_parent_link();
 
         unsafe {
             Global.dealloc(top.cast(), Layout::new::<InternalNode<K, V>>());
@@ -755,10 +733,10 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(internal) => {
                     let boxed_node = ptr::read(internal.reborrow().edge_at(idx + 1));
-                    let mut edge = Root { node: boxed_node, height: internal.height - 1 };
+                    let mut edge = Root::from_boxed_node(boxed_node, internal.height - 1);
                     // In practice, clearing the parent is a waste of time, because we will
                     // insert the node elsewhere and set its parent link again.
-                    edge.node_as_mut().clear_parent_link();
+                    edge.borrow_mut().clear_parent_link();
                     Some(edge)
                 }
             };
@@ -784,10 +762,10 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(mut internal) => {
                     let boxed_node =
                         slice_remove(internal.reborrow_mut().into_edge_area_slice(), 0);
-                    let mut edge = Root { node: boxed_node, height: internal.height - 1 };
+                    let mut edge = Root::from_boxed_node(boxed_node, internal.height - 1);
                     // In practice, clearing the parent is a waste of time, because we will
                     // insert the node elsewhere and set its parent link again.
-                    edge.node_as_mut().clear_parent_link();
+                    edge.borrow_mut().clear_parent_link();
 
                     internal.correct_childrens_parent_links(0..old_len);
 
@@ -1028,17 +1006,17 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
-            let (mut left, k, v, mut right) = middle.split();
+            let mut result = middle.split();
             let mut insertion_edge = match insertion {
                 LeftOrRight::Left(insert_idx) => unsafe {
-                    Handle::new_edge(left.reborrow_mut(), insert_idx)
+                    Handle::new_edge(result.left.reborrow_mut(), insert_idx)
                 },
                 LeftOrRight::Right(insert_idx) => unsafe {
-                    Handle::new_edge(right.leaf_node_as_mut(), insert_idx)
+                    Handle::new_edge(result.right.borrow_mut(), insert_idx)
                 },
             };
             let val_ptr = insertion_edge.insert_fit(key, val);
-            (InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right }), val_ptr)
+            (InsertResult::Split(result), val_ptr)
         }
     }
 }
@@ -1092,17 +1070,17 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
-            let (mut left, k, v, mut right) = middle.split();
+            let mut result = middle.split();
             let mut insertion_edge = match insertion {
                 LeftOrRight::Left(insert_idx) => unsafe {
-                    Handle::new_edge(left.reborrow_mut(), insert_idx)
+                    Handle::new_edge(result.left.reborrow_mut(), insert_idx)
                 },
                 LeftOrRight::Right(insert_idx) => unsafe {
-                    Handle::new_edge(right.internal_node_as_mut(), insert_idx)
+                    Handle::new_edge(result.right.borrow_mut(), insert_idx)
                 },
             };
             insertion_edge.insert_fit(key, val, edge);
-            InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right })
+            InsertResult::Split(result)
         }
     }
 }
@@ -1124,16 +1102,16 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
             (InsertResult::Fit(handle), ptr) => {
                 return (InsertResult::Fit(handle.forget_node_type()), ptr);
             }
-            (InsertResult::Split(split), val_ptr) => (split, val_ptr),
+            (InsertResult::Split(split), val_ptr) => (split.forget_node_type(), val_ptr),
         };
 
         loop {
             split = match split.left.ascend() {
-                Ok(parent) => match parent.insert(split.k, split.v, split.right) {
+                Ok(parent) => match parent.insert(split.kv.0, split.kv.1, split.right) {
                     InsertResult::Fit(handle) => {
                         return (InsertResult::Fit(handle.forget_node_type()), val_ptr);
                     }
-                    InsertResult::Split(split) => split,
+                    InsertResult::Split(split) => split.forget_node_type(),
                 },
                 Err(root) => {
                     return (InsertResult::Split(SplitResult { left: root, ..split }), val_ptr);
@@ -1239,14 +1217,14 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// - The key and value pointed to by this handle are extracted.
     /// - All the key/value pairs to the right of this handle are put into a newly
     ///   allocated node.
-    pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, K, V, Root<K, V>) {
+    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {
         unsafe {
             let mut new_node = Box::new(LeafNode::new());
 
-            let (k, v) = self.split_leaf_data(&mut new_node);
+            let kv = self.split_leaf_data(&mut new_node);
 
-            let right = Root { node: BoxedNode::from_leaf(new_node), height: 0 };
-            (self.node, k, v, right)
+            let right = NodeRef::from_new_leaf(new_node);
+            SplitResult { left: self.node, kv, right }
         }
     }
 
@@ -1272,7 +1250,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// - The key and value pointed to by this handle are extracted.
     /// - All the edges and key/value pairs to the right of this handle are put into
     ///   a newly allocated node.
-    pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Internal>, K, V, Root<K, V>) {
+    pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {
         unsafe {
             let mut new_node = Box::new(InternalNode::new());
             let new_len = self.split_new_node_len();
@@ -1282,14 +1260,14 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 new_node.edges.as_mut_ptr(),
                 new_len + 1,
             );
-            let (k, v) = self.split_leaf_data(&mut new_node.data);
+            let kv = self.split_leaf_data(&mut new_node.data);
 
             let height = self.node.height;
-            let mut right = Root { node: BoxedNode::from_internal(new_node), height };
+            let mut right = NodeRef::from_new_internal(new_node, height);
 
-            right.internal_node_as_mut().correct_childrens_parent_links(0..=new_len);
+            right.borrow_mut().correct_childrens_parent_links(0..=new_len);
 
-            (self.node, k, v, right)
+            SplitResult { left: self.node, kv, right }
         }
     }
 }
@@ -1756,20 +1734,30 @@ pub enum ForceResult<Leaf, Internal> {
 }
 
 /// Result of insertion, when a node needed to expand beyond its capacity.
-/// Does not distinguish between `Leaf` and `Internal` because `Root` doesn't.
-pub struct SplitResult<'a, K, V> {
-    // Altered node in existing tree with elements and edges that belong to the left of `k`.
-    pub left: NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>,
+pub struct SplitResult<'a, K, V, NodeType> {
+    // Altered node in existing tree with elements and edges that belong to the left of `kv`.
+    pub left: NodeRef<marker::Mut<'a>, K, V, NodeType>,
     // Some key and value split off, to be inserted elsewhere.
-    pub k: K,
-    pub v: V,
-    // Owned, unattached, new node with elements and edges that belong to the right of `k`.
-    pub right: Root<K, V>,
+    pub kv: (K, V),
+    // Owned, unattached, new node with elements and edges that belong to the right of `kv`.
+    pub right: NodeRef<marker::Owned, K, V, NodeType>,
 }
 
-pub enum InsertResult<'a, K, V, Type> {
-    Fit(Handle<NodeRef<marker::Mut<'a>, K, V, Type>, marker::KV>),
-    Split(SplitResult<'a, K, V>),
+impl<'a, K, V> SplitResult<'a, K, V, marker::Leaf> {
+    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {
+        SplitResult { left: self.left.forget_type(), kv: self.kv, right: self.right.forget_type() }
+    }
+}
+
+impl<'a, K, V> SplitResult<'a, K, V, marker::Internal> {
+    pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {
+        SplitResult { left: self.left.forget_type(), kv: self.kv, right: self.right.forget_type() }
+    }
+}
+
+pub enum InsertResult<'a, K, V, NodeType> {
+    Fit(Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV>),
+    Split(SplitResult<'a, K, V, NodeType>),
 }
 
 pub mod marker {
