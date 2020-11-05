@@ -469,8 +469,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let place = this.deref_operand(place)?;
 
         // make sure it fits into a scalar; otherwise it cannot be atomic
-        let val = this.read_scalar_racy(place)?;
-        this.validate_atomic_load(place, atomic)?;
+        let val = this.read_scalar_atomic(place, atomic)?;
 
         // Check alignment requirements. Atomics must always be aligned to their size,
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
@@ -495,9 +494,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
         // Perform atomic store
-        this.write_scalar_racy(val, place)?;
-
-        this.validate_atomic_store(place, atomic)?;
+        this.write_scalar_atomic(val, place, atomic)?;
         Ok(())
     }
 
@@ -527,7 +524,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             bug!("Atomic arithmetic operations only work on integer types");
         }
         let rhs = this.read_immediate(rhs)?;
-        let old = this.read_immediate_racy(place)?;
+        let old = this.allow_data_races_mut(|this| {
+            this.read_immediate(place. into())
+        })?;
 
         // Check alignment requirements. Atomics must always be aligned to their size,
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
@@ -539,7 +538,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Atomics wrap around on overflow.
         let val = this.binary_op(op, old, rhs)?;
         let val = if neg { this.unary_op(mir::UnOp::Not, val)? } else { val };
-        this.write_immediate_racy(*val, place)?;
+        this.allow_data_races_mut(|this| {
+            this.write_immediate(*val, place.into())
+        })?;
 
         this.validate_atomic_rmw(place, atomic)?;
         Ok(())
@@ -553,7 +554,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let &[place, new] = check_arg_count(args)?;
         let place = this.deref_operand(place)?;
         let new = this.read_scalar(new)?;
-        let old = this.read_scalar_racy(place)?;
+        let old = this.allow_data_races_mut(|this| {
+            this.read_scalar(place.into())
+        })?;
 
         // Check alignment requirements. Atomics must always be aligned to their size,
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
@@ -562,7 +565,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
         this.write_scalar(old, dest)?; // old value is returned
-        this.write_scalar_racy(new, place)?;
+        this.allow_data_races_mut(|this| {
+            this.write_scalar(new, place.into())
+        })?;
 
         this.validate_atomic_rmw(place, atomic)?;
         Ok(())
@@ -583,7 +588,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         //  to read with the failure ordering and if successfull then try again with the success
         //  read ordering and write in the success case.
         // Read as immediate for the sake of `binary_op()`
-        let old = this.read_immediate_racy(place)?; 
+        let old = this.allow_data_races_mut(|this| {
+            this.read_immediate(place.into())
+        })?; 
 
         // Check alignment requirements. Atomics must always be aligned to their size,
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
@@ -602,7 +609,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         //  if successful, perform a full rw-atomic validation
         //  otherwise treat this as an atomic load with the fail ordering
         if eq.to_bool()? {
-            this.write_scalar_racy(new, place)?;
+            this.allow_data_races_mut(|this| {
+                this.write_scalar(new, place.into())
+            })?;
             this.validate_atomic_rmw(place, success)?;
         } else {
             this.validate_atomic_load(place, fail)?;

@@ -638,7 +638,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
         if let Ok(string) = String::from_utf8(new_thread_name.clone()) {
-            this.memory.extra.data_race.thread_set_name(string);
+            this.memory.extra.data_race.thread_set_name(
+                this.machine.threads.active_thread, string
+            );
         }
         this.machine.threads.set_thread_name(new_thread_name);
     }

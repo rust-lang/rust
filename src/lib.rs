@@ -35,6 +35,7 @@ mod shims;
 mod stacked_borrows;
 mod sync;
 mod thread;
+mod vector_clock;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
@@ -78,6 +79,9 @@ pub use crate::thread::{
 };
 pub use crate::sync::{
     EvalContextExt as SyncEvalContextExt, CondvarId, MutexId, RwLockId
+};
+pub use crate::vector_clock::{
+    VClock, VSmallClockSet, VectorIdx, VTimestamp
 };
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
