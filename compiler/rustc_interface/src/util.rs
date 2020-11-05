@@ -246,10 +246,10 @@ pub fn get_codegen_backend(sopts: &config::Options) -> Box<dyn CodegenBackend> {
 
     INIT.call_once(|| {
         #[cfg(feature = "llvm")]
-        const DEFAULT_CODEGEN_BACKEND: &'static str = "llvm";
+        const DEFAULT_CODEGEN_BACKEND: &str = "llvm";
 
         #[cfg(not(feature = "llvm"))]
-        const DEFAULT_CODEGEN_BACKEND: &'static str = "cranelift";
+        const DEFAULT_CODEGEN_BACKEND: &str = "cranelift";
 
         let codegen_name = sopts
             .debugging_opts
@@ -414,11 +414,10 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
             let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
             sysroot.join(libdir).with_file_name("codegen-backends")
         })
-        .filter(|f| {
+        .find(|f| {
             info!("codegen backend candidate: {}", f.display());
             f.exists()
-        })
-        .next();
+        });
     let sysroot = sysroot.unwrap_or_else(|| {
         let candidates = sysroot_candidates
             .iter()
