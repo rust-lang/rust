@@ -4,7 +4,7 @@ error[E0080]: it is undefined behavior to use this value
 LL | / const BAD_UPVAR: &dyn FnOnce() = &{
 LL | |     let bad_ref: &'static u16 = unsafe { mem::transmute(0usize) };
 LL | |     let another_var = 13;
-LL | |     move || { let _ = bad_ref; let _ = another_var; }
+LL | |     move || { let _b = bad_ref; let _a = another_var; }
 LL | | };
    | |__^ type validation failed: encountered a NULL reference at .<deref>.<dyn-downcast>.<captured-var(bad_ref)>
    |

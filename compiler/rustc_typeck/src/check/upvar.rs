@@ -122,24 +122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        let local_def_id = closure_def_id.expect_local();
-
-        let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
-        if !self.tcx.features().capture_disjoint_fields {
-            if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
-                for (&var_hir_id, _) in upvars.iter() {
-                    let place = self.place_for_root_variable(local_def_id, var_hir_id);
-
-                    debug!("seed place {:?}", place);
-
-                    let upvar_id = ty::UpvarId::new(var_hir_id, local_def_id);
-                    let capture_kind = self.init_capture_kind(capture_clause, upvar_id, span);
-                    let info = ty::CaptureInfo { expr_id: None, capture_kind };
-
-                    capture_information.insert(place, info);
-                }
-            }
-        }
+        let capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
 
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
         assert_eq!(body_owner_def_id.to_def_id(), closure_def_id);
@@ -479,20 +462,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow, region: upvar_region };
                 ty::UpvarCapture::ByRef(upvar_borrow)
             }
-        }
-    }
-
-    fn place_for_root_variable(
-        &self,
-        closure_def_id: LocalDefId,
-        var_hir_id: hir::HirId,
-    ) -> Place<'tcx> {
-        let upvar_id = ty::UpvarId::new(var_hir_id, closure_def_id);
-
-        Place {
-            base_ty: self.node_ty(var_hir_id),
-            base: PlaceBase::Upvar(upvar_id),
-            projections: Default::default(),
         }
     }
 

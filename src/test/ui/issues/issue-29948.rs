@@ -22,7 +22,7 @@ fn main() {
     let mut ran_drop = false;
     {
         let x = Foo(&mut ran_drop);
-        let x = move || { let _ = x; };
+        let x = move || { let _x = x; };
         f(x);
     }
     assert!(ran_drop);
@@ -31,7 +31,7 @@ fn main() {
     {
         let x = Foo(&mut ran_drop);
         let result = panic::catch_unwind(move || {
-            let x = move || { let _ = x; panic!() };
+            let x = move || { let _x = x; panic!() };
             f(x);
         });
         assert!(result.is_err());
