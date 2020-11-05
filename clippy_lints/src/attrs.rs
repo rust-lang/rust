@@ -588,7 +588,7 @@ impl EarlyLintPass for EarlyAttributes {
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
     for attr in &item.attrs {
-        let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
+        let attr_item = if let AttrKind::Normal(ref attr, _) = attr.kind {
             attr
         } else {
             return;
