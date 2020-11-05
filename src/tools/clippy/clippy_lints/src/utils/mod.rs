@@ -1349,7 +1349,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
     krate.item.attrs.iter().any(|attr| {
-        if let ast::AttrKind::Normal(ref attr) = attr.kind {
+        if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
             attr.path == symbol::sym::no_std
         } else {
             false

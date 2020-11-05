@@ -966,17 +966,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
+        // Tokens are also not needed after macro expansion and parsing.
         let kind = match attr.kind {
-            AttrKind::Normal(ref item) => AttrKind::Normal(AttrItem {
-                path: item.path.clone(),
-                args: self.lower_mac_args(&item.args),
-                tokens: None,
-            }),
+            AttrKind::Normal(ref item, _) => AttrKind::Normal(
+                AttrItem {
+                    path: item.path.clone(),
+                    args: self.lower_mac_args(&item.args),
+                    tokens: None,
+                },
+                None,
+            ),
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
-        // Tokens aren't needed after macro expansion and parsing
-        Attribute { kind, id: attr.id, style: attr.style, span: attr.span, tokens: None }
+        Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
     }
 
     fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {

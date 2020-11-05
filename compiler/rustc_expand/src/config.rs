@@ -291,8 +291,7 @@ impl<'a> StripUnconfigured<'a> {
         expanded_attrs
             .into_iter()
             .flat_map(|(item, span)| {
-                let orig_tokens =
-                    attr.tokens.as_ref().unwrap_or_else(|| panic!("Missing tokens for {:?}", attr));
+                let orig_tokens = attr.tokens();
 
                 // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
                 // and producing an attribute of the form `#[attr]`. We
@@ -302,7 +301,7 @@ impl<'a> StripUnconfigured<'a> {
 
                 // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
                 // for `attr` when we expand it to `#[attr]`
-                let pound_token = orig_tokens.create_token_stream().trees().next().unwrap();
+                let pound_token = orig_tokens.trees().next().unwrap();
                 if !matches!(pound_token, TokenTree::Token(Token { kind: TokenKind::Pound, .. })) {
                     panic!("Bad tokens for attribute {:?}", attr);
                 }
@@ -316,13 +315,12 @@ impl<'a> StripUnconfigured<'a> {
                         .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
                         .create_token_stream(),
                 );
-
-                let mut attr = attr::mk_attr_from_item(attr.style, item, span);
-                attr.tokens = Some(LazyTokenStream::new(TokenStream::new(vec![
+                let tokens = Some(LazyTokenStream::new(TokenStream::new(vec![
                     (pound_token, Spacing::Alone),
                     (bracket_group, Spacing::Alone),
                 ])));
-                self.process_cfg_attr(attr)
+
+                self.process_cfg_attr(attr::mk_attr_from_item(item, tokens, attr.style, span))
             })
             .collect()
     }

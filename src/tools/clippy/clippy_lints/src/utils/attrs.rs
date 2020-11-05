@@ -57,7 +57,7 @@ pub fn get_attr<'a>(
     name: &'static str,
 ) -> impl Iterator<Item = &'a ast::Attribute> {
     attrs.iter().filter(move |attr| {
-        let attr = if let ast::AttrKind::Normal(ref attr) = attr.kind {
+        let attr = if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
             attr
         } else {
             return false;
