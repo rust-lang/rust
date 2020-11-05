@@ -44,8 +44,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::sym;
 use rustc_span::{Span, Symbol};
 
-use std::env;
-
 /// Describe the relationship between the paths of two places
 /// eg:
 /// - foo is ancestor of foo.bar.baz
@@ -127,8 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let local_def_id = closure_def_id.expect_local();
 
         let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
-        if self.tcx.features().capture_disjoint_fields || matches!(env::var("SG_NEW"), Ok(_)) {
-        } else {
+        if !self.tcx.features().capture_disjoint_fields {
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for (&var_hir_id, _) in upvars.iter() {
                     let place = self.place_for_root_variable(local_def_id, var_hir_id);
