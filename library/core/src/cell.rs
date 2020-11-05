@@ -1733,8 +1733,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[inline]
     #[unstable(feature = "unsafe_cell_get_mut", issue = "76943")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: (outer) `&mut` guarantees unique access.
-        unsafe { &mut *self.get() }
+        &mut self.value
     }
 
     /// Gets a mutable pointer to the wrapped value.
