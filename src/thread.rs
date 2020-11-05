@@ -452,6 +452,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 thread.state = ThreadState::Enabled;
             }
         }
+        data_race.thread_terminated(self.active_thread);
         return free_tls_statics;
     }
 
