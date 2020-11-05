@@ -800,7 +800,7 @@ mod prim_tuple {}
 /// calculation with floats round to a nearby representable number. For example,
 /// `5.0` and `1.0` can be exactly represented as `f32`, but `1.0 / 5.0` results
 /// in `0.20000000298023223876953125` since `0.2` cannot be exactly represented
-/// as `f32`. Note however, that printing floats with `println` and friends will
+/// as `f32`. Note, however, that printing floats with `println` and friends will
 /// often discard insignificant digits: `println!("{}", 1.0f32 / 5.0f32)` will
 /// print `0.2`.
 ///
