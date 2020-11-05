@@ -32,7 +32,7 @@ macro_rules! t {
 
 /// Reads an environment variable and adds it to dependencies.
 /// Supposed to be used for all variables except those set for build scripts by cargo
-/// https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
+/// <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts>
 pub fn tracked_env_var_os<K: AsRef<OsStr> + Display>(key: K) -> Option<OsString> {
     println!("cargo:rerun-if-env-changed={}", key);
     env::var_os(key)

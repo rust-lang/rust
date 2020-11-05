@@ -1,6 +1,6 @@
 //! Handling of enum discriminants
 //!
-//! Adapted from https://github.com/rust-lang/rust/blob/d760df5aea483aae041c9a241e7acacf48f75035/src/librustc_codegen_ssa/mir/place.rs
+//! Adapted from <https://github.com/rust-lang/rust/blob/d760df5aea483aae041c9a241e7acacf48f75035/src/librustc_codegen_ssa/mir/place.rs>
 
 use rustc_target::abi::{Int, TagEncoding, Variants};
 

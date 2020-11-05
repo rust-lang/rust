@@ -4,9 +4,9 @@
 //! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
 //! documents linked from it.
 //! These are also good reads:
-//!     https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
-//!     http://monoinfinito.wordpress.com/series/exception-handling-in-c/
-//!     http://www.airs.com/blog/index.php?s=exception+frames
+//!  * <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>
+//!  * <http://monoinfinito.wordpress.com/series/exception-handling-in-c/>
+//!  * <http://www.airs.com/blog/index.php?s=exception+frames>
 //!
 //! ## A brief summary
 //!

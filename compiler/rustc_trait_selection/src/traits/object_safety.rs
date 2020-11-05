@@ -621,7 +621,7 @@ fn object_ty_for_trait<'tcx>(
 ///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result
 /// in a new check that `Trait` is object safe, creating a cycle (until object_safe_for_dispatch
-/// is stabilized, see tracking issue https://github.com/rust-lang/rust/issues/43561).
+/// is stabilized, see tracking issue <https://github.com/rust-lang/rust/issues/43561>).
 /// Instead, we fudge a little by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
 /// Written as a chalk-style query:

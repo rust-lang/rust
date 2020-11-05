@@ -665,7 +665,7 @@ fn run_global_ctxt(
     (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
 }
 
-/// Due to https://github.com/rust-lang/rust/pull/73566,
+/// Due to <https://github.com/rust-lang/rust/pull/73566>,
 /// the name resolution pass may find errors that are never emitted.
 /// If typeck is called after this happens, then we'll get an ICE:
 /// 'Res::Error found but not reported'. To avoid this, emit the errors now.
