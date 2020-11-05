@@ -78,7 +78,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     Concrete,
                 }
                 let mut failure_kind = FailureKind::Concrete;
-                walk_abstract_const(tcx, ct, |node| match node {
+                walk_abstract_const::<!, _>(tcx, ct, |node| match node {
                     Node::Leaf(leaf) => {
                         let leaf = leaf.subst(tcx, ct.substs);
                         if leaf.has_infer_types_or_consts() {
@@ -574,19 +574,19 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // on `ErrorReported`.
 }
 
-pub fn walk_abstract_const<'tcx, F>(
+pub fn walk_abstract_const<'tcx, R, F>(
     tcx: TyCtxt<'tcx>,
     ct: AbstractConst<'tcx>,
     mut f: F,
-) -> ControlFlow<()>
+) -> ControlFlow<R>
 where
-    F: FnMut(Node<'tcx>) -> ControlFlow<()>,
+    F: FnMut(Node<'tcx>) -> ControlFlow<R>,
 {
-    fn recurse<'tcx>(
+    fn recurse<'tcx, R>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
-        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<()>,
-    ) -> ControlFlow<()> {
+        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<R>,
+    ) -> ControlFlow<R> {
         let root = ct.root();
         f(root)?;
         match root {

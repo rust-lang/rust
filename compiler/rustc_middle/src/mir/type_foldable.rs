@@ -87,7 +87,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
         Terminator { source_info: self.source_info, kind }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         use crate::mir::TerminatorKind::*;
 
         match self.kind {
@@ -144,7 +144,7 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
         *self
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }
 }
@@ -154,7 +154,7 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
         Place { local: self.local.fold_with(folder), projection: self.projection.fold_with(folder) }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.local.visit_with(visitor)?;
         self.projection.visit_with(visitor)
     }
@@ -166,7 +166,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
         folder.tcx().intern_place_elems(&v)
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -216,7 +216,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         use crate::mir::Rvalue::*;
         match *self {
             Use(ref op) => op.visit_with(visitor),
@@ -271,7 +271,7 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match *self {
             Operand::Copy(ref place) | Operand::Move(ref place) => place.visit_with(visitor),
             Operand::Constant(ref c) => c.visit_with(visitor),
@@ -295,7 +295,10 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
         }
     }
 
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<()> {
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(
+        &self,
+        visitor: &mut Vs,
+    ) -> ControlFlow<Vs::BreakTy> {
         use crate::mir::ProjectionElem::*;
 
         match self {
@@ -310,7 +313,7 @@ impl<'tcx> TypeFoldable<'tcx> for Field {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         *self
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }
 }
@@ -319,7 +322,7 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         *self
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }
 }
@@ -328,7 +331,7 @@ impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
         self.clone()
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }
 }
@@ -341,7 +344,7 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
             literal: self.literal.fold_with(folder),
         }
     }
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.literal.visit_with(visitor)
     }
 }

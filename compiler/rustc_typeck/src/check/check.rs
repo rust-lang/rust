@@ -450,7 +450,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     };
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
             if t != self.opaque_identity_ty && t.super_visit_with(self).is_break() {
                 self.ty = Some(t);
@@ -459,7 +459,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
             ControlFlow::CONTINUE
         }
 
-        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<()> {
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
             if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
                 if *index < self.generics.parent_count as u32 {
@@ -472,7 +472,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
             r.super_visit_with(self)
         }
 
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::ConstKind::Unevaluated(..) = c.val {
                 // FIXME(#72219) We currenctly don't detect lifetimes within substs
                 // which would violate this check. Even though the particular substitution is not used
@@ -1455,7 +1455,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
             {
                 struct VisitTypes(Vec<DefId>);
                 impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
-                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
                             ty::Opaque(def, _) => {
                                 self.0.push(def);

@@ -1135,7 +1135,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         };
 
         impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 match ty.kind() {
                     ty::Opaque(..) => {
                         self.ty = Some(ty);

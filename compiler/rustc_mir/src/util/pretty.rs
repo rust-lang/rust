@@ -640,7 +640,7 @@ pub fn write_allocations<'tcx>(
     }
     struct CollectAllocIds(BTreeSet<AllocId>);
     impl<'tcx> TypeVisitor<'tcx> for CollectAllocIds {
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::ConstKind::Value(val) = c.val {
                 self.0.extend(alloc_ids_from_const(val));
             }
