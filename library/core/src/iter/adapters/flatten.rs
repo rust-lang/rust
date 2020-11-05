@@ -9,6 +9,18 @@ use super::Map;
 ///
 /// This `struct` is created by [`Iterator::flat_map`]. See its documentation
 /// for more.
+///
+/// # Examples
+///
+/// ```
+/// use core::iter::FlatMap;
+/// use core::slice::Iter;
+/// use core::str::Chars;
+///
+/// let words = ["yesterday", "today", "tomorrow"];
+/// let iter: FlatMap<Iter<&str>, Chars, _> = words.iter().flat_map(|s| s.chars());
+/// let v: Vec<char> = iter.collect();
+/// ```
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<I, U: IntoIterator, F> {
@@ -118,11 +130,19 @@ where
 /// An iterator that flattens one level of nesting in an iterator of things
 /// that can be turned into iterators.
 ///
-/// This `struct` is created by the [`flatten`] method on [`Iterator`]. See its
-/// documentation for more.
+/// This `struct` is created by [`Iterator::flatten`]. See its documentation
+/// for more.
 ///
-/// [`flatten`]: trait.Iterator.html#method.flatten
-/// [`Iterator`]: trait.Iterator.html
+/// # Examples
+///
+/// ```
+/// use core::iter::Flatten;
+/// use core::slice::Iter;
+///
+/// let a = [vec!['z', 'e', 'r', 'o'], vec!['o', 'n', 'e']];
+/// let iter: Flatten<Iter<Vec<char>>> = a.iter().flatten();
+/// let v: Vec<&char> = iter.collect();
+/// ```
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub struct Flatten<I: Iterator<Item: IntoIterator>> {
