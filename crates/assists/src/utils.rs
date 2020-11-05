@@ -4,17 +4,22 @@ pub(crate) mod import_assets;
 
 use std::ops;
 
-use hir::{Crate, Enum, Module, ScopeDef, Semantics, Trait};
+use hir::{Crate, Enum, HasSource, Module, ScopeDef, Semantics, Trait};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, ArgListOwner},
+    ast::edit::AstNodeEdit,
+    ast::NameOwner,
+    ast::{self, edit, make, ArgListOwner},
     AstNode, Direction,
     SyntaxKind::*,
     SyntaxNode, TextSize, T,
 };
 
-use crate::assist_config::SnippetCap;
+use crate::{
+    assist_config::SnippetCap,
+    ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
+};
 
 pub use insert_use::MergeBehaviour;
 pub(crate) use insert_use::{insert_use, ImportScope};
@@ -75,6 +80,87 @@ pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
         }
     }
     None
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum DefaultMethods {
+    Only,
+    No,
+}
+
+pub fn filter_assoc_items(
+    db: &RootDatabase,
+    items: &[hir::AssocItem],
+    default_methods: DefaultMethods,
+) -> Vec<ast::AssocItem> {
+    fn has_def_name(item: &ast::AssocItem) -> bool {
+        match item {
+            ast::AssocItem::Fn(def) => def.name(),
+            ast::AssocItem::TypeAlias(def) => def.name(),
+            ast::AssocItem::Const(def) => def.name(),
+            ast::AssocItem::MacroCall(_) => None,
+        }
+        .is_some()
+    };
+
+    items
+        .iter()
+        .map(|i| match i {
+            hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source(db).value),
+            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(i.source(db).value),
+            hir::AssocItem::Const(i) => ast::AssocItem::Const(i.source(db).value),
+        })
+        .filter(has_def_name)
+        .filter(|it| match it {
+            ast::AssocItem::Fn(def) => matches!(
+                (default_methods, def.body()),
+                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
+            ),
+            _ => default_methods == DefaultMethods::No,
+        })
+        .collect::<Vec<_>>()
+}
+
+pub fn add_trait_assoc_items_to_impl(
+    sema: &hir::Semantics<ide_db::RootDatabase>,
+    items: Vec<ast::AssocItem>,
+    trait_: hir::Trait,
+    impl_def: ast::Impl,
+    target_scope: hir::SemanticsScope,
+) -> (ast::Impl, ast::AssocItem) {
+    let impl_item_list = impl_def.assoc_item_list().unwrap_or_else(make::assoc_item_list);
+
+    let n_existing_items = impl_item_list.assoc_items().count();
+    let source_scope = sema.scope_for_def(trait_);
+    let ast_transform = QualifyPaths::new(&target_scope, &source_scope)
+        .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_def.clone()));
+
+    let items = items
+        .into_iter()
+        .map(|it| ast_transform::apply(&*ast_transform, it))
+        .map(|it| match it {
+            ast::AssocItem::Fn(def) => ast::AssocItem::Fn(add_body(def)),
+            ast::AssocItem::TypeAlias(def) => ast::AssocItem::TypeAlias(def.remove_bounds()),
+            _ => it,
+        })
+        .map(|it| edit::remove_attrs_and_docs(&it));
+
+    let new_impl_item_list = impl_item_list.append_items(items);
+    let new_impl_def = impl_def.with_assoc_item_list(new_impl_item_list);
+    let first_new_item =
+        new_impl_def.assoc_item_list().unwrap().assoc_items().nth(n_existing_items).unwrap();
+    return (new_impl_def, first_new_item);
+
+    fn add_body(fn_def: ast::Fn) -> ast::Fn {
+        match fn_def.body() {
+            Some(_) => fn_def,
+            None => {
+                let body =
+                    make::block_expr(None, Some(make::expr_todo())).indent(edit::IndentLevel(1));
+                fn_def.with_body(body)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

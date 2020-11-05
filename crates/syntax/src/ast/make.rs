@@ -25,6 +25,10 @@ pub fn assoc_item_list() -> ast::AssocItemList {
     ast_from_text("impl C for D {};")
 }
 
+pub fn impl_trait(trait_: ast::Path, ty: ast::Path) -> ast::Impl {
+    ast_from_text(&format!("impl {} for {} {{}}", trait_, ty))
+}
+
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("use {};", name_ref))
 }
