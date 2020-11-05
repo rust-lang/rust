@@ -81,10 +81,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags);
         }
 
-        let ptr = match this.read_scalar(ptr)?.check_init()? {
-            Scalar::Ptr(ptr) => ptr,
-            Scalar::Raw { .. } => throw_ub_format!("expected a pointer in `rust_miri_resolve_frame`, found {:?}", ptr)
-        };
+        let ptr = this.force_ptr(this.read_scalar(ptr)?.check_init()?)?;
 
         let fn_instance = if let Some(GlobalAlloc::Function(instance)) = this.tcx.get_global_alloc(ptr.alloc_id) {
             instance
