@@ -81,6 +81,12 @@ impl From<ErrorHandled> for InterpErrorInfo<'_> {
     }
 }
 
+impl From<ErrorReported> for InterpErrorInfo<'_> {
+    fn from(err: ErrorReported) -> Self {
+        InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err)).into()
+    }
+}
+
 impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx>) -> Self {
         let capture_backtrace = tls::with_opt(|tcx| {
@@ -115,8 +121,8 @@ pub enum InvalidProgramInfo<'tcx> {
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error.
     ReferencedConstant,
-    /// Abort in case type errors are reached.
-    TypeckError(ErrorReported),
+    /// Abort in case errors are already reported.
+    AlreadyReported(ErrorReported),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
     /// An invalid transmute happened.
@@ -129,7 +135,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
             ReferencedConstant => write!(f, "referenced constant has errors"),
-            TypeckError(ErrorReported) => {
+            AlreadyReported(ErrorReported) => {
                 write!(f, "encountered constants with type errors, stopping evaluation")
             }
             Layout(ref err) => write!(f, "{}", err),

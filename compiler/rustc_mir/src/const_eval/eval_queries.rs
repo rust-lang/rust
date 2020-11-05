@@ -67,7 +67,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    intern_const_alloc_recursive(ecx, intern_kind, ret);
+    intern_const_alloc_recursive(ecx, intern_kind, ret)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
