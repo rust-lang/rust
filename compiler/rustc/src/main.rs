@@ -56,6 +56,12 @@ fn main() {
             #[used]
             static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
         }
+
+        // HACK(eddyb) disable time-delayed purging to remove the main (only?)
+        // source of non-determinism in `jemalloc`.
+        #[used]
+        #[export_name = "malloc_conf"]
+        static MALLOC_CONF: &'static [u8; 34] = b"dirty_decay_ms:0,muzzy_decay_ms:0\0";
     }
 
     rustc_driver::set_sigpipe_handler();
