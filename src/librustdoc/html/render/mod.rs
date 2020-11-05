@@ -798,10 +798,10 @@ function handleThemeButtonsBlur(e) {{
     var active = document.activeElement;
     var related = e.relatedTarget;
 
-    if (active.id !== "themePicker" &&
+    if (active.id !== "theme-picker" &&
         (!active.parentNode || active.parentNode.id !== "theme-choices") &&
         (!related ||
-         (related.id !== "themePicker" &&
+         (related.id !== "theme-picker" &&
           (!related.parentNode || related.parentNode.id !== "theme-choices")))) {{
         hideThemeButtonState();
     }}
