@@ -56,7 +56,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -427,7 +427,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -537,7 +537,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
@@ -644,7 +644,7 @@ jobs:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2
       - name: configure the PR in which the error message will be posted
