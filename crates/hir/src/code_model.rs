@@ -802,11 +802,7 @@ impl Function {
             .and_then(|s| s.parent())
             .and_then(|s| Some(s.kind()));
 
-        match fn_parent_kind {
-            Some(SyntaxKind::IMPL) => true,
-            Some(SyntaxKind::TRAIT) => true,
-            _ => false,
-        }
+        matches!(fn_parent_kind, Some(SyntaxKind::IMPL) | Some(SyntaxKind::TRAIT))
     }
 }
 
