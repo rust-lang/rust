@@ -16,7 +16,6 @@ use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Symbol};
-use std::iter::FromIterator;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -214,14 +213,15 @@ fn could_use_elision<'tcx>(
     }
 
     if allowed_lts
-        .intersection(&FxHashSet::from_iter(
-            input_visitor
+        .intersection(
+            &input_visitor
                 .nested_elision_site_lts
                 .iter()
                 .chain(output_visitor.nested_elision_site_lts.iter())
                 .cloned()
-                .filter(|v| matches!(v, RefLt::Named(_))),
-        ))
+                .filter(|v| matches!(v, RefLt::Named(_)))
+                .collect(),
+        )
         .next()
         .is_some()
     {

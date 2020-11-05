@@ -167,18 +167,21 @@ You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
 *   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
 
-Note: `deny` produces errors instead of warnings.
+Note: `allow` means to suppress the lint for your code. With `warn` the lint
+will only emit a warning, while with `deny` the lint will emit an error, when
+triggering for your code. An error causes clippy to exit with an error code, so
+is useful in scripts like CI/CD.
 
-If you do not want to include your lint levels in your code, you can globally enable/disable lints
-by passing extra flags to Clippy during the run:
+If you do not want to include your lint levels in your code, you can globally
+enable/disable lints by passing extra flags to Clippy during the run:
 
-To disable `lint_name`, run
+To allow `lint_name`, run
 
 ```terminal
 cargo clippy -- -A clippy::lint_name
 ```
 
-And to enable `lint_name`, run
+And to warn on `lint_name`, run
 
 ```terminal
 cargo clippy -- -W clippy::lint_name
@@ -190,7 +193,7 @@ can run Clippy with warnings for all lints enabled:
 cargo clippy -- -W clippy::pedantic
 ```
 
-If you care only about a single lint, you can allow all others and then explicitly reenable
+If you care only about a single lint, you can allow all others and then explicitly warn on
 the lint(s) you are interested in:
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
