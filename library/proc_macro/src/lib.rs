@@ -882,7 +882,7 @@ impl Ident {
     }
 
     /// Returns the span of this `Ident`, encompassing the entire string returned
-    /// by `as_str`.
+    /// by [`to_string`](Self::to_string).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
         Span(self.0.span())
