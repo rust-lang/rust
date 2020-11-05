@@ -1,5 +1,3 @@
-#!/bin/bash
-
 set -e
 
 unamestr=$(uname)
@@ -53,8 +51,7 @@ if [[ $(uname) == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
-LD_LIBRARY_PATH="$dir:$(rustc --print sysroot)/lib:$dir/target/out:$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib"
-export LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$dir:$(rustc --print sysroot)/lib:$dir/target/out:$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib"
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
 
 export CG_CLIF_DISPLAY_CG_TIME=1
