@@ -818,6 +818,9 @@ where
     value.fold_with(&mut Shifter::new(tcx, amount))
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+struct FoundEscapingVars;
+
 /// An "escaping var" is a bound var whose binder is not part of `t`. A bound var can be a
 /// bound region or a bound type.
 ///
@@ -849,6 +852,8 @@ struct HasEscapingVarsVisitor {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
+    type BreakTy = FoundEscapingVars;
+
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
         self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
@@ -863,7 +868,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // `outer_exclusive_binder` is always 1 higher than the
         // content in `t`). Therefore, `t` has some escaping vars.
         if t.outer_exclusive_binder > self.outer_index {
-            ControlFlow::BREAK
+            ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::CONTINUE
         }
@@ -874,7 +879,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // of outer index, then it escapes the binders we have
         // visited.
         if r.bound_at_or_above_binder(self.outer_index) {
-            ControlFlow::BREAK
+            ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::CONTINUE
         }
@@ -887,14 +892,16 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // const, as it has types/regions embedded in a lot of other
         // places.
         match ct.val {
-            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => ControlFlow::BREAK,
+            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
+                ControlFlow::Break(FoundEscapingVars)
+            }
             _ => ct.super_visit_with(self),
         }
     }
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         if predicate.inner.outer_exclusive_binder > self.outer_index {
-            ControlFlow::BREAK
+            ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::CONTINUE
         }
