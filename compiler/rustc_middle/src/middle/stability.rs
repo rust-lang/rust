@@ -399,7 +399,7 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
         id: Option<HirId>,
         span: Span,
-        unmarked: impl FnOnce(Span, DefId) -> (),
+        unmarked: impl FnOnce(Span, DefId),
     ) {
         let soft_handler = |lint, span, msg: &_| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
