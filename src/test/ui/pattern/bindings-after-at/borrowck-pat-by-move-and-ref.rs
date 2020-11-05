@@ -12,12 +12,16 @@ fn main() {
 
     fn f1(ref a @ b: U) {}
     //~^ ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of moved value
     fn f2(ref a @ (ref b @ mut c, ref d @ e): (U, U)) {}
     //~^ ERROR cannot move out of value because it is borrowed
     //~| ERROR cannot move out of value because it is borrowed
     //~| ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of moved value
+    //~| ERROR borrow of moved value
     fn f3(ref mut a @ [b, mut c]: [U; 2]) {}
     //~^ ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of partially moved value
 
     let ref a @ b = U;
     //~^ ERROR cannot move out of value because it is borrowed
@@ -27,14 +31,19 @@ fn main() {
     //~| ERROR cannot move out of value because it is borrowed
     let ref mut a @ [b, mut c] = [U, U];
     //~^ ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of partially moved value
     let ref a @ b = u();
     //~^ ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of moved value
     let ref a @ (ref b @ mut c, ref d @ e) = (u(), u());
     //~^ ERROR cannot move out of value because it is borrowed
     //~| ERROR cannot move out of value because it is borrowed
     //~| ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of moved value
+    //~| ERROR borrow of moved value
     let ref mut a @ [b, mut c] = [u(), u()];
     //~^ ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of partially moved value
 
     match Some(U) {
         ref a @ Some(b) => {}
@@ -63,6 +72,8 @@ fn main() {
         //~^ ERROR cannot move out of value because it is borrowed
         //~| ERROR cannot move out of value because it is borrowed
         //~| ERROR cannot move out of value because it is borrowed
+        //~| ERROR borrow of moved value
+        //~| ERROR borrow of moved value
         None => {}
     }
     match Some([u(), u()]) {

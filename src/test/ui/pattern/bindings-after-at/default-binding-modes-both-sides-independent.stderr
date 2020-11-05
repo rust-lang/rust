@@ -44,18 +44,15 @@ LL |         ref a @ b => {
    |         |       value moved into `b` here
    |         value borrowed, by `a`, here
 
-error[E0505]: cannot move out of value because it is borrowed
-  --> $DIR/default-binding-modes-both-sides-independent.rs:30:21
+error[E0382]: borrow of moved value
+  --> $DIR/default-binding-modes-both-sides-independent.rs:30:9
    |
 LL |     let ref mut a @ b = NotCopy;
-   |         ------------^
+   |         ^^^^^^^^^^^^-   ------- move occurs because value has type `NotCopy`, which does not implement the `Copy` trait
    |         |           |
-   |         |           move out of value occurs here
-   |         borrow of value occurs here
-LL |
-LL |     let _a: &NotCopy = a;
-   |                        - borrow later used here
+   |         |           value moved here
+   |         value borrowed here after move
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0505`.
+For more information about this error, try `rustc --explain E0382`.

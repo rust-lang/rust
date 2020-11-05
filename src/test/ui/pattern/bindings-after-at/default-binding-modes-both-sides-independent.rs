@@ -28,7 +28,7 @@ fn main() {
     let _a: &NotCopy = a;
     let _b: NotCopy = b;
     let ref mut a @ b = NotCopy; //~ ERROR cannot move out of value because it is borrowed
-    //~^ ERROR cannot move out of value because it is borrowed
+    //~^ ERROR borrow of moved value
     let _a: &NotCopy = a;
     let _b: NotCopy = b;
     match Ok(NotCopy) {
