@@ -389,7 +389,7 @@ mod prim_unit {}
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
 ///
-/// *[See also the `std::ptr` module][`ptr`].*
+/// *[See also the `std::ptr` module](ptr).*
 ///
 /// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
 /// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
@@ -577,7 +577,7 @@ mod prim_array {}
 /// means that elements are laid out so that every element is the same
 /// distance from its neighbors.
 ///
-/// *[See also the `std::slice` module][`crate::slice`].*
+/// *[See also the `std::slice` module](crate::slice).*
 ///
 /// Slices are a view into a block of memory represented as a pointer and a
 /// length.
@@ -622,7 +622,7 @@ mod prim_slice {}
 //
 /// String slices.
 ///
-/// *[See also the `std::str` module][`crate::str`].*
+/// *[See also the `std::str` module](crate::str).*
 ///
 /// The `str` type, also called a 'string slice', is the most primitive string
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
@@ -797,7 +797,7 @@ mod prim_tuple {}
 /// calculation with floats round to a nearby representable number. For example,
 /// `5.0` and `1.0` can be exactly represented as `f32`, but `1.0 / 5.0` results
 /// in `0.20000000298023223876953125` since `0.2` cannot be exactly represented
-/// as `f32`. Note however, that printing floats with `println` and friends will
+/// as `f32`. Note, however, that printing floats with `println` and friends will
 /// often discard insignificant digits: `println!("{}", 1.0f32 / 5.0f32)` will
 /// print `0.2`.
 ///
@@ -817,7 +817,7 @@ mod prim_tuple {}
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
-/// *[See also the `std::f32::consts` module][`crate::f32::consts`].*
+/// *[See also the `std::f32::consts` module](crate::f32::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -831,7 +831,7 @@ mod prim_f32 {}
 /// `f32`][`f32`] or [Wikipedia on double precision
 /// values][wikipedia] for more information.
 ///
-/// *[See also the `std::f64::consts` module][`crate::f64::consts`].*
+/// *[See also the `std::f64::consts` module](crate::f64::consts).*
 ///
 /// [`f32`]: prim@f32
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
