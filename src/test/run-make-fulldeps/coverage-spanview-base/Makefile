@@ -35,7 +35,7 @@ endif
 		echo $$file; \
 		urlescaped="$$("$(PYTHON)" $(BASEDIR)/escape_url.py $$file)" || exit $$?; \
 		echo $$urlescaped; \
-		sed -i '1a\
+		sed -i -e '1a\
 <!--\
 \
 Preview this file as rendered HTML from the github source at:\
