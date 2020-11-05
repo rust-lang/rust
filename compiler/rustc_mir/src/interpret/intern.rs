@@ -16,6 +16,7 @@
 
 use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
@@ -285,11 +286,13 @@ pub enum InternKind {
 /// tracks where in the value we are and thus can show much better error messages.
 /// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
 /// are hard errors.
+#[tracing::instrument(skip(ecx))]
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
-) where
+) -> Result<(), ErrorReported>
+where
     'tcx: 'mir,
 {
     let tcx = ecx.tcx;
@@ -405,12 +408,14 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             // Codegen does not like dangling pointers, and generally `tcx` assumes that
             // all allocations referenced anywhere actually exist. So, make sure we error here.
             ecx.tcx.sess.span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
+            return Err(ErrorReported);
         } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't
             // marked as dangling by local memory.  That should be impossible.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
+    Ok(())
 }
 
 impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {

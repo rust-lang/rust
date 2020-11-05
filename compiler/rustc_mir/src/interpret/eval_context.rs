@@ -469,7 +469,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(def) = def.as_local() {
             if self.tcx.has_typeck_results(def.did) {
                 if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
-                    throw_inval!(TypeckError(error_reported))
+                    throw_inval!(AlreadyReported(error_reported))
                 }
             }
         }
@@ -525,8 +525,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
-            // FIXME(eddyb) this could be a bit more specific than `TypeckError`.
-            Err(error_reported) => throw_inval!(TypeckError(error_reported)),
+            // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
+            Err(error_reported) => throw_inval!(AlreadyReported(error_reported)),
         }
     }
 
