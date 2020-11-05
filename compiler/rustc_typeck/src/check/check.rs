@@ -446,15 +446,15 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     struct ProhibitOpaqueVisitor<'tcx> {
         opaque_identity_ty: Ty<'tcx>,
         generics: &'tcx ty::Generics,
-        ty: Option<Ty<'tcx>>,
     };
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+        type BreakTy = Option<Ty<'tcx>>;
+
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
             if t != self.opaque_identity_ty && t.super_visit_with(self).is_break() {
-                self.ty = Some(t);
-                return ControlFlow::BREAK;
+                return ControlFlow::Break(Some(t));
             }
             ControlFlow::CONTINUE
         }
@@ -463,7 +463,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
             debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
             if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
                 if *index < self.generics.parent_count as u32 {
-                    return ControlFlow::BREAK;
+                    return ControlFlow::Break(None);
                 } else {
                     return ControlFlow::CONTINUE;
                 }
@@ -494,18 +494,17 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
                 InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
             ),
             generics: tcx.generics_of(def_id),
-            ty: None,
         };
         let prohibit_opaque = tcx
             .explicit_item_bounds(def_id)
             .iter()
-            .any(|(predicate, _)| predicate.visit_with(&mut visitor).is_break());
+            .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
         debug!(
             "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
             prohibit_opaque, visitor
         );
 
-        if prohibit_opaque {
+        if let Some(ty) = prohibit_opaque.break_value() {
             let is_async = match item.kind {
                 ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
                     hir::OpaqueTyOrigin::AsyncFn => true,
@@ -525,7 +524,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
 
             if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
                 if snippet == "Self" {
-                    if let Some(ty) = visitor.ty {
+                    if let Some(ty) = ty {
                         err.span_suggestion(
                             span,
                             "consider spelling out the type instead",
