@@ -1146,6 +1146,26 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             }
         }
     }
+
+    // Postfix macro calls can be parsed to allow proc macros to support the syntax,
+    // but they may not be expanded.
+    fn check_postfix_mac_call(
+        &mut self,
+        call: &mut ast::MacCall,
+        span: Span,
+    ) -> Option<P<ast::Expr>> {
+        let postfix_self_arg = call.postfix_self_arg.take();
+        if postfix_self_arg.is_some() {
+            let mut err = self.cx.struct_span_err(
+                span,
+                &format!("forbidden postfix macro call `{}`", pprust::path_to_string(&call.path)),
+            );
+            err.span_label(call.path.span, "macros can't be called in postfix position");
+
+            err.emit();
+        }
+        postfix_self_arg
+    }
 }
 
 impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
@@ -1175,8 +1195,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .into_inner();
             }
 
-            if let ast::ExprKind::MacCall(mac) = expr.kind {
+            if let ast::ExprKind::MacCall(mut mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
+                if let Some(postfix_self_arg) = self.check_postfix_mac_call(&mut mac, expr.span) {
+                    let mut self_arg = postfix_self_arg.into_inner();
+                    ensure_sufficient_stack(|| noop_visit_expr(&mut self_arg, self));
+                    return self_arg;
+                }
                 self.collect_bang(mac, expr.span, AstFragmentKind::Expr).make_expr().into_inner()
             } else {
                 ensure_sufficient_stack(|| noop_visit_expr(&mut expr, self));
@@ -1322,8 +1347,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .map(|expr| expr.into_inner());
             }
 
-            if let ast::ExprKind::MacCall(mac) = expr.kind {
+            if let ast::ExprKind::MacCall(mut mac) = expr.kind {
                 self.check_attributes(&expr.attrs);
+
+                if let Some(postfix_self_arg) = self.check_postfix_mac_call(&mut mac, expr.span) {
+                    let mut self_arg = postfix_self_arg.into_inner();
+                    noop_visit_expr(&mut self_arg, self);
+                    return Some(self_arg);
+                }
                 self.collect_bang(mac, expr.span, AstFragmentKind::OptExpr)
                     .make_opt_expr()
                     .map(|expr| expr.into_inner())

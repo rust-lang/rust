@@ -1,0 +1,59 @@
+error: forbidden postfix macro call `println`
+  --> $DIR/postfix-macros.rs:2:5
+   |
+LL |     "Hello, world!".to_string().println!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------^^
+   |                                 |
+   |                                 macros can't be called in postfix position
+
+error: forbidden postfix macro call `println`
+  --> $DIR/postfix-macros.rs:4:5
+   |
+LL |     "Hello, world!".println!();
+   |     ^^^^^^^^^^^^^^^^--------^^
+   |                     |
+   |                     macros can't be called in postfix position
+
+error: forbidden postfix macro call `assert`
+  --> $DIR/postfix-macros.rs:6:5
+   |
+LL |     false.assert!();
+   |     ^^^^^^-------^^
+   |           |
+   |           macros can't be called in postfix position
+
+error: forbidden postfix macro call `assert_eq`
+  --> $DIR/postfix-macros.rs:8:5
+   |
+LL |     Some(42).assert_eq!(None);
+   |     ^^^^^^^^^----------^^^^^^
+   |              |
+   |              macros can't be called in postfix position
+
+error: forbidden postfix macro call `dbg`
+  --> $DIR/postfix-macros.rs:10:5
+   |
+LL | /     std::iter::once(42)
+LL | |
+LL | |         .map(|v| v + 3)
+LL | |         .dbg!()
+LL | |         .max()
+LL | |         .unwrap()
+LL | |         .dbg!();
+   | |__________----_^
+   |            |
+   |            macros can't be called in postfix position
+
+error: forbidden postfix macro call `dbg`
+  --> $DIR/postfix-macros.rs:10:5
+   |
+LL | /     std::iter::once(42)
+LL | |
+LL | |         .map(|v| v + 3)
+LL | |         .dbg!()
+   | |__________----_^
+   |            |
+   |            macros can't be called in postfix position
+
+error: aborting due to 6 previous errors
+

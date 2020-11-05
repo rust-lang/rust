@@ -1415,6 +1415,7 @@ pub struct MacCall {
     pub path: Path,
     pub args: P<MacArgs>,
     pub prior_type_ascription: Option<(Span, bool)>,
+    pub postfix_self_arg: Option<P<Expr>>,
 }
 
 impl MacCall {

@@ -627,7 +627,12 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_mac_args()?;
-        let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
+        let mac = MacCall {
+            path,
+            args,
+            prior_type_ascription: self.last_type_ascription,
+            postfix_self_arg: None,
+        };
         Ok(PatKind::MacCall(mac))
     }
 

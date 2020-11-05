@@ -407,6 +407,7 @@ impl<'a> Parser<'a> {
                 path,
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
+                postfix_self_arg: None,
             }))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`

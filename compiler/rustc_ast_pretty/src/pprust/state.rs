@@ -1642,6 +1642,10 @@ impl<'a> State<'a> {
     }
 
     crate fn print_mac(&mut self, m: &ast::MacCall) {
+        if let Some(arg) = &m.postfix_self_arg {
+            self.print_expr(&*arg);
+            self.s.word(".");
+        }
         self.print_mac_common(
             Some(MacHeader::Path(&m.path)),
             true,

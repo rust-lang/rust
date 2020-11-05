@@ -599,7 +599,10 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
 }
 
 pub fn noop_visit_mac<T: MutVisitor>(mac: &mut MacCall, vis: &mut T) {
-    let MacCall { path, args, prior_type_ascription: _ } = mac;
+    let MacCall { path, args, prior_type_ascription: _, postfix_self_arg } = mac;
+    if let Some(postfix_self_arg) = postfix_self_arg {
+        vis.visit_expr(postfix_self_arg);
+    }
     vis.visit_path(path);
     visit_mac_args(args, vis);
 }

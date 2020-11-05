@@ -991,6 +991,21 @@ impl<'a> Parser<'a> {
             let fn_span = fn_span_lo.to(self.prev_token.span);
             let span = lo.to(self.prev_token.span);
             Ok(self.mk_expr(span, ExprKind::MethodCall(segment, args, fn_span), AttrVec::new()))
+        } else if self.eat(&token::Not) {
+            // Postfix macro call
+            let path = ast::Path {
+                segments: vec![segment],
+                span: fn_span_lo.to(self.prev_token.span),
+                tokens: None,
+            };
+            let mac = MacCall {
+                path,
+                args: self.parse_mac_args()?,
+                prior_type_ascription: self.last_type_ascription,
+                postfix_self_arg: Some(self_arg),
+            };
+            let span = lo.to(self.prev_token.span);
+            Ok(self.mk_expr(span, ExprKind::MacCall(mac), AttrVec::new()))
         } else {
             // Field access `expr.f`
             if let Some(args) = segment.args {
@@ -1215,6 +1230,7 @@ impl<'a> Parser<'a> {
                 path,
                 args: self.parse_mac_args()?,
                 prior_type_ascription: self.last_type_ascription,
+                postfix_self_arg: None,
             };
             (self.prev_token.span, ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(token::Brace)) {

@@ -44,6 +44,7 @@ pub fn expand_assert<'cx>(
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         args,
         prior_type_ascription: None,
+        postfix_self_arg: None,
     };
     let if_expr = cx.expr_if(
         sp,

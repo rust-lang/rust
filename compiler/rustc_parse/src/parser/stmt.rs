@@ -103,7 +103,12 @@ impl<'a> Parser<'a> {
         let style =
             if delim == token::Brace { MacStmtStyle::Braces } else { MacStmtStyle::NoBraces };
 
-        let mac = MacCall { path, args, prior_type_ascription: self.last_type_ascription };
+        let mac = MacCall {
+            path,
+            args,
+            prior_type_ascription: self.last_type_ascription,
+            postfix_self_arg: None,
+        };
 
         let kind = if delim == token::Brace || self.token == token::Semi || self.token == token::Eof
         {

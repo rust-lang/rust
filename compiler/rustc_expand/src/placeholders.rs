@@ -21,6 +21,7 @@ pub fn placeholder(
             path: ast::Path { span: DUMMY_SP, segments: Vec::new(), tokens: None },
             args: P(ast::MacArgs::Empty),
             prior_type_ascription: None,
+            postfix_self_arg: None,
         }
     }
 

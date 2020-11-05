@@ -410,7 +410,12 @@ impl<'a> Parser<'a> {
         let args = self.parse_mac_args()?; // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
         self.eat_semi_for_macro_if_needed(&args);
         self.complain_if_pub_macro(vis, false);
-        Ok(MacCall { path, args, prior_type_ascription: self.last_type_ascription })
+        Ok(MacCall {
+            path,
+            args,
+            prior_type_ascription: self.last_type_ascription,
+            postfix_self_arg: None,
+        })
     }
 
     /// Recover if we parsed attributes and expected an item but there was none.
