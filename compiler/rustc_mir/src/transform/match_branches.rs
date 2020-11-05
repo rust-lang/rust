@@ -63,7 +63,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             };
 
             // Check that destinations are identical, and if not, then don't optimize this block
-            if &bbs[first].terminator().kind != &bbs[second].terminator().kind {
+            if bbs[first].terminator().kind != bbs[second].terminator().kind {
                 continue;
             }
 

@@ -360,7 +360,7 @@ pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
 impl MetaItem {
     fn token_trees_and_spacings(&self) -> Vec<TreeAndSpacing> {
         let mut idents = vec![];
-        let mut last_pos = BytePos(0 as u32);
+        let mut last_pos = BytePos(0_u32);
         for (i, segment) in self.path.segments.iter().enumerate() {
             let is_first = i == 0;
             if !is_first {
