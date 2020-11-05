@@ -66,7 +66,7 @@ unsafe fn fetch(name: &str) -> usize {
     libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
 macro_rules! syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name: $t),*) -> $ret {
@@ -84,7 +84,7 @@ macro_rules! syscall {
     )
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 macro_rules! syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name:$t),*) -> $ret {
@@ -96,6 +96,23 @@ macro_rules! syscall {
                 concat_idents!(SYS_, $name),
                 $($arg_name as c_long),*
             ) as $ret
+        }
+    )
+}
+
+/// Use a weak symbol from libc when possible, allowing `LD_PRELOAD` interposition,
+/// but if it's not found just use a raw syscall.
+#[cfg(any(target_os = "linux", target_os = "android"))]
+macro_rules! weak_syscall {
+    (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        unsafe fn $name($($arg_name:$t),*) -> $ret {
+            weak! { fn $name($($t),*) -> $ret }
+            if let Some(fun) = $name.get() {
+                fun($($arg_name),*)
+            } else {
+                syscall! { fn $name($($arg_name:$t),*) -> $ret }
+                $name($($arg_name),*)
+            }
         }
     )
 }
