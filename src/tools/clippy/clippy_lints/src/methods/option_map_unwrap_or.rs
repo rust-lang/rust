@@ -7,7 +7,7 @@ use rustc_hir::{self, HirId, Path};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{sym, Symbol};
 
 use super::MAP_UNWRAP_OR;
 
@@ -20,7 +20,7 @@ pub(super) fn lint<'tcx>(
     map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type)) {
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type) {
         if !is_copy(cx, cx.typeck_results().expr_ty(&unwrap_args[1])) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument
@@ -53,15 +53,15 @@ pub(super) fn lint<'tcx>(
         // lint message
         // comparing the snippet from source to raw text ("None") below is safe
         // because we already have checked the type.
-        let arg = if unwrap_snippet == "None" { "None" } else { "a" };
+        let arg = if unwrap_snippet == "None" { "None" } else { "<a>" };
         let unwrap_snippet_none = unwrap_snippet == "None";
         let suggest = if unwrap_snippet_none {
-            "and_then(f)"
+            "and_then(<f>)"
         } else {
-            "map_or(a, f)"
+            "map_or(<a>, <f>)"
         };
         let msg = &format!(
-            "called `map(f).unwrap_or({})` on an `Option` value. \
+            "called `map(<f>).unwrap_or({})` on an `Option` value. \
             This can be done more directly by calling `{}` instead",
             arg, suggest
         );

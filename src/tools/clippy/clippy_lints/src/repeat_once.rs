@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `.repeat(1)` and suggest the following method for each types.
@@ -65,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
                         format!("{}.to_vec()", snippet(cx, receiver.span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
-                } else if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
+                } else if is_type_diagnostic_item(cx, ty, sym::string_type) {
                     span_lint_and_sugg(
                         cx,
                         REPEAT_ONCE,

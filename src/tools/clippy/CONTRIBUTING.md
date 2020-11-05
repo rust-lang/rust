@@ -63,9 +63,10 @@ To figure out how this syntax structure is encoded in the AST, it is recommended
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
 But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
 
-[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an E-easy issue first.
-They are mostly classified as [`E-medium`], since they might be somewhat involved code wise,
-but not difficult per-se.
+[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good first issue`]
+first. Sometimes they are only somewhat involved code wise, but not difficult per-se.
+Note that [`E-medium`] issues may require some knowledge of Clippy internals or some 
+debugging to find the actual problem behind the issue. 
 
 [`T-middle`] issues can be more involved and require verifying types. The [`ty`] module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of

@@ -70,3 +70,12 @@ fn foo() {
         recv(rx) -> _x => ()
     }
 }
+
+#[rustfmt::skip]
+fn test()->(){}
+
+#[rustfmt::skip]
+fn test2() ->(){}
+
+#[rustfmt::skip]
+fn test3()-> (){}

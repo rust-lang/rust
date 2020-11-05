@@ -8,6 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -66,7 +67,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
         path.ident.name.to_ident_string() == "ok"
-            && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym!(result_type))
+            && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym::result_type)
     } else {
         false
     }

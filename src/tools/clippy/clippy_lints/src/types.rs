@@ -10,9 +10,9 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, Lit, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt, StmtKind,
-    TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
+    BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericBounds, GenericParamKind, HirId,
+    ImplItem, ImplItemKind, Item, ItemKind, Lifetime, Lit, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt,
+    StmtKind, SyntheticTyParamKind, TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -522,7 +522,7 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                    } else if cx.tcx.is_diagnostic_item(sym!(vec_type), def_id) {
+                    } else if cx.tcx.is_diagnostic_item(sym::vec_type, def_id) {
                         if_chain! {
                             // Get the _ part of Vec<_>
                             if let Some(ref last) = last_path_segment(qpath).args;
@@ -559,7 +559,7 @@ impl Types {
                                 return; // don't recurse into the type
                             }
                         }
-                    } else if cx.tcx.is_diagnostic_item(sym!(option_type), def_id) {
+                    } else if cx.tcx.is_diagnostic_item(sym::option_type, def_id) {
                         if match_type_parameter(cx, qpath, &paths::OPTION).is_some() {
                             span_lint(
                                 cx,
@@ -678,17 +678,30 @@ impl Types {
                             // details.
                             return;
                         }
+
+                        // When trait objects or opaque types have lifetime or auto-trait bounds,
+                        // we need to add parentheses to avoid a syntax error due to its ambiguity.
+                        // Originally reported as the issue #3128.
+                        let inner_snippet = snippet(cx, inner.span, "..");
+                        let suggestion = match &inner.kind {
+                            TyKind::TraitObject(bounds, lt_bound) if bounds.len() > 1 || !lt_bound.is_elided() => {
+                                format!("&{}({})", ltopt, &inner_snippet)
+                            },
+                            TyKind::Path(qpath)
+                                if get_bounds_if_impl_trait(cx, qpath, inner.hir_id)
+                                    .map_or(false, |bounds| bounds.len() > 1) =>
+                            {
+                                format!("&{}({})", ltopt, &inner_snippet)
+                            },
+                            _ => format!("&{}{}", ltopt, &inner_snippet),
+                        };
                         span_lint_and_sugg(
                             cx,
                             BORROWED_BOX,
                             hir_ty.span,
                             "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                             "try",
-                            format!(
-                                "&{}{}",
-                                ltopt,
-                                &snippet(cx, inner.span, "..")
-                            ),
+                            suggestion,
                             // To make this `MachineApplicable`, at least one needs to check if it isn't a trait item
                             // because the trait impls of it will break otherwise;
                             // and there may be other cases that result in invalid code.
@@ -719,6 +732,21 @@ fn is_any_trait(t: &hir::Ty<'_>) -> bool {
     }
 
     false
+}
+
+fn get_bounds_if_impl_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, id: HirId) -> Option<GenericBounds<'tcx>> {
+    if_chain! {
+        if let Some(did) = qpath_res(cx, qpath, id).opt_def_id();
+        if let Some(node) = cx.tcx.hir().get_if_local(did);
+        if let Node::GenericParam(generic_param) = node;
+        if let GenericParamKind::Type { synthetic, .. } = generic_param.kind;
+        if synthetic == Some(SyntheticTyParamKind::ImplTrait);
+        then {
+            Some(generic_param.bounds)
+        } else {
+            None
+        }
+    }
 }
 
 declare_clippy_lint! {
@@ -1582,7 +1610,7 @@ fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         if names.is_empty() {
             return false;
         }
-        if names[0] == sym!(libc) || names[0] == sym::core && *names.last().unwrap() == sym!(c_void) {
+        if names[0] == sym::libc || names[0] == sym::core && *names.last().unwrap() == sym!(c_void) {
             return true;
         }
     }
@@ -2749,7 +2777,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                 }
 
                 if match_path(ty_path, &paths::HASHMAP) {
-                    if method.ident.name == sym!(new) {
+                    if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
                     } else if method.ident.name == sym!(with_capacity) {
@@ -2762,7 +2790,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                         );
                     }
                 } else if match_path(ty_path, &paths::HASHSET) {
-                    if method.ident.name == sym!(new) {
+                    if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());
                     } else if method.ident.name == sym!(with_capacity) {
