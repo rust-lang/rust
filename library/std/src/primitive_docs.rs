@@ -491,6 +491,8 @@ mod prim_pointer {}
 ///
 /// Arrays of *any* size implement the following traits if the element type allows it:
 ///
+/// - [`Copy`]
+/// - [`Clone`]
 /// - [`Debug`]
 /// - [`IntoIterator`] (implemented for `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]
@@ -498,14 +500,9 @@ mod prim_pointer {}
 /// - [`AsRef`], [`AsMut`]
 /// - [`Borrow`], [`BorrowMut`]
 ///
-/// Arrays of sizes from 0 to 32 (inclusive) implement [`Default`] trait
+/// Arrays of sizes from 0 to 32 (inclusive) implement the [`Default`] trait
 /// if the element type allows it. As a stopgap, trait implementations are
 /// statically generated up to size 32.
-///
-/// Arrays of *any* size are [`Copy`] if the element type is [`Copy`]
-/// and [`Clone`] if the element type is [`Clone`]. This works
-/// because [`Copy`] and [`Clone`] traits are specially known
-/// to the compiler.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
