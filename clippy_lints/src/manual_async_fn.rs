@@ -69,7 +69,20 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                     |diag| {
                         if_chain! {
                             if let Some(header_snip) = snippet_opt(cx, header_span);
-                            if let Some(ret_pos) = header_snip.rfind("->");
+                            if let Some(ret_pos) = header_snip.rfind("->").map(|rpos| {
+                                let mut rpos = rpos;
+                                let chars: Vec<char> = header_snip.chars().collect();
+                                while rpos > 1 {
+                                    if let Some(c) = chars.get(rpos - 1) {
+                                        if c.is_whitespace() {
+                                            rpos -= 1;
+                                            continue;
+                                        }
+                                    }
+                                    break;
+                                }
+                                rpos
+                            });
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
                                 let help = format!("make the function `async` and {}", ret_sugg);
@@ -194,7 +207,7 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
         },
         _ => {
             let sugg = "return the output of the future directly";
-            snippet_opt(cx, output.span).map(|snip| (sugg, format!("-> {}", snip)))
+            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {}", snip)))
         },
     }
 }
