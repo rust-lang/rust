@@ -4,6 +4,6 @@ extern "Rust" {
 
 fn main() {
     unsafe {
-        miri_resolve_frame(0 as *mut _, 0); //~ ERROR Undefined Behavior: expected a pointer
+        miri_resolve_frame(0 as *mut _, 0); //~ ERROR 0x0 is not a valid pointer
     }
 }
