@@ -1957,28 +1957,28 @@ struct MutatePairDelegate<'a, 'tcx> {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
-    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let PlaceBase::Local(id) = cmt.place.base {
                 if Some(id) == self.hir_id_low {
-                    self.span_low = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                    self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
                 }
                 if Some(id) == self.hir_id_high {
-                    self.span_high = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                    self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
                 }
             }
         }
     }
 
-    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         if let PlaceBase::Local(id) = cmt.place.base {
             if Some(id) == self.hir_id_low {
-                self.span_low = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
             }
             if Some(id) == self.hir_id_high {
-                self.span_high = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
             }
         }
     }
