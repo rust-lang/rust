@@ -73,7 +73,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        self.visit_with(&mut HasTypeFlagsVisitor { flags }).is_break()
+        self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags)
     }
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
@@ -901,12 +901,17 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+struct FoundFlags;
+
 // FIXME: Optimize for checking for infer flags
 struct HasTypeFlagsVisitor {
     flags: ty::TypeFlags,
 }
 
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
+    type BreakTy = FoundFlags;
+
     fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
         debug!(
             "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
@@ -914,19 +919,31 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
             t.flags(),
             self.flags
         );
-        if t.flags().intersects(self.flags) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
+        if t.flags().intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::CONTINUE
+        }
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = r.type_flags();
         debug!("HasTypeFlagsVisitor: r={:?} r.flags={:?} self.flags={:?}", r, flags, self.flags);
-        if flags.intersects(self.flags) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::CONTINUE
+        }
     }
 
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
         debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
-        if flags.intersects(self.flags) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::CONTINUE
+        }
     }
 
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -935,7 +952,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
             predicate, predicate.inner.flags, self.flags
         );
         if predicate.inner.flags.intersects(self.flags) {
-            ControlFlow::BREAK
+            ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
         }
