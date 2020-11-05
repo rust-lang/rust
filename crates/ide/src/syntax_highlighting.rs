@@ -6,7 +6,7 @@ pub(crate) mod tags;
 #[cfg(test)]
 mod tests;
 
-use hir::{Local, Name, Semantics, VariantDef};
+use hir::{AsAssocItem, Local, Name, Semantics, VariantDef};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -746,7 +746,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
                 }
-                if func.is_assoc_item(db) && func.self_param(db).is_none() {
+                if func.as_assoc_item(db).is_some() && func.self_param(db).is_none() {
                     h |= HighlightModifier::Static;
                 }
                 return h;
