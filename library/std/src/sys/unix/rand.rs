@@ -29,7 +29,7 @@ mod imp {
         // A weak symbol allows interposition, e.g. for perf measurements that want to
         // disable randomness for consistency. Otherwise, we'll try a raw syscall.
         // (`getrandom` was added in glibc 2.25, musl 1.1.20, android API level 28)
-        weak_syscall! {
+        syscall! {
             fn getrandom(
                 buffer: *mut libc::c_void,
                 length: libc::size_t,
