@@ -7,6 +7,7 @@ use rustc_hir::{
     StmtKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::DesugaringKind;
@@ -271,11 +272,14 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
+        span: Span,
         _: HirId,
     ) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures
+            return;
+        }
+        if in_external_macro(cx.tcx.sess, span) {
             return;
         }
         for arg in iter_input_pats(decl, body) {
@@ -293,13 +297,16 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if_chain! {
+            if !in_external_macro(cx.tcx.sess, stmt.span);
             if let StmtKind::Local(ref local) = stmt.kind;
             if let PatKind::Binding(an, .., name, None) = local.pat.kind;
             if let Some(ref init) = local.init;
             if !higher::is_from_for_desugar(local);
             then {
                 if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
-                    let sugg_init = if init.span.from_expansion() {
+                    // use the macro callsite when the init span (but not the whole local span)
+                    // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
+                    let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
                         Sugg::hir_with_macro_callsite(cx, init, "..")
                     } else {
                         Sugg::hir(cx, init, "..")
@@ -310,7 +317,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                         ("", sugg_init.addr())
                     };
                     let tyopt = if let Some(ref ty) = local.ty {
-                        format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
+                        format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
                     } else {
                         String::new()
                     };
@@ -326,7 +333,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                                 "try",
                                 format!(
                                     "let {name}{tyopt} = {initref};",
-                                    name=snippet(cx, name.span, "_"),
+                                    name=snippet(cx, name.span, ".."),
                                     tyopt=tyopt,
                                     initref=initref,
                                 ),

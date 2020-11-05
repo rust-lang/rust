@@ -7,10 +7,10 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt, ScalarInt};
-use rustc_middle::{bug, span_bug};
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::convert::TryInto;
@@ -501,7 +501,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 }
 
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
-    use rustc_middle::mir::interpret::{ConstValue};
+    use rustc_middle::mir::interpret::ConstValue;
     match result.val {
         ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) => {
             match result.ty.kind() {

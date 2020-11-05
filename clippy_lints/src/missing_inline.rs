@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_lint::{self, LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** it lints if an exported function, method, trait method with default impl,
@@ -57,7 +58,7 @@ declare_clippy_lint! {
 }
 
 fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
-    let has_inline = attrs.iter().any(|a| a.has_name(sym!(inline)));
+    let has_inline = attrs.iter().any(|a| a.has_name(sym::inline));
     if !has_inline {
         span_lint(
             cx,

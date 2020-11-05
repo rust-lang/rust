@@ -225,7 +225,7 @@ declare_clippy_lint! {
     ///
     /// Good:
     /// ```rust,ignore
-    /// utils::is_type_diagnostic_item(cx, ty, sym!(vec_type))
+    /// utils::is_type_diagnostic_item(cx, ty, sym::vec_type)
     /// ```
     pub MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
     internal,
@@ -724,7 +724,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
                     expr.span,
                     "usage of `utils::match_type()` on a type diagnostic item",
                     "try",
-                    format!("utils::is_type_diagnostic_item({}, {}, sym!({}))", cx_snippet, ty_snippet, item_name),
+                    format!("utils::is_type_diagnostic_item({}, {}, sym::{})", cx_snippet, ty_snippet, item_name),
                     Applicability::MaybeIncorrect,
                 );
             }

@@ -1,0 +1,70 @@
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:10:23
+   |
+LL | static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
+   |                       ^^^^^^^^^^^^^ help: try: `Option<&i32>`
+   |
+   = note: `-D clippy::ref-option-ref` implied by `-D warnings`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:12:18
+   |
+LL | const REF_CONST: &Option<&i32> = &Some(&CONST_THRESHOLD);
+   |                  ^^^^^^^^^^^^^ help: try: `Option<&i32>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:14:25
+   |
+LL | type RefOptRefU32<'a> = &'a Option<&'a u32>;
+   |                         ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:15:25
+   |
+LL | type RefOptRef<'a, T> = &'a Option<&'a T>;
+   |                         ^^^^^^^^^^^^^^^^^ help: try: `Option<&'a T>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:17:14
+   |
+LL | fn foo(data: &Option<&u32>) {}
+   |              ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:19:23
+   |
+LL | fn bar(data: &u32) -> &Option<&u32> {
+   |                       ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:24:11
+   |
+LL |     data: &'a Option<&'a u32>,
+   |           ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:27:32
+   |
+LL | struct StructTupleRef<'a>(u32, &'a Option<&'a u32>);
+   |                                ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:31:14
+   |
+LL |     Variant2(&'a Option<&'a u32>),
+   |              ^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'a u32>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:40:14
+   |
+LL |     type A = &'static Option<&'static Self>;
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Option<&'static Self>`
+
+error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
+  --> $DIR/ref_option_ref.rs:46:12
+   |
+LL |     let x: &Option<&u32> = &None;
+   |            ^^^^^^^^^^^^^ help: try: `Option<&u32>`
+
+error: aborting due to 11 previous errors
+

@@ -10,8 +10,7 @@ use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, Span};
+use rustc_span::{sym, BytePos, Span, Symbol};
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -224,7 +223,7 @@ impl EarlyLintPass for Write {
                 .expect("path has at least one segment")
                 .ident
                 .name;
-            if trait_name == sym!(Debug) {
+            if trait_name == sym::Debug {
                 self.in_debug_impl = true;
             }
         }

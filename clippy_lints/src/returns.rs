@@ -9,6 +9,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 use crate::utils::{fn_def_id, in_macro, match_qpath, snippet_opt, span_lint_and_sugg, span_lint_and_then};
 
@@ -141,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
 }
 
 fn attr_is_cfg(attr: &Attribute) -> bool {
-    attr.meta_item_list().is_some() && attr.has_name(sym!(cfg))
+    attr.meta_item_list().is_some() && attr.has_name(sym::cfg)
 }
 
 fn check_block_return<'tcx>(cx: &LateContext<'tcx>, block: &Block<'tcx>) {

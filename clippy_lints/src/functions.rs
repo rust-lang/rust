@@ -16,6 +16,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 
@@ -473,7 +474,7 @@ fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span
         if !in_external_macro(cx.sess(), item_span);
         if let hir::FnRetTy::Return(ref ty) = decl.output;
         if let hir::TyKind::Path(ref qpath) = ty.kind;
-        if is_type_diagnostic_item(cx, hir_ty_to_ty(cx.tcx, ty), sym!(result_type));
+        if is_type_diagnostic_item(cx, hir_ty_to_ty(cx.tcx, ty), sym::result_type);
         if let Some(ref args) = last_path_segment(qpath).args;
         if let [_, hir::GenericArg::Type(ref err_ty)] = args.args;
         if let hir::TyKind::Tup(t) = err_ty.kind;

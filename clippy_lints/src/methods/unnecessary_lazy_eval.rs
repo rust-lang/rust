@@ -3,6 +3,7 @@ use crate::utils::{is_type_diagnostic_item, snippet, span_lint_and_sugg};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_span::sym;
 
 use super::UNNECESSARY_LAZY_EVALUATIONS;
 
@@ -14,8 +15,8 @@ pub(super) fn lint<'tcx>(
     args: &'tcx [hir::Expr<'_>],
     simplify_using: &str,
 ) {
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym!(option_type));
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym!(result_type));
+    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym::option_type);
+    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym::result_type);
 
     if is_option || is_result {
         if let hir::ExprKind::Closure(_, _, eid, _, _) = args[1].kind {

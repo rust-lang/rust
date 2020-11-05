@@ -7,6 +7,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{Span, Spanned};
+use rustc_span::sym;
 use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 
@@ -304,7 +305,7 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         if_chain! {
             // `.iter()` call
             if let ExprKind::MethodCall(ref iter_path, _, ref iter_args, _) = *iter;
-            if iter_path.ident.name == sym!(iter);
+            if iter_path.ident.name == sym::iter;
             // range expression in `.zip()` call: `0..x.len()`
             if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
             if is_integer_const(cx, start, 0);
