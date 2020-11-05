@@ -6,7 +6,7 @@ union Foo<'a> {
     long_live_the_unit: &'static (),
 }
 
-const FOO: &() = { //~ ERROR it is undefined behavior to use this value
+const FOO: &() = {
 //~^ ERROR encountered dangling pointer in final constant
     let y = ();
     unsafe { Foo { y: &y }.long_live_the_unit }

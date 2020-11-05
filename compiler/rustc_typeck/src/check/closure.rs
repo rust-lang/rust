@@ -605,6 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
         let ret_vid = match *ret_ty.kind() {
             ty::Infer(ty::TyVar(ret_vid)) => ret_vid,
+            ty::Error(_) => return None,
             _ => span_bug!(
                 self.tcx.def_span(expr_def_id),
                 "async fn generator return type not an inference variable"

@@ -1,0 +1,30 @@
+error[E0381]: borrow of possibly-uninitialized variable: `x`
+  --> $DIR/issue-78655.rs:3:5
+   |
+LL |     &x
+   |     ^^ use of possibly-uninitialized `x`
+
+error: encountered dangling pointer in final constant
+  --> $DIR/issue-78655.rs:1:1
+   |
+LL | / const FOO: *const u32 = {
+LL | |     let x;
+LL | |     &x
+LL | | };
+   | |__^
+
+error: could not evaluate constant pattern
+  --> $DIR/issue-78655.rs:7:9
+   |
+LL |     let FOO = FOO;
+   |         ^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/issue-78655.rs:7:9
+   |
+LL |     let FOO = FOO;
+   |         ^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

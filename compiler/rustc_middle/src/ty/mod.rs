@@ -1641,7 +1641,7 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 #[derive(Hash, HashStable)]
 pub struct WithOptConstParam<T> {
     pub did: T,
-    /// The `DefId` of the corresponding generic paramter in case `did` is
+    /// The `DefId` of the corresponding generic parameter in case `did` is
     /// a const argument.
     ///
     /// Note that even if `did` is a const argument, this may still be `None`.
