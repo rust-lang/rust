@@ -77,15 +77,15 @@ LL |         (1 | 1,) => {}
    |              ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:55:15
-   |
-LL |             | 0] => {}
-   |               ^
-
-error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:53:15
    |
 LL |             | 0
+   |               ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:55:15
+   |
+LL |             | 0] => {}
    |               ^
 
 error: unreachable pattern

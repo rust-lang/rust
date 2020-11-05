@@ -390,10 +390,11 @@ fn check_arms<'p, 'tcx>(
                 }
             }
             Useful(unreachables) => {
-                for set in unreachables {
-                    for span in set {
-                        unreachable_pattern(cx.tcx, span, id, None);
-                    }
+                let mut unreachables: Vec<_> = unreachables.into_iter().flatten().collect();
+                // Emit lints in the order in which they occur in the file.
+                unreachables.sort_unstable();
+                for span in unreachables {
+                    unreachable_pattern(cx.tcx, span, id, None);
                 }
             }
             UsefulWithWitness(_) => bug!(),
