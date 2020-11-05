@@ -15,18 +15,24 @@
 /// ```
 ///
 /// In general, any cast that can be performed via ascribing the type can also be done using `as`,
-/// so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (Note: `let x: u32
-/// = 123` would be best in that situation). The same is not true in the other direction, however,
+/// so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (note: `let x: u32
+/// = 123` would be best in that situation). The same is not true in the other direction, however;
 /// explicitly using `as` allows a few more coercions that aren't allowed implicitly, such as
 /// changing the type of a raw pointer or turning closures into raw pointers.
 ///
-/// Other places `as` is used include as extra syntax for [`crate`] and `use`, to change the name
-/// something is imported as.
+/// `as` is also used to rename imports in [`use`] and [`extern crate`] statements:
 ///
-/// For more information on what `as` is capable of, see the [Reference]
+/// ```
+/// # #[allow(unused_imports)]
+/// use std::{mem as memory, net as network};
+/// // Now you can use the names `memory` and `network` to refer to `std::mem` and `std::net`.
+/// ```
+///
+/// For more information on what `as` is capable of, see the [Reference].
 ///
 /// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
-/// [`crate`]: keyword.crate.html
+/// [`use`]: keyword.use.html
+/// [`extern crate`]: keyword.crate.html
 mod as_keyword {}
 
 #[doc(keyword = "break")]
@@ -397,6 +403,7 @@ mod enum_keyword {}
 /// [Rust book]:
 /// ../book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
 /// [Reference]: ../reference/items/external-blocks.html
+/// [`crate`]: keyword.crate.html
 mod extern_keyword {}
 
 #[doc(keyword = "false")]
