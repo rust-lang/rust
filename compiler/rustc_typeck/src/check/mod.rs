@@ -933,14 +933,15 @@ fn fn_sig_suggestion<'tcx>(
         .iter()
         .enumerate()
         .map(|(i, ty)| {
+            let fn_has_self_parameter = assoc.fn_has_self_parameter();
             Some(match ty.kind() {
-                ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
+                ty::Param(_) if fn_has_self_parameter && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = match &format!("{}", reg)[..] {
                         "'_" | "" => String::new(),
                         reg => format!("{} ", reg),
                     };
-                    if assoc.fn_has_self_parameter {
+                    if fn_has_self_parameter {
                         match ref_ty.kind() {
                             ty::Param(param) if param.name == kw::SelfUpper => {
                                 format!("&{}{}self", reg, mutability.prefix_str())
@@ -953,7 +954,7 @@ fn fn_sig_suggestion<'tcx>(
                     }
                 }
                 _ => {
-                    if assoc.fn_has_self_parameter && i == 0 {
+                    if fn_has_self_parameter && i == 0 {
                         format!("self: {}", ty)
                     } else {
                         format!("_: {}", ty)
@@ -987,7 +988,7 @@ fn fn_sig_suggestion<'tcx>(
 /// structured suggestion.
 fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
     match assoc.kind {
-        ty::AssocKind::Fn => {
+        hir::AssocItemKind::Fn { .. } => {
             // We skip the binder here because the binder would deanonymize all
             // late-bound regions, and we don't want method signatures to show up
             // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
@@ -1000,8 +1001,8 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
                 assoc,
             )
         }
-        ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
-        ty::AssocKind::Const => {
+        hir::AssocItemKind::Type => format!("type {} = Type;", assoc.ident),
+        hir::AssocItemKind::Const => {
             let ty = tcx.type_of(assoc.def_id);
             let val = expr::ty_kind_suggestion(ty).unwrap_or("value");
             format!("const {}: {} = {};", assoc.ident, ty, val)

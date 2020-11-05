@@ -950,7 +950,7 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- match trait_item.kind {
-            ty::AssocKind::Const => {
+            hir::AssocItemKind::Const => {
                 let rendered = rustc_hir_pretty::to_string(
                     &(&self.tcx.hir() as &dyn intravisit::Map<'_>),
                     |s| s.print_trait_item(ast_item)
@@ -963,7 +963,7 @@ impl EncodeContext<'a, 'tcx> {
                     rendered_const,
                 )
             }
-            ty::AssocKind::Fn => {
+            hir::AssocItemKind::Fn { has_self } => {
                 let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
                     let param_names = match *m {
                         hir::TraitFn::Required(ref names) => {
@@ -984,10 +984,10 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
-                    has_self: trait_item.fn_has_self_parameter,
+                    has_self
                 }))
             }
-            ty::AssocKind::Type => {
+            hir::AssocItemKind::Type => {
                 self.encode_explicit_item_bounds(def_id);
                 EntryKind::AssocType(container)
             }
@@ -1000,16 +1000,16 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match trait_item.kind {
-            ty::AssocKind::Const | ty::AssocKind::Fn => {
+            hir::AssocItemKind::Const | hir::AssocItemKind::Fn { .. } => {
                 self.encode_item_type(def_id);
             }
-            ty::AssocKind::Type => {
+            hir::AssocItemKind::Type => {
                 if trait_item.defaultness.has_value() {
                     self.encode_item_type(def_id);
                 }
             }
         }
-        if trait_item.kind == ty::AssocKind::Fn {
+        if trait_item.kind.is_fn() {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }
@@ -1044,7 +1044,7 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- match impl_item.kind {
-            ty::AssocKind::Const => {
+            hir::AssocItemKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
                     let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
 
@@ -1056,7 +1056,7 @@ impl EncodeContext<'a, 'tcx> {
                     bug!()
                 }
             }
-            ty::AssocKind::Fn => {
+            hir::AssocItemKind::Fn { has_self } => {
                 let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
                     FnData {
                         asyncness: sig.header.asyncness,
@@ -1069,10 +1069,10 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::AssocFn(self.lazy(AssocFnData {
                     fn_data,
                     container,
-                    has_self: impl_item.fn_has_self_parameter,
+                    has_self
                 }))
             }
-            ty::AssocKind::Type => EntryKind::AssocType(container)
+            hir::AssocItemKind::Type => EntryKind::AssocType(container)
         });
         record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.span[def_id] <- ast_item.span);
@@ -1082,7 +1082,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
-        if impl_item.kind == ty::AssocKind::Fn {
+        if impl_item.kind.is_fn() {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
         }

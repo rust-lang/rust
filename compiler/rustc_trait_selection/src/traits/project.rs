@@ -21,6 +21,7 @@ use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
@@ -1479,7 +1480,7 @@ fn assoc_ty_def(
     // cycle error if the specialization graph is currently being built.
     let impl_node = specialization_graph::Node::Impl(impl_def_id);
     for item in impl_node.items(tcx) {
-        if matches!(item.kind, ty::AssocKind::Type)
+        if matches!(item.kind, hir::AssocItemKind::Type)
             && tcx.hygienic_eq(item.ident, assoc_ty_name, trait_def_id)
         {
             return Ok(specialization_graph::LeafDef {
@@ -1491,7 +1492,7 @@ fn assoc_ty_def(
     }
 
     let ancestors = trait_def.ancestors(tcx, impl_def_id)?;
-    if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_ty_name, ty::AssocKind::Type) {
+    if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_ty_name, hir::AssocItemKind::Type) {
         Ok(assoc_item)
     } else {
         // This is saying that neither the trait nor

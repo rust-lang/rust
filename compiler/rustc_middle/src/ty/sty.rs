@@ -1138,7 +1138,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     ) -> ProjectionTy<'tcx> {
         let item_def_id = tcx
             .associated_items(trait_ref.def_id)
-            .find_by_name_and_kind(tcx, item_name, ty::AssocKind::Type, trait_ref.def_id)
+            .find_by_name_and_kind(tcx, item_name, hir::AssocItemKind::Type, trait_ref.def_id)
             .unwrap()
             .def_id;
 

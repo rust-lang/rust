@@ -820,10 +820,12 @@ pub(super) fn check_specialization_validity<'tcx>(
     impl_id: DefId,
     impl_item: &hir::ImplItem<'_>,
 ) {
-    let kind = match impl_item.kind {
-        hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
-        hir::ImplItemKind::Fn(..) => ty::AssocKind::Fn,
-        hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
+    let kind = match &impl_item.kind {
+        hir::ImplItemKind::Const(..) => hir::AssocItemKind::Const,
+        hir::ImplItemKind::Fn(sig, _) => {
+            hir::AssocItemKind::Fn { has_self: sig.decl.implicit_self.has_implicit_self() }
+        }
+        hir::ImplItemKind::TyAlias(_) => hir::AssocItemKind::Type,
     };
 
     let ancestors = match trait_def.ancestors(tcx, impl_id) {
@@ -938,7 +940,7 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
             match impl_item.kind {
                 hir::ImplItemKind::Const(..) => {
                     // Find associated const definition.
-                    if ty_trait_item.kind == ty::AssocKind::Const {
+                    if ty_trait_item.kind == hir::AssocItemKind::Const {
                         compare_const_impl(
                             tcx,
                             &ty_impl_item,
@@ -967,7 +969,7 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
                 }
                 hir::ImplItemKind::Fn(..) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                    if ty_trait_item.kind == ty::AssocKind::Fn {
+                    if ty_trait_item.kind.is_fn() {
                         compare_impl_method(
                             tcx,
                             &ty_impl_item,
@@ -995,7 +997,7 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
                 }
                 hir::ImplItemKind::TyAlias(_) => {
                     let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                    if ty_trait_item.kind == ty::AssocKind::Type {
+                    if ty_trait_item.kind == hir::AssocItemKind::Type {
                         compare_ty_impl(
                             tcx,
                             &ty_impl_item,

@@ -90,7 +90,7 @@ fn object_safety_violations_for_trait(
     let mut violations: Vec<_> = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
-        .filter(|item| item.kind == ty::AssocKind::Fn)
+        .filter(|item| item.kind.is_fn())
         .filter_map(|item| {
             object_safety_violation_for_method(tcx, trait_def_id, &item)
                 .map(|(code, span)| ObjectSafetyViolation::Method(item.ident.name, code, span))
@@ -128,7 +128,7 @@ fn object_safety_violations_for_trait(
     violations.extend(
         tcx.associated_items(trait_def_id)
             .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Const)
+            .filter(|item| item.kind == hir::AssocItemKind::Const)
             .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name, item.ident.span)),
     );
 
@@ -260,7 +260,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     tcx.associated_items(trait_def_id)
         .in_definition_order()
-        .filter(|item| item.kind == ty::AssocKind::Type)
+        .filter(|item| item.kind == hir::AssocItemKind::Type)
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id))
         .map(|&(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
         .filter_map(|predicate| predicate_references_self(tcx, predicate))
@@ -393,7 +393,7 @@ fn virtual_call_violation_for_method<'tcx>(
     let sig = tcx.fn_sig(method.def_id);
 
     // The method's first parameter must be named `self`
-    if !method.fn_has_self_parameter {
+    if !method.fn_has_self_parameter() {
         // We'll attempt to provide a structured suggestion for `Self: Sized`.
         let sugg =
             tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(
@@ -560,7 +560,7 @@ fn object_ty_for_trait<'tcx>(
                 .in_definition_order()
                 .map(move |item| (super_trait_ref, item))
         })
-        .filter(|(_, item)| item.kind == ty::AssocKind::Type)
+        .filter(|(_, item)| item.kind == hir::AssocItemKind::Type)
         .collect::<Vec<_>>();
 
     // existential predicates need to be in a specific order

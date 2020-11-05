@@ -1144,7 +1144,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
 impl Clean<Item> for ty::AssocItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let kind = match self.kind {
-            ty::AssocKind::Const => {
+            hir::AssocItemKind::Const => {
                 let ty = cx.tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
                     Some(inline::print_inlined_const(cx, self.def_id))
@@ -1153,14 +1153,14 @@ impl Clean<Item> for ty::AssocItem {
                 };
                 AssocConstItem(ty.clean(cx), default)
             }
-            ty::AssocKind::Fn => {
+            hir::AssocItemKind::Fn { has_self } => {
                 let generics =
                     (cx.tcx.generics_of(self.def_id), cx.tcx.explicit_predicates_of(self.def_id))
                         .clean(cx);
                 let sig = cx.tcx.fn_sig(self.def_id);
                 let mut decl = (self.def_id, sig).clean(cx);
 
-                if self.fn_has_self_parameter {
+                if has_self {
                     let self_ty = match self.container {
                         ty::ImplContainer(def_id) => cx.tcx.type_of(def_id),
                         ty::TraitContainer(_) => cx.tcx.types.self_param,
@@ -1226,7 +1226,7 @@ impl Clean<Item> for ty::AssocItem {
                     })
                 }
             }
-            ty::AssocKind::Type => {
+            hir::AssocItemKind::Type => {
                 let my_name = self.ident.name.clean(cx);
 
                 if let ty::TraitContainer(_) = self.container {

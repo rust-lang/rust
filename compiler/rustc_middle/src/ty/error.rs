@@ -751,9 +751,7 @@ fn foo(&self) -> Self::T { String::new() }
         let methods: Vec<(Span, String)> = items
             .items
             .iter()
-            .filter(|(name, item)| {
-                ty::AssocKind::Fn == item.kind && Some(**name) != current_method_ident
-            })
+            .filter(|(name, item)| item.kind.is_fn() && Some(**name) != current_method_ident)
             .filter_map(|(_, item)| {
                 let method = self.fn_sig(item.def_id);
                 match *method.output().skip_binder().kind() {

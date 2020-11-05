@@ -1,4 +1,5 @@
 use rustc_errors::ErrorReported;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
@@ -187,7 +188,7 @@ fn resolve_associated_item<'tcx>(
             // performs (i.e. that the definition's type in the `impl` matches
             // the declaration in the `trait`), so that we can cheaply check
             // here if it failed, instead of approximating it.
-            if trait_item.kind == ty::AssocKind::Const
+            if trait_item.kind == hir::AssocItemKind::Const
                 && trait_item.def_id != leaf_def.item.def_id
                 && leaf_def.item.def_id.is_local()
             {

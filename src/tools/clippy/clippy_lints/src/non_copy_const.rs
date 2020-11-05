@@ -5,11 +5,13 @@
 use std::ptr;
 
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp};
+use rustc_hir::{
+    AssocItemKind, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
+};
 use rustc_infer::traits::specialization_graph;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::{AssocKind, Ty};
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
@@ -196,7 +198,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         // assuming a assoc const is not meant to be a interior mutable type.
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
                         if let Some(of_assoc_item) = specialization_graph::Node::Trait(of_trait_def_id)
-                            .item(cx.tcx, impl_item.ident, AssocKind::Const, of_trait_def_id);
+                            .item(cx.tcx, impl_item.ident, AssocItemKind::Const, of_trait_def_id);
                         if cx
                             .tcx
                             .layout_of(cx.tcx.param_env(of_trait_def_id).and(

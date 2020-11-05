@@ -8,9 +8,10 @@
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, AssocItemContainer, TyCtxt, TypeFoldable};
 
 use rustc_hir::def_id::DefId;
+use rustc_hir::AssocItemKind;
 
 use rustc_span::symbol::sym;
 
@@ -77,7 +78,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             _ => unimplemented!("Not possible??"),
         };
         match assoc_item.kind {
-            AssocKind::Type => {}
+            AssocItemKind::Type => {}
             _ => unimplemented!("Not possible??"),
         }
         let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
@@ -114,7 +115,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .tcx
             .associated_items(def_id)
             .in_definition_order()
-            .filter(|i| i.kind == AssocKind::Type)
+            .filter(|i| i.kind == AssocItemKind::Type)
             .map(|i| chalk_ir::AssocTypeId(i.def_id))
             .collect();
 
@@ -279,7 +280,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .tcx
             .associated_items(def_id)
             .in_definition_order()
-            .filter(|i| i.kind == AssocKind::Type)
+            .filter(|i| i.kind == AssocItemKind::Type)
             .map(|i| chalk_solve::rust_ir::AssociatedTyValueId(i.def_id))
             .collect();
 
@@ -415,7 +416,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             }
         };
         match assoc_item.kind {
-            AssocKind::Type => {}
+            AssocItemKind::Type => {}
             _ => unimplemented!("Not possible??"),
         }
 

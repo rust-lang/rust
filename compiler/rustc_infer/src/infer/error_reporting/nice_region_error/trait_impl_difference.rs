@@ -10,7 +10,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::{MultiSpan, Span};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -65,7 +65,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let assoc_item = self.tcx().associated_item(trait_def_id);
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
         match assoc_item.kind {
-            ty::AssocKind::Fn => {
+            hir::AssocItemKind::Fn { .. } => {
                 let hir = self.tcx().hir();
                 if let Some(hir_id) =
                     assoc_item.def_id.as_local().map(|id| hir.local_def_id_to_hir_id(id))

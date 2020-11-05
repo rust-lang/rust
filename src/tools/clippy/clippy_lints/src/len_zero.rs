@@ -186,8 +186,8 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
             .iter()
             .flat_map(|&i| cx.tcx.associated_items(i).in_definition_order())
             .any(|i| {
-                i.kind == ty::AssocKind::Fn
-                    && i.fn_has_self_parameter
+                i.kind.is_fn()
+                    && i.fn_has_self_parameter()
                     && i.ident.name == sym!(is_empty)
                     && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
@@ -337,7 +337,7 @@ fn is_empty_array(expr: &Expr<'_>) -> bool {
 fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
-        if let ty::AssocKind::Fn = item.kind {
+        if item.kind.is_fn() {
             if item.ident.name.as_str() == "is_empty" {
                 let sig = cx.tcx.fn_sig(item.def_id);
                 let ty = sig.skip_binder();

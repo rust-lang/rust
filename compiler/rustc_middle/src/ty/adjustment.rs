@@ -125,7 +125,7 @@ impl<'tcx> OverloadedDeref<'tcx> {
         let method_def_id = tcx
             .associated_items(trait_def_id)
             .in_definition_order()
-            .find(|m| m.kind == ty::AssocKind::Fn)
+            .find(|m| m.kind.is_fn())
             .unwrap()
             .def_id;
         (method_def_id, tcx.mk_substs_trait(source, &[]))

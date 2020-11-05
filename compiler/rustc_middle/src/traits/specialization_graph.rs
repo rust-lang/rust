@@ -5,6 +5,7 @@ use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_span::symbol::Ident;
 
@@ -95,7 +96,7 @@ impl<'tcx> Node {
         &self,
         tcx: TyCtxt<'tcx>,
         trait_item_name: Ident,
-        trait_item_kind: ty::AssocKind,
+        trait_item_kind: hir::AssocItemKind,
         trait_def_id: DefId,
     ) -> Option<ty::AssocItem> {
         tcx.associated_items(self.def_id())
@@ -187,7 +188,7 @@ impl<'tcx> Ancestors<'tcx> {
         mut self,
         tcx: TyCtxt<'tcx>,
         trait_item_name: Ident,
-        trait_item_kind: ty::AssocKind,
+        trait_item_kind: hir::AssocItemKind,
     ) -> Option<LeafDef> {
         let trait_def_id = self.trait_def_id;
         let mut finalizing_node = None;

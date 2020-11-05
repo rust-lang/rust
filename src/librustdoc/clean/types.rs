@@ -21,7 +21,7 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::{AssocKind, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym, Ident, Symbol, SymbolStr};
@@ -331,11 +331,14 @@ impl ItemKind {
         }
     }
 
-    crate fn as_assoc_kind(&self) -> Option<AssocKind> {
+    crate fn as_assoc_kind(&self) -> Option<hir::AssocItemKind> {
         match *self {
-            ItemKind::AssocConstItem(..) => Some(AssocKind::Const),
-            ItemKind::AssocTypeItem(..) => Some(AssocKind::Type),
-            ItemKind::TyMethodItem(..) | ItemKind::MethodItem(..) => Some(AssocKind::Fn),
+            ItemKind::AssocConstItem(..) => Some(hir::AssocItemKind::Const),
+            ItemKind::AssocTypeItem(..) => Some(hir::AssocItemKind::Type),
+            ItemKind::TyMethodItem(Function { ref decl, .. })
+            | ItemKind::MethodItem(Function { ref decl, .. }, _) => {
+                Some(hir::AssocItemKind::Fn { has_self: decl.self_type().is_some() })
+            }
             _ => None,
         }
     }

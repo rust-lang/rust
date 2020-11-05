@@ -401,12 +401,12 @@ fn check_associated_item(
         };
 
         match item.kind {
-            ty::AssocKind::Const => {
+            hir::AssocItemKind::Const => {
                 let ty = fcx.tcx.type_of(item.def_id);
                 let ty = fcx.normalize_associated_types_in(span, ty);
                 fcx.register_wf_obligation(ty.into(), span, code.clone());
             }
-            ty::AssocKind::Fn => {
+            hir::AssocItemKind::Fn { .. } => {
                 let sig = fcx.tcx.fn_sig(item.def_id);
                 let sig = fcx.normalize_associated_types_in(span, sig);
                 let hir_sig = sig_if_method.expect("bad signature for method");
@@ -421,7 +421,7 @@ fn check_associated_item(
                 );
                 check_method_receiver(fcx, hir_sig, &item, self_ty);
             }
-            ty::AssocKind::Type => {
+            hir::AssocItemKind::Type => {
                 if let ty::AssocItemContainer::TraitContainer(_) = item.container {
                     check_associated_type_bounds(fcx, item, span)
                 }
@@ -1058,7 +1058,7 @@ fn check_method_receiver<'fcx, 'tcx>(
     // Check that the method has a valid receiver type, given the type `Self`.
     debug!("check_method_receiver({:?}, self_ty={:?})", method, self_ty);
 
-    if !method.fn_has_self_parameter {
+    if !method.fn_has_self_parameter() {
         return;
     }
 

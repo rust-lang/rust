@@ -2607,11 +2607,32 @@ pub struct ImplItemRef<'hir> {
     pub defaultness: Defaultness,
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Debug, HashStable_Generic)]
 pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
+}
+
+impl AssocItemKind {
+    pub fn is_fn(&self) -> bool {
+        matches!(self, AssocItemKind::Fn { .. })
+    }
+
+    pub fn namespace(&self) -> Namespace {
+        match *self {
+            AssocItemKind::Type => Namespace::TypeNS,
+            AssocItemKind::Const | AssocItemKind::Fn { .. } => Namespace::ValueNS,
+        }
+    }
+
+    pub fn as_def_kind(&self) -> DefKind {
+        match self {
+            AssocItemKind::Const => DefKind::AssocConst,
+            AssocItemKind::Fn { .. } => DefKind::AssocFn,
+            AssocItemKind::Type => DefKind::AssocTy,
+        }
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]

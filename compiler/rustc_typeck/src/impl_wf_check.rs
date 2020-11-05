@@ -133,14 +133,14 @@ fn enforce_impl_params_are_constrained(
         .flat_map(|def_id| {
             let item = tcx.associated_item(def_id);
             match item.kind {
-                ty::AssocKind::Type => {
+                hir::AssocItemKind::Type => {
                     if item.defaultness.has_value() {
                         cgp::parameters_for(&tcx.type_of(def_id), true)
                     } else {
                         Vec::new()
                     }
                 }
-                ty::AssocKind::Fn | ty::AssocKind::Const => Vec::new(),
+                hir::AssocItemKind::Fn { .. } | hir::AssocItemKind::Const => Vec::new(),
             }
         })
         .collect();

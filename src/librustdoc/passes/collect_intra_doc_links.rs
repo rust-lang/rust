@@ -310,9 +310,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         impl_,
                     )
                     .map(|item| match item.kind {
-                        ty::AssocKind::Fn => "method",
-                        ty::AssocKind::Const => "associatedconstant",
-                        ty::AssocKind::Type => "associatedtype",
+                        hir::AssocItemKind::Fn { .. } => "method",
+                        hir::AssocItemKind::Const => "associatedconstant",
+                        hir::AssocItemKind::Type => "associatedtype",
                     })
                     .map(|out| {
                         (
@@ -524,9 +524,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
                 if let Some((kind, id)) = assoc_item {
                     let out = match kind {
-                        ty::AssocKind::Fn => "method",
-                        ty::AssocKind::Const => "associatedconstant",
-                        ty::AssocKind::Type => "associatedtype",
+                        hir::AssocItemKind::Fn { .. } => "method",
+                        hir::AssocItemKind::Const => "associatedconstant",
+                        hir::AssocItemKind::Type => "associatedtype",
                     };
                     Some(if extra_fragment.is_some() {
                         Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(ty_res)))
@@ -588,9 +588,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, did)
                 .map(|item| {
                     let kind = match item.kind {
-                        ty::AssocKind::Const => "associatedconstant",
-                        ty::AssocKind::Type => "associatedtype",
-                        ty::AssocKind::Fn => {
+                        hir::AssocItemKind::Const => "associatedconstant",
+                        hir::AssocItemKind::Type => "associatedtype",
+                        hir::AssocItemKind::Fn { .. } => {
                             if item.defaultness.has_value() {
                                 "method"
                             } else {
@@ -665,7 +665,7 @@ fn resolve_associated_trait_item(
     item_name: Symbol,
     ns: Namespace,
     cx: &DocContext<'_>,
-) -> Option<(ty::AssocKind, DefId)> {
+) -> Option<(hir::AssocItemKind, DefId)> {
     let ty = cx.tcx.type_of(did);
     // First consider blanket impls: `impl From<T> for T`
     let implicit_impls = crate::clean::get_auto_trait_and_blanket_impls(cx, ty, did);

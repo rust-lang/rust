@@ -905,7 +905,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) -> bool {
         match method.kind {
-            ty::AssocKind::Fn => {
+            hir::AssocItemKind::Fn { .. } => {
                 let fty = self.tcx.fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
@@ -1558,10 +1558,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // In Path mode (i.e., resolving a value like `T::next`), consider any
         // associated value (i.e., methods, constants) but not types.
         match self.mode {
-            Mode::MethodCall => item.fn_has_self_parameter,
+            Mode::MethodCall => item.fn_has_self_parameter(),
             Mode::Path => match item.kind {
-                ty::AssocKind::Type => false,
-                ty::AssocKind::Fn | ty::AssocKind::Const => true,
+                hir::AssocItemKind::Type => false,
+                hir::AssocItemKind::Fn { .. } | hir::AssocItemKind::Const => true,
             },
         }
         // FIXME -- check for types that deref to `Self`,
@@ -1582,7 +1582,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         impl_ty: Ty<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
-        if item.kind == ty::AssocKind::Fn && self.mode == Mode::MethodCall {
+        if item.kind.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, substs);
             (sig.inputs()[0], Some(sig.output()))
         } else {

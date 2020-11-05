@@ -510,7 +510,7 @@ fn compare_self_type<'tcx>(
         })
     };
 
-    match (trait_m.fn_has_self_parameter, impl_m.fn_has_self_parameter) {
+    match (trait_m.fn_has_self_parameter(), impl_m.fn_has_self_parameter()) {
         (false, false) | (true, true) => {}
 
         (false, true) => {
@@ -1292,8 +1292,8 @@ pub fn check_type_bounds<'tcx>(
 
 fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
     match impl_item.kind {
-        ty::AssocKind::Const => "const",
-        ty::AssocKind::Fn => "method",
-        ty::AssocKind::Type => "type",
+        hir::AssocItemKind::Const => "const",
+        hir::AssocItemKind::Fn { .. } => "method",
+        hir::AssocItemKind::Type => "type",
     }
 }

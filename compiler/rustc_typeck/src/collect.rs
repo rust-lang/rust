@@ -2866,7 +2866,7 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
                     .associated_items(trait_def_id)
                     .filter_by_name_unhygienic(impl_item.ident.name)
                     .find(move |trait_item| {
-                        trait_item.kind == ty::AssocKind::Fn
+                        trait_item.kind.is_fn()
                             && tcx.hygienic_eq(impl_item.ident, trait_item.ident, trait_def_id)
                     })
                 {

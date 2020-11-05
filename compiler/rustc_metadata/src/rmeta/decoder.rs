@@ -1264,13 +1264,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let parent = self.local_def_id(def_key.parent.unwrap());
         let ident = self.item_ident(id, sess);
 
-        let (kind, container, has_self) = match self.kind(id) {
-            EntryKind::AssocConst(container, _, _) => (ty::AssocKind::Const, container, false),
+        let (kind, container) = match self.kind(id) {
+            EntryKind::AssocConst(container, _, _) => (hir::AssocItemKind::Const, container),
             EntryKind::AssocFn(data) => {
                 let data = data.decode(self);
-                (ty::AssocKind::Fn, data.container, data.has_self)
+                (hir::AssocItemKind::Fn { has_self: data.has_self }, data.container)
             }
-            EntryKind::AssocType(container) => (ty::AssocKind::Type, container, false),
+            EntryKind::AssocType(container) => (hir::AssocItemKind::Type, container),
             _ => bug!("cannot get associated-item of `{:?}`", def_key),
         };
 
@@ -1281,7 +1281,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             defaultness: container.defaultness(),
             def_id: self.local_def_id(id),
             container: container.with_def_id(parent),
-            fn_has_self_parameter: has_self,
         }
     }
 

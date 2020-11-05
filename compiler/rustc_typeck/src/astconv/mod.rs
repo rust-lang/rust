@@ -749,7 +749,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn trait_defines_associated_type_named(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
         self.tcx()
             .associated_items(trait_def_id)
-            .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_def_id)
+            .find_by_name_and_kind(self.tcx(), assoc_name, hir::AssocItemKind::Type, trait_def_id)
             .is_some()
     }
 
@@ -981,7 +981,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)
             .find(|i| {
-                i.kind == ty::AssocKind::Type && i.ident.normalize_to_macros_2_0() == assoc_ident
+                i.kind == hir::AssocItemKind::Type
+                    && i.ident.normalize_to_macros_2_0() == assoc_ident
             })
             .expect("missing associated type");
 
@@ -1164,7 +1165,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
-                                .filter(|item| item.kind == ty::AssocKind::Type)
+                                .filter(|item| item.kind == hir::AssocItemKind::Type)
                                 .map(|item| item.def_id),
                         );
                     }
@@ -1438,7 +1439,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let bound_span = self
                     .tcx()
                     .associated_items(bound_id)
-                    .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, bound_id)
+                    .find_by_name_and_kind(
+                        self.tcx(),
+                        assoc_name,
+                        hir::AssocItemKind::Type,
+                        bound_id,
+                    )
                     .and_then(|item| self.tcx().hir().span_if_local(item.def_id));
 
                 if let Some(bound_span) = bound_span {

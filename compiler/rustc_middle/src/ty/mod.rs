@@ -189,52 +189,30 @@ pub struct AssocItem {
     pub def_id: DefId,
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    pub kind: AssocKind,
+    pub kind: hir::AssocItemKind,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
     pub container: AssocItemContainer,
-
-    /// Whether this is a method with an explicit self
-    /// as its first parameter, allowing method calls.
-    pub fn_has_self_parameter: bool,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash)]
-pub enum AssocKind {
-    Const,
-    Fn,
-    Type,
-}
-
-impl AssocKind {
-    pub fn namespace(&self) -> Namespace {
-        match *self {
-            ty::AssocKind::Type => Namespace::TypeNS,
-            ty::AssocKind::Const | ty::AssocKind::Fn => Namespace::ValueNS,
-        }
-    }
-
-    pub fn as_def_kind(&self) -> DefKind {
-        match self {
-            AssocKind::Const => DefKind::AssocConst,
-            AssocKind::Fn => DefKind::AssocFn,
-            AssocKind::Type => DefKind::AssocTy,
-        }
-    }
 }
 
 impl AssocItem {
+    /// Whether this is a method with an explicit self
+    /// as its first parameter, allowing method calls.
+    pub fn fn_has_self_parameter(&self) -> bool {
+        matches!(self.kind, hir::AssocItemKind::Fn { has_self: true })
+    }
+
     pub fn signature(&self, tcx: TyCtxt<'_>) -> String {
         match self.kind {
-            ty::AssocKind::Fn => {
+            hir::AssocItemKind::Fn { .. } => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
-            ty::AssocKind::Type => format!("type {};", self.ident),
-            ty::AssocKind::Const => {
+            hir::AssocItemKind::Type => format!("type {};", self.ident),
+            hir::AssocItemKind::Const => {
                 format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
             }
         }
@@ -293,12 +271,12 @@ impl<'tcx> AssociatedItems<'tcx> {
             .filter(move |item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
     }
 
-    /// Returns the associated item with the given name and `AssocKind`, if one exists.
+    /// Returns the associated item with the given name and `hir::AssocItemKind`, if one exists.
     pub fn find_by_name_and_kind(
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,
-        kind: AssocKind,
+        kind: hir::AssocItemKind,
         parent_def_id: DefId,
     ) -> Option<&ty::AssocItem> {
         self.filter_by_name_unhygienic(ident.name)
@@ -2865,7 +2843,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
+            .filter(|item| item.kind.is_fn() && item.defaultness.has_value())
     }
 
     fn item_name_from_hir(self, def_id: DefId) -> Option<Ident> {

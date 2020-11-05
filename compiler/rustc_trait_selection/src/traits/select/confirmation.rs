@@ -7,6 +7,7 @@
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
@@ -454,9 +455,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let assoc_types: Vec<_> = tcx
             .associated_items(trait_predicate.def_id())
             .in_definition_order()
-            .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.def_id) } else { None },
-            )
+            .filter_map(|item| {
+                if item.kind == hir::AssocItemKind::Type { Some(item.def_id) } else { None }
+            })
             .collect();
 
         for assoc_type in assoc_types {

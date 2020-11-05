@@ -83,20 +83,14 @@ fn associated_item_from_trait_item_ref(
     trait_item_ref: &hir::TraitItemRef,
 ) -> ty::AssocItem {
     let def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
-    let (kind, has_self) = match trait_item_ref.kind {
-        hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
-        hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
-    };
 
     ty::AssocItem {
         ident: trait_item_ref.ident,
-        kind,
+        kind: trait_item_ref.kind,
         vis: tcx.visibility(def_id),
         defaultness: trait_item_ref.defaultness,
         def_id: def_id.to_def_id(),
         container: ty::TraitContainer(parent_def_id.to_def_id()),
-        fn_has_self_parameter: has_self,
     }
 }
 
@@ -106,20 +100,14 @@ fn associated_item_from_impl_item_ref(
     impl_item_ref: &hir::ImplItemRef<'_>,
 ) -> ty::AssocItem {
     let def_id = tcx.hir().local_def_id(impl_item_ref.id.hir_id);
-    let (kind, has_self) = match impl_item_ref.kind {
-        hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
-        hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
-        hir::AssocItemKind::Type => (ty::AssocKind::Type, false),
-    };
 
     ty::AssocItem {
         ident: impl_item_ref.ident,
-        kind,
+        kind: impl_item_ref.kind,
         vis: tcx.visibility(def_id),
         defaultness: impl_item_ref.defaultness,
         def_id: def_id.to_def_id(),
         container: ty::ImplContainer(parent_def_id.to_def_id()),
-        fn_has_self_parameter: has_self,
     }
 }
 

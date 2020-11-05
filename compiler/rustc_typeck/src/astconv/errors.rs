@@ -174,9 +174,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let all_candidate_names: Vec<_> = all_candidates()
             .map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
             .flatten()
-            .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.ident.name) } else { None },
-            )
+            .filter_map(|item| {
+                if item.kind == hir::AssocItemKind::Type { Some(item.ident.name) } else { None }
+            })
             .collect();
 
         if let (Some(suggested_name), true) = (

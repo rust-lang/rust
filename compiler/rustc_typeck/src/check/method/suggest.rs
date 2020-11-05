@@ -158,8 +158,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let path = self.tcx.def_path_str(trait_ref.def_id);
 
                             let ty = match item.kind {
-                                ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
-                                ty::AssocKind::Fn => self
+                                hir::AssocItemKind::Const | hir::AssocItemKind::Type => rcvr_ty,
+                                hir::AssocItemKind::Fn { .. } => self
                                     .tcx
                                     .fn_sig(item.def_id)
                                     .inputs()
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self
                         .associated_item(info.def_id, item_name, Namespace::ValueNS)
                         .filter(|item| {
-                            if let ty::AssocKind::Fn = item.kind {
+                            if item.kind.is_fn() {
                                 let id = item
                                     .def_id
                                     .as_local()
@@ -1429,14 +1429,14 @@ fn print_disambiguation_help(
     err: &mut DiagnosticBuilder<'_>,
     trait_name: String,
     rcvr_ty: Ty<'_>,
-    kind: ty::AssocKind,
+    kind: hir::AssocItemKind,
     def_id: DefId,
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
 ) {
     let mut applicability = Applicability::MachineApplicable;
-    let sugg_args = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
+    let sugg_args = if let (hir::AssocItemKind::Fn { .. }, Some(args)) = (kind, args) {
         format!(
             "({}{})",
             if rcvr_ty.is_region_ptr() {

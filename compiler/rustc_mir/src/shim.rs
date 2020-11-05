@@ -58,7 +58,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
             let call_mut = tcx
                 .associated_items(fn_mut)
                 .in_definition_order()
-                .find(|it| it.kind == ty::AssocKind::Fn)
+                .find(|it| it.kind.is_fn())
                 .unwrap()
                 .def_id;
 
