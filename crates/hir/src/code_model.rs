@@ -789,11 +789,7 @@ impl Function {
     }
 
     /// whether this function is associated with some trait/impl
-    pub fn is_associated(self, db: &dyn HirDatabase) -> bool {
-        if self.self_param(db).is_some() {
-            return false;
-        }
-
+    pub fn is_assoc_item(self, db: &dyn HirDatabase) -> bool {
         let fn_parent_kind = self
             .source(db)
             .value

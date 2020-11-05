@@ -746,7 +746,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
                 }
-                if func.is_associated(db) {
+                if func.is_assoc_item(db) && func.self_param(db).is_none() {
                     h |= HighlightModifier::Static;
                 }
                 return h;
