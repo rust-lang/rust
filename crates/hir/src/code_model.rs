@@ -41,7 +41,7 @@ use rustc_hash::FxHashSet;
 use stdx::impl_from;
 use syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, SmolStr,
+    AstNode, SmolStr, SyntaxKind,
 };
 use tt::{Ident, Leaf, Literal, TokenTree};
 
@@ -788,8 +788,25 @@ impl Function {
         db.function_data(self.id).has_body
     }
 
-    pub fn source(self, db: &dyn HirDatabase) -> InFile<ast::Fn> {
-        self.id.lookup(db.upcast()).source(db.upcast())
+    /// whether this function is associated with some trait/impl
+    pub fn is_associated(self, db: &dyn HirDatabase) -> bool {
+        if let Some(_) = self.self_param(db) {
+            return false;
+        }
+
+        let fn_parent_kind = self
+            .source(db)
+            .value
+            .syntax()
+            .parent()
+            .and_then(|s| s.parent())
+            .and_then(|s| Some(s.kind()));
+
+        match fn_parent_kind {
+            Some(SyntaxKind::IMPL) => true,
+            Some(SyntaxKind::TRAIT) => true,
+            _ => false,
+        }
     }
 }
 

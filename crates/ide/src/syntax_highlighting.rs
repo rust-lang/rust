@@ -746,20 +746,8 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
                 }
-                if let None = func.self_param(db) {
-                    // if enclosing IMPL or TRAIT exists, this is a static method
-                    let fn_parent_kind = func
-                        .source(db)
-                        .value
-                        .syntax()
-                        .parent()
-                        .and_then(|s| s.parent())
-                        .and_then(|s| Some(s.kind()));
-                    if let Some(SyntaxKind::IMPL) = fn_parent_kind {
-                        h |= HighlightModifier::Static;
-                    } else if let Some(SyntaxKind::TRAIT) = fn_parent_kind {
-                        h |= HighlightModifier::Static;
-                    }
+                if func.is_associated(db) {
+                    h |= HighlightModifier::Static;
                 }
                 return h;
             }
