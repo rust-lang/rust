@@ -27,6 +27,8 @@ mod bignum;
 mod dec2flt;
 mod flt2dec;
 
+mod nan;
+
 /// Adds the attribute to all items in the block.
 macro_rules! cfg_block {
     ($(#[$attr:meta]{$($it:item)*})*) => {$($(
