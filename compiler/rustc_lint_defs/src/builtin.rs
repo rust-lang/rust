@@ -1891,6 +1891,17 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `non_autolinks` lint detects when a URL could be written using
+    /// only angle brackets. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#non_autolinks
+    pub NON_AUTOLINKS,
+    Warn,
+    "detects URLs that could be written using only angle brackets"
+}
+
+declare_lint! {
     /// The `where_clauses_object_safety` lint detects for [object safety] of
     /// [where clauses].
     ///
@@ -2795,6 +2806,7 @@ declare_lint_pass! {
         MISSING_DOC_CODE_EXAMPLES,
         INVALID_HTML_TAGS,
         PRIVATE_DOC_TESTS,
+        NON_AUTOLINKS,
         WHERE_CLAUSES_OBJECT_SAFETY,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,

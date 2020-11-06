@@ -1,9 +1,9 @@
 //! Parsing of GCC-style Language-Specific Data Area (LSDA)
 //! For details see:
-//!   http://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/ehframechpt.html
-//!   http://mentorembedded.github.io/cxx-abi/exceptions.pdf
-//!   http://www.airs.com/blog/archives/460
-//!   http://www.airs.com/blog/archives/464
+//!  * <http://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/ehframechpt.html>
+//!  * <http://mentorembedded.github.io/cxx-abi/exceptions.pdf>
+//!  * <http://www.airs.com/blog/archives/460>
+//!  * <http://www.airs.com/blog/archives/464>
 //!
 //! A reference implementation may be found in the GCC source tree
 //! (`<root>/libgcc/unwind-c.c` as of this writing).

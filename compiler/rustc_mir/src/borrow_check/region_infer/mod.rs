@@ -1364,7 +1364,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// terms that the "longer free region" `'a` outlived the "shorter free region" `'b`.
     ///
     /// More details can be found in this blog post by Niko:
-    /// http://smallcultfollowing.com/babysteps/blog/2019/01/17/polonius-and-region-errors/
+    /// <http://smallcultfollowing.com/babysteps/blog/2019/01/17/polonius-and-region-errors/>
     ///
     /// In the canonical example
     ///

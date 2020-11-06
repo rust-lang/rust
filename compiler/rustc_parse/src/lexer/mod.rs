@@ -511,7 +511,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Note: It was decided to not add a test case, because it would be to big.
-    /// https://github.com/rust-lang/rust/pull/50296#issuecomment-392135180
+    /// <https://github.com/rust-lang/rust/pull/50296#issuecomment-392135180>
     fn report_too_many_hashes(&self, start: BytePos, found: usize) -> ! {
         self.fatal_span_(
             start,

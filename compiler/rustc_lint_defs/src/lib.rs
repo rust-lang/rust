@@ -99,13 +99,13 @@ pub struct Lint {
     /// The name is written with underscores, e.g., "unused_imports".
     /// On the command line, underscores become dashes.
     ///
-    /// See https://rustc-dev-guide.rust-lang.org/diagnostics.html#lint-naming
+    /// See <https://rustc-dev-guide.rust-lang.org/diagnostics.html#lint-naming>
     /// for naming guidelines.
     pub name: &'static str,
 
     /// Default level for the lint.
     ///
-    /// See https://rustc-dev-guide.rust-lang.org/diagnostics.html#diagnostic-levels
+    /// See <https://rustc-dev-guide.rust-lang.org/diagnostics.html#diagnostic-levels>
     /// for guidelines on choosing a default level.
     pub default_level: Level,
 
@@ -330,8 +330,8 @@ impl LintBuffer {
 
 /// Declares a static item of type `&'static Lint`.
 ///
-/// See https://rustc-dev-guide.rust-lang.org/diagnostics.html for documentation
-/// and guidelines on writing lints.
+/// See <https://rustc-dev-guide.rust-lang.org/diagnostics.html> for
+/// documentation and guidelines on writing lints.
 ///
 /// The macro call should start with a doc comment explaining the lint
 /// which will be embedded in the rustc user documentation book. It should
