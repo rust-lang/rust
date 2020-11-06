@@ -85,6 +85,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
         let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
         let output = Command::new(objdump.clone())
             .arg("--disassemble")
+            .arg("--no-show-raw-insn")
             .arg(&me)
             .output()
             .unwrap_or_else(|_| panic!("failed to execute objdump. OBJDUMP={}", objdump));
@@ -156,20 +157,13 @@ fn parse(output: &str) -> HashSet<Function> {
                     .skip_while(|s| *s == "lock") // skip x86-specific prefix
                     .collect::<Vec<String>>()
             } else {
-                // objdump
+                // objdump with --no-show-raw-insn
                 // Each line of instructions should look like:
                 //
-                //      $rel_offset: ab cd ef 00    $instruction...
-                let expected_len = if cfg!(target_arch = "arm") || cfg!(target_arch = "aarch64") {
-                    8
-                } else {
-                    2
-                };
-
+                //      $rel_offset:       $instruction...
                 instruction
                     .split_whitespace()
                     .skip(1)
-                    .skip_while(|s| s.len() == expected_len && usize::from_str_radix(s, 16).is_ok())
                     .skip_while(|s| *s == "lock") // skip x86-specific prefix
                     .map(std::string::ToString::to_string)
                     .collect::<Vec<String>>()
