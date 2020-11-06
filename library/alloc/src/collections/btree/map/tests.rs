@@ -42,7 +42,7 @@ fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>
     }
 }
 
-impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
+impl<K, V> BTreeMap<K, V> {
     /// Panics if the map (or the code navigating it) is corrupted.
     fn check(&self)
     where
@@ -54,14 +54,14 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
             assert!(root_node.ascend().is_err());
             root_node.assert_back_pointers();
 
-            let counted = root_node.assert_ascending();
-            assert_eq!(self.length, counted);
             assert_eq!(self.length, root_node.calc_length());
 
             root_node.assert_min_len(if root_node.height() > 0 { 1 } else { 0 });
         } else {
             assert_eq!(self.length, 0);
         }
+
+        self.assert_ascending();
     }
 
     /// Returns the height of the root, if any.
@@ -79,10 +79,28 @@ impl<'a, K: 'a, V: 'a> BTreeMap<K, V> {
             String::from("not yet allocated")
         }
     }
+
+    /// Asserts that the keys are in strictly ascending order.
+    fn assert_ascending(&self)
+    where
+        K: Copy + Debug + Ord,
+    {
+        let mut num_seen = 0;
+        let mut keys = self.keys();
+        if let Some(mut previous) = keys.next() {
+            num_seen = 1;
+            for next in keys {
+                assert!(previous < next, "{:?} >= {:?}", previous, next);
+                previous = next;
+                num_seen += 1;
+            }
+        }
+        assert_eq!(num_seen, self.len());
+    }
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
-    pub fn assert_min_len(self, min_len: usize) {
+    fn assert_min_len(self, min_len: usize) {
         assert!(self.len() >= min_len, "{} < {}", self.len(), min_len);
         if let node::ForceResult::Internal(node) = self.force() {
             for idx in 0..=node.len() {
