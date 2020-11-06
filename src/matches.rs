@@ -302,8 +302,6 @@ fn block_can_be_flattened<'a>(
             if !is_unsafe_block(block)
                 && !context.inside_macro()
                 && is_simple_block(context, block, Some(&expr.attrs))
-                // Don't flatten a block containing a macro invocation,
-                // since it may expand to a statement
                 && !stmt_is_expr_mac(&block.stmts[0]) =>
         {
             Some(&*block)
