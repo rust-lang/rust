@@ -379,7 +379,7 @@ pub fn run_tests(config: Config) {
         }
         Err(e) => {
             // We don't know if tests passed or not, but if there was an error
-            // during testing we don't want to just suceeed (we may not have
+            // during testing we don't want to just succeed (we may not have
             // tested something), so fail.
             //
             // This should realistically "never" happen, so don't try to make

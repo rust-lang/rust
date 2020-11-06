@@ -14,8 +14,7 @@ tidy () {
       --quiet yes \
       "$@" \
       >/dev/null \
-  # tidy exits with code 1 if there were any warnings
-  || [ $? -eq 1 ]
+  || [ $? -eq 1 ] # tidy exits with code 1 if there were any warnings
 }
 
 find "$indir" -type f -name '*.html' -print0 \

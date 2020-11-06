@@ -2394,12 +2394,14 @@ impl<'test> TestCx<'test> {
             .stdout(Stdio::piped())
             .spawn()
             .expect("failed to run `diff`");
-        Command::new("delta")
+        let status = Command::new("delta")
+            .arg("--paging=never")
             .stdin(diff_pid.stdout.unwrap())
             .spawn()
             .expect("delta not found")
             .wait()
             .unwrap();
+        assert!(status.success());
     }
 
     fn get_lines<P: AsRef<Path>>(
