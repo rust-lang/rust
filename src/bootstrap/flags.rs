@@ -57,6 +57,7 @@ pub enum Subcommand {
     Clippy {
         fix: bool,
         paths: Vec<PathBuf>,
+        only: Option<String>,
     },
     Fix {
         paths: Vec<PathBuf>,
@@ -276,6 +277,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             }
             "clippy" => {
                 opts.optflag("", "fix", "automatically apply lint suggestions");
+                opts.optopt("", "only", "only run specified clippy lints", "clippy_lint_name");
             }
             "doc" => {
                 opts.optflag("", "open", "open the docs in a browser");
@@ -517,7 +519,11 @@ Arguments:
             "check" | "c" => {
                 Subcommand::Check { paths, all_targets: matches.opt_present("all-targets") }
             }
-            "clippy" => Subcommand::Clippy { paths, fix: matches.opt_present("fix") },
+            "clippy" => Subcommand::Clippy {
+                paths,
+                fix: matches.opt_present("fix"),
+                only: matches.opt_str("only"),
+            },
             "fix" => Subcommand::Fix { paths },
             "test" | "t" => Subcommand::Test {
                 paths,

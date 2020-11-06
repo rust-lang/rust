@@ -20,9 +20,9 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         arr.iter().copied().map(String::from)
     }
 
-    if let Subcommand::Clippy { fix, .. } = builder.config.cmd {
+    if let Subcommand::Clippy { fix, only, .. } = &builder.config.cmd {
         let mut args = vec![];
-        if fix {
+        if *fix {
             #[rustfmt::skip]
             args.extend(strings(&[
                 "--fix", "-Zunstable-options",
@@ -33,6 +33,14 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
             ]));
         }
         args.extend(strings(&["--", "--cap-lints", "warn"]));
+        // only run specified lints
+        if let Some(only) = only {
+            args.push("-Aclippy::all".into());
+            let allow_lints: Vec<_> =
+                only.split(",").map(|lintname| format!("-Wclippy::{}", lintname)).collect();
+
+            args.extend(allow_lints);
+        }
         args
     } else {
         vec![]
