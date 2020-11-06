@@ -506,6 +506,19 @@ impl<T: Clone> Ctx<T> {
 }
 
 #[test]
+fn doctest_infer_function_return_type() {
+    check_doc_test(
+        "infer_function_return_type",
+        r#####"
+fn foo() { 4<|>2i32 }
+"#####,
+        r#####"
+fn foo() -> i32 { 42i32 }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_local_variable() {
     check_doc_test(
         "inline_local_variable",
