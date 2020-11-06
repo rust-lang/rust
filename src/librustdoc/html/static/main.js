@@ -1976,6 +1976,12 @@ function defocusSearchBar() {
         index = buildIndex(rawSearchIndex);
         startSearch();
 
+        function convertHTMLToPlaintext(html) {
+            var tmp = document.createElemet("div");
+            tmp.innerHTML = html;
+            return tmp.innerText;
+        }
+
         // Draw a convenient sidebar of known crates if we have a listing
         if (rootPath === "../" || rootPath === "./") {
             var sidebar = document.getElementsByClassName("sidebar-elems")[0];
@@ -2001,7 +2007,7 @@ function defocusSearchBar() {
                     }
                     var link = document.createElement("a");
                     link.href = rootPath + crates[i] + "/index.html";
-                    link.title = rawSearchIndex[crates[i]].doc;
+                    link.title = convertHTMLToPlaintext(rawSearchIndex[crates[i]].doc);
                     link.className = klass;
                     link.textContent = crates[i];
 
