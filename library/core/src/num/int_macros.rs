@@ -274,7 +274,8 @@ assert_eq!(m, ", $swapped, ");
         }
 
         doc_comment! {
-            concat!("Reverses the bit pattern of the integer.
+            concat!("Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
+                second least-significant bit becomes second most-significant bit, etc.
 
 # Examples
 
@@ -285,6 +286,7 @@ let n = ", $swap_op, stringify!($SelfT), ";
 let m = n.reverse_bits();
 
 assert_eq!(m, ", $reversed, ");
+assert_eq!(0, 0", stringify!($SelfT), ".reverse_bits());
 ```"),
             #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
