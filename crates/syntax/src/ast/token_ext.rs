@@ -8,11 +8,11 @@ use std::{
 use rustc_lexer::unescape::{unescape_literal, Mode};
 
 use crate::{
-    ast::{AstToken, Comment, RawString, String, Whitespace},
+    ast::{self, AstToken},
     TextRange, TextSize,
 };
 
-impl Comment {
+impl ast::Comment {
     pub fn kind(&self) -> CommentKind {
         kind_by_prefix(self.text())
     }
@@ -80,7 +80,7 @@ fn kind_by_prefix(text: &str) -> CommentKind {
     panic!("bad comment text: {:?}", text)
 }
 
-impl Whitespace {
+impl ast::Whitespace {
     pub fn spans_multiple_lines(&self) -> bool {
         let text = self.text();
         text.find('\n').map_or(false, |idx| text[idx + 1..].contains('\n'))
@@ -138,19 +138,19 @@ pub trait HasQuotes: AstToken {
     }
 }
 
-impl HasQuotes for String {}
-impl HasQuotes for RawString {}
+impl HasQuotes for ast::String {}
+impl HasQuotes for ast::RawString {}
 
 pub trait HasStringValue: HasQuotes {
     fn value(&self) -> Option<Cow<'_, str>>;
 }
 
-impl HasStringValue for String {
+impl HasStringValue for ast::String {
     fn value(&self) -> Option<Cow<'_, str>> {
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
-        let mut buf = std::string::String::with_capacity(text.len());
+        let mut buf = String::with_capacity(text.len());
         let mut has_error = false;
         unescape_literal(text, Mode::Str, &mut |_, unescaped_char| match unescaped_char {
             Ok(c) => buf.push(c),
@@ -166,7 +166,7 @@ impl HasStringValue for String {
     }
 }
 
-impl HasStringValue for RawString {
+impl HasStringValue for ast::RawString {
     fn value(&self) -> Option<Cow<'_, str>> {
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
@@ -174,7 +174,7 @@ impl HasStringValue for RawString {
     }
 }
 
-impl RawString {
+impl ast::RawString {
     pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
         let contents_range = self.text_range_between_quotes()?;
         assert!(TextRange::up_to(contents_range.len()).contains_range(range));
@@ -500,7 +500,7 @@ pub trait HasFormatSpecifier: AstToken {
     }
 }
 
-impl HasFormatSpecifier for String {
+impl HasFormatSpecifier for ast::String {
     fn char_ranges(
         &self,
     ) -> Option<Vec<(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)>> {
@@ -521,7 +521,7 @@ impl HasFormatSpecifier for String {
     }
 }
 
-impl HasFormatSpecifier for RawString {
+impl HasFormatSpecifier for ast::RawString {
     fn char_ranges(
         &self,
     ) -> Option<Vec<(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)>> {
