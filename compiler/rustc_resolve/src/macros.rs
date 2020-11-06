@@ -11,6 +11,7 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::struct_span_err;
 use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
 use rustc_expand::compile_declarative_macro;
@@ -29,6 +30,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_span::hygiene::{AstPass, MacroKind};
+use std::cell::Cell;
 use std::{mem, ptr};
 
 type Res = def::Res<NodeId>;
@@ -39,7 +41,7 @@ type Res = def::Res<NodeId>;
 pub struct MacroRulesBinding<'a> {
     crate binding: &'a NameBinding<'a>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
-    crate parent_macro_rules_scope: MacroRulesScope<'a>,
+    crate parent_macro_rules_scope: MacroRulesScopeRef<'a>,
     crate ident: Ident,
 }
 
@@ -58,6 +60,14 @@ pub enum MacroRulesScope<'a> {
     /// create a `macro_rules!` macro definition.
     Invocation(ExpnId),
 }
+
+/// `macro_rules!` scopes are always kept by reference and inside a cell.
+/// The reason is that we update all scopes with value `MacroRulesScope::Invocation(invoc_id)`
+/// in-place immediately after `invoc_id` gets expanded.
+/// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
+/// which usually grow lineraly with the number of macro invocations
+/// in a module (including derives) and hurt performance.
+pub(crate) type MacroRulesScopeRef<'a> = PtrKey<'a, Cell<MacroRulesScope<'a>>>;
 
 // Macro namespace is separated into two sub-namespaces, one for bang macros and
 // one for attribute-like macros (attributes, derives).
@@ -162,6 +172,22 @@ impl<'a> ResolverExpand for Resolver<'a> {
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
         let output_macro_rules_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
+
+        // Update all `macro_rules` scopes referring to this invocation. This is an optimization
+        // used to avoid long scope chains, see the comments on `MacroRulesScopeRef`.
+        if let Some(invocation_scopes) = self.invocation_macro_rules_scopes.remove(&expansion) {
+            for invocation_scope in &invocation_scopes {
+                invocation_scope.set(output_macro_rules_scope.get());
+            }
+            // All `macro_rules` scopes that previously referred to `expansion`
+            // are now rerouted to its output scope, if it's also an invocation.
+            if let MacroRulesScope::Invocation(invoc_id) = output_macro_rules_scope.get() {
+                self.invocation_macro_rules_scopes
+                    .entry(invoc_id)
+                    .or_default()
+                    .extend(invocation_scopes);
+            }
+        }
 
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
     }
@@ -655,7 +681,7 @@ impl<'a> Resolver<'a> {
                         }
                         result
                     }
-                    Scope::MacroRules(macro_rules_scope) => match macro_rules_scope {
+                    Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
                         MacroRulesScope::Binding(macro_rules_binding)
                             if ident == macro_rules_binding.ident =>
                         {

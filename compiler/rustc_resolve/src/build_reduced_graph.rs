@@ -7,7 +7,7 @@
 
 use crate::def_collector::collect_definitions;
 use crate::imports::{Import, ImportKind};
-use crate::macros::{MacroRulesBinding, MacroRulesScope};
+use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
 use crate::{CrateLint, Determinacy, PathResult, ResolutionError, VisResolutionError};
 use crate::{
@@ -209,7 +209,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         fragment: &AstFragment,
         parent_scope: ParentScope<'a>,
-    ) -> MacroRulesScope<'a> {
+    ) -> MacroRulesScopeRef<'a> {
         collect_definitions(self, fragment, parent_scope.expansion);
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
@@ -220,7 +220,8 @@ impl<'a> Resolver<'a> {
         let def_id = module.def_id().expect("unpopulated module without a def-id");
         for child in self.cstore().item_children_untracked(def_id, self.session) {
             let child = child.map_id(|_| panic!("unexpected id"));
-            BuildReducedGraphVisitor { r: self, parent_scope: ParentScope::module(module) }
+            let parent_scope = ParentScope::module(module, self);
+            BuildReducedGraphVisitor { r: self, parent_scope }
                 .build_reduced_graph_for_external_crate_res(child);
         }
     }
@@ -1154,7 +1155,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         false
     }
 
-    fn visit_invoc(&mut self, id: NodeId) -> MacroRulesScope<'a> {
+    fn visit_invoc(&mut self, id: NodeId) -> MacroRulesScopeRef<'a> {
         let invoc_id = id.placeholder_to_expn_id();
 
         self.parent_scope.module.unexpanded_invocations.borrow_mut().insert(invoc_id);
@@ -1162,7 +1163,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
         assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
 
-        MacroRulesScope::Invocation(invoc_id)
+        let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id));
+        self.r.invocation_macro_rules_scopes.entry(invoc_id).or_default().insert(scope);
+        scope
     }
 
     fn proc_macro_stub(&self, item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
@@ -1196,7 +1199,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn define_macro(&mut self, item: &ast::Item) -> MacroRulesScope<'a> {
+    fn define_macro(&mut self, item: &ast::Item) -> MacroRulesScopeRef<'a> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
         let def_id = self.r.local_def_id(item.id);
@@ -1239,11 +1242,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_unused_macro(ident, def_id, item.id, span);
             }
             self.r.visibilities.insert(def_id, vis);
-            MacroRulesScope::Binding(self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
-                parent_macro_rules_scope: parent_scope.macro_rules,
-                binding,
-                ident,
-            }))
+            self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
+                self.r.arenas.alloc_macro_rules_binding(MacroRulesBinding {
+                    parent_macro_rules_scope: parent_scope.macro_rules,
+                    binding,
+                    ident,
+                }),
+            ))
         } else {
             let module = parent_scope.module;
             let vis = match item.kind {
