@@ -1064,7 +1064,8 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             fx.bcx.ins().call_indirect(f_sig, f, &[data]);
 
-            let ret_val = CValue::const_val(fx, ret.layout(), 0);
+            let layout = ret.layout();
+            let ret_val = CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
             ret.write_cvalue(fx, ret_val);
         };
 
