@@ -1,4 +1,4 @@
-use syntax::{ast, ast::Radix, AstNode};
+use syntax::{ast, ast::Radix, AstToken};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 
@@ -14,15 +14,13 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // const _: i32 = 0b1010;
 // ```
 pub(crate) fn convert_integer_literal(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let literal = ctx.find_node_at_offset::<ast::Literal>()?;
-    let (radix, value) = literal.as_int_number()?.value()?;
+    let literal = ctx.find_node_at_offset::<ast::Literal>()?.as_int_number()?;
+    let radix = literal.radix();
+    let value = literal.value()?;
+    let suffix = literal.suffix();
 
     let range = literal.syntax().text_range();
     let group_id = GroupLabel("Convert integer base".into());
-    let suffix = match literal.kind() {
-        ast::LiteralKind::IntNumber { suffix } => suffix,
-        _ => return None,
-    };
 
     for &target_radix in Radix::ALL {
         if target_radix == radix {
@@ -36,16 +34,11 @@ pub(crate) fn convert_integer_literal(acc: &mut Assists, ctx: &AssistContext) ->
             Radix::Hexadecimal => format!("0x{:X}", value),
         };
 
-        let label = format!(
-            "Convert {} to {}{}",
-            literal,
-            converted,
-            suffix.as_deref().unwrap_or_default()
-        );
+        let label = format!("Convert {} to {}{}", literal, converted, suffix.unwrap_or_default());
 
         // Appends the type suffix back into the new literal if it exists.
-        if let Some(suffix) = &suffix {
-            converted.push_str(&suffix);
+        if let Some(suffix) = suffix {
+            converted.push_str(suffix);
         }
 
         acc.add_group(

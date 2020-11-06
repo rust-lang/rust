@@ -166,6 +166,7 @@ impl HasStringValue for ast::String {
     }
 }
 
+// FIXME: merge `ast::RawString` and `ast::String`.
 impl HasStringValue for ast::RawString {
     fn value(&self) -> Option<Cow<'_, str>> {
         let text = self.text().as_str();
@@ -544,18 +545,25 @@ impl ast::IntNumber {
         "i8", "i16", "i32", "i64", "i128", "isize",
     ];
 
-    // FIXME: should probably introduce string token type?
-    // https://github.com/rust-analyzer/rust-analyzer/issues/6308
-    pub fn value(&self) -> Option<(Radix, u128)> {
+    pub fn radix(&self) -> Radix {
+        match self.text().get(..2).unwrap_or_default() {
+            "0b" => Radix::Binary,
+            "0o" => Radix::Octal,
+            "0x" => Radix::Hexadecimal,
+            _ => Radix::Decimal,
+        }
+    }
+
+    pub fn value(&self) -> Option<u128> {
         let token = self.syntax();
 
         let mut text = token.text().as_str();
-        for suffix in ast::IntNumber::SUFFIXES {
-            if let Some(without_suffix) = text.strip_suffix(suffix) {
-                text = without_suffix;
-                break;
-            }
+        if let Some(suffix) = self.suffix() {
+            text = &text[..text.len() - suffix.len()]
         }
+
+        let radix = self.radix();
+        text = &text[radix.prefix_len()..];
 
         let buf;
         if text.contains("_") {
@@ -563,10 +571,20 @@ impl ast::IntNumber {
             text = buf.as_str();
         };
 
-        let radix = Radix::identify(text)?;
-        let digits = &text[radix.prefix_len()..];
-        let value = u128::from_str_radix(digits, radix as u32).ok()?;
-        Some((radix, value))
+        let value = u128::from_str_radix(text, radix as u32).ok()?;
+        Some(value)
+    }
+
+    pub fn suffix(&self) -> Option<&str> {
+        let text = self.text();
+        // FIXME: don't check a fixed set of suffixes, `1_0_1___lol` is valid
+        // syntax, suffix is `lol`.
+        ast::IntNumber::SUFFIXES.iter().find_map(|suffix| {
+            if text.ends_with(suffix) {
+                return Some(&text[text.len() - suffix.len()..]);
+            }
+            None
+        })
     }
 }
 
@@ -585,27 +603,6 @@ pub enum Radix {
 impl Radix {
     pub const ALL: &'static [Radix] =
         &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
-
-    fn identify(literal_text: &str) -> Option<Self> {
-        // We cannot express a literal in anything other than decimal in under 3 characters, so we return here if possible.
-        if literal_text.len() < 3 && literal_text.chars().all(|c| c.is_digit(10)) {
-            return Some(Self::Decimal);
-        }
-
-        let res = match &literal_text[..2] {
-            "0b" => Radix::Binary,
-            "0o" => Radix::Octal,
-            "0x" => Radix::Hexadecimal,
-            _ => Radix::Decimal,
-        };
-
-        // Checks that all characters after the base prefix are all valid digits for that base.
-        if literal_text[res.prefix_len()..].chars().all(|c| c.is_digit(res as u32)) {
-            Some(res)
-        } else {
-            None
-        }
-    }
 
     const fn prefix_len(&self) -> usize {
         match self {
