@@ -273,7 +273,9 @@ impl FormatReport {
     }
 }
 
-#[deprecated(note = "Use FormatReportFormatter instead")]
+/// Deprecated - Use FormatReportFormatter instead
+// https://github.com/rust-lang/rust/issues/78625
+// https://github.com/rust-lang/rust/issues/39935
 impl fmt::Display for FormatReport {
     // Prints all the formatting errors.
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
