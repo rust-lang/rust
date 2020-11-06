@@ -121,6 +121,7 @@ fn bench_file_to_socket_copy(b: &mut test::Bencher) {
 #[cfg(any(target_os = "linux", target_os = "android"))]
 #[bench]
 fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
+    use super::CopyResult;
     use crate::io::ErrorKind;
     use crate::process::{ChildStdin, ChildStdout};
     use crate::sys_common::FromInner;
@@ -134,6 +135,21 @@ fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
     let mut remote_end = crate::net::TcpStream::connect(acceptor.local_addr().unwrap()).unwrap();
 
     let local_end = crate::sync::Arc::new(acceptor.accept().unwrap().0);
+
+    // the data flow in this benchmark:
+    //
+    //                      socket(tx)  local_source
+    // remote_end (write)  +-------->   (splice to)
+    //                                  write_end
+    //                                     +
+    //                                     |
+    //                                     | pipe
+    //                                     v
+    //                                  read_end
+    // remote_end (read)   <---------+  (splice to) *
+    //                      socket(rx)  local_end
+    //
+    // * benchmark loop using io::copy
 
     crate::thread::spawn(move || {
         let mut sink_buf = vec![0u8; 1024 * 1024];
@@ -155,6 +171,24 @@ fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
             };
         }
     });
+
+    // check that splice works, otherwise the benchmark would hang
+    let probe = super::sendfile_splice(
+        super::SpliceMode::Splice,
+        local_end.as_raw_fd(),
+        write_end.as_raw_fd(),
+        1,
+    );
+
+    match probe {
+        CopyResult::Ended(Ok(1)) => {
+            // splice works
+        }
+        _ => {
+            eprintln!("splice failed, skipping benchmark");
+            return;
+        }
+    }
 
     let local_source = local_end.clone();
     crate::thread::spawn(move || {

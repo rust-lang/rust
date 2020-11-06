@@ -58,6 +58,7 @@ use crate::os::unix::fs::FileTypeExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
+use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::cvt;
 
 #[cfg(test)]
@@ -440,7 +441,6 @@ pub(super) enum CopyResult {
 /// If the initial file offset was 0 then `Fallback` will only contain `0`.
 pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
-    use crate::sync::atomic::{AtomicBool, Ordering};
 
     // Kernel prior to 4.5 don't have copy_file_range
     // We store the availability in a global to avoid unnecessary syscalls
@@ -534,6 +534,30 @@ enum SpliceMode {
 /// performs splice or sendfile between file descriptors
 /// Does _not_ fall back to a generic copy loop.
 fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> CopyResult {
+    static HAS_SENDFILE: AtomicBool = AtomicBool::new(true);
+    static HAS_SPLICE: AtomicBool = AtomicBool::new(true);
+
+    syscall! {
+        fn splice(
+            srcfd: libc::c_int,
+            src_offset: *const i64,
+            dstfd: libc::c_int,
+            dst_offset: *const i64,
+            len: libc::size_t,
+            flags: libc::c_int
+        ) -> libc::ssize_t
+    }
+
+    match mode {
+        SpliceMode::Sendfile if !HAS_SENDFILE.load(Ordering::Relaxed) => {
+            return CopyResult::Fallback(0);
+        }
+        SpliceMode::Splice if !HAS_SPLICE.load(Ordering::Relaxed) => {
+            return CopyResult::Fallback(0);
+        }
+        _ => (),
+    }
+
     let mut written = 0u64;
     while written < len {
         let chunk_size = crate::cmp::min(len - written, 0x7ffff000_u64) as usize;
@@ -543,7 +567,7 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
                 cvt(unsafe { libc::sendfile(writer, reader, ptr::null_mut(), chunk_size) })
             }
             SpliceMode::Splice => cvt(unsafe {
-                libc::splice(reader, ptr::null_mut(), writer, ptr::null_mut(), chunk_size, 0)
+                splice(reader, ptr::null_mut(), writer, ptr::null_mut(), chunk_size, 0)
             }),
         };
 
@@ -552,8 +576,18 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 return match err.raw_os_error() {
-                    Some(os_err) if os_err == libc::EINVAL => {
-                        // splice/sendfile do not support this particular file descritor (EINVAL)
+                    Some(libc::ENOSYS | libc::EPERM) => {
+                        // syscall not supported (ENOSYS)
+                        // syscall is disallowed, e.g. by seccomp (EPERM)
+                        match mode {
+                            SpliceMode::Sendfile => HAS_SENDFILE.store(false, Ordering::Relaxed),
+                            SpliceMode::Splice => HAS_SPLICE.store(false, Ordering::Relaxed),
+                        }
+                        assert_eq!(written, 0);
+                        CopyResult::Fallback(0)
+                    }
+                    Some(libc::EINVAL) => {
+                        // splice/sendfile do not support this particular file descriptor (EINVAL)
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
