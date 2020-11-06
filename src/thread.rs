@@ -443,6 +443,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 return false;
             });
         }
+        // Set the thread into a terminated state in the data-race detector
+        data_race.thread_terminated();
         // Check if we need to unblock any threads.
         for (i, thread) in self.threads.iter_enumerated_mut() {
             if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
@@ -452,7 +454,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                 thread.state = ThreadState::Enabled;
             }
         }
-        data_race.thread_terminated(self.active_thread);
         return free_tls_statics;
     }
 

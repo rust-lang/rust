@@ -20,7 +20,7 @@ use std::{
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::abi::Size;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use crate::{
     MiriEvalContext, MiriEvalContextExt,
@@ -662,7 +662,7 @@ impl VClockAlloc {
             let (index, clocks) = self.global.current_thread_state();
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (_,range) in alloc_ranges.iter_mut(pointer.offset, len) {
-                if range.read_race_detect(&*clocks, index) == Err(DataRace) {
+                if let Err(DataRace) = range.read_race_detect(&*clocks, index) {
                     // Report data-race
                     return Self::report_data_race(
                         &self.global,range, "READ", false, pointer, len
@@ -674,18 +674,17 @@ impl VClockAlloc {
             Ok(())
         }
     }
-    /// Detect data-races for an unsychronized write operation, will not perform
-    ///  data-race threads if `multi-threaded` is false, either due to no threads
-    ///  being created or if it is temporarily disabled during a racy read or write
-    ///  operation
-    pub fn write<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
+
+
+    // Shared code for detecting data-races on unique access to a section of memory
+    fn unique_access<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size, action: &str) -> InterpResult<'tcx> {
         if self.global.multi_threaded.get() {
             let (index, clocks) = self.global.current_thread_state();
             for (_,range) in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
-                if range.write_race_detect(&*clocks, index) == Err(DataRace) {
+                if let Err(DataRace) = range.write_race_detect(&*clocks, index) {
                     // Report data-race
                     return Self::report_data_race(
-                        &self.global, range, "WRITE", false, pointer, len
+                        &self.global, range, action, false, pointer, len
                     );
                 }
             }
@@ -694,25 +693,20 @@ impl VClockAlloc {
             Ok(())
         }
     }
+
+    /// Detect data-races for an unsychronized write operation, will not perform
+    ///  data-race threads if `multi-threaded` is false, either due to no threads
+    ///  being created or if it is temporarily disabled during a racy read or write
+    ///  operation
+    pub fn write<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
+        self.unique_access(pointer, len, "Write")
+    }
     /// Detect data-races for an unsychronized deallocate operation, will not perform
     ///  data-race threads if `multi-threaded` is false, either due to no threads
     ///  being created or if it is temporarily disabled during a racy read or write
     ///  operation
     pub fn deallocate<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
-        if self.global.multi_threaded.get() {
-            let (index, clocks) = self.global.current_thread_state();
-            for (_,range) in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
-                if range.write_race_detect(&*clocks, index) == Err(DataRace) {
-                    // Report data-race
-                    return Self::report_data_race(
-                        &self.global, range, "DEALLOCATE", false, pointer, len
-                    );
-                }
-            }
-           Ok(())
-        }else{
-            Ok(())
-        }
+        self.unique_access(pointer, len, "Deallocate")
     }
 }
 
@@ -773,6 +767,8 @@ struct ThreadExtraState {
     /// The current vector index in use by the
     ///  thread currently, this is set to None
     ///  after the vector index has been re-used
+    ///  and hence the value will never need to be
+    ///  read during data-race reporting
     vector_index: Option<VectorIdx>,
 
     /// The name of the thread, updated for better
@@ -782,10 +778,8 @@ struct ThreadExtraState {
     
     /// Thread termination vector clock, this
     ///  is set on thread termination and is used
-    ///  for joining on threads that have already
-    ///  terminated. This should be used first
-    ///  on joining as there is the possibility
-    ///  that `vector_index` is None in some cases
+    ///  for joining on threads since the vector_index
+    ///  may be re-used when the join operation occurs
     termination_vector_clock: Option<VClock>,
 }
 
@@ -820,10 +814,26 @@ pub struct GlobalState {
     current_index: Cell<VectorIdx>,
 
     /// Potential vector indices that could be re-used on thread creation
-    ///  values are inserted here on thread termination, vector index values
-    ///  are then re-used once all the termination event happens-before all
-    ///  existing thread-clocks
+    ///  values are inserted here on after the thread has terminated and
+    ///  been joined with, and hence may potentially become free
+    ///  for use as the index for a new thread.
+    /// Elements in this set may still require the vector index to
+    ///  report data-races, and can only be re-used after all
+    ///  active vector-clocks catch up with the threads timestamp.
     reuse_candidates: RefCell<FxHashSet<VectorIdx>>,
+
+    /// Counts the number of threads that are currently active
+    ///  if the number of active threads reduces to 1 and then
+    ///  a join operation occures with the remaining main thread
+    ///  then multi-threaded execution may be disabled
+    active_thread_count: Cell<usize>, 
+
+    /// This contains threads that have terminated, but not yet joined
+    ///  and so cannot become re-use candidates until a join operation
+    ///  occurs.
+    /// The associated vector index will be moved into re-use candidates
+    ///  after the join operation occurs
+    terminated_threads: RefCell<FxHashMap<ThreadId, VectorIdx>>,
 }
 impl GlobalState {
 
@@ -836,7 +846,9 @@ impl GlobalState {
             vector_info: RefCell::new(IndexVec::new()),
             thread_info: RefCell::new(IndexVec::new()),
             current_index: Cell::new(VectorIdx::new(0)),
+            active_thread_count: Cell::new(1),
             reuse_candidates: RefCell::new(FxHashSet::default()),
+            terminated_threads: RefCell::new(FxHashMap::default())
         };
 
         // Setup the main-thread since it is not explicitly created:
@@ -860,10 +872,24 @@ impl GlobalState {
     fn find_vector_index_reuse_candidate(&self) -> Option<VectorIdx> {
         let mut reuse = self.reuse_candidates.borrow_mut();
         let vector_clocks = self.vector_clocks.borrow();
+        let vector_info = self.vector_info.borrow();
+        let terminated_threads = self.terminated_threads.borrow();
         for  &candidate in reuse.iter() {
             let target_timestamp = vector_clocks[candidate].clock[candidate];
-            if vector_clocks.iter().all(|clock| {
-                clock.clock[candidate] == target_timestamp
+            if vector_clocks.iter_enumerated().all(|(clock_idx, clock)| {
+                // The thread happens before the clock, and hence cannot report
+                //  a data-race with this the candidate index
+                let no_data_race = clock.clock[candidate] >= target_timestamp;
+
+                // The vector represents a thread that has terminated and hence cannot
+                //  report a data-race with the candidate index
+                let thread_id = vector_info[clock_idx];
+                let vector_terminated = reuse.contains(&clock_idx)
+                    || terminated_threads.contains_key(&thread_id);
+
+                // The vector index cannot report a race with the candidate index
+                //  and hence allows the candidate index to be re-used
+                no_data_race || vector_terminated
             }) {
                 // All vector clocks for each vector index are equal to
                 //  the target timestamp, and the thread is known to have
@@ -881,6 +907,10 @@ impl GlobalState {
     #[inline]
     pub fn thread_created(&self, thread: ThreadId) {
         let current_index = self.current_index();
+
+        // Increment the number of active threads
+        let active_threads = self.active_thread_count.get();
+        self.active_thread_count.set(active_threads + 1);
 
         // Enable multi-threaded execution, there are now two threads
         //  so data-races are now possible.
@@ -946,51 +976,90 @@ impl GlobalState {
     ///  between the joined thead and the current thread.
     #[inline]
     pub fn thread_joined(&self, current_thread: ThreadId, join_thread: ThreadId) {
-        let (current_index, join_index) = {
-            let thread_info = self.thread_info.borrow();
-            let current_index = thread_info[current_thread].vector_index
-                .expect("Joining into thread with no assigned vector");
-            let join_index = thread_info[join_thread].vector_index
-                .expect("Joining thread with no assigned vector");
-            (current_index, join_index)
-        };
         let mut clocks_vec = self.vector_clocks.borrow_mut();
-        let (current, join) = clocks_vec.pick2_mut(current_index, join_index);
+        let thread_info = self.thread_info.borrow();
+
+        // Load the vector clock of the current thread
+        let current_index = thread_info[current_thread].vector_index
+            .expect("Performed thread join on thread with no assigned vector");
+        let current = &mut clocks_vec[current_index];
+
+        // Load the associated vector clock for the terminated thread
+        let join_clock = thread_info[join_thread].termination_vector_clock
+            .as_ref().expect("Joined with thread but thread has not terminated");
 
         // Pre increment clocks before atomic operation
         current.increment_clock(current_index);
-        join.increment_clock(join_index);
 
         // The join thread happens-before the current thread
         //   so update the current vector clock
-        current.join_with(join);
+        current.clock.join(join_clock);
 
         // Post increment clocks after atomic operation
-        //  the join clock is not incremented, since there will
-        //  be no future events, also if it was incremented
-        //  the thread re-use condition would never pass
         current.increment_clock(current_index);
+
+        // Check the number of active threads, if the value is 1
+        //  then test for potentially disabling multi-threaded execution
+        let active_threads = self.active_thread_count.get();
+        if active_threads == 1 {
+            // May potentially be able to disable multi-threaded execution
+            let current_clock = &clocks_vec[current_index];
+            if clocks_vec.iter_enumerated().all(|(idx, clocks)| {
+                clocks.clock[idx] <= current_clock.clock[idx]
+            }) {
+                // The all thread termations happen-before the current clock
+                //  therefore no data-races can be reported until a new thread
+                //  is created, so disable multi-threaded execution
+                self.multi_threaded.set(false);
+            }
+        }
+
+        // If the thread is marked as terminated but not joined
+        //  then move the thread to the re-use set
+        let mut termination = self.terminated_threads.borrow_mut();
+        if let Some(index) = termination.remove(&join_thread) {
+            let mut reuse = self.reuse_candidates.borrow_mut();
+            reuse.insert(index);
+        }
     }
 
     /// On thread termination, the vector-clock may re-used
     ///  in the future once all remaining thread-clocks catch
-    ///  up with the time index of the terminated thread
+    ///  up with the time index of the terminated thread.
+    /// This assiges thread termination with a unique index
+    ///  which will be used to join the thread
+    /// This should be called strictly before any calls to
+    ///   `thread_joined`
     #[inline]
-    pub fn thread_terminated(&self, terminated_thread: ThreadId) {
+    pub fn thread_terminated(&self) {
+        let current_index = self.current_index();
+        
+        // Increment the clock to a unique termination timestamp
+        let mut vector_clocks = self.vector_clocks.borrow_mut();
+        let current_clocks = &mut vector_clocks[current_index];
+        current_clocks.increment_clock(current_index);
+
+        // Load the current thread id for the executing vector
+        let vector_info = self.vector_info.borrow();
+        let current_thread = vector_info[current_index];
+
+        // Load the current thread metadata, and move to a terminated
+        //  vector state. Setting up the vector clock all join operations
+        //  will use.
         let mut thread_info = self.thread_info.borrow_mut();
-        let termination_meta = &mut thread_info[terminated_thread];
+        let current = &mut thread_info[current_thread];
+        current.termination_vector_clock = Some(current_clocks.clock.clone());
 
-        // Find the terminated index & setup the termination vector-clock
-        //  in case thread join is called in the future after the thread
-        //  has been re-used
-        let terminated_index = termination_meta.vector_index
-            .expect("Joining into thread with no assigned vector");
-        let vector_clocks = self.vector_clocks.borrow();
-        termination_meta.termination_vector_clock = Some(vector_clocks[terminated_index].clock.clone());
-
-        // Add this thread as a candidate for re-use
-        let mut reuse = self.reuse_candidates.borrow_mut();
-        reuse.insert(terminated_index);
+        // Add this thread as a candidate for re-use after a thread join
+        //  occurs
+        let mut termination = self.terminated_threads.borrow_mut();
+        termination.insert(current_thread, current_index);
+            
+        // Reduce the number of active threads, now that a thread has
+        //  terminated
+        let mut active_threads = self.active_thread_count.get();
+        active_threads -= 1;
+        self.active_thread_count.set(active_threads);
     }
 
     /// Hook for updating the local tracker of the currently
@@ -1118,4 +1187,3 @@ impl GlobalState {
         self.current_index.get()
     }
 }
-
