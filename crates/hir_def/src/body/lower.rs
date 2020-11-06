@@ -953,18 +953,19 @@ impl From<ast::BinOp> for BinaryOp {
 impl From<ast::LiteralKind> for Literal {
     fn from(ast_lit_kind: ast::LiteralKind) -> Self {
         match ast_lit_kind {
-            LiteralKind::IntNumber { suffix } => {
-                let known_name = suffix.and_then(|it| BuiltinInt::from_suffix(&it));
-
-                Literal::Int(Default::default(), known_name)
+            LiteralKind::IntNumber(lit) => {
+                if let Some(float_suffix) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
+                    return Literal::Float(Default::default(), Some(float_suffix));
+                }
+                let ty = lit.suffix().and_then(|it| BuiltinInt::from_suffix(&it));
+                Literal::Int(Default::default(), ty)
             }
-            LiteralKind::FloatNumber { suffix } => {
-                let known_name = suffix.and_then(|it| BuiltinFloat::from_suffix(&it));
-
-                Literal::Float(Default::default(), known_name)
+            LiteralKind::FloatNumber(lit) => {
+                let ty = lit.suffix().and_then(|it| BuiltinFloat::from_suffix(&it));
+                Literal::Float(Default::default(), ty)
             }
-            LiteralKind::ByteString => Literal::ByteString(Default::default()),
-            LiteralKind::String => Literal::String(Default::default()),
+            LiteralKind::ByteString(_) => Literal::ByteString(Default::default()),
+            LiteralKind::String(_) => Literal::String(Default::default()),
             LiteralKind::Byte => Literal::Int(Default::default(), Some(BuiltinInt::U8)),
             LiteralKind::Bool(val) => Literal::Bool(val),
             LiteralKind::Char => Literal::Char(Default::default()),

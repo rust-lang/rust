@@ -2,7 +2,7 @@
 
 use crate::{
     ast::{self, support, AstChildren, AstNode},
-    AstToken, SmolStr,
+    AstToken,
     SyntaxKind::*,
     SyntaxToken, T,
 };
@@ -298,12 +298,12 @@ impl ast::ArrayExpr {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LiteralKind {
-    String,
-    ByteString,
+    String(ast::String),
+    ByteString(ast::ByteString),
+    IntNumber(ast::IntNumber),
+    FloatNumber(ast::FloatNumber),
     Char,
     Byte,
-    IntNumber { suffix: Option<SmolStr> },
-    FloatNumber { suffix: Option<SmolStr> },
     Bool(bool),
 }
 
@@ -315,53 +315,25 @@ impl ast::Literal {
             .and_then(|e| e.into_token())
             .unwrap()
     }
-
-    pub fn as_int_number(&self) -> Option<ast::IntNumber> {
-        ast::IntNumber::cast(self.token())
-    }
-
-    pub fn as_string(&self) -> Option<ast::String> {
-        ast::String::cast(self.token())
-    }
-    pub fn as_byte_string(&self) -> Option<ast::ByteString> {
-        ast::ByteString::cast(self.token())
-    }
-
-    fn find_suffix(text: &str, possible_suffixes: &[&str]) -> Option<SmolStr> {
-        possible_suffixes
-            .iter()
-            .find(|&suffix| text.ends_with(suffix))
-            .map(|&suffix| SmolStr::new(suffix))
-    }
-
     pub fn kind(&self) -> LiteralKind {
         let token = self.token();
 
+        if let Some(t) = ast::IntNumber::cast(token.clone()) {
+            return LiteralKind::IntNumber(t);
+        }
+        if let Some(t) = ast::FloatNumber::cast(token.clone()) {
+            return LiteralKind::FloatNumber(t);
+        }
+        if let Some(t) = ast::String::cast(token.clone()) {
+            return LiteralKind::String(t);
+        }
+        if let Some(t) = ast::ByteString::cast(token.clone()) {
+            return LiteralKind::ByteString(t);
+        }
+
         match token.kind() {
-            INT_NUMBER => {
-                // FYI: there was a bug here previously, thus the if statement below is necessary.
-                // The lexer treats e.g. `1f64` as an integer literal. See
-                // https://github.com/rust-analyzer/rust-analyzer/issues/1592
-                // and the comments on the linked PR.
-                let text = token.text();
-                if let suffix @ Some(_) = Self::find_suffix(&text, &ast::FloatNumber::SUFFIXES) {
-                    LiteralKind::FloatNumber { suffix }
-                } else {
-                    LiteralKind::IntNumber {
-                        suffix: Self::find_suffix(&text, &ast::IntNumber::SUFFIXES),
-                    }
-                }
-            }
-            FLOAT_NUMBER => {
-                let text = token.text();
-                LiteralKind::FloatNumber {
-                    suffix: Self::find_suffix(&text, &ast::FloatNumber::SUFFIXES),
-                }
-            }
-            STRING => LiteralKind::String,
             T![true] => LiteralKind::Bool(true),
             T![false] => LiteralKind::Bool(false),
-            BYTE_STRING => LiteralKind::ByteString,
             CHAR => LiteralKind::Char,
             BYTE => LiteralKind::Byte,
             _ => unreachable!(),

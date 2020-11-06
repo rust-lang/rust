@@ -517,10 +517,9 @@ impl HasFormatSpecifier for ast::String {
 }
 
 impl ast::IntNumber {
-    #[rustfmt::skip]
-    pub(crate) const SUFFIXES: &'static [&'static str] = &[
-        "u8", "u16", "u32", "u64", "u128", "usize",
-        "i8", "i16", "i32", "i64", "i128", "isize",
+    const SUFFIXES: &'static [&'static str] = &[
+        "u8", "u16", "u32", "u64", "u128", "usize", // Unsigned.
+        "i8", "i16", "i32", "i64", "i128", "isize", // Signed.
     ];
 
     pub fn radix(&self) -> Radix {
@@ -555,19 +554,30 @@ impl ast::IntNumber {
 
     pub fn suffix(&self) -> Option<&str> {
         let text = self.text();
-        // FIXME: don't check a fixed set of suffixes, `1_0_1___lol` is valid
-        // syntax, suffix is `lol`.
-        ast::IntNumber::SUFFIXES.iter().find_map(|suffix| {
+        // FIXME: don't check a fixed set of suffixes, `1_0_1_l_o_l` is valid
+        // syntax, suffix is `l_o_l`.
+        ast::IntNumber::SUFFIXES.iter().chain(ast::FloatNumber::SUFFIXES.iter()).find_map(
+            |suffix| {
+                if text.ends_with(suffix) {
+                    return Some(&text[text.len() - suffix.len()..]);
+                }
+                None
+            },
+        )
+    }
+}
+
+impl ast::FloatNumber {
+    const SUFFIXES: &'static [&'static str] = &["f32", "f64"];
+    pub fn suffix(&self) -> Option<&str> {
+        let text = self.text();
+        ast::FloatNumber::SUFFIXES.iter().find_map(|suffix| {
             if text.ends_with(suffix) {
                 return Some(&text[text.len() - suffix.len()..]);
             }
             None
         })
     }
-}
-
-impl ast::FloatNumber {
-    pub(crate) const SUFFIXES: &'static [&'static str] = &["f32", "f64"];
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
