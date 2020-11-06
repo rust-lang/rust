@@ -123,7 +123,7 @@ impl Qualifs<'mir, 'tcx> {
         has_mut_interior.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
-    fn in_return_place(&mut self, ccx: &'mir ConstCx<'mir, 'tcx>) -> ConstQualifs {
+    fn in_return_place(&mut self, ccx: &'mir ConstCx<'mir, 'tcx>, error_occured: bool) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
@@ -139,7 +139,7 @@ impl Qualifs<'mir, 'tcx> {
             .map(|(bb, _)| bb);
 
         let return_block = match return_block {
-            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty()),
+            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), error_occured),
             Some(bb) => bb,
         };
 
@@ -170,6 +170,7 @@ impl Qualifs<'mir, 'tcx> {
             needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
             custom_eq,
+            error_occured,
         }
     }
 }
@@ -276,7 +277,7 @@ impl Validator<'mir, 'tcx> {
     }
 
     pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
-        self.qualifs.in_return_place(self.ccx)
+        self.qualifs.in_return_place(self.ccx, self.error_emitted)
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
