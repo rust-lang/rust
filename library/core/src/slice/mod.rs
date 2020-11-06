@@ -605,8 +605,9 @@ impl<T> [T] {
                 //     many bytes away from the end of `self`.
                 //   - Any initialized memory is valid `usize`.
                 unsafe {
-                    let pa: *mut T = self.get_unchecked_mut(i);
-                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let ptr = self.as_mut_ptr();
+                    let pa = ptr.add(i);
+                    let pb = ptr.add(ln - i - chunk);
                     let va = ptr::read_unaligned(pa as *mut usize);
                     let vb = ptr::read_unaligned(pb as *mut usize);
                     ptr::write_unaligned(pa as *mut usize, vb.swap_bytes());
@@ -635,8 +636,9 @@ impl<T> [T] {
                 // always respected, ensuring the `pb` pointer can be used
                 // safely.
                 unsafe {
-                    let pa: *mut T = self.get_unchecked_mut(i);
-                    let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
+                    let ptr = self.as_mut_ptr();
+                    let pa = ptr.add(i);
+                    let pb = ptr.add(ln - i - chunk);
                     let va = ptr::read_unaligned(pa as *mut u32);
                     let vb = ptr::read_unaligned(pb as *mut u32);
                     ptr::write_unaligned(pa as *mut u32, vb.rotate_left(16));
@@ -654,8 +656,9 @@ impl<T> [T] {
             // aligned, and can be read from and written to.
             unsafe {
                 // Unsafe swap to avoid the bounds check in safe swap.
-                let pa: *mut T = self.get_unchecked_mut(i);
-                let pb: *mut T = self.get_unchecked_mut(ln - i - 1);
+                let ptr = self.as_mut_ptr();
+                let pa = ptr.add(i);
+                let pb = ptr.add(ln - i - 1);
                 ptr::swap(pa, pb);
             }
             i += 1;
