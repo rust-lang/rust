@@ -123,7 +123,11 @@ impl Qualifs<'mir, 'tcx> {
         has_mut_interior.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
-    fn in_return_place(&mut self, ccx: &'mir ConstCx<'mir, 'tcx>, error_occured: bool) -> ConstQualifs {
+    fn in_return_place(
+        &mut self,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
+        error_occured: bool,
+    ) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative

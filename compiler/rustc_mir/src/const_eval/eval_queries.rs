@@ -6,10 +6,10 @@ use crate::interpret::{
     ScalarMaybeUninit, StackPopCleanup,
 };
 
+use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_errors::ErrorReported;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
