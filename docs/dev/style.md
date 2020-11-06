@@ -89,6 +89,32 @@ There are many benefits to this:
 It also makes sense to format snippets more compactly (for example, by placing enum definitions like `enum E { Foo, Bar }` on a single line),
 as long as they are still readable.
 
+When using multiline fixtures, use unindented raw string literals:
+
+```rust
+    #[test]
+    fn inline_field_shorthand() {
+        check_assist(
+            inline_local_variable,
+            r"
+struct S { foo: i32}
+fn main() {
+    let <|>foo = 92;
+    S { foo }
+}
+",
+            r"
+struct S { foo: i32}
+fn main() {
+    S { foo: 92 }
+}
+",
+        );
+    }
+```
+
+That way, you can use your editor's "number of selected characters" feature to correlate offsets with test's source code.
+
 ## Preconditions
 
 Express function preconditions in types and force the caller to provide them (rather than checking in callee):
