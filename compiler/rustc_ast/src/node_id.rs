@@ -13,8 +13,8 @@ rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeId);
 pub const CRATE_NODE_ID: NodeId = NodeId::from_u32(0);
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
-/// node value. Then later, in the renumber pass, we renumber them to have
-/// small, positive ids.
+/// node value. Then later, during expansion, we renumber them to have small,
+/// positive ids.
 pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
 
 impl NodeId {
