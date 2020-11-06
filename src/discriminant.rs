@@ -26,12 +26,15 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             variants: _,
         } => {
             let ptr = place.place_field(fx, mir::Field::new(tag_field));
-            let to = layout
-                .ty
-                .discriminant_for_variant(fx.tcx, variant_index)
-                .unwrap()
-                .val
-                .into();
+            let to = ty::ScalarInt::try_from_uint(
+                layout
+                    .ty
+                    .discriminant_for_variant(fx.tcx, variant_index)
+                    .unwrap()
+                    .val,
+                ptr.layout().size,
+            )
+            .unwrap();
             let discr = CValue::const_val(fx, ptr.layout(), to);
             ptr.write_cvalue(fx, discr);
         }
