@@ -674,6 +674,7 @@ symbols! {
         maxnumf32,
         maxnumf64,
         may_dangle,
+        may_ignore,
         maybe_uninit,
         maybe_uninit_uninit,
         maybe_uninit_zeroed,

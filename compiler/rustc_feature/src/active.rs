@@ -610,6 +610,9 @@ declare_features! (
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
 
+    /// Allow `#[may_ignore]` attribute.
+    (active, may_ignore, "1.49.0", Some(99999999), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
