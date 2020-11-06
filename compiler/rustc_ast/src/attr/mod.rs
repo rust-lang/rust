@@ -66,7 +66,7 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.ident())
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(Ident::invalid()).name
+        self.ident().unwrap_or_else(Ident::invalid).name
     }
 
     /// Gets the string value if `self` is a `MetaItem` and the `MetaItem` is a
@@ -139,7 +139,7 @@ impl Attribute {
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(Ident::invalid()).name
+        self.ident().unwrap_or_else(Ident::invalid).name
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
@@ -183,7 +183,7 @@ impl MetaItem {
         if self.path.segments.len() == 1 { Some(self.path.segments[0].ident) } else { None }
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(Ident::invalid()).name
+        self.ident().unwrap_or_else(Ident::invalid).name
     }
 
     // Example:

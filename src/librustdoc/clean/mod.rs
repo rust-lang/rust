@@ -935,8 +935,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| {
-                    let mut name =
-                        self.1.get(i).map(|ident| ident.to_string()).unwrap_or(String::new());
+                    let mut name = self.1.get(i).map(|ident| ident.to_string()).unwrap_or_default();
                     if name.is_empty() {
                         name = "_".to_string();
                     }

@@ -1305,7 +1305,7 @@ pub fn build_session(
         early_error(sopts.error_format, &format!("Error loading host specification: {}", e))
     });
 
-    let loader = file_loader.unwrap_or(Box::new(RealFileLoader));
+    let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let hash_kind = sopts.debugging_opts.src_hash_algorithm.unwrap_or_else(|| {
         if target_cfg.is_like_msvc {
             SourceFileHashAlgorithm::Sha1

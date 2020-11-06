@@ -128,7 +128,7 @@ pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         .module
         .as_ref()
         .map(|module| shorten(plain_text_summary(module.doc_value())))
-        .unwrap_or(String::new());
+        .unwrap_or_default();
 
     #[derive(Serialize)]
     struct CrateData<'a> {

@@ -244,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ProbeScope::AllTraits,
                 |probe_cx| Ok(probe_cx.candidate_method_names()),
             )
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
         method_names
             .iter()
             .flat_map(|&method_name| {

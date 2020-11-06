@@ -856,7 +856,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, index)
-                .unwrap_or(Lazy::empty())
+                .unwrap_or_else(Lazy::empty)
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
@@ -888,7 +888,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, item_id)
-                .unwrap_or(Lazy::empty())
+                .unwrap_or_else(Lazy::empty)
                 .decode(self)
                 .map(|index| self.get_variant(&self.kind(index), index, did, tcx.sess))
                 .collect()
@@ -1075,7 +1075,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         // Iterate over all children.
         let macros_only = self.dep_kind.lock().macros_only();
-        let children = self.root.tables.children.get(self, id).unwrap_or(Lazy::empty());
+        let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
         for child_index in children.decode((self, sess)) {
             if macros_only {
                 continue;
@@ -1098,7 +1098,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                             .tables
                             .children
                             .get(self, child_index)
-                            .unwrap_or(Lazy::empty());
+                            .unwrap_or_else(Lazy::empty);
                         for child_index in child_children.decode((self, sess)) {
                             let kind = self.def_kind(child_index);
                             callback(Export {
@@ -1284,7 +1284,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_item_variances(&self, id: DefIndex) -> Vec<ty::Variance> {
-        self.root.tables.variances.get(self, id).unwrap_or(Lazy::empty()).decode(self).collect()
+        self.root.tables.variances.get(self, id).unwrap_or_else(Lazy::empty).decode(self).collect()
     }
 
     fn get_ctor_kind(&self, node_id: DefIndex) -> CtorKind {
@@ -1323,7 +1323,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .attributes
             .get(self, item_id)
-            .unwrap_or(Lazy::empty())
+            .unwrap_or_else(Lazy::empty)
             .decode((self, sess))
             .collect::<Vec<_>>()
     }
@@ -1333,7 +1333,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or(Lazy::empty())
+            .unwrap_or_else(Lazy::empty)
             .decode(self)
             .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
             .collect()
@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, id)
-                .unwrap_or(Lazy::empty())
+                .unwrap_or_else(Lazy::empty)
                 .decode(self)
                 .map(|index| self.local_def_id(index)),
         )
