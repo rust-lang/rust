@@ -1,9 +1,6 @@
 use std::borrow::Cow;
 
-use syntax::{
-    ast::{self, HasQuotes, HasStringValue},
-    AstToken, TextRange, TextSize,
-};
+use syntax::{ast, AstToken, TextRange, TextSize};
 use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

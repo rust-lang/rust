@@ -114,36 +114,6 @@ impl QuoteOffsets {
     }
 }
 
-pub trait HasQuotes: AstToken {
-    fn quote_offsets(&self) -> Option<QuoteOffsets> {
-        let text = self.text().as_str();
-        let offsets = QuoteOffsets::new(text)?;
-        let o = self.syntax().text_range().start();
-        let offsets = QuoteOffsets {
-            quotes: (offsets.quotes.0 + o, offsets.quotes.1 + o),
-            contents: offsets.contents + o,
-        };
-        Some(offsets)
-    }
-    fn open_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes.0)
-    }
-
-    fn close_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes.1)
-    }
-
-    fn text_range_between_quotes(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.contents)
-    }
-}
-
-impl HasQuotes for ast::String {}
-
-pub trait HasStringValue: HasQuotes {
-    fn value(&self) -> Option<Cow<'_, str>>;
-}
-
 impl ast::String {
     pub fn is_raw(&self) -> bool {
         self.text().starts_with('r')
@@ -153,10 +123,8 @@ impl ast::String {
         assert!(TextRange::up_to(contents_range.len()).contains_range(range));
         Some(range + contents_range.start())
     }
-}
 
-impl HasStringValue for ast::String {
-    fn value(&self) -> Option<Cow<'_, str>> {
+    pub fn value(&self) -> Option<Cow<'_, str>> {
         if self.is_raw() {
             let text = self.text().as_str();
             let text =
@@ -180,6 +148,26 @@ impl HasStringValue for ast::String {
         // FIXME: don't actually allocate for borrowed case
         let res = if buf == text { Cow::Borrowed(text) } else { Cow::Owned(buf) };
         Some(res)
+    }
+
+    pub fn quote_offsets(&self) -> Option<QuoteOffsets> {
+        let text = self.text().as_str();
+        let offsets = QuoteOffsets::new(text)?;
+        let o = self.syntax().text_range().start();
+        let offsets = QuoteOffsets {
+            quotes: (offsets.quotes.0 + o, offsets.quotes.1 + o),
+            contents: offsets.contents + o,
+        };
+        Some(offsets)
+    }
+    pub fn text_range_between_quotes(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.contents)
+    }
+    pub fn open_quote_text_range(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.quotes.0)
+    }
+    pub fn close_quote_text_range(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.quotes.1)
     }
 }
 

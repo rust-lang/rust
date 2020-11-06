@@ -7,7 +7,7 @@ use itertools::Itertools;
 use parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, token_ext::HasStringValue, AstNode, AstToken, NameOwner, SyntaxNode},
+    ast::{self, support, AstNode, AstToken, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 

@@ -1,8 +1,4 @@
-use syntax::{
-    ast::{self, HasStringValue},
-    AstToken,
-    SyntaxKind::STRING,
-};
+use syntax::{ast, AstToken, SyntaxKind::STRING};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

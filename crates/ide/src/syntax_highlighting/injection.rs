@@ -2,7 +2,6 @@
 
 use std::{collections::BTreeMap, convert::TryFrom};
 
-use ast::{HasQuotes, HasStringValue};
 use hir::Semantics;
 use ide_db::call_info::ActiveParameter;
 use itertools::Itertools;
