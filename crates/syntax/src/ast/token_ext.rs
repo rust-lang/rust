@@ -536,3 +536,81 @@ impl HasFormatSpecifier for ast::RawString {
         Some(res)
     }
 }
+
+impl ast::IntNumber {
+    #[rustfmt::skip]
+    pub(crate) const SUFFIXES: &'static [&'static str] = &[
+        "u8", "u16", "u32", "u64", "u128", "usize",
+        "i8", "i16", "i32", "i64", "i128", "isize",
+    ];
+
+    // FIXME: should probably introduce string token type?
+    // https://github.com/rust-analyzer/rust-analyzer/issues/6308
+    pub fn value(&self) -> Option<(Radix, u128)> {
+        let token = self.syntax();
+
+        let mut text = token.text().as_str();
+        for suffix in ast::IntNumber::SUFFIXES {
+            if let Some(without_suffix) = text.strip_suffix(suffix) {
+                text = without_suffix;
+                break;
+            }
+        }
+
+        let buf;
+        if text.contains("_") {
+            buf = text.replace('_', "");
+            text = buf.as_str();
+        };
+
+        let radix = Radix::identify(text)?;
+        let digits = &text[radix.prefix_len()..];
+        let value = u128::from_str_radix(digits, radix as u32).ok()?;
+        Some((radix, value))
+    }
+}
+
+impl ast::FloatNumber {
+    pub(crate) const SUFFIXES: &'static [&'static str] = &["f32", "f64"];
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum Radix {
+    Binary = 2,
+    Octal = 8,
+    Decimal = 10,
+    Hexadecimal = 16,
+}
+
+impl Radix {
+    pub const ALL: &'static [Radix] =
+        &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
+
+    fn identify(literal_text: &str) -> Option<Self> {
+        // We cannot express a literal in anything other than decimal in under 3 characters, so we return here if possible.
+        if literal_text.len() < 3 && literal_text.chars().all(|c| c.is_digit(10)) {
+            return Some(Self::Decimal);
+        }
+
+        let res = match &literal_text[..2] {
+            "0b" => Radix::Binary,
+            "0o" => Radix::Octal,
+            "0x" => Radix::Hexadecimal,
+            _ => Radix::Decimal,
+        };
+
+        // Checks that all characters after the base prefix are all valid digits for that base.
+        if literal_text[res.prefix_len()..].chars().all(|c| c.is_digit(res as u32)) {
+            Some(res)
+        } else {
+            None
+        }
+    }
+
+    const fn prefix_len(&self) -> usize {
+        match self {
+            Self::Decimal => 0,
+            _ => 2,
+        }
+    }
+}

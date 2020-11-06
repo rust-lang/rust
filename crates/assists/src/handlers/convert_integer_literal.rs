@@ -15,7 +15,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // ```
 pub(crate) fn convert_integer_literal(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let literal = ctx.find_node_at_offset::<ast::Literal>()?;
-    let (radix, value) = literal.int_value()?;
+    let (radix, value) = literal.as_int_number()?.value()?;
 
     let range = literal.syntax().text_range();
     let group_id = GroupLabel("Convert integer base".into());

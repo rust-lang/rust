@@ -2,7 +2,7 @@
 
 use crate::{
     ast::{self, support, AstChildren, AstNode},
-    SmolStr,
+    AstToken, SmolStr,
     SyntaxKind::*,
     SyntaxToken, T,
 };
@@ -316,6 +316,10 @@ impl ast::Literal {
             .unwrap()
     }
 
+    pub fn as_int_number(&self) -> Option<ast::IntNumber> {
+        ast::IntNumber::cast(self.token())
+    }
+
     fn find_suffix(text: &str, possible_suffixes: &[&str]) -> Option<SmolStr> {
         possible_suffixes
             .iter()
@@ -324,11 +328,6 @@ impl ast::Literal {
     }
 
     pub fn kind(&self) -> LiteralKind {
-        const INT_SUFFIXES: [&str; 12] = [
-            "u64", "u32", "u16", "u8", "usize", "isize", "i64", "i32", "i16", "i8", "u128", "i128",
-        ];
-        const FLOAT_SUFFIXES: [&str; 2] = ["f32", "f64"];
-
         let token = self.token();
 
         match token.kind() {
@@ -337,17 +336,20 @@ impl ast::Literal {
                 // The lexer treats e.g. `1f64` as an integer literal. See
                 // https://github.com/rust-analyzer/rust-analyzer/issues/1592
                 // and the comments on the linked PR.
-
                 let text = token.text();
-                if let suffix @ Some(_) = Self::find_suffix(&text, &FLOAT_SUFFIXES) {
+                if let suffix @ Some(_) = Self::find_suffix(&text, &ast::FloatNumber::SUFFIXES) {
                     LiteralKind::FloatNumber { suffix }
                 } else {
-                    LiteralKind::IntNumber { suffix: Self::find_suffix(&text, &INT_SUFFIXES) }
+                    LiteralKind::IntNumber {
+                        suffix: Self::find_suffix(&text, &ast::IntNumber::SUFFIXES),
+                    }
                 }
             }
             FLOAT_NUMBER => {
                 let text = token.text();
-                LiteralKind::FloatNumber { suffix: Self::find_suffix(&text, &FLOAT_SUFFIXES) }
+                LiteralKind::FloatNumber {
+                    suffix: Self::find_suffix(&text, &ast::FloatNumber::SUFFIXES),
+                }
             }
             STRING | RAW_STRING => LiteralKind::String,
             T![true] => LiteralKind::Bool(true),
@@ -356,71 +358,6 @@ impl ast::Literal {
             CHAR => LiteralKind::Char,
             BYTE => LiteralKind::Byte,
             _ => unreachable!(),
-        }
-    }
-
-    // FIXME: should probably introduce string token type?
-    // https://github.com/rust-analyzer/rust-analyzer/issues/6308
-    pub fn int_value(&self) -> Option<(Radix, u128)> {
-        let suffix = match self.kind() {
-            LiteralKind::IntNumber { suffix } => suffix,
-            _ => return None,
-        };
-
-        let token = self.token();
-        let mut text = token.text().as_str();
-        text = &text[..text.len() - suffix.map_or(0, |it| it.len())];
-
-        let buf;
-        if text.contains("_") {
-            buf = text.replace('_', "");
-            text = buf.as_str();
-        };
-
-        let radix = Radix::identify(text)?;
-        let digits = &text[radix.prefix_len()..];
-        let value = u128::from_str_radix(digits, radix as u32).ok()?;
-        Some((radix, value))
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum Radix {
-    Binary = 2,
-    Octal = 8,
-    Decimal = 10,
-    Hexadecimal = 16,
-}
-
-impl Radix {
-    pub const ALL: &'static [Radix] =
-        &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
-
-    fn identify(literal_text: &str) -> Option<Self> {
-        // We cannot express a literal in anything other than decimal in under 3 characters, so we return here if possible.
-        if literal_text.len() < 3 && literal_text.chars().all(|c| c.is_digit(10)) {
-            return Some(Self::Decimal);
-        }
-
-        let res = match &literal_text[..2] {
-            "0b" => Radix::Binary,
-            "0o" => Radix::Octal,
-            "0x" => Radix::Hexadecimal,
-            _ => Radix::Decimal,
-        };
-
-        // Checks that all characters after the base prefix are all valid digits for that base.
-        if literal_text[res.prefix_len()..].chars().all(|c| c.is_digit(res as u32)) {
-            Some(res)
-        } else {
-            None
-        }
-    }
-
-    const fn prefix_len(&self) -> usize {
-        match self {
-            Self::Decimal => 0,
-            _ => 2,
         }
     }
 }
