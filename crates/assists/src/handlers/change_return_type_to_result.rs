@@ -2,7 +2,7 @@ use std::iter;
 
 use syntax::{
     ast::{self, make, BlockExpr, Expr, LoopBodyOwner},
-    AstNode, SyntaxNode,
+    match_ast, AstNode, SyntaxNode,
 };
 use test_utils::mark;
 
@@ -21,8 +21,18 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
-    // FIXME: extend to lambdas as well
-    let fn_def = ret_type.syntax().parent().and_then(ast::Fn::cast)?;
+    let parent = ret_type.syntax().parent()?;
+    let block_expr = match_ast! {
+        match parent {
+            ast::Fn(func) => func.body()?,
+            ast::ClosureExpr(closure) => match closure.body()? {
+                Expr::BlockExpr(block) => block,
+                // closures require a block when a return type is specified
+                _ => return None,
+            },
+            _ => return None,
+        }
+    };
 
     let type_ref = &ret_type.ty()?;
     let ret_type_str = type_ref.syntax().text().to_string();
@@ -34,16 +44,14 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
         }
     }
 
-    let block_expr = &fn_def.body()?;
-
     acc.add(
         AssistId("change_return_type_to_result", AssistKind::RefactorRewrite),
         "Wrap return type in Result",
         type_ref.syntax().text_range(),
         |builder| {
             let mut tail_return_expr_collector = TailReturnCollector::new();
-            tail_return_expr_collector.collect_jump_exprs(block_expr, false);
-            tail_return_expr_collector.collect_tail_exprs(block_expr);
+            tail_return_expr_collector.collect_jump_exprs(&block_expr, false);
+            tail_return_expr_collector.collect_tail_exprs(&block_expr);
 
             for ret_expr_arg in tail_return_expr_collector.exprs_to_wrap {
                 let ok_wrapped = make::expr_call(
@@ -285,16 +293,20 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_return_type() {
+    fn change_return_type_to_result_simple_closure() {
         check_assist(
             change_return_type_to_result,
-            r#"fn foo() -> i32<|> {
-                let test = "test";
-                return 42i32;
+            r#"fn foo() {
+                || -> i32<|> {
+                    let test = "test";
+                    return 42i32;
+                };
             }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                return Ok(42i32);
+            r#"fn foo() {
+                || -> Result<i32, ${0:_}> {
+                    let test = "test";
+                    return Ok(42i32);
+                };
             }"#,
         );
     }
@@ -306,6 +318,29 @@ mod tests {
             r#"fn foo() -> i32 {
                 let test = "test";<|>
                 return 42i32;
+            }"#,
+        );
+    }
+
+    #[test]
+    fn change_return_type_to_result_simple_return_type_bad_cursor_closure() {
+        check_assist_not_applicable(
+            change_return_type_to_result,
+            r#"fn foo() {
+                || -> i32 {
+                    let test = "test";<|>
+                    return 42i32;
+                };
+            }"#,
+        );
+    }
+
+    #[test]
+    fn change_return_type_to_result_closure_non_block() {
+        check_assist_not_applicable(
+            change_return_type_to_result,
+            r#"fn foo() {
+                || -> i<|>32 3;
             }"#,
         );
     }
@@ -329,6 +364,19 @@ mod tests {
             r#"fn foo() -> Result<i32<|>, String> {
                 let test = "test";
                 return 42i32;
+            }"#,
+        );
+    }
+
+    #[test]
+    fn change_return_type_to_result_simple_return_type_already_result_closure() {
+        check_assist_not_applicable(
+            change_return_type_to_result,
+            r#"fn foo() {
+                || -> Result<i32<|>, String> {
+                    let test = "test";
+                    return 42i32;
+                };
             }"#,
         );
     }
@@ -364,6 +412,25 @@ mod tests {
     }
 
     #[test]
+    fn change_return_type_to_result_simple_with_tail_closure() {
+        check_assist(
+            change_return_type_to_result,
+            r#"fn foo() {
+                || -><|> i32 {
+                    let test = "test";
+                    42i32
+                };
+            }"#,
+            r#"fn foo() {
+                || -> Result<i32, ${0:_}> {
+                    let test = "test";
+                    Ok(42i32)
+                };
+            }"#,
+        );
+    }
+
+    #[test]
     fn change_return_type_to_result_simple_with_tail_only() {
         check_assist(
             change_return_type_to_result,
@@ -375,6 +442,7 @@ mod tests {
             }"#,
         );
     }
+
     #[test]
     fn change_return_type_to_result_simple_with_tail_block_like() {
         check_assist(
@@ -392,6 +460,31 @@ mod tests {
                 } else {
                     Ok(24i32)
                 }
+            }"#,
+        );
+    }
+
+    #[test]
+    fn change_return_type_to_result_simple_without_block_closure() {
+        check_assist(
+            change_return_type_to_result,
+            r#"fn foo() {
+                || -> i32<|> {
+                    if true {
+                        42i32
+                    } else {
+                        24i32
+                    }
+                };
+            }"#,
+            r#"fn foo() {
+                || -> Result<i32, ${0:_}> {
+                    if true {
+                        Ok(42i32)
+                    } else {
+                        Ok(24i32)
+                    }
+                };
             }"#,
         );
     }
