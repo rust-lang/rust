@@ -693,7 +693,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 // should only issue a warning for the sake of backwards compatibility.
                 //
                 // The solution those 2 expectations is to always take the minimum of both lints.
-                // This prevent any new errors (unless both lints are explicitely set to `deny`).
+                // This prevent any new errors (unless both lints are explicitly set to `deny`).
                 let lint = if tcx.lint_level_at_node(SAFE_PACKED_BORROWS, lint_root).0
                     <= tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, lint_root).0
                 {
