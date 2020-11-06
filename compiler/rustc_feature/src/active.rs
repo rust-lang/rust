@@ -620,6 +620,9 @@ declare_features! (
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
     (active, capture_disjoint_fields, "1.49.0", Some(53488), None),
 
+    /// Allow `#[may_ignore]` attribute.
+    (active, may_ignore, "1.50.0", Some(99999999), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

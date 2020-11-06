@@ -101,11 +101,6 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             return;
         }
 
-        let ty = cx.typeck_results().expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
-
-        let mut fn_warned = false;
-        let mut op_warned = false;
         let maybe_def_id = match expr.kind {
             hir::ExprKind::Call(ref callee, _) => {
                 match callee.kind {
@@ -123,6 +118,21 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             hir::ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
             _ => None,
         };
+
+        if let Some(def_id) = maybe_def_id {
+            for attr in cx.tcx.get_attrs(def_id).iter() {
+                if cx.sess().check_name(attr, sym::may_ignore) {
+                    // Don't warn if the function was marked as #[may_ignore].
+                    return;
+                }
+            }
+        }
+
+        let ty = cx.typeck_results().expr_ty(&expr);
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
+
+        let mut fn_warned = false;
+        let mut op_warned = false;
         if let Some(def_id) = maybe_def_id {
             fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
         } else if type_permits_lack_of_use {

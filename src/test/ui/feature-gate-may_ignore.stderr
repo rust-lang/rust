@@ -1,0 +1,12 @@
+error[E0658]: the `#[may_ignore]` attribute is an experimental feature
+  --> $DIR/feature-gate-may_ignore.rs:1:1
+   |
+LL | #[may_ignore]
+   | ^^^^^^^^^^^^^
+   |
+   = note: see issue #99999999 <https://github.com/rust-lang/rust/issues/99999999> for more information
+   = help: add `#![feature(may_ignore)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
