@@ -39,6 +39,7 @@ fn config() -> Config {
     let args = &[
         "compiletest",
         "--mode=ui",
+        "--suite=ui",
         "--compile-lib-path=",
         "--run-lib-path=",
         "--rustc-path=",
