@@ -1,15 +1,12 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
+use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
 use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo};
 use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::INTERNER;
-use crate::{
-    builder::{Builder, Kind, RunConfig, ShouldRun, Step},
-    Subcommand,
-};
-use crate::{Compiler, Mode};
+use crate::{Compiler, Mode, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -17,10 +14,28 @@ pub struct Std {
     pub target: TargetSelection,
 }
 
-fn args(kind: Kind) -> Vec<String> {
-    match kind {
-        Kind::Clippy => vec!["--".to_owned(), "--cap-lints".to_owned(), "warn".to_owned()],
-        _ => Vec::new(),
+/// Returns args for the subcommand itself (not for cargo)
+fn args(builder: &Builder<'_>) -> Vec<String> {
+    fn strings<'a>(arr: &'a [&str]) -> impl Iterator<Item = String> + 'a {
+        arr.iter().copied().map(String::from)
+    }
+
+    if let Subcommand::Clippy { fix, .. } = builder.config.cmd {
+        let mut args = vec![];
+        if fix {
+            #[rustfmt::skip]
+            args.extend(strings(&[
+                "--fix", "-Zunstable-options",
+                // FIXME: currently, `--fix` gives an error while checking tests for libtest,
+                // possibly because libtest is not yet built in the sysroot.
+                // As a workaround, avoid checking tests and benches when passed --fix.
+                "--lib", "--bins", "--examples",
+            ]));
+        }
+        args.extend(strings(&["--", "--cap-lints", "warn"]));
+        args
+    } else {
+        vec![]
     }
 }
 
@@ -62,7 +77,7 @@ impl Step for Std {
         run_cargo(
             builder,
             cargo,
-            args(builder.kind),
+            args(builder),
             &libstd_stamp(builder, compiler, target),
             vec![],
             true,
@@ -104,7 +119,7 @@ impl Step for Std {
             run_cargo(
                 builder,
                 cargo,
-                args(builder.kind),
+                args(builder),
                 &libstd_test_stamp(builder, compiler, target),
                 vec![],
                 true,
@@ -165,7 +180,7 @@ impl Step for Rustc {
         run_cargo(
             builder,
             cargo,
-            args(builder.kind),
+            args(builder),
             &librustc_stamp(builder, compiler, target),
             vec![],
             true,
@@ -220,7 +235,7 @@ impl Step for CodegenBackend {
         run_cargo(
             builder,
             cargo,
-            args(builder.kind),
+            args(builder),
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
             true,
@@ -278,7 +293,7 @@ macro_rules! tool_check_step {
                 run_cargo(
                     builder,
                     cargo,
-                    args(builder.kind),
+                    args(builder),
                     &stamp(builder, compiler, target),
                     vec![],
                     true,
