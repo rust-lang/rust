@@ -504,7 +504,11 @@ impl Field {
 
 fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc::default();
-    res.tokens = vec!["Whitespace".into(), "Comment".into(), "String".into(), "RawString".into()];
+
+    res.tokens = "Whitespace Comment String RawString IntNumber FloatNumber"
+        .split_ascii_whitespace()
+        .map(|it| it.to_string())
+        .collect::<Vec<_>>();
 
     let nodes = grammar.iter().collect::<Vec<_>>();
 

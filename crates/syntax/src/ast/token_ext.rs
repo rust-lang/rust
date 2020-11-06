@@ -8,11 +8,11 @@ use std::{
 use rustc_lexer::unescape::{unescape_literal, Mode};
 
 use crate::{
-    ast::{AstToken, Comment, RawString, String, Whitespace},
+    ast::{self, AstToken},
     TextRange, TextSize,
 };
 
-impl Comment {
+impl ast::Comment {
     pub fn kind(&self) -> CommentKind {
         kind_by_prefix(self.text())
     }
@@ -80,7 +80,7 @@ fn kind_by_prefix(text: &str) -> CommentKind {
     panic!("bad comment text: {:?}", text)
 }
 
-impl Whitespace {
+impl ast::Whitespace {
     pub fn spans_multiple_lines(&self) -> bool {
         let text = self.text();
         text.find('\n').map_or(false, |idx| text[idx + 1..].contains('\n'))
@@ -138,19 +138,19 @@ pub trait HasQuotes: AstToken {
     }
 }
 
-impl HasQuotes for String {}
-impl HasQuotes for RawString {}
+impl HasQuotes for ast::String {}
+impl HasQuotes for ast::RawString {}
 
 pub trait HasStringValue: HasQuotes {
     fn value(&self) -> Option<Cow<'_, str>>;
 }
 
-impl HasStringValue for String {
+impl HasStringValue for ast::String {
     fn value(&self) -> Option<Cow<'_, str>> {
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
-        let mut buf = std::string::String::with_capacity(text.len());
+        let mut buf = String::with_capacity(text.len());
         let mut has_error = false;
         unescape_literal(text, Mode::Str, &mut |_, unescaped_char| match unescaped_char {
             Ok(c) => buf.push(c),
@@ -166,7 +166,8 @@ impl HasStringValue for String {
     }
 }
 
-impl HasStringValue for RawString {
+// FIXME: merge `ast::RawString` and `ast::String`.
+impl HasStringValue for ast::RawString {
     fn value(&self) -> Option<Cow<'_, str>> {
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
@@ -174,7 +175,7 @@ impl HasStringValue for RawString {
     }
 }
 
-impl RawString {
+impl ast::RawString {
     pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
         let contents_range = self.text_range_between_quotes()?;
         assert!(TextRange::up_to(contents_range.len()).contains_range(range));
@@ -500,7 +501,7 @@ pub trait HasFormatSpecifier: AstToken {
     }
 }
 
-impl HasFormatSpecifier for String {
+impl HasFormatSpecifier for ast::String {
     fn char_ranges(
         &self,
     ) -> Option<Vec<(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)>> {
@@ -521,7 +522,7 @@ impl HasFormatSpecifier for String {
     }
 }
 
-impl HasFormatSpecifier for RawString {
+impl HasFormatSpecifier for ast::RawString {
     fn char_ranges(
         &self,
     ) -> Option<Vec<(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)>> {
@@ -534,5 +535,79 @@ impl HasFormatSpecifier for RawString {
             res.push((TextRange::at(idx.try_into().unwrap(), TextSize::of(c)) + offset, Ok(c)));
         }
         Some(res)
+    }
+}
+
+impl ast::IntNumber {
+    #[rustfmt::skip]
+    pub(crate) const SUFFIXES: &'static [&'static str] = &[
+        "u8", "u16", "u32", "u64", "u128", "usize",
+        "i8", "i16", "i32", "i64", "i128", "isize",
+    ];
+
+    pub fn radix(&self) -> Radix {
+        match self.text().get(..2).unwrap_or_default() {
+            "0b" => Radix::Binary,
+            "0o" => Radix::Octal,
+            "0x" => Radix::Hexadecimal,
+            _ => Radix::Decimal,
+        }
+    }
+
+    pub fn value(&self) -> Option<u128> {
+        let token = self.syntax();
+
+        let mut text = token.text().as_str();
+        if let Some(suffix) = self.suffix() {
+            text = &text[..text.len() - suffix.len()]
+        }
+
+        let radix = self.radix();
+        text = &text[radix.prefix_len()..];
+
+        let buf;
+        if text.contains("_") {
+            buf = text.replace('_', "");
+            text = buf.as_str();
+        };
+
+        let value = u128::from_str_radix(text, radix as u32).ok()?;
+        Some(value)
+    }
+
+    pub fn suffix(&self) -> Option<&str> {
+        let text = self.text();
+        // FIXME: don't check a fixed set of suffixes, `1_0_1___lol` is valid
+        // syntax, suffix is `lol`.
+        ast::IntNumber::SUFFIXES.iter().find_map(|suffix| {
+            if text.ends_with(suffix) {
+                return Some(&text[text.len() - suffix.len()..]);
+            }
+            None
+        })
+    }
+}
+
+impl ast::FloatNumber {
+    pub(crate) const SUFFIXES: &'static [&'static str] = &["f32", "f64"];
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum Radix {
+    Binary = 2,
+    Octal = 8,
+    Decimal = 10,
+    Hexadecimal = 16,
+}
+
+impl Radix {
+    pub const ALL: &'static [Radix] =
+        &[Radix::Binary, Radix::Octal, Radix::Decimal, Radix::Hexadecimal];
+
+    const fn prefix_len(&self) -> usize {
+        match self {
+            Self::Decimal => 0,
+            _ => 2,
+        }
     }
 }

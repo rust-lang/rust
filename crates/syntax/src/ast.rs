@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub use self::{
-    expr_ext::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, Radix, RangeOp},
+    expr_ext::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, RangeOp},
     generated::{nodes::*, tokens::*},
     node_ext::{
         AttrKind, FieldKind, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
