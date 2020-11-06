@@ -18,9 +18,9 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn infer_function_return_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let expr = ctx.find_node_at_offset::<ast::Expr>()?;
-    let (tail_expr, insert_pos) = extract(expr)?;
+    let (tail_expr, insert_pos) = extract_tail(expr)?;
     let module = ctx.sema.scope(tail_expr.syntax()).module()?;
-    let ty = ctx.sema.type_of_expr(&tail_expr)?;
+    let ty = ctx.sema.type_of_expr(&tail_expr).filter(|ty| !ty.is_unit())?;
     let ty = ty.display_source_code(ctx.db(), module.into()).ok()?;
 
     acc.add(
@@ -34,7 +34,7 @@ pub(crate) fn infer_function_return_type(acc: &mut Assists, ctx: &AssistContext)
     )
 }
 
-fn extract(expr: ast::Expr) -> Option<(ast::Expr, SyntaxToken)> {
+fn extract_tail(expr: ast::Expr) -> Option<(ast::Expr, SyntaxToken)> {
     let (ret_ty, tail_expr, insert_pos) =
         if let Some(closure) = expr.syntax().ancestors().find_map(ast::ClosureExpr::cast) {
             let tail_expr = match closure.body()? {
@@ -123,6 +123,16 @@ mod tests {
             r#"fn foo() {
                 let x = <|>3;
                 ( 45 + 32 ) * 123
+            }"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_unit_return_type() {
+        check_assist_not_applicable(
+            infer_function_return_type,
+            r#"fn foo() {
+                (<|>)
             }"#,
         );
     }
