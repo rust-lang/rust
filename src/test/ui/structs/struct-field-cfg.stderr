@@ -22,7 +22,7 @@ help: include the missing field in the pattern
    |
 LL |     let Foo { present } = foo;
    |             ^^^^^^^^^^^
-help: if you don't care about this missing field, you can explicitely ignore it
+help: if you don't care about this missing field, you can explicitly ignore it
    |
 LL |     let Foo { .. } = foo;
    |             ^^^^^^
