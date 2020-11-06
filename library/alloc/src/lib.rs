@@ -106,6 +106,7 @@
 #![feature(int_bits_const)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
+#![cfg_attr(not(bootstrap), feature(may_ignore))]
 #![feature(maybe_uninit_ref)]
 #![feature(negative_impls)]
 #![feature(never_type)]

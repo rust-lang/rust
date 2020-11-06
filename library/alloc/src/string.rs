@@ -1587,6 +1587,14 @@ impl String {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
+
+    #[doc(hidden)]
+    #[inline]
+    #[cfg_attr(not(bootstrap), may_ignore)]
+    #[stable(feature = "string_write_fmt", since = "1.49.0")]
+    pub fn write_fmt(mut self: &mut Self, args: fmt::Arguments<'_>) -> fmt::Result {
+        fmt::write(&mut self, args)
+    }
 }
 
 impl FromUtf8Error {
