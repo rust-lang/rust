@@ -138,12 +138,7 @@ impl Inliner<'tcx> {
             );
 
             let start = caller_body.basic_blocks().len();
-            debug!("attempting to inline callsite {:?} - body={:?}", callsite, callee_body);
-            if !self.inline_call(callsite, caller_body, callee_body) {
-                debug!("attempting to inline callsite {:?} - failure", callsite);
-                continue;
-            }
-            debug!("attempting to inline callsite {:?} - success", callsite);
+            self.inline_call(callsite, caller_body, callee_body);
 
             // Add callsites from inlined function
             for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated().skip(start) {
@@ -179,7 +174,8 @@ impl Inliner<'tcx> {
 
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { func: ref op, .. } = terminator.kind {
+        // FIXME: Handle inlining of diverging calls
+        if let TerminatorKind::Call { func: ref op, destination: Some(_), .. } = terminator.kind {
             if let ty::FnDef(callee_def_id, substs) = *op.ty(caller_body, self.tcx).kind() {
                 // To resolve an instance its substs have to be fully normalized, so
                 // we do this here.
@@ -397,12 +393,11 @@ impl Inliner<'tcx> {
         callsite: CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
         mut callee_body: Body<'tcx>,
-    ) -> bool {
+    ) {
         let terminator = caller_body[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
-            // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
-                debug!("inlined {:?} into {:?}", callsite.callee, caller_body.source);
+                debug!("inlined {} into {:?}", callsite.callee, caller_body.source.instance);
 
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
@@ -519,14 +514,8 @@ impl Inliner<'tcx> {
                         matches!(constant.literal.val, ConstKind::Unevaluated(_, _, _))
                     }),
                 );
-
-                true
             }
-            kind => {
-                caller_body[callsite.bb].terminator =
-                    Some(Terminator { source_info: terminator.source_info, kind });
-                false
-            }
+            kind => bug!("unexpected terminator kind {:?}", kind),
         }
     }
 
