@@ -1,3 +1,4 @@
+#!/bin/sh
 # This script runs `musl-cross-make` to prepare C toolchain (Binutils, GCC, musl itself)
 # and builds static libunwind that we distribute for static target.
 #
@@ -19,7 +20,7 @@ exit 1
   trap "$on_err" ERR
   bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
   PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
+  "$@" &> /tmp/build.log
   trap - ERR
   kill $PING_LOOP_PID
   rm /tmp/build.log

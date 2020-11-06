@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 hide_output() {
@@ -10,7 +11,7 @@ exit 1
   trap "$on_err" ERR
   bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
   PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
+  "$@" &> /tmp/build.log
   trap - ERR
   kill $PING_LOOP_PID
   rm /tmp/build.log
@@ -32,7 +33,7 @@ if [ ! -d $MUSL ]; then
 fi
 
 cd $MUSL
-./configure --enable-optimize --enable-debug --disable-shared --prefix=/musl-$TAG $@
+./configure --enable-optimize --enable-debug --disable-shared --prefix=/musl-$TAG "$@"
 if [ "$TAG" = "i586" -o "$TAG" = "i686" ]; then
   hide_output make -j$(nproc) AR=ar RANLIB=ranlib
 else

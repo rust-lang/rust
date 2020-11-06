@@ -1,4 +1,5 @@
 #!/bin/false
+# shellcheck shell=bash
 
 # This file is intended to be sourced with `. shared.sh` or
 # `source shared.sh`, hence the invalid shebang and not being
