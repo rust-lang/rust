@@ -9,7 +9,6 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_target::spec::abi::Abi;
 
-use std::fmt::Write;
 use std::ops::Range;
 
 pub(super) fn mangle(

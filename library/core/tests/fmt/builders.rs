@@ -398,8 +398,6 @@ mod debug_map {
     #[test]
     fn test_entry_err() {
         // Ensure errors in a map entry don't trigger panics (#65231)
-        use std::fmt::Write;
-
         struct ErrorFmt;
 
         impl fmt::Debug for ErrorFmt {

@@ -1,4 +1,5 @@
 use crate::{t, VERSION};
+#[allow(unused_imports)]
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;

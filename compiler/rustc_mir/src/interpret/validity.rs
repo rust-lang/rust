@@ -5,7 +5,6 @@
 //! to be const-safe.
 
 use std::convert::TryFrom;
-use std::fmt::Write;
 use std::num::NonZeroUsize;
 use std::ops::RangeInclusive;
 

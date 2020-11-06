@@ -179,6 +179,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 }
 
 fn write_diff(expected: &str, actual: &str, context_size: usize) -> String {
+    #[allow(unused_imports)]
     use std::fmt::Write;
     let mut output = String::new();
     let diff_results = make_diff(expected, actual, context_size);
@@ -3300,6 +3301,7 @@ impl<'test> TestCx<'test> {
         let after = self.normalize_output(&after, &[]);
         let mut dumped_string = String::new();
         for result in diff::lines(&before, &after) {
+            #[allow(unused_imports)]
             use std::fmt::Write;
             match result {
                 diff::Result::Left(s) => writeln!(dumped_string, "- {}", s).unwrap(),

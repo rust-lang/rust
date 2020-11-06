@@ -462,8 +462,6 @@ fn report_conflicting_impls(
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
 /// string.
 fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
-    use std::fmt::Write;
-
     let trait_ref = tcx.impl_trait_ref(impl_def_id)?;
     let mut w = "impl".to_owned();
 

@@ -11,8 +11,6 @@ use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAndLayoutMethods, Variants};
 use tracing::debug;
 
-use std::fmt::Write;
-
 fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     layout: TyAndLayout<'tcx>,

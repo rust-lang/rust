@@ -1048,11 +1048,8 @@ pub trait UpperExp {
 /// Please note that using [`write!`] might be preferable. Example:
 ///
 /// ```
-/// use std::fmt::Write;
-///
 /// let mut output = String::new();
-/// write!(&mut output, "Hello {}!", "world")
-///     .expect("Error occurred while trying to write in String");
+/// write!(&mut output, "Hello {}!", "world");
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///

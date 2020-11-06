@@ -453,8 +453,6 @@ impl CodegenUnitNameBuilder<'tcx> {
         C: fmt::Display,
         S: fmt::Display,
     {
-        use std::fmt::Write;
-
         let mut cgu_name = String::with_capacity(64);
 
         // Start out with the crate name and disambiguator

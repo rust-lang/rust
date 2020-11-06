@@ -55,7 +55,6 @@ pub struct BenchSamples {
 }
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
-    use std::fmt::Write;
     let mut output = String::new();
 
     let median = bs.ns_iter_summ.median as usize;
@@ -76,7 +75,6 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
 
 // Format a number with thousands separators
 fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
-    use std::fmt::Write;
     let mut output = String::new();
     let mut trailing = false;
     for &pow in &[9, 6, 3, 0] {

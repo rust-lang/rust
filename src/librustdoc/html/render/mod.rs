@@ -36,7 +36,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::ffi::OsStr;
-use std::fmt::{self, Write};
+use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};

@@ -71,8 +71,6 @@ pub mod printf {
         /// Returns `None` in cases where the `printf` directive does not have an exact Rust
         /// equivalent, rather than guessing.
         pub fn translate(&self) -> Option<String> {
-            use std::fmt::Write;
-
             let (c_alt, c_zero, c_left, c_plus) = {
                 let mut c_alt = false;
                 let mut c_zero = false;
@@ -245,7 +243,6 @@ pub mod printf {
         }
 
         fn translate(&self, s: &mut String) -> std::fmt::Result {
-            use std::fmt::Write;
             match *self {
                 Num::Num(n) => write!(s, "{}", n),
                 Num::Arg(n) => {

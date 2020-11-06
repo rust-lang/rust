@@ -11,7 +11,7 @@ use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, TyCtxt};
 
-use std::fmt::{self, Write};
+use std::fmt;
 
 impl NiceRegionError<'me, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and

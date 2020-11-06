@@ -452,8 +452,6 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
         }
 
         fn fill(&mut self) -> &mut String {
-            use crate::fmt::Write;
-
             let inner = self.inner;
             // Lazily, the first time this gets called, run the actual string formatting.
             self.string.get_or_insert_with(|| {

@@ -7,7 +7,7 @@
 
 use crate::html::escape::Escape;
 
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 use std::iter::Peekable;
 
 use rustc_lexer::{LiteralKind, TokenKind};

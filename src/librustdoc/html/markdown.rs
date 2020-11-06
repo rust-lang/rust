@@ -29,7 +29,6 @@ use rustc_span::Span;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::default::Default;
-use std::fmt::Write;
 use std::ops::Range;
 use std::str;
 

@@ -45,7 +45,7 @@ use tracing::debug;
 
 use libc::{c_longlong, c_uint};
 use std::collections::hash_map::Entry;
-use std::fmt::{self, Write};
+use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::path::{Path, PathBuf};

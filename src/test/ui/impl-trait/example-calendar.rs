@@ -11,8 +11,6 @@
 //!
 //! Originally converted to Rust by [Daniel Keep](https://github.com/DanielKeep).
 
-use std::fmt::Write;
-
 /// Date representation.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct NaiveDate(i32, u32, u32);

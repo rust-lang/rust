@@ -92,7 +92,6 @@ impl Buffer {
     // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
     // import).
     crate fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
-        use fmt::Write;
         self.buffer.write_fmt(v).unwrap();
     }
 
