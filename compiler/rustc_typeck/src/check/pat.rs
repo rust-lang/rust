@@ -1500,7 +1500,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_suggestion(
             sp,
             &format!(
-                "if you don't care about {} missing field{}, you can explicitely ignore {}",
+                "if you don't care about {} missing field{}, you can explicitly ignore {}",
                 if len == 1 { "this" } else { "these" },
                 if len == 1 { "" } else { "s" },
                 if len == 1 { "it" } else { "them" },
