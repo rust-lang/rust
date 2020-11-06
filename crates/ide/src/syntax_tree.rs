@@ -1,9 +1,7 @@
 use ide_db::base_db::{FileId, SourceDatabase};
 use ide_db::RootDatabase;
 use syntax::{
-    algo, AstNode, NodeOrToken, SourceFile,
-    SyntaxKind::{RAW_STRING, STRING},
-    SyntaxToken, TextRange, TextSize,
+    algo, AstNode, NodeOrToken, SourceFile, SyntaxKind::STRING, SyntaxToken, TextRange, TextSize,
 };
 
 // Feature: Show Syntax Tree
@@ -46,7 +44,7 @@ fn syntax_tree_for_string(token: &SyntaxToken, text_range: TextRange) -> Option<
     // we'll attempt parsing it as rust syntax
     // to provide the syntax tree of the contents of the string
     match token.kind() {
-        STRING | RAW_STRING => syntax_tree_for_token(token, text_range),
+        STRING => syntax_tree_for_token(token, text_range),
         _ => None,
     }
 }

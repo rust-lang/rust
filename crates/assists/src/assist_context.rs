@@ -12,7 +12,7 @@ use ide_db::{
 };
 use syntax::{
     algo::{self, find_node_at_offset, SyntaxRewriter},
-    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange, TextSize,
+    AstNode, AstToken, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange, TextSize,
     TokenAtOffset,
 };
 use text_edit::{TextEdit, TextEditBuilder};
@@ -81,8 +81,11 @@ impl<'a> AssistContext<'a> {
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
         self.source_file.syntax().token_at_offset(self.offset())
     }
-    pub(crate) fn find_token_at_offset(&self, kind: SyntaxKind) -> Option<SyntaxToken> {
+    pub(crate) fn find_token_syntax_at_offset(&self, kind: SyntaxKind) -> Option<SyntaxToken> {
         self.token_at_offset().find(|it| it.kind() == kind)
+    }
+    pub(crate) fn find_token_at_offset<T: AstToken>(&self) -> Option<T> {
+        self.token_at_offset().find_map(T::cast)
     }
     pub(crate) fn find_node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.offset())

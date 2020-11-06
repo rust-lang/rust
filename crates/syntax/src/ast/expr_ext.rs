@@ -320,6 +320,13 @@ impl ast::Literal {
         ast::IntNumber::cast(self.token())
     }
 
+    pub fn as_string(&self) -> Option<ast::String> {
+        ast::String::cast(self.token())
+    }
+    pub fn as_byte_string(&self) -> Option<ast::ByteString> {
+        ast::ByteString::cast(self.token())
+    }
+
     fn find_suffix(text: &str, possible_suffixes: &[&str]) -> Option<SmolStr> {
         possible_suffixes
             .iter()
@@ -351,10 +358,10 @@ impl ast::Literal {
                     suffix: Self::find_suffix(&text, &ast::FloatNumber::SUFFIXES),
                 }
             }
-            STRING | RAW_STRING => LiteralKind::String,
+            STRING => LiteralKind::String,
             T![true] => LiteralKind::Bool(true),
             T![false] => LiteralKind::Bool(false),
-            BYTE_STRING | RAW_BYTE_STRING => LiteralKind::ByteString,
+            BYTE_STRING => LiteralKind::ByteString,
             CHAR => LiteralKind::Char,
             BYTE => LiteralKind::Byte,
             _ => unreachable!(),

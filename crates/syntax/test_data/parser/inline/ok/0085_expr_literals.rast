@@ -104,7 +104,7 @@ SOURCE_FILE@0..189
         EQ@142..143 "="
         WHITESPACE@143..144 " "
         LITERAL@144..148
-          RAW_STRING@144..148 "r\"d\""
+          STRING@144..148 "r\"d\""
         SEMICOLON@148..149 ";"
       WHITESPACE@149..154 "\n    "
       LET_STMT@154..167
@@ -128,7 +128,7 @@ SOURCE_FILE@0..189
         EQ@178..179 "="
         WHITESPACE@179..180 " "
         LITERAL@180..185
-          RAW_BYTE_STRING@180..185 "br\"f\""
+          BYTE_STRING@180..185 "br\"f\""
         SEMICOLON@185..186 ";"
       WHITESPACE@186..187 "\n"
       R_CURLY@187..188 "}"

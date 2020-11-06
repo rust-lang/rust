@@ -505,7 +505,7 @@ impl Field {
 fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc::default();
 
-    res.tokens = "Whitespace Comment String RawString IntNumber FloatNumber"
+    res.tokens = "Whitespace Comment String ByteString IntNumber FloatNumber"
         .split_ascii_whitespace()
         .map(|it| it.to_string())
         .collect::<Vec<_>>();

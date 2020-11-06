@@ -18,7 +18,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn remove_mut(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let mut_token = ctx.find_token_at_offset(T![mut])?;
+    let mut_token = ctx.find_token_syntax_at_offset(T![mut])?;
     let delete_from = mut_token.text_range().start();
     let delete_to = match mut_token.next_token() {
         Some(it) if it.kind() == SyntaxKind::WHITESPACE => it.text_range().end(),

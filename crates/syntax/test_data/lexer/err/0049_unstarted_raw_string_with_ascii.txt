@@ -1,4 +1,4 @@
-RAW_STRING 4 "r## "
+STRING 4 "r## "
 IDENT 1 "I"
 WHITESPACE 1 " "
 IDENT 4 "lack"

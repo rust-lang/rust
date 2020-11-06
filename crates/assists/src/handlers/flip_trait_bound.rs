@@ -20,7 +20,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     // We want to replicate the behavior of `flip_binexpr` by only suggesting
     // the assist when the cursor is on a `+`
-    let plus = ctx.find_token_at_offset(T![+])?;
+    let plus = ctx.find_token_syntax_at_offset(T![+])?;
 
     // Make sure we're in a `TypeBoundList`
     if ast::TypeBoundList::cast(plus.parent()).is_none() {

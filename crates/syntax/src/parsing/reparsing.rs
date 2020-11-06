@@ -44,7 +44,7 @@ fn reparse_token<'node>(
     let prev_token = algo::find_covering_element(root, edit.delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
     match prev_token_kind {
-        WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
+        WHITESPACE | COMMENT | IDENT | STRING => {
             if prev_token_kind == WHITESPACE || prev_token_kind == COMMENT {
                 // removing a new line may extends previous token
                 let deleted_range = edit.delete - prev_token.text_range().start();

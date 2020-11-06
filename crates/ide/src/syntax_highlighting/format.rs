@@ -29,9 +29,7 @@ impl FormatStringHighlighter {
                         .children_with_tokens()
                         .filter(|t| t.kind() != SyntaxKind::WHITESPACE)
                         .nth(1)
-                        .filter(|e| {
-                            ast::String::can_cast(e.kind()) || ast::RawString::can_cast(e.kind())
-                        })
+                        .filter(|e| ast::String::can_cast(e.kind()))
                 }
                 _ => {}
             }

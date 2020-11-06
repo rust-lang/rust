@@ -1,2 +1,2 @@
-RAW_STRING 3 "r##"
+STRING 3 "r##"
 > error0..3 token("r##") msg(Missing `"` symbol after `#` symbols to begin the raw string literal)

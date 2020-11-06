@@ -1,2 +1,2 @@
-RAW_BYTE_STRING 4 "br##"
+BYTE_STRING 4 "br##"
 > error0..4 token("br##") msg(Missing `"` symbol after `#` symbols to begin the raw byte string literal)

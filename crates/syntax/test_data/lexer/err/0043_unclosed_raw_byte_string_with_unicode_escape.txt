@@ -1,2 +1,2 @@
-RAW_BYTE_STRING 13 "br##\"\\u{20AA}"
+BYTE_STRING 13 "br##\"\\u{20AA}"
 > error0..13 token("br##\"\\u{20AA}") msg(Missing trailing `"` with `#` symbols to terminate the raw byte string literal)

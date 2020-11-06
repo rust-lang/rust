@@ -239,9 +239,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         T![static] => consts::static_(p, m),
         // test extern_block
         // extern {}
-        T![extern]
-            if la == T!['{'] || ((la == STRING || la == RAW_STRING) && p.nth(2) == T!['{']) =>
-        {
+        T![extern] if la == T!['{'] || (la == STRING && p.nth(2) == T!['{']) => {
             abi(p);
             extern_item_list(p);
             m.complete(p, EXTERN_BLOCK);

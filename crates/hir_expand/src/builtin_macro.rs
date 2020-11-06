@@ -8,7 +8,7 @@ use base_db::FileId;
 use either::Either;
 use mbe::parse_to_token_tree;
 use parser::FragmentKind;
-use syntax::ast::{self, AstToken, HasStringValue};
+use syntax::ast::{self, AstToken};
 
 macro_rules! register_builtin {
     ( LAZY: $(($name:ident, $kind: ident) => $expand:ident),* , EAGER: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {

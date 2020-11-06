@@ -15,18 +15,8 @@ use super::*;
 //     let _ = b"e";
 //     let _ = br"f";
 // }
-pub(crate) const LITERAL_FIRST: TokenSet = TokenSet::new(&[
-    TRUE_KW,
-    FALSE_KW,
-    INT_NUMBER,
-    FLOAT_NUMBER,
-    BYTE,
-    CHAR,
-    STRING,
-    RAW_STRING,
-    BYTE_STRING,
-    RAW_BYTE_STRING,
-]);
+pub(crate) const LITERAL_FIRST: TokenSet =
+    TokenSet::new(&[TRUE_KW, FALSE_KW, INT_NUMBER, FLOAT_NUMBER, BYTE, CHAR, STRING, BYTE_STRING]);
 
 pub(crate) fn literal(p: &mut Parser) -> Option<CompletedMarker> {
     if !p.at_ts(LITERAL_FIRST) {

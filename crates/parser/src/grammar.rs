@@ -236,10 +236,7 @@ fn abi(p: &mut Parser) {
     assert!(p.at(T![extern]));
     let abi = p.start();
     p.bump(T![extern]);
-    match p.current() {
-        STRING | RAW_STRING => p.bump_any(),
-        _ => (),
-    }
+    p.eat(STRING);
     abi.complete(p, ABI);
 }
 

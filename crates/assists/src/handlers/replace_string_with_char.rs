@@ -1,8 +1,4 @@
-use syntax::{
-    ast::{self, HasStringValue},
-    AstToken,
-    SyntaxKind::STRING,
-};
+use syntax::{ast, AstToken, SyntaxKind::STRING};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -22,7 +18,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
+    let token = ctx.find_token_syntax_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
     let target = token.syntax().text_range();
 

@@ -41,7 +41,7 @@ use crate::{
 // fn qux(bar: Bar, baz: Baz) {}
 // ```
 pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let star = ctx.find_token_at_offset(T![*])?;
+    let star = ctx.find_token_syntax_at_offset(T![*])?;
     let (parent, mod_path) = find_parent_and_path(&star)?;
     let target_module = match ctx.sema.resolve_path(&mod_path)? {
         PathResolution::Def(ModuleDef::Module(it)) => it,

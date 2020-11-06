@@ -1,2 +1,2 @@
-RAW_BYTE_STRING 9 "br##\"\\x7f"
+BYTE_STRING 9 "br##\"\\x7f"
 > error0..9 token("br##\"\\x7f") msg(Missing trailing `"` with `#` symbols to terminate the raw byte string literal)

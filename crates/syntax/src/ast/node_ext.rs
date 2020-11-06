@@ -7,7 +7,7 @@ use itertools::Itertools;
 use parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, token_ext::HasStringValue, AstNode, AstToken, NameOwner, SyntaxNode},
+    ast::{self, support, AstNode, AstToken, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -55,13 +55,7 @@ impl ast::Attr {
         let key = self.simple_name()?;
         let value_token = lit.syntax().first_token()?;
 
-        let value: SmolStr = if let Some(s) = ast::String::cast(value_token.clone()) {
-            s.value()?.into()
-        } else if let Some(s) = ast::RawString::cast(value_token) {
-            s.value()?.into()
-        } else {
-            return None;
-        };
+        let value: SmolStr = ast::String::cast(value_token.clone())?.value()?.into();
 
         Some((key, value))
     }

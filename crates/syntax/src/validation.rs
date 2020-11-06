@@ -4,7 +4,7 @@ mod block;
 
 use crate::{
     algo, ast, match_ast, AstNode, SyntaxError,
-    SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST, FN, INT_NUMBER, STRING, TYPE_ALIAS},
+    SyntaxKind::{BYTE, CHAR, CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
 };
 use rowan::Direction;
@@ -121,6 +121,29 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         acc.push(SyntaxError::new_at_offset(rustc_unescape_error_to_string(err), off));
     };
 
+    if let Some(s) = literal.as_string() {
+        if !s.is_raw() {
+            if let Some(without_quotes) = unquote(text, 1, '"') {
+                unescape_literal(without_quotes, Mode::Str, &mut |range, char| {
+                    if let Err(err) = char {
+                        push_err(1, (range.start, err));
+                    }
+                })
+            }
+        }
+    }
+    if let Some(s) = literal.as_byte_string() {
+        if !s.is_raw() {
+            if let Some(without_quotes) = unquote(text, 2, '"') {
+                unescape_byte_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    if let Err(err) = char {
+                        push_err(2, (range.start, err));
+                    }
+                })
+            }
+        }
+    }
+
     match token.kind() {
         BYTE => {
             if let Some(Err(e)) = unquote(text, 2, '\'').map(unescape_byte) {
@@ -130,24 +153,6 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         CHAR => {
             if let Some(Err(e)) = unquote(text, 1, '\'').map(unescape_char) {
                 push_err(1, e);
-            }
-        }
-        BYTE_STRING => {
-            if let Some(without_quotes) = unquote(text, 2, '"') {
-                unescape_byte_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(2, (range.start, err));
-                    }
-                })
-            }
-        }
-        STRING => {
-            if let Some(without_quotes) = unquote(text, 1, '"') {
-                unescape_literal(without_quotes, Mode::Str, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(1, (range.start, err));
-                    }
-                })
             }
         }
         _ => (),
