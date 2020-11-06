@@ -13,6 +13,8 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
+#![allow(unsafe_op_in_unsafe_fn)]
+
 use crate::intrinsics;
 use crate::os::raw::c_char;
 
