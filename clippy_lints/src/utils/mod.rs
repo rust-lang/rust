@@ -659,6 +659,35 @@ pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
     snippet_opt(cx, line_span(cx, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
 }
 
+/// Returns the positon just before rarrow
+///
+/// ```rust,ignore
+/// fn into(self) -> () {}
+///              ^
+/// // in case of unformatted code
+/// fn into2(self)-> () {}
+///               ^
+/// fn into3(self)   -> () {}
+///               ^
+/// ```
+#[allow(clippy::needless_pass_by_value)]
+pub fn position_before_rarrow(s: String) -> Option<usize> {
+    s.rfind("->").map(|rpos| {
+        let mut rpos = rpos;
+        let chars: Vec<char> = s.chars().collect();
+        while rpos > 1 {
+            if let Some(c) = chars.get(rpos - 1) {
+                if c.is_whitespace() {
+                    rpos -= 1;
+                    continue;
+                }
+            }
+            break;
+        }
+        rpos
+    })
+}
+
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
 /// ```rust,ignore
