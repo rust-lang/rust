@@ -432,6 +432,7 @@ fn usage(argv0: &str) {
         (option.apply)(&mut options);
     }
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
+    println!("More information available at https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html")
 }
 
 /// A result type used by several functions under `main()`.
