@@ -2212,9 +2212,14 @@ impl<'test> TestCx<'test> {
         proc_res.fatal(None, || ());
     }
 
-    fn fatal_proc_rec_with_ctx(&self, err: &str, proc_res: &ProcRes, ctx: impl FnOnce(Self)) -> ! {
+    fn fatal_proc_rec_with_ctx(
+        &self,
+        err: &str,
+        proc_res: &ProcRes,
+        on_failure: impl FnOnce(Self),
+    ) -> ! {
         self.error(err);
-        proc_res.fatal(None, || ctx(*self));
+        proc_res.fatal(None, || on_failure(*self));
     }
 
     // codegen tests (using FileCheck)
@@ -2376,7 +2381,7 @@ impl<'test> TestCx<'test> {
             .wait()
             .unwrap();
         if !status.success() {
-            self.fatal("failed to run tidy - is installed?");
+            self.fatal("failed to run tidy - is it installed?");
         }
         let status = Command::new(tidy).arg(&compare_dir).spawn().unwrap().wait().unwrap();
         if !status.success() {
@@ -3653,7 +3658,7 @@ pub struct ProcRes {
 }
 
 impl ProcRes {
-    pub fn fatal(&self, err: Option<&str>, ctx: impl FnOnce()) -> ! {
+    pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
         if let Some(e) = err {
             println!("\nerror: {}", e);
         }
@@ -3675,7 +3680,7 @@ impl ProcRes {
             json::extract_rendered(&self.stdout),
             json::extract_rendered(&self.stderr),
         );
-        ctx();
+        on_failure();
         // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
         // compiletest, which is unnecessary noise.
         std::panic::resume_unwind(Box::new(()));
