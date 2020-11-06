@@ -5,6 +5,7 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
+#![feature(option_expect_none)]
 #![feature(try_blocks)]
 
 #[macro_use]

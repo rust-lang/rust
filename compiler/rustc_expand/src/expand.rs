@@ -689,6 +689,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             return ExpandResult::Ready(invoc.fragment_kind.dummy(invoc.span()));
         }
 
+        // Sanity check: ensure that no postfix macro slips through
+        // and accidentially gets expanded.
+        if let InvocationKind::Bang { mac, .. } = &invoc.kind {
+            mac.postfix_self_arg.as_ref().expect_none("postfix macro survived until expansion");
+        }
+
         let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
