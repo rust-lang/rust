@@ -139,14 +139,31 @@ pub trait HasQuotes: AstToken {
 }
 
 impl HasQuotes for ast::String {}
-impl HasQuotes for ast::RawString {}
 
 pub trait HasStringValue: HasQuotes {
     fn value(&self) -> Option<Cow<'_, str>>;
 }
 
+impl ast::String {
+    pub fn is_raw(&self) -> bool {
+        self.text().starts_with('r')
+    }
+    pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
+        let contents_range = self.text_range_between_quotes()?;
+        assert!(TextRange::up_to(contents_range.len()).contains_range(range));
+        Some(range + contents_range.start())
+    }
+}
+
 impl HasStringValue for ast::String {
     fn value(&self) -> Option<Cow<'_, str>> {
+        if self.is_raw() {
+            let text = self.text().as_str();
+            let text =
+                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+            return Some(Cow::Borrowed(text));
+        }
+
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
@@ -166,20 +183,9 @@ impl HasStringValue for ast::String {
     }
 }
 
-// FIXME: merge `ast::RawString` and `ast::String`.
-impl HasStringValue for ast::RawString {
-    fn value(&self) -> Option<Cow<'_, str>> {
-        let text = self.text().as_str();
-        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-        Some(Cow::Borrowed(text))
-    }
-}
-
-impl ast::RawString {
-    pub fn map_range_up(&self, range: TextRange) -> Option<TextRange> {
-        let contents_range = self.text_range_between_quotes()?;
-        assert!(TextRange::up_to(contents_range.len()).contains_range(range));
-        Some(range + contents_range.start())
+impl ast::ByteString {
+    pub fn is_raw(&self) -> bool {
+        self.text().starts_with("br")
     }
 }
 
@@ -518,22 +524,6 @@ impl HasFormatSpecifier for ast::String {
             ))
         });
 
-        Some(res)
-    }
-}
-
-impl HasFormatSpecifier for ast::RawString {
-    fn char_ranges(
-        &self,
-    ) -> Option<Vec<(TextRange, Result<char, rustc_lexer::unescape::EscapeError>)>> {
-        let text = self.text().as_str();
-        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
-        let offset = self.text_range_between_quotes()?.start() - self.syntax().text_range().start();
-
-        let mut res = Vec::with_capacity(text.len());
-        for (idx, c) in text.char_indices() {
-            res.push((TextRange::at(idx.try_into().unwrap(), TextSize::of(c)) + offset, Ok(c)));
-        }
         Some(res)
     }
 }

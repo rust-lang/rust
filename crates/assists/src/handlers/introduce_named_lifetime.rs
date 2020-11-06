@@ -36,7 +36,7 @@ static ASSIST_LABEL: &str = "Introduce named lifetime";
 // FIXME: should also add support for the case fun(f: &Foo) -> &<|>Foo
 pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let lifetime_token = ctx
-        .find_token_at_offset(SyntaxKind::LIFETIME)
+        .find_token_syntax_at_offset(SyntaxKind::LIFETIME)
         .filter(|lifetime| lifetime.text() == "'_")?;
     if let Some(fn_def) = lifetime_token.ancestors().find_map(ast::Fn::cast) {
         generate_fn_def_assist(acc, &fn_def, lifetime_token.text_range())

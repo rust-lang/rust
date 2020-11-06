@@ -1,2 +1,2 @@
-RAW_BYTE_STRING 5 "br##\""
+BYTE_STRING 5 "br##\""
 > error0..5 token("br##\"") msg(Missing trailing `"` with `#` symbols to terminate the raw byte string literal)

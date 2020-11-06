@@ -25,7 +25,7 @@ use crate::{
 // }
 // ```
 pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let ident = ctx.find_token_at_offset(SyntaxKind::IDENT).or_else(|| {
+    let ident = ctx.find_token_syntax_at_offset(SyntaxKind::IDENT).or_else(|| {
         let arg_list = ctx.find_node_at_offset::<ast::ArgList>()?;
         if arg_list.args().count() > 0 {
             return None;

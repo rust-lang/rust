@@ -16,7 +16,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // use std::{collections::HashMap};
 // ```
 pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let colon_colon = ctx.find_token_at_offset(T![::])?;
+    let colon_colon = ctx.find_token_syntax_at_offset(T![::])?;
     let path = ast::Path::cast(colon_colon.parent())?.qualifier()?;
     let top_path = successors(Some(path.clone()), |it| it.parent_path()).last()?;
 

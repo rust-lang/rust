@@ -70,16 +70,16 @@ impl AstToken for String {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RawString {
+pub struct ByteString {
     pub(crate) syntax: SyntaxToken,
 }
-impl std::fmt::Display for RawString {
+impl std::fmt::Display for ByteString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.syntax, f)
     }
 }
-impl AstToken for RawString {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RAW_STRING }
+impl AstToken for ByteString {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BYTE_STRING }
     fn cast(syntax: SyntaxToken) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })

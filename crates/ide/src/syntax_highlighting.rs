@@ -179,10 +179,12 @@ pub(crate) fn highlight(
             element.clone()
         };
 
-        if let Some(token) = element.as_token().cloned().and_then(ast::RawString::cast) {
-            let expanded = element_to_highlight.as_token().unwrap().clone();
-            if injection::highlight_injection(&mut stack, &sema, token, expanded).is_some() {
-                continue;
+        if let Some(token) = element.as_token().cloned().and_then(ast::String::cast) {
+            if token.is_raw() {
+                let expanded = element_to_highlight.as_token().unwrap().clone();
+                if injection::highlight_injection(&mut stack, &sema, token, expanded).is_some() {
+                    continue;
+                }
             }
         }
 
@@ -214,10 +216,6 @@ pub(crate) fn highlight(
                     }
                     stack.pop_and_inject(None);
                 }
-            } else if let Some(string) =
-                element_to_highlight.as_token().cloned().and_then(ast::RawString::cast)
-            {
-                format_string_highlighter.highlight_format_string(&mut stack, &string, range);
             }
         }
     }
@@ -532,7 +530,7 @@ fn highlight_element(
                 None => h.into(),
             }
         }
-        STRING | RAW_STRING | RAW_BYTE_STRING | BYTE_STRING => HighlightTag::StringLiteral.into(),
+        STRING | BYTE_STRING => HighlightTag::StringLiteral.into(),
         ATTR => HighlightTag::Attribute.into(),
         INT_NUMBER | FLOAT_NUMBER => HighlightTag::NumericLiteral.into(),
         BYTE => HighlightTag::ByteLiteral.into(),

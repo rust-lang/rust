@@ -1,2 +1,2 @@
-RAW_STRING 5 "r##\"\\"
+STRING 5 "r##\"\\"
 > error0..5 token("r##\"\\") msg(Missing trailing `"` with `#` symbols to terminate the raw string literal)

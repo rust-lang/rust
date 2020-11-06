@@ -111,9 +111,7 @@ pub enum SyntaxKind {
     CHAR,
     BYTE,
     STRING,
-    RAW_STRING,
     BYTE_STRING,
-    RAW_BYTE_STRING,
     ERROR,
     IDENT,
     WHITESPACE,
@@ -277,8 +275,7 @@ impl SyntaxKind {
     }
     pub fn is_literal(self) -> bool {
         match self {
-            INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE | STRING | RAW_STRING | BYTE_STRING
-            | RAW_BYTE_STRING => true,
+            INT_NUMBER | FLOAT_NUMBER | CHAR | BYTE | STRING | BYTE_STRING => true,
             _ => false,
         }
     }

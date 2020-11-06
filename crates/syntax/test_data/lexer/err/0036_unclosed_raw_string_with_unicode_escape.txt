@@ -1,2 +1,2 @@
-RAW_STRING 12 "r##\"\\u{20AA}"
+STRING 12 "r##\"\\u{20AA}"
 > error0..12 token("r##\"\\u{20AA}") msg(Missing trailing `"` with `#` symbols to terminate the raw string literal)

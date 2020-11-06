@@ -235,7 +235,7 @@ fn rustc_token_kind_to_syntax_kind(
                         RawStrError::TooManyDelimiters { .. } => "Too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols",
                     };
                 };
-                RAW_STRING
+                STRING
             }
             rustc_lexer::LiteralKind::RawByteStr { err: raw_str_err, .. } => {
                 if let Some(raw_str_err) = raw_str_err {
@@ -250,7 +250,7 @@ fn rustc_token_kind_to_syntax_kind(
                     };
                 };
 
-                RAW_BYTE_STRING
+                BYTE_STRING
             }
         };
 

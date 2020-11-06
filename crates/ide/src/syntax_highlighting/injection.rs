@@ -15,7 +15,7 @@ use super::HighlightedRangeStack;
 pub(super) fn highlight_injection(
     acc: &mut HighlightedRangeStack,
     sema: &Semantics<RootDatabase>,
-    literal: ast::RawString,
+    literal: ast::String,
     expanded: SyntaxToken,
 ) -> Option<()> {
     let active_parameter = ActiveParameter::at_token(&sema, expanded)?;

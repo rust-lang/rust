@@ -1,2 +1,2 @@
-RAW_STRING 8 "r##\"\\x7f"
+STRING 8 "r##\"\\x7f"
 > error0..8 token("r##\"\\x7f") msg(Missing trailing `"` with `#` symbols to terminate the raw string literal)
