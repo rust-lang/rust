@@ -124,11 +124,11 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() -> <|>_ {
-                45
-            }"#,
+    45
+}"#,
             r#"fn foo() -> i32 {
-                45
-            }"#,
+    45
+}"#,
         );
     }
 
@@ -138,11 +138,11 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                || -> _ {<|>45};
-            }"#,
+    || -> _ {<|>45};
+}"#,
             r#"fn foo() {
-                || -> i32 {45};
-            }"#,
+    || -> i32 {45};
+}"#,
         );
     }
 
@@ -152,11 +152,11 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() <|>{
-                45
-            }"#,
+    45
+}"#,
             r#"fn foo() -> i32 {
-                45
-            }"#,
+    45
+}"#,
         );
     }
 
@@ -166,11 +166,11 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                || <|>45
-            }"#,
+    || <|>45
+}"#,
             r#"fn foo() {
-                || -> i32 {45}
-            }"#,
+    || -> i32 {45}
+}"#,
         );
     }
 
@@ -180,11 +180,11 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                45<|>
-            }"#,
+    45<|>
+}"#,
             r#"fn foo() -> i32 {
-                45
-            }"#,
+    45
+}"#,
         );
     }
 
@@ -193,19 +193,19 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                if true {
-                    3<|>
-                } else {
-                    5
-                }
-            }"#,
+    if true {
+        3<|>
+    } else {
+        5
+    }
+}"#,
             r#"fn foo() -> i32 {
-                if true {
-                    3
-                } else {
-                    5
-                }
-            }"#,
+    if true {
+        3
+    } else {
+        5
+    }
+}"#,
         );
     }
 
@@ -215,8 +215,8 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() -> i32 {
-                ( 45<|> + 32 ) * 123
-            }"#,
+    ( 45<|> + 32 ) * 123
+}"#,
         );
     }
 
@@ -225,9 +225,9 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {
-                let x = <|>3;
-                ( 45 + 32 ) * 123
-            }"#,
+    let x = <|>3;
+    ( 45 + 32 ) * 123
+}"#,
         );
     }
 
@@ -236,8 +236,8 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {
-                (<|>)
-            }"#,
+    (<|>)
+}"#,
         );
     }
 
@@ -247,15 +247,15 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                |x: i32| {
-                    x<|>
-                };
-            }"#,
+    |x: i32| {
+        x<|>
+    };
+}"#,
             r#"fn foo() {
-                |x: i32| -> i32 {
-                    x
-                };
-            }"#,
+    |x: i32| -> i32 {
+        x
+    };
+}"#,
         );
     }
 
@@ -264,11 +264,11 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                |x: i32| { x<|> };
-            }"#,
+    |x: i32| { x<|> };
+}"#,
             r#"fn foo() {
-                |x: i32| -> i32 { x };
-            }"#,
+    |x: i32| -> i32 { x };
+}"#,
         );
     }
 
@@ -278,11 +278,11 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                |x: i32| x<|>;
-            }"#,
+    |x: i32| x<|>;
+}"#,
             r#"fn foo() {
-                |x: i32| -> i32 {x};
-            }"#,
+    |x: i32| -> i32 {x};
+}"#,
         );
     }
 
@@ -291,23 +291,23 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-                || {
-                    if true {
-                        3<|>
-                    } else {
-                        5
-                    }
-                }
-            }"#,
+    || {
+        if true {
+            3<|>
+        } else {
+            5
+        }
+    }
+}"#,
             r#"fn foo() {
-                || -> i32 {
-                    if true {
-                        3
-                    } else {
-                        5
-                    }
-                }
-            }"#,
+    || -> i32 {
+        if true {
+            3
+        } else {
+            5
+        }
+    }
+}"#,
         );
     }
 
@@ -317,8 +317,8 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {
-                || -> i32 { 3<|> }
-            }"#,
+    || -> i32 { 3<|> }
+}"#,
         );
     }
 
@@ -327,11 +327,11 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {
-                || -> i32 {
-                    let x = 3<|>;
-                    6
-                }
-            }"#,
+    || -> i32 {
+        let x = 3<|>;
+        6
+    }
+}"#,
         );
     }
 }
