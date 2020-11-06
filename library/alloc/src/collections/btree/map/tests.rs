@@ -1668,6 +1668,7 @@ create_append_test!(test_append_239, 239);
 create_append_test!(test_append_1700, 1700);
 
 fn rand_data(len: usize) -> Vec<(u32, u32)> {
+    assert!(len * 2 <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| (rng.next(), rng.next())))
 }

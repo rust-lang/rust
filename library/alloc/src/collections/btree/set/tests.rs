@@ -687,6 +687,7 @@ fn test_first_last() {
 }
 
 fn rand_data(len: usize) -> Vec<u32> {
+    assert!(len <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| rng.next()))
 }
