@@ -2,7 +2,16 @@
 
 ## [Unreleased]
 
-## [1.4.22] 2020-10-30
+## [1.4.24] 2020-11-05
+
+### Changed
+
+- Block wrapped match arm bodies containing a single macro call expression are no longer flattened ([#4496](https://github.com/rust-lang/rustfmt/pull/4496)). This allows programmer discretion so that the block wrapping can be preserved in cases where needed to prevent issues in expansion, such as with trailing semicolons, and aligns with updated [Style Guide guidance](https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/expressions.md#macro-call-expressions) for such scenarios.
+
+### Fixed
+- Remove useless `deprecated` attribute on a trait impl block in the rustfmt lib, as these now trigger errors ([rust-lang/rust/#78626](https://github.com/rust-lang/rust/pull/78626))
+
+## [1.4.23] 2020-10-30
 
 ### Changed
 

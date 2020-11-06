@@ -1237,7 +1237,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.23"
+version = "1.4.24"
 dependencies = [
  "annotate-snippets 0.6.1",
  "anyhow",
