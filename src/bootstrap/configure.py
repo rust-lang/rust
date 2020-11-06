@@ -266,7 +266,7 @@ config = {}
 def build():
     if 'build' in known_args:
         return known_args['build'][-1][1]
-    return bootstrap.default_build_triple()
+    return bootstrap.default_build_triple(verbose=False)
 
 
 def set(key, value):
