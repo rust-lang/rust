@@ -3,7 +3,7 @@
 
 use std::convert::TryInto;
 
-use rustc_lexer::{LiteralKind as LK, RawStrError};
+use rustc_lexer::RawStrError;
 
 use crate::{
     SyntaxError,
@@ -185,63 +185,77 @@ fn rustc_token_kind_to_syntax_kind(
     return (syntax_kind, None);
 
     fn match_literal_kind(kind: &rustc_lexer::LiteralKind) -> (SyntaxKind, Option<&'static str>) {
-        #[rustfmt::skip]
+        let mut err = "";
         let syntax_kind = match *kind {
-            LK::Int { empty_int: false, .. } => INT_NUMBER,
-            LK::Int { empty_int: true, .. } => {
-                return (INT_NUMBER, Some("Missing digits after the integer base prefix"))
+            rustc_lexer::LiteralKind::Int { empty_int, base: _ } => {
+                if empty_int {
+                    err = "Missing digits after the integer base prefix";
+                }
+                INT_NUMBER
             }
-
-            LK::Float { empty_exponent: false, .. } => FLOAT_NUMBER,
-            LK::Float { empty_exponent: true, .. } => {
-                return (FLOAT_NUMBER, Some("Missing digits after the exponent symbol"))
+            rustc_lexer::LiteralKind::Float { empty_exponent, base: _ } => {
+                if empty_exponent {
+                    err = "Missing digits after the exponent symbol";
+                }
+                FLOAT_NUMBER
             }
-
-            LK::Char { terminated: true } => CHAR,
-            LK::Char { terminated: false } => {
-                return (CHAR, Some("Missing trailing `'` symbol to terminate the character literal"))
+            rustc_lexer::LiteralKind::Char { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `'` symbol to terminate the character literal";
+                }
+                CHAR
             }
-
-            LK::Byte { terminated: true } => BYTE,
-            LK::Byte { terminated: false } => {
-                return (BYTE, Some("Missing trailing `'` symbol to terminate the byte literal"))
+            rustc_lexer::LiteralKind::Byte { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `'` symbol to terminate the byte literal";
+                }
+                BYTE
             }
-
-            LK::Str { terminated: true } => STRING,
-            LK::Str { terminated: false } => {
-                return (STRING, Some("Missing trailing `\"` symbol to terminate the string literal"))
+            rustc_lexer::LiteralKind::Str { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `\"` symbol to terminate the string literal";
+                }
+                STRING
             }
-
-
-            LK::ByteStr { terminated: true } => BYTE_STRING,
-            LK::ByteStr { terminated: false } => {
-                return (BYTE_STRING, Some("Missing trailing `\"` symbol to terminate the byte string literal"))
+            rustc_lexer::LiteralKind::ByteStr { terminated } => {
+                if !terminated {
+                    err = "Missing trailing `\"` symbol to terminate the byte string literal";
+                }
+                BYTE_STRING
             }
+            rustc_lexer::LiteralKind::RawStr { err: raw_str_err, .. } => {
+                if let Some(raw_str_err) = raw_str_err {
+                    err = match raw_str_err {
+                        RawStrError::InvalidStarter { .. } => "Missing `\"` symbol after `#` symbols to begin the raw string literal",
+                        RawStrError::NoTerminator { expected, found, .. } => if expected == found {
+                            "Missing trailing `\"` to terminate the raw string literal"
+                        } else {
+                            "Missing trailing `\"` with `#` symbols to terminate the raw string literal"
+                        },
+                        RawStrError::TooManyDelimiters { .. } => "Too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols",
+                    };
+                };
+                RAW_STRING
+            }
+            rustc_lexer::LiteralKind::RawByteStr { err: raw_str_err, .. } => {
+                if let Some(raw_str_err) = raw_str_err {
+                    err = match raw_str_err {
+                        RawStrError::InvalidStarter { .. } => "Missing `\"` symbol after `#` symbols to begin the raw byte string literal",
+                        RawStrError::NoTerminator { expected, found, .. } => if expected == found {
+                            "Missing trailing `\"` to terminate the raw byte string literal"
+                        } else {
+                            "Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"
+                        },
+                        RawStrError::TooManyDelimiters { .. } => "Too many `#` symbols: raw byte strings may be delimited by up to 65535 `#` symbols",
+                    };
+                };
 
-            LK::RawStr { err, .. } => match err {
-                None => RAW_STRING,
-                Some(RawStrError::InvalidStarter { .. }) => return (RAW_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw string literal")),
-                Some(RawStrError::NoTerminator { expected, found, .. }) => if expected == found {
-                    return (RAW_STRING, Some("Missing trailing `\"` to terminate the raw string literal"))
-                } else {
-                    return (RAW_STRING, Some("Missing trailing `\"` with `#` symbols to terminate the raw string literal"))
-
-                },
-                Some(RawStrError::TooManyDelimiters { .. }) => return (RAW_STRING, Some("Too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols")),
-            },
-            LK::RawByteStr { err, .. } => match err {
-                None => RAW_BYTE_STRING,
-                Some(RawStrError::InvalidStarter { .. }) => return (RAW_BYTE_STRING, Some("Missing `\"` symbol after `#` symbols to begin the raw byte string literal")),
-                Some(RawStrError::NoTerminator { expected, found, .. }) => if expected == found {
-                    return (RAW_BYTE_STRING, Some("Missing trailing `\"` to terminate the raw byte string literal"))
-                } else {
-                    return (RAW_BYTE_STRING, Some("Missing trailing `\"` with `#` symbols to terminate the raw byte string literal"))
-
-                },
-                Some(RawStrError::TooManyDelimiters { .. }) => return (RAW_BYTE_STRING, Some("Too many `#` symbols: raw byte strings may be delimited by up to 65535 `#` symbols")),
-            },
+                RAW_BYTE_STRING
+            }
         };
 
-        (syntax_kind, None)
+        let err = if err.is_empty() { None } else { Some(err) };
+
+        (syntax_kind, err)
     }
 }
