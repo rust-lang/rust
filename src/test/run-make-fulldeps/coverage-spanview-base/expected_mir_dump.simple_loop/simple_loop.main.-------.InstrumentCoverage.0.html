@@ -1,4 +1,14 @@
 <!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.simple_loop/simple_loop.main.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
 <html>
 <head>
 <title>simple_loop.main - Coverage Spans</title>
@@ -89,39 +99,45 @@
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="12:9-12:16: @3[6]: _7 = _1
 12:9-12:16: @3[7]: FakeRead(ForMatchedPlace, _7)"><span class="annotation">@0,1,2,3⦊</span>is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code odd" style="--layer: 1" title="14:9-16:15: @6[0]: _5 = const 10_i32
-13:5-18:6: @6[1]: _6 = const ()"><span class="annotation">@4,6⦊</span>{</span></span>
+13:5-18:6: @6[1]: _6 = const ()
+18:6-18:6: @6.Goto: goto -&gt; bb7"><span class="annotation">@4,6⦊</span>{</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="14:9-16:15: @6[0]: _5 = const 10_i32
-13:5-18:6: @6[1]: _6 = const ()">        countdown</span></span>
+13:5-18:6: @6[1]: _6 = const ()
+18:6-18:6: @6.Goto: goto -&gt; bb7">        countdown</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="14:9-16:15: @6[0]: _5 = const 10_i32
-13:5-18:6: @6[1]: _6 = const ()">        =</span></span>
+13:5-18:6: @6[1]: _6 = const ()
+18:6-18:6: @6.Goto: goto -&gt; bb7">        =</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="14:9-16:15: @6[0]: _5 = const 10_i32
-13:5-18:6: @6[1]: _6 = const ()">            10</span></span>
+13:5-18:6: @6[1]: _6 = const ()
+18:6-18:6: @6.Goto: goto -&gt; bb7">            10</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="14:9-16:15: @6[0]: _5 = const 10_i32
-13:5-18:6: @6[1]: _6 = const ()">        ;</span></span>
+13:5-18:6: @6[1]: _6 = const ()
+18:6-18:6: @6.Goto: goto -&gt; bb7">        ;</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="14:9-16:15: @6[0]: _5 = const 10_i32
-13:5-18:6: @6[1]: _6 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span class="code" style="--layer: 0"></span></span>
+13:5-18:6: @6[1]: _6 = const ()
+18:6-18:6: @6.Goto: goto -&gt; bb7">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="18:6-18:6: @5.Goto: goto -&gt; bb7"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    loop</span></span>
 <span class="line"><span class="code" style="--layer: 0">    {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        if</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="23:13-23:22: @9[3]: _11 = _5
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="23:13-23:22: @9[3]: _11 = _5
 23:13-25:14: @9[4]: _10 = Eq(move _11, const 0_i32)
 23:13-25:14: @9[6]: FakeRead(ForMatchedPlace, _10)"><span class="annotation">@8,9⦊</span>countdown</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="23:13-23:22: @9[3]: _11 = _5
+<span class="line"><span class="code odd" style="--layer: 1" title="23:13-23:22: @9[3]: _11 = _5
 23:13-25:14: @9[4]: _10 = Eq(move _11, const 0_i32)
 23:13-25:14: @9[6]: FakeRead(ForMatchedPlace, _10)">                ==</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="23:13-23:22: @9[3]: _11 = _5
+<span class="line"><span class="code odd" style="--layer: 1" title="23:13-23:22: @9[3]: _11 = _5
 23:13-25:14: @9[4]: _10 = Eq(move _11, const 0_i32)
 23:13-25:14: @9[6]: FakeRead(ForMatchedPlace, _10)">            0<span class="annotation">⦉@8,9</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        {</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="27:13-27:18: @12[0]: _0 = const ()"><span class="annotation">@10,12⦊</span>break<span class="annotation">⦉@10,12</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="27:13-27:18: @12[0]: _0 = const ()"><span class="annotation">@10,12⦊</span>break<span class="annotation">⦉@10,12</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">            ;</span></span>
 <span class="line"><span class="code" style="--layer: 0">        }</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="30:9-32:10: @11[3]: _13 = CheckedSub(_5, const 1_i32)"><span class="annotation">@11⦊</span>countdown</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="30:9-32:10: @11[3]: _13 = CheckedSub(_5, const 1_i32)">        -=</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="30:9-32:10: @11[3]: _13 = CheckedSub(_5, const 1_i32)">        1<span class="annotation">⦉@11</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="30:9-32:10: @13[0]: _5 = move (_13.0: i32)"><span class="annotation">@13⦊</span>countdown</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="30:9-32:10: @13[0]: _5 = move (_13.0: i32)">        -=</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="30:9-32:10: @13[0]: _5 = move (_13.0: i32)">        1<span class="annotation">⦉@13</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        ;</span></span>
-<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code even" style="--layer: 1" title="34:6-34:6: @7.Goto: goto -&gt; bb8"><span class="annotation">@7⦊</span>‸<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="35:2-35:2: @12.Return: return"><span class="annotation">@10,12⦊</span>‸<span class="annotation">⦉@10,12</span></span></span></span></div>
 </body>
 </html>

@@ -129,7 +129,7 @@ impl CoverageMapGenerator {
                 let (filenames_index, _) = self.filenames.insert_full(c_filename);
                 virtual_file_mapping.push(filenames_index as u32);
             }
-            debug!("Adding counter {:?} to map for {:?}", counter, region,);
+            debug!("Adding counter {:?} to map for {:?}", counter, region);
             mapping_regions.push(CounterMappingRegion::code_region(
                 counter,
                 current_file_id,

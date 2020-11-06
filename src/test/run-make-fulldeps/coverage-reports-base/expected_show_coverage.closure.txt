@@ -62,7 +62,7 @@
    62|      1|                let mut countdown = 0;
    63|      1|                if is_false {
    64|      0|                    countdown = 10;
-   65|      0|                }
+   65|      1|                }
    66|      1|                "alt string 3".to_owned()
    67|      1|            }
    68|      1|        )
@@ -77,7 +77,7 @@
    77|      1|        let mut countdown = 0;
    78|      1|        if is_false {
    79|      0|            countdown = 10;
-   80|      0|        }
+   80|      1|        }
    81|      1|        "alt string 4".to_owned()
    82|      1|    };
    83|      1|    println!(

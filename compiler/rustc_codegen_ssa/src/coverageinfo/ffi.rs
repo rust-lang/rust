@@ -3,7 +3,7 @@ use rustc_middle::mir::coverage::{CounterValueReference, MappedExpressionIndex};
 /// Aligns with [llvm::coverage::Counter::CounterKind](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L91)
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-enum CounterKind {
+pub enum CounterKind {
     Zero = 0,
     CounterValueReference = 1,
     Expression = 2,
@@ -23,8 +23,8 @@ enum CounterKind {
 #[repr(C)]
 pub struct Counter {
     // Important: The layout (order and types of fields) must match its C++ counterpart.
-    kind: CounterKind,
-    id: u32,
+    pub kind: CounterKind,
+    pub id: u32,
 }
 
 impl Counter {
@@ -55,9 +55,9 @@ pub enum ExprKind {
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CounterExpression {
-    kind: ExprKind,
-    lhs: Counter,
-    rhs: Counter,
+    pub kind: ExprKind,
+    pub lhs: Counter,
+    pub rhs: Counter,
 }
 
 impl CounterExpression {
