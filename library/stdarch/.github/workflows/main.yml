@@ -175,7 +175,7 @@ jobs:
     - name: Install Rust (macos)
       run: |
         curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
-        echo "##[add-path]$HOME/.cargo/bin"
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
         rustup update nightly --no-self-update
         rustup default nightly
       if: matrix.os == 'macos-latest'
@@ -186,15 +186,15 @@ jobs:
     - run: cargo generate-lockfile
 
     # Configure some env vars based on matrix configuration
-    - run: echo "##[set-env name=NORUN]1"
+    - run: echo "NORUN=1" >> $GITHUB_ENV
       if: matrix.norun != '' || startsWith(matrix.target, 'thumb') || matrix.target == 'nvptx64-nvidia-cuda'
-    - run: echo "##[set-env name=STDARCH_TEST_EVERYTHING]1"
+    - run: echo "STDARCH_TEST_EVERYTHING=1" >> $GITHUB_ENV
       if: matrix.test_everything != ''
-    - run: echo "##[set-env name=RUSTFLAGS]${{ matrix.rustflags }}"
+    - run: echo "RUSTFLAGS=${{ matrix.rustflags }}" >> $GITHUB_ENV
       if: matrix.rustflags != ''
-    - run: echo "##[set-env name=STDARCH_DISABLE_ASSERT_INSTR]1"
+    - run: echo "STDARCH_DISABLE_ASSERT_INSTR=1" >> $GITHUB_ENV
       if: matrix.disable_assert_instr != ''
-    - run: echo "##[set-env name=NOSTD]1"
+    - run: echo "NOSTD=1" >> $GITHUB_ENV
       if: startsWith(matrix.target, 'thumb') || matrix.target == 'nvptx64-nvidia-cuda'
 
     # Windows & OSX go straight to `run.sh` ...
