@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 case "$(uname -m)" in

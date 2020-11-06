@@ -389,8 +389,11 @@ fn check_arms<'p, 'tcx>(
                     hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                 }
             }
-            Useful(unreachable_subpatterns) => {
-                for span in unreachable_subpatterns {
+            Useful(unreachables) => {
+                let mut unreachables: Vec<_> = unreachables.into_iter().flatten().collect();
+                // Emit lints in the order in which they occur in the file.
+                unreachables.sort_unstable();
+                for span in unreachables {
                     unreachable_pattern(cx.tcx, span, id, None);
                 }
             }

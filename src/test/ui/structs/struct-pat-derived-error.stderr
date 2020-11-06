@@ -20,7 +20,7 @@ help: include the missing fields in the pattern
    |
 LL |         let A { x, y, b, c } = self.d;
    |                     ^^^^^^
-help: if you don't care about these missing fields, you can explicitely ignore them
+help: if you don't care about these missing fields, you can explicitly ignore them
    |
 LL |         let A { x, y, .. } = self.d;
    |                     ^^^^

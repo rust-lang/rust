@@ -1,5 +1,11 @@
-//! Note: most of the tests relevant to this file can be found (at the time of writing) in
-//! src/tests/ui/pattern/usefulness.
+//! Note: tests specific to this file can be found in:
+//!     - ui/pattern/usefulness
+//!     - ui/or-patterns
+//!     - ui/consts/const_in_pattern
+//!     - ui/rfc-2008-non-exhaustive
+//!     - probably many others
+//! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
+//! reason not to, for example if they depend on a particular feature like or_patterns.
 //!
 //! This file includes the logic for exhaustiveness and usefulness checking for
 //! pattern-matching. Specifically, given a list of patterns for a type, we can
@@ -1361,8 +1367,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
 #[derive(Clone, Debug)]
 crate enum Usefulness<'tcx> {
-    /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
-    Useful(Vec<Span>),
+    /// Carries, for each column in the matrix, a set of sub-branches that have been found to be
+    /// unreachable. Used only in the presence of or-patterns, otherwise it stays empty.
+    Useful(Vec<FxHashSet<Span>>),
     /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
@@ -1409,6 +1416,23 @@ impl<'tcx> Usefulness<'tcx> {
                         .collect()
                 };
                 UsefulWithWitness(new_witnesses)
+            }
+            Useful(mut unreachables) => {
+                if !unreachables.is_empty() {
+                    // When we apply a constructor, there are `arity` columns of the matrix that
+                    // corresponded to its arguments. All the unreachables found in these columns
+                    // will, after `apply`, come from the first column. So we take the union of all
+                    // the corresponding sets and put them in the first column.
+                    // Note that `arity` may be 0, in which case we just push a new empty set.
+                    let len = unreachables.len();
+                    let arity = ctor_wild_subpatterns.len();
+                    let mut unioned = FxHashSet::default();
+                    for set in unreachables.drain((len - arity)..) {
+                        unioned.extend(set)
+                    }
+                    unreachables.push(unioned);
+                }
+                Useful(unreachables)
             }
             x => x,
         }
@@ -2091,13 +2115,14 @@ crate fn is_useful<'p, 'tcx>(
 
     // If the first pattern is an or-pattern, expand it.
     if let Some(vs) = v.expand_or_pat() {
-        // We need to push the already-seen patterns into the matrix in order to detect redundant
-        // branches like `Some(_) | Some(0)`. We also keep track of the unreachable subpatterns.
-        let mut matrix = matrix.clone();
-        // `Vec` of all the unreachable branches of the current or-pattern.
-        let mut unreachable_branches = Vec::new();
-        // Subpatterns that are unreachable from all branches. E.g. in the following case, the last
-        // `true` is unreachable only from one branch, so it is overall reachable.
+        // We expand the or pattern, trying each of its branches in turn and keeping careful track
+        // of possible unreachable sub-branches.
+        //
+        // If two branches have detected some unreachable sub-branches, we need to be careful. If
+        // they were detected in columns that are not the current one, we want to keep only the
+        // sub-branches that were unreachable in _all_ branches. Eg. in the following, the last
+        // `true` is unreachable in the second branch of the first or-pattern, but not otherwise.
+        // Therefore we don't want to lint that it is unreachable.
         //
         // ```
         // match (true, true) {
@@ -2105,41 +2130,72 @@ crate fn is_useful<'p, 'tcx>(
         //     (false | true, false | true) => {}
         // }
         // ```
-        let mut unreachable_subpats = FxHashSet::default();
-        // Whether any branch at all is useful.
+        // If however the sub-branches come from the current column, they come from the inside of
+        // the current or-pattern, and we want to keep them all. Eg. in the following, we _do_ want
+        // to lint that the last `false` is unreachable.
+        // ```
+        // match None {
+        //     Some(false) => {}
+        //     None | Some(true | false) => {}
+        // }
+        // ```
+
+        let mut matrix = matrix.clone();
+        // We keep track of sub-branches separately depending on whether they come from this column
+        // or from others.
+        let mut unreachables_this_column: FxHashSet<Span> = FxHashSet::default();
+        let mut unreachables_other_columns: Vec<FxHashSet<Span>> = Vec::default();
+        // Whether at least one branch is reachable.
         let mut any_is_useful = false;
 
         for v in vs {
             let res = is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             match res {
-                Useful(pats) => {
-                    if !any_is_useful {
-                        any_is_useful = true;
-                        // Initialize with the first set of unreachable subpatterns encountered.
-                        unreachable_subpats = pats.into_iter().collect();
-                    } else {
-                        // Keep the patterns unreachable from both this and previous branches.
-                        unreachable_subpats =
-                            pats.into_iter().filter(|p| unreachable_subpats.contains(p)).collect();
+                Useful(unreachables) => {
+                    if let Some((this_column, other_columns)) = unreachables.split_last() {
+                        // We keep the union of unreachables found in the first column.
+                        unreachables_this_column.extend(this_column);
+                        // We keep the intersection of unreachables found in other columns.
+                        if unreachables_other_columns.is_empty() {
+                            unreachables_other_columns = other_columns.to_vec();
+                        } else {
+                            unreachables_other_columns = unreachables_other_columns
+                                .into_iter()
+                                .zip(other_columns)
+                                .map(|(x, y)| x.intersection(&y).copied().collect())
+                                .collect();
+                        }
                     }
+                    any_is_useful = true;
                 }
-                NotUseful => unreachable_branches.push(v.head().span),
-                UsefulWithWitness(_) => {
-                    bug!("Encountered or-pat in `v` during exhaustiveness checking")
+                NotUseful => {
+                    unreachables_this_column.insert(v.head().span);
                 }
+                UsefulWithWitness(_) => bug!(
+                    "encountered or-pat in the expansion of `_` during exhaustiveness checking"
+                ),
             }
-            // If pattern has a guard don't add it to the matrix
+
+            // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
+                // We push the already-seen patterns into the matrix in order to detect redundant
+                // branches like `Some(_) | Some(0)`.
                 matrix.push(v);
             }
         }
-        if any_is_useful {
-            // Collect all the unreachable patterns.
-            unreachable_branches.extend(unreachable_subpats);
-            return Useful(unreachable_branches);
+
+        return if any_is_useful {
+            let mut unreachables = if unreachables_other_columns.is_empty() {
+                let n_columns = v.len();
+                (0..n_columns - 1).map(|_| FxHashSet::default()).collect()
+            } else {
+                unreachables_other_columns
+            };
+            unreachables.push(unreachables_this_column);
+            Useful(unreachables)
         } else {
-            return NotUseful;
-        }
+            NotUseful
+        };
     }
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).

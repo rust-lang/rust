@@ -224,6 +224,10 @@ pub struct Config {
     /// The test mode, compile-fail, run-fail, ui
     pub mode: Mode,
 
+    /// The test suite (essentially which directory is running, but without the
+    /// directory prefix such as src/test)
+    pub suite: String,
+
     /// The debugger to use in debuginfo mode. Unset otherwise.
     pub debugger: Option<Debugger>,
 

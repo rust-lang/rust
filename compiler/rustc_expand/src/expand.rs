@@ -1436,9 +1436,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 item.attrs = attrs;
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ItemKind::MacCall(mac) => self
-                        .collect(AstFragmentKind::Items, InvocationKind::Bang { mac, span })
-                        .make_items(),
+                    ItemKind::MacCall(mac) => {
+                        self.collect_bang(mac, span, AstFragmentKind::Items).make_items()
+                    }
                     _ => unreachable!(),
                 })
             }

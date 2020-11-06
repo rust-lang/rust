@@ -140,14 +140,6 @@ impl Inliner<'tcx> {
                 continue;
             };
 
-            // Copy only unevaluated constants from the callee_body into the caller_body.
-            // Although we are only pushing `ConstKind::Unevaluated` consts to
-            // `required_consts`, here we may not only have `ConstKind::Unevaluated`
-            // because we are calling `subst_and_normalize_erasing_regions`.
-            caller_body.required_consts.extend(callee_body.required_consts.iter().copied().filter(
-                |&constant| matches!(constant.literal.val, ConstKind::Unevaluated(_, _, _)),
-            ));
-
             let start = caller_body.basic_blocks().len();
             debug!("attempting to inline callsite {:?} - body={:?}", callsite, callee_body);
             if !self.inline_call(callsite, caller_body, callee_body) {
@@ -521,6 +513,16 @@ impl Inliner<'tcx> {
                     source_info: callsite.source_info,
                     kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
                 });
+
+                // Copy only unevaluated constants from the callee_body into the caller_body.
+                // Although we are only pushing `ConstKind::Unevaluated` consts to
+                // `required_consts`, here we may not only have `ConstKind::Unevaluated`
+                // because we are calling `subst_and_normalize_erasing_regions`.
+                caller_body.required_consts.extend(
+                    callee_body.required_consts.iter().copied().filter(|&constant| {
+                        matches!(constant.literal.val, ConstKind::Unevaluated(_, _, _))
+                    }),
+                );
 
                 true
             }
