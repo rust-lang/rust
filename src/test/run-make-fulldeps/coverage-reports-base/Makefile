@@ -13,6 +13,12 @@
 BASEDIR=../coverage-reports-base
 SOURCEDIR=../coverage
 
+ifeq ($(UNAME),Darwin)
+# FIXME(richkadel): It appears that --debug is not available on MacOS even when not running
+# under CI.
+NO_LLVM_ASSERTIONS=1
+endif
+
 # The `llvm-cov show` flag `--debug`, used to generate the `counters` output files, is only enabled
 # if LLVM assertions are enabled. Some CI builds disable debug assertions.
 ifndef NO_LLVM_ASSERTIONS

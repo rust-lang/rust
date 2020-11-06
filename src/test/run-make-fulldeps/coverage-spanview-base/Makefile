@@ -9,6 +9,10 @@
 BASEDIR=../coverage-spanview-base
 SOURCEDIR=../coverage
 
+ifeq ($(UNAME),Darwin)
+SED_HAS_ISSUES=1
+endif
+
 all: $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
@@ -28,6 +32,14 @@ endif
 			-Zdump-mir=InstrumentCoverage \
 			-Zdump-mir-spanview \
 			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@
+
+ifdef SED_HAS_ISSUES
+	# FIXME(richkadel): MacOS's default sed has some significant limitations. Until I've come up
+	# with a better workaround, I'm disabling this test for MacOS.
+	#
+	# For future reference, see if `gsed` is available as an alternative.
+	which gsed || echo "no gsed"
+else
 
 	for path in "$(TMPDIR)"/mir_dump.$@/*; do \
 		echo $$path; \
@@ -57,4 +69,6 @@ else
 	rm -f "$(TMPDIR)"/actual_mir_dump.$@/*
 	cp "$(TMPDIR)"/mir_dump.$@/*InstrumentCoverage.0.html "$(TMPDIR)"/actual_mir_dump.$@/
 	$(DIFF) -r expected_mir_dump.$@/ "$(TMPDIR)"/actual_mir_dump.$@/
+endif
+
 endif
