@@ -950,7 +950,7 @@ pub struct TargetOptions {
     /// The MergeFunctions pass is generally useful, but some targets may need
     /// to opt out. The default is "aliases".
     ///
-    /// Workaround for: https://github.com/rust-lang/rust/issues/57356
+    /// Workaround for: <https://github.com/rust-lang/rust/issues/57356>
     pub merge_functions: MergeFunctions,
 
     /// Use platform dependent mcount function

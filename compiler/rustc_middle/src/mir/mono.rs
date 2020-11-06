@@ -228,7 +228,7 @@ pub struct CodegenUnit<'tcx> {
 
 /// Specifies the linkage type for a `MonoItem`.
 ///
-/// See https://llvm.org/docs/LangRef.html#linkage-types for more details about these variants.
+/// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
 #[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum Linkage {
     External,

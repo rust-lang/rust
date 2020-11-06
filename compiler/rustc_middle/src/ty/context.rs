@@ -368,7 +368,7 @@ pub struct TypeckResults<'tcx> {
     /// leads to a `vec![&&Option<i32>, &Option<i32>]`. Empty vectors are not stored.
     ///
     /// See:
-    /// https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions
+    /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
     pat_adjustments: ItemLocalMap<Vec<Ty<'tcx>>>,
 
     /// Borrows

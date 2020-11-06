@@ -8,7 +8,7 @@
 //! (b) each pattern is necessary (usefulness)
 //!
 //! The algorithm implemented here is a modified version of the one described in:
-//! http://moscova.inria.fr/~maranget/papers/warn/index.html
+//! <http://moscova.inria.fr/~maranget/papers/warn/index.html>
 //! However, to save future implementors from reading the original paper, we
 //! summarise the algorithm here to hopefully save time and be a little clearer
 //! (without being so rigorous).
@@ -2040,7 +2040,7 @@ impl<'tcx> MissingConstructors<'tcx> {
     }
 }
 
-/// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
+/// Algorithm from <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
 ///   (0) We don't exit early if the pattern matrix has zero rows. We just

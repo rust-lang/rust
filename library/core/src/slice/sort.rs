@@ -1,7 +1,7 @@
 //! Slice sorting
 //!
 //! This module contains a sorting algorithm based on Orson Peters' pattern-defeating quicksort,
-//! published at: https://github.com/orlp/pdqsort
+//! published at: <https://github.com/orlp/pdqsort>
 //!
 //! Unstable sorting is compatible with libcore because it doesn't allocate memory, unlike our
 //! stable sorting implementation.
