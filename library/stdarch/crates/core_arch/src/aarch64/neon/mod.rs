@@ -79,6 +79,40 @@ extern "C" {
     #[link_name = "llvm.aarch64.neon.abs.v2i64"]
     fn vabsq_s64_(a: int64x2_t) -> int64x2_t;
 
+    #[link_name = "llvm.aarch64.neon.suqadd.v8i8"]
+    fn vuqadd_s8_(a: int8x8_t, b: uint8x8_t) -> int8x8_t;
+    #[link_name = "llvm.aarch64.neon.suqadd.v16i8"]
+    fn vuqaddq_s8_(a: int8x16_t, b: uint8x16_t) -> int8x16_t;
+    #[link_name = "llvm.aarch64.neon.suqadd.v4i16"]
+    fn vuqadd_s16_(a: int16x4_t, b: uint16x4_t) -> int16x4_t;
+    #[link_name = "llvm.aarch64.neon.suqadd.v8i16"]
+    fn vuqaddq_s16_(a: int16x8_t, b: uint16x8_t) -> int16x8_t;
+    #[link_name = "llvm.aarch64.neon.suqadd.v2i32"]
+    fn vuqadd_s32_(a: int32x2_t, b: uint32x2_t) -> int32x2_t;
+    #[link_name = "llvm.aarch64.neon.suqadd.v4i32"]
+    fn vuqaddq_s32_(a: int32x4_t, b: uint32x4_t) -> int32x4_t;
+    #[link_name = "llvm.aarch64.neon.suqadd.v1i64"]
+    fn vuqadd_s64_(a: int64x1_t, b: uint64x1_t) -> int64x1_t;
+    #[link_name = "llvm.aarch64.neon.suqadd.v2i64"]
+    fn vuqaddq_s64_(a: int64x2_t, b: uint64x2_t) -> int64x2_t;
+
+    #[link_name = "llvm.aarch64.neon.usqadd.v8i8"]
+    fn vsqadd_u8_(a: uint8x8_t, b: int8x8_t) -> uint8x8_t;
+    #[link_name = "llvm.aarch64.neon.usqadd.v16i8"]
+    fn vsqaddq_u8_(a: uint8x16_t, b: int8x16_t) -> uint8x16_t;
+    #[link_name = "llvm.aarch64.neon.usqadd.v4i16"]
+    fn vsqadd_u16_(a: uint16x4_t, b: int16x4_t) -> uint16x4_t;
+    #[link_name = "llvm.aarch64.neon.usqadd.v8i16"]
+    fn vsqaddq_u16_(a: uint16x8_t, b: int16x8_t) -> uint16x8_t;
+    #[link_name = "llvm.aarch64.neon.usqadd.v2i32"]
+    fn vsqadd_u32_(a: uint32x2_t, b: int32x2_t) -> uint32x2_t;
+    #[link_name = "llvm.aarch64.neon.usqadd.v4i32"]
+    fn vsqaddq_u32_(a: uint32x4_t, b: int32x4_t) -> uint32x4_t;
+    #[link_name = "llvm.aarch64.neon.usqadd.v1i64"]
+    fn vsqadd_u64_(a: uint64x1_t, b: int64x1_t) -> uint64x1_t;
+    #[link_name = "llvm.aarch64.neon.usqadd.v2i64"]
+    fn vsqaddq_u64_(a: uint64x2_t, b: int64x2_t) -> uint64x2_t;
+
     #[link_name = "llvm.aarch64.neon.pmull64"]
     fn vmull_p64_(a: i64, b: i64) -> int8x16_t;
 
@@ -346,6 +380,120 @@ pub unsafe fn vabs_s64(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(abs))]
 pub unsafe fn vabsq_s64(a: int64x2_t) -> int64x2_t {
     vabsq_s64_(a)
+}
+
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqadd_s8(a: int8x8_t, b: uint8x8_t) -> int8x8_t {
+    vuqadd_s8_(a, b)
+}
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqaddq_s8(a: int8x16_t, b: uint8x16_t) -> int8x16_t {
+    vuqaddq_s8_(a, b)
+}
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqadd_s16(a: int16x4_t, b: uint16x4_t) -> int16x4_t {
+    vuqadd_s16_(a, b)
+}
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqaddq_s16(a: int16x8_t, b: uint16x8_t) -> int16x8_t {
+    vuqaddq_s16_(a, b)
+}
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqadd_s32(a: int32x2_t, b: uint32x2_t) -> int32x2_t {
+    vuqadd_s32_(a, b)
+}
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqaddq_s32(a: int32x4_t, b: uint32x4_t) -> int32x4_t {
+    vuqaddq_s32_(a, b)
+}
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqadd_s64(a: int64x1_t, b: uint64x1_t) -> int64x1_t {
+    vuqadd_s64_(a, b)
+}
+/// Signed saturating Accumulate of Unsigned value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(suqadd))]
+pub unsafe fn vuqaddq_s64(a: int64x2_t, b: uint64x2_t) -> int64x2_t {
+    vuqaddq_s64_(a, b)
+}
+
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqadd_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
+    vsqadd_u8_(a, b)
+}
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqaddq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
+    vsqaddq_u8_(a, b)
+}
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqadd_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
+    vsqadd_u16_(a, b)
+}
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqaddq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
+    vsqaddq_u16_(a, b)
+}
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqadd_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
+    vsqadd_u32_(a, b)
+}
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqaddq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
+    vsqaddq_u32_(a, b)
+}
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqadd_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
+    vsqadd_u64_(a, b)
+}
+/// Unsigned saturating Accumulate of Signed value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(usqadd))]
+pub unsafe fn vsqaddq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
+    vsqaddq_u64_(a, b)
 }
 
 /// Add pairwise
@@ -2325,6 +2473,170 @@ mod tests {
         // do a load that has 4 byte alignment to make sure we're not
         // over aligning it
         let r: u32x4 = transmute(vld1q_u32(f[1..].as_ptr()));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqadd_s8() {
+        let a = i8x8::new(i8::MIN, -3, -2, -1, 0, 1, 2, i8::MAX);
+        let b = u8x8::new(u8::MAX, 1, 2, 3, 4, 5, 6, 7);
+        let e = i8x8::new(i8::MAX, -2, 0, 2, 4, 6, 8, i8::MAX);
+        let r: i8x8 = transmute(vuqadd_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqaddq_s8() {
+        let a = i8x16::new(
+            i8::MIN,
+            -7,
+            -6,
+            -5,
+            -4,
+            -3,
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            i8::MAX,
+        );
+        let b = u8x16::new(u8::MAX, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let e = i8x16::new(
+            i8::MAX,
+            -6,
+            -4,
+            -2,
+            0,
+            2,
+            4,
+            6,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20,
+            i8::MAX,
+        );
+        let r: i8x16 = transmute(vuqaddq_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqadd_s16() {
+        let a = i16x4::new(i16::MIN, -1, 0, i16::MAX);
+        let b = u16x4::new(u16::MAX, 1, 2, 3);
+        let e = i16x4::new(i16::MAX, 0, 2, i16::MAX);
+        let r: i16x4 = transmute(vuqadd_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqaddq_s16() {
+        let a = i16x8::new(i16::MIN, -3, -2, -1, 0, 1, 2, i16::MAX);
+        let b = u16x8::new(u16::MAX, 1, 2, 3, 4, 5, 6, 7);
+        let e = i16x8::new(i16::MAX, -2, 0, 2, 4, 6, 8, i16::MAX);
+        let r: i16x8 = transmute(vuqaddq_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqadd_s32() {
+        let a = i32x2::new(i32::MIN, i32::MAX);
+        let b = u32x2::new(u32::MAX, 1);
+        let e = i32x2::new(i32::MAX, i32::MAX);
+        let r: i32x2 = transmute(vuqadd_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqaddq_s32() {
+        let a = i32x4::new(i32::MIN, -1, 0, i32::MAX);
+        let b = u32x4::new(u32::MAX, 1, 2, 3);
+        let e = i32x4::new(i32::MAX, 0, 2, i32::MAX);
+        let r: i32x4 = transmute(vuqaddq_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqadd_s64() {
+        let a = i64x1::new(i64::MIN);
+        let b = u64x1::new(u64::MAX);
+        let e = i64x1::new(i64::MAX);
+        let r: i64x1 = transmute(vuqadd_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuqaddq_s64() {
+        let a = i64x2::new(i64::MIN, i64::MAX);
+        let b = u64x2::new(u64::MAX, 1);
+        let e = i64x2::new(i64::MAX, i64::MAX);
+        let r: i64x2 = transmute(vuqaddq_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqadd_u8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, u8::MAX);
+        let b = i8x8::new(i8::MIN, -3, -2, -1, 0, 1, 2, 3);
+        let e = u8x8::new(0, 0, 0, 2, 4, 6, 8, u8::MAX);
+        let r: u8x8 = transmute(vsqadd_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqaddq_u8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, u8::MAX);
+        let b = i8x16::new(i8::MIN, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7);
+        let e = u8x16::new(0, 0, 0, 0, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, u8::MAX);
+        let r: u8x16 = transmute(vsqaddq_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqadd_u16() {
+        let a = u16x4::new(0, 1, 2, u16::MAX);
+        let b = i16x4::new(i16::MIN, -1, 0, 1);
+        let e = u16x4::new(0, 0, 2, u16::MAX);
+        let r: u16x4 = transmute(vsqadd_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqaddq_u16() {
+        let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, u16::MAX);
+        let b = i16x8::new(i16::MIN, -3, -2, -1, 0, 1, 2, 3);
+        let e = u16x8::new(0, 0, 0, 2, 4, 6, 8, u16::MAX);
+        let r: u16x8 = transmute(vsqaddq_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqadd_u32() {
+        let a = u32x2::new(0, u32::MAX);
+        let b = i32x2::new(i32::MIN, 1);
+        let e = u32x2::new(0, u32::MAX);
+        let r: u32x2 = transmute(vsqadd_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqaddq_u32() {
+        let a = u32x4::new(0, 1, 2, u32::MAX);
+        let b = i32x4::new(i32::MIN, -1, 0, 1);
+        let e = u32x4::new(0, 0, 2, u32::MAX);
+        let r: u32x4 = transmute(vsqaddq_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqadd_u64() {
+        let a = u64x1::new(0);
+        let b = i64x1::new(i64::MIN);
+        let e = u64x1::new(0);
+        let r: u64x1 = transmute(vsqadd_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqaddq_u64() {
+        let a = u64x2::new(0, u64::MAX);
+        let b = i64x2::new(i64::MIN, 1);
+        let e = u64x2::new(0, u64::MAX);
+        let r: u64x2 = transmute(vsqaddq_u64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

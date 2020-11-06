@@ -1,6 +1,6 @@
 // ARM Neon intrinsic specification.
-// 
-// This file contains the specification for a number of 
+//
+// This file contains the specification for a number of
 // intrinsics that allows us to generate them along with
 // their test cases.
 //
@@ -31,7 +31,7 @@
 //           This is used to generate both aarch64 specific and
 //           shared intrinics by first only specifying th aarch64
 //           variant then the arm variant.
-// 
+//
 // arm     - The arm v7 intrinics used to checked for arm code
 //           generation. All neon functions available in arm are
 //           also available in aarch64. If no aarch64 intrinic was
@@ -60,7 +60,7 @@
 // The special values 'TRUE' and 'FALSE' can be used to
 // represent the corect NEON representation of true or
 // false values. It too gets scaled to the type.
-// 
+//
 // Validate needs to be called before generate as it sets
 // up the rules for validation that get generated for each
 // type.
@@ -168,7 +168,7 @@ generate uint*_t
 /// Floating-point compare greater than
 name = vcgt
 fn = simd_gt
-a = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9 
+a = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9
 b = 0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8
 validate TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
 
@@ -212,7 +212,7 @@ generate uint*_t
 name = vclt
 fn = simd_lt
 a = 0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8
-b = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9 
+b = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9
 validate TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
 
 aarch64 = fcmgt
@@ -256,7 +256,7 @@ generate uint*_t
 name = vcle
 fn = simd_le
 a = 0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8
-b = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9 
+b = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9
 validate TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
 aarch64 = fcmge
 generate float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
@@ -298,7 +298,7 @@ generate uint*_t
 /// Floating-point compare greater than or equal
 name = vcge
 fn = simd_ge
-a = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9 
+a = 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9
 b = 0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8
 validate TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
 
@@ -382,25 +382,6 @@ aarch64 = sqadd
 link-arm = vqadds._EXT_
 link-aarch64 = sqadd._EXT_
 generate int*_t
-
-// requires 1st and second argument to be different, this not implemented yet
-// /// Signed saturating accumulate of unsigned value
-// 
-// name = vuqadd
-// a = 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42
-// b = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-// e = 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58
-
-// it seems like we don't have those in rustland :( 
-// aarch64 = suqadd 
-// link-aarch64 = usqadd._EXT_
-// generate int64x*_t
-
-/ arm = suqadd
-// link-arm = vuqadds._EXT_
-// link-aarch64 = suqadd._EXT_
-// generate int*_t
-
 
 /// Multiply
 name = vmul
