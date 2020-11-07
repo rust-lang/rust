@@ -2388,20 +2388,26 @@ impl<'test> TestCx<'test> {
             self.fatal("failed to run tidy");
         }
 
-        let diff_pid = Command::new("diff")
-            .args(&["-u", "-r"])
-            .args(&[out_dir, &compare_dir])
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("failed to run `diff`");
-        let status = Command::new("delta")
-            .arg("--paging=never")
-            .stdin(diff_pid.stdout.unwrap())
-            .spawn()
-            .expect("delta not found")
-            .wait()
-            .unwrap();
-        assert!(status.success());
+        let has_delta = Command::new("delta")
+            .arg("--version")
+            .status()
+            .map_or(false, |status| status.success());
+        let mut diff = Command::new("diff");
+        diff.args(&["-u", "-r"]).args(&[out_dir, &compare_dir]);
+
+        if has_delta {
+            let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");
+            let status = Command::new("delta")
+                .arg("--paging=never")
+                .stdin(diff_pid.stdout.unwrap())
+                .status()
+                .unwrap();
+            assert!(status.success());
+        } else {
+            eprintln!("warning: `delta` not installed, falling back to `diff --color`");
+            diff.arg("--color").spawn().expect("failed to run `diff`").wait().unwrap();
+            assert!(status.success() || status.code() == Some(1));
+        }
     }
 
     fn get_lines<P: AsRef<Path>>(
