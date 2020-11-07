@@ -425,7 +425,7 @@ impl Inliner<'tcx> {
                 }
 
                 let dest = if dest_needs_borrow(destination.0) {
-                    debug!("creating temp for return destination");
+                    trace!("creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.lifetimes.re_erased,
                         BorrowKind::Mut { allow_two_phase_borrow: false },
@@ -633,7 +633,7 @@ impl Inliner<'tcx> {
             }
         }
 
-        debug!("creating temp for argument {:?}", arg);
+        trace!("creating temp for argument {:?}", arg);
         // Otherwise, create a temporary for the arg
         let arg = Rvalue::Use(arg);
 
@@ -703,19 +703,19 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
                 Local::new(self.new_locals.start.index() + (idx - self.args.len()))
             }
         };
-        debug!("mapping local `{:?}` to `{:?}`", local, new);
+        trace!("mapping local `{:?}` to `{:?}`", local, new);
         new
     }
 
     fn map_scope(&self, scope: SourceScope) -> SourceScope {
         let new = SourceScope::new(self.new_scopes.start.index() + scope.index());
-        debug!("mapping scope `{:?}` to `{:?}`", scope, new);
+        trace!("mapping scope `{:?}` to `{:?}`", scope, new);
         new
     }
 
     fn map_block(&self, block: BasicBlock) -> BasicBlock {
         let new = BasicBlock::new(self.new_blocks.start.index() + block.index());
-        debug!("mapping block `{:?}` to `{:?}`", block, new);
+        trace!("mapping block `{:?}` to `{:?}`", block, new);
         new
     }
 }
