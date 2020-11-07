@@ -119,15 +119,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 let dst = {
                     let dst = self.eval_operand(dst, None)?;
-                    dst.assert_mem_place(self)
+                    let mplace = *dst.assert_mem_place(self);
+                    match mplace.ptr {
+                      Scalar::Ptr(ptr) => ptr,
+                      _ => panic!(),
+                    }
                 };
                 let src = {
                     let src = self.eval_operand(src, None)?;
-                    src.assert_mem_place(self)
+                    let mplace = *src.assert_mem_place(self);
+                    match mplace.ptr {
+                      Scalar::Ptr(ptr) => ptr,
+                      _ => panic!(),
+                    }
                 };
                 // Not sure how to convert an MPlaceTy<'_, <M as Machine<'_, '_>>::PointerTag>
                 // to a pointer, or OpTy to a size
-                self.memory.copy(src, dst, size, /*nonoverlapping*/ true)?;
+                self.memory.copy(src, dst, size.layout.layout.size, /*nonoverlapping*/ true)?;
             }
 
             // Statements we do not track.

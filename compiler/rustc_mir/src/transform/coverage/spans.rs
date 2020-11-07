@@ -687,6 +687,7 @@ pub(super) fn filtered_statement_span(
 
         // Retain spans from all other statements
         StatementKind::FakeRead(_, _) // Not including `ForGuardBinding`
+        | StatementKind::CopyNonOverlapping(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::LlvmInlineAsm(_)
