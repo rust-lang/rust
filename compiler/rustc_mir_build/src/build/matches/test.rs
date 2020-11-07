@@ -671,6 +671,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (&TestKind::Range { .. }, _) => None,
 
             (&TestKind::Eq { .. } | &TestKind::Len { .. }, _) => {
+                // We do call `test()` below to see what kind of test `match_pair` would require.
+                // If it is the same test as `test`, then we can just use `test`.
+                //
+                // However, `test()` assumes that there won't be any or-patterns, so we need to
+                // specially handle that here and return `None` (since the `test` clearly doesn't
+                // apply to an or-pattern).
+                if let PatKind::Or { .. } = &*match_pair.pattern.kind {
+                    return None;
+                }
+
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here
