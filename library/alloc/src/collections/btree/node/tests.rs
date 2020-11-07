@@ -17,43 +17,6 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         }
     }
 
-    /// Asserts that the keys are in strictly ascending order.
-    /// Returns how many keys it encountered.
-    pub fn assert_ascending(self) -> usize
-    where
-        K: Copy + Debug + Ord,
-    {
-        struct SeriesChecker<T> {
-            num_seen: usize,
-            previous: Option<T>,
-        }
-        impl<T: Copy + Debug + Ord> SeriesChecker<T> {
-            fn is_ascending(&mut self, next: T) {
-                if let Some(previous) = self.previous {
-                    assert!(previous < next, "{:?} >= {:?}", previous, next);
-                }
-                self.previous = Some(next);
-                self.num_seen += 1;
-            }
-        }
-
-        let mut checker = SeriesChecker { num_seen: 0, previous: None };
-        self.visit_nodes_in_order(|pos| match pos {
-            navigate::Position::Leaf(node) => {
-                for idx in 0..node.len() {
-                    let key = *unsafe { node.key_at(idx) };
-                    checker.is_ascending(key);
-                }
-            }
-            navigate::Position::InternalKV(kv) => {
-                let key = *kv.into_kv().0;
-                checker.is_ascending(key);
-            }
-            navigate::Position::Internal(_) => {}
-        });
-        checker.num_seen
-    }
-
     pub fn dump_keys(self) -> String
     where
         K: Debug,
