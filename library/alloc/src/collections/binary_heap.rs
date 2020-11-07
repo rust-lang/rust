@@ -563,14 +563,13 @@ impl<T: Ord> BinaryHeap<T> {
         unsafe {
             let mut hole = Hole::new(&mut self.data, pos);
             let mut child = 2 * pos + 1;
-            while child < end {
-                let right = child + 1;
-                // compare with the greater of the two children
-                if right < end && hole.get(child) <= hole.get(right) {
-                    child = right;
-                }
+            while child < end - 1 {
+                child += (hole.get(child) <= hole.get(child + 1)) as usize;
                 hole.move_to(child);
                 child = 2 * hole.pos() + 1;
+            }
+            if child == end - 1 {
+                hole.move_to(child);
             }
             pos = hole.pos;
         }
