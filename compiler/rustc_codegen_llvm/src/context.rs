@@ -100,11 +100,6 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
-fn strip_function_ptr_alignment(data_layout: String) -> String {
-    // FIXME: Make this more general.
-    data_layout.replace("-Fi8-", "-")
-}
-
 fn strip_x86_address_spaces(data_layout: String) -> String {
     data_layout.replace("-p270:32:32-p271:32:32-p272:64:64-", "-")
 }
