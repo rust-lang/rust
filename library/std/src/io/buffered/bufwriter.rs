@@ -383,7 +383,7 @@ impl<W: Write> Write for BufWriter<W> {
     }
 
     fn is_write_vectored(&self) -> bool {
-        self.get_ref().is_write_vectored()
+        true
     }
 
     fn flush(&mut self) -> io::Result<()> {
