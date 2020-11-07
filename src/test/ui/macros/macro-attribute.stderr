@@ -1,8 +1,8 @@
-error: unexpected token: `$`
+error: expected expression, found `$`
   --> $DIR/macro-attribute.rs:1:9
    |
 LL | #[doc = $not_there]
-   |         ^
+   |         ^ expected expression
 
 error: aborting due to previous error
 

@@ -620,6 +620,9 @@ declare_features! (
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
     (active, capture_disjoint_fields, "1.49.0", Some(53488), None),
 
+    /// Allows arbitrary expressions in key-value attributes at parse time.
+    (active, extended_key_value_attributes, "1.50.0", Some(78835), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

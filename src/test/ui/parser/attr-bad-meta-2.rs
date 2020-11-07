@@ -1,2 +1,2 @@
-#[path =] //~ ERROR unexpected token: `]`
+#[path =] //~ ERROR expected expression, found `]`
 mod m {}
