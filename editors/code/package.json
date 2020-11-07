@@ -939,9 +939,6 @@
             {
                 "language": "rust",
                 "scopes": {
-                    "macro": [
-                        "entity.name.function.macro.rust"
-                    ],
                     "attribute": [
                         "meta.attribute.rust"
                     ],
@@ -950,9 +947,6 @@
                     ],
                     "boolean": [
                         "constant.language.boolean.rust"
-                    ],
-                    "builtinType": [
-                        "support.type.primitive.rust"
                     ],
                     "lifetime": [
                         "storage.modifier.lifetime.rust"
@@ -971,9 +965,6 @@
                     ],
                     "keyword.controlFlow": [
                         "keyword.control.rust"
-                    ],
-                    "variable.constant": [
-                        "variable.other.constant.rust"
                     ],
                     "formatSpecifier": [
                         "punctuation.section.embedded.rust"
