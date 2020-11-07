@@ -1,4 +1,4 @@
-use core::ops::{Bound, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo};
+use core::ops::{Bound, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
 // Test the Range structs and syntax.
 
@@ -57,6 +57,12 @@ fn test_range_inclusive() {
     r = RangeInclusive::new(1, -1);
     assert_eq!(r.size_hint(), (0, Some(0)));
     assert_eq!(r.next(), None);
+}
+
+#[test]
+fn test_range_to_inclusive() {
+    // Not much to test.
+    let _ = RangeToInclusive { end: 42 };
 }
 
 #[test]
@@ -150,4 +156,44 @@ fn test_range_syntax_in_return_statement() {
         return ..;
     }
     // Not much to test.
+}
+
+#[test]
+fn range_structural_match() {
+    // test that all range types can be structurally matched upon
+
+    const RANGE: Range<usize> = 0..1000;
+    match RANGE {
+        RANGE => {}
+        _ => unreachable!(),
+    }
+
+    const RANGE_FROM: RangeFrom<usize> = 0..;
+    match RANGE_FROM {
+        RANGE_FROM => {}
+        _ => unreachable!(),
+    }
+
+    const RANGE_FULL: RangeFull = ..;
+    match RANGE_FULL {
+        RANGE_FULL => {}
+    }
+
+    const RANGE_INCLUSIVE: RangeInclusive<usize> = 0..=999;
+    match RANGE_INCLUSIVE {
+        RANGE_INCLUSIVE => {}
+        _ => unreachable!(),
+    }
+
+    const RANGE_TO: RangeTo<usize> = ..1000;
+    match RANGE_TO {
+        RANGE_TO => {}
+        _ => unreachable!(),
+    }
+
+    const RANGE_TO_INCLUSIVE: RangeToInclusive<usize> = ..=999;
+    match RANGE_TO_INCLUSIVE {
+        RANGE_TO_INCLUSIVE => {}
+        _ => unreachable!(),
+    }
 }
