@@ -147,8 +147,8 @@ impl DebugOptions {
         let mut counter_format = ExpressionFormat::default();
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
-            for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(",") {
-                let mut setting = setting_str.splitn(2, "=");
+            for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(',') {
+                let mut setting = setting_str.splitn(2, '=');
                 match setting.next() {
                     Some(option) if option == "allow_unused_expressions" => {
                         allow_unused_expressions = bool_option_val(option, setting.next());
@@ -210,7 +210,7 @@ fn bool_option_val(option: &str, some_strval: Option<&str>) -> bool {
 
 fn counter_format_option_val(strval: &str) -> ExpressionFormat {
     let mut counter_format = ExpressionFormat { id: false, block: false, operation: false };
-    let components = strval.splitn(3, "+");
+    let components = strval.splitn(3, '+');
     for component in components {
         match component {
             "id" => counter_format.id = true,
@@ -695,7 +695,7 @@ pub(crate) fn dump_coverage_graphviz(
         let from_bcb_data = &basic_coverage_blocks[from_bcb];
         let from_terminator = from_bcb_data.terminator(mir_body);
         let mut edge_labels = from_terminator.kind.fmt_successor_labels();
-        edge_labels.retain(|label| label.to_string() != "unreachable");
+        edge_labels.retain(|label| label != "unreachable");
         let edge_counters = from_terminator
             .successors()
             .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
