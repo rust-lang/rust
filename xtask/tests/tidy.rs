@@ -215,6 +215,7 @@ fn check_todo(path: &Path, text: &str) {
         "tests/cli.rs",
         // Some of our assists generate `todo!()`.
         "tests/generated.rs",
+        "handlers/add_custom_impl.rs",
         "handlers/add_missing_impl_members.rs",
         "handlers/add_turbo_fish.rs",
         "handlers/generate_function.rs",

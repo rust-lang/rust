@@ -4,13 +4,15 @@ use syntax::{
     ast::{self, make, AstNode},
     Direction, SmolStr,
     SyntaxKind::{IDENT, WHITESPACE},
-    TextRange, TextSize,
+    TextSize,
 };
 
 use crate::{
-    assist_config::SnippetCap,
     assist_context::{AssistBuilder, AssistContext, Assists},
-    utils::mod_path_to_ast,
+    utils::{
+        add_trait_assoc_items_to_impl, filter_assoc_items, mod_path_to_ast, render_snippet, Cursor,
+        DefaultMethods,
+    },
     AssistId, AssistKind,
 };
 
@@ -47,11 +49,10 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
         ctx.token_at_offset().find(|t| t.kind() == IDENT && *t.text() != attr_name)?;
     let trait_path = make::path_unqualified(make::path_segment(make::name_ref(trait_token.text())));
 
-    let annotated = attr.syntax().siblings(Direction::Next).find_map(ast::Name::cast)?;
-    let annotated_name = annotated.syntax().text().to_string();
-    let insert_pos = annotated.syntax().parent()?.text_range().end();
+    let annotated_name = attr.syntax().siblings(Direction::Next).find_map(ast::Name::cast)?;
+    let insert_pos = annotated_name.syntax().parent()?.text_range().end();
 
-    let current_module = ctx.sema.scope(annotated.syntax()).module()?;
+    let current_module = ctx.sema.scope(annotated_name.syntax()).module()?;
     let current_crate = current_module.krate();
 
     let found_traits = imports_locator::find_imports(&ctx.sema, current_crate, trait_token.text())
@@ -69,21 +70,22 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
         });
 
     let mut no_traits_found = true;
-    for (trait_path, _trait) in found_traits.inspect(|_| no_traits_found = false) {
-        add_assist(acc, ctx.config.snippet_cap, &attr, &trait_path, &annotated_name, insert_pos)?;
+    for (trait_path, trait_) in found_traits.inspect(|_| no_traits_found = false) {
+        add_assist(acc, ctx, &attr, &trait_path, Some(trait_), &annotated_name, insert_pos)?;
     }
     if no_traits_found {
-        add_assist(acc, ctx.config.snippet_cap, &attr, &trait_path, &annotated_name, insert_pos)?;
+        add_assist(acc, ctx, &attr, &trait_path, None, &annotated_name, insert_pos)?;
     }
     Some(())
 }
 
 fn add_assist(
     acc: &mut Assists,
-    snippet_cap: Option<SnippetCap>,
+    ctx: &AssistContext,
     attr: &ast::Attr,
     trait_path: &ast::Path,
-    annotated_name: &str,
+    trait_: Option<hir::Trait>,
+    annotated_name: &ast::Name,
     insert_pos: TextSize,
 ) -> Option<()> {
     let target = attr.syntax().text_range();
@@ -92,23 +94,60 @@ fn add_assist(
     let trait_name = trait_path.segment().and_then(|seg| seg.name_ref())?;
 
     acc.add(AssistId("add_custom_impl", AssistKind::Refactor), label, target, |builder| {
+        let impl_def_with_items =
+            impl_def_from_trait(&ctx.sema, annotated_name, trait_, trait_path);
         update_attribute(builder, &input, &trait_name, &attr);
-        match snippet_cap {
-            Some(cap) => {
+        match (ctx.config.snippet_cap, impl_def_with_items) {
+            (None, _) => builder.insert(
+                insert_pos,
+                format!("\n\nimpl {} for {} {{\n\n}}", trait_path, annotated_name),
+            ),
+            (Some(cap), None) => builder.insert_snippet(
+                cap,
+                insert_pos,
+                format!("\n\nimpl {} for {} {{\n    $0\n}}", trait_path, annotated_name),
+            ),
+            (Some(cap), Some((impl_def, first_assoc_item))) => {
+                let mut cursor = Cursor::Before(first_assoc_item.syntax());
+                let placeholder;
+                if let ast::AssocItem::Fn(ref func) = first_assoc_item {
+                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
+                        if m.syntax().text() == "todo!()" {
+                            placeholder = m;
+                            cursor = Cursor::Replace(placeholder.syntax());
+                        }
+                    }
+                }
+
                 builder.insert_snippet(
                     cap,
                     insert_pos,
-                    format!("\n\nimpl {} for {} {{\n    $0\n}}", trait_path, annotated_name),
-                );
+                    format!("\n\n{}", render_snippet(cap, impl_def.syntax(), cursor)),
+                )
             }
-            None => {
-                builder.insert(
-                    insert_pos,
-                    format!("\n\nimpl {} for {} {{\n\n}}", trait_path, annotated_name),
-                );
-            }
-        }
+        };
     })
+}
+
+fn impl_def_from_trait(
+    sema: &hir::Semantics<ide_db::RootDatabase>,
+    annotated_name: &ast::Name,
+    trait_: Option<hir::Trait>,
+    trait_path: &ast::Path,
+) -> Option<(ast::Impl, ast::AssocItem)> {
+    let trait_ = trait_?;
+    let target_scope = sema.scope(annotated_name.syntax());
+    let trait_items = filter_assoc_items(sema.db, &trait_.items(sema.db), DefaultMethods::No);
+    if trait_items.is_empty() {
+        return None;
+    }
+    let impl_def = make::impl_trait(
+        trait_path.clone(),
+        make::path_unqualified(make::path_segment(make::name_ref(annotated_name.text()))),
+    );
+    let (impl_def, first_assoc_item) =
+        add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
+    Some((impl_def, first_assoc_item))
 }
 
 fn update_attribute(
@@ -133,13 +172,14 @@ fn update_attribute(
         let attr_range = attr.syntax().text_range();
         builder.delete(attr_range);
 
-        let line_break_range = attr
+        if let Some(line_break_range) = attr
             .syntax()
             .next_sibling_or_token()
             .filter(|t| t.kind() == WHITESPACE)
             .map(|t| t.text_range())
-            .unwrap_or_else(|| TextRange::new(TextSize::from(0), TextSize::from(0)));
-        builder.delete(line_break_range);
+        {
+            builder.delete(line_break_range);
+        }
     }
 }
 
@@ -150,12 +190,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn add_custom_impl_qualified() {
+    fn add_custom_impl_debug() {
         check_assist(
             add_custom_impl,
             "
 mod fmt {
-    pub trait Debug {}
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
 }
 
 #[derive(Debu<|>g)]
@@ -165,7 +210,12 @@ struct Foo {
 ",
             "
 mod fmt {
-    pub trait Debug {}
+    pub struct Error;
+    pub type Result = Result<(), Error>;
+    pub struct Formatter<'a>;
+    pub trait Debug {
+        fn fmt(&self, f: &mut Formatter<'_>) -> Result;
+    }
 }
 
 struct Foo {
@@ -173,7 +223,58 @@ struct Foo {
 }
 
 impl fmt::Debug for Foo {
-    $0
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ${0:todo!()}
+    }
+}
+",
+        )
+    }
+    #[test]
+    fn add_custom_impl_all() {
+        check_assist(
+            add_custom_impl,
+            "
+mod foo {
+    pub trait Bar {
+        type Qux;
+        const Baz: usize = 42;
+        const Fez: usize;
+        fn foo();
+        fn bar() {}
+    }
+}
+
+#[derive(<|>Bar)]
+struct Foo {
+    bar: String,
+}
+",
+            "
+mod foo {
+    pub trait Bar {
+        type Qux;
+        const Baz: usize = 42;
+        const Fez: usize;
+        fn foo();
+        fn bar() {}
+    }
+}
+
+struct Foo {
+    bar: String,
+}
+
+impl foo::Bar for Foo {
+    $0type Qux;
+
+    const Baz: usize = 42;
+
+    const Fez: usize;
+
+    fn foo() {
+        todo!()
+    }
 }
 ",
         )
