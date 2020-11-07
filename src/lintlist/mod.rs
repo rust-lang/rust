@@ -2259,6 +2259,13 @@ vec![
         module: "methods",
     },
     Lint {
+        name: "string_from_utf8_as_bytes",
+        group: "complexity",
+        desc: "casting string slices to byte slices and back",
+        deprecation: None,
+        module: "strings",
+    },
+    Lint {
         name: "string_lit_as_bytes",
         group: "nursery",
         desc: "calling `as_bytes` on a string literal instead of using a byte string literal",
