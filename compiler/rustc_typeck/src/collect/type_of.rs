@@ -79,7 +79,13 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         let _tables = tcx.typeck(body_owner);
                         &*path
                     }
-                    _ => span_bug!(DUMMY_SP, "unexpected const parent path {:?}", parent_node),
+                    _ => {
+                        tcx.sess.delay_span_bug(
+                            tcx.def_span(def_id),
+                            &format!("unexpected const parent path {:?}", parent_node),
+                        );
+                        return None;
+                    }
                 };
 
                 // We've encountered an `AnonConst` in some path, so we need to
