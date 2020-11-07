@@ -3053,10 +3053,10 @@ fn lint_search_is_some<'tcx>(
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!(
-            "called `is_some()` after searching an `Iterator` with {}. This is more succinctly \
-             expressed by calling `any()`.",
+            "called `is_some()` after searching an `Iterator` with {}",
             search_method
         );
+        let hint = "this is more succinctly expressed by calling `any()`";
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
@@ -3084,7 +3084,7 @@ fn lint_search_is_some<'tcx>(
                 SEARCH_IS_SOME,
                 method_span.with_hi(expr.span.hi()),
                 &msg,
-                "try this",
+                "use `any()` instead",
                 format!(
                     "any({})",
                     any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
@@ -3092,7 +3092,7 @@ fn lint_search_is_some<'tcx>(
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
+            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, &msg, None, hint);
         }
     }
     // lint if `find()` is called by `String` or `&str`
@@ -3109,9 +3109,7 @@ fn lint_search_is_some<'tcx>(
             if is_string_or_str_slice(&search_args[0]);
             if is_string_or_str_slice(&search_args[1]);
             then {
-                let msg = "called `is_some()` after calling `find()` \
-                    on a string. This is more succinctly expressed by calling \
-                    `contains()`.";
+                let msg = "called `is_some()` after calling `find()` on a string";
                 let mut applicability = Applicability::MachineApplicable;
                 let find_arg = snippet_with_applicability(cx, search_args[1].span, "..", &mut applicability);
                 span_lint_and_sugg(
@@ -3119,7 +3117,7 @@ fn lint_search_is_some<'tcx>(
                     SEARCH_IS_SOME,
                     method_span.with_hi(expr.span.hi()),
                     msg,
-                    "try this",
+                    "use `contains()` instead",
                     format!("contains({})", find_arg),
                     applicability,
                 );

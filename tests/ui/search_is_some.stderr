@@ -1,4 +1,4 @@
-error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
+error: called `is_some()` after searching an `Iterator` with find
   --> $DIR/search_is_some.rs:13:13
    |
 LL |       let _ = v.iter().find(|&x| {
@@ -9,8 +9,9 @@ LL | |                    ).is_some();
    | |______________________________^
    |
    = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: this is more succinctly expressed by calling `any()`
 
-error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
+error: called `is_some()` after searching an `Iterator` with position
   --> $DIR/search_is_some.rs:19:13
    |
 LL |       let _ = v.iter().position(|&x| {
@@ -19,8 +20,10 @@ LL | |                                   x < 0
 LL | |                               }
 LL | |                    ).is_some();
    | |______________________________^
+   |
+   = help: this is more succinctly expressed by calling `any()`
 
-error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
+error: called `is_some()` after searching an `Iterator` with rposition
   --> $DIR/search_is_some.rs:25:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
@@ -29,6 +32,8 @@ LL | |                                    x < 0
 LL | |                                }
 LL | |                    ).is_some();
    | |______________________________^
+   |
+   = help: this is more succinctly expressed by calling `any()`
 
 error: use of a blacklisted/placeholder name `foo`
   --> $DIR/search_is_some.rs:31:9
