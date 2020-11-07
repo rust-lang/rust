@@ -495,7 +495,10 @@ impl<T: Ord> BinaryHeap<T> {
         let mut end = self.len();
         while end > 1 {
             end -= 1;
-            self.data.swap(0, end);
+            unsafe {
+                let ptr = self.data.as_mut_ptr();
+                ptr::swap(ptr, ptr.add(end));
+            }
             self.sift_down_range(0, end);
         }
         self.into_vec()
