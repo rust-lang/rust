@@ -354,7 +354,8 @@ path = "lib.rs"
     command.env_remove("RUSTC_WRAPPER");
     command.env_remove("RUSTFLAGS");
     // Disable debug assertions in the standard library -- Miri is already slow enough.
-    command.env("RUSTFLAGS", "-Cdebug-assertions=off");
+    // But keep the overflow checks, they are cheap.
+    command.env("RUSTFLAGS", "-Cdebug-assertions=off -Coverflow-checks=on");
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
         show_error(format!("failed to run xargo"));
