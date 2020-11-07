@@ -648,10 +648,7 @@ fn main() {
                 return None;
             }
             let c = a.0 / b.0;
-            if a.0.is_nan()
-                || b.0.is_nan()
-                || c.is_nan()
-                || c.abs() <= f32::from_bits(16777215u32)
+            if a.0.is_nan() || b.0.is_nan() || c.is_nan() || c.abs() <= f32::from_bits(16777215u32)
             {
                 None
             } else {
