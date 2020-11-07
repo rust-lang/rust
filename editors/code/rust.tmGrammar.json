@@ -1127,7 +1127,7 @@
                 {
                     "comment": "variables",
                     "name": "variable.other.rust",
-                    "match": "\\b(?<!\\.)(?:r#(?!(crate|[Ss]elf|super)))?[a-z0-9_]+\\b"
+                    "match": "\\b(?<!(?<!\\.)\\.)(?:r#(?!(crate|[Ss]elf|super)))?[a-z0-9_]+\\b"
                 }
             ]
         }
