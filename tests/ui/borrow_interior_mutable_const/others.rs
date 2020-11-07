@@ -19,33 +19,7 @@ const NO_ANN: &dyn Display = &70;
 static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 const ONCE_INIT: Once = Once::new();
 
-trait Trait<T> {
-    type AssocType;
-
-    const ATOMIC: AtomicUsize;
-    const INPUT: T;
-    const ASSOC: Self::AssocType;
-
-    fn function() {
-        let _ = &Self::INPUT;
-        let _ = &Self::ASSOC;
-    }
-}
-
-impl Trait<u32> for u64 {
-    type AssocType = AtomicUsize;
-
-    const ATOMIC: AtomicUsize = AtomicUsize::new(9);
-    const INPUT: u32 = 10;
-    const ASSOC: Self::AssocType = AtomicUsize::new(11);
-
-    fn function() {
-        let _ = &Self::INPUT;
-        let _ = &Self::ASSOC; //~ ERROR interior mutability
-    }
-}
-
-// This is just a pointer that can be safely dereferended,
+// This is just a pointer that can be safely dereferenced,
 // it's semantically the same as `&'static T`;
 // but it isn't allowed to make a static reference from an arbitrary integer value at the moment.
 // For more information, please see the issue #5918.
@@ -100,7 +74,7 @@ fn main() {
     let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR interior mutability
     let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
     let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR interior mutability
-    let _ = &*ATOMIC_TUPLE.1; //~ ERROR interior mutability
+    let _ = &*ATOMIC_TUPLE.1;
     let _ = &ATOMIC_TUPLE.2;
     let _ = (&&&&ATOMIC_TUPLE).0;
     let _ = (&&&&ATOMIC_TUPLE).2;
@@ -123,9 +97,6 @@ fn main() {
     STATIC_TUPLE.0.store(3, Ordering::SeqCst);
     assert_eq!(STATIC_TUPLE.0.load(Ordering::SeqCst), 3);
     assert!(STATIC_TUPLE.1.is_empty());
-
-    u64::ATOMIC.store(5, Ordering::SeqCst); //~ ERROR interior mutability
-    assert_eq!(u64::ATOMIC.load(Ordering::SeqCst), 9); //~ ERROR interior mutability
 
     assert_eq!(NO_ANN.to_string(), "70"); // should never lint this.
 
