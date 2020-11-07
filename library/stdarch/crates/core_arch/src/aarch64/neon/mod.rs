@@ -8,7 +8,7 @@ pub use self::generated::*;
 // FIXME: replace neon with asimd
 
 use crate::{
-    core_arch::{arm::*, simd_llvm::*},
+    core_arch::{arm::*, simd::*, simd_llvm::*},
     mem::{transmute, zeroed},
 };
 #[cfg(test)]
@@ -19,14 +19,6 @@ types! {
     pub struct float64x1_t(f64); // FIXME: check this!
     /// ARM-specific 128-bit wide vector of two packed `f64`.
     pub struct float64x2_t(f64, f64);
-    /// ARM-specific 64-bit wide vector of one packed `p64`.
-    pub struct poly64x1_t(i64); // FIXME: check this!
-    /// ARM-specific 64-bit wide vector of one packed `p64`.
-    pub struct poly64_t(i64); // FIXME: check this!
-    /// ARM-specific 64-bit wide vector of two packed `p64`.
-    pub struct poly64x2_t(i64, i64); // FIXME: check this!
-    /// ARM-specific 128-bit wide vector of one packed `p64`.
-    pub struct poly128_t(i128); // FIXME: check this!
 }
 
 /// ARM-specific type containing two `int8x16_t` vectors.
@@ -360,6 +352,333 @@ extern "C" {
     fn vsriq_n_s64_(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t;
 }
 
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_s8(ptr: *const i8) -> int8x8_t {
+    transmute(i8x8::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_s8(ptr: *const i8) -> int8x16_t {
+    transmute(i8x16::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+        *ptr.offset(8),
+        *ptr.offset(9),
+        *ptr.offset(10),
+        *ptr.offset(11),
+        *ptr.offset(12),
+        *ptr.offset(13),
+        *ptr.offset(14),
+        *ptr.offset(15),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_s16(ptr: *const i16) -> int16x4_t {
+    transmute(i16x4::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_s16(ptr: *const i16) -> int16x8_t {
+    transmute(i16x8::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_s32(ptr: *const i32) -> int32x2_t {
+    transmute(i32x2::new(*ptr, *ptr.offset(1)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_s32(ptr: *const i32) -> int32x4_t {
+    transmute(i32x4::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_s64(ptr: *const i64) -> int64x1_t {
+    transmute(i64x1::new(*ptr))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_s64(ptr: *const i64) -> int64x2_t {
+    transmute(i64x2::new(*ptr, *ptr.offset(1)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_u8(ptr: *const u8) -> uint8x8_t {
+    transmute(u8x8::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_u8(ptr: *const u8) -> uint8x16_t {
+    transmute(u8x16::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+        *ptr.offset(8),
+        *ptr.offset(9),
+        *ptr.offset(10),
+        *ptr.offset(11),
+        *ptr.offset(12),
+        *ptr.offset(13),
+        *ptr.offset(14),
+        *ptr.offset(15),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_u16(ptr: *const u16) -> uint16x4_t {
+    transmute(u16x4::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_u16(ptr: *const u16) -> uint16x8_t {
+    transmute(u16x8::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_u32(ptr: *const u32) -> uint32x2_t {
+    transmute(u32x2::new(*ptr, *ptr.offset(1)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_u32(ptr: *const u32) -> uint32x4_t {
+    transmute(u32x4::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_u64(ptr: *const u64) -> uint64x1_t {
+    transmute(u64x1::new(*ptr))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_u64(ptr: *const u64) -> uint64x2_t {
+    transmute(u64x2::new(*ptr, *ptr.offset(1)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_p8(ptr: *const p8) -> poly8x8_t {
+    transmute(u8x8::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_p8(ptr: *const p8) -> poly8x16_t {
+    transmute(u8x16::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+        *ptr.offset(8),
+        *ptr.offset(9),
+        *ptr.offset(10),
+        *ptr.offset(11),
+        *ptr.offset(12),
+        *ptr.offset(13),
+        *ptr.offset(14),
+        *ptr.offset(15),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_p16(ptr: *const p16) -> poly16x4_t {
+    transmute(u16x4::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_p16(ptr: *const p16) -> poly16x8_t {
+    transmute(u16x8::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+        *ptr.offset(4),
+        *ptr.offset(5),
+        *ptr.offset(6),
+        *ptr.offset(7),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_f32(ptr: *const f32) -> float32x2_t {
+    transmute(f32x2::new(*ptr, *ptr.offset(1)))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_f32(ptr: *const f32) -> float32x4_t {
+    transmute(f32x4::new(
+        *ptr,
+        *ptr.offset(1),
+        *ptr.offset(2),
+        *ptr.offset(3),
+    ))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1_f64(ptr: *const f64) -> float64x1_t {
+    transmute(f64x1::new(*ptr))
+}
+
+/// Load multiple single-element structures to one, two, three, or four registers.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vld1q_f64(ptr: *const f64) -> float64x2_t {
+    transmute(f64x2::new(*ptr, *ptr.offset(1)))
+}
+
 /// Absolute Value (wrapping).
 #[inline]
 #[target_feature(enable = "neon")]
@@ -656,7 +975,7 @@ pub unsafe fn vaddvq_u64(a: uint64x2_t) -> u64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(pmull))]
-pub unsafe fn vmull_p64(a: poly64_t, b: poly64_t) -> poly128_t {
+pub unsafe fn vmull_p64(a: p64, b: p64) -> p128 {
     transmute(vmull_p64_(transmute(a), transmute(b)))
 }
 
@@ -1338,7 +1657,6 @@ pub unsafe fn vtbl4_p8(a: poly8x8x4_t, b: uint8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx1_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
-    use crate::core_arch::simd::i8x8;
     let r = vqtbx1_s8(a, vcombine_s8(b, zeroed()), transmute(c));
     let m: int8x8_t = simd_lt(c, transmute(i8x8::splat(8)));
     simd_select(m, r, a)
@@ -1350,7 +1668,6 @@ pub unsafe fn vtbx1_s8(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
-    use crate::core_arch::simd::u8x8;
     let r = vqtbx1_u8(a, vcombine_u8(b, zeroed()), c);
     let m: int8x8_t = simd_lt(c, transmute(u8x8::splat(8)));
     simd_select(m, r, a)
@@ -1362,7 +1679,6 @@ pub unsafe fn vtbx1_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx1_p8(a: poly8x8_t, b: poly8x8_t, c: uint8x8_t) -> poly8x8_t {
-    use crate::core_arch::simd::u8x8;
     let r = vqtbx1_p8(a, vcombine_p8(b, zeroed()), c);
     let m: int8x8_t = simd_lt(c, transmute(u8x8::splat(8)));
     simd_select(m, r, a)
@@ -1401,7 +1717,6 @@ pub unsafe fn vtbx2_p8(a: poly8x8_t, b: poly8x8x2_t, c: uint8x8_t) -> poly8x8_t 
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
-    use crate::core_arch::simd::i8x8;
     let r = vqtbx2_s8(
         a,
         int8x16x2_t(vcombine_s8(b.0, b.1), vcombine_s8(b.2, zeroed())),
@@ -1417,7 +1732,6 @@ pub unsafe fn vtbx3_s8(a: int8x8_t, b: int8x8x3_t, c: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t {
-    use crate::core_arch::simd::u8x8;
     let r = vqtbx2_u8(
         a,
         uint8x16x2_t(vcombine_u8(b.0, b.1), vcombine_u8(b.2, zeroed())),
@@ -1433,7 +1747,6 @@ pub unsafe fn vtbx3_u8(a: uint8x8_t, b: uint8x8x3_t, c: uint8x8_t) -> uint8x8_t 
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(tbx))]
 pub unsafe fn vtbx3_p8(a: poly8x8_t, b: poly8x8x3_t, c: uint8x8_t) -> poly8x8_t {
-    use crate::core_arch::simd::u8x8;
     let r = vqtbx2_p8(
         a,
         poly8x16x2_t(vcombine_p8(b.0, b.1), vcombine_p8(b.2, zeroed())),
@@ -1988,45 +2301,6 @@ pub unsafe fn vqtbx4q_p8(a: poly8x16_t, t: poly8x16x4_t, idx: uint8x16_t) -> pol
 
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
-pub unsafe fn vld1q_f32(addr: *const f32) -> float32x4_t {
-    use crate::core_arch::simd::f32x4;
-    transmute(f32x4::new(
-        *addr,
-        *addr.offset(1),
-        *addr.offset(2),
-        *addr.offset(3),
-    ))
-}
-
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
-pub unsafe fn vld1q_s32(addr: *const i32) -> int32x4_t {
-    use crate::core_arch::simd::i32x4;
-    transmute(i32x4::new(
-        *addr,
-        *addr.offset(1),
-        *addr.offset(2),
-        *addr.offset(3),
-    ))
-}
-
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(ldr))]
-pub unsafe fn vld1q_u32(addr: *const u32) -> uint32x4_t {
-    use crate::core_arch::simd::u32x4;
-    transmute(u32x4::new(
-        *addr,
-        *addr.offset(1),
-        *addr.offset(2),
-        *addr.offset(3),
-    ))
-}
-
-#[inline]
-#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtzs))]
 pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
     vcvtq_s32_f32_(a)
@@ -2443,36 +2717,6 @@ mod tests {
         let f = f32x4::new(10e37, 2., 3., 4.);
         let e = u32x4::new(0xffffffff, 2, 3, 4);
         let r: u32x4 = transmute(vcvtq_u32_f32(transmute(f)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vld1q_f32() {
-        let e = f32x4::new(1., 2., 3., 4.);
-        let f = [0., 1., 2., 3., 4.];
-        // do a load that has 4 byte alignment to make sure we're not
-        // over aligning it
-        let r: f32x4 = transmute(vld1q_f32(f[1..].as_ptr()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vld1q_s32() {
-        let e = i32x4::new(1, 2, 3, 4);
-        let f = [0, 1, 2, 3, 4];
-        // do a load that has 4 byte alignment to make sure we're not
-        // over aligning it
-        let r: i32x4 = transmute(vld1q_s32(f[1..].as_ptr()));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vld1q_u32() {
-        let e = u32x4::new(1, 2, 3, 4);
-        let f = [0, 1, 2, 3, 4];
-        // do a load that has 4 byte alignment to make sure we're not
-        // over aligning it
-        let r: u32x4 = transmute(vld1q_u32(f[1..].as_ptr()));
         assert_eq!(r, e);
     }
 
@@ -3775,3 +4019,7 @@ mod table_lookup_tests;
 #[cfg(test)]
 #[path = "../../arm/neon/shift_and_insert_tests.rs"]
 mod shift_and_insert_tests;
+
+#[cfg(test)]
+#[path = "../../arm/neon/load_tests.rs"]
+mod load_tests;
