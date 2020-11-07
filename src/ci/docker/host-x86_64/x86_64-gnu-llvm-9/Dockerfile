@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   gdb \
   llvm-9-tools \
+  llvm-9-dev \
   libedit-dev \
   libssl-dev \
   pkg-config \
