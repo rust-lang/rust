@@ -2382,7 +2382,7 @@ impl<'test> TestCx<'test> {
             AllowUnused::Yes,
         );
         rustc.arg("-L").arg(&new_rustdoc.aux_output_dir_name());
-        new_rustdoc.build_all_auxiliary(&mut dbg!(rustc));
+        new_rustdoc.build_all_auxiliary(&mut rustc);
 
         let proc_res = new_rustdoc.document(&compare_dir);
         if !proc_res.status.success() {
@@ -2414,19 +2414,25 @@ impl<'test> TestCx<'test> {
         let mut diff = Command::new("diff");
         diff.args(&["-u", "-r"]).args(&[out_dir, &compare_dir]);
 
-        if has_delta {
+        let output = if has_delta {
             let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");
-            let status = Command::new("delta")
+            let output = Command::new("delta")
                 .arg("--paging=never")
                 .stdin(diff_pid.stdout.unwrap())
-                .status()
+                // Capture output and print it explicitly so it will in turn be
+                // captured by libtest.
+                .output()
                 .unwrap();
-            assert!(status.success());
+            assert!(output.status.success());
+            output
         } else {
             eprintln!("warning: `delta` not installed, falling back to `diff --color`");
-            diff.arg("--color").spawn().expect("failed to run `diff`").wait().unwrap();
-            assert!(status.success() || status.code() == Some(1));
-        }
+            let output = diff.arg("--color").output().unwrap();
+            assert!(output.status.success() || output.status.code() == Some(1));
+            output
+        };
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     }
 
     fn get_lines<P: AsRef<Path>>(
