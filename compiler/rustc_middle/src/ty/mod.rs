@@ -2827,11 +2827,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn item_name(self, id: DefId) -> Symbol {
         // Look at cross-crate items first to avoid invalidating the incremental cache
         // unless we have to.
-        self.item_name_from_def_id(id)
-            .or_else(|| self.item_name_from_hir(id).map(|ident| ident.name))
-            .unwrap_or_else(|| {
-                bug!("item_name: no name for {:?}", self.def_path(id));
-            })
+        self.item_name_from_def_id(id).unwrap_or_else(|| {
+            bug!("item_name: no name for {:?}", self.def_path(id));
+        })
     }
 
     /// Look up the name and span of an item or [`Node`].
