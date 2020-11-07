@@ -3,7 +3,7 @@
 use assists::utils::{insert_use, mod_path_to_ast, ImportScope, MergeBehaviour};
 use hir::Query;
 use itertools::Itertools;
-use syntax::AstNode;
+use syntax::{algo, AstNode};
 use text_edit::TextEdit;
 
 use crate::{context::CompletionContext, item::CompletionKind, CompletionItem, CompletionItemKind};
@@ -17,9 +17,6 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
     let current_module = ctx.scope.module()?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
-    // TODO kb now this is the whole file, which is not disjoint with any other change in the same file, fix it
-    // otherwise it's impossible to correctly add the use statement and also change the completed text into something more meaningful
-    let import_syntax = import_scope.as_syntax_node();
 
     // TODO kb consider heuristics, such as "don't show `hash_map` import if `HashMap` is the import for completion"
     // TODO kb module functions are not completed, consider `std::io::stdin` one
@@ -35,15 +32,16 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
             either::Either::Right(macro_def) => current_module.find_use_path(ctx.db, macro_def),
         })
         .filter_map(|mod_path| {
+            let mut builder = TextEdit::builder();
+
             let correct_qualifier = mod_path.segments.last()?.to_string();
+            builder.replace(anchor.syntax().text_range(), correct_qualifier);
+
+            // TODO kb: assists already have the merge behaviour setting, need to unite both
             let rewriter =
                 insert_use(&import_scope, mod_path_to_ast(&mod_path), Some(MergeBehaviour::Full));
-            let rewritten_node = rewriter.rewrite(import_syntax);
-            let insert_use_edit =
-                TextEdit::replace(import_syntax.text_range(), rewritten_node.to_string());
-            let mut completion_edit =
-                TextEdit::replace(anchor.syntax().text_range(), correct_qualifier);
-            completion_edit.union(insert_use_edit).expect("TODO kb");
+            let old_ast = rewriter.rewrite_root()?;
+            algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut builder);
 
             let completion_item: CompletionItem = CompletionItem::new(
                 CompletionKind::Magic,
@@ -51,7 +49,7 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
                 mod_path.to_string(),
             )
             .kind(CompletionItemKind::Struct)
-            .text_edit(completion_edit)
+            .text_edit(builder.finish())
             .into();
             Some(completion_item)
         });
@@ -72,6 +70,48 @@ mod tests {
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Magic);
         expect.assert_eq(&actual)
+    }
+
+    #[test]
+    fn function_magic_completion() {
+        check(
+            r#"
+//- /lib.rs crate:dep
+pub mod io {
+    pub fn stdin() {}
+};
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    stdi<|>
+}
+"#,
+            expect![[r#"
+                st dep::io::stdin
+            "#]],
+        );
+
+        check_edit(
+            "dep::io::stdin",
+            r#"
+//- /lib.rs crate:dep
+pub mod io {
+    pub fn stdin() {}
+};
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    stdi<|>
+}
+"#,
+            r#"
+use dep::io::stdin;
+
+fn main() {
+    stdin
+}
+"#,
+        );
     }
 
     #[test]
