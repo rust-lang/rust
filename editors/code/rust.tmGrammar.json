@@ -50,7 +50,7 @@
         {
             "comment": "macro type metavariables",
             "name": "meta.macro.metavariable.type.rust",
-            "match": "(\\$)((crate)|([A-Z][A-Za-z0-9_]*))((:)(block|expr|ident|item|lifetime|literal|meta|pat|path|stmt|tt|ty|vis))?",
+            "match": "(\\$)((crate)|([A-Z][A-Za-z0-9_]*))((:)(block|expr|ident|item|lifetime|literal|meta|path?|stmt|tt|ty|vis))?",
             "captures": {
                 "1": {
                     "name": "keyword.operator.macro.dollar.rust"
@@ -77,7 +77,7 @@
         {
             "comment": "macro metavariables",
             "name": "meta.macro.metavariable.rust",
-            "match": "(\\$)([a-z][A-Za-z0-9_]*)((:)(block|expr|ident|item|lifetime|literal|meta|pat|path|stmt|tt|ty|vis))?",
+            "match": "(\\$)([a-z][A-Za-z0-9_]*)((:)(block|expr|ident|item|lifetime|literal|meta|path?|stmt|tt|ty|vis))?",
             "captures": {
                 "1": {
                     "name": "keyword.operator.macro.dollar.rust"
@@ -676,11 +676,6 @@
                     "match": "\\bmut\\b"
                 },
                 {
-                    "comment": "math operators",
-                    "name": "keyword.operator.math.rust",
-                    "match": "(([+%]|(\\*(?!\\w)))(?!=))|(-(?!>))|(/(?!/))"
-                },
-                {
                     "comment": "logical operators",
                     "name": "keyword.operator.logical.rust",
                     "match": "(\\^|\\||\\|\\||&&|<<|>>|!)(?!=)"
@@ -704,6 +699,11 @@
                     "comment": "comparison operators",
                     "name": "keyword.operator.comparison.rust",
                     "match": "(=(=)?(?!>)|!=|<=|(?<!=)>=)"
+                },
+                {
+                    "comment": "math operators",
+                    "name": "keyword.operator.math.rust",
+                    "match": "(([+%]|(\\*(?!\\w)))(?!=))|(-(?!>))|(/(?!/))"
                 },
                 {
                     "comment": "less than, greater than (special case)",
