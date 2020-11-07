@@ -162,5 +162,13 @@ error: equal expressions as operands to `/`
 LL |     const D: u32 = A / A;
    |                    ^^^^^
 
-error: aborting due to 27 previous errors
+error: equal expressions as operands to `==`
+  --> $DIR/eq_op.rs:96:5
+   |
+LL |     (n1.inner.0).0 == (n1.inner.0).0 && (n1.inner.1).0 == (n2.inner.1).0 && (n1.inner.2).0 == (n2.inner.2).0
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::eq_op)]` on by default
+
+error: aborting due to 28 previous errors
 

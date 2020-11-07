@@ -308,6 +308,7 @@ mod single_component_path_imports;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
 mod strings;
+mod suspicious_operation_groupings;
 mod suspicious_trait_impl;
 mod swap;
 mod tabs_in_doc_comments;
@@ -834,6 +835,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &strings::STRING_LIT_AS_BYTES,
         &strings::STRING_TO_STRING,
         &strings::STR_TO_STRING,
+        &suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS,
         &suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
         &suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         &swap::ALMOST_SWAPPED,
@@ -1066,6 +1068,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box types::UnitArg);
     store.register_late_pass(|| box double_comparison::DoubleComparisons);
     store.register_late_pass(|| box question_mark::QuestionMark);
+    store.register_early_pass(|| box suspicious_operation_groupings::SuspiciousOperationGroupings);
     store.register_late_pass(|| box suspicious_trait_impl::SuspiciousImpl);
     store.register_late_pass(|| box map_unit_fn::MapUnit);
     store.register_late_pass(|| box inherent_impl::MultipleInherentImpl::default());
@@ -1547,6 +1550,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(&strings::STRING_FROM_UTF8_AS_BYTES),
+        LintId::of(&suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(&swap::ALMOST_SWAPPED),
@@ -1698,6 +1702,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&returns::LET_AND_RETURN),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
+        LintId::of(&suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
         LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&try_err::TRY_ERR),
