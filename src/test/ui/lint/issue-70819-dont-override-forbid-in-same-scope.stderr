@@ -1,28 +1,28 @@
-error[E0453]: deny(unused) incompatible with previous forbid in same scope
+error[E0453]: deny(unused) incompatible with previous forbid
   --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:19:13
    |
 LL |     #![forbid(unused)]
    |               ------ `forbid` level set here
 LL |     #![deny(unused)]
-   |             ^^^^^^
+   |             ^^^^^^ overruled by previous forbid
 
-error[E0453]: warn(unused) incompatible with previous forbid in same scope
+error[E0453]: warn(unused) incompatible with previous forbid
   --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:21:13
    |
 LL |     #![forbid(unused)]
    |               ------ `forbid` level set here
 ...
 LL |     #![warn(unused)]
-   |             ^^^^^^
+   |             ^^^^^^ overruled by previous forbid
 
-error[E0453]: allow(unused) incompatible with previous forbid in same scope
+error[E0453]: allow(unused) incompatible with previous forbid
   --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:23:14
    |
 LL |     #![forbid(unused)]
    |               ------ `forbid` level set here
 ...
 LL |     #![allow(unused)]
-   |              ^^^^^^
+   |              ^^^^^^ overruled by previous forbid
 
 error: aborting due to 3 previous errors
 

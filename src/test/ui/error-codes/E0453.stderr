@@ -1,4 +1,4 @@
-error[E0453]: allow(non_snake_case) overruled by outer forbid(non_snake_case)
+error[E0453]: allow(non_snake_case) incompatible with previous forbid
   --> $DIR/E0453.rs:3:9
    |
 LL | #![forbid(non_snake_case)]
@@ -7,7 +7,7 @@ LL |
 LL | #[allow(non_snake_case)]
    |         ^^^^^^^^^^^^^^ overruled by previous forbid
 
-error[E0453]: allow(non_snake_case) overruled by outer forbid(non_snake_case)
+error[E0453]: allow(non_snake_case) incompatible with previous forbid
   --> $DIR/E0453.rs:3:9
    |
 LL | #![forbid(non_snake_case)]
@@ -16,7 +16,7 @@ LL |
 LL | #[allow(non_snake_case)]
    |         ^^^^^^^^^^^^^^ overruled by previous forbid
 
-error[E0453]: allow(non_snake_case) overruled by outer forbid(non_snake_case)
+error[E0453]: allow(non_snake_case) incompatible with previous forbid
   --> $DIR/E0453.rs:3:9
    |
 LL | #![forbid(non_snake_case)]

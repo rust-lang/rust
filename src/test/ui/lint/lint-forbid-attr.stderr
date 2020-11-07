@@ -1,4 +1,4 @@
-error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+error[E0453]: allow(deprecated) incompatible with previous forbid
   --> $DIR/lint-forbid-attr.rs:3:9
    |
 LL | #![forbid(deprecated)]
@@ -7,7 +7,7 @@ LL |
 LL | #[allow(deprecated)]
    |         ^^^^^^^^^^ overruled by previous forbid
 
-error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+error[E0453]: allow(deprecated) incompatible with previous forbid
   --> $DIR/lint-forbid-attr.rs:3:9
    |
 LL | #![forbid(deprecated)]
@@ -16,7 +16,7 @@ LL |
 LL | #[allow(deprecated)]
    |         ^^^^^^^^^^ overruled by previous forbid
 
-error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+error[E0453]: allow(deprecated) incompatible with previous forbid
   --> $DIR/lint-forbid-attr.rs:3:9
    |
 LL | #![forbid(deprecated)]

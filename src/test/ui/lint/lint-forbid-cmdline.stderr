@@ -1,4 +1,4 @@
-error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+error[E0453]: allow(deprecated) incompatible with previous forbid
   --> $DIR/lint-forbid-cmdline.rs:3:9
    |
 LL | #[allow(deprecated)]
@@ -6,7 +6,7 @@ LL | #[allow(deprecated)]
    |
    = note: `forbid` lint level was set on command line
 
-error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+error[E0453]: allow(deprecated) incompatible with previous forbid
   --> $DIR/lint-forbid-cmdline.rs:3:9
    |
 LL | #[allow(deprecated)]
@@ -14,7 +14,7 @@ LL | #[allow(deprecated)]
    |
    = note: `forbid` lint level was set on command line
 
-error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+error[E0453]: allow(deprecated) incompatible with previous forbid
   --> $DIR/lint-forbid-cmdline.rs:3:9
    |
 LL | #[allow(deprecated)]
