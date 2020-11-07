@@ -1729,7 +1729,7 @@ impl<'test> TestCx<'test> {
         self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
     }
 
-    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
+    fn build_all_auxiliary(&self, rustc: &mut Command) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
         if !self.props.aux_builds.is_empty() {
@@ -1748,6 +1748,11 @@ impl<'test> TestCx<'test> {
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
         }
 
+        aux_dir
+    }
+
+    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
+        let aux_dir = self.build_all_auxiliary(&mut rustc);
         self.props.unset_rustc_env.clone().iter().fold(&mut rustc, |rustc, v| rustc.env_remove(v));
         rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(
@@ -2359,13 +2364,26 @@ impl<'test> TestCx<'test> {
         // We need to create a new struct for the lifetimes on `config` to work.
         let new_rustdoc = TestCx {
             config: &Config {
-                // FIXME: use beta or a user-specified rustdoc instead of hardcoding
-                // the default toolchain
+                // FIXME: use beta or a user-specified rustdoc instead of
+                // hardcoding the default toolchain
                 rustdoc_path: Some("rustdoc".into()),
+                // Needed for building auxiliary docs below
+                rustc_path: "rustc".into(),
                 ..self.config.clone()
             },
             ..*self
         };
+
+        let output_file = TargetLocation::ThisDirectory(new_rustdoc.aux_output_dir_name());
+        let mut rustc = new_rustdoc.make_compile_args(
+            &new_rustdoc.testpaths.file,
+            output_file,
+            EmitMetadata::No,
+            AllowUnused::Yes,
+        );
+        rustc.arg("-L").arg(&new_rustdoc.aux_output_dir_name());
+        new_rustdoc.build_all_auxiliary(&mut dbg!(rustc));
+
         let proc_res = new_rustdoc.document(&compare_dir);
         if !proc_res.status.success() {
             proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
@@ -2390,6 +2408,7 @@ impl<'test> TestCx<'test> {
 
         let has_delta = Command::new("delta")
             .arg("--version")
+            .stdout(Stdio::null())
             .status()
             .map_or(false, |status| status.success());
         let mut diff = Command::new("diff");
