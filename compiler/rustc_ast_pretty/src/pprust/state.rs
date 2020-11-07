@@ -1729,7 +1729,7 @@ impl<'a> State<'a> {
         &mut self,
         path: &ast::Path,
         fields: &[ast::Field],
-        wth: &Option<P<ast::Expr>>,
+        rest: &ast::StructRest,
         attrs: &[ast::Attribute],
     ) {
         self.print_path(path, true, 0);
@@ -1750,22 +1750,21 @@ impl<'a> State<'a> {
             },
             |f| f.span,
         );
-        match *wth {
-            Some(ref expr) => {
+        match rest {
+            ast::StructRest::Base(_) | ast::StructRest::Rest(_) => {
                 self.ibox(INDENT_UNIT);
                 if !fields.is_empty() {
                     self.s.word(",");
                     self.s.space();
                 }
                 self.s.word("..");
-                self.print_expr(expr);
+                if let ast::StructRest::Base(ref expr) = *rest {
+                    self.print_expr(expr);
+                }
                 self.end();
             }
-            _ => {
-                if !fields.is_empty() {
-                    self.s.word(",")
-                }
-            }
+            ast::StructRest::None if !fields.is_empty() => self.s.word(","),
+            _ => {}
         }
         self.s.word("}");
     }
@@ -1891,8 +1890,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(element, count, attrs);
             }
-            ast::ExprKind::Struct(ref path, ref fields, ref wth) => {
-                self.print_expr_struct(path, &fields[..], wth, attrs);
+            ast::ExprKind::Struct(ref path, ref fields, ref rest) => {
+                self.print_expr_struct(path, &fields[..], rest, attrs);
             }
             ast::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(&exprs[..], attrs);

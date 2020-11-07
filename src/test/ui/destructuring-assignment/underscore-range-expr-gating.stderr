@@ -1,0 +1,12 @@
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/underscore-range-expr-gating.rs:7:15
+   |
+LL |     S { x: 5, .. };
+   |               ^^
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
