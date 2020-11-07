@@ -174,7 +174,7 @@ impl<
     where
         W: Write,
     {
-        let lines = label.split("\n").map(|s| dot::escape_html(s)).collect::<Vec<_>>();
+        let lines = label.split('\n').map(|s| dot::escape_html(s)).collect::<Vec<_>>();
         let escaped_label = lines.join(r#"<br align="left"/>"#);
         writeln!(w, r#"    label=<<br/><br/>{}<br align="left"/><br/><br/><br/>>;"#, escaped_label)
     }
