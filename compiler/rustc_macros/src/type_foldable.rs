@@ -16,9 +16,8 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
         })
     });
 
-    let body_visit = s.fold(quote!(), |acc, bind| {
+    let body_visit = s.each(|bind| {
         quote! {
-            #acc
             ::rustc_middle::ty::fold::TypeFoldable::visit_with(#bind, __folder)?;
         }
     });
