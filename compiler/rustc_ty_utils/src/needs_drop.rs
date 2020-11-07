@@ -94,16 +94,12 @@ where
                     _ if component.is_copy_modulo_regions(tcx.at(DUMMY_SP), self.param_env) => (),
 
                     ty::Closure(_, substs) => {
-                        for upvar_ty in substs.as_closure().upvar_tys() {
-                            queue_type(self, upvar_ty);
-                        }
+                        queue_type(self, substs.as_closure().tupled_upvars_ty());
                     }
 
                     ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
-                        for upvar_ty in substs.upvar_tys() {
-                            queue_type(self, upvar_ty);
-                        }
+                        queue_type(self, substs.tupled_upvars_ty());
 
                         let witness = substs.witness();
                         let interior_tys = match witness.kind() {
