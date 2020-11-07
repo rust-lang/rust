@@ -514,3 +514,10 @@ fn test_eq() {
 
     let _: AssertEq<Cursor<Vec<u8>>> = AssertEq(Cursor::new(Vec::new()));
 }
+
+#[allow(dead_code)]
+fn const_cursor() {
+    const CURSOR: Cursor<&[u8]> = Cursor::new(&[0]);
+    const _: &&[u8] = CURSOR.get_ref();
+    const _: u64 = CURSOR.position();
+}
