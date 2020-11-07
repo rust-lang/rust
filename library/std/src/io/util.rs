@@ -102,7 +102,8 @@ pub struct Empty {
 /// assert!(buffer.is_empty());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn empty() -> Empty {
+#[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+pub const fn empty() -> Empty {
     Empty { _priv: () }
 }
 
@@ -159,7 +160,8 @@ pub struct Repeat {
 /// assert_eq!(buffer, [0b101, 0b101, 0b101]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn repeat(byte: u8) -> Repeat {
+#[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+pub const fn repeat(byte: u8) -> Repeat {
     Repeat { byte }
 }
 
@@ -226,7 +228,8 @@ pub struct Sink {
 /// assert_eq!(num_bytes, 5);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn sink() -> Sink {
+#[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+pub const fn sink() -> Sink {
     Sink { _priv: () }
 }
 

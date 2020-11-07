@@ -1,5 +1,5 @@
 use crate::io::prelude::*;
-use crate::io::{copy, empty, repeat, sink};
+use crate::io::{copy, empty, repeat, sink, Empty, Repeat, Sink};
 
 #[test]
 fn copy_copies() {
@@ -42,4 +42,11 @@ fn take_some_bytes() {
     assert_eq!(repeat(4).take(100).bytes().count(), 100);
     assert_eq!(repeat(4).take(100).bytes().next().unwrap().unwrap(), 4);
     assert_eq!(repeat(1).take(10).chain(repeat(2).take(10)).bytes().count(), 20);
+}
+
+#[allow(dead_code)]
+fn const_utils() {
+    const _: Empty = empty();
+    const _: Repeat = repeat(b'c');
+    const _: Sink = sink();
 }
