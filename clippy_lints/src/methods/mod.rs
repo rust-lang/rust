@@ -3901,21 +3901,24 @@ fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<
     let ty = cx.typeck_results().expr_ty(expr);
     let arg_ty = cx.typeck_results().expr_ty(&args[0]);
 
-    let from_iter_id = get_trait_def_id(cx, &paths::FROM_ITERATOR).unwrap();
-    let iter_id = get_trait_def_id(cx, &paths::ITERATOR).unwrap();
+    if_chain! {
+        if let Some(from_iter_id) = get_trait_def_id(cx, &paths::FROM_ITERATOR);
+        if let Some(iter_id) = get_trait_def_id(cx, &paths::ITERATOR);
 
-    if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]) {
-        // `expr` implements `FromIterator` trait
-        let iter_expr = snippet(cx, args[0].span, "..");
-        span_lint_and_sugg(
-            cx,
-            FROM_ITER_INSTEAD_OF_COLLECT,
-            expr.span,
-            "usage of `FromIterator::from_iter`",
-            "use `.collect()` instead of `::from_iter()`",
-            format!("{}.collect()", iter_expr),
-            Applicability::MaybeIncorrect,
-        );
+        if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]);
+        then {
+            // `expr` implements `FromIterator` trait
+            let iter_expr = snippet(cx, args[0].span, "..");
+            span_lint_and_sugg(
+                cx,
+                FROM_ITER_INSTEAD_OF_COLLECT,
+                expr.span,
+                "usage of `FromIterator::from_iter`",
+                "use `.collect()` instead of `::from_iter()`",
+                format!("{}.collect()", iter_expr),
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 }
 
