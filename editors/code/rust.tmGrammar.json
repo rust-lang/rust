@@ -167,7 +167,7 @@
             "match": "(mod)\\s+((?:r#(?!crate|[Ss]elf|super))?[a-z][A-Za-z0-9_]*)",
             "captures": {
                 "1": {
-                    "name": "keyword.control.rust"
+                    "name": "storage.type.rust"
                 },
                 "2": {
                     "name": "entity.name.module.rust"
@@ -180,7 +180,7 @@
             "begin": "\\b(extern)\\s+(crate)",
             "beginCaptures": {
                 "1": {
-                    "name": "keyword.control.rust"
+                    "name": "storage.type.rust"
                 },
                 "2": {
                     "name": "keyword.other.crate.rust"
@@ -213,7 +213,7 @@
             "begin": "\\b(use)\\s",
             "beginCaptures": {
                 "1": {
-                    "name": "keyword.control.rust"
+                    "name": "keyword.other.rust"
                 }
             },
             "end": ";",
@@ -342,7 +342,7 @@
                     "match": "\\b(const)\\s+([A-Z][A-Za-z0-9_]*)\\b",
                     "captures": {
                         "1": {
-                            "name": "keyword.control.rust"
+                            "name": "storage.type.rust"
                         },
                         "2": {
                             "name": "constant.other.caps.rust"
@@ -450,7 +450,7 @@
                     "begin": "\\b(fn)\\s+((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)((\\()|(<))",
                     "beginCaptures": {
                         "1": {
-                            "name": "keyword.control.fn.rust"
+                            "name": "keyword.other.fn.rust"
                         },
                         "2": {
                             "name": "entity.name.function.rust"
@@ -643,7 +643,7 @@
                 {
                     "comment": "control flow keywords",
                     "name": "keyword.control.rust",
-                    "match": "\\b(async|await|break|continue|do|else|for|if|loop|match|move|return|try|where|while|yield)\\b"
+                    "match": "\\b(await|break|continue|do|else|for|if|loop|match|return|try|while|yield)\\b"
                 },
                 {
                     "comment": "storage keywords",
@@ -658,7 +658,7 @@
                 {
                     "comment": "other keywords",
                     "name": "keyword.other.rust",
-                    "match": "\\b(as|become|box|dyn|final|impl|in|override|priv|pub|ref|typeof|union|unsafe|unsized|use|virtual)\\b"
+                    "match": "\\b(as|async|become|box|dyn|move|final|impl|in|override|priv|pub|ref|typeof|union|unsafe|unsized|use|virtual|where)\\b"
                 },
                 {
                     "comment": "fn",
