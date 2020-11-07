@@ -255,7 +255,7 @@ impl<T: 'static> LocalKey<T> {
     ///
     /// This will lazily initialize the value if this thread has not referenced
     /// this key yet. If the key has been destroyed (which may happen if this is called
-    /// in a destructor), this function will return an [`AccessError`](struct.AccessError.html).
+    /// in a destructor), this function will return an [`AccessError`].
     ///
     /// # Panics
     ///

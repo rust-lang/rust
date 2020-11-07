@@ -1,7 +1,7 @@
 //! SGX-specific extensions to general I/O primitives
 //!
 //! SGX file descriptors behave differently from Unix file descriptors. See the
-//! description of [`TryIntoRawFd`](trait.TryIntoRawFd.html) for more details.
+//! description of [`TryIntoRawFd`] for more details.
 #![unstable(feature = "sgx_platform", issue = "56975")]
 
 use crate::net;

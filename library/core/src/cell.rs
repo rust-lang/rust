@@ -573,7 +573,7 @@ pub struct RefCell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-/// An error returned by [`RefCell::try_borrow`](struct.RefCell.html#method.try_borrow).
+/// An error returned by [`RefCell::try_borrow`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
 pub struct BorrowError {
     _private: (),
@@ -593,7 +593,7 @@ impl Display for BorrowError {
     }
 }
 
-/// An error returned by [`RefCell::try_borrow_mut`](struct.RefCell.html#method.try_borrow_mut).
+/// An error returned by [`RefCell::try_borrow_mut`].
 #[stable(feature = "try_borrow", since = "1.13.0")]
 pub struct BorrowMutError {
     _private: (),
