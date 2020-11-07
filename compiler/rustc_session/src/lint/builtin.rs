@@ -1230,6 +1230,38 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `missing_fragment_specifier` lint is issued when an unused pattern
+    /// in a `macro_rules!` macro definition has a meta-variable (e.g. `$e`)
+    /// that is not followed by a fragment specifier (e.g. `:expr`).
+    ///
+    /// This warning can always be fixed by removing the unused pattern in the
+    /// `macro_rules!` macro definition.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// macro_rules! foo {
+    ///    ($e) => {}
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    ///
+    /// ### Explanation
+    ///
+    /// The meta-variable (`$e` above) lacks a fragment specifier, which is a
+    /// malformed input. It can be fixed by adding a fragment specifier.
+    pub MISSING_FRAGMENT_SPECIFIER,
+    Deny,
+    "detects missing fragment specifiers in unused `macro_rules!` patterns",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        edition: None,
+    };
+}
+
+declare_lint! {
     /// The `late_bound_lifetime_arguments` lint detects generic lifetime
     /// arguments in path segments with late bound lifetime parameters.
     ///
@@ -2721,6 +2753,7 @@ declare_lint_pass! {
         CENUM_IMPL_DROP_CAST,
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+        MISSING_FRAGMENT_SPECIFIER,
     ]
 }
 

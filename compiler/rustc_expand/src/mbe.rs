@@ -84,7 +84,7 @@ enum TokenTree {
     /// e.g., `$var`
     MetaVar(Span, Ident),
     /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
-    MetaVarDecl(Span, Ident /* name to bind */, NonterminalKind),
+    MetaVarDecl(Span, Ident /* name to bind */, Option<NonterminalKind>),
 }
 
 impl TokenTree {
