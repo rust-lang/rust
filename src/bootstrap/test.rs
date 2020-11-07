@@ -1205,17 +1205,6 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
             if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
-                cmd.arg("--cc")
-                    .arg(builder.cc(target))
-                    .arg("--cxx")
-                    .arg(builder.cxx(target).unwrap())
-                    .arg("--cflags")
-                    .arg(builder.cflags(target, GitRepo::Rustc).join(" "));
-                copts_passed = true;
-                if let Some(ar) = builder.ar(target) {
-                    cmd.arg("--ar").arg(ar);
-                }
-
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
                 let llvm_bin_path = llvm_config
@@ -1238,6 +1227,21 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                     .expect("Could not add LLD bin path to PATH");
                     cmd.env("PATH", new_path);
                 }
+            }
+        }
+
+        // Only pass correct values for these flags for the `run-make` suite as it
+        // requires that a C++ compiler was configured which isn't always the case.
+        if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
+            cmd.arg("--cc")
+                .arg(builder.cc(target))
+                .arg("--cxx")
+                .arg(builder.cxx(target).unwrap())
+                .arg("--cflags")
+                .arg(builder.cflags(target, GitRepo::Rustc).join(" "));
+            copts_passed = true;
+            if let Some(ar) = builder.ar(target) {
+                cmd.arg("--ar").arg(ar);
             }
         }
 
