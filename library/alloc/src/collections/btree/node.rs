@@ -1608,15 +1608,19 @@ pub mod marker {
 
 unsafe fn slice_insert<T>(slice: &mut [T], idx: usize, val: T) {
     unsafe {
-        ptr::copy(slice.as_ptr().add(idx), slice.as_mut_ptr().add(idx + 1), slice.len() - idx);
-        ptr::write(slice.get_unchecked_mut(idx), val);
+        let len = slice.len();
+        let slice_ptr = slice.as_mut_ptr();
+        ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx);
+        ptr::write(slice_ptr.add(idx), val);
     }
 }
 
 unsafe fn slice_remove<T>(slice: &mut [T], idx: usize) -> T {
     unsafe {
-        let ret = ptr::read(slice.get_unchecked(idx));
-        ptr::copy(slice.as_ptr().add(idx + 1), slice.as_mut_ptr().add(idx), slice.len() - idx - 1);
+        let len = slice.len();
+        let slice_ptr = slice.as_mut_ptr();
+        let ret = ptr::read(slice_ptr.add(idx));
+        ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
         ret
     }
 }
