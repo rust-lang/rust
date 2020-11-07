@@ -1,3 +1,5 @@
+// check-pass
+
 // Minimized case from #62767.
 mod m {
     pub enum Same {
@@ -9,7 +11,7 @@ use m::*;
 
 // The variant `Same` introduced by this import is also considered when resolving the prefix
 // `Same::` during import validation to avoid effects similar to time travel (#74556).
-use Same::Same; //~ ERROR unresolved import `Same`
+use Same::Same;
 
 // Case from #74556.
 mod foo {
@@ -21,8 +23,8 @@ mod foo {
 }
 
 use foo::*;
-use bar::bar; //~ ERROR unresolved import `bar::bar`
-              //~| ERROR inconsistent resolution for an import
+use bar::bar;
+
 use bar::foobar;
 
 fn main() {}
