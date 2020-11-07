@@ -119,9 +119,6 @@ pub unsafe fn create_module(
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
     let mut target_data_layout = sess.target.data_layout.clone();
-    if llvm_util::get_major_version() < 9 {
-        target_data_layout = strip_function_ptr_alignment(target_data_layout);
-    }
     if llvm_util::get_major_version() < 10
         && (sess.target.arch == "x86" || sess.target.arch == "x86_64")
     {
