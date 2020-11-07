@@ -147,7 +147,7 @@ cd rustc
 cp config.toml.example config.toml
 # Now edit `config.toml` and set `debug-assertions = true`.
 
-# Build a stage 1 rustc.
+# Build a stage 1 rustc, and build the rustc libraries with that rustc.
 # This step can take 30 minutes or more.
 ./x.py build --stage 1 compiler/rustc
 # If you change something, you can get a faster rebuild by doing
