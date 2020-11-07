@@ -2179,10 +2179,8 @@ impl<T> InPlaceDrop<T> {
 impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
-        if mem::needs_drop::<T>() {
-            unsafe {
-                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
-            }
+        unsafe {
+            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
         }
     }
 }
@@ -2912,10 +2910,8 @@ impl<T> IntoIter<T> {
     }
 
     fn drop_remaining(&mut self) {
-        if mem::needs_drop::<T>() {
-            unsafe {
-                ptr::drop_in_place(self.as_mut_slice());
-            }
+        unsafe {
+            ptr::drop_in_place(self.as_mut_slice());
         }
         self.ptr = self.end;
     }
