@@ -296,7 +296,6 @@
 #![feature(raw)]
 #![feature(raw_ref_macros)]
 #![feature(ready_macro)]
-#![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(shrink_to)]
