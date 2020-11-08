@@ -79,12 +79,20 @@ declare_clippy_lint! {
     /// impl Drop for Droppable {
     ///     fn drop(&mut self) {}
     /// }
-    /// let _ = Droppable;
+    /// {
+    ///     let _ = Droppable;
+    ///     //               ^ dropped here
+    ///     /* more code */
+    /// }
     /// ```
     ///
     /// Good:
     /// ```rust,ignore
-    /// let _droppable = Droppable;
+    /// {
+    ///     let _droppable = Droppable;
+    ///     /* more code */
+    ///     // dropped at end of scope
+    /// }
     /// ```
     pub LET_UNDERSCORE_DROP,
     correctness,
