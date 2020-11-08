@@ -44,4 +44,12 @@ fn main() {
         let v = vec![&mut d];
         let _: Vec<u32> = v.into_iter().map(|&mut x| x).collect();
     }
+
+    // Issue #6299
+    {
+        let mut aa = 5;
+        let mut bb = 3;
+        let items = vec![&mut aa, &mut bb];
+        let _: Vec<_> = items.into_iter().map(|x| x.clone()).collect();
+    }
 }
