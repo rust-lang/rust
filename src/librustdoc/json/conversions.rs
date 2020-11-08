@@ -5,7 +5,7 @@
 use std::convert::From;
 
 use rustc_ast::ast;
-use rustc_span::def_id;
+use rustc_span::def_id::DefId;
 
 use crate::clean;
 use crate::doctree;
@@ -145,8 +145,8 @@ impl From<clean::TypeBindingKind> for TypeBindingKind {
     }
 }
 
-impl From<def_id::DefId> for Id {
-    fn from(did: def_id::DefId) -> Self {
+impl From<DefId> for Id {
+    fn from(did: DefId) -> Self {
         Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index)))
     }
 }
