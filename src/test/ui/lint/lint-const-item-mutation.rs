@@ -29,6 +29,7 @@ const RAW_PTR: *mut u8 = 1 as *mut u8;
 const MUTABLE: Mutable = Mutable { msg: "" };
 const MUTABLE2: Mutable2 = Mutable2 { msg: "", other: String::new() };
 const VEC: Vec<i32> = Vec::new();
+const PTR: *mut () = 1 as *mut _;
 
 fn main() {
     ARRAY[0] = 5; //~ WARN attempting to modify
@@ -50,4 +51,8 @@ fn main() {
     MUTABLE.msg = "wow"; // no warning, because Drop observes the mutation
     MUTABLE2.msg = "wow"; //~ WARN attempting to modify
     VEC.push(0); //~ WARN taking a mutable reference to a `const` item
+
+    // Test that we don't warn when converting a raw pointer
+    // into a mutable reference
+    unsafe { &mut *PTR };
 }
