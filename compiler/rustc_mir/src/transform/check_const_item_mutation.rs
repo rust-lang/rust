@@ -61,22 +61,35 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
 
     fn lint_const_item_usage(
         &self,
+        place: &Place<'tcx>,
         const_item: DefId,
         location: Location,
         decorate: impl for<'b> FnOnce(LintDiagnosticBuilder<'b>) -> DiagnosticBuilder<'b>,
     ) {
-        let source_info = self.body.source_info(location);
-        let lint_root = self.body.source_scopes[source_info.scope]
-            .local_data
-            .as_ref()
-            .assert_crate_local()
-            .lint_root;
+        // Don't lint on borrowing/assigning to a dereference
+        // e.g:
+        //
+        // `unsafe { *FOO = 0; *BAR.field = 1; }`
+        // `unsafe { &mut *FOO }`
+        if !matches!(place.projection.last(), Some(PlaceElem::Deref)) {
+            let source_info = self.body.source_info(location);
+            let lint_root = self.body.source_scopes[source_info.scope]
+                .local_data
+                .as_ref()
+                .assert_crate_local()
+                .lint_root;
 
-        self.tcx.struct_span_lint_hir(CONST_ITEM_MUTATION, lint_root, source_info.span, |lint| {
-            decorate(lint)
-                .span_note(self.tcx.def_span(const_item), "`const` item defined here")
-                .emit()
-        });
+            self.tcx.struct_span_lint_hir(
+                CONST_ITEM_MUTATION,
+                lint_root,
+                source_info.span,
+                |lint| {
+                    decorate(lint)
+                        .span_note(self.tcx.def_span(const_item), "`const` item defined here")
+                        .emit()
+                },
+            );
+        }
     }
 }
 
@@ -88,15 +101,11 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
             // so emitting a lint would be redundant.
             if !lhs.projection.is_empty() {
                 if let Some(def_id) = self.is_const_item_without_destructor(lhs.local) {
-                    // Don't lint on writes through a pointer
-                    // (e.g. `unsafe { *FOO = 0; *BAR.field = 1; }`)
-                    if !matches!(lhs.projection.last(), Some(PlaceElem::Deref)) {
-                        self.lint_const_item_usage(def_id, loc, |lint| {
-                            let mut lint = lint.build("attempting to modify a `const` item");
-                            lint.note("each usage of a `const` item creates a new temporary - the original `const` item will not be modified");
-                            lint
-                        })
-                    }
+                    self.lint_const_item_usage(&lhs, def_id, loc, |lint| {
+                        let mut lint = lint.build("attempting to modify a `const` item");
+                        lint.note("each usage of a `const` item creates a new temporary; the original `const` item will not be modified");
+                        lint
+                    })
                 }
             }
             // We are looking for MIR of the form:
@@ -127,7 +136,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
                 });
                 let lint_loc =
                     if method_did.is_some() { self.body.terminator_loc(loc.block) } else { loc };
-                self.lint_const_item_usage(def_id, lint_loc, |lint| {
+                self.lint_const_item_usage(place, def_id, lint_loc, |lint| {
                     let mut lint = lint.build("taking a mutable reference to a `const` item");
                     lint
                         .note("each usage of a `const` item creates a new temporary")
