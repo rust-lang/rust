@@ -1390,8 +1390,6 @@ pub struct IntoValues<K, V> {
 /// A builder for computing where in a HashMap a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
-///
-/// [`HashMap::raw_entry_mut`]: HashMap::raw_entry_mut
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a mut HashMap<K, V, S>,
@@ -1430,8 +1428,6 @@ pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// A builder for computing where in a HashMap a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry`] docs for usage examples.
-///
-/// [`HashMap::raw_entry`]: HashMap::raw_entry
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a HashMap<K, V, S>,

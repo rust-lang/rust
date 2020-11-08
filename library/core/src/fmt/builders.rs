@@ -1,4 +1,6 @@
-use crate::fmt;
+#![allow(unused_imports)]
+
+use crate::fmt::{self, Debug, Formatter};
 
 struct PadAdapter<'buf, 'state> {
     buf: &'buf mut (dyn fmt::Write + 'buf),
@@ -53,14 +55,12 @@ impl fmt::Write for PadAdapter<'_, '_> {
     }
 }
 
-/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
+/// A struct to help with [`fmt::Debug`](Debug) implementations.
 ///
 /// This is useful when you wish to output a formatted struct as a part of your
-/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+/// [`Debug::fmt`] implementation.
 ///
-/// This can be constructed by the
-/// [`Formatter::debug_struct`](struct.Formatter.html#method.debug_struct)
-/// method.
+/// This can be constructed by the [`Formatter::debug_struct`] method.
 ///
 /// # Examples
 ///
@@ -257,14 +257,12 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     }
 }
 
-/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
+/// A struct to help with [`fmt::Debug`](Debug) implementations.
 ///
 /// This is useful when you wish to output a formatted tuple as a part of your
-/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+/// [`Debug::fmt`] implementation.
 ///
-/// This can be constructed by the
-/// [`Formatter::debug_tuple`](struct.Formatter.html#method.debug_tuple)
-/// method.
+/// This can be constructed by the [`Formatter::debug_tuple`] method.
 ///
 /// # Examples
 ///
@@ -428,14 +426,12 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     }
 }
 
-/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
+/// A struct to help with [`fmt::Debug`](Debug) implementations.
 ///
 /// This is useful when you wish to output a formatted set of items as a part
-/// of your [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+/// of your [`Debug::fmt`] implementation.
 ///
-/// This can be constructed by the
-/// [`Formatter::debug_set`](struct.Formatter.html#method.debug_set)
-/// method.
+/// This can be constructed by the [`Formatter::debug_set`] method.
 ///
 /// # Examples
 ///
@@ -560,14 +556,12 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     }
 }
 
-/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
+/// A struct to help with [`fmt::Debug`](Debug) implementations.
 ///
 /// This is useful when you wish to output a formatted list of items as a part
-/// of your [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+/// of your [`Debug::fmt`] implementation.
 ///
-/// This can be constructed by the
-/// [`Formatter::debug_list`](struct.Formatter.html#method.debug_list)
-/// method.
+/// This can be constructed by the [`Formatter::debug_list`] method.
 ///
 /// # Examples
 ///
@@ -692,14 +686,12 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     }
 }
 
-/// A struct to help with [`fmt::Debug`](trait.Debug.html) implementations.
+/// A struct to help with [`fmt::Debug`](Debug) implementations.
 ///
 /// This is useful when you wish to output a formatted map as a part of your
-/// [`Debug::fmt`](trait.Debug.html#tymethod.fmt) implementation.
+/// [`Debug::fmt`] implementation.
 ///
-/// This can be constructed by the
-/// [`Formatter::debug_map`](struct.Formatter.html#method.debug_map)
-/// method.
+/// This can be constructed by the [`Formatter::debug_map`] method.
 ///
 /// # Examples
 ///

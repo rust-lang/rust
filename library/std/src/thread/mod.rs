@@ -137,7 +137,6 @@
 //! [`thread::current`]: current
 //! [`thread::Result`]: Result
 //! [`unpark`]: Thread::unpark
-//! [`Thread::name`]: Thread::name
 //! [`thread::park_timeout`]: park_timeout
 //! [`Cell`]: crate::cell::Cell
 //! [`RefCell`]: crate::cell::RefCell
