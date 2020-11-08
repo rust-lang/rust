@@ -6,6 +6,7 @@
 # `index` or `paths` mappings. To add a new test run `rustdoc --output-format json -o . yourtest.rs`
 # and then create `yourtest.expected` by stripping unnecessary details from `yourtest.json`.
 
+import copy
 import sys
 import json
 import types
@@ -43,7 +44,7 @@ def check_subset(expected_main, actual_main):
             for key in expected:
                 if key not in actual:
                     raise SubsetException("Key `{}` not found in output".format(key), trace)
-                new_trace = trace.copy()
+                new_trace = copy.deepcopy(trace)
                 new_trace.append(key)
                 _check_subset(expected[key], actual[key], new_trace)
         elif expected_type is list:
@@ -54,7 +55,7 @@ def check_subset(expected_main, actual_main):
                     "Found {} items, expected {}".format(expected_elements, actual_elements), trace
                 )
             for expected, actual in zip(expected, actual):
-                new_trace = trace.copy()
+                new_trace = copy.deepcopy(trace)
                 new_trace.append(expected)
                 _check_subset(expected, actual, new_trace)
         elif expected_type is ID and expected not in already_checked:
