@@ -62,6 +62,9 @@ pub fn opts() -> TargetOptions {
     late_link_args_static.insert(LinkerFlavor::Lld(LldFlavor::Ld), static_unwind_libs);
 
     TargetOptions {
+        target_os: "windows".to_string(),
+        target_env: "gnu".to_string(),
+        target_vendor: "pc".to_string(),
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,
         linker: Some("gcc".to_string()),

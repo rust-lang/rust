@@ -4,6 +4,9 @@ pub fn opts() -> TargetOptions {
     let base = super::msvc_base::opts();
 
     TargetOptions {
+        target_os: "windows".to_string(),
+        target_env: "msvc".to_string(),
+        target_vendor: "pc".to_string(),
         dynamic_linking: true,
         dll_prefix: String::new(),
         dll_suffix: ".dll".to_string(),

@@ -8,15 +8,9 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "powerpc64le-unknown-linux-gnu".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 64,
-        target_c_int_width: "32".to_string(),
         data_layout: "e-m:e-i64:64-n32:64".to_string(),
         arch: "powerpc64".to_string(),
-        target_os: "linux".to_string(),
-        target_env: "gnu".to_string(),
-        target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions { target_mcount: "_mcount".to_string(), ..base },
     }
 }

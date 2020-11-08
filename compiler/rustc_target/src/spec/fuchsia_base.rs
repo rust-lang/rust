@@ -20,6 +20,9 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
+        target_os: "fuchsia".to_string(),
+        target_vendor: String::new(),
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         lld_flavor: LldFlavor::Ld,
         dynamic_linking: true,

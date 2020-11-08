@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::windows_uwp_msvc_base::opts();
@@ -8,16 +8,10 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-pc-windows-msvc".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 64,
-        target_c_int_width: "32".to_string(),
         data_layout: "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .to_string(),
         arch: "x86_64".to_string(),
-        target_os: "windows".to_string(),
-        target_env: "msvc".to_string(),
-        target_vendor: "uwp".to_string(),
-        linker_flavor: LinkerFlavor::Msvc,
         options: base,
     }
 }

@@ -38,6 +38,7 @@ use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
@@ -64,6 +65,7 @@ mod l4re_base;
 mod linux_base;
 mod linux_kernel_base;
 mod linux_musl_base;
+mod linux_uclibc_base;
 mod msvc_base;
 mod netbsd_base;
 mod openbsd_base;
@@ -664,26 +666,13 @@ supported_targets! {
 pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: String,
-    /// String to use as the `target_endian` `cfg` variable.
-    pub target_endian: String,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
-    /// Width of c_int type
-    pub target_c_int_width: String,
-    /// OS name to use for conditional compilation.
-    pub target_os: String,
-    /// Environment name to use for conditional compilation.
-    pub target_env: String,
-    /// Vendor name to use for conditional compilation.
-    pub target_vendor: String,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
-    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
-    /// on the command line.
-    pub linker_flavor: LinkerFlavor,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -706,6 +695,20 @@ impl HasTargetSpec for Target {
 pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
+
+    /// String to use as the `target_endian` `cfg` variable. Defaults to "little".
+    pub target_endian: String,
+    /// Width of c_int type. Defaults to "32".
+    pub target_c_int_width: String,
+    /// OS name to use for conditional compilation. Defaults to "none".
+    pub target_os: String,
+    /// Environment name to use for conditional compilation. Defaults to "".
+    pub target_env: String,
+    /// Vendor name to use for conditional compilation. Defaults to "unknown".
+    pub target_vendor: String,
+    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
+    /// on the command line. Defaults to `LinkerFlavor::Gcc`.
+    pub linker_flavor: LinkerFlavor,
 
     /// Linker to invoke
     pub linker: Option<String>,
@@ -985,6 +988,12 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
+            target_endian: "little".to_string(),
+            target_c_int_width: "32".to_string(),
+            target_os: "none".to_string(),
+            target_env: String::new(),
+            target_vendor: "unknown".to_string(),
+            linker_flavor: LinkerFlavor::Gcc,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
@@ -1075,6 +1084,17 @@ impl Default for TargetOptions {
     }
 }
 
+/// `TargetOptions` being a separate type is basically an implementation detail of `Target` that is
+/// used for providing defaults. Perhaps there's a way to merge `TargetOptions` into `Target` so
+/// this `Deref` implementation is no longer necessary.
+impl Deref for Target {
+    type Target = TargetOptions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.options
+    }
+}
+
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
@@ -1135,33 +1155,25 @@ impl Target {
                 .ok_or_else(|| format!("Field {} in target specification is required", name))
         };
 
-        let get_opt_field = |name: &str, default: &str| {
-            obj.find(name)
-                .and_then(|s| s.as_string())
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| default.to_string())
-        };
-
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?,
-            target_endian: get_req_field("target-endian")?,
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
-            target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
-            target_os: get_req_field("os")?,
-            target_env: get_opt_field("env", ""),
-            target_vendor: get_opt_field("vendor", "unknown"),
-            linker_flavor: LinkerFlavor::from_str(&*get_req_field("linker-flavor")?)
-                .ok_or_else(|| format!("linker flavor must be {}", LinkerFlavor::one_of()))?,
             options: Default::default(),
         };
 
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.find(&name).and_then(Json::as_string) {
+                    base.options.$key_name = s.to_string();
+                }
+            } );
+            ($key_name:ident = $json_name:expr) => ( {
+                let name = $json_name;
                 if let Some(s) = obj.find(&name).and_then(Json::as_string) {
                     base.options.$key_name = s.to_string();
                 }
@@ -1301,11 +1313,13 @@ impl Target {
             } );
             ($key_name:ident, LinkerFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().map(|s| {
-                    LinkerFlavor::from_str(&s).ok_or_else(|| {
-                        Err(format!("'{}' is not a valid value for linker-flavor. \
-                                     Use 'em', 'gcc', 'ld' or 'msvc.", s))
-                    })
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match LinkerFlavor::from_str(s) {
+                        Some(linker_flavor) => base.options.$key_name = linker_flavor,
+                        _ => return Some(Err(format!("'{}' is not a valid value for linker-flavor. \
+                                                      Use {}", s, LinkerFlavor::one_of()))),
+                    }
+                    Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
             ($key_name:ident, crt_objects_fallback) => ( {
@@ -1392,6 +1406,12 @@ impl Target {
         }
 
         key!(is_builtin, bool);
+        key!(target_endian);
+        key!(target_c_int_width);
+        key!(target_os = "os");
+        key!(target_env = "env");
+        key!(target_vendor = "vendor");
+        key!(linker_flavor, LinkerFlavor)?;
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
         key!(pre_link_objects, link_objects);
@@ -1619,17 +1639,17 @@ impl ToJson for Target {
         }
 
         target_val!(llvm_target);
-        target_val!(target_endian);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
-        target_val!(target_c_int_width);
         target_val!(arch);
-        target_val!(target_os, "os");
-        target_val!(target_env, "env");
-        target_val!(target_vendor, "vendor");
         target_val!(data_layout);
-        target_val!(linker_flavor);
 
         target_option_val!(is_builtin);
+        target_option_val!(target_endian);
+        target_option_val!(target_c_int_width);
+        target_option_val!(target_os, "os");
+        target_option_val!(target_env, "env");
+        target_option_val!(target_vendor, "vendor");
+        target_option_val!(linker_flavor);
         target_option_val!(linker);
         target_option_val!(lld_flavor);
         target_option_val!(pre_link_objects);

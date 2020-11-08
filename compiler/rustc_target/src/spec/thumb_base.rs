@@ -27,11 +27,13 @@
 // differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
 // build scripts / gcc flags.
 
-use crate::spec::{PanicStrategy, RelocModel, TargetOptions};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
+        target_vendor: String::new(),
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         executables: true,
         // In most cases, LLD is good enough
         linker: Some("rust-lld".to_string()),

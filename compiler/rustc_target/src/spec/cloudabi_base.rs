@@ -12,6 +12,7 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
+        target_os: "cloudabi".to_string(),
         executables: true,
         target_family: None,
         linker_is_gnu: true,

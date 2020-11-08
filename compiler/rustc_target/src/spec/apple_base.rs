@@ -2,7 +2,7 @@ use std::env;
 
 use crate::spec::{LinkArgs, TargetOptions};
 
-pub fn opts() -> TargetOptions {
+pub fn opts(os: &str) -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
     // either the linker will complain if it is used or the binary will end up
     // segfaulting at runtime when run on 10.6. Rust by default supports macOS
@@ -17,6 +17,8 @@ pub fn opts() -> TargetOptions {
     let version = macos_deployment_target();
 
     TargetOptions {
+        target_os: os.to_string(),
+        target_vendor: "apple".to_string(),
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
