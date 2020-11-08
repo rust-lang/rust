@@ -2677,6 +2677,9 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { ident, .. })
             | Node::ImplItem(ImplItem { ident, .. })
             | Node::ForeignItem(ForeignItem { ident, .. })
+            | Node::Field(StructField { ident, .. })
+            | Node::Variant(Variant { ident, .. })
+            | Node::MacroDef(MacroDef { ident, .. })
             | Node::Item(Item { ident, .. }) => Some(*ident),
             _ => None,
         }
