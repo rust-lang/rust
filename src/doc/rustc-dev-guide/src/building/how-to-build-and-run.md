@@ -70,6 +70,14 @@ if you want to learn more about `x.py`, read its README.md
 To read more about the bootstrap process and why `x.py` is necessary,
 [read this chapter][bootstrap].
 
+### Running `x.py` slightly more conveniently
+
+There is a binary that wraps `x.py` called `x` in `src/tools/x`. All it does is
+run `x.py`, but it can be installed system-wide and run from any subdirectory
+of a checkout.
+
+You can install it with `cargo install --path/src/tools/x`.
+
 [bootstrap]: ./bootstrapping.md
 
 ## Building the Compiler
