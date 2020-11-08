@@ -735,12 +735,12 @@ pub const fn default_lib_output() -> CrateType {
 }
 
 pub fn default_configuration(sess: &Session) -> CrateConfig {
-    let end = &sess.target.target_endian;
+    let end = &sess.target.endian;
     let arch = &sess.target.arch;
     let wordsz = sess.target.pointer_width.to_string();
-    let os = &sess.target.target_os;
-    let env = &sess.target.target_env;
-    let vendor = &sess.target.target_vendor;
+    let os = &sess.target.os;
+    let env = &sess.target.env;
+    let vendor = &sess.target.vendor;
     let min_atomic_width = sess.target.min_atomic_width();
     let max_atomic_width = sess.target.max_atomic_width();
     let atomic_cas = sess.target.atomic_cas;
@@ -752,7 +752,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     ret.reserve(6); // the minimum number of insertions
     // Target bindings.
     ret.insert((sym::target_os, Some(Symbol::intern(os))));
-    if let Some(ref fam) = sess.target.target_family {
+    if let Some(ref fam) = sess.target.os_family {
         ret.insert((sym::target_family, Some(Symbol::intern(fam))));
         if fam == "windows" {
             ret.insert((sym::windows, None));

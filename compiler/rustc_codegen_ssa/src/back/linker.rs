@@ -320,7 +320,7 @@ impl<'a> Linker for GccLinker<'a> {
         // any `#[link]` attributes in the `libc` crate, see #72782 for details.
         // FIXME: Switch to using `#[link]` attributes in the `libc` crate
         // similarly to other targets.
-        if self.sess.target.target_os == "vxworks"
+        if self.sess.target.os == "vxworks"
             && matches!(
                 output_kind,
                 LinkOutputKind::StaticNoPicExe

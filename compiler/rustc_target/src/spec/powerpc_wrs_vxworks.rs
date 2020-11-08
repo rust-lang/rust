@@ -12,7 +12,7 @@ pub fn target() -> Target {
         data_layout: "E-m:e-p:32:32-i64:64-n32".to_string(),
         arch: "powerpc".to_string(),
         options: TargetOptions {
-            target_endian: "big".to_string(),
+            endian: "big".to_string(),
             features: "+secure-plt".to_string(),
             ..base
         },

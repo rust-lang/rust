@@ -11,6 +11,6 @@ pub fn target() -> Target {
         pointer_width: 32,
         data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
         arch: "mips".to_string(),
-        options: TargetOptions { target_mcount: "_mcount".to_string(), ..base },
+        options: TargetOptions { mcount: "_mcount".to_string(), ..base },
     }
 }

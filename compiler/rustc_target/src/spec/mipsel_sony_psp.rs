@@ -15,8 +15,8 @@ pub fn target() -> Target {
         arch: "mips".to_string(),
 
         options: TargetOptions {
-            target_os: "psp".to_string(),
-            target_vendor: "sony".to_string(),
+            os: "psp".to_string(),
+            vendor: "sony".to_string(),
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             cpu: "mips2".to_string(),
             executables: true,

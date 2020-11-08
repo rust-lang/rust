@@ -17,13 +17,13 @@ pub fn opts(os: &str) -> TargetOptions {
     let version = macos_deployment_target();
 
     TargetOptions {
-        target_os: os.to_string(),
-        target_vendor: "apple".to_string(),
+        os: os.to_string(),
+        vendor: "apple".to_string(),
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
         executables: true,
-        target_family: Some("unix".to_string()),
+        os_family: Some("unix".to_string()),
         is_like_osx: true,
         dwarf_version: Some(2),
         has_rpath: true,

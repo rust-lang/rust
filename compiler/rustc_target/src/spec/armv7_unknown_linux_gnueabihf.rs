@@ -17,7 +17,7 @@ pub fn target() -> Target {
             cpu: "generic".to_string(),
             max_atomic_width: Some(64),
             unsupported_abis: super::arm_base::unsupported_abis(),
-            target_mcount: "\u{1}__gnu_mcount_nc".to_string(),
+            mcount: "\u{1}__gnu_mcount_nc".to_string(),
             ..base
         },
     }

@@ -90,7 +90,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        let mcount_name = CString::new(cx.sess().target.target_mcount.as_str().as_bytes()).unwrap();
+        let mcount_name = CString::new(cx.sess().target.mcount.as_str().as_bytes()).unwrap();
 
         llvm::AddFunctionAttrStringValue(
             llfn,

@@ -20,14 +20,14 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        target_os: "fuchsia".to_string(),
-        target_vendor: String::new(),
+        os: "fuchsia".to_string(),
+        vendor: String::new(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         lld_flavor: LldFlavor::Ld,
         dynamic_linking: true,
         executables: true,
-        target_family: Some("unix".to_string()),
+        os_family: Some("unix".to_string()),
         is_like_fuchsia: true,
         linker_is_gnu: true,
         has_rpath: false,

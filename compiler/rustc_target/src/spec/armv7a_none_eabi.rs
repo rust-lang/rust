@@ -10,7 +10,7 @@
 // bare-metal binaries (the `gcc` linker has the advantage that it knows where C
 // libraries and crt*.o are but it's not much of an advantage here); LLD is also
 // faster
-// - `target_os` set to `none`. rationale: matches `thumb` targets
+// - `os` set to `none`. rationale: matches `thumb` targets
 // - `target_{env,vendor}` set to an empty string. rationale: matches `thumb`
 // targets
 // - `panic_strategy` set to `abort`. rationale: matches `thumb` targets
@@ -21,7 +21,7 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOp
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        target_vendor: String::new(),
+        vendor: String::new(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         features: "+v7,+thumb2,+soft-float,-neon,+strict-align".to_string(),

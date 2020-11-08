@@ -16,7 +16,7 @@ pub fn target() -> Target {
             // Atomic operations provided by compiler-builtins
             max_atomic_width: Some(32),
             unsupported_abis: super::arm_base::unsupported_abis(),
-            target_mcount: "\u{1}mcount".to_string(),
+            mcount: "\u{1}mcount".to_string(),
             has_thumb_interworking: true,
             ..base
         },

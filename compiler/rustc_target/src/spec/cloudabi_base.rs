@@ -12,9 +12,9 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        target_os: "cloudabi".to_string(),
+        os: "cloudabi".to_string(),
         executables: true,
-        target_family: None,
+        os_family: None,
         linker_is_gnu: true,
         pre_link_args: args,
         position_independent_executables: true,

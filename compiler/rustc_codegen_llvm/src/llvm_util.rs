@@ -91,7 +91,7 @@ unsafe fn configure_llvm(sess: &Session) {
             }
         }
 
-        if sess.target.target_os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
+        if sess.target.os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
             add("-enable-emscripten-cxx-exceptions", false);
         }
 

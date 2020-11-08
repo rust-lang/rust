@@ -10,10 +10,10 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
 
         options: TargetOptions {
-            target_env: "eabihf".to_string(),
+            env: "eabihf".to_string(),
             features: "+v6,+vfp2,-d32".to_string(),
             unsupported_abis: super::arm_base::unsupported_abis(),
-            target_mcount: "__mcount".to_string(),
+            mcount: "__mcount".to_string(),
             ..base
         },
     }

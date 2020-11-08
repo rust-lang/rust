@@ -163,7 +163,7 @@ fn get_linker(
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target;
     if (flavor == LinkerFlavor::Msvc || flavor == LinkerFlavor::Lld(LldFlavor::Link))
-        && t.target_vendor == "uwp"
+        && t.vendor == "uwp"
     {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
@@ -1236,7 +1236,7 @@ fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
         Some(CrtObjectsFallback::Musl) => sess.crt_static(Some(crate_type)),
         Some(CrtObjectsFallback::Mingw) => {
             sess.host == sess.target
-                && sess.target.target_vendor != "uwp"
+                && sess.target.vendor != "uwp"
                 && detect_self_contained_mingw(&sess)
         }
         // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
@@ -1510,7 +1510,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     let base_cmd = get_linker(sess, path, flavor, crt_objects_fallback);
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
-    assert!(base_cmd.get_args().is_empty() || sess.target.target_vendor == "uwp");
+    assert!(base_cmd.get_args().is_empty() || sess.target.vendor == "uwp");
     let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor, target_cpu);
     let link_output_kind = link_output_kind(sess, crate_type);
 
@@ -2078,9 +2078,9 @@ fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
 
 fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let arch = &sess.target.arch;
-    let os = &sess.target.target_os;
+    let os = &sess.target.os;
     let llvm_target = &sess.target.llvm_target;
-    if sess.target.target_vendor != "apple"
+    if sess.target.vendor != "apple"
         || !matches!(os.as_str(), "ios" | "tvos")
         || flavor != LinkerFlavor::Gcc
     {

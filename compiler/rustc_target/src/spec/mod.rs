@@ -701,15 +701,15 @@ pub struct TargetOptions {
     pub is_builtin: bool,
 
     /// String to use as the `target_endian` `cfg` variable. Defaults to "little".
-    pub target_endian: String,
+    pub endian: String,
     /// Width of c_int type. Defaults to "32".
-    pub target_c_int_width: String,
+    pub c_int_width: String,
     /// OS name to use for conditional compilation. Defaults to "none".
-    pub target_os: String,
+    pub os: String,
     /// Environment name to use for conditional compilation. Defaults to "".
-    pub target_env: String,
+    pub env: String,
     /// Vendor name to use for conditional compilation. Defaults to "unknown".
-    pub target_vendor: String,
+    pub vendor: String,
     /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
     /// on the command line. Defaults to `LinkerFlavor::Gcc`.
     pub linker_flavor: LinkerFlavor,
@@ -800,7 +800,7 @@ pub struct TargetOptions {
     /// String to append to the name of every static library. Defaults to ".a".
     pub staticlib_suffix: String,
     /// OS family to use for conditional compilation. Valid options: "unix", "windows".
-    pub target_family: Option<String>,
+    pub os_family: Option<String>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
@@ -961,7 +961,7 @@ pub struct TargetOptions {
     pub merge_functions: MergeFunctions,
 
     /// Use platform dependent mcount function
-    pub target_mcount: String,
+    pub mcount: String,
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: String,
@@ -992,11 +992,11 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
-            target_endian: "little".to_string(),
-            target_c_int_width: "32".to_string(),
-            target_os: "none".to_string(),
-            target_env: String::new(),
-            target_vendor: "unknown".to_string(),
+            endian: "little".to_string(),
+            c_int_width: "32".to_string(),
+            os: "none".to_string(),
+            env: String::new(),
+            vendor: "unknown".to_string(),
             linker_flavor: LinkerFlavor::Gcc,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
@@ -1020,7 +1020,7 @@ impl Default for TargetOptions {
             exe_suffix: String::new(),
             staticlib_prefix: "lib".to_string(),
             staticlib_suffix: ".a".to_string(),
-            target_family: None,
+            os_family: None,
             abi_return_struct_as_int: false,
             is_like_osx: false,
             is_like_solaris: false,
@@ -1077,7 +1077,7 @@ impl Default for TargetOptions {
             limit_rdylib_exports: true,
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
-            target_mcount: "mcount".to_string(),
+            mcount: "mcount".to_string(),
             llvm_abiname: "".to_string(),
             relax_elf_relocations: false,
             llvm_args: vec![],
@@ -1306,6 +1306,14 @@ impl Target {
                         .map(|s| s.to_string() );
                 }
             } );
+            ($key_name:ident = $json_name:expr, optional) => ( {
+                let name = $json_name;
+                if let Some(o) = obj.find(&name[..]) {
+                    base.$key_name = o
+                        .as_string()
+                        .map(|s| s.to_string() );
+                }
+            } );
             ($key_name:ident, LldFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1415,11 +1423,11 @@ impl Target {
         }
 
         key!(is_builtin, bool);
-        key!(target_endian);
-        key!(target_c_int_width);
-        key!(target_os = "os");
-        key!(target_env = "env");
-        key!(target_vendor = "vendor");
+        key!(endian = "target_endian");
+        key!(c_int_width = "target_c_int_width");
+        key!(os);
+        key!(env);
+        key!(vendor);
         key!(linker_flavor, LinkerFlavor)?;
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
@@ -1453,7 +1461,7 @@ impl Target {
         key!(exe_suffix);
         key!(staticlib_prefix);
         key!(staticlib_suffix);
-        key!(target_family, optional);
+        key!(os_family = "target_family", optional);
         key!(abi_return_struct_as_int, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
@@ -1499,7 +1507,7 @@ impl Target {
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
-        key!(target_mcount);
+        key!(mcount = "target_mcount");
         key!(llvm_abiname);
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
@@ -1651,11 +1659,11 @@ impl ToJson for Target {
         target_val!(data_layout);
 
         target_option_val!(is_builtin);
-        target_option_val!(target_endian);
-        target_option_val!(target_c_int_width);
-        target_option_val!(target_os, "os");
-        target_option_val!(target_env, "env");
-        target_option_val!(target_vendor, "vendor");
+        target_option_val!(endian, "target_endian");
+        target_option_val!(c_int_width, "target_c_int_width");
+        target_option_val!(os);
+        target_option_val!(env);
+        target_option_val!(vendor);
         target_option_val!(linker_flavor);
         target_option_val!(linker);
         target_option_val!(lld_flavor);
@@ -1689,7 +1697,7 @@ impl ToJson for Target {
         target_option_val!(exe_suffix);
         target_option_val!(staticlib_prefix);
         target_option_val!(staticlib_suffix);
-        target_option_val!(target_family);
+        target_option_val!(os_family, "target_family");
         target_option_val!(abi_return_struct_as_int);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);
@@ -1735,7 +1743,7 @@ impl ToJson for Target {
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);
-        target_option_val!(target_mcount);
+        target_option_val!(mcount, "target_mcount");
         target_option_val!(llvm_abiname);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);

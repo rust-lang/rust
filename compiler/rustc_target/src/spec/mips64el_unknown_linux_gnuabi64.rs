@@ -11,7 +11,7 @@ pub fn target() -> Target {
             cpu: "mips64r2".to_string(),
             features: "+mips64r2".to_string(),
             max_atomic_width: Some(64),
-            target_mcount: "_mcount".to_string(),
+            mcount: "_mcount".to_string(),
 
             ..super::linux_base::opts()
         },

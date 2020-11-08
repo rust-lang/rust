@@ -2601,15 +2601,14 @@ where
         };
 
         let target = &cx.tcx().sess.target;
-        let target_env_gnu_like = matches!(&target.target_env[..], "gnu" | "musl");
-        let win_x64_gnu =
-            target.target_os == "windows" && target.arch == "x86_64" && target.target_env == "gnu";
+        let target_env_gnu_like = matches!(&target.env[..], "gnu" | "musl");
+        let win_x64_gnu = target.os == "windows" && target.arch == "x86_64" && target.env == "gnu";
         let linux_s390x_gnu_like =
-            target.target_os == "linux" && target.arch == "s390x" && target_env_gnu_like;
+            target.os == "linux" && target.arch == "s390x" && target_env_gnu_like;
         let linux_sparc64_gnu_like =
-            target.target_os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
+            target.os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
         let linux_powerpc_gnu_like =
-            target.target_os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
+            target.os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
         let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
         // Handle safe Rust thin and fat pointers.
