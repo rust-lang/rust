@@ -301,6 +301,9 @@ jobs:
           #   Linux/Docker builders   #
           #############################
 
+          - name: aarch64-gnu
+            <<: *job-aarch64-linux
+
           - name: arm-android
             <<: *job-linux-xl
 
@@ -634,23 +637,6 @@ jobs:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
               SCRIPT: python x.py dist
             <<: *job-windows-xl
-
-  auto-fallible:
-    <<: *base-ci-job
-    name: auto-fallible
-    env:
-      <<: [*shared-ci-variables, *dummy-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          #############################
-          #   Linux/Docker builders   #
-          #############################
-
-          - name: aarch64-gnu
-            <<: *job-aarch64-linux
 
   try:
     <<: *base-ci-job
