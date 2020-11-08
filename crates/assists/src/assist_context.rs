@@ -275,12 +275,6 @@ impl AssistBuilder {
         algo::diff(&node, &new).into_text_edit(&mut self.edit);
     }
 
-    // FIXME: kill this API
-    /// Get access to the raw `TextEditBuilder`.
-    pub(crate) fn text_edit_builder(&mut self) -> &mut TextEditBuilder {
-        &mut self.edit
-    }
-
     fn finish(mut self) -> SourceChange {
         self.commit();
         let mut change = mem::take(&mut self.change);

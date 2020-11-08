@@ -47,9 +47,11 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         "Reorder record fields",
         target,
         |edit| {
+            let mut rewriter = algo::SyntaxRewriter::default();
             for (old, new) in fields.iter().zip(&sorted_fields) {
-                algo::diff(old, new).into_text_edit(edit.text_edit_builder());
+                rewriter.replace(old, new);
             }
+            edit.rewrite(rewriter);
         },
     )
 }

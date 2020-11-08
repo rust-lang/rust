@@ -5,13 +5,13 @@ use ide_db::{
     search::SearchScope,
 };
 use syntax::{
-    algo,
+    algo::SyntaxRewriter,
     ast::{self, make},
     AstNode, Direction, SyntaxNode, SyntaxToken, T,
 };
 
 use crate::{
-    assist_context::{AssistBuilder, AssistContext, Assists},
+    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
 };
 
@@ -61,7 +61,9 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
         "Expand glob import",
         target.text_range(),
         |builder| {
-            replace_ast(builder, parent, mod_path, names_to_import);
+            let mut rewriter = SyntaxRewriter::default();
+            replace_ast(&mut rewriter, parent, mod_path, names_to_import);
+            builder.rewrite(rewriter);
         },
     )
 }
@@ -236,7 +238,7 @@ fn find_names_to_import(
 }
 
 fn replace_ast(
-    builder: &mut AssistBuilder,
+    rewriter: &mut SyntaxRewriter,
     parent: Either<ast::UseTree, ast::UseTreeList>,
     path: ast::Path,
     names_to_import: Vec<Name>,
@@ -264,32 +266,21 @@ fn replace_ast(
     match use_trees.as_slice() {
         [name] => {
             if let Some(end_path) = name.path() {
-                let replacement =
-                    make::use_tree(make::path_concat(path, end_path), None, None, false);
-
-                algo::diff(
-                    &parent.either(|n| n.syntax().clone(), |n| n.syntax().clone()),
-                    replacement.syntax(),
-                )
-                .into_text_edit(builder.text_edit_builder());
+                rewriter.replace_ast(
+                    &parent.left_or_else(|tl| tl.parent_use_tree()),
+                    &make::use_tree(make::path_concat(path, end_path), None, None, false),
+                );
             }
         }
-        names => {
-            let replacement = match parent {
-                Either::Left(_) => {
-                    make::use_tree(path, Some(make::use_tree_list(names.to_owned())), None, false)
-                        .syntax()
-                        .clone()
-                }
-                Either::Right(_) => make::use_tree_list(names.to_owned()).syntax().clone(),
-            };
-
-            algo::diff(
-                &parent.either(|n| n.syntax().clone(), |n| n.syntax().clone()),
-                &replacement,
-            )
-            .into_text_edit(builder.text_edit_builder());
-        }
+        names => match &parent {
+            Either::Left(parent) => rewriter.replace_ast(
+                parent,
+                &make::use_tree(path, Some(make::use_tree_list(names.to_owned())), None, false),
+            ),
+            Either::Right(parent) => {
+                rewriter.replace_ast(parent, &make::use_tree_list(names.to_owned()))
+            }
+        },
     };
 }
 
@@ -883,5 +874,34 @@ fn qux(baz: Baz) {}
     fn qux(bar: Bar, baz: Baz) {}
     ",
         )
+    }
+
+    #[test]
+    fn expanding_glob_import_single_nested_glob_only() {
+        check_assist(
+            expand_glob_import,
+            r"
+mod foo {
+    pub struct Bar;
+}
+
+use foo::{*<|>};
+
+struct Baz {
+    bar: Bar
+}
+",
+            r"
+mod foo {
+    pub struct Bar;
+}
+
+use foo::Bar;
+
+struct Baz {
+    bar: Bar
+}
+",
+        );
     }
 }
