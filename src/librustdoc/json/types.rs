@@ -16,7 +16,7 @@ pub struct Crate {
     /// The id of the root [`Module`] item of the local crate.
     pub root: Id,
     /// The version string given to `--crate-version`, if any.
-    pub version: Option<String>,
+    pub crate_version: Option<String>,
     /// Whether or not the output includes private items.
     pub includes_private: bool,
     /// A collection of all items in the local crate as well as some external traits and their

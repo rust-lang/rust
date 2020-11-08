@@ -191,7 +191,7 @@ impl FormatRenderer for JsonRenderer {
         index.extend(self.get_trait_items(cache));
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
-            version: krate.version.clone(),
+            crate_version: krate.version.clone(),
             includes_private: cache.document_private,
             index,
             paths: cache
