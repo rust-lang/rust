@@ -13,6 +13,7 @@ use crate::html::render::{plain_text_summary, shorten};
 use crate::html::render::{Generic, IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
+#[derive(Debug)]
 pub enum ExternalLocation {
     /// Remote URL root of the external crate
     Remote(String),

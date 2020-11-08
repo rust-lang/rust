@@ -1,11 +1,12 @@
+// ignore-tidy-linelength
 // aux-build: issue-76296-1.rs
 // aux-build: issue-76296-2.rs
 // compile-flags: -Z unstable-options
 // compile-flags: --edition 2018
 // compile-flags: --extern priv:foo1={{build-base}}/issue-76296-override/auxiliary/libfoo-1.so
 // compile-flags: --extern priv:foo2={{build-base}}/issue-76296-override/auxiliary/libfoo-2.so
-// compile-flags: --extern-html-root-url foo=https://example.com/override/v1
-// compile-flags: --extern-html-root-url foo=https://example.com/override/v2
+// compile-flags: --extern-html-root-url {{build-base}}/issue-76296-override/auxiliary/libfoo-1.so=https://example.com/override/v1
+// compile-flags: --extern-html-root-url {{build-base}}/issue-76296-override/auxiliary/libfoo-2.so=https://example.com/override/v2
 
 // @has 'issue_76296_override/index.html'
 // @matches - '//a[@href="https://example.com/override/v1/foo/struct.Foo1.html"]' '^Foo1$'

@@ -214,8 +214,8 @@ pub struct RenderOptions {
     pub themes: Vec<StylePath>,
     /// If present, CSS file that contains rules to add to the default CSS.
     pub extension_css: Option<PathBuf>,
-    /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
-    pub extern_html_root_urls: BTreeMap<String, String>,
+    /// A map of crate sources to the URL to use instead of querying the crate's `html_root_url`.
+    pub extern_html_root_urls: BTreeMap<PathBuf, String>,
     /// A map of the default settings (values are as for DOM storage API). Keys should lack the
     /// `rustdoc-` prefix.
     pub default_settings: HashMap<String, String>,
@@ -690,13 +690,13 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 /// describing the issue.
 fn parse_extern_html_roots(
     matches: &getopts::Matches,
-) -> Result<BTreeMap<String, String>, &'static str> {
+) -> Result<BTreeMap<PathBuf, String>, &'static str> {
     let mut externs = BTreeMap::new();
     for arg in &matches.opt_strs("extern-html-root-url") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern-html-root-url must not be empty")?;
         let url = parts.next().ok_or("--extern-html-root-url must be of the form name=url")?;
-        externs.insert(name.to_string(), url.to_string());
+        externs.insert(name.into(), url.to_string());
     }
 
     Ok(externs)

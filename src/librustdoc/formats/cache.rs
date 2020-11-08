@@ -128,7 +128,7 @@ impl Cache {
     pub fn from_krate(
         render_info: RenderInfo,
         document_private: bool,
-        extern_html_root_urls: &BTreeMap<String, String>,
+        extern_html_root_urls: &BTreeMap<PathBuf, String>,
         dst: &Path,
         mut krate: clean::Crate,
     ) -> (clean::Crate, Cache) {
@@ -173,7 +173,12 @@ impl Cache {
                 },
                 _ => PathBuf::new(),
             };
-            let extern_url = extern_html_root_urls.get(&e.name).map(|u| &**u);
+            let extern_url = e
+                .extern_paths
+                .iter()
+                .filter_map(|path| extern_html_root_urls.get(&*path))
+                .next()
+                .map(|u| &**u);
             cache
                 .extern_locations
                 .insert(n, (e.name.clone(), src_root, extern_location(e, extern_url, &dst)));

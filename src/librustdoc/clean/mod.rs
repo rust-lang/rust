@@ -14,7 +14,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
@@ -211,9 +211,13 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx.item_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
         };
 
+        let extern_paths =
+            if *self == LOCAL_CRATE { vec![] } else { cx.tcx.crate_extern_paths(*self) };
+
         ExternalCrate {
             name: cx.tcx.crate_name(*self).to_string(),
             src: krate_src,
+            extern_paths,
             attrs: cx.tcx.get_attrs(root).clean(cx),
             primitives,
             keywords,
