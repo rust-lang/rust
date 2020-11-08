@@ -141,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         cx,
                         LET_UNDERSCORE_DROP,
                         local.span,
-                        "non-binding let on a type that implements `Drop`",
+                        "non-binding `let` on a type that implements `Drop`",
                         None,
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
