@@ -1613,7 +1613,7 @@ impl Path {
         self.segments.last().expect("segments were empty").name.as_str()
     }
 
-    pub fn whole_name(&self) -> String {
+    crate fn whole_name(&self) -> String {
         String::from(if self.global { "::" } else { "" })
             + &self.segments.iter().map(|s| s.name.clone()).collect::<Vec<_>>().join("::")
     }

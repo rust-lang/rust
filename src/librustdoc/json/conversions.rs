@@ -183,7 +183,9 @@ impl From<clean::ItemEnum> for ItemEnum {
                 default: t.map(Into::into),
             },
             StrippedItem(inner) => (*inner).into(),
-            _ => panic!("{:?} is not supported for JSON output", item),
+            PrimitiveItem(_) | KeywordItem(_) => {
+                panic!("{:?} is not supported for JSON output", item)
+            }
         }
     }
 }

@@ -73,7 +73,7 @@ pub struct Item {
     pub visibility: Visibility,
     /// The full markdown docstring of this item.
     pub docs: String,
-    /// This mapping resolves [intradoc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
+    /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
     pub links: FxHashMap<String, Id>,
     /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
     pub attrs: Vec<String>,
@@ -84,7 +84,7 @@ pub struct Item {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Span {
-    /// The path to the source file for this span relative to the crate root.
+    /// The path to the source file for this span relative to the path `rustdoc` was invoked with.
     pub filename: PathBuf,
     /// Zero indexed Line and Column of the first character of the `Span`
     pub begin: (usize, usize),
