@@ -422,3 +422,15 @@ fn refcell_format() {
     let msg = format!("{name} {}", &*what.borrow(), name = &*name.borrow());
     assert_eq!(msg, "rust rocks".to_string());
 }
+
+#[allow(dead_code)]
+fn const_cells() {
+    const UNSAFE_CELL: UnsafeCell<i32> = UnsafeCell::new(3);
+    const _: i32 = UNSAFE_CELL.into_inner();
+
+    const REF_CELL: RefCell<i32> = RefCell::new(3);
+    const _: i32 = REF_CELL.into_inner();
+
+    const CELL: Cell<i32> = Cell::new(3);
+    const _: i32 = CELL.into_inner();
+}

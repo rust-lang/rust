@@ -406,7 +406,8 @@ impl<T> Cell<T> {
     /// assert_eq!(five, 5);
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
-    pub fn into_inner(self) -> T {
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    pub const fn into_inner(self) -> T {
         self.value.into_inner()
     }
 }
@@ -668,12 +669,11 @@ impl<T> RefCell<T> {
     /// let five = c.into_inner();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
     #[inline]
-    pub fn into_inner(self) -> T {
+    pub const fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
         // compiler statically verifies that it is not currently borrowed.
-        // Therefore the following assertion is just a `debug_assert!`.
-        debug_assert!(self.borrow.get() == UNUSED);
         self.value.into_inner()
     }
 
@@ -1682,7 +1682,8 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_inner(self) -> T {
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    pub const fn into_inner(self) -> T {
         self.value
     }
 }
