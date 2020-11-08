@@ -45,7 +45,7 @@ if (!DOMTokenList.prototype.remove) {
 // given KeyboardEvent, ev.
 //
 // This function is meant as a polyfill for KeyboardEvent#key,
-// since it is not supported in Trident.  We also test for
+// since it is not supported in IE 11 or Chrome for Android. We also test for
 // KeyboardEvent#keyCode because the handleShortcut handler is
 // also registered for the keydown event, because Blink doesn't fire
 // keypress on hitting the Escape key.
