@@ -320,8 +320,8 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
     }
 
     if cfg!(not(feature = "inline_asm"))
-        || tcx.sess.target.options.is_like_osx
-        || tcx.sess.target.options.is_like_windows
+        || tcx.sess.target.is_like_osx
+        || tcx.sess.target.is_like_windows
     {
         if global_asm.contains("__rust_probestack") {
             return;
