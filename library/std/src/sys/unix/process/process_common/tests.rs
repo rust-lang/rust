@@ -14,17 +14,22 @@ macro_rules! t {
     };
 }
 
-// See #14232 for more information, but it appears that signal delivery to a
-// newly spawned process may just be raced in the macOS, so to prevent this
-// test from being flaky we ignore it on macOS.
 #[test]
-#[cfg_attr(target_os = "macos", ignore)]
-// When run under our current QEMU emulation test suite this test fails,
-// although the reason isn't very clear as to why. For now this test is
-// ignored there.
-#[cfg_attr(target_arch = "arm", ignore)]
-#[cfg_attr(target_arch = "aarch64", ignore)]
-#[cfg_attr(target_arch = "riscv64", ignore)]
+#[cfg_attr(
+    any(
+        // See #14232 for more information, but it appears that signal delivery to a
+        // newly spawned process may just be raced in the macOS, so to prevent this
+        // test from being flaky we ignore it on macOS.
+        target_os = "macos",
+        // When run under our current QEMU emulation test suite this test fails,
+        // although the reason isn't very clear as to why. For now this test is
+        // ignored there.
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+    ),
+    ignore
+)]
 fn test_process_mask() {
     unsafe {
         // Test to make sure that a signal mask does not get inherited.
