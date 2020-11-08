@@ -224,10 +224,12 @@ pub enum ItemEnum {
     AssocConstItem {
         #[serde(rename = "type")]
         type_: Type,
+        /// e.g. `const X: usize = 5;`
         default: Option<String>,
     },
     AssocTypeItem {
         bounds: Vec<GenericBound>,
+        /// e.g. `type X = usize;`
         default: Option<Type>,
     },
 }
