@@ -311,7 +311,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// A range bounded inclusively below and above (`start..=end`).
 ///
 /// The `RangeInclusive` `start..=end` contains all values with `x >= start`
-/// and `x <= end`. It is empty unless `start <= end`.
+/// and `x <= end`. It is empty unless `start > end`.
 ///
 /// This iterator is [fused], but the specific values of `start` and `end` after
 /// iteration has finished are **unspecified** other than that [`.is_empty()`]
