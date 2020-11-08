@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global getCurrentValue, updateLocalStorage, updateSystemTheme */
+/* global getCurrentValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
 
 (function () {
     function changeSetting(settingName, value) {
@@ -14,10 +14,25 @@
         }
     }
 
+    function handleKey(ev) {
+        // Don't interfere with browser shortcuts
+        if (ev.ctrlKey || ev.altKey || ev.metaKey) {
+            return;
+        }
+        switch (getVirtualKey(ev)) {
+            case "Enter":
+            case "Return":
+            case "Space":
+                ev.target.checked = !ev.target.checked;
+                ev.preventDefault();
+                break;
+        }
+    }
+
     function setEvents() {
         var elems = {
-            toggles: document.getElementsByClassName("slider"),
-            selects: document.getElementsByClassName("select-wrapper")
+            toggles: Array.prototype.slice.call(document.getElementsByClassName("slider")),
+            selects: Array.prototype.slice.call(document.getElementsByClassName("select-wrapper")),
         };
         var i;
 
@@ -32,6 +47,8 @@
                 toggle.onchange = function() {
                     changeSetting(this.id, this.checked);
                 };
+                toggle.onkeyup = handleKey;
+                toggle.onkeyrelease = handleKey;
             }
         }
 
@@ -50,5 +67,5 @@
         }
     }
 
-    setEvents();
+    window.addEventListener("DOMContentLoaded", setEvents);
 })();
