@@ -98,15 +98,18 @@ pub enum IntErrorKind {
     ///
     /// Among other causes, this variant will be constructed when parsing an empty string.
     Empty,
-    /// Contains an invalid digit.
+    /// Contains an invalid digit in its context.
     ///
     /// Among other causes, this variant will be constructed when parsing a string that
-    /// contains a letter.
+    /// contains a non-ASCII char.
+    ///
+    /// This variant is also constructed when a `+` or `-` is misplaced within a string
+    /// either on its own or in the middle of a number.
     InvalidDigit,
     /// Integer is too large to store in target integer type.
-    Overflow,
+    PosOverflow,
     /// Integer is too small to store in target integer type.
-    Underflow,
+    NegOverflow,
     /// Value was Zero
     ///
     /// This variant will be emitted when the parsing string has a value of zero, which
@@ -119,7 +122,7 @@ impl ParseIntError {
     #[unstable(
         feature = "int_error_matching",
         reason = "it can be useful to match errors when making error messages \
-                  for integer parsing",
+              for integer parsing",
         issue = "22639"
     )]
     pub fn kind(&self) -> &IntErrorKind {
@@ -136,8 +139,8 @@ impl ParseIntError {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
-            IntErrorKind::Overflow => "number too large to fit in target type",
-            IntErrorKind::Underflow => "number too small to fit in target type",
+            IntErrorKind::PosOverflow => "number too large to fit in target type",
+            IntErrorKind::NegOverflow => "number too small to fit in target type",
             IntErrorKind::Zero => "number would be zero for non-zero type",
         }
     }

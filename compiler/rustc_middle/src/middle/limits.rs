@@ -48,10 +48,12 @@ fn update_limit(
                         .unwrap_or(attr.span);
 
                     let error_str = match e.kind() {
-                        IntErrorKind::Overflow => "`limit` is too large",
+                        IntErrorKind::PosOverflow => "`limit` is too large",
                         IntErrorKind::Empty => "`limit` must be a non-negative integer",
                         IntErrorKind::InvalidDigit => "not a valid integer",
-                        IntErrorKind::Underflow => bug!("`limit` should never underflow"),
+                        IntErrorKind::NegOverflow => {
+                            bug!("`limit` should never negatively overflow")
+                        }
                         IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
