@@ -18,20 +18,39 @@ fn dogfood_clippy() {
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let output = Command::new(&*CLIPPY_PATH)
-        .current_dir(root_dir)
-        .env("CLIPPY_DOGFOOD", "1")
-        .env("CARGO_INCREMENTAL", "0")
-        .arg("clippy-preview")
-        .arg("--all-targets")
-        .arg("--all-features")
-        .arg("--")
-        .args(&["-D", "clippy::all"])
-        .args(&["-D", "clippy::internal"])
-        .args(&["-D", "clippy::pedantic"])
-        .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
-        .output()
-        .unwrap();
+    let output = if cfg!(feature = "internal-lints") {
+        // with internal lints and internal warnings
+        Command::new(&*CLIPPY_PATH)
+            .current_dir(root_dir)
+            .env("CLIPPY_DOGFOOD", "1")
+            .env("CARGO_INCREMENTAL", "0")
+            .arg("clippy-preview")
+            .arg("--all-targets")
+            .arg("--all-features")
+            .args(&["--features", "internal-lints"])
+            .arg("--")
+            .args(&["-D", "clippy::all"])
+            .args(&["-D", "clippy::pedantic"])
+            .args(&["-D", "clippy::internal"])
+            .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
+            .output()
+            .unwrap()
+    } else {
+        // without internal lints or warnings
+        Command::new(&*CLIPPY_PATH)
+            .current_dir(root_dir)
+            .env("CLIPPY_DOGFOOD", "1")
+            .env("CARGO_INCREMENTAL", "0")
+            .arg("clippy-preview")
+            .arg("--all-targets")
+            .arg("--all-features")
+            .arg("--")
+            .args(&["-D", "clippy::all"])
+            .args(&["-D", "clippy::pedantic"])
+            .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
+            .output()
+            .unwrap()
+    };
     println!("status: {}", output.status);
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
