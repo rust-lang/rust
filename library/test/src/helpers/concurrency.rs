@@ -1,18 +1,14 @@
 //! Helper module which helps to determine amount of threads to be used
 //! during tests execution.
-use std::env;
-use std::thread;
+use std::{env, num::NonZeroUsize, thread};
 
-#[allow(deprecated)]
 pub fn get_concurrency() -> usize {
-    match env::var("RUST_TEST_THREADS") {
-        Ok(s) => {
-            let opt_n: Option<usize> = s.parse().ok();
-            match opt_n {
-                Some(n) if n > 0 => n,
-                _ => panic!("RUST_TEST_THREADS is `{}`, should be a positive integer.", s),
-            }
+    if let Ok(value) = env::var("RUST_TEST_THREADS") {
+        match value.parse::<NonZeroUsize>().ok() {
+            Some(n) => n.get(),
+            _ => panic!("RUST_TEST_THREADS is `{}`, should be a positive integer.", value),
         }
-        Err(..) => thread::available_concurrency().map(|n| n.get()).unwrap_or(1),
+    } else {
+        thread::available_concurrency().map(|n| n.get()).unwrap_or(1)
     }
 }
