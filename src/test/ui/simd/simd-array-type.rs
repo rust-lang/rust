@@ -1,11 +1,9 @@
 // run-pass
-#![allow(dead_code, incomplete_features)]
+#![allow(dead_code)]
 
 // pretty-expanded FIXME #23616
 
-#![feature(repr_simd)]
-#![feature(platform_intrinsics)]
-#![feature(const_generics)]
+#![feature(repr_simd, platform_intrinsics, min_const_generics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]

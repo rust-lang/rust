@@ -1,9 +1,9 @@
 // run-pass
-#![allow(non_camel_case_types, incomplete_features)]
+#![allow(non_camel_case_types)]
 
 // ignore-emscripten FIXME(#45351) hits an LLVM assert
 
-#![feature(repr_simd, platform_intrinsics, const_generics)]
+#![feature(repr_simd, platform_intrinsics, min_const_generics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]

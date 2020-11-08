@@ -1,8 +1,8 @@
 // run-pass
 // ignore-emscripten
 
-#![allow(non_camel_case_types, incomplete_features)]
-#![feature(repr_simd, platform_intrinsics, const_generics)]
+#![allow(non_camel_case_types)]
+#![feature(repr_simd, platform_intrinsics, min_const_generics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]

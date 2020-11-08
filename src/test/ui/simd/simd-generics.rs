@@ -1,6 +1,6 @@
 // run-pass
-#![allow(non_camel_case_types, incomplete_features)]
-#![feature(repr_simd, platform_intrinsics, const_generics)]
+#![allow(non_camel_case_types)]
+#![feature(repr_simd, platform_intrinsics, min_const_generics)]
 
 use std::ops;
 
@@ -25,7 +25,7 @@ impl ops::Add for f32x4 {
     type Output = f32x4;
 
     fn add(self, rhs: f32x4) -> f32x4 {
-        unsafe {simd_add(self, rhs)}
+        unsafe { simd_add(self, rhs) }
     }
 }
 
@@ -33,12 +33,12 @@ impl ops::Add for S<4> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        unsafe {simd_add(self, rhs)}
+        unsafe { simd_add(self, rhs) }
     }
 }
 
 
-pub fn main() { unsafe {
+pub fn main() {
     let lr = f32x4(1.0f32, 2.0f32, 3.0f32, 4.0f32);
 
     // lame-o
@@ -54,4 +54,4 @@ pub fn main() { unsafe {
     assert_eq!(y, 4.0f32);
     assert_eq!(z, 6.0f32);
     assert_eq!(w, 8.0f32);
-}}
+}
