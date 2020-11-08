@@ -1,24 +1,3 @@
-// Copyright (c) 2015 Anders Kaseorg <andersk@mit.edu>
-
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// “Software”), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 //! This crate exports a macro `enum_from_primitive!` that wraps an
 //! `enum` declaration and automatically adds an implementation of
 //! `num::FromPrimitive` (reexported here), to allow conversion from
@@ -58,8 +37,8 @@ pub mod num_traits {
     }
 }
 
-pub use std::option::Option;
 pub use num_traits::FromPrimitive;
+pub use std::option::Option;
 
 /// Helper macro for internal use by `enum_from_primitive!`.
 #[macro_export]
