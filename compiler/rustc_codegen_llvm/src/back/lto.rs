@@ -734,7 +734,7 @@ pub unsafe fn optimize_thin_module(
     let module_name = &thin_module.shared.module_names[thin_module.idx];
     let split_dwarf_file = cgcx
         .output_filenames
-        .split_dwarf_file(cgcx.split_dwarf_kind, Some(module_name.to_str().unwrap()));
+        .split_dwarf_filename(cgcx.split_dwarf_kind, Some(module_name.to_str().unwrap()));
     let tm_factory_config = TargetMachineFactoryConfig { split_dwarf_file };
     let tm =
         (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(&diag_handler, &e))?;

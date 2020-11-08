@@ -356,7 +356,7 @@ impl ModuleLlvm {
 
             let split_dwarf_file = cgcx
                 .output_filenames
-                .split_dwarf_file(cgcx.split_dwarf_kind, Some(name.to_str().unwrap()));
+                .split_dwarf_filename(cgcx.split_dwarf_kind, Some(name.to_str().unwrap()));
             let tm_factory_config = TargetMachineFactoryConfig { split_dwarf_file };
 
             let tm = match (cgcx.tm_factory)(tm_factory_config) {

@@ -95,7 +95,7 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
     let split_dwarf_file = tcx
         .output_filenames(LOCAL_CRATE)
-        .split_dwarf_file(tcx.sess.opts.debugging_opts.split_dwarf, Some(mod_name));
+        .split_dwarf_filename(tcx.sess.opts.debugging_opts.split_dwarf, Some(mod_name));
     let config = TargetMachineFactoryConfig { split_dwarf_file };
     target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE))(config)
         .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
