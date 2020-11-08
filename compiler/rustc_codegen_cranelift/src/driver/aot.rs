@@ -75,6 +75,7 @@ fn emit_module(
             name,
             kind,
             object: Some(tmp_file),
+            dwarf_object: None,
             bytecode: None,
         },
         work_product,
@@ -111,6 +112,7 @@ fn reuse_workproduct_for_cgu(
         name: cgu.name().to_string(),
         kind: ModuleKind::Regular,
         object,
+        dwarf_object: None,
         bytecode: None,
     }
 }
@@ -290,6 +292,7 @@ pub(super) fn run_aot(
             name: metadata_cgu_name,
             kind: ModuleKind::Metadata,
             object: Some(tmp_file),
+            dwarf_object: None,
             bytecode: None,
         })
     } else {
