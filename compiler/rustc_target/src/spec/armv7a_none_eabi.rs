@@ -11,7 +11,7 @@
 // libraries and crt*.o are but it's not much of an advantage here); LLD is also
 // faster
 // - `os` set to `none`. rationale: matches `thumb` targets
-// - `target_{env,vendor}` set to an empty string. rationale: matches `thumb`
+// - `env` and `vendor` are set to an empty string. rationale: matches `thumb`
 // targets
 // - `panic_strategy` set to `abort`. rationale: matches `thumb` targets
 // - `relocation-model` set to `static`; also no PIE, no relro and no dynamic
