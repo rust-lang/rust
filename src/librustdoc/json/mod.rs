@@ -227,7 +227,8 @@ impl FormatRenderer for JsonRenderer {
         let mut p = self.out_path.clone();
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
         p.set_extension("json");
-        serde_json::ser::to_writer_pretty(&File::create(p).unwrap(), &output).unwrap();
+        let file = File::create(&p).map_err(|error| Error { error: error.to_string(), file: p })?;
+        serde_json::ser::to_writer_pretty(&file, &output).unwrap();
         Ok(())
     }
 
