@@ -10,7 +10,7 @@ dir=$(pwd)
 
 # Use rustc with cg_clif as hotpluggable backend instead of the custom cg_clif driver so that
 # build scripts are still compiled using cg_llvm.
-export RUSTC=$dir"/cg_clif_build_sysroot"
+export RUSTC=$dir"/bin/cg_clif_build_sysroot"
 export RUSTFLAGS=$RUSTFLAGS" --clif"
 
 cd "$(dirname "$0")"
@@ -35,6 +35,6 @@ else
 fi
 
 # Copy files to sysroot
-mkdir -p "$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/"
-cp -a "target/$TARGET_TRIPLE/$sysroot_channel/deps/"* "$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/"
-rm "$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/"*.{rmeta,d}
+mkdir -p "$dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+cp -a "target/$TARGET_TRIPLE/$sysroot_channel/deps/"* "$dir/lib/rustlib/$TARGET_TRIPLE/lib/"
+rm "$dir/lib/rustlib/$TARGET_TRIPLE/lib/"*.{rmeta,d}

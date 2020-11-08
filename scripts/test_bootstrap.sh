@@ -48,7 +48,7 @@ cat > config.toml <<EOF
 ninja = false
 
 [build]
-rustc = "$(pwd)/../build/cg_clif"
+rustc = "$(pwd)/../build/bin/cg_clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true

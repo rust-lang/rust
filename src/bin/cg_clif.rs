@@ -32,7 +32,9 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
                     .unwrap()
                     .parent()
                     .unwrap()
-                    .join("sysroot"),
+                    .parent()
+                    .unwrap()
+                    .to_owned(),
             ),
         );
     }
