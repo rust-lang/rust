@@ -74,7 +74,8 @@ impl From<clean::Span> for Option<Span> {
 
 impl From<clean::Deprecation> for Deprecation {
     fn from(deprecation: clean::Deprecation) -> Self {
-        Deprecation { since: deprecation.since, note: deprecation.note }
+        let clean::Deprecation { since, note, is_since_rustc_version: _ } = deprecation;
+        Deprecation { since, note }
     }
 }
 
