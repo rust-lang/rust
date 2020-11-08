@@ -31,6 +31,7 @@ __pycache__/
 /inst/
 /llvm/
 /mingw-build/
+/src/tools/x/target
 # Created by default with `src/ci/docker/run.sh`:
 /obj/
 /unicode-downloads
