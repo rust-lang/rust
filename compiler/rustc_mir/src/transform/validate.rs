@@ -6,6 +6,7 @@ use crate::util::storage::AlwaysLiveLocals;
 
 use super::MirPass;
 use rustc_index::bit_set::BitSet;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -13,8 +14,8 @@ use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPhase, Operand, PlaceRef,
     Rvalue, SourceScope, Statement, StatementKind, Terminator, TerminatorKind, VarDebugInfo,
 };
-use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_target::abi::Size;
 
 #[derive(Copy, Clone, Debug)]
@@ -77,79 +78,27 @@ pub fn equal_up_to_regions(
         return true;
     }
 
-    struct LifetimeIgnoreRelation<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    }
-
-    impl TypeRelation<'tcx> for LifetimeIgnoreRelation<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn param_env(&self) -> ty::ParamEnv<'tcx> {
-            self.param_env
-        }
-
-        fn tag(&self) -> &'static str {
-            "librustc_mir::transform::validate"
-        }
-
-        fn a_is_expected(&self) -> bool {
-            true
-        }
-
-        fn relate_with_variance<T: Relate<'tcx>>(
-            &mut self,
-            _: ty::Variance,
-            a: T,
-            b: T,
-        ) -> RelateResult<'tcx, T> {
-            // Ignore variance, require types to be exactly the same.
-            self.relate(a, b)
-        }
-
-        fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-            if a == b {
-                // Short-circuit.
-                return Ok(a);
-            }
-            ty::relate::super_relate_tys(self, a, b)
-        }
-
-        fn regions(
-            &mut self,
-            a: ty::Region<'tcx>,
-            _b: ty::Region<'tcx>,
-        ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-            // Ignore regions.
-            Ok(a)
-        }
-
-        fn consts(
-            &mut self,
-            a: &'tcx ty::Const<'tcx>,
-            b: &'tcx ty::Const<'tcx>,
-        ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-            ty::relate::super_relate_consts(self, a, b)
-        }
-
-        fn binders<T>(
-            &mut self,
-            a: ty::Binder<T>,
-            b: ty::Binder<T>,
-        ) -> RelateResult<'tcx, ty::Binder<T>>
-        where
-            T: Relate<'tcx>,
-        {
-            self.relate(a.skip_binder(), b.skip_binder())?;
-            Ok(a)
-        }
-    }
-
-    // Instantiate and run relation.
-    let mut relator: LifetimeIgnoreRelation<'tcx> = LifetimeIgnoreRelation { tcx: tcx, param_env };
-    relator.relate(src, dest).is_ok()
+    // Normalize lifetimes away on both sides, then compare.
+    let param_env = param_env.with_reveal_all_normalized(tcx);
+    let normalize = |ty: Ty<'tcx>| {
+        tcx.normalize_erasing_regions(
+            param_env,
+            ty.fold_with(&mut BottomUpFolder {
+                tcx,
+                // FIXME: We erase all late-bound lifetimes, but this is not fully correct.
+                // If you have a type like `<for<'a> fn(&'a u32) as SomeTrait>::Assoc`,
+                // this is not necessarily equivalent to `<fn(&'static u32) as SomeTrait>::Assoc`,
+                // since one may have an `impl SomeTrait for fn(&32)` and
+                // `impl SomeTrait for fn(&'static u32)` at the same time which
+                // specify distinct values for Assoc. (See also #56105)
+                lt_op: |_| tcx.lifetimes.re_erased,
+                // Leave consts and types unchanged.
+                ct_op: |ct| ct,
+                ty_op: |ty| ty,
+            }),
+        )
+    };
+    tcx.infer_ctxt().enter(|infcx| infcx.can_eq(param_env, normalize(src), normalize(dest)).is_ok())
 }
 
 struct TypeChecker<'a, 'tcx> {
