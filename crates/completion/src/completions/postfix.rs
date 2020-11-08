@@ -184,6 +184,16 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         ctx,
         cap,
         &dot_receiver,
+        "some",
+        "Some(expr)",
+        &format!("Some({})", receiver_text),
+    )
+    .add_to(acc);
+
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
         "dbg",
         "dbg!(expr)",
         &format!("dbg!({})", receiver_text),
@@ -291,6 +301,7 @@ fn main() {
                 sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
+                sn some  Some(expr)
                 sn while while expr {}
             "#]],
         );
@@ -314,6 +325,7 @@ fn main() {
                 sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
+                sn some  Some(expr)
             "#]],
         )
     }
