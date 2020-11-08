@@ -175,22 +175,22 @@ pub(super) fn emit_va_arg(
     let arch = &bx.cx.tcx.sess.target.arch;
     match &**arch {
         // Windows x86
-        "x86" if target.options.is_like_windows => {
+        "x86" if target.is_like_windows => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), false)
         }
         // Generic x86
         "x86" => emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), true),
         // Windows AArch64
-        "aarch64" if target.options.is_like_windows => {
+        "aarch64" if target.is_like_windows => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
         }
         // macOS / iOS AArch64
-        "aarch64" if target.options.is_like_osx => {
+        "aarch64" if target.is_like_osx => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
         // Windows x86_64
-        "x86_64" if target.options.is_like_windows => {
+        "x86_64" if target.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
             let indirect: bool = target_ty_size > 8 || !target_ty_size.is_power_of_two();
             emit_ptr_va_arg(bx, addr, target_ty, indirect, Align::from_bytes(8).unwrap(), false)

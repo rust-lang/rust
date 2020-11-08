@@ -38,7 +38,7 @@ use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
@@ -446,7 +446,7 @@ macro_rules! supported_targets {
                 $( $($triple)|+ => $module::target(), )+
                 _ => return None,
             };
-            t.options.is_builtin = true;
+            t.is_builtin = true;
             debug!("got builtin target: {:?}", t);
             Some(t)
         }
@@ -691,6 +691,10 @@ impl HasTargetSpec for Target {
 ///
 /// This has an implementation of `Default`, see each field for what the default is. In general,
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
+///
+/// `TargetOptions` as a separate structure is mostly an implementation detail of `Target`
+/// construction, all its fields logically belong to `Target` and available from `Target`
+/// through `Deref` impls.
 #[derive(PartialEq, Clone, Debug)]
 pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
@@ -1094,13 +1098,18 @@ impl Deref for Target {
         &self.options
     }
 }
+impl DerefMut for Target {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.options
+    }
+}
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
             Abi::System => {
-                if self.options.is_like_windows && self.arch == "x86" {
+                if self.is_like_windows && self.arch == "x86" {
                     Abi::Stdcall
                 } else {
                     Abi::C
@@ -1110,7 +1119,7 @@ impl Target {
             // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
             // and the individual pages for __stdcall et al.
             Abi::Stdcall | Abi::Fastcall | Abi::Vectorcall | Abi::Thiscall => {
-                if self.options.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
+                if self.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
             }
             Abi::EfiApi => {
                 if self.arch == "x86_64" {
@@ -1126,17 +1135,17 @@ impl Target {
     /// Minimum integer size in bits that this target can perform atomic
     /// operations on.
     pub fn min_atomic_width(&self) -> u64 {
-        self.options.min_atomic_width.unwrap_or(8)
+        self.min_atomic_width.unwrap_or(8)
     }
 
     /// Maximum integer size in bits that this target can perform atomic
     /// operations on.
     pub fn max_atomic_width(&self) -> u64 {
-        self.options.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
+        self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
     pub fn is_abi_supported(&self, abi: Abi) -> bool {
-        abi.generic() || !self.options.unsupported_abis.contains(&abi)
+        abi.generic() || !self.unsupported_abis.contains(&abi)
     }
 
     /// Loads a target descriptor from a JSON object.
@@ -1169,19 +1178,19 @@ impl Target {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_string) {
-                    base.options.$key_name = s.to_string();
+                    base.$key_name = s.to_string();
                 }
             } );
             ($key_name:ident = $json_name:expr) => ( {
                 let name = $json_name;
                 if let Some(s) = obj.find(&name).and_then(Json::as_string) {
-                    base.options.$key_name = s.to_string();
+                    base.$key_name = s.to_string();
                 }
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_boolean) {
-                    base.options.$key_name = s;
+                    base.$key_name = s;
                 }
             } );
             ($key_name:ident, Option<u32>) => ( {
@@ -1190,20 +1199,20 @@ impl Target {
                     if s < 1 || s > 5 {
                         return Err("Not a valid DWARF version number".to_string());
                     }
-                    base.options.$key_name = Some(s as u32);
+                    base.$key_name = Some(s as u32);
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_u64) {
-                    base.options.$key_name = Some(s);
+                    base.$key_name = Some(s);
                 }
             } );
             ($key_name:ident, MergeFunctions) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<MergeFunctions>() {
-                        Ok(mergefunc) => base.options.$key_name = mergefunc,
+                        Ok(mergefunc) => base.$key_name = mergefunc,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       merge-functions. Use 'disabled', \
                                                       'trampolines', or 'aliases'.",
@@ -1216,7 +1225,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<RelocModel>() {
-                        Ok(relocation_model) => base.options.$key_name = relocation_model,
+                        Ok(relocation_model) => base.$key_name = relocation_model,
                         _ => return Some(Err(format!("'{}' is not a valid relocation model. \
                                                       Run `rustc --print relocation-models` to \
                                                       see the list of supported values.", s))),
@@ -1228,7 +1237,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<CodeModel>() {
-                        Ok(code_model) => base.options.$key_name = Some(code_model),
+                        Ok(code_model) => base.$key_name = Some(code_model),
                         _ => return Some(Err(format!("'{}' is not a valid code model. \
                                                       Run `rustc --print code-models` to \
                                                       see the list of supported values.", s))),
@@ -1240,7 +1249,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<TlsModel>() {
-                        Ok(tls_model) => base.options.$key_name = tls_model,
+                        Ok(tls_model) => base.$key_name = tls_model,
                         _ => return Some(Err(format!("'{}' is not a valid TLS model. \
                                                       Run `rustc --print tls-models` to \
                                                       see the list of supported values.", s))),
@@ -1252,8 +1261,8 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s {
-                        "unwind" => base.options.$key_name = PanicStrategy::Unwind,
-                        "abort" => base.options.$key_name = PanicStrategy::Abort,
+                        "unwind" => base.$key_name = PanicStrategy::Unwind,
+                        "abort" => base.$key_name = PanicStrategy::Abort,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       panic-strategy. Use 'unwind' or 'abort'.",
                                                      s))),
@@ -1265,7 +1274,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<RelroLevel>() {
-                        Ok(level) => base.options.$key_name = level,
+                        Ok(level) => base.$key_name = level,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       relro-level. Use 'full', 'partial, or 'off'.",
                                                       s))),
@@ -1276,7 +1285,7 @@ impl Target {
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(v) = obj.find(&name).and_then(Json::as_array) {
-                    base.options.$key_name = v.iter()
+                    base.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string())
                         .collect();
                 }
@@ -1284,7 +1293,7 @@ impl Target {
             ($key_name:ident, opt_list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(v) = obj.find(&name).and_then(Json::as_array) {
-                    base.options.$key_name = Some(v.iter()
+                    base.$key_name = Some(v.iter()
                         .map(|a| a.as_string().unwrap().to_string())
                         .collect());
                 }
@@ -1292,7 +1301,7 @@ impl Target {
             ($key_name:ident, optional) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(o) = obj.find(&name[..]) {
-                    base.options.$key_name = o
+                    base.$key_name = o
                         .as_string()
                         .map(|s| s.to_string() );
                 }
@@ -1301,7 +1310,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     if let Some(flavor) = LldFlavor::from_str(&s) {
-                        base.options.$key_name = flavor;
+                        base.$key_name = flavor;
                     } else {
                         return Some(Err(format!(
                             "'{}' is not a valid value for lld-flavor. \
@@ -1315,7 +1324,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match LinkerFlavor::from_str(s) {
-                        Some(linker_flavor) => base.options.$key_name = linker_flavor,
+                        Some(linker_flavor) => base.$key_name = linker_flavor,
                         _ => return Some(Err(format!("'{}' is not a valid value for linker-flavor. \
                                                       Use {}", s, LinkerFlavor::one_of()))),
                     }
@@ -1326,7 +1335,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<CrtObjectsFallback>() {
-                        Ok(fallback) => base.options.$key_name = Some(fallback),
+                        Ok(fallback) => base.$key_name = Some(fallback),
                         _ => return Some(Err(format!("'{}' is not a valid CRT objects fallback. \
                                                       Use 'musl', 'mingw' or 'wasm'", s))),
                     }
@@ -1358,7 +1367,7 @@ impl Target {
 
                         args.insert(kind, v);
                     }
-                    base.options.$key_name = args;
+                    base.$key_name = args;
                 }
             } );
             ($key_name:ident, link_args) => ( {
@@ -1385,7 +1394,7 @@ impl Target {
 
                         args.insert(flavor, v);
                     }
-                    base.options.$key_name = args;
+                    base.$key_name = args;
                 }
             } );
             ($key_name:ident, env) => ( {
@@ -1397,7 +1406,7 @@ impl Target {
                             if p.len() == 2 {
                                 let k = p[0].to_string();
                                 let v = p[1].to_string();
-                                base.options.$key_name.push((k, v));
+                                base.$key_name.push((k, v));
                             }
                         }
                     }
@@ -1513,7 +1522,7 @@ impl Target {
                                 ));
                             }
 
-                            base.options.unsupported_abis.push(abi)
+                            base.unsupported_abis.push(abi)
                         }
                         None => {
                             return Err(format!(
@@ -1602,21 +1611,20 @@ impl ToJson for Target {
         macro_rules! target_option_val {
             ($attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.options.$attr {
-                    d.insert(name, self.options.$attr.to_json());
+                if default.$attr != self.$attr {
+                    d.insert(name, self.$attr.to_json());
                 }
             }};
             ($attr:ident, $key_name:expr) => {{
                 let name = $key_name;
-                if default.$attr != self.options.$attr {
-                    d.insert(name.to_string(), self.options.$attr.to_json());
+                if default.$attr != self.$attr {
+                    d.insert(name.to_string(), self.$attr.to_json());
                 }
             }};
             (link_args - $attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.options.$attr {
+                if default.$attr != self.$attr {
                     let obj = self
-                        .options
                         .$attr
                         .iter()
                         .map(|(k, v)| (k.desc().to_owned(), v.clone()))
@@ -1626,9 +1634,8 @@ impl ToJson for Target {
             }};
             (env - $attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.options.$attr {
+                if default.$attr != self.$attr {
                     let obj = self
-                        .options
                         .$attr
                         .iter()
                         .map(|&(ref k, ref v)| k.clone() + "=" + &v)
@@ -1736,11 +1743,10 @@ impl ToJson for Target {
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
 
-        if default.unsupported_abis != self.options.unsupported_abis {
+        if default.unsupported_abis != self.unsupported_abis {
             d.insert(
                 "unsupported-abis".to_string(),
-                self.options
-                    .unsupported_abis
+                self.unsupported_abis
                     .iter()
                     .map(|&name| Abi::name(name).to_json())
                     .collect::<Vec<_>>()

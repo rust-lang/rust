@@ -42,7 +42,7 @@ fn declare_raw_fn(
     // be merged.
     llvm::SetUnnamedAddress(llfn, llvm::UnnamedAddr::Global);
 
-    if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.options.disable_redzone) {
+    if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.disable_redzone) {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
     }
 

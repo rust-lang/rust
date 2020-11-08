@@ -104,7 +104,7 @@ pub fn metadata_section_name(target: &Target) -> &'static str {
     // As a result, we choose a slightly shorter name! As to why
     // `.note.rustc` works on MinGW, that's another good question...
 
-    if target.options.is_like_osx { "__DATA,.rustc" } else { ".rustc" }
+    if target.is_like_osx { "__DATA,.rustc" } else { ".rustc" }
 }
 
 fn read_metadata_section_name(_target: &Target) -> &'static str {

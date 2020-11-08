@@ -129,13 +129,13 @@ pub fn target_machine_factory(
     let use_softfp = sess.opts.cg.soft_float;
 
     let ffunction_sections =
-        sess.opts.debugging_opts.function_sections.unwrap_or(sess.target.options.function_sections);
+        sess.opts.debugging_opts.function_sections.unwrap_or(sess.target.function_sections);
     let fdata_sections = ffunction_sections;
 
     let code_model = to_llvm_code_model(sess.code_model());
 
     let features = attributes::llvm_target_features(sess).collect::<Vec<_>>();
-    let mut singlethread = sess.target.options.singlethread;
+    let mut singlethread = sess.target.singlethread;
 
     // On the wasm target once the `atomics` feature is enabled that means that
     // we're no longer single-threaded, or otherwise we don't want LLVM to
@@ -151,22 +151,16 @@ pub fn target_machine_factory(
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
     let features = features.join(",");
     let features = CString::new(features).unwrap();
-    let abi = SmallCStr::new(&sess.target.options.llvm_abiname);
-    let trap_unreachable = sess.target.options.trap_unreachable;
+    let abi = SmallCStr::new(&sess.target.llvm_abiname);
+    let trap_unreachable = sess.target.trap_unreachable;
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
-    let relax_elf_relocations = sess
-        .opts
-        .debugging_opts
-        .relax_elf_relocations
-        .unwrap_or(sess.target.options.relax_elf_relocations);
+    let relax_elf_relocations =
+        sess.opts.debugging_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
 
-    let use_init_array = !sess
-        .opts
-        .debugging_opts
-        .use_ctors_section
-        .unwrap_or(sess.target.options.use_ctors_section);
+    let use_init_array =
+        !sess.opts.debugging_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
 
     Arc::new(move || {
         let tm = unsafe {

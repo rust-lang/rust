@@ -367,7 +367,7 @@ fn try_intrinsic(
         bx.store(bx.const_i32(0), dest, ret_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, try_func, data, catch_func, dest);
-    } else if bx.sess().target.options.is_like_emscripten {
+    } else if bx.sess().target.is_like_emscripten {
         codegen_emcc_try(bx, try_func, data, catch_func, dest);
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func, dest);

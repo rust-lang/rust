@@ -7,10 +7,8 @@ use std::path::{Path, PathBuf};
 pub fn find_library(name: Symbol, search_paths: &[PathBuf], sess: &Session) -> PathBuf {
     // On Windows, static libraries sometimes show up as libfoo.a and other
     // times show up as foo.lib
-    let oslibname = format!(
-        "{}{}{}",
-        sess.target.options.staticlib_prefix, name, sess.target.options.staticlib_suffix
-    );
+    let oslibname =
+        format!("{}{}{}", sess.target.staticlib_prefix, name, sess.target.staticlib_suffix);
     let unixlibname = format!("lib{}.a", name);
 
     for path in search_paths {

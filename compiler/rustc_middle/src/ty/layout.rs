@@ -2775,7 +2775,7 @@ where
                     // anyway, we control all calls to it in libstd.
                     Abi::Vector { .. }
                         if abi != SpecAbi::PlatformIntrinsic
-                            && cx.tcx().sess.target.options.simd_types_indirect =>
+                            && cx.tcx().sess.target.simd_types_indirect =>
                     {
                         arg.make_indirect();
                         return;
