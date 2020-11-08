@@ -170,7 +170,7 @@ a new unstable feature:
 6. Add a section to the unstable book, in
    `src/doc/unstable-book/src/language-features/$feature_name.md`.
 
-7. Write a lots of tests for the new feature.
+7. Write a lot of tests for the new feature.
    PRs without tests will not be accepted!
 
 8. Get your PR reviewed and land it. You have now successfully
