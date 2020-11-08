@@ -897,7 +897,12 @@ default_test!(Incremental {
     suite: "incremental"
 });
 
-default_test!(Debuginfo { path: "src/test/debuginfo", mode: "debuginfo", suite: "debuginfo" });
+default_test_with_compare_mode!(Debuginfo {
+    path: "src/test/debuginfo",
+    mode: "debuginfo",
+    suite: "debuginfo",
+    compare_mode: "split-dwarf"
+});
 
 host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" });
 

@@ -1037,6 +1037,13 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
         return false;
     }
 
+    // Single mode keeps debuginfo in the same object file, but in such a way that it it skipped
+    // by the linker - so it's expected that when codegen units are linked together that this
+    // debuginfo would be lost without keeping around the temps.
+    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Single {
+        return true;
+    }
+
     // If we're on OSX then the equivalent of split dwarf is turned on by
     // default. The final executable won't actually have any debug information
     // except it'll have pointers to elsewhere. Historically we've always run

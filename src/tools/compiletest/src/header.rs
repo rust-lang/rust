@@ -852,6 +852,8 @@ impl Config {
                 Some(CompareMode::Nll) => name == "compare-mode-nll",
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                 Some(CompareMode::Chalk) => name == "compare-mode-chalk",
+                Some(CompareMode::SplitDwarf) => name == "compare-mode-split-dwarf",
+                Some(CompareMode::SplitDwarfSingle) => name == "compare-mode-split-dwarf-single",
                 None => false,
             } ||
             (cfg!(debug_assertions) && name == "debug") ||

@@ -127,6 +127,8 @@ pub enum CompareMode {
     Nll,
     Polonius,
     Chalk,
+    SplitDwarf,
+    SplitDwarfSingle,
 }
 
 impl CompareMode {
@@ -135,6 +137,8 @@ impl CompareMode {
             CompareMode::Nll => "nll",
             CompareMode::Polonius => "polonius",
             CompareMode::Chalk => "chalk",
+            CompareMode::SplitDwarf => "split-dwarf",
+            CompareMode::SplitDwarfSingle => "split-dwarf-single",
         }
     }
 
@@ -143,6 +147,8 @@ impl CompareMode {
             "nll" => CompareMode::Nll,
             "polonius" => CompareMode::Polonius,
             "chalk" => CompareMode::Chalk,
+            "split-dwarf" => CompareMode::SplitDwarf,
+            "split-dwarf-single" => CompareMode::SplitDwarfSingle,
             x => panic!("unknown --compare-mode option: {}", x),
         }
     }
