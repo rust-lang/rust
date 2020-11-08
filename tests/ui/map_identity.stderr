@@ -1,3 +1,12 @@
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_identity.rs:8:5
+   |
+LL |     let _: Vec<_> = x.iter().map(not_identity).map(|x| return x).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::let_underscore_drop)]` on by default
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: unnecessary map of the identity function
   --> $DIR/map_identity.rs:8:47
    |
@@ -5,6 +14,14 @@ LL |     let _: Vec<_> = x.iter().map(not_identity).map(|x| return x).collect();
    |                                               ^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
    |
    = note: `-D clippy::map-identity` implied by `-D warnings`
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_identity.rs:9:5
+   |
+LL |     let _: Vec<_> = x.iter().map(std::convert::identity).map(|y| y).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: unnecessary map of the identity function
   --> $DIR/map_identity.rs:9:57
@@ -33,5 +50,21 @@ LL | |         return x;
 LL | |     });
    | |______^ help: remove the call to `map`
 
-error: aborting due to 5 previous errors
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_identity.rs:15:5
+   |
+LL |     let _: Vec<_> = x.iter().map(|x| 2 * x).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_identity.rs:16:5
+   |
+LL |     let _: Vec<_> = x.iter().map(not_identity).map(|x| return x - 4).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: aborting due to 9 previous errors
 

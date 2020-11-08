@@ -1,3 +1,12 @@
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/filter_methods.rs:5:5
+   |
+LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 2).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::let-underscore-drop` implied by `-D warnings`
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: called `filter(..).map(..)` on an `Iterator`
   --> $DIR/filter_methods.rs:5:21
    |
@@ -6,6 +15,18 @@ LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 
    |
    = note: `-D clippy::filter-map` implied by `-D warnings`
    = help: this is more succinctly expressed by calling `.filter_map(..)` instead
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/filter_methods.rs:7:5
+   |
+LL | /     let _: Vec<_> = vec![5_i8; 6]
+LL | |         .into_iter()
+LL | |         .filter(|&x| x == 0)
+LL | |         .flat_map(|x| x.checked_mul(2))
+LL | |         .collect();
+   | |___________________^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: called `filter(..).flat_map(..)` on an `Iterator`
   --> $DIR/filter_methods.rs:7:21
@@ -19,6 +40,18 @@ LL | |         .flat_map(|x| x.checked_mul(2))
    |
    = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
 
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/filter_methods.rs:13:5
+   |
+LL | /     let _: Vec<_> = vec![5_i8; 6]
+LL | |         .into_iter()
+LL | |         .filter_map(|x| x.checked_mul(2))
+LL | |         .flat_map(|x| x.checked_mul(2))
+LL | |         .collect();
+   | |___________________^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: called `filter_map(..).flat_map(..)` on an `Iterator`
   --> $DIR/filter_methods.rs:13:21
    |
@@ -30,6 +63,18 @@ LL | |         .flat_map(|x| x.checked_mul(2))
    | |_______________________________________^
    |
    = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/filter_methods.rs:19:5
+   |
+LL | /     let _: Vec<_> = vec![5_i8; 6]
+LL | |         .into_iter()
+LL | |         .filter_map(|x| x.checked_mul(2))
+LL | |         .map(|x| x.checked_mul(2))
+LL | |         .collect();
+   | |___________________^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: called `filter_map(..).map(..)` on an `Iterator`
   --> $DIR/filter_methods.rs:19:21
@@ -43,5 +88,5 @@ LL | |         .map(|x| x.checked_mul(2))
    |
    = help: this is more succinctly expressed by only calling `.filter_map(..)` instead
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 

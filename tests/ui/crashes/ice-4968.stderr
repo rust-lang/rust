@@ -1,0 +1,11 @@
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/ice-4968.rs:16:9
+   |
+LL |         let _: Vec<ManuallyDrop<T::Assoc>> = mem::transmute(slice);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::let_underscore_drop)]` on by default
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: aborting due to previous error
+

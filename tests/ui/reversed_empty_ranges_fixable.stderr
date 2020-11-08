@@ -10,6 +10,15 @@ help: consider using the following if you are attempting to iterate over this ra
 LL |     (21..=42).rev().for_each(|x| println!("{}", x));
    |     ^^^^^^^^^^^^^^^
 
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/reversed_empty_ranges_fixable.rs:10:5
+   |
+LL |     let _ = (ANSWER..21).filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::let_underscore_drop)]` on by default
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: this range is empty so it will yield no values
   --> $DIR/reversed_empty_ranges_fixable.rs:10:13
    |
@@ -43,5 +52,5 @@ help: consider using the following if you are attempting to iterate over this ra
 LL |     for _ in (21u32..42u32).rev() {}
    |              ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

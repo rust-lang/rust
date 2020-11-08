@@ -150,6 +150,20 @@ LL |     let Point { x, y } = coords();
 LL |     let product = x * y;
    |
 
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/match_single_binding.rs:96:5
+   |
+LL | /     let _ = v
+LL | |         .iter()
+LL | |         .map(|i| match i.unwrap() {
+LL | |             unwrapped => unwrapped,
+LL | |         })
+LL | |         .collect::<Vec<u8>>();
+   | |______________________________^
+   |
+   = note: `#[deny(clippy::let_underscore_drop)]` on by default
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: this match could be written as a `let` statement
   --> $DIR/match_single_binding.rs:98:18
    |
@@ -167,5 +181,5 @@ LL |             unwrapped
 LL |         })
    |
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

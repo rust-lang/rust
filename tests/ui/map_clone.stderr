@@ -1,3 +1,12 @@
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_clone.rs:10:5
+   |
+LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::let-underscore-drop` implied by `-D warnings`
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: you are using an explicit closure for copying elements
   --> $DIR/map_clone.rs:10:22
    |
@@ -6,11 +15,27 @@ LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    |
    = note: `-D clippy::map-clone` implied by `-D warnings`
 
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_clone.rs:11:5
+   |
+LL |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: you are using an explicit closure for cloning elements
   --> $DIR/map_clone.rs:11:26
    |
 LL |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_clone.rs:12:5
+   |
+LL |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: you are using an explicit closure for copying elements
   --> $DIR/map_clone.rs:12:23
@@ -36,5 +61,37 @@ error: you are needlessly cloning iterator elements
 LL |     let _ = std::env::args().map(|v| v.clone());
    |                             ^^^^^^^^^^^^^^^^^^^ help: remove the `map` call
 
-error: aborting due to 6 previous errors
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_clone.rs:35:9
+   |
+LL |         let _: Vec<u32> = v.into_iter().map(|x| *x).collect();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_clone.rs:42:9
+   |
+LL |         let _: Vec<u32> = v.into_iter().map(|x| *x).collect();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_clone.rs:45:9
+   |
+LL |         let _: Vec<u32> = v.into_iter().map(|&mut x| x).collect();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/map_clone.rs:53:9
+   |
+LL |         let _: Vec<_> = items.into_iter().map(|x| x.clone()).collect();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: aborting due to 13 previous errors
 

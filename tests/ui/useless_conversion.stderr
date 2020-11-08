@@ -52,6 +52,15 @@ error: useless conversion to the same type: `std::str::Lines`
 LL |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
+error: non-binding let on a type that implements `Drop`
+  --> $DIR/useless_conversion.rs:65:5
+   |
+LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::let_underscore_drop)]` on by default
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
 error: useless conversion to the same type: `std::vec::IntoIter<i32>`
   --> $DIR/useless_conversion.rs:65:13
    |
@@ -70,5 +79,5 @@ error: useless conversion to the same type: `i32`
 LL |     let _ = i32::from(a + b) * 3;
    |             ^^^^^^^^^^^^^^^^ help: consider removing `i32::from()`: `(a + b)`
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
