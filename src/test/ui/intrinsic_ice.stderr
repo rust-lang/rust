@@ -1,0 +1,18 @@
+error[E0308]: cannot coerce intrinsics to function pointers
+ --> intrinsic_ice.rs:8:77
+  |
+L |     let assign: unsafe extern "rust-intrinsic" fn(*const i32) -> *mut i32 = transmute;
+  |                 ---------------------------------------------------------   ^^^^^^^^^ cannot coerce intrinsics to function pointers
+  |                 |
+  |                 expected due to this
+  |
+  = note: expected fn pointer `unsafe extern "rust-intrinsic" fn(*const i32) -> *mut i32`
+                found fn item `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
+help: use parentheses to call this function
+  |
+L |     let assign: unsafe extern "rust-intrinsic" fn(*const i32) -> *mut i32 = transmute(...);
+  |                                                                                      ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
