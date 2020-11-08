@@ -1102,6 +1102,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ident,
                         _,
                     ) => (ident, true),
+                    // For `ref mut` arguments, we can't reuse the binding, but
+                    // we can keep the same name for the parameter.
+                    // This lets rustdoc render it correctly in documentation.
+                    hir::PatKind::Binding(_, _, ident, _) => (ident, false),
                     _ => {
                         // Replace the ident for bindings that aren't simple.
                         let name = format!("__arg{}", index);
