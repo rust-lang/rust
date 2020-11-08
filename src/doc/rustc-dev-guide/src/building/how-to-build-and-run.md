@@ -76,7 +76,7 @@ There is a binary that wraps `x.py` called `x` in `src/tools/x`. All it does is
 run `x.py`, but it can be installed system-wide and run from any subdirectory
 of a checkout.
 
-You can install it with `cargo install --path/src/tools/x`.
+You can install it with `cargo install --path src/tools/x`.
 
 [bootstrap]: ./bootstrapping.md
 
