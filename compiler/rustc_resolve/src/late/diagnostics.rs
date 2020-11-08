@@ -865,7 +865,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     err.span_suggestion(
                         span,
                         &format!("use struct {} syntax instead", descr),
-                        format!("{} {{{pad}{}{pad}}}", path_str, fields, pad = pad),
+                        format!("{path_str} {{{pad}{fields}{pad}}}"),
                         applicability,
                     );
                 }
