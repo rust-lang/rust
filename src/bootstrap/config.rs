@@ -913,11 +913,18 @@ impl Config {
             set(&mut config.missing_tools, t.missing_tools);
         }
 
-        // Cargo does not provide a RUSTFMT environment variable, so we
-        // synthesize it manually. Note that we also later check the config.toml
-        // and set this to that path if necessary.
-        let rustfmt = config.initial_rustc.with_file_name(exe("rustfmt", config.build));
-        config.initial_rustfmt = if rustfmt.exists() { Some(rustfmt) } else { None };
+        config.initial_rustfmt = config.initial_rustfmt.or_else({
+            let build = config.build;
+            let initial_rustc = &config.initial_rustc;
+
+            move || {
+                // Cargo does not provide a RUSTFMT environment variable, so we
+                // synthesize it manually.
+                let rustfmt = initial_rustc.with_file_name(exe("rustfmt", build));
+
+                if rustfmt.exists() { Some(rustfmt) } else { None }
+            }
+        });
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.

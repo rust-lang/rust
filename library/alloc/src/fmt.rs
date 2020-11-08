@@ -309,13 +309,13 @@
 //! * `?` ⇒ [`Debug`]
 //! * `x?` ⇒ [`Debug`] with lower-case hexadecimal integers
 //! * `X?` ⇒ [`Debug`] with upper-case hexadecimal integers
-//! * `o` ⇒ [`Octal`](trait.Octal.html)
-//! * `x` ⇒ [`LowerHex`](trait.LowerHex.html)
-//! * `X` ⇒ [`UpperHex`](trait.UpperHex.html)
-//! * `p` ⇒ [`Pointer`](trait.Pointer.html)
+//! * `o` ⇒ [`Octal`]
+//! * `x` ⇒ [`LowerHex`]
+//! * `X` ⇒ [`UpperHex`]
+//! * `p` ⇒ [`Pointer`]
 //! * `b` ⇒ [`Binary`]
-//! * `e` ⇒ [`LowerExp`](trait.LowerExp.html)
-//! * `E` ⇒ [`UpperExp`](trait.UpperExp.html)
+//! * `e` ⇒ [`LowerExp`]
+//! * `E` ⇒ [`UpperExp`]
 //!
 //! What this means is that any type of argument which implements the
 //! [`fmt::Binary`][`Binary`] trait can then be formatted with `{:b}`. Implementations

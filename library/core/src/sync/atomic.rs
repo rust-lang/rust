@@ -115,23 +115,13 @@ use crate::hint::spin_loop;
 
 /// Signals the processor that it is inside a busy-wait spin-loop ("spin lock").
 ///
-/// Upon receiving spin-loop signal the processor can optimize its behavior by, for example, saving
-/// power or switching hyper-threads.
-///
-/// This function is different from [`std::thread::yield_now`] which directly yields to the
-/// system's scheduler, whereas `spin_loop_hint` does not interact with the operating system.
-///
-/// A common use case for `spin_loop_hint` is implementing bounded optimistic spinning in a CAS
-/// loop in synchronization primitives. To avoid problems like priority inversion, it is strongly
-/// recommended that the spin loop is terminated after a finite amount of iterations and an
-/// appropriate blocking syscall is made.
+/// This function is expected to be deprecated in favor of
+/// [`hint::spin_loop`].
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
 ///
-/// [`std::thread::yield_now`]: ../../../std/thread/fn.yield_now.html
-/// [`std::thread::sleep`]: ../../../std/thread/fn.sleep.html
-/// [`std::sync::Mutex`]: ../../../std/sync/struct.Mutex.html
+/// [`hint::spin_loop`]: crate::hint::spin_loop
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
 pub fn spin_loop_hint() {
@@ -365,7 +355,8 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    pub fn into_inner(self) -> bool {
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    pub const fn into_inner(self) -> bool {
         self.v.into_inner() != 0
     }
 
@@ -941,7 +932,8 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "atomic_access", since = "1.15.0")]
-    pub fn into_inner(self) -> *mut T {
+    #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+    pub const fn into_inner(self) -> *mut T {
         self.p.into_inner()
     }
 
@@ -1462,7 +1454,8 @@ assert_eq!(some_var.into_inner(), 5);
 ```"),
                 #[inline]
                 #[$stable_access]
-                pub fn into_inner(self) -> $int_type {
+                #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+                pub const fn into_inner(self) -> $int_type {
                     self.v.into_inner()
                 }
             }

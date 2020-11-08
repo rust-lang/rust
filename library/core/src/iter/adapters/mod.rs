@@ -85,7 +85,7 @@ pub unsafe trait SourceIter {
     /// * whatever remains in the source after iteration has stopped
     /// * the memory that has become unused by advancing a consuming iterator
     ///
-    /// [`next()`]: trait.Iterator.html#method.next
+    /// [`next()`]: Iterator::next
     unsafe fn as_inner(&mut self) -> &mut Self::Source;
 }
 
@@ -94,7 +94,7 @@ pub unsafe trait SourceIter {
 /// This `struct` is created by the [`rev`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`rev`]: trait.Iterator.html#method.rev
+/// [`rev`]: Iterator::rev
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -228,7 +228,7 @@ unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {
 /// This `struct` is created by the [`copied`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`copied`]: trait.Iterator.html#method.copied
+/// [`copied`]: Iterator::copied
 /// [`Iterator`]: trait.Iterator.html
 #[stable(feature = "iter_copied", since = "1.36.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -380,7 +380,7 @@ where
 /// This `struct` is created by the [`cloned`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`cloned`]: trait.Iterator.html#method.cloned
+/// [`cloned`]: Iterator::cloned
 /// [`Iterator`]: trait.Iterator.html
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -515,7 +515,7 @@ where
 /// This `struct` is created by the [`cycle`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`cycle`]: trait.Iterator.html#method.cycle
+/// [`cycle`]: Iterator::cycle
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -600,7 +600,7 @@ impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
 /// This `struct` is created by the [`step_by`] method on [`Iterator`]. See
 /// its documentation for more.
 ///
-/// [`step_by`]: trait.Iterator.html#method.step_by
+/// [`step_by`]: Iterator::step_by
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
@@ -833,7 +833,7 @@ impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 /// This `struct` is created by the [`map`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`map`]: trait.Iterator.html#method.map
+/// [`map`]: Iterator::map
 /// [`Iterator`]: trait.Iterator.html
 ///
 /// # Notes about side effects
@@ -1042,7 +1042,7 @@ unsafe impl<B, I: InPlaceIterable, F> InPlaceIterable for Map<I, F> where F: FnM
 /// This `struct` is created by the [`filter`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`filter`]: trait.Iterator.html#method.filter
+/// [`filter`]: Iterator::filter
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1191,7 +1191,7 @@ unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> where P: FnM
 /// This `struct` is created by the [`filter_map`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`filter_map`]: trait.Iterator.html#method.filter_map
+/// [`filter_map`]: Iterator::filter_map
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1338,7 +1338,7 @@ unsafe impl<B, I: InPlaceIterable, F> InPlaceIterable for FilterMap<I, F> where
 /// This `struct` is created by the [`enumerate`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`enumerate`]: trait.Iterator.html#method.enumerate
+/// [`enumerate`]: Iterator::enumerate
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -1574,7 +1574,7 @@ unsafe impl<I: InPlaceIterable> InPlaceIterable for Enumerate<I> {}
 /// This `struct` is created by the [`peekable`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`peekable`]: trait.Iterator.html#method.peekable
+/// [`peekable`]: Iterator::peekable
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -1743,7 +1743,7 @@ impl<I: Iterator> Peekable<I> {
     /// Like [`next`], if there is a value, it is wrapped in a `Some(T)`.
     /// But if the iteration is over, `None` is returned.
     ///
-    /// [`next`]: trait.Iterator.html#tymethod.next
+    /// [`next`]: Iterator::next
     ///
     /// Because `peek()` returns a reference, and many iterators iterate over
     /// references, there can be a possibly confusing situation where the
@@ -1871,7 +1871,7 @@ unsafe impl<I: InPlaceIterable> InPlaceIterable for Peekable<I> {}
 /// This `struct` is created by the [`skip_while`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`skip_while`]: trait.Iterator.html#method.skip_while
+/// [`skip_while`]: Iterator::skip_while
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1993,7 +1993,7 @@ unsafe impl<I: InPlaceIterable, F> InPlaceIterable for SkipWhile<I, F> where
 /// This `struct` is created by the [`take_while`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`take_while`]: trait.Iterator.html#method.take_while
+/// [`take_while`]: Iterator::take_while
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2128,7 +2128,7 @@ unsafe impl<I: InPlaceIterable, F> InPlaceIterable for TakeWhile<I, F> where
 /// This `struct` is created by the [`map_while`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`map_while`]: trait.Iterator.html#method.map_while
+/// [`map_while`]: Iterator::map_while
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
@@ -2226,7 +2226,7 @@ unsafe impl<B, I: InPlaceIterable, P> InPlaceIterable for MapWhile<I, P> where
 /// This `struct` is created by the [`skip`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`skip`]: trait.Iterator.html#method.skip
+/// [`skip`]: Iterator::skip
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -2422,7 +2422,7 @@ unsafe impl<I: InPlaceIterable> InPlaceIterable for Skip<I> {}
 /// This `struct` is created by the [`take`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`take`]: trait.Iterator.html#method.take
+/// [`take`]: Iterator::take
 /// [`Iterator`]: trait.Iterator.html
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -2627,7 +2627,7 @@ unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
 /// This `struct` is created by the [`scan`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`scan`]: trait.Iterator.html#method.scan
+/// [`scan`]: Iterator::scan
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2735,7 +2735,7 @@ unsafe impl<St, F, B, I: InPlaceIterable> InPlaceIterable for Scan<I, St, F> whe
 /// This `struct` is created by the [`inspect`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`inspect`]: trait.Iterator.html#method.inspect
+/// [`inspect`]: Iterator::inspect
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]

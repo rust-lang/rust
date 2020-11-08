@@ -9,6 +9,7 @@
 #![feature(box_syntax)]
 #![feature(cell_update)]
 #![feature(const_assume)]
+#![feature(const_cell_into_inner)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -91,5 +92,6 @@ mod result;
 mod slice;
 mod str;
 mod str_lossy;
+mod task;
 mod time;
 mod tuple;

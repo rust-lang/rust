@@ -535,9 +535,6 @@ unsafe impl<T: Send> Send for SyncSender<T> {}
 /// A **send** operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
-///
-/// [`Sender::send`]: Sender::send
-/// [`SyncSender::send`]: SyncSender::send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);

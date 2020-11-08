@@ -94,7 +94,8 @@ impl<T> Cursor<T> {
     /// # force_inference(&buff);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(inner: T) -> Cursor<T> {
+    #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+    pub const fn new(inner: T) -> Cursor<T> {
         Cursor { pos: 0, inner }
     }
 
@@ -130,7 +131,8 @@ impl<T> Cursor<T> {
     /// let reference = buff.get_ref();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_ref(&self) -> &T {
+    #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+    pub const fn get_ref(&self) -> &T {
         &self.inner
     }
 
@@ -175,7 +177,8 @@ impl<T> Cursor<T> {
     /// assert_eq!(buff.position(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn position(&self) -> u64 {
+    #[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+    pub const fn position(&self) -> u64 {
         self.pos
     }
 

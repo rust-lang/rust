@@ -1021,17 +1021,11 @@ impl<'a> Resolver<'a> {
                 ("", "")
             };
 
-            let article = if built_in.is_empty() { res.article() } else { "a" };
-            format!(
-                "{a}{built_in} {thing}{from}",
-                a = article,
-                thing = res.descr(),
-                built_in = built_in,
-                from = from
-            )
+            let a = if built_in.is_empty() { res.article() } else { "a" };
+            format!("{a}{built_in} {thing}{from}", thing = res.descr())
         } else {
             let introduced = if b.is_import() { "imported" } else { "defined" };
-            format!("the {thing} {introduced} here", thing = res.descr(), introduced = introduced)
+            format!("the {thing} {introduced} here", thing = res.descr())
         }
     }
 
@@ -1049,19 +1043,13 @@ impl<'a> Resolver<'a> {
             ident.span,
             E0659,
             "`{ident}` is ambiguous ({why})",
-            ident = ident,
             why = kind.descr()
         );
         err.span_label(ident.span, "ambiguous name");
 
         let mut could_refer_to = |b: &NameBinding<'_>, misc: AmbiguityErrorMisc, also: &str| {
             let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
-            let note_msg = format!(
-                "`{ident}` could{also} refer to {what}",
-                ident = ident,
-                also = also,
-                what = what
-            );
+            let note_msg = format!("`{ident}` could{also} refer to {what}");
 
             let thing = b.res().descr();
             let mut help_msgs = Vec::new();
@@ -1071,30 +1059,18 @@ impl<'a> Resolver<'a> {
                     || kind == AmbiguityKind::GlobVsOuter && swapped != also.is_empty())
             {
                 help_msgs.push(format!(
-                    "consider adding an explicit import of \
-                     `{ident}` to disambiguate",
-                    ident = ident
+                    "consider adding an explicit import of `{ident}` to disambiguate"
                 ))
             }
             if b.is_extern_crate() && ident.span.rust_2018() {
-                help_msgs.push(format!(
-                    "use `::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident,
-                    thing = thing,
-                ))
+                help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously"))
             }
             if misc == AmbiguityErrorMisc::SuggestCrate {
-                help_msgs.push(format!(
-                    "use `crate::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident,
-                    thing = thing,
-                ))
+                help_msgs
+                    .push(format!("use `crate::{ident}` to refer to this {thing} unambiguously"))
             } else if misc == AmbiguityErrorMisc::SuggestSelf {
-                help_msgs.push(format!(
-                    "use `self::{ident}` to refer to this {thing} unambiguously",
-                    ident = ident,
-                    thing = thing,
-                ))
+                help_msgs
+                    .push(format!("use `self::{ident}` to refer to this {thing} unambiguously"))
             }
 
             err.span_note(b.span, &note_msg);
@@ -1167,12 +1143,10 @@ impl<'a> Resolver<'a> {
             };
 
             let first = ptr::eq(binding, first_binding);
-            let descr = get_descr(binding);
             let msg = format!(
                 "{and_refers_to}the {item} `{name}`{which} is defined here{dots}",
                 and_refers_to = if first { "" } else { "...and refers to " },
-                item = descr,
-                name = name,
+                item = get_descr(binding),
                 which = if first { "" } else { " which" },
                 dots = if next_binding.is_some() { "..." } else { "" },
             );
