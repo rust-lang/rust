@@ -716,7 +716,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// No truncation occurs when `len` is greater than the vector's current
+    /// No truncation occurs when `len` is greater than or equal to the vector's current
     /// length:
     ///
     /// ```
@@ -746,7 +746,7 @@ impl<T> Vec<T> {
         //   such that no value will be dropped twice in case `drop_in_place`
         //   were to panic once (if it panics twice, the program aborts).
         unsafe {
-            if len > self.len {
+            if len >= self.len {
                 return;
             }
             let remaining_len = self.len - len;
