@@ -95,7 +95,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub LET_UNDERSCORE_DROP,
-    correctness,
+    pedantic,
     "non-binding let on a type that implements `Drop`"
 }
 
