@@ -37,3 +37,4 @@ fi
 # Copy files to sysroot
 mkdir -p "$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/"
 cp -a "target/$TARGET_TRIPLE/$sysroot_channel/deps/"* "$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/"
+rm "$dir/sysroot/lib/rustlib/$TARGET_TRIPLE/lib/"*.{rmeta,d}
