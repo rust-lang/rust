@@ -13,15 +13,13 @@
 BASEDIR=../coverage-reports-base
 SOURCEDIR=../coverage
 
-ifeq ($(UNAME),Darwin)
-# FIXME(richkadel): It appears that --debug is not available on MacOS even when not running
-# under CI.
-NO_LLVM_ASSERTIONS=1
-endif
-
 # The `llvm-cov show` flag `--debug`, used to generate the `counters` output files, is only enabled
-# if LLVM assertions are enabled. Some CI builds disable debug assertions.
-ifndef NO_LLVM_ASSERTIONS
+# if LLVM assertions are enabled. Requires Rust config `llvm/optimize` and not
+# `llvm/release_debuginfo`. Note that some CI builds disable debug assertions (by setting
+# `NO_LLVM_ASSERTIONS=1`), so it is not OK to fail the test, but `bless`ed test results cannot be
+# generated without debug assertions.
+LLVM_COV_DEBUG := $(shell "$(LLVM_BIN_DIR)"/llvm-cov show --debug 2>&1 | grep -q "Unknown command line argument '--debug'"; echo $$?)
+ifeq ($(LLVM_COV_DEBUG), 1)
 DEBUG_FLAG=--debug
 endif
 
