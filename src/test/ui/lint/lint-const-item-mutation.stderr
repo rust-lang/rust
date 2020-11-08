@@ -5,7 +5,7 @@ LL |     ARRAY[0] = 5;
    |     ^^^^^^^^^^^^
    |
    = note: `#[warn(const_item_mutation)]` on by default
-   = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
+   = note: each usage of a `const` item creates a new temporary; the original `const` item will not be modified
 note: `const` item defined here
   --> $DIR/lint-const-item-mutation.rs:26:1
    |
@@ -18,7 +18,7 @@ warning: attempting to modify a `const` item
 LL |     MY_STRUCT.field = false;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
+   = note: each usage of a `const` item creates a new temporary; the original `const` item will not be modified
 note: `const` item defined here
   --> $DIR/lint-const-item-mutation.rs:27:1
    |
@@ -31,7 +31,7 @@ warning: attempting to modify a `const` item
 LL |     MY_STRUCT.inner_array[0] = 'b';
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
+   = note: each usage of a `const` item creates a new temporary; the original `const` item will not be modified
 note: `const` item defined here
   --> $DIR/lint-const-item-mutation.rs:27:1
    |
@@ -91,7 +91,7 @@ warning: attempting to modify a `const` item
 LL |     MUTABLE2.msg = "wow";
    |     ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: each usage of a `const` item creates a new temporary - the original `const` item will not be modified
+   = note: each usage of a `const` item creates a new temporary; the original `const` item will not be modified
 note: `const` item defined here
   --> $DIR/lint-const-item-mutation.rs:30:1
    |

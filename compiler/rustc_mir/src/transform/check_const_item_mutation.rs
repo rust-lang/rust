@@ -103,7 +103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
                 if let Some(def_id) = self.is_const_item_without_destructor(lhs.local) {
                     self.lint_const_item_usage(&lhs, def_id, loc, |lint| {
                         let mut lint = lint.build("attempting to modify a `const` item");
-                        lint.note("each usage of a `const` item creates a new temporary - the original `const` item will not be modified");
+                        lint.note("each usage of a `const` item creates a new temporary; the original `const` item will not be modified");
                         lint
                     })
                 }
