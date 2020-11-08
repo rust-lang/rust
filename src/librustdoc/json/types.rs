@@ -444,7 +444,7 @@ pub struct Impl {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Import {
     /// The full path being imported.
-    pub source: String,
+    pub span: String,
     /// May be different from the last segment of `source` when renaming imports:
     /// `use source as name;`
     pub name: String,
