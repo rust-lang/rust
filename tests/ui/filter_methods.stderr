@@ -1,4 +1,4 @@
-error: non-binding let on a type that implements `Drop`
+error: non-binding `let` on a type that implements `Drop`
   --> $DIR/filter_methods.rs:5:5
    |
 LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 2).collect();
@@ -16,7 +16,7 @@ LL |     let _: Vec<_> = vec![5; 6].into_iter().filter(|&x| x == 0).map(|x| x * 
    = note: `-D clippy::filter-map` implied by `-D warnings`
    = help: this is more succinctly expressed by calling `.filter_map(..)` instead
 
-error: non-binding let on a type that implements `Drop`
+error: non-binding `let` on a type that implements `Drop`
   --> $DIR/filter_methods.rs:7:5
    |
 LL | /     let _: Vec<_> = vec![5_i8; 6]
@@ -40,7 +40,7 @@ LL | |         .flat_map(|x| x.checked_mul(2))
    |
    = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
 
-error: non-binding let on a type that implements `Drop`
+error: non-binding `let` on a type that implements `Drop`
   --> $DIR/filter_methods.rs:13:5
    |
 LL | /     let _: Vec<_> = vec![5_i8; 6]
@@ -64,7 +64,7 @@ LL | |         .flat_map(|x| x.checked_mul(2))
    |
    = help: this is more succinctly expressed by calling `.flat_map(..)` and filtering by returning `iter::empty()`
 
-error: non-binding let on a type that implements `Drop`
+error: non-binding `let` on a type that implements `Drop`
   --> $DIR/filter_methods.rs:19:5
    |
 LL | /     let _: Vec<_> = vec![5_i8; 6]

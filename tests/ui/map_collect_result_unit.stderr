@@ -12,22 +12,5 @@ error: `.map().collect()` can be replaced with `.try_for_each()`
 LL |         let _: Result<(), _> = (0..3).map(|t| Err(t + 1)).collect();
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `(0..3).try_for_each(|t| Err(t + 1))`
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/map_collect_result_unit.rs:14:5
-   |
-LL |     let _ = (0..3).map(|t| Err(t + 1)).collect::<Result<Vec<i32>, _>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[deny(clippy::let_underscore_drop)]` on by default
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/map_collect_result_unit.rs:15:5
-   |
-LL |     let _ = (0..3).map(|t| Err(t + 1)).collect::<Vec<Result<(), _>>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

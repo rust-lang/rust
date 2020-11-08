@@ -24,15 +24,6 @@ error: using `.clone()` on a ref-counted pointer
 LL |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/unnecessary_clone.rs:36:5
-   |
-LL |     let _: Arc<dyn SomeTrait> = x.clone();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[deny(clippy::let_underscore_drop)]` on by default
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: using `.clone()` on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:36:33
    |
@@ -111,5 +102,5 @@ error: using `.clone()` on a ref-counted pointer
 LL |         Some(try_opt!(Some(rc)).clone())
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `Rc::<u8>::clone(&try_opt!(Some(rc)))`
 
-error: aborting due to 13 previous errors
+error: aborting due to 12 previous errors
 

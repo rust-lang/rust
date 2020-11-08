@@ -64,15 +64,6 @@ error: redundant closure found
 LL |     let e: std::vec::Vec<char> = vec!['a', 'b', 'c'].iter().map(|c| c.to_ascii_uppercase()).collect();
    |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `char::to_ascii_uppercase`
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/eta.rs:107:5
-   |
-LL |     let _: Vec<_> = arr.iter().map(|x| x.map_err(|e| some.take().unwrap()(e))).collect();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[deny(clippy::let_underscore_drop)]` on by default
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: redundant closure found
   --> $DIR/eta.rs:172:27
    |
@@ -85,13 +76,5 @@ error: redundant closure found
 LL |     let a = Some(1u8).map(|a| closure(a));
    |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `closure`
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/eta.rs:203:5
-   |
-LL |     let _ = [Bar].iter().map(|s| s.to_string()).collect::<Vec<_>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
-error: aborting due to 14 previous errors
+error: aborting due to 12 previous errors
 

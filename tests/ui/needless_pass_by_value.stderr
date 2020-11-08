@@ -90,15 +90,6 @@ help: change `v.clone()` to
 LL |     let _ = v.to_owned();
    |             ^^^^^^^^^^^^
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/needless_pass_by_value.rs:85:5
-   |
-LL |     let _ = v.clone();
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[deny(clippy::let_underscore_drop)]` on by default
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:94:12
    |
@@ -183,5 +174,5 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn more_fun(_item: impl Club<'static, i32>) {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&impl Club<'static, i32>`
 
-error: aborting due to 23 previous errors
+error: aborting due to 22 previous errors
 

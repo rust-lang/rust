@@ -1,12 +1,3 @@
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:9:9
-   |
-LL |         let _ = transmute::<_, Vec<u32>>(vec![0u8]);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[deny(clippy::let_underscore_drop)]` on by default
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from `std::vec::Vec<u8>` to `std::vec::Vec<u32>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:9:17
    |
@@ -15,41 +6,17 @@ LL |         let _ = transmute::<_, Vec<u32>>(vec![0u8]);
    |
    = note: `-D clippy::unsound-collection-transmute` implied by `-D warnings`
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:11:9
-   |
-LL |         let _ = transmute::<_, Vec<[u8; 4]>>(vec![1234u32]);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from `std::vec::Vec<u32>` to `std::vec::Vec<[u8; 4]>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:11:17
    |
 LL |         let _ = transmute::<_, Vec<[u8; 4]>>(vec![1234u32]);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:14:9
-   |
-LL |         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<u8>::new());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from `std::collections::VecDeque<u8>` to `std::collections::VecDeque<u32>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:14:17
    |
 LL |         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:16:9
-   |
-LL |         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<[u8; 4]>::new());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: transmute from `std::collections::VecDeque<[u8; 4]>` to `std::collections::VecDeque<u32>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:16:17
@@ -93,27 +60,11 @@ error: transmute from `std::collections::HashSet<[u8; 4]>` to `std::collections:
 LL |         let _ = transmute::<_, HashSet<u32>>(HashSet::<[u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:34:9
-   |
-LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, u8>::new());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from `std::collections::BTreeMap<u8, u8>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:34:17
    |
 LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:35:9
-   |
-LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u32, u32>::new());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: transmute from `std::collections::BTreeMap<u32, u32>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:35:17
@@ -121,27 +72,11 @@ error: transmute from `std::collections::BTreeMap<u32, u32>` to `std::collection
 LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u32, u32>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:37:9
-   |
-LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, [u8; 4]>::new());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from `std::collections::BTreeMap<u8, [u8; 4]>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:37:17
    |
 LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, [u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute_collection.rs:38:9
-   |
-LL |         let _ = transmute::<_, BTreeMap<u32, u32>>(BTreeMap::<[u8; 4], u32>::new());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: transmute from `std::collections::BTreeMap<[u8; 4], u32>` to `std::collections::BTreeMap<u32, u32>` with mismatched layout is unsound
   --> $DIR/transmute_collection.rs:38:17
@@ -173,5 +108,5 @@ error: transmute from `std::collections::HashMap<[u8; 4], u32>` to `std::collect
 LL |         let _ = transmute::<_, HashMap<u32, u32>>(HashMap::<[u8; 4], u32>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 26 previous errors
+error: aborting due to 18 previous errors
 

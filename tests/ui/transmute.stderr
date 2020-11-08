@@ -24,28 +24,11 @@ error: transmute from a reference to a pointer
 LL |     let _: *const U = core::intrinsics::transmute(t);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *const U`
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute.rs:34:9
-   |
-LL |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[deny(clippy::let_underscore_drop)]` on by default
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:34:27
    |
 LL |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute.rs:36:9
-   |
-LL |         let _: Vec<i32> = core::mem::transmute(my_vec());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:36:27
@@ -53,41 +36,17 @@ error: transmute from a type (`std::vec::Vec<i32>`) to itself
 LL |         let _: Vec<i32> = core::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute.rs:38:9
-   |
-LL |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:38:27
    |
 LL |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute.rs:40:9
-   |
-LL |         let _: Vec<i32> = std::mem::transmute(my_vec());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
-
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:40:27
    |
 LL |         let _: Vec<i32> = std::mem::transmute(my_vec());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: non-binding let on a type that implements `Drop`
-  --> $DIR/transmute.rs:42:9
-   |
-LL |         let _: Vec<i32> = my_transmute(my_vec());
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> $DIR/transmute.rs:42:27
@@ -195,5 +154,5 @@ error: transmute from a `&mut [u8]` to a `&mut str`
 LL |     let _: &mut str = unsafe { std::mem::transmute(mb) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
-error: aborting due to 29 previous errors
+error: aborting due to 24 previous errors
 
