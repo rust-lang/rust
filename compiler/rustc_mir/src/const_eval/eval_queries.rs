@@ -275,6 +275,13 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 return Err(ErrorHandled::Reported(error_reported));
             }
         }
+        if !tcx.is_mir_available(def.did) {
+            tcx.sess.delay_span_bug(
+                tcx.def_span(def.did),
+                &format!("no MIR body is available for {:?}", def.did),
+            );
+            return Err(ErrorHandled::Reported(ErrorReported {}));
+        }
         let qualif = tcx.mir_const_qualif_opt_const_arg(def);
         if qualif.error_occured {
             return Err(ErrorHandled::Reported(ErrorReported {}));
