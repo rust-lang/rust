@@ -20,13 +20,6 @@ error[E0015]: calls in constants are limited to constant functions, tuple struct
 LL |     Foo::<17>::value()
    |     ^^^^^^^^^^^^^^^^^^
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/nested-type.rs:16:5
-   |
-LL |     Foo::<17>::value()
-   |     ^^^^^^^^^^^^^^^^^^ calling non-const function `Foo::{constant#0}::Foo::<17_usize>::value`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0015, E0080.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.
