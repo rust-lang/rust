@@ -1,5 +1,6 @@
 include ../../run-make-fulldeps/tools.mk
 
+# FIXME https://github.com/rust-lang/rust/issues/78911
 # ignore-32bit wrong/no cross compiler and sometimes we pass wrong gcc args (-m64)
 
 all: foo
