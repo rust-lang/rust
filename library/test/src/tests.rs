@@ -47,6 +47,7 @@ impl TestOpts {
             format: OutputFormat::Pretty,
             shuffle: false,
             shuffle_seed: None,
+            pretty_print_assertions: false,
             test_threads: None,
             skip: vec![],
             time_options: None,

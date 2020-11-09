@@ -23,6 +23,7 @@ pub struct TestOpts {
     pub format: OutputFormat,
     pub shuffle: bool,
     pub shuffle_seed: Option<u64>,
+    pub pretty_print_assertions: bool,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub time_options: Option<TestTimeOptions>,
@@ -147,6 +148,11 @@ fn optgroups() -> getopts::Options {
             "shuffle-seed",
             "Run tests in random order; seed the random number generator with SEED",
             "SEED",
+        )
+        .optflag(
+            "",
+            "pretty-print-assertions",
+            "Pretty-print assertion failures using experimental formatting.",
         );
     opts
 }
@@ -276,6 +282,8 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let test_threads = get_test_threads(&matches)?;
     let color = get_color_config(&matches)?;
     let format = get_format(&matches, quiet, allow_unstable)?;
+    let pretty_print_assertions =
+        unstable_optflag!(matches, allow_unstable, "pretty-print-assertions");
 
     let options = Options::new().display_output(matches.opt_present("show-output"));
 
@@ -294,6 +302,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         format,
         shuffle,
         shuffle_seed,
+        pretty_print_assertions,
         test_threads,
         skip,
         time_options,

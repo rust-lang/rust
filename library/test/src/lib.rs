@@ -23,10 +23,12 @@
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(nll)]
+#![feature(core_panic)]
 #![feature(available_parallelism)]
 #![feature(bench_black_box)]
 #![feature(internal_output_capture)]
 #![feature(panic_unwind)]
+#![feature(panic_internals)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
 #![feature(test)]
@@ -79,6 +81,7 @@ mod event;
 mod formatters;
 mod helpers;
 mod options;
+mod pretty_print_assertion;
 pub mod stats;
 mod term;
 mod test_result;

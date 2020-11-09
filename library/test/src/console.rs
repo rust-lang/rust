@@ -13,6 +13,7 @@ use super::{
     formatters::{JsonFormatter, JunitFormatter, OutputFormatter, PrettyFormatter, TerseFormatter},
     helpers::{concurrency::get_concurrency, metrics::MetricMap},
     options::{Options, OutputFormat},
+    pretty_print_assertion::pretty_print_assertion,
     run_tests, term,
     test_result::TestResult,
     time::{TestExecTime, TestSuiteExecTime},
@@ -23,6 +24,16 @@ use super::{
 pub enum OutputLocation<T> {
     Pretty(Box<term::StdoutTerminal>),
     Raw(T),
+}
+
+impl<T> OutputLocation<T> {
+    /// Check if the output location supports ANSI color codes.
+    pub fn supports_ansi_colors(&self) -> bool {
+        match self {
+            OutputLocation::Pretty(term) => term.supports_ansi_colors(),
+            OutputLocation::Raw(_) => false,
+        }
+    }
 }
 
 impl<T: Write> Write for OutputLocation<T> {
@@ -251,11 +262,26 @@ fn on_test_event(
 
 /// A simple console test runner.
 /// Runs provided tests reporting process and results to the stdout.
+///
+/// If pretty-printing of assertion failures is enabled, this installs a panic hook.
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
     let output = match term::stdout() {
         None => OutputLocation::Raw(io::stdout()),
         Some(t) => OutputLocation::Pretty(t),
     };
+
+    if opts.pretty_print_assertions {
+        let panic_hook = std::panic::take_hook();
+        let use_color = opts.use_color() && output.supports_ansi_colors();
+        std::panic::set_hook(Box::new(move |info| {
+            if let Some(assert) = info.assert_info() {
+                let loc = *info.location().unwrap();
+                let _ = pretty_print_assertion(assert, loc, use_color);
+            } else {
+                panic_hook(info)
+            }
+        }));
+    }
 
     let max_name_len = tests
         .iter()

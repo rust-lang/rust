@@ -508,6 +508,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         color: config.color,
         shuffle: false,
         shuffle_seed: None,
+        pretty_print_assertions: false,
         test_threads: None,
         skip: vec![],
         list: false,
