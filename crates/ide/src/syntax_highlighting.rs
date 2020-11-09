@@ -557,7 +557,9 @@ fn highlight_element(
                     h
                 }
             }
-            T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] => HighlightTag::Operator.into(),
+            T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.] => {
+                HighlightTag::Operator.into()
+            }
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HighlightTag::Macro.into()
             }
