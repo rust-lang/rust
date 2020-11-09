@@ -1,6 +1,6 @@
 use crate::utils::{span_lint, span_lint_and_then};
 use rustc_ast::ast::{
-    Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, MacCall, Pat, PatKind,
+    Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind,
 };
 use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -149,9 +149,6 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             PatKind::Or(ref pats) => self.visit_pat(&pats[0]),
             _ => walk_pat(self, pat),
         }
-    }
-    fn visit_mac(&mut self, _mac: &MacCall) {
-        // do not check macs
     }
 }
 
@@ -356,9 +353,6 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
     }
     fn visit_item(&mut self, _: &Item) {
         // do not recurse into inner items
-    }
-    fn visit_mac(&mut self, _mac: &MacCall) {
-        // do not check macs
     }
 }
 

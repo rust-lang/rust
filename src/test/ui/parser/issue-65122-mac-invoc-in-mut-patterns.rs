@@ -1,4 +1,4 @@
-// Regression test; used to ICE with 'visit_mac disabled by default' due to a
+// Regression test; used to ICE with 'visit_mac_call disabled by default' due to a
 // `MutVisitor` in `fn make_all_value_bindings_mutable` (`parse/parser/pat.rs`).
 
 macro_rules! mac1 {

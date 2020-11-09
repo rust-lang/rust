@@ -1,6 +1,6 @@
 use super::{Parser, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
-use rustc_ast::mut_visit::{noop_visit_mac, noop_visit_pat, MutVisitor};
+use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::{self as ast, AttrVec, Attribute, FieldPat, MacCall, Pat, PatKind, RangeEnd};
@@ -570,10 +570,6 @@ impl<'a> Parser<'a> {
     fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
         struct AddMut(bool);
         impl MutVisitor for AddMut {
-            fn visit_mac(&mut self, mac: &mut MacCall) {
-                noop_visit_mac(mac, self);
-            }
-
             fn visit_pat(&mut self, pat: &mut P<Pat>) {
                 if let PatKind::Ident(BindingMode::ByValue(m @ Mutability::Not), ..) = &mut pat.kind
                 {
