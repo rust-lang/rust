@@ -426,6 +426,7 @@ fn semantic_token_type_and_modifiers(
             HighlightModifier::Consuming => semantic_tokens::CONSUMING,
             HighlightModifier::Unsafe => semantic_tokens::UNSAFE,
             HighlightModifier::Callable => semantic_tokens::CALLABLE,
+            HighlightModifier::Static => lsp_types::SemanticTokenModifier::STATIC,
         };
         mods |= modifier;
     }
