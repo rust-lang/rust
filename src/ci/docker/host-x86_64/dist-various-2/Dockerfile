@@ -48,6 +48,9 @@ ENV \
     CFLAGS_x86_64_fortanix_unknown_sgx="-mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
     CXX_x86_64_fortanix_unknown_sgx=x86_64-fortanix-unknown-sgx-clang++-11 \
     CXXFLAGS_x86_64_fortanix_unknown_sgx="-mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
+    AR_i686_unknown_freebsd=i686-unknown-freebsd11-ar \
+    CC_i686_unknown_freebsd=i686-unknown-freebsd11-clang \
+    CXX_i686_unknown_freebsd=i686-unknown-freebsd11-clang++ \
     CC=gcc-7 \
     CXX=g++-7
 
@@ -74,6 +77,9 @@ RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 COPY host-x86_64/dist-various-2/build-wasi-toolchain.sh /tmp/
 RUN /tmp/build-wasi-toolchain.sh
 
+COPY scripts/freebsd-toolchain.sh /tmp/
+RUN /tmp/freebsd-toolchain.sh i686
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
@@ -99,6 +105,7 @@ ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
 ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabi
+ENV TARGETS=$TARGETS,i686-unknown-freebsd
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-7 (for gnux32) but not in the search path of the
