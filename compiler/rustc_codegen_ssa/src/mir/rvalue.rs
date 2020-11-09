@@ -502,6 +502,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
+                let ty = self.monomorphize(&ty);
                 assert!(bx.cx().type_is_sized(ty));
                 let val = bx.cx().const_usize(bx.cx().layout_of(ty).size.bytes());
                 let tcx = self.cx.tcx();
