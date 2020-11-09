@@ -1178,6 +1178,14 @@ impl<'a> Builder<'a> {
             }
         }
 
+        // Compile everything except libraries and proc macros with the more
+        // efficient initial-exec TLS model. This doesn't work with `dlopen`,
+        // so we can't use it by default in general, but we can use it for tools
+        // and our own internal libraries.
+        if !mode.must_support_dlopen() {
+            rustflags.arg("-Ztls-model=initial-exec");
+        }
+
         if self.config.incremental {
             cargo.env("CARGO_INCREMENTAL", "1");
         } else {
