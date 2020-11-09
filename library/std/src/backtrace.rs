@@ -152,7 +152,6 @@ pub struct BacktraceFrame {
     symbols: Vec<BacktraceSymbol>,
 }
 
-
 #[unstable(feature = "backtrace_frames")]
 pub struct Frames {
     inner: Vec<BacktraceFrame>
@@ -450,7 +449,6 @@ impl RawFrame {
         }
     }
 }
-
 
 #[unstable(feature = "backtrace_frames")]
 impl<'a> AsRef<[BacktraceFrame]> for Frames<'a> {
