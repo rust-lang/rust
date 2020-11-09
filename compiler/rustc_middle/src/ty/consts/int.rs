@@ -168,7 +168,7 @@ impl ScalarInt {
     #[inline(always)]
     fn check_data(self) {
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
-        // directly, because `assert_eq` takes references to its arguments and formatting
+        // directly, because `debug_assert_eq` takes references to its arguments and formatting
         // arguments and would thus borrow `self.data`. Since `Self`
         // is a packed struct, that would create a possibly unaligned reference, which
         // is UB.
