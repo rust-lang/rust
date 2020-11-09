@@ -152,6 +152,12 @@ pub struct BacktraceFrame {
     symbols: Vec<BacktraceSymbol>,
 }
 
+
+#[unstable(feature = "backtrace_frames")]
+pub struct Frames {
+    inner: Vec<BacktraceFrame>
+}
+
 enum RawFrame {
     Actual(backtrace_rs::Frame),
     #[cfg(test)]
