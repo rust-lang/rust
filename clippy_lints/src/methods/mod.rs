@@ -22,6 +22,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
+use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
@@ -1623,10 +1624,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let item = cx.tcx.hir().expect_item(parent);
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
         let self_ty = cx.tcx.type_of(def_id);
+
+        // if this impl block implements a trait, lint in trait definition instead
+        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            return;
+        }
+
         if_chain! {
             if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
-            if let hir::ItemKind::Impl{ of_trait: None, .. } = item.kind;
 
             let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
             let method_sig = cx.tcx.fn_sig(method_def_id);
@@ -1697,11 +1703,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             }
         }
 
-        // if this impl block implements a trait, lint in trait definition instead
-        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
-            return;
-        }
-
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
@@ -1735,8 +1736,42 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
+        if in_external_macro(cx.tcx.sess, item.span) {
+            return;
+        }
+
         if_chain! {
-            if !in_external_macro(cx.tcx.sess, item.span);
+            if let TraitItemKind::Fn(ref sig, _) = item.kind;
+            if let Some(first_arg_ty) = sig.decl.inputs.iter().next();
+            let first_arg_span = first_arg_ty.span;
+            let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
+            let self_ty = TraitRef::identity(cx.tcx, item.hir_id.owner.to_def_id()).self_ty();
+
+            then {
+                if let Some((ref conv, self_kinds)) = &CONVENTIONS
+                    .iter()
+                    .find(|(ref conv, _)| conv.check(&item.ident.name.as_str()))
+                {
+                    if !self_kinds.iter().any(|k| k.matches(cx, self_ty, first_arg_ty)) {
+                        span_lint(
+                            cx,
+                            WRONG_PUB_SELF_CONVENTION,
+                            first_arg_span,
+                            &format!("methods called `{}` usually take {}; consider choosing a less ambiguous name",
+                                conv,
+                                &self_kinds
+                                    .iter()
+                                    .map(|k| k.description())
+                                    .collect::<Vec<_>>()
+                                    .join(" or ")
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+
+        if_chain! {
             if item.ident.name == sym::new;
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id);
