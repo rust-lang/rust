@@ -345,6 +345,43 @@ fn another_fn() {
         );
     }
 
+    #[test]
+    fn test_several_files() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+//- /main.rs
+enum E {
+    <|>V(i32, i32)
+}
+mod foo;
+
+//- /foo.rs
+use crate::E;
+fn f() {
+    let e = E::V(9, 2);
+}
+"#,
+            r#"
+//- /main.rs
+struct V(pub i32, pub i32);
+
+enum E {
+    V(V)
+}
+mod foo;
+
+//- /foo.rs
+use V;
+
+use crate::E;
+fn f() {
+    let e = E::V(V(9, 2));
+}
+"#,
+        )
+    }
+
     fn check_not_applicable(ra_fixture: &str) {
         let fixture =
             format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);

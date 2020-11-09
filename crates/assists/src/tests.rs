@@ -7,7 +7,7 @@ use syntax::TextRange;
 use test_utils::{assert_eq_text, extract_offset, extract_range};
 
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists};
-use stdx::trim_indent;
+use stdx::{format_to, trim_indent};
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     RootDatabase::with_single_file(text)
@@ -98,11 +98,24 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
     match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
             let mut source_change = assist.source_change;
-            let change = source_change.source_file_edits.pop().unwrap();
+            assert!(!source_change.source_file_edits.is_empty());
+            let skip_header = source_change.source_file_edits.len() == 1;
+            source_change.source_file_edits.sort_by_key(|it| it.file_id);
 
-            let mut actual = db.file_text(change.file_id).as_ref().to_owned();
-            change.edit.apply(&mut actual);
-            assert_eq_text!(after, &actual);
+            let mut buf = String::new();
+            for source_file_edit in source_change.source_file_edits {
+                let mut text = db.file_text(source_file_edit.file_id).as_ref().to_owned();
+                source_file_edit.edit.apply(&mut text);
+                if !skip_header {
+                    let sr = db.file_source_root(source_file_edit.file_id);
+                    let sr = db.source_root(sr);
+                    let path = sr.path_for_file(&source_file_edit.file_id).unwrap();
+                    format_to!(buf, "//- {}\n", path)
+                }
+                buf.push_str(&text);
+            }
+
+            assert_eq_text!(after, &buf);
         }
         (Some(assist), ExpectedResult::Target(target)) => {
             let range = assist.assist.target;
