@@ -3,25 +3,6 @@
 use super::check_doc_test;
 
 #[test]
-fn doctest_add_custom_impl() {
-    check_doc_test(
-        "add_custom_impl",
-        r#####"
-#[derive(Deb<|>ug, Display)]
-struct S;
-"#####,
-        r#####"
-#[derive(Display)]
-struct S;
-
-impl Debug for S {
-    $0
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_add_explicit_type() {
     check_doc_test(
         "add_explicit_type",
@@ -173,19 +154,6 @@ fn main() {
     let map = HashMap::new();
 }
 pub mod std { pub mod collections { pub struct HashMap { } } }
-"#####,
-    )
-}
-
-#[test]
-fn doctest_change_return_type_to_result() {
-    check_doc_test(
-        "change_return_type_to_result",
-        r#####"
-fn foo() -> i32<|> { 42i32 }
-"#####,
-        r#####"
-fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 "#####,
     )
 }
@@ -832,6 +800,29 @@ const test: Foo = Foo {foo: 1, bar: 0}
 }
 
 #[test]
+fn doctest_replace_derive_with_manual_impl() {
+    check_doc_test(
+        "replace_derive_with_manual_impl",
+        r#####"
+trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
+#[derive(Deb<|>ug, Display)]
+struct S;
+"#####,
+        r#####"
+trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
+#[derive(Display)]
+struct S;
+
+impl Debug for S {
+    fn fmt(&self, f: &mut Formatter) -> Result<()> {
+        ${0:todo!()}
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_if_let_with_match() {
     check_doc_test(
         "replace_if_let_with_match",
@@ -982,6 +973,19 @@ fn foo() {
 fn foo() {
     println!("foo");
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_wrap_return_type_in_result() {
+    check_doc_test(
+        "wrap_return_type_in_result",
+        r#####"
+fn foo() -> i32<|> { 42i32 }
+"#####,
+        r#####"
+fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 "#####,
     )
 }

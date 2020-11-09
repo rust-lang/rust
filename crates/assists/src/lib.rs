@@ -120,13 +120,11 @@ mod handlers {
 
     pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
-    mod add_custom_impl;
     mod add_explicit_type;
     mod add_missing_impl_members;
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
-    mod change_return_type_to_result;
     mod change_visibility;
     mod convert_integer_literal;
     mod early_return;
@@ -157,6 +155,7 @@ mod handlers {
     mod remove_mut;
     mod remove_unused_param;
     mod reorder_fields;
+    mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
     mod replace_impl_trait_with_generic;
     mod replace_let_with_if_let;
@@ -165,16 +164,15 @@ mod handlers {
     mod replace_unwrap_with_match;
     mod split_import;
     mod unwrap_block;
+    mod wrap_return_type_in_result;
 
     pub(crate) fn all() -> &'static [Handler] {
         &[
             // These are alphabetic for the foolish consistency
-            add_custom_impl::add_custom_impl,
             add_explicit_type::add_explicit_type,
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
-            change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             convert_integer_literal::convert_integer_literal,
             early_return::convert_to_guarded_return,
@@ -208,6 +206,7 @@ mod handlers {
             remove_mut::remove_mut,
             remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,
+            replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
@@ -215,6 +214,7 @@ mod handlers {
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
             unwrap_block::unwrap_block,
+            wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
