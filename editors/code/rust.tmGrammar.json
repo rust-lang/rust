@@ -307,9 +307,14 @@
         "block-comments": {
             "patterns": [
                 {
-                    "comment": "block comments",
+                    "comment": "empty block comments",
                     "name": "comment.block.rust",
-                    "begin": "/\\*(?!\\*)",
+                    "match": "/\\*\\*/"
+                },
+                {
+                    "comment": "block documentation comments",
+                    "name": "comment.block.documentation.rust",
+                    "begin": "/\\*\\*",
                     "end": "\\*/",
                     "patterns": [
                         {
@@ -318,9 +323,9 @@
                     ]
                 },
                 {
-                    "comment": "block documentation comments",
-                    "name": "comment.block.documentation.rust",
-                    "begin": "/\\*\\*",
+                    "comment": "block comments",
+                    "name": "comment.block.rust",
+                    "begin": "/\\*(?!\\*)",
                     "end": "\\*/",
                     "patterns": [
                         {
