@@ -12,16 +12,16 @@ else
     $run --release
     $run --features c
     $run --features c --release
-    $run --features asm
-    $run --features asm --release
+    $run --features no-asm
+    $run --features no-asm --release
 fi
 
 cargo build --target $1
 cargo build --target $1 --release
 cargo build --target $1 --features c
 cargo build --target $1 --release --features c
-cargo build --target $1 --features asm
-cargo build --target $1 --release --features asm
+cargo build --target $1 --features no-asm
+cargo build --target $1 --release --features no-asm
 
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in

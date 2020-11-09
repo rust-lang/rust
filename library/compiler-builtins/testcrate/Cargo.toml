@@ -28,8 +28,8 @@ utest-cortex-m-qemu = { default-features = false, git = "https://github.com/japa
 utest-macros = { git = "https://github.com/japaric/utest" }
 
 [features]
-default = ["asm", "mangled-names"]
-asm = ["compiler_builtins/asm"]
+default = ["mangled-names"]
 c = ["compiler_builtins/c"]
+no-asm = ["compiler_builtins/no-asm"]
 mem = ["compiler_builtins/mem"]
 mangled-names = ["compiler_builtins/mangled-names"]

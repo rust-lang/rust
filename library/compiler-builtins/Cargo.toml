@@ -40,13 +40,13 @@ panic-handler = { path = 'crates/panic-handler' }
 [features]
 default = ["compiler-builtins"]
 
-# Some algorithms benefit from inline assembly, but some compiler backends do
-# not support it, so inline assembly is only enabled when this flag is set.
-asm = []
-
 # Enable compilation of C code in compiler-rt, filling in some more optimized
 # implementations and also filling in unimplemented intrinsics
 c = ["cc"]
+
+# Workaround for the Cranelift codegen backend. Disables any implementations
+# which use inline assembly and fall back to pure Rust versions (if avalible).
+no-asm = []
 
 # Flag this library as the unstable compiler-builtins lib
 compiler-builtins = []

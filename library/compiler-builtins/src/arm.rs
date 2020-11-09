@@ -1,3 +1,5 @@
+#![cfg(not(feature = "no-asm"))]
+
 use core::intrinsics;
 
 // NOTE This function and the ones below are implemented using assembly because they using a custom

@@ -10,7 +10,10 @@ use core::mem;
 use core::ops::{BitOr, Shl};
 
 // memcpy/memmove/memset have optimized implementations on some architectures
-#[cfg_attr(all(feature = "asm", target_arch = "x86_64"), path = "x86_64.rs")]
+#[cfg_attr(
+    all(not(feature = "no-asm"), target_arch = "x86_64"),
+    path = "x86_64.rs"
+)]
 mod impls;
 
 #[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]

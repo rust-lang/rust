@@ -115,7 +115,7 @@ fn u64_by_u64_div_rem(duo: u64, div: u64) -> (u64, u64) {
 // microarchitecture can multiply and divide. We decide to be optimistic and assume `trifecta` is
 // faster if the target pointer width is at least 64.
 #[cfg(all(
-    not(all(feature = "asm", target_arch = "x86_64")),
+    not(all(not(feature = "no-asm"), target_arch = "x86_64")),
     not(any(target_pointer_width = "16", target_pointer_width = "32"))
 ))]
 impl_trifecta!(
@@ -131,7 +131,7 @@ impl_trifecta!(
 // If the pointer width less than 64, then the target architecture almost certainly does not have
 // the fast 64 to 128 bit widening multiplication needed for `trifecta` to be faster.
 #[cfg(all(
-    not(all(feature = "asm", target_arch = "x86_64")),
+    not(all(not(feature = "no-asm"), target_arch = "x86_64")),
     any(target_pointer_width = "16", target_pointer_width = "32")
 ))]
 impl_delegate!(
@@ -152,7 +152,7 @@ impl_delegate!(
 ///
 /// If the quotient does not fit in a `u64`, a floating point exception occurs.
 /// If `div == 0`, then a division by zero exception occurs.
-#[cfg(all(feature = "asm", target_arch = "x86_64"))]
+#[cfg(all(not(feature = "no-asm"), target_arch = "x86_64"))]
 #[inline]
 unsafe fn u128_by_u64_div_rem(duo: u128, div: u64) -> (u64, u64) {
     let duo_lo = duo as u64;
@@ -174,7 +174,7 @@ unsafe fn u128_by_u64_div_rem(duo: u128, div: u64) -> (u64, u64) {
 }
 
 // use `asymmetric` instead of `trifecta` on x86_64
-#[cfg(all(feature = "asm", target_arch = "x86_64"))]
+#[cfg(all(not(feature = "no-asm"), target_arch = "x86_64"))]
 impl_asymmetric!(
     u128_div_rem,
     zero_div_fn,
@@ -203,7 +203,7 @@ fn u32_by_u32_div_rem(duo: u32, div: u32) -> (u32, u32) {
 // When not on x86 and the pointer width is not 64, use `delegate` since the division size is larger
 // than register size.
 #[cfg(all(
-    not(all(feature = "asm", target_arch = "x86")),
+    not(all(not(feature = "no-asm"), target_arch = "x86")),
     not(target_pointer_width = "64")
 ))]
 impl_delegate!(
@@ -220,7 +220,7 @@ impl_delegate!(
 
 // When not on x86 and the pointer width is 64, use `binary_long`.
 #[cfg(all(
-    not(all(feature = "asm", target_arch = "x86")),
+    not(all(not(feature = "no-asm"), target_arch = "x86")),
     target_pointer_width = "64"
 ))]
 impl_binary_long!(
@@ -238,7 +238,7 @@ impl_binary_long!(
 ///
 /// If the quotient does not fit in a `u32`, a floating point exception occurs.
 /// If `div == 0`, then a division by zero exception occurs.
-#[cfg(all(feature = "asm", target_arch = "x86"))]
+#[cfg(all(not(feature = "no-asm"), target_arch = "x86"))]
 #[inline]
 unsafe fn u64_by_u32_div_rem(duo: u64, div: u32) -> (u32, u32) {
     let duo_lo = duo as u32;
@@ -260,7 +260,7 @@ unsafe fn u64_by_u32_div_rem(duo: u64, div: u32) -> (u32, u32) {
 }
 
 // use `asymmetric` instead of `delegate` on x86
-#[cfg(all(feature = "asm", target_arch = "x86"))]
+#[cfg(all(not(feature = "no-asm"), target_arch = "x86"))]
 impl_asymmetric!(
     u64_div_rem,
     zero_div_fn,
