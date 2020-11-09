@@ -463,3 +463,10 @@ impl RawFrame {
         }
     }
 }
+
+impl<'a> AsRef<[BacktraceFrame]> for Frames<'a> {
+    fn as_ref(&self) -> &[BacktraceFrame] {
+        &self.inner
+    }
+}
+
