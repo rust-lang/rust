@@ -128,4 +128,37 @@ fn main() { foo(9, 2) }
 "#,
         );
     }
+
+    #[test]
+    fn remove_across_files() {
+        check_assist(
+            remove_unused_param,
+            r#"
+//- /main.rs
+fn foo(x: i32, <|>y: i32) { x; }
+
+mod foo;
+
+//- /foo.rs
+use super::foo;
+
+fn bar() {
+    let _ = foo(1, 2);
+}
+"#,
+            r#"
+//- /main.rs
+fn foo(x: i32) { x; }
+
+mod foo;
+
+//- /foo.rs
+use super::foo;
+
+fn bar() {
+    let _ = foo(1);
+}
+"#,
+        )
+    }
 }
