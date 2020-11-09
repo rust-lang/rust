@@ -281,14 +281,18 @@ mod tests {
     fn wrap_return_type_in_result_simple() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i3<|>2 {
-                let test = "test";
-                return 42i32;
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                return Ok(42i32);
-            }"#,
+            r#"
+fn foo() -> i3<|>2 {
+    let test = "test";
+    return 42i32;
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let test = "test";
+    return Ok(42i32);
+}
+"#,
         );
     }
 
@@ -296,18 +300,22 @@ mod tests {
     fn wrap_return_type_in_result_simple_closure() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() {
-                || -> i32<|> {
-                    let test = "test";
-                    return 42i32;
-                };
-            }"#,
-            r#"fn foo() {
-                || -> Result<i32, ${0:_}> {
-                    let test = "test";
-                    return Ok(42i32);
-                };
-            }"#,
+            r#"
+fn foo() {
+    || -> i32<|> {
+        let test = "test";
+        return 42i32;
+    };
+}
+"#,
+            r#"
+fn foo() {
+    || -> Result<i32, ${0:_}> {
+        let test = "test";
+        return Ok(42i32);
+    };
+}
+"#,
         );
     }
 
@@ -315,10 +323,12 @@ mod tests {
     fn wrap_return_type_in_result_simple_return_type_bad_cursor() {
         check_assist_not_applicable(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32 {
-                let test = "test";<|>
-                return 42i32;
-            }"#,
+            r#"
+fn foo() -> i32 {
+    let test = "test";<|>
+    return 42i32;
+}
+"#,
         );
     }
 
@@ -326,33 +336,32 @@ mod tests {
     fn wrap_return_type_in_result_simple_return_type_bad_cursor_closure() {
         check_assist_not_applicable(
             wrap_return_type_in_result,
-            r#"fn foo() {
-                || -> i32 {
-                    let test = "test";<|>
-                    return 42i32;
-                };
-            }"#,
+            r#"
+fn foo() {
+    || -> i32 {
+        let test = "test";<|>
+        return 42i32;
+    };
+}
+"#,
         );
     }
 
     #[test]
     fn wrap_return_type_in_result_closure_non_block() {
-        check_assist_not_applicable(
-            wrap_return_type_in_result,
-            r#"fn foo() {
-                || -> i<|>32 3;
-            }"#,
-        );
+        check_assist_not_applicable(wrap_return_type_in_result, r#"fn foo() { || -> i<|>32 3; }"#);
     }
 
     #[test]
     fn wrap_return_type_in_result_simple_return_type_already_result_std() {
         check_assist_not_applicable(
             wrap_return_type_in_result,
-            r#"fn foo() -> std::result::Result<i32<|>, String> {
-                let test = "test";
-                return 42i32;
-            }"#,
+            r#"
+fn foo() -> std::result::Result<i32<|>, String> {
+    let test = "test";
+    return 42i32;
+}
+"#,
         );
     }
 
@@ -361,10 +370,12 @@ mod tests {
         mark::check!(wrap_return_type_in_result_simple_return_type_already_result);
         check_assist_not_applicable(
             wrap_return_type_in_result,
-            r#"fn foo() -> Result<i32<|>, String> {
-                let test = "test";
-                return 42i32;
-            }"#,
+            r#"
+fn foo() -> Result<i32<|>, String> {
+    let test = "test";
+    return 42i32;
+}
+"#,
         );
     }
 
@@ -372,12 +383,14 @@ mod tests {
     fn wrap_return_type_in_result_simple_return_type_already_result_closure() {
         check_assist_not_applicable(
             wrap_return_type_in_result,
-            r#"fn foo() {
-                || -> Result<i32<|>, String> {
-                    let test = "test";
-                    return 42i32;
-                };
-            }"#,
+            r#"
+fn foo() {
+    || -> Result<i32<|>, String> {
+        let test = "test";
+        return 42i32;
+    };
+}
+"#,
         );
     }
 
@@ -385,14 +398,18 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_cursor() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> <|>i32 {
-                let test = "test";
-                return 42i32;
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                return Ok(42i32);
-            }"#,
+            r#"
+fn foo() -> <|>i32 {
+    let test = "test";
+    return 42i32;
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let test = "test";
+    return Ok(42i32);
+}
+"#,
         );
     }
 
@@ -400,14 +417,18 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -><|> i32 {
-                let test = "test";
-                42i32
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                Ok(42i32)
-            }"#,
+            r#"
+fn foo() -><|> i32 {
+    let test = "test";
+    42i32
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let test = "test";
+    Ok(42i32)
+}
+"#,
         );
     }
 
@@ -415,18 +436,22 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail_closure() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() {
-                || -><|> i32 {
-                    let test = "test";
-                    42i32
-                };
-            }"#,
-            r#"fn foo() {
-                || -> Result<i32, ${0:_}> {
-                    let test = "test";
-                    Ok(42i32)
-                };
-            }"#,
+            r#"
+fn foo() {
+    || -><|> i32 {
+        let test = "test";
+        42i32
+    };
+}
+"#,
+            r#"
+fn foo() {
+    || -> Result<i32, ${0:_}> {
+        let test = "test";
+        Ok(42i32)
+    };
+}
+"#,
         );
     }
 
@@ -434,12 +459,8 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail_only() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                42i32
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                Ok(42i32)
-            }"#,
+            r#"fn foo() -> i32<|> { 42i32 }"#,
+            r#"fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }"#,
         );
     }
 
@@ -447,20 +468,24 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail_block_like() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                if true {
-                    42i32
-                } else {
-                    24i32
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                if true {
-                    Ok(42i32)
-                } else {
-                    Ok(24i32)
-                }
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    if true {
+        42i32
+    } else {
+        24i32
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    if true {
+        Ok(42i32)
+    } else {
+        Ok(24i32)
+    }
+}
+"#,
         );
     }
 
@@ -468,24 +493,28 @@ mod tests {
     fn wrap_return_type_in_result_simple_without_block_closure() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() {
-                || -> i32<|> {
-                    if true {
-                        42i32
-                    } else {
-                        24i32
-                    }
-                };
-            }"#,
-            r#"fn foo() {
-                || -> Result<i32, ${0:_}> {
-                    if true {
-                        Ok(42i32)
-                    } else {
-                        Ok(24i32)
-                    }
-                };
-            }"#,
+            r#"
+fn foo() {
+    || -> i32<|> {
+        if true {
+            42i32
+        } else {
+            24i32
+        }
+    };
+}
+"#,
+            r#"
+fn foo() {
+    || -> Result<i32, ${0:_}> {
+        if true {
+            Ok(42i32)
+        } else {
+            Ok(24i32)
+        }
+    };
+}
+"#,
         );
     }
 
@@ -493,28 +522,32 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_nested_if() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                if true {
-                    if false {
-                        1
-                    } else {
-                        2
-                    }
-                } else {
-                    24i32
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                if true {
-                    if false {
-                        Ok(1)
-                    } else {
-                        Ok(2)
-                    }
-                } else {
-                    Ok(24i32)
-                }
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    if true {
+        if false {
+            1
+        } else {
+            2
+        }
+    } else {
+        24i32
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    if true {
+        if false {
+            Ok(1)
+        } else {
+            Ok(2)
+        }
+    } else {
+        Ok(24i32)
+    }
+}
+"#,
         );
     }
 
@@ -522,28 +555,32 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_await() {
         check_assist(
             wrap_return_type_in_result,
-            r#"async fn foo() -> i<|>32 {
-                if true {
-                    if false {
-                        1.await
-                    } else {
-                        2.await
-                    }
-                } else {
-                    24i32.await
-                }
-            }"#,
-            r#"async fn foo() -> Result<i32, ${0:_}> {
-                if true {
-                    if false {
-                        Ok(1.await)
-                    } else {
-                        Ok(2.await)
-                    }
-                } else {
-                    Ok(24i32.await)
-                }
-            }"#,
+            r#"
+async fn foo() -> i<|>32 {
+    if true {
+        if false {
+            1.await
+        } else {
+            2.await
+        }
+    } else {
+        24i32.await
+    }
+}
+"#,
+            r#"
+async fn foo() -> Result<i32, ${0:_}> {
+    if true {
+        if false {
+            Ok(1.await)
+        } else {
+            Ok(2.await)
+        }
+    } else {
+        Ok(24i32.await)
+    }
+}
+"#,
         );
     }
 
@@ -551,12 +588,8 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_array() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> [i32;<|> 3] {
-                [1, 2, 3]
-            }"#,
-            r#"fn foo() -> Result<[i32; 3], ${0:_}> {
-                Ok([1, 2, 3])
-            }"#,
+            r#"fn foo() -> [i32;<|> 3] { [1, 2, 3] }"#,
+            r#"fn foo() -> Result<[i32; 3], ${0:_}> { Ok([1, 2, 3]) }"#,
         );
     }
 
@@ -564,28 +597,32 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_cast() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -<|>> i32 {
-                if true {
-                    if false {
-                        1 as i32
-                    } else {
-                        2 as i32
-                    }
-                } else {
-                    24 as i32
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                if true {
-                    if false {
-                        Ok(1 as i32)
-                    } else {
-                        Ok(2 as i32)
-                    }
-                } else {
-                    Ok(24 as i32)
-                }
-            }"#,
+            r#"
+fn foo() -<|>> i32 {
+    if true {
+        if false {
+            1 as i32
+        } else {
+            2 as i32
+        }
+    } else {
+        24 as i32
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    if true {
+        if false {
+            Ok(1 as i32)
+        } else {
+            Ok(2 as i32)
+        }
+    } else {
+        Ok(24 as i32)
+    }
+}
+"#,
         );
     }
 
@@ -593,20 +630,24 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail_block_like_match() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let my_var = 5;
-                match my_var {
-                    5 => 42i32,
-                    _ => 24i32,
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let my_var = 5;
-                match my_var {
-                    5 => Ok(42i32),
-                    _ => Ok(24i32),
-                }
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let my_var = 5;
+    match my_var {
+        5 => 42i32,
+        _ => 24i32,
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let my_var = 5;
+    match my_var {
+        5 => Ok(42i32),
+        _ => Ok(24i32),
+    }
+}
+"#,
         );
     }
 
@@ -614,24 +655,26 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_loop_with_tail() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let my_var = 5;
-                loop {
-                    println!("test");
-                    5
-                }
-
-                my_var
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let my_var = 5;
-                loop {
-                    println!("test");
-                    5
-                }
-
-                Ok(my_var)
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let my_var = 5;
+    loop {
+        println!("test");
+        5
+    }
+    my_var
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let my_var = 5;
+    loop {
+        println!("test");
+        5
+    }
+    Ok(my_var)
+}
+"#,
         );
     }
 
@@ -639,20 +682,22 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_loop_in_let_stmt() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let my_var = let x = loop {
-                    break 1;
-                };
-
-                my_var
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let my_var = let x = loop {
-                    break 1;
-                };
-
-                Ok(my_var)
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let my_var = let x = loop {
+        break 1;
+    };
+    my_var
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let my_var = let x = loop {
+        break 1;
+    };
+    Ok(my_var)
+}
+"#,
         );
     }
 
@@ -660,48 +705,52 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail_block_like_match_return_expr() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let my_var = 5;
-                let res = match my_var {
-                    5 => 42i32,
-                    _ => return 24i32,
-                };
-
-                res
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let my_var = 5;
-                let res = match my_var {
-                    5 => 42i32,
-                    _ => return Ok(24i32),
-                };
-
-                Ok(res)
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let my_var = 5;
+    let res = match my_var {
+        5 => 42i32,
+        _ => return 24i32,
+    };
+    res
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let my_var = 5;
+    let res = match my_var {
+        5 => 42i32,
+        _ => return Ok(24i32),
+    };
+    Ok(res)
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let my_var = 5;
-                let res = if my_var == 5 {
-                    42i32
-                } else {
-                    return 24i32;
-                };
-
-                res
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let my_var = 5;
-                let res = if my_var == 5 {
-                    42i32
-                } else {
-                    return Ok(24i32);
-                };
-
-                Ok(res)
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let my_var = 5;
+    let res = if my_var == 5 {
+        42i32
+    } else {
+        return 24i32;
+    };
+    res
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let my_var = 5;
+    let res = if my_var == 5 {
+        42i32
+    } else {
+        return Ok(24i32);
+    };
+    Ok(res)
+}
+"#,
         );
     }
 
@@ -709,44 +758,48 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail_block_like_match_deeper() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let my_var = 5;
-                match my_var {
-                    5 => {
-                        if true {
-                            42i32
-                        } else {
-                            25i32
-                        }
-                    },
-                    _ => {
-                        let test = "test";
-                        if test == "test" {
-                            return bar();
-                        }
-                        53i32
-                    },
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let my_var = 5;
-                match my_var {
-                    5 => {
-                        if true {
-                            Ok(42i32)
-                        } else {
-                            Ok(25i32)
-                        }
-                    },
-                    _ => {
-                        let test = "test";
-                        if test == "test" {
-                            return Ok(bar());
-                        }
-                        Ok(53i32)
-                    },
-                }
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let my_var = 5;
+    match my_var {
+        5 => {
+            if true {
+                42i32
+            } else {
+                25i32
+            }
+        },
+        _ => {
+            let test = "test";
+            if test == "test" {
+                return bar();
+            }
+            53i32
+        },
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let my_var = 5;
+    match my_var {
+        5 => {
+            if true {
+                Ok(42i32)
+            } else {
+                Ok(25i32)
+            }
+        },
+        _ => {
+            let test = "test";
+            if test == "test" {
+                return Ok(bar());
+            }
+            Ok(53i32)
+        },
+    }
+}
+"#,
         );
     }
 
@@ -754,20 +807,24 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_tail_block_like_early_return() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i<|>32 {
-                let test = "test";
-                if test == "test" {
-                    return 24i32;
-                }
-                53i32
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                if test == "test" {
-                    return Ok(24i32);
-                }
-                Ok(53i32)
-            }"#,
+            r#"
+fn foo() -> i<|>32 {
+    let test = "test";
+    if test == "test" {
+        return 24i32;
+    }
+    53i32
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let test = "test";
+    if test == "test" {
+        return Ok(24i32);
+    }
+    Ok(53i32)
+}
+"#,
         );
     }
 
@@ -775,45 +832,40 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_closure() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo(the_field: u32) -><|> u32 {
-                let true_closure = || {
-                    return true;
-                };
-                if the_field < 5 {
-                    let mut i = 0;
-
-
-                    if true_closure() {
-                        return 99;
-                    } else {
-                        return 0;
-                    }
-                }
-
-                the_field
-            }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
-                let true_closure = || {
-                    return true;
-                };
-                if the_field < 5 {
-                    let mut i = 0;
-
-
-                    if true_closure() {
-                        return Ok(99);
-                    } else {
-                        return Ok(0);
-                    }
-                }
-
-                Ok(the_field)
-            }"#,
+            r#"
+fn foo(the_field: u32) -><|> u32 {
+    let true_closure = || { return true; };
+    if the_field < 5 {
+        let mut i = 0;
+        if true_closure() {
+            return 99;
+        } else {
+            return 0;
+        }
+    }
+    the_field
+}
+"#,
+            r#"
+fn foo(the_field: u32) -> Result<u32, ${0:_}> {
+    let true_closure = || { return true; };
+    if the_field < 5 {
+        let mut i = 0;
+        if true_closure() {
+            return Ok(99);
+        } else {
+            return Ok(0);
+        }
+    }
+    Ok(the_field)
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo(the_field: u32) -> u32<|> {
+            r#"
+            fn foo(the_field: u32) -> u32<|> {
                 let true_closure = || {
                     return true;
                 };
@@ -830,8 +882,10 @@ mod tests {
                 let t = None;
 
                 t.unwrap_or_else(|| the_field)
-            }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
+            }
+            "#,
+            r#"
+            fn foo(the_field: u32) -> Result<u32, ${0:_}> {
                 let true_closure = || {
                     return true;
                 };
@@ -848,7 +902,8 @@ mod tests {
                 let t = None;
 
                 Ok(t.unwrap_or_else(|| the_field))
-            }"#,
+            }
+            "#,
         );
     }
 
@@ -856,236 +911,248 @@ mod tests {
     fn wrap_return_type_in_result_simple_with_weird_forms() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let test = "test";
-                if test == "test" {
-                    return 24i32;
-                }
-                let mut i = 0;
-                loop {
-                    if i == 1 {
-                        break 55;
-                    }
-                    i += 1;
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                if test == "test" {
-                    return Ok(24i32);
-                }
-                let mut i = 0;
-                loop {
-                    if i == 1 {
-                        break Ok(55);
-                    }
-                    i += 1;
-                }
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let test = "test";
+    if test == "test" {
+        return 24i32;
+    }
+    let mut i = 0;
+    loop {
+        if i == 1 {
+            break 55;
+        }
+        i += 1;
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let test = "test";
+    if test == "test" {
+        return Ok(24i32);
+    }
+    let mut i = 0;
+    loop {
+        if i == 1 {
+            break Ok(55);
+        }
+        i += 1;
+    }
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> {
-                let test = "test";
-                if test == "test" {
-                    return 24i32;
-                }
-                let mut i = 0;
-                loop {
-                    loop {
-                        if i == 1 {
-                            break 55;
-                        }
-                        i += 1;
-                    }
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                if test == "test" {
-                    return Ok(24i32);
-                }
-                let mut i = 0;
-                loop {
-                    loop {
-                        if i == 1 {
-                            break Ok(55);
-                        }
-                        i += 1;
-                    }
-                }
-            }"#,
+            r#"
+fn foo() -> i32<|> {
+    let test = "test";
+    if test == "test" {
+        return 24i32;
+    }
+    let mut i = 0;
+    loop {
+        loop {
+            if i == 1 {
+                break 55;
+            }
+            i += 1;
+        }
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let test = "test";
+    if test == "test" {
+        return Ok(24i32);
+    }
+    let mut i = 0;
+    loop {
+        loop {
+            if i == 1 {
+                break Ok(55);
+            }
+            i += 1;
+        }
+    }
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i3<|>2 {
-                let test = "test";
-                let other = 5;
-                if test == "test" {
-                    let res = match other {
-                        5 => 43,
-                        _ => return 56,
-                    };
-                }
-                let mut i = 0;
-                loop {
-                    loop {
-                        if i == 1 {
-                            break 55;
-                        }
-                        i += 1;
-                    }
-                }
-            }"#,
-            r#"fn foo() -> Result<i32, ${0:_}> {
-                let test = "test";
-                let other = 5;
-                if test == "test" {
-                    let res = match other {
-                        5 => 43,
-                        _ => return Ok(56),
-                    };
-                }
-                let mut i = 0;
-                loop {
-                    loop {
-                        if i == 1 {
-                            break Ok(55);
-                        }
-                        i += 1;
-                    }
-                }
-            }"#,
+            r#"
+fn foo() -> i3<|>2 {
+    let test = "test";
+    let other = 5;
+    if test == "test" {
+        let res = match other {
+            5 => 43,
+            _ => return 56,
+        };
+    }
+    let mut i = 0;
+    loop {
+        loop {
+            if i == 1 {
+                break 55;
+            }
+            i += 1;
+        }
+    }
+}
+"#,
+            r#"
+fn foo() -> Result<i32, ${0:_}> {
+    let test = "test";
+    let other = 5;
+    if test == "test" {
+        let res = match other {
+            5 => 43,
+            _ => return Ok(56),
+        };
+    }
+    let mut i = 0;
+    loop {
+        loop {
+            if i == 1 {
+                break Ok(55);
+            }
+            i += 1;
+        }
+    }
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo(the_field: u32) -> u32<|> {
-                if the_field < 5 {
-                    let mut i = 0;
-                    loop {
-                        if i > 5 {
-                            return 55u32;
-                        }
-                        i += 3;
-                    }
-
-                    match i {
-                        5 => return 99,
-                        _ => return 0,
-                    };
-                }
-
-                the_field
-            }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
-                if the_field < 5 {
-                    let mut i = 0;
-                    loop {
-                        if i > 5 {
-                            return Ok(55u32);
-                        }
-                        i += 3;
-                    }
-
-                    match i {
-                        5 => return Ok(99),
-                        _ => return Ok(0),
-                    };
-                }
-
-                Ok(the_field)
-            }"#,
+            r#"
+fn foo(the_field: u32) -> u32<|> {
+    if the_field < 5 {
+        let mut i = 0;
+        loop {
+            if i > 5 {
+                return 55u32;
+            }
+            i += 3;
+        }
+        match i {
+            5 => return 99,
+            _ => return 0,
+        };
+    }
+    the_field
+}
+"#,
+            r#"
+fn foo(the_field: u32) -> Result<u32, ${0:_}> {
+    if the_field < 5 {
+        let mut i = 0;
+        loop {
+            if i > 5 {
+                return Ok(55u32);
+            }
+            i += 3;
+        }
+        match i {
+            5 => return Ok(99),
+            _ => return Ok(0),
+        };
+    }
+    Ok(the_field)
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo(the_field: u32) -> u3<|>2 {
-                if the_field < 5 {
-                    let mut i = 0;
-
-                    match i {
-                        5 => return 99,
-                        _ => return 0,
-                    }
-                }
-
-                the_field
-            }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
-                if the_field < 5 {
-                    let mut i = 0;
-
-                    match i {
-                        5 => return Ok(99),
-                        _ => return Ok(0),
-                    }
-                }
-
-                Ok(the_field)
-            }"#,
+            r#"
+fn foo(the_field: u32) -> u3<|>2 {
+    if the_field < 5 {
+        let mut i = 0;
+        match i {
+            5 => return 99,
+            _ => return 0,
+        }
+    }
+    the_field
+}
+"#,
+            r#"
+fn foo(the_field: u32) -> Result<u32, ${0:_}> {
+    if the_field < 5 {
+        let mut i = 0;
+        match i {
+            5 => return Ok(99),
+            _ => return Ok(0),
+        }
+    }
+    Ok(the_field)
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo(the_field: u32) -> u32<|> {
-                if the_field < 5 {
-                    let mut i = 0;
-
-                    if i == 5 {
-                        return 99
-                    } else {
-                        return 0
-                    }
-                }
-
-                the_field
-            }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
-                if the_field < 5 {
-                    let mut i = 0;
-
-                    if i == 5 {
-                        return Ok(99)
-                    } else {
-                        return Ok(0)
-                    }
-                }
-
-                Ok(the_field)
-            }"#,
+            r#"
+fn foo(the_field: u32) -> u32<|> {
+    if the_field < 5 {
+        let mut i = 0;
+        if i == 5 {
+            return 99
+        } else {
+            return 0
+        }
+    }
+    the_field
+}
+"#,
+            r#"
+fn foo(the_field: u32) -> Result<u32, ${0:_}> {
+    if the_field < 5 {
+        let mut i = 0;
+        if i == 5 {
+            return Ok(99)
+        } else {
+            return Ok(0)
+        }
+    }
+    Ok(the_field)
+}
+"#,
         );
 
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo(the_field: u32) -> <|>u32 {
-                if the_field < 5 {
-                    let mut i = 0;
-
-                    if i == 5 {
-                        return 99;
-                    } else {
-                        return 0;
-                    }
-                }
-
-                the_field
-            }"#,
-            r#"fn foo(the_field: u32) -> Result<u32, ${0:_}> {
-                if the_field < 5 {
-                    let mut i = 0;
-
-                    if i == 5 {
-                        return Ok(99);
-                    } else {
-                        return Ok(0);
-                    }
-                }
-
-                Ok(the_field)
-            }"#,
+            r#"
+fn foo(the_field: u32) -> <|>u32 {
+    if the_field < 5 {
+        let mut i = 0;
+        if i == 5 {
+            return 99;
+        } else {
+            return 0;
+        }
+    }
+    the_field
+}
+"#,
+            r#"
+fn foo(the_field: u32) -> Result<u32, ${0:_}> {
+    if the_field < 5 {
+        let mut i = 0;
+        if i == 5 {
+            return Ok(99);
+        } else {
+            return Ok(0);
+        }
+    }
+    Ok(the_field)
+}
+"#,
         );
     }
 }
