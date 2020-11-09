@@ -32,7 +32,6 @@ use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull, Unique};
-use core::slice;
 
 use crate::alloc::{AllocRef, Global, Layout};
 use crate::boxed::Box;
@@ -120,11 +119,11 @@ struct BoxedNode<K, V> {
 
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Box::into_unique(node).0 }
+        BoxedNode { ptr: Unique::from(Box::leak(node)) }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::from(&mut Box::leak(node).data) }
+        BoxedNode { ptr: Unique::from(Box::leak(node)).cast() }
     }
 
     fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
@@ -189,6 +188,11 @@ impl<K, V> Root<K, V> {
         NodeRef { height: self.height, node: self.node.as_ptr(), _marker: PhantomData }
     }
 
+    /// Packs the reference, aware of type and height, into a type-agnostic pointer.
+    fn into_boxed_node(self) -> BoxedNode<K, V> {
+        self.node
+    }
+
     /// Adds a new internal node with a single edge pointing to the previous root node,
     /// make that new node the root node, and return it. This increases the height by 1
     /// and is the opposite of `pop_internal_level`.
@@ -218,15 +222,16 @@ impl<K, V> Root<K, V> {
     pub fn pop_internal_level(&mut self) {
         assert!(self.height > 0);
 
-        let top = self.node.ptr;
+        let top = BoxedNode::as_ptr(&self.node);
 
         let mut internal_node = unsafe { self.internal_node_as_mut() };
-        self.node = unsafe { internal_node.as_internal_mut().edges[0].assume_init_read() };
+        let internal_node = NodeRef::as_internal_mut(&mut internal_node);
+        self.node = unsafe { internal_node.edges[0].assume_init_read() };
         self.height -= 1;
-        self.node_as_mut().as_leaf_mut().parent = None;
+        self.node_as_mut().clear_parent_link();
 
         unsafe {
-            Global.dealloc(NonNull::from(top).cast(), Layout::new::<InternalNode<K, V>>());
+            Global.dealloc(top.cast(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -236,21 +241,49 @@ impl<K, V> Root<K, V> {
 // internal use of `NodeRef` because we stay completely generic over `K` and `V`.
 // However, whenever a public type wraps `NodeRef`, make sure that it has the
 // correct variance.
+///
 /// A reference to a node.
 ///
 /// This type has a number of parameters that controls how it acts:
-/// - `BorrowType`: This can be `Immut<'a>`, `Mut<'a>` or `ValMut<'a>' for some `'a`
-///    or `Owned`.
-///    When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`,
-///    when this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`,
-///    when this is `ValMut<'a>`, the `NodeRef` acts as immutable with respect
-///    to keys and tree structure, but allows mutable references to values,
-///    and when this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`.
-/// - `K` and `V`: These control what types of things are stored in the nodes.
+/// - `BorrowType`: A dummy type that describes the kind of borrow and carries a lifetime.
+///    - When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`.
+///    - When this is `ValMut<'a>`, the `NodeRef` acts roughly like `&'a Node`
+///      with respect to keys and tree structure, but also allows many
+///      mutable references to values throughout the tree to coexist.
+///    - When this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`,
+///      although insert methods allow a mutable pointer to a value to coexist.
+///    - When this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`,
+///      but does not have a destructor, and must be cleaned up manually.
+/// - `K` and `V`: These are the types of keys and values stored in the nodes.
 /// - `Type`: This can be `Leaf`, `Internal`, or `LeafOrInternal`. When this is
 ///   `Leaf`, the `NodeRef` points to a leaf node, when this is `Internal` the
 ///   `NodeRef` points to an internal node, and when this is `LeafOrInternal` the
 ///   `NodeRef` could be pointing to either type of node.
+///   `Type` is named `NodeType` when used outside `NodeRef`.
+///
+/// Both `BorrowType` and `NodeType` restrict what methods we implement, to
+/// exploit static type safety. There are limitations in the way we can apply
+/// such restrictions:
+/// - For each type parameter, we can only define a method either generically
+///   or for one particular type. For example, we cannot define a method like
+///   `key_at` generically for all `BorrowType`, because we want to return
+///   `&'a K` for most choices of `BorrowType`, but plain `K` for `Owned`.
+///   We cannot define `key_at` once for all types that have a lifetime.
+///   Therefore, we define it only for the least powerful type `Immut<'a>`.
+/// - We cannot get implicit coercion from say `Mut<'a>` to `Immut<'a>`.
+///   Therefore, we have to explicitly call `reborrow` on a more powerfull
+///   `NodeRef` in order to reach a method like `key_at`.
+/// - All methods on `NodeRef` that return some kind of reference, except
+///   `reborrow` and `reborrow_mut`, take `self` by value and not by reference.
+///   This avoids silently returning a second reference somewhere in the tree.
+///   That is irrelevant when `BorrowType` is `Immut<'a>`, but the rule does
+///   no harm because we make those `NodeRef` implicitly `Copy`.
+///   The rule also avoids implicitly returning the lifetime of `&self`,
+///   instead of the lifetime contained in `BorrowType`.
+///   An exception to this rule are the insert functions.
+/// - Given the above, we need a `reborrow_mut` to explicitly copy a `Mut<'a>`
+///   `NodeRef` whenever we want to invoke a method returning an extra reference
+///   somewhere in the tree.
 pub struct NodeRef<BorrowType, K, V, Type> {
     /// The number of levels below the node, a property of the node that cannot be
     /// entirely described by `Type` and that the node does not store itself either.
@@ -277,30 +310,45 @@ unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::Mut<'
 unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::ValMut<'a>, K, V, Type> {}
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> {}
 
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+    /// Unpack a node reference that was packed by `Root::into_boxed_node`.
+    fn from_boxed_node(boxed_node: BoxedNode<K, V>, height: usize) -> Self {
+        NodeRef { height, node: boxed_node.as_ptr(), _marker: PhantomData }
+    }
+}
+
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
-    /// Exposes the data of an internal node for reading.
+    /// Unpack a node reference that was packed as `NodeRef::parent`.
+    fn from_internal(node: NonNull<InternalNode<K, V>>, height: usize) -> Self {
+        debug_assert!(height > 0);
+        NodeRef { height, node: node.cast(), _marker: PhantomData }
+    }
+}
+
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
+    /// Exposes the data of an internal node.
     ///
-    /// Returns a raw ptr to avoid invalidating other references to this node,
-    /// which is possible when BorrowType is marker::ValMut.
-    fn as_internal_ptr(&self) -> *const InternalNode<K, V> {
-        self.node.as_ptr() as *const InternalNode<K, V>
+    /// Returns a raw ptr to avoid invalidating other references to this node.
+    fn as_internal_ptr(this: &Self) -> *mut InternalNode<K, V> {
+        // SAFETY: the static node type is `Internal`.
+        this.node.as_ptr() as *mut InternalNode<K, V>
+    }
+}
+
+impl<'a, K, V> NodeRef<marker::Immut<'a>, K, V, marker::Internal> {
+    /// Exposes the data of an internal node in an immutable tree.
+    fn as_internal(this: &Self) -> &'a InternalNode<K, V> {
+        let ptr = Self::as_internal_ptr(this);
+        // SAFETY: there can be no mutable references into this tree borrowed as `Immut`.
+        unsafe { &*ptr }
     }
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-    /// Exposes the data of an internal node for reading,
-    /// when we know we have exclusive access.
-    fn as_internal(&mut self) -> &InternalNode<K, V> {
-        unsafe { &*self.as_internal_ptr() }
-    }
-}
-
-impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-    /// Exposes the data of an internal node for writing.
-    ///
-    /// We don't need to return a raw ptr because we have unique access to the entire node.
-    fn as_internal_mut(&mut self) -> &mut InternalNode<K, V> {
-        unsafe { &mut *(self.node.as_ptr() as *mut InternalNode<K, V>) }
+    /// Offers exclusive access to the data of an internal node.
+    fn as_internal_mut(this: &mut Self) -> &'a mut InternalNode<K, V> {
+        let ptr = Self::as_internal_ptr(this);
+        unsafe { &mut *ptr }
     }
 }
 
@@ -312,7 +360,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     pub fn len(&self) -> usize {
         // Crucially, we only access the `len` field here. If BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
-        unsafe { usize::from((*self.as_leaf_ptr()).len) }
+        unsafe { usize::from((*Self::as_leaf_ptr(self)).len) }
     }
 
     /// Returns the height of this node with respect to the leaf level. Zero height means the
@@ -322,48 +370,49 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     /// Temporarily takes out another, immutable reference to the same node.
-    fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
+    pub fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
     /// Exposes the leaf portion of any leaf or internal node.
     ///
-    /// Returns a raw ptr to avoid invalidating other references to this node,
-    /// which is possible when BorrowType is marker::ValMut.
-    fn as_leaf_ptr(&self) -> *const LeafNode<K, V> {
+    /// Returns a raw ptr to avoid invalidating other references to this node.
+    fn as_leaf_ptr(this: &Self) -> *mut LeafNode<K, V> {
         // The node must be valid for at least the LeafNode portion.
         // This is not a reference in the NodeRef type because we don't know if
         // it should be unique or shared.
-        self.node.as_ptr()
-    }
-
-    /// Borrows a reference to one of the keys stored in the node.
-    ///
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    pub unsafe fn key_at(&self, idx: usize) -> &K {
-        unsafe { self.reborrow().into_key_at(idx) }
-    }
-
-    /// Borrows a reference to one of the values stored in the node.
-    ///
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    unsafe fn val_at(&self, idx: usize) -> &V {
-        unsafe { self.reborrow().into_val_at(idx) }
+        this.node.as_ptr()
     }
 }
 
-impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
-    /// Borrows a reference to the contents of one of the edges that delimit
-    /// the elements of the node, without invalidating other references.
+impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
+    /// Exposes one of the keys stored in the node.
     ///
     /// # Safety
     /// The node has more than `idx` initialized elements.
-    unsafe fn edge_at(&self, idx: usize) -> &BoxedNode<K, V> {
+    pub unsafe fn key_at(self, idx: usize) -> &'a K {
+        debug_assert!(idx < self.len());
+        unsafe { Self::as_leaf(&self).keys.get_unchecked(idx).assume_init_ref() }
+    }
+
+    /// Exposes one of the values stored in the node.
+    ///
+    /// # Safety
+    /// The node has more than `idx` initialized elements.
+    unsafe fn val_at(self, idx: usize) -> &'a V {
+        debug_assert!(idx < self.len());
+        unsafe { Self::as_leaf(&self).vals.get_unchecked(idx).assume_init_ref() }
+    }
+}
+
+impl<'a, K, V> NodeRef<marker::Immut<'a>, K, V, marker::Internal> {
+    /// Exposes the contents of one of the edges in the node.
+    ///
+    /// # Safety
+    /// The node has more than `idx` initialized elements.
+    unsafe fn edge_at(self, idx: usize) -> &'a BoxedNode<K, V> {
         debug_assert!(idx <= self.len());
-        let node = self.as_internal_ptr();
-        unsafe { (*node).edges.get_unchecked(idx).assume_init_ref() }
+        unsafe { Self::as_internal(&self).edges.get_unchecked(idx).assume_init_ref() }
     }
 }
 
@@ -380,15 +429,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
         // We need to use raw pointers to nodes because, if BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
-        let leaf_ptr = self.as_leaf_ptr();
+        let leaf_ptr: *const _ = Self::as_leaf_ptr(&self);
         unsafe { (*leaf_ptr).parent }
             .as_ref()
             .map(|parent| Handle {
-                node: NodeRef {
-                    height: self.height + 1,
-                    node: parent.cast(),
-                    _marker: PhantomData,
-                },
+                node: NodeRef::from_internal(*parent, self.height + 1),
                 idx: unsafe { usize::from((*leaf_ptr).parent_idx.assume_init()) },
                 _marker: PhantomData,
             })
@@ -420,11 +465,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
-    /// Exposes the data of a leaf node for reading in an immutable tree.
-    fn into_leaf(self) -> &'a LeafNode<K, V> {
-        // SAFETY: we can access the entire node freely and do no need raw pointers,
-        // because there can be no mutable references to this Immut tree.
-        unsafe { &(*self.as_leaf_ptr()) }
+    /// Exposes the leaf portion of any leaf or internal node in an immutable tree.
+    fn as_leaf(this: &Self) -> &'a LeafNode<K, V> {
+        let ptr = Self::as_leaf_ptr(this);
+        // SAFETY: there can be no mutable references into this tree borrowed as `Immut`.
+        unsafe { &*ptr }
     }
 }
 
@@ -473,139 +518,155 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Exposes the leaf portion of any leaf or internal node for writing.
-    ///
-    /// We don't need to return a raw ptr because we have unique access to the entire node.
-    fn as_leaf_mut(&mut self) -> &'a mut LeafNode<K, V> {
-        unsafe { &mut (*self.node.as_ptr()) }
-    }
-
-    /// Borrows a mutable reference to one of the keys stored in the node.
-    ///
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    unsafe fn key_mut_at(&mut self, idx: usize) -> &mut K {
-        unsafe { self.reborrow_mut().into_key_mut_at(idx) }
-    }
-
-    /// Borrows a mutable reference to one of the values stored in the node.
-    ///
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    unsafe fn val_mut_at(&mut self, idx: usize) -> &mut V {
-        unsafe { self.reborrow_mut().into_val_mut_at(idx) }
-    }
-
-    fn keys_mut(&mut self) -> &mut [K]
-    where
-        K: 'a,
-        V: 'a,
-    {
-        // SAFETY: the caller will not be able to call further methods on self
-        // until the key slice reference is dropped, as we have unique access
-        // for the lifetime of the borrow.
-        // SAFETY: The keys of a node must always be initialized up to length.
-        unsafe {
-            slice::from_raw_parts_mut(
-                MaybeUninit::slice_as_mut_ptr(&mut self.as_leaf_mut().keys),
-                self.len(),
-            )
-        }
-    }
-
-    fn vals_mut(&mut self) -> &mut [V]
-    where
-        K: 'a,
-        V: 'a,
-    {
-        // SAFETY: the caller will not be able to call further methods on self
-        // until the value slice reference is dropped, as we have unique access
-        // for the lifetime of the borrow.
-        // SAFETY: The values of a node must always be initialized up to length.
-        unsafe {
-            slice::from_raw_parts_mut(
-                MaybeUninit::slice_as_mut_ptr(&mut self.as_leaf_mut().vals),
-                self.len(),
-            )
-        }
-    }
-}
-
-impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-    fn edges_mut(&mut self) -> &mut [BoxedNode<K, V>] {
-        unsafe {
-            slice::from_raw_parts_mut(
-                MaybeUninit::slice_as_mut_ptr(&mut self.as_internal_mut().edges),
-                self.len() + 1,
-            )
-        }
-    }
-}
-
-impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    unsafe fn into_key_at(self, idx: usize) -> &'a K {
-        unsafe { self.into_leaf().keys.get_unchecked(idx).assume_init_ref() }
-    }
-
-    /// # Safety
-    /// The node has more than `idx` initialized elements.
-    unsafe fn into_val_at(self, idx: usize) -> &'a V {
-        unsafe { self.into_leaf().vals.get_unchecked(idx).assume_init_ref() }
+    /// Offers exclusive access to the leaf portion of any leaf or internal node.
+    fn as_leaf_mut(this: &mut Self) -> &'a mut LeafNode<K, V> {
+        let ptr = Self::as_leaf_ptr(this);
+        // SAFETY: we have exclusive access to the entire node.
+        unsafe { &mut *ptr }
     }
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
+    /// Offers exclusive access to a part of the key storage area.
+    ///
     /// # Safety
     /// The node has more than `idx` initialized elements.
-    unsafe fn into_key_mut_at(mut self, idx: usize) -> &'a mut K {
+    unsafe fn into_key_area_mut_at(mut self, idx: usize) -> &'a mut MaybeUninit<K> {
         debug_assert!(idx < self.len());
-
-        let leaf = self.as_leaf_mut();
-        unsafe { leaf.keys.get_unchecked_mut(idx).assume_init_mut() }
+        unsafe { Self::as_leaf_mut(&mut self).keys.get_unchecked_mut(idx) }
     }
 
+    /// Offers exclusive access to a part of the value storage area.
+    ///
     /// # Safety
     /// The node has more than `idx` initialized elements.
-    unsafe fn into_val_mut_at(mut self, idx: usize) -> &'a mut V {
+    unsafe fn into_val_area_mut_at(mut self, idx: usize) -> &'a mut MaybeUninit<V> {
         debug_assert!(idx < self.len());
+        unsafe { Self::as_leaf_mut(&mut self).vals.get_unchecked_mut(idx) }
+    }
+}
 
-        let leaf = self.as_leaf_mut();
-        unsafe { leaf.vals.get_unchecked_mut(idx).assume_init_mut() }
+impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
+    /// Offers exclusive access to a part of the storage area for edge contents.
+    ///
+    /// # Safety
+    /// The node has at least `idx` initialized elements.
+    unsafe fn into_edge_area_mut_at(mut self, idx: usize) -> &'a mut MaybeUninit<BoxedNode<K, V>> {
+        debug_assert!(idx <= self.len());
+        unsafe { Self::as_internal_mut(&mut self).edges.get_unchecked_mut(idx) }
+    }
+}
+
+impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
+    /// Exposes the entire key storage area in the node,
+    /// regardless of the node's current length,
+    /// having exclusive access to the entire node.
+    unsafe fn key_area(self) -> &'a [MaybeUninit<K>] {
+        Self::as_leaf(&self).keys.as_slice()
+    }
+
+    /// Exposes the entire value storage area in the node,
+    /// regardless of the node's current length,
+    /// having exclusive access to the entire node.
+    unsafe fn val_area(self) -> &'a [MaybeUninit<V>] {
+        Self::as_leaf(&self).vals.as_slice()
+    }
+}
+
+impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::Internal> {
+    /// Exposes the entire storage area for edge contents in the node,
+    /// regardless of the node's current length,
+    /// having exclusive access to the entire node.
+    unsafe fn edge_area(self) -> &'a [MaybeUninit<BoxedNode<K, V>>] {
+        Self::as_internal(&self).edges.as_slice()
+    }
+}
+
+impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
+    /// Offers exclusive access to a sized slice of key storage area in the node.
+    unsafe fn into_key_area_slice(mut self) -> &'a mut [MaybeUninit<K>] {
+        let len = self.len();
+        // SAFETY: the caller will not be able to call further methods on self
+        // until the key slice reference is dropped, as we have unique access
+        // for the lifetime of the borrow.
+        unsafe { Self::as_leaf_mut(&mut self).keys.get_unchecked_mut(..len) }
+    }
+
+    /// Offers exclusive access to a sized slice of value storage area in the node.
+    unsafe fn into_val_area_slice(mut self) -> &'a mut [MaybeUninit<V>] {
+        let len = self.len();
+        // SAFETY: the caller will not be able to call further methods on self
+        // until the value slice reference is dropped, as we have unique access
+        // for the lifetime of the borrow.
+        unsafe { Self::as_leaf_mut(&mut self).vals.get_unchecked_mut(..len) }
+    }
+}
+
+impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
+    /// Offers exclusive access to a sized slice of storage area for edge contents in the node.
+    unsafe fn into_edge_area_slice(mut self) -> &'a mut [MaybeUninit<BoxedNode<K, V>>] {
+        let len = self.len();
+        // SAFETY: the caller will not be able to call further methods on self
+        // until the edge slice reference is dropped, as we have unique access
+        // for the lifetime of the borrow.
+        unsafe { Self::as_internal_mut(&mut self).edges.get_unchecked_mut(..len + 1) }
     }
 }
 
 impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
     /// # Safety
-    /// The node has more than `idx` initialized elements.
-    unsafe fn into_key_val_mut_at(self, idx: usize) -> (&'a K, &'a mut V) {
+    /// - The node has more than `idx` initialized elements.
+    /// - The keys and values of the node must be initialized up to its current length.
+    unsafe fn into_key_val_mut_at(mut self, idx: usize) -> (&'a K, &'a mut V) {
         // We only create a reference to the one element we are interested in,
         // to avoid aliasing with outstanding references to other elements,
         // in particular, those returned to the caller in earlier iterations.
-        let leaf = self.node.as_ptr();
+        let leaf = Self::as_leaf_ptr(&mut self);
         let keys = unsafe { &raw const (*leaf).keys };
         let vals = unsafe { &raw mut (*leaf).vals };
         // We must coerce to unsized array pointers because of Rust issue #74679.
         let keys: *const [_] = keys;
         let vals: *mut [_] = vals;
-        // SAFETY: The keys and values of a node must always be initialized up to length.
         let key = unsafe { (&*keys.get_unchecked(idx)).assume_init_ref() };
         let val = unsafe { (&mut *vals.get_unchecked_mut(idx)).assume_init_mut() };
         (key, val)
     }
 }
 
+impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
+    /// Exposes exclusive access to the length of the node.
+    pub fn into_len_mut(mut self) -> &'a mut u16 {
+        &mut (*Self::as_leaf_mut(&mut self)).len
+    }
+}
+
+impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+    /// Set or clear the node's link to its parent edge,
+    /// without invalidating other references to the node.
+    fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
+        let leaf = Self::as_leaf_ptr(self);
+        unsafe { (*leaf).parent = Some(parent) };
+        unsafe { (*leaf).parent_idx.write(parent_idx as u16) };
+    }
+
+    /// Clear the node's link to its parent edge, freeing it from its tree.
+    /// This only makes sense when there are no other references to the node.
+    fn clear_parent_link(&mut self) {
+        let leaf = Self::as_leaf_mut(self);
+        leaf.parent = None;
+    }
+}
+
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key/value pair to the end of the node.
     pub fn push(&mut self, key: K, val: V) {
-        let len = &mut self.as_leaf_mut().len;
+        let len = unsafe { self.reborrow_mut().into_len_mut() };
         let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
-            ptr::write(self.key_mut_at(idx), key);
-            ptr::write(self.val_mut_at(idx), val);
+            self.reborrow_mut().into_key_area_mut_at(idx).write(key);
+            self.reborrow_mut().into_val_area_mut_at(idx).write(val);
         }
     }
 
@@ -614,10 +675,10 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         assert!(self.len() < CAPACITY);
 
         unsafe {
-            slice_insert(self.keys_mut(), 0, key);
-            slice_insert(self.vals_mut(), 0, val);
+            *self.reborrow_mut().into_len_mut() += 1;
+            slice_insert(self.reborrow_mut().into_key_area_slice(), 0, key);
+            slice_insert(self.reborrow_mut().into_val_area_slice(), 0, val);
         }
-        self.as_leaf_mut().len += 1;
     }
 }
 
@@ -643,14 +704,14 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
         assert!(edge.height == self.height - 1);
 
-        let len = &mut self.as_leaf_mut().len;
+        let len = unsafe { self.reborrow_mut().into_len_mut() };
         let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
-            ptr::write(self.key_mut_at(idx), key);
-            ptr::write(self.val_mut_at(idx), val);
-            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).write(edge.node);
+            self.reborrow_mut().into_key_area_mut_at(idx).write(key);
+            self.reborrow_mut().into_val_area_mut_at(idx).write(val);
+            self.reborrow_mut().into_edge_area_mut_at(idx + 1).write(edge.into_boxed_node());
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
         }
     }
@@ -662,12 +723,11 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         assert!(self.len() < CAPACITY);
 
         unsafe {
-            slice_insert(self.keys_mut(), 0, key);
-            slice_insert(self.vals_mut(), 0, val);
-            slice_insert(self.edges_mut(), 0, edge.node);
+            *self.reborrow_mut().into_len_mut() += 1;
+            slice_insert(self.reborrow_mut().into_key_area_slice(), 0, key);
+            slice_insert(self.reborrow_mut().into_val_area_slice(), 0, val);
+            slice_insert(self.reborrow_mut().into_edge_area_slice(), 0, edge.into_boxed_node());
         }
-
-        self.as_leaf_mut().len += 1;
 
         self.correct_all_childrens_parent_links();
     }
@@ -683,19 +743,21 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         let idx = self.len() - 1;
 
         unsafe {
-            let key = ptr::read(self.key_at(idx));
-            let val = ptr::read(self.val_at(idx));
+            let key = ptr::read(self.reborrow().key_at(idx));
+            let val = ptr::read(self.reborrow().val_at(idx));
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(internal) => {
-                    let edge = ptr::read(internal.edge_at(idx + 1));
-                    let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.node_as_mut().as_leaf_mut().parent = None;
-                    Some(new_root)
+                    let boxed_node = ptr::read(internal.reborrow().edge_at(idx + 1));
+                    let mut edge = Root { node: boxed_node, height: internal.height - 1 };
+                    // In practice, clearing the parent is a waste of time, because we will
+                    // insert the node elsewhere and set its parent link again.
+                    edge.node_as_mut().clear_parent_link();
+                    Some(edge)
                 }
             };
 
-            self.as_leaf_mut().len -= 1;
+            *self.reborrow_mut().into_len_mut() -= 1;
             (key, val, edge)
         }
     }
@@ -709,29 +771,35 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         let old_len = self.len();
 
         unsafe {
-            let key = slice_remove(self.keys_mut(), 0);
-            let val = slice_remove(self.vals_mut(), 0);
+            let key = slice_remove(self.reborrow_mut().into_key_area_slice(), 0);
+            let val = slice_remove(self.reborrow_mut().into_val_area_slice(), 0);
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(mut internal) => {
-                    let edge = slice_remove(internal.edges_mut(), 0);
-                    let mut new_root = Root { node: edge, height: internal.height - 1 };
-                    new_root.node_as_mut().as_leaf_mut().parent = None;
+                    let boxed_node =
+                        slice_remove(internal.reborrow_mut().into_edge_area_slice(), 0);
+                    let mut edge = Root { node: boxed_node, height: internal.height - 1 };
+                    // In practice, clearing the parent is a waste of time, because we will
+                    // insert the node elsewhere and set its parent link again.
+                    edge.node_as_mut().clear_parent_link();
 
                     internal.correct_childrens_parent_links(0..old_len);
 
-                    Some(new_root)
+                    Some(edge)
                 }
             };
 
-            self.as_leaf_mut().len -= 1;
+            *self.reborrow_mut().into_len_mut() -= 1;
 
             (key, val, edge)
         }
     }
 
     fn into_kv_pointers_mut(mut self) -> (*mut K, *mut V) {
-        (self.keys_mut().as_mut_ptr(), self.vals_mut().as_mut_ptr())
+        let leaf = Self::as_leaf_mut(&mut self);
+        let keys = MaybeUninit::slice_as_mut_ptr(&mut leaf.keys);
+        let vals = MaybeUninit::slice_as_mut_ptr(&mut leaf.vals);
+        (keys, vals)
     }
 }
 
@@ -816,7 +884,7 @@ impl<BorrowType, K, V, NodeType> NodeRef<BorrowType, K, V, NodeType> {
     /// Could be a public implementation of PartialEq, but only used in this module.
     fn eq(&self, other: &Self) -> bool {
         let Self { node, height, _marker: _ } = self;
-        if *node == other.node {
+        if node.eq(&other.node) {
             debug_assert_eq!(*height, other.height);
             true
         } else {
@@ -924,11 +992,11 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         debug_assert!(self.node.len() < CAPACITY);
 
         unsafe {
-            slice_insert(self.node.keys_mut(), self.idx, key);
-            slice_insert(self.node.vals_mut(), self.idx, val);
-            self.node.as_leaf_mut().len += 1;
+            *self.node.reborrow_mut().into_len_mut() += 1;
+            slice_insert(self.node.reborrow_mut().into_key_area_slice(), self.idx, key);
+            slice_insert(self.node.reborrow_mut().into_val_area_slice(), self.idx, val);
 
-            self.node.val_mut_at(self.idx)
+            self.node.reborrow_mut().into_val_area_mut_at(self.idx).assume_init_mut()
         }
     }
 }
@@ -964,12 +1032,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
 impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::Edge> {
     /// Fixes the parent pointer and index in the child node below this edge. This is useful
     /// when the ordering of edges has been changed, such as in the various `insert` methods.
-    fn correct_parent_link(mut self) {
-        let idx = self.idx as u16;
-        let ptr = NonNull::new(self.node.as_internal_mut());
+    fn correct_parent_link(self) {
+        // Create backpointer without invalidating other references to the node.
+        let ptr = unsafe { NonNull::new_unchecked(NodeRef::as_internal_ptr(&self.node)) };
+        let idx = self.idx;
         let mut child = self.descend();
-        child.as_leaf_mut().parent = ptr;
-        child.as_leaf_mut().parent_idx.write(idx);
+        child.set_parent_link(ptr, idx);
     }
 }
 
@@ -981,11 +1049,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         debug_assert!(self.node.len() < CAPACITY);
         debug_assert!(edge.height == self.node.height - 1);
 
+        let boxed_node = edge.into_boxed_node();
         unsafe {
-            slice_insert(self.node.keys_mut(), self.idx, key);
-            slice_insert(self.node.vals_mut(), self.idx, val);
-            slice_insert(self.node.edges_mut(), self.idx + 1, edge.node);
-            self.node.as_leaf_mut().len += 1;
+            *self.node.reborrow_mut().into_len_mut() += 1;
+            slice_insert(self.node.reborrow_mut().into_key_area_slice(), self.idx, key);
+            slice_insert(self.node.reborrow_mut().into_val_area_slice(), self.idx, val);
+            slice_insert(self.node.reborrow_mut().into_edge_area_slice(), self.idx + 1, boxed_node);
 
             self.node.correct_childrens_parent_links((self.idx + 1)..=self.node.len());
         }
@@ -1073,28 +1142,25 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
         // node pointer is dereferenced, we access the edges array with a
         // reference (Rust issue #73987) and invalidate any other references
         // to or inside the array, should any be around.
-        let internal_node = self.node.as_internal_ptr();
-        NodeRef {
-            height: self.node.height - 1,
-            node: unsafe { (&*(*internal_node).edges.get_unchecked(self.idx).as_ptr()).as_ptr() },
-            _marker: PhantomData,
-        }
+        let parent_ptr = NodeRef::as_internal_ptr(&self.node);
+        let boxed_node = unsafe { (*parent_ptr).edges.get_unchecked(self.idx).assume_init_read() };
+        NodeRef::from_boxed_node(boxed_node, self.node.height - 1)
     }
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeType>, marker::KV> {
     pub fn into_kv(self) -> (&'a K, &'a V) {
-        (unsafe { self.node.into_key_at(self.idx) }, unsafe { self.node.into_val_at(self.idx) })
+        (unsafe { self.node.key_at(self.idx) }, unsafe { self.node.val_at(self.idx) })
     }
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub fn into_key_mut(self) -> &'a mut K {
-        unsafe { self.node.into_key_mut_at(self.idx) }
+        unsafe { self.node.into_key_area_mut_at(self.idx).assume_init_mut() }
     }
 
     pub fn into_val_mut(self) -> &'a mut V {
-        unsafe { self.node.into_val_mut_at(self.idx) }
+        unsafe { self.node.into_val_area_mut_at(self.idx).assume_init_mut() }
     }
 }
 
@@ -1106,12 +1172,14 @@ impl<'a, K, V, NodeType> Handle<NodeRef<marker::ValMut<'a>, K, V, NodeType>, mar
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub fn kv_mut(&mut self) -> (&mut K, &mut V) {
-        // We cannot call into_key_mut_at and into_val_mut_at, because calling the second one
+        // We cannot call separate key and value methods, because calling the second one
         // invalidates the reference returned by the first.
-        let leaf = self.node.as_leaf_mut();
-        let key = unsafe { leaf.keys.get_unchecked_mut(self.idx).assume_init_mut() };
-        let val = unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() };
-        (key, val)
+        unsafe {
+            let leaf = NodeRef::as_leaf_mut(&mut self.node.reborrow_mut());
+            let key = leaf.keys.get_unchecked_mut(self.idx).assume_init_mut();
+            let val = leaf.vals.get_unchecked_mut(self.idx).assume_init_mut();
+            (key, val)
+        }
     }
 }
 
@@ -1127,23 +1195,23 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
     /// by taking care of leaf data.
     fn split_leaf_data(&mut self, new_node: &mut LeafNode<K, V>) -> (K, V) {
         let new_len = self.split_new_node_len();
+        new_node.len = new_len as u16;
         unsafe {
-            let k = ptr::read(self.node.key_at(self.idx));
-            let v = ptr::read(self.node.val_at(self.idx));
+            let k = ptr::read(self.node.reborrow().key_at(self.idx));
+            let v = ptr::read(self.node.reborrow().val_at(self.idx));
 
             ptr::copy_nonoverlapping(
-                self.node.key_at(self.idx + 1),
-                MaybeUninit::slice_as_mut_ptr(&mut new_node.keys),
+                self.node.reborrow().key_area().as_ptr().add(self.idx + 1),
+                new_node.keys.as_mut_ptr(),
                 new_len,
             );
             ptr::copy_nonoverlapping(
-                self.node.val_at(self.idx + 1),
-                MaybeUninit::slice_as_mut_ptr(&mut new_node.vals),
+                self.node.reborrow().val_area().as_ptr().add(self.idx + 1),
+                new_node.vals.as_mut_ptr(),
                 new_len,
             );
 
-            self.node.as_leaf_mut().len = self.idx as u16;
-            new_node.len = new_len as u16;
+            *self.node.reborrow_mut().into_len_mut() = self.idx as u16;
             (k, v)
         }
     }
@@ -1174,9 +1242,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         mut self,
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         unsafe {
-            let k = slice_remove(self.node.keys_mut(), self.idx);
-            let v = slice_remove(self.node.vals_mut(), self.idx);
-            self.node.as_leaf_mut().len -= 1;
+            let k = slice_remove(self.node.reborrow_mut().into_key_area_slice(), self.idx);
+            let v = slice_remove(self.node.reborrow_mut().into_val_area_slice(), self.idx);
+            *self.node.reborrow_mut().into_len_mut() -= 1;
             ((k, v), self.left_edge())
         }
     }
@@ -1205,11 +1273,11 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     pub fn split(mut self) -> (NodeRef<marker::Mut<'a>, K, V, marker::Internal>, K, V, Root<K, V>) {
         unsafe {
             let mut new_node = Box::new(InternalNode::new());
-            // Move edges out before reducing length:
             let new_len = self.split_new_node_len();
+            // Move edges out before reducing length:
             ptr::copy_nonoverlapping(
-                self.node.edge_at(self.idx + 1),
-                MaybeUninit::slice_as_mut_ptr(&mut new_node.edges),
+                self.node.reborrow().edge_area().as_ptr().add(self.idx + 1),
+                new_node.edges.as_mut_ptr(),
                 new_len + 1,
             );
             let (k, v) = self.split_leaf_data(&mut new_node.data);
@@ -1241,31 +1309,28 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         assert!(left_len + right_len < CAPACITY);
 
         unsafe {
-            ptr::write(
-                left_node.keys_mut().get_unchecked_mut(left_len),
-                slice_remove(self.node.keys_mut(), self.idx),
-            );
+            *left_node.reborrow_mut().into_len_mut() += right_len as u16 + 1;
+
+            let parent_key = slice_remove(self.node.reborrow_mut().into_key_area_slice(), self.idx);
+            left_node.reborrow_mut().into_key_area_mut_at(left_len).write(parent_key);
             ptr::copy_nonoverlapping(
-                right_node.key_at(0),
-                left_node.keys_mut().as_mut_ptr().add(left_len + 1),
-                right_len,
-            );
-            ptr::write(
-                left_node.vals_mut().get_unchecked_mut(left_len),
-                slice_remove(self.node.vals_mut(), self.idx),
-            );
-            ptr::copy_nonoverlapping(
-                right_node.val_at(0),
-                left_node.vals_mut().as_mut_ptr().add(left_len + 1),
+                right_node.reborrow().key_area().as_ptr(),
+                left_node.reborrow_mut().into_key_area_slice().as_mut_ptr().add(left_len + 1),
                 right_len,
             );
 
-            slice_remove(&mut self.node.edges_mut(), self.idx + 1);
+            let parent_val = slice_remove(self.node.reborrow_mut().into_val_area_slice(), self.idx);
+            left_node.reborrow_mut().into_val_area_mut_at(left_len).write(parent_val);
+            ptr::copy_nonoverlapping(
+                right_node.reborrow().val_area().as_ptr(),
+                left_node.reborrow_mut().into_val_area_slice().as_mut_ptr().add(left_len + 1),
+                right_len,
+            );
+
+            slice_remove(&mut self.node.reborrow_mut().into_edge_area_slice(), self.idx + 1);
             let self_len = self.node.len();
             self.node.correct_childrens_parent_links(self.idx + 1..self_len);
-            self.node.as_leaf_mut().len -= 1;
-
-            left_node.as_leaf_mut().len += right_len as u16 + 1;
+            *self.node.reborrow_mut().into_len_mut() -= 1;
 
             if self.node.height > 1 {
                 // SAFETY: the height of the nodes being merged is one below the height
@@ -1273,8 +1338,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 let mut left_node = left_node.cast_to_internal_unchecked();
                 let right_node = right_node.cast_to_internal_unchecked();
                 ptr::copy_nonoverlapping(
-                    right_node.edge_at(0),
-                    left_node.edges_mut().as_mut_ptr().add(left_len + 1),
+                    right_node.reborrow().edge_area().as_ptr(),
+                    left_node.reborrow_mut().into_edge_area_slice().as_mut_ptr().add(left_len + 1),
                     right_len + 1,
                 );
 
@@ -1360,13 +1425,14 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 move_kv(left_kv, new_left_len, parent_kv, 0, 1);
             }
 
-            left_node.as_leaf_mut().len -= count as u16;
-            right_node.as_leaf_mut().len += count as u16;
+            *left_node.reborrow_mut().into_len_mut() -= count as u16;
+            *right_node.reborrow_mut().into_len_mut() += count as u16;
 
             match (left_node.force(), right_node.force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(mut right)) => {
                     // Make room for stolen edges.
-                    let right_edges = right.reborrow_mut().as_internal_mut().edges.as_mut_ptr();
+                    let left = left.reborrow();
+                    let right_edges = right.reborrow_mut().into_edge_area_slice().as_mut_ptr();
                     ptr::copy(right_edges, right_edges.add(count), right_len + 1);
                     right.correct_childrens_parent_links(count..count + right_len + 1);
 
@@ -1415,15 +1481,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 ptr::copy(right_kv.1.add(count), right_kv.1, new_right_len);
             }
 
-            left_node.as_leaf_mut().len += count as u16;
-            right_node.as_leaf_mut().len -= count as u16;
+            *left_node.reborrow_mut().into_len_mut() += count as u16;
+            *right_node.reborrow_mut().into_len_mut() -= count as u16;
 
             match (left_node.force(), right_node.force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(mut right)) => {
-                    move_edges(right.reborrow_mut(), 0, left, left_len + 1, count);
+                    move_edges(right.reborrow(), 0, left, left_len + 1, count);
 
                     // Fix right indexing.
-                    let right_edges = right.reborrow_mut().as_internal_mut().edges.as_mut_ptr();
+                    let right_edges = right.reborrow_mut().into_edge_area_slice().as_mut_ptr();
                     ptr::copy(right_edges.add(count), right_edges, new_right_len + 1);
                     right.correct_childrens_parent_links(0..=new_right_len);
                 }
@@ -1448,16 +1514,16 @@ unsafe fn move_kv<K, V>(
 }
 
 // Source and destination must have the same height.
-unsafe fn move_edges<K, V>(
-    mut source: NodeRef<marker::Mut<'_>, K, V, marker::Internal>,
+unsafe fn move_edges<'a, K: 'a, V: 'a>(
+    source: NodeRef<marker::Immut<'a>, K, V, marker::Internal>,
     source_offset: usize,
-    mut dest: NodeRef<marker::Mut<'_>, K, V, marker::Internal>,
+    mut dest: NodeRef<marker::Mut<'a>, K, V, marker::Internal>,
     dest_offset: usize,
     count: usize,
 ) {
-    let source_ptr = source.as_internal().edges.as_ptr();
-    let dest_ptr = dest.as_internal_mut().edges.as_mut_ptr();
     unsafe {
+        let source_ptr = source.edge_area().as_ptr();
+        let dest_ptr = dest.reborrow_mut().into_edge_area_slice().as_mut_ptr();
         ptr::copy_nonoverlapping(source_ptr.add(source_offset), dest_ptr.add(dest_offset), count);
         dest.correct_childrens_parent_links(dest_offset..dest_offset + count);
     }
@@ -1553,11 +1619,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
 
                 move_kv(left_kv, left_new_len, right_kv, 0, right_new_len);
 
-                left_node.as_leaf_mut().len = left_new_len as u16;
-                right_node.as_leaf_mut().len = right_new_len as u16;
+                *left_node.reborrow_mut().into_len_mut() = left_new_len as u16;
+                *right_node.reborrow_mut().into_len_mut() = right_new_len as u16;
 
                 match (left_node.force(), right_node.force()) {
                     (ForceResult::Internal(left), ForceResult::Internal(right)) => {
+                        let left = left.reborrow();
                         move_edges(left, left_new_len + 1, right, 1, right_new_len);
                     }
                     (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
@@ -1606,20 +1673,33 @@ pub mod marker {
     pub enum Edge {}
 }
 
-unsafe fn slice_insert<T>(slice: &mut [T], idx: usize, val: T) {
+/// Inserts a value into a slice of initialized elements followed by one uninitialized element.
+///
+/// # Safety
+/// The slice has more than `idx` elements.
+unsafe fn slice_insert<T>(slice: &mut [MaybeUninit<T>], idx: usize, val: T) {
     unsafe {
         let len = slice.len();
+        debug_assert!(len > idx);
         let slice_ptr = slice.as_mut_ptr();
-        ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx);
-        ptr::write(slice_ptr.add(idx), val);
+        if len > idx + 1 {
+            ptr::copy(slice_ptr.add(idx), slice_ptr.add(idx + 1), len - idx - 1);
+        }
+        (*slice_ptr.add(idx)).write(val);
     }
 }
 
-unsafe fn slice_remove<T>(slice: &mut [T], idx: usize) -> T {
+/// Removes and returns a value from a slice of all initialized elements, leaving behind one
+/// trailing uninitialized element.
+///
+/// # Safety
+/// The slice has more than `idx` elements.
+unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
     unsafe {
         let len = slice.len();
+        debug_assert!(idx < len);
         let slice_ptr = slice.as_mut_ptr();
-        let ret = ptr::read(slice_ptr.add(idx));
+        let ret = (*slice_ptr.add(idx)).assume_init_read();
         ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
         ret
     }
