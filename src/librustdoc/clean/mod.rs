@@ -1967,10 +1967,15 @@ impl Clean<Span> for rustc_span::Span {
             return Span::empty();
         }
 
+        // Get the macro invocation instead of the definition,
+        // in case the span is result of a macro expansion.
+        // (See rust-lang/rust#39726)
+        let span = self.source_callsite();
+
         let sm = cx.sess().source_map();
-        let filename = sm.span_to_filename(*self);
-        let lo = sm.lookup_char_pos(self.lo());
-        let hi = sm.lookup_char_pos(self.hi());
+        let filename = sm.span_to_filename(span);
+        let lo = sm.lookup_char_pos(span.lo());
+        let hi = sm.lookup_char_pos(span.hi());
         Span {
             filename,
             cnum: lo.file.cnum,
@@ -1978,7 +1983,7 @@ impl Clean<Span> for rustc_span::Span {
             locol: lo.col.to_usize(),
             hiline: hi.line,
             hicol: hi.col.to_usize(),
-            original: *self,
+            original: span,
         }
     }
 }
