@@ -1118,6 +1118,13 @@ vec![
         module: "returns",
     },
     Lint {
+        name: "let_underscore_drop",
+        group: "pedantic",
+        desc: "non-binding let on a type that implements `Drop`",
+        deprecation: None,
+        module: "let_underscore",
+    },
+    Lint {
         name: "let_underscore_lock",
         group: "correctness",
         desc: "non-binding let on a synchronization lock",
