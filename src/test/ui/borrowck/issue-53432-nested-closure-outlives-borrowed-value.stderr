@@ -4,7 +4,7 @@ error: lifetime may not live long enough
 LL |     let _action = move || {
    |                   -------
    |                   |     |
-   |                   |     return type of closure is [closure@$DIR/issue-53432-nested-closure-outlives-borrowed-value.rs:4:9: 4:15]
+   |                   |     return type of closure `[closure@$DIR/issue-53432-nested-closure-outlives-borrowed-value.rs:4:9: 4:15]` contains a lifetime `'2`
    |                   lifetime `'1` represents this closure's body
 LL |         || f() // The `nested` closure
    |         ^^^^^^ returning this value requires that `'1` must outlive `'2`
