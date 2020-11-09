@@ -3,25 +3,6 @@
 use super::check_doc_test;
 
 #[test]
-fn doctest_add_custom_impl() {
-    check_doc_test(
-        "add_custom_impl",
-        r#####"
-#[derive(Deb<|>ug, Display)]
-struct S;
-"#####,
-        r#####"
-#[derive(Display)]
-struct S;
-
-impl Debug for S {
-    $0
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_add_explicit_type() {
     check_doc_test(
         "add_explicit_type",
@@ -827,6 +808,29 @@ const test: Foo = <|>Foo {bar: 0, foo: 1}
         r#####"
 struct Foo {foo: i32, bar: i32};
 const test: Foo = Foo {foo: 1, bar: 0}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_derive_with_manual_impl() {
+    check_doc_test(
+        "replace_derive_with_manual_impl",
+        r#####"
+trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
+#[derive(Deb<|>ug, Display)]
+struct S;
+"#####,
+        r#####"
+trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
+#[derive(Display)]
+struct S;
+
+impl Debug for S {
+    fn fmt(&self, f: &mut Formatter) -> Result<()> {
+        ${0:todo!()}
+    }
+}
 "#####,
     )
 }

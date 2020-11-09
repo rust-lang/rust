@@ -16,24 +16,31 @@ use crate::{
     AssistId, AssistKind,
 };
 
-// Assist: add_custom_impl
+// Assist: replace_derive_with_manual_impl
 //
-// Adds impl block for derived trait.
+// Converts a `derive` impl into a manual one.
 //
 // ```
+// # trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
 // #[derive(Deb<|>ug, Display)]
 // struct S;
 // ```
 // ->
 // ```
+// # trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
 // #[derive(Display)]
 // struct S;
 //
 // impl Debug for S {
-//     $0
+//     fn fmt(&self, f: &mut Formatter) -> Result<()> {
+//         ${0:todo!()}
+//     }
 // }
 // ```
-pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn replace_derive_with_manual_impl(
+    acc: &mut Assists,
+    ctx: &AssistContext,
+) -> Option<()> {
     let attr = ctx.find_node_at_offset::<ast::Attr>()?;
 
     let attr_name = attr
@@ -90,43 +97,49 @@ fn add_assist(
 ) -> Option<()> {
     let target = attr.syntax().text_range();
     let input = attr.token_tree()?;
-    let label = format!("Add custom impl `{}` for `{}`", trait_path, annotated_name);
+    let label = format!("Convert to manual  `impl {} for {}`", trait_path, annotated_name);
     let trait_name = trait_path.segment().and_then(|seg| seg.name_ref())?;
 
-    acc.add(AssistId("add_custom_impl", AssistKind::Refactor), label, target, |builder| {
-        let impl_def_with_items =
-            impl_def_from_trait(&ctx.sema, annotated_name, trait_, trait_path);
-        update_attribute(builder, &input, &trait_name, &attr);
-        match (ctx.config.snippet_cap, impl_def_with_items) {
-            (None, _) => builder.insert(
-                insert_pos,
-                format!("\n\nimpl {} for {} {{\n\n}}", trait_path, annotated_name),
-            ),
-            (Some(cap), None) => builder.insert_snippet(
-                cap,
-                insert_pos,
-                format!("\n\nimpl {} for {} {{\n    $0\n}}", trait_path, annotated_name),
-            ),
-            (Some(cap), Some((impl_def, first_assoc_item))) => {
-                let mut cursor = Cursor::Before(first_assoc_item.syntax());
-                let placeholder;
-                if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
-                        if m.syntax().text() == "todo!()" {
-                            placeholder = m;
-                            cursor = Cursor::Replace(placeholder.syntax());
-                        }
-                    }
-                }
-
-                builder.insert_snippet(
+    acc.add(
+        AssistId("replace_derive_with_manual_impl", AssistKind::Refactor),
+        label,
+        target,
+        |builder| {
+            let impl_def_with_items =
+                impl_def_from_trait(&ctx.sema, annotated_name, trait_, trait_path);
+            update_attribute(builder, &input, &trait_name, &attr);
+            match (ctx.config.snippet_cap, impl_def_with_items) {
+                (None, _) => builder.insert(
+                    insert_pos,
+                    format!("\n\nimpl {} for {} {{\n\n}}", trait_path, annotated_name),
+                ),
+                (Some(cap), None) => builder.insert_snippet(
                     cap,
                     insert_pos,
-                    format!("\n\n{}", render_snippet(cap, impl_def.syntax(), cursor)),
-                )
-            }
-        };
-    })
+                    format!("\n\nimpl {} for {} {{\n    $0\n}}", trait_path, annotated_name),
+                ),
+                (Some(cap), Some((impl_def, first_assoc_item))) => {
+                    let mut cursor = Cursor::Before(first_assoc_item.syntax());
+                    let placeholder;
+                    if let ast::AssocItem::Fn(ref func) = first_assoc_item {
+                        if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
+                        {
+                            if m.syntax().text() == "todo!()" {
+                                placeholder = m;
+                                cursor = Cursor::Replace(placeholder.syntax());
+                            }
+                        }
+                    }
+
+                    builder.insert_snippet(
+                        cap,
+                        insert_pos,
+                        format!("\n\n{}", render_snippet(cap, impl_def.syntax(), cursor)),
+                    )
+                }
+            };
+        },
+    )
 }
 
 fn impl_def_from_trait(
@@ -192,7 +205,7 @@ mod tests {
     #[test]
     fn add_custom_impl_debug() {
         check_assist(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 mod fmt {
     pub struct Error;
@@ -233,7 +246,7 @@ impl fmt::Debug for Foo {
     #[test]
     fn add_custom_impl_all() {
         check_assist(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 mod foo {
     pub trait Bar {
@@ -282,7 +295,7 @@ impl foo::Bar for Foo {
     #[test]
     fn add_custom_impl_for_unique_input() {
         check_assist(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 #[derive(Debu<|>g)]
 struct Foo {
@@ -304,7 +317,7 @@ impl Debug for Foo {
     #[test]
     fn add_custom_impl_for_with_visibility_modifier() {
         check_assist(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 #[derive(Debug<|>)]
 pub struct Foo {
@@ -326,7 +339,7 @@ impl Debug for Foo {
     #[test]
     fn add_custom_impl_when_multiple_inputs() {
         check_assist(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 #[derive(Display, Debug<|>, Serialize)]
 struct Foo {}
@@ -345,7 +358,7 @@ impl Debug for Foo {
     #[test]
     fn test_ignore_derive_macro_without_input() {
         check_assist_not_applicable(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 #[derive(<|>)]
 struct Foo {}
@@ -356,7 +369,7 @@ struct Foo {}
     #[test]
     fn test_ignore_if_cursor_on_param() {
         check_assist_not_applicable(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 #[derive<|>(Debug)]
 struct Foo {}
@@ -364,7 +377,7 @@ struct Foo {}
         );
 
         check_assist_not_applicable(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 #[derive(Debug)<|>]
 struct Foo {}
@@ -375,7 +388,7 @@ struct Foo {}
     #[test]
     fn test_ignore_if_not_derive() {
         check_assist_not_applicable(
-            add_custom_impl,
+            replace_derive_with_manual_impl,
             "
 #[allow(non_camel_<|>case_types)]
 struct Foo {}

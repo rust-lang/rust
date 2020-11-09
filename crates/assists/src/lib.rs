@@ -120,7 +120,6 @@ mod handlers {
 
     pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
-    mod add_custom_impl;
     mod add_explicit_type;
     mod add_missing_impl_members;
     mod add_turbo_fish;
@@ -157,6 +156,7 @@ mod handlers {
     mod remove_mut;
     mod remove_unused_param;
     mod reorder_fields;
+    mod replace_derive_with_manual_impl;
     mod replace_if_let_with_match;
     mod replace_impl_trait_with_generic;
     mod replace_let_with_if_let;
@@ -169,7 +169,6 @@ mod handlers {
     pub(crate) fn all() -> &'static [Handler] {
         &[
             // These are alphabetic for the foolish consistency
-            add_custom_impl::add_custom_impl,
             add_explicit_type::add_explicit_type,
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
@@ -208,6 +207,7 @@ mod handlers {
             remove_mut::remove_mut,
             remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,
+            replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
