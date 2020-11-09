@@ -111,18 +111,28 @@ pub enum InsertPosition<T> {
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>;
 
+#[derive(Debug, Hash, PartialEq, Eq)]
+enum TreeDiffInsertPos {
+    After(SyntaxElement),
+    AsFirstChild(SyntaxElement),
+}
+
 #[derive(Debug)]
 pub struct TreeDiff {
     replacements: FxHashMap<SyntaxElement, SyntaxElement>,
     deletions: Vec<SyntaxElement>,
     // the vec as well as the indexmap are both here to preserve order
-    insertions: FxIndexMap<SyntaxElement, Vec<SyntaxElement>>,
+    insertions: FxIndexMap<TreeDiffInsertPos, Vec<SyntaxElement>>,
 }
 
 impl TreeDiff {
     pub fn into_text_edit(&self, builder: &mut TextEditBuilder) {
         for (anchor, to) in self.insertions.iter() {
-            to.iter().for_each(|to| builder.insert(anchor.text_range().end(), to.to_string()));
+            let offset = match anchor {
+                TreeDiffInsertPos::After(it) => it.text_range().end(),
+                TreeDiffInsertPos::AsFirstChild(it) => it.text_range().start(),
+            };
+            to.iter().for_each(|to| builder.insert(offset, to.to_string()));
         }
         for (from, to) in self.replacements.iter() {
             builder.replace(from.text_range(), to.to_string())
@@ -188,19 +198,20 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
             let lhs_child = lhs_children.next();
             match (lhs_child.clone(), rhs_children.next()) {
                 (None, None) => break,
-                (None, Some(element)) => match last_lhs.clone() {
-                    Some(prev) => {
-                        mark::hit!(diff_insert);
-                        diff.insertions.entry(prev).or_insert_with(Vec::new).push(element);
-                    }
-                    // first iteration, this means we got no anchor element to insert after
-                    // therefor replace the parent node instead
-                    None => {
-                        mark::hit!(diff_replace_parent);
-                        diff.replacements.insert(lhs.clone().into(), rhs.clone().into());
-                        break;
-                    }
-                },
+                (None, Some(element)) => {
+                    let insert_pos = match last_lhs.clone() {
+                        Some(prev) => {
+                            mark::hit!(diff_insert);
+                            TreeDiffInsertPos::After(prev)
+                        }
+                        // first iteration, insert into out parent as the first child
+                        None => {
+                            mark::hit!(diff_insert_as_first_child);
+                            TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
+                        }
+                    };
+                    diff.insertions.entry(insert_pos).or_insert_with(Vec::new).push(element);
+                }
                 (Some(element), None) => {
                     mark::hit!(diff_delete);
                     diff.deletions.push(element);
@@ -224,8 +235,15 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                         }
                     }
                     let drain = look_ahead_scratch.drain(..);
-                    if let Some(prev) = last_lhs.clone().filter(|_| insert) {
-                        diff.insertions.entry(prev).or_insert_with(Vec::new).extend(drain);
+                    if insert {
+                        let insert_pos = if let Some(prev) = last_lhs.clone().filter(|_| insert) {
+                            TreeDiffInsertPos::After(prev)
+                        } else {
+                            mark::hit!(insert_first_child);
+                            TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
+                        };
+
+                        diff.insertions.entry(insert_pos).or_insert_with(Vec::new).extend(drain);
                         rhs_children = rhs_children_clone;
                     } else {
                         go(diff, lhs_ele, rhs_ele)
@@ -632,18 +650,19 @@ mod tests {
 
     #[test]
     fn replace_parent() {
-        mark::check!(diff_replace_parent);
+        mark::check!(diff_insert_as_first_child);
         check_diff(
             r#""#,
             r#"use foo::bar;"#,
             expect![[r#"
                 insertions:
 
-
+                Line 0: AsFirstChild(Node(SOURCE_FILE@0..0))
+                -> use foo::bar;
 
                 replacements:
 
-                Line 0: Node(SOURCE_FILE@0..0) -> use foo::bar;
+
 
                 deletions:
 
@@ -666,7 +685,7 @@ use baz;"#,
             expect![[r#"
                 insertions:
 
-                Line 2: Node(USE@10..18)
+                Line 2: After(Node(USE@10..18))
                 -> "\n"
                 -> use baz;
 
@@ -694,7 +713,7 @@ use baz;"#,
             expect![[r#"
                 insertions:
 
-                Line 2: Token(WHITESPACE@9..10 "\n")
+                Line 2: After(Token(WHITESPACE@9..10 "\n"))
                 -> use bar;
                 -> "\n"
 
@@ -722,7 +741,7 @@ use baz;"#,
             expect![[r#"
                 insertions:
 
-                Line 0: Token(WHITESPACE@0..1 "\n")
+                Line 0: After(Token(WHITESPACE@0..1 "\n"))
                 -> use foo;
                 -> "\n"
 
@@ -735,6 +754,36 @@ use baz;"#,
 
             "#]],
         )
+    }
+
+    #[test]
+    fn first_child_insertion() {
+        mark::check!(insert_first_child);
+        check_diff(
+            r#"fn main() {
+        stdi
+    }"#,
+            r#"use foo::bar;
+
+    fn main() {
+        stdi
+    }"#,
+            expect![[r#"
+                insertions:
+
+                Line 0: AsFirstChild(Node(SOURCE_FILE@0..30))
+                -> use foo::bar;
+                -> "\n\n    "
+
+                replacements:
+
+
+
+                deletions:
+
+
+            "#]],
+        );
     }
 
     #[test]
@@ -779,7 +828,7 @@ use crate::AstNode;
             expect![[r#"
                 insertions:
 
-                Line 1: Node(USE@1..35)
+                Line 1: After(Node(USE@1..35))
                 -> "\n\n"
                 -> use crate::AstNode;
 
@@ -845,10 +894,10 @@ use std::ops::{self, RangeInclusive};
             expect![[r#"
                 insertions:
 
-                Line 2: Node(PATH_SEGMENT@5..8)
+                Line 2: After(Node(PATH_SEGMENT@5..8))
                 -> ::
                 -> fmt
-                Line 6: Token(WHITESPACE@86..87 "\n")
+                Line 6: After(Token(WHITESPACE@86..87 "\n"))
                 -> use std::hash::BuildHasherDefault;
                 -> "\n"
                 -> use std::ops::{self, RangeInclusive};
@@ -892,14 +941,14 @@ fn main() {
             expect![[r#"
                 insertions:
 
-                Line 3: Node(BLOCK_EXPR@40..63)
+                Line 3: After(Node(BLOCK_EXPR@40..63))
                 -> " "
                 -> match Err(92) {
                         Ok(it) => it,
                         _ => return,
                     }
                 -> ;
-                Line 3: Node(IF_EXPR@17..63)
+                Line 3: After(Node(IF_EXPR@17..63))
                 -> "\n    "
                 -> foo(x);
 
@@ -934,14 +983,18 @@ fn main() {
             _ => format!("{}", syn),
         };
 
-        let insertions = diff.insertions.iter().format_with("\n", |(k, v), f| {
-            f(&format!(
-                "Line {}: {:?}\n-> {}",
-                line_number(k),
-                k,
-                v.iter().format_with("\n-> ", |v, f| f(&fmt_syntax(v)))
-            ))
-        });
+        let insertions =
+            diff.insertions.iter().format_with("\n", |(k, v), f| -> Result<(), std::fmt::Error> {
+                f(&format!(
+                    "Line {}: {:?}\n-> {}",
+                    line_number(match k {
+                        super::TreeDiffInsertPos::After(syn) => syn,
+                        super::TreeDiffInsertPos::AsFirstChild(syn) => syn,
+                    }),
+                    k,
+                    v.iter().format_with("\n-> ", |v, f| f(&fmt_syntax(v)))
+                ))
+            });
 
         let replacements = diff
             .replacements
