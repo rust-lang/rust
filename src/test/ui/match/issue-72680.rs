@@ -3,39 +3,39 @@
 #![feature(or_patterns)]
 
 fn main() {
-    assert_eq!(f("", 0), true);
-    assert_eq!(f("a", 1), true);
-    assert_eq!(f("b", 1), true);
+    assert!(f("", 0));
+    assert!(f("a", 1));
+    assert!(f("b", 1));
 
-    assert_eq!(f("", 1), false);
-    assert_eq!(f("a", 0), false);
-    assert_eq!(f("b", 0), false);
+    assert!(!f("", 1));
+    assert!(!f("a", 0));
+    assert!(!f("b", 0));
 
-    assert_eq!(f("asdf", 032), false);
-
-    ////
-
-    assert_eq!(g(true, true, true), false);
-    assert_eq!(g(false, true, true), false);
-    assert_eq!(g(true, false, true), false);
-    assert_eq!(g(false, false, true), false);
-    assert_eq!(g(true, true, false), false);
-
-    assert_eq!(g(false, true, false), true);
-    assert_eq!(g(true, false, false), true);
-    assert_eq!(g(false, false, false), true);
+    assert!(!f("asdf", 032));
 
     ////
 
-    assert_eq!(h(true, true, true), false);
-    assert_eq!(h(false, true, true), false);
-    assert_eq!(h(true, false, true), false);
-    assert_eq!(h(false, false, true), false);
-    assert_eq!(h(true, true, false), false);
+    assert!(!g(true, true, true));
+    assert!(!g(false, true, true));
+    assert!(!g(true, false, true));
+    assert!(!g(false, false, true));
+    assert!(!g(true, true, false));
 
-    assert_eq!(h(false, true, false), true);
-    assert_eq!(h(true, false, false), true);
-    assert_eq!(h(false, false, false), true);
+    assert!(g(false, true, false));
+    assert!(g(true, false, false));
+    assert!(g(false, false, false));
+
+    ////
+
+    assert!(!h(true, true, true));
+    assert!(!h(false, true, true));
+    assert!(!h(true, false, true));
+    assert!(!h(false, false, true));
+    assert!(!h(true, true, false));
+
+    assert!(h(false, true, false));
+    assert!(h(true, false, false));
+    assert!(h(false, false, false));
 }
 
 fn f(s: &str, num: usize) -> bool {
