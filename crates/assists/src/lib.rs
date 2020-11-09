@@ -125,7 +125,6 @@ mod handlers {
     mod add_turbo_fish;
     mod apply_demorgan;
     mod auto_import;
-    mod change_return_type_to_result;
     mod change_visibility;
     mod convert_integer_literal;
     mod early_return;
@@ -165,6 +164,7 @@ mod handlers {
     mod replace_unwrap_with_match;
     mod split_import;
     mod unwrap_block;
+    mod wrap_return_type_in_result;
 
     pub(crate) fn all() -> &'static [Handler] {
         &[
@@ -173,7 +173,6 @@ mod handlers {
             add_turbo_fish::add_turbo_fish,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
-            change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             convert_integer_literal::convert_integer_literal,
             early_return::convert_to_guarded_return,
@@ -215,6 +214,7 @@ mod handlers {
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
             unwrap_block::unwrap_block,
+            wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,

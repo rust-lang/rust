@@ -8,9 +8,9 @@ use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: change_return_type_to_result
+// Assist: wrap_return_type_in_result
 //
-// Change the function's return type to Result.
+// Wrap the function's return type into Result.
 //
 // ```
 // fn foo() -> i32<|> { 42i32 }
@@ -19,7 +19,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 // ```
-pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     let parent = ret_type.syntax().parent()?;
     let block_expr = match_ast! {
@@ -39,13 +39,13 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
     let first_part_ret_type = ret_type_str.splitn(2, '<').next();
     if let Some(ret_type_first_part) = first_part_ret_type {
         if ret_type_first_part.ends_with("Result") {
-            mark::hit!(change_return_type_to_result_simple_return_type_already_result);
+            mark::hit!(wrap_return_type_in_result_simple_return_type_already_result);
             return None;
         }
     }
 
     acc.add(
-        AssistId("change_return_type_to_result", AssistKind::RefactorRewrite),
+        AssistId("wrap_return_type_in_result", AssistKind::RefactorRewrite),
         "Wrap return type in Result",
         type_ref.syntax().text_range(),
         |builder| {
@@ -278,9 +278,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn change_return_type_to_result_simple() {
+    fn wrap_return_type_in_result_simple() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i3<|>2 {
                 let test = "test";
                 return 42i32;
@@ -293,9 +293,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_closure() {
+    fn wrap_return_type_in_result_simple_closure() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() {
                 || -> i32<|> {
                     let test = "test";
@@ -312,9 +312,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_return_type_bad_cursor() {
+    fn wrap_return_type_in_result_simple_return_type_bad_cursor() {
         check_assist_not_applicable(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32 {
                 let test = "test";<|>
                 return 42i32;
@@ -323,9 +323,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_return_type_bad_cursor_closure() {
+    fn wrap_return_type_in_result_simple_return_type_bad_cursor_closure() {
         check_assist_not_applicable(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() {
                 || -> i32 {
                     let test = "test";<|>
@@ -336,9 +336,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_closure_non_block() {
+    fn wrap_return_type_in_result_closure_non_block() {
         check_assist_not_applicable(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() {
                 || -> i<|>32 3;
             }"#,
@@ -346,9 +346,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_return_type_already_result_std() {
+    fn wrap_return_type_in_result_simple_return_type_already_result_std() {
         check_assist_not_applicable(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> std::result::Result<i32<|>, String> {
                 let test = "test";
                 return 42i32;
@@ -357,10 +357,10 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_return_type_already_result() {
-        mark::check!(change_return_type_to_result_simple_return_type_already_result);
+    fn wrap_return_type_in_result_simple_return_type_already_result() {
+        mark::check!(wrap_return_type_in_result_simple_return_type_already_result);
         check_assist_not_applicable(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> Result<i32<|>, String> {
                 let test = "test";
                 return 42i32;
@@ -369,9 +369,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_return_type_already_result_closure() {
+    fn wrap_return_type_in_result_simple_return_type_already_result_closure() {
         check_assist_not_applicable(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() {
                 || -> Result<i32<|>, String> {
                     let test = "test";
@@ -382,9 +382,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_cursor() {
+    fn wrap_return_type_in_result_simple_with_cursor() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> <|>i32 {
                 let test = "test";
                 return 42i32;
@@ -397,9 +397,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail() {
+    fn wrap_return_type_in_result_simple_with_tail() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -><|> i32 {
                 let test = "test";
                 42i32
@@ -412,9 +412,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail_closure() {
+    fn wrap_return_type_in_result_simple_with_tail_closure() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() {
                 || -><|> i32 {
                     let test = "test";
@@ -431,9 +431,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail_only() {
+    fn wrap_return_type_in_result_simple_with_tail_only() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 42i32
             }"#,
@@ -444,9 +444,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail_block_like() {
+    fn wrap_return_type_in_result_simple_with_tail_block_like() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 if true {
                     42i32
@@ -465,9 +465,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_without_block_closure() {
+    fn wrap_return_type_in_result_simple_without_block_closure() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() {
                 || -> i32<|> {
                     if true {
@@ -490,9 +490,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_nested_if() {
+    fn wrap_return_type_in_result_simple_with_nested_if() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 if true {
                     if false {
@@ -519,9 +519,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_await() {
+    fn wrap_return_type_in_result_simple_with_await() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"async fn foo() -> i<|>32 {
                 if true {
                     if false {
@@ -548,9 +548,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_array() {
+    fn wrap_return_type_in_result_simple_with_array() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> [i32;<|> 3] {
                 [1, 2, 3]
             }"#,
@@ -561,9 +561,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_cast() {
+    fn wrap_return_type_in_result_simple_with_cast() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -<|>> i32 {
                 if true {
                     if false {
@@ -590,9 +590,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail_block_like_match() {
+    fn wrap_return_type_in_result_simple_with_tail_block_like_match() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let my_var = 5;
                 match my_var {
@@ -611,9 +611,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_loop_with_tail() {
+    fn wrap_return_type_in_result_simple_with_loop_with_tail() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let my_var = 5;
                 loop {
@@ -636,9 +636,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_loop_in_let_stmt() {
+    fn wrap_return_type_in_result_simple_with_loop_in_let_stmt() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let my_var = let x = loop {
                     break 1;
@@ -657,9 +657,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail_block_like_match_return_expr() {
+    fn wrap_return_type_in_result_simple_with_tail_block_like_match_return_expr() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let my_var = 5;
                 let res = match my_var {
@@ -681,7 +681,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let my_var = 5;
                 let res = if my_var == 5 {
@@ -706,9 +706,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail_block_like_match_deeper() {
+    fn wrap_return_type_in_result_simple_with_tail_block_like_match_deeper() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let my_var = 5;
                 match my_var {
@@ -751,9 +751,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_tail_block_like_early_return() {
+    fn wrap_return_type_in_result_simple_with_tail_block_like_early_return() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i<|>32 {
                 let test = "test";
                 if test == "test" {
@@ -772,9 +772,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_closure() {
+    fn wrap_return_type_in_result_simple_with_closure() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo(the_field: u32) -><|> u32 {
                 let true_closure = || {
                     return true;
@@ -812,7 +812,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo(the_field: u32) -> u32<|> {
                 let true_closure = || {
                     return true;
@@ -853,9 +853,9 @@ mod tests {
     }
 
     #[test]
-    fn change_return_type_to_result_simple_with_weird_forms() {
+    fn wrap_return_type_in_result_simple_with_weird_forms() {
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let test = "test";
                 if test == "test" {
@@ -885,7 +885,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i32<|> {
                 let test = "test";
                 if test == "test" {
@@ -919,7 +919,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo() -> i3<|>2 {
                 let test = "test";
                 let other = 5;
@@ -961,7 +961,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo(the_field: u32) -> u32<|> {
                 if the_field < 5 {
                     let mut i = 0;
@@ -1001,7 +1001,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo(the_field: u32) -> u3<|>2 {
                 if the_field < 5 {
                     let mut i = 0;
@@ -1029,7 +1029,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo(the_field: u32) -> u32<|> {
                 if the_field < 5 {
                     let mut i = 0;
@@ -1059,7 +1059,7 @@ mod tests {
         );
 
         check_assist(
-            change_return_type_to_result,
+            wrap_return_type_in_result,
             r#"fn foo(the_field: u32) -> <|>u32 {
                 if the_field < 5 {
                     let mut i = 0;

@@ -159,19 +159,6 @@ pub mod std { pub mod collections { pub struct HashMap { } } }
 }
 
 #[test]
-fn doctest_change_return_type_to_result() {
-    check_doc_test(
-        "change_return_type_to_result",
-        r#####"
-fn foo() -> i32<|> { 42i32 }
-"#####,
-        r#####"
-fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
-"#####,
-    )
-}
-
-#[test]
 fn doctest_change_visibility() {
     check_doc_test(
         "change_visibility",
@@ -986,6 +973,19 @@ fn foo() {
 fn foo() {
     println!("foo");
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_wrap_return_type_in_result() {
+    check_doc_test(
+        "wrap_return_type_in_result",
+        r#####"
+fn foo() -> i32<|> { 42i32 }
+"#####,
+        r#####"
+fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }
 "#####,
     )
 }
