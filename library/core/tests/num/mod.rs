@@ -2,10 +2,11 @@ use core::cmp::PartialEq;
 use core::convert::{TryFrom, TryInto};
 use core::fmt::Debug;
 use core::marker::Copy;
-use core::num::TryFromIntError;
+use core::num::{IntErrorKind, ParseIntError, TryFromIntError};
 use core::ops::{Add, Div, Mul, Rem, Sub};
 use core::option::Option;
-use core::option::Option::{None, Some};
+use core::option::Option::None;
+use core::str::FromStr;
 
 #[macro_use]
 mod int_macros;
@@ -67,6 +68,15 @@ where
     assert_eq!(ten.rem(two), ten % two);
 }
 
+/// Helper function for asserting number parsing returns a specific error
+fn test_parse<T>(num_str: &str, expected: Result<T, IntErrorKind>)
+where
+    T: FromStr<Err = ParseIntError>,
+    Result<T, IntErrorKind>: PartialEq + Debug,
+{
+    assert_eq!(num_str.parse::<T>().map_err(|e| e.kind().clone()), expected)
+}
+
 #[test]
 fn from_str_issue7588() {
     let u: Option<u8> = u8::from_str_radix("1000", 10).ok();
@@ -77,49 +87,52 @@ fn from_str_issue7588() {
 
 #[test]
 fn test_int_from_str_overflow() {
-    assert_eq!("127".parse::<i8>().ok(), Some(127i8));
-    assert_eq!("128".parse::<i8>().ok(), None);
+    test_parse::<i8>("127", Ok(127));
+    test_parse::<i8>("128", Err(IntErrorKind::PosOverflow));
 
-    assert_eq!("-128".parse::<i8>().ok(), Some(-128i8));
-    assert_eq!("-129".parse::<i8>().ok(), None);
+    test_parse::<i8>("-128", Ok(-128));
+    test_parse::<i8>("-129", Err(IntErrorKind::NegOverflow));
 
-    assert_eq!("32767".parse::<i16>().ok(), Some(32_767i16));
-    assert_eq!("32768".parse::<i16>().ok(), None);
+    test_parse::<i16>("32767", Ok(32_767));
+    test_parse::<i16>("32768", Err(IntErrorKind::PosOverflow));
 
-    assert_eq!("-32768".parse::<i16>().ok(), Some(-32_768i16));
-    assert_eq!("-32769".parse::<i16>().ok(), None);
+    test_parse::<i16>("-32768", Ok(-32_768));
+    test_parse::<i16>("-32769", Err(IntErrorKind::NegOverflow));
 
-    assert_eq!("2147483647".parse::<i32>().ok(), Some(2_147_483_647i32));
-    assert_eq!("2147483648".parse::<i32>().ok(), None);
+    test_parse::<i32>("2147483647", Ok(2_147_483_647));
+    test_parse::<i32>("2147483648", Err(IntErrorKind::PosOverflow));
 
-    assert_eq!("-2147483648".parse::<i32>().ok(), Some(-2_147_483_648i32));
-    assert_eq!("-2147483649".parse::<i32>().ok(), None);
+    test_parse::<i32>("-2147483648", Ok(-2_147_483_648));
+    test_parse::<i32>("-2147483649", Err(IntErrorKind::NegOverflow));
 
-    assert_eq!("9223372036854775807".parse::<i64>().ok(), Some(9_223_372_036_854_775_807i64));
-    assert_eq!("9223372036854775808".parse::<i64>().ok(), None);
+    test_parse::<i64>("9223372036854775807", Ok(9_223_372_036_854_775_807));
+    test_parse::<i64>("9223372036854775808", Err(IntErrorKind::PosOverflow));
 
-    assert_eq!("-9223372036854775808".parse::<i64>().ok(), Some(-9_223_372_036_854_775_808i64));
-    assert_eq!("-9223372036854775809".parse::<i64>().ok(), None);
+    test_parse::<i64>("-9223372036854775808", Ok(-9_223_372_036_854_775_808));
+    test_parse::<i64>("-9223372036854775809", Err(IntErrorKind::NegOverflow));
 }
 
 #[test]
 fn test_leading_plus() {
-    assert_eq!("+127".parse::<u8>().ok(), Some(127));
-    assert_eq!("+9223372036854775807".parse::<i64>().ok(), Some(9223372036854775807));
+    test_parse::<u8>("+127", Ok(127));
+    test_parse::<i64>("+9223372036854775807", Ok(9223372036854775807));
 }
 
 #[test]
 fn test_invalid() {
-    assert_eq!("--129".parse::<i8>().ok(), None);
-    assert_eq!("++129".parse::<i8>().ok(), None);
-    assert_eq!("Съешь".parse::<u8>().ok(), None);
+    test_parse::<i8>("--129", Err(IntErrorKind::InvalidDigit));
+    test_parse::<i8>("++129", Err(IntErrorKind::InvalidDigit));
+    test_parse::<u8>("Съешь", Err(IntErrorKind::InvalidDigit));
+    test_parse::<u8>("123Hello", Err(IntErrorKind::InvalidDigit));
+    test_parse::<i8>("--", Err(IntErrorKind::InvalidDigit));
+    test_parse::<i8>("-", Err(IntErrorKind::InvalidDigit));
+    test_parse::<i8>("+", Err(IntErrorKind::InvalidDigit));
+    test_parse::<u8>("-1", Err(IntErrorKind::InvalidDigit));
 }
 
 #[test]
 fn test_empty() {
-    assert_eq!("-".parse::<i8>().ok(), None);
-    assert_eq!("+".parse::<i8>().ok(), None);
-    assert_eq!("".parse::<u8>().ok(), None);
+    test_parse::<u8>("", Err(IntErrorKind::Empty));
 }
 
 #[test]
