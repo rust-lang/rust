@@ -2950,7 +2950,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
         for ref stmt in block.stmts {
             if_chain! {
                 if let StmtKind::Local(
-                    Local { pat: Pat { kind: PatKind::Binding(_, _, ident, .. ), .. },
+                    Local { pat: Pat { hir_id: pat_id, kind: PatKind::Binding(_, _, ident, .. ), .. },
                     init: Some(ref init_expr), .. }
                 ) = stmt.kind;
                 if let ExprKind::MethodCall(ref method_name, _, &[ref iter_source], ..) = init_expr.kind;
@@ -2964,6 +2964,16 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
                 if iter_calls.len() == 1;
                 then {
+                    let mut used_count_visitor = UsedCountVisitor {
+                        cx,
+                        id: *pat_id,
+                        count: 0,
+                    };
+                    walk_block(&mut used_count_visitor, block);
+                    if used_count_visitor.count > 1 {
+                        return;
+                    }
+
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
                     let iter_call = &iter_calls[0];
                     span_lint_and_then(
@@ -3084,6 +3094,28 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     type Map = Map<'tcx>;
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
+    }
+}
+
+struct UsedCountVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    id: HirId,
+    count: usize,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        if same_var(self.cx, expr, self.id) {
+            self.count += 1;
+        } else {
+            walk_expr(self, expr);
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
     }
 }
 
