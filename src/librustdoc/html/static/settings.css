@@ -26,7 +26,8 @@
 }
 
 .toggle input {
-	display: none;
+	opacity: 0;
+	position: absolute;
 }
 
 .select-wrapper {
@@ -90,7 +91,7 @@ input:checked + .slider {
 }
 
 input:focus + .slider {
-	box-shadow: 0 0 1px #2196F3;
+	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
 }
 
 input:checked + .slider:before {

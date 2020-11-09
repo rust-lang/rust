@@ -2795,10 +2795,50 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
     }
 
+    fn item_name_from_hir(self, def_id: DefId) -> Option<Ident> {
+        self.hir().get_if_local(def_id).and_then(|node| node.ident())
+    }
+
+    fn item_name_from_def_id(self, def_id: DefId) -> Option<Symbol> {
+        if def_id.index == CRATE_DEF_INDEX {
+            Some(self.original_crate_name(def_id.krate))
+        } else {
+            let def_key = self.def_key(def_id);
+            match def_key.disambiguated_data.data {
+                // The name of a constructor is that of its parent.
+                rustc_hir::definitions::DefPathData::Ctor => self.item_name_from_def_id(DefId {
+                    krate: def_id.krate,
+                    index: def_key.parent.unwrap(),
+                }),
+                _ => def_key.disambiguated_data.data.get_opt_name(),
+            }
+        }
+    }
+
+    /// Look up the name of an item across crates. This does not look at HIR.
+    ///
+    /// When possible, this function should be used for cross-crate lookups over
+    /// [`opt_item_name`] to avoid invalidating the incremental cache. If you
+    /// need to handle items without a name, or HIR items that will not be
+    /// serialized cross-crate, or if you need the span of the item, use
+    /// [`opt_item_name`] instead.
+    ///
+    /// [`opt_item_name`]: Self::opt_item_name
+    pub fn item_name(self, id: DefId) -> Symbol {
+        // Look at cross-crate items first to avoid invalidating the incremental cache
+        // unless we have to.
+        self.item_name_from_def_id(id).unwrap_or_else(|| {
+            bug!("item_name: no name for {:?}", self.def_path(id));
+        })
+    }
+
+    /// Look up the name and span of an item or [`Node`].
+    ///
+    /// See [`item_name`][Self::item_name] for more information.
     pub fn opt_item_name(self, def_id: DefId) -> Option<Ident> {
-        def_id
-            .as_local()
-            .and_then(|def_id| self.hir().get(self.hir().local_def_id_to_hir_id(def_id)).ident())
+        // Look at the HIR first so the span will be correct if this is a local item.
+        self.item_name_from_hir(def_id)
+            .or_else(|| self.item_name_from_def_id(def_id).map(Ident::with_dummy_span))
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
@@ -2918,23 +2958,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.adt_def(struct_did).non_enum_variant()
             }
             _ => bug!("expect_variant_res used with unexpected res {:?}", res),
-        }
-    }
-
-    pub fn item_name(self, id: DefId) -> Symbol {
-        if id.index == CRATE_DEF_INDEX {
-            self.original_crate_name(id.krate)
-        } else {
-            let def_key = self.def_key(id);
-            match def_key.disambiguated_data.data {
-                // The name of a constructor is that of its parent.
-                rustc_hir::definitions::DefPathData::Ctor => {
-                    self.item_name(DefId { krate: id.krate, index: def_key.parent.unwrap() })
-                }
-                _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
-                    bug!("item_name: no name for {:?}", self.def_path(id));
-                }),
-            }
         }
     }
 

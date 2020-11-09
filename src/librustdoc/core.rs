@@ -322,7 +322,8 @@ pub fn run_core(
     let cpath = Some(input.clone());
     let input = Input::File(input);
 
-    let intra_link_resolution_failure_name = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
+    let broken_intra_doc_links = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
+    let private_intra_doc_links = lint::builtin::PRIVATE_INTRA_DOC_LINKS.name;
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
@@ -336,7 +337,8 @@ pub fn run_core(
     // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
     let lints_to_show = vec![
-        intra_link_resolution_failure_name.to_owned(),
+        broken_intra_doc_links.to_owned(),
+        private_intra_doc_links.to_owned(),
         missing_docs.to_owned(),
         missing_doc_example.to_owned(),
         private_doc_tests.to_owned(),
@@ -349,9 +351,8 @@ pub fn run_core(
     ];
 
     let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {
-        if lint.name == intra_link_resolution_failure_name
-            || lint.name == invalid_codeblock_attributes_name
-        {
+        // FIXME: why is this necessary?
+        if lint.name == broken_intra_doc_links || lint.name == invalid_codeblock_attributes_name {
             None
         } else {
             Some((lint.name_lower(), lint::Allow))

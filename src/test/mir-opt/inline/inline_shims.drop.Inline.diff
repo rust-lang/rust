@@ -1,0 +1,52 @@
+- // MIR for `drop` before Inline
++ // MIR for `drop` after Inline
+  
+  fn drop(_1: *mut Vec<A>, _2: *mut Option<B>) -> () {
+      debug a => _1;                       // in scope 0 at $DIR/inline-shims.rs:10:19: 10:20
+      debug b => _2;                       // in scope 0 at $DIR/inline-shims.rs:10:35: 10:36
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-shims.rs:10:54: 10:54
+      let _3: ();                          // in scope 0 at $DIR/inline-shims.rs:11:14: 11:40
+      let mut _4: *mut std::vec::Vec<A>;   // in scope 0 at $DIR/inline-shims.rs:11:38: 11:39
+      let mut _5: *mut std::option::Option<B>; // in scope 0 at $DIR/inline-shims.rs:12:38: 12:39
+      scope 1 {
+      }
+      scope 2 {
++         scope 3 (inlined drop_in_place::<Option<B>> - shim(Some(Option<B>))) { // at $DIR/inline-shims.rs:12:14: 12:40
++             let mut _6: isize;           // in scope 3 at $DIR/inline-shims.rs:12:14: 12:40
++             let mut _7: isize;           // in scope 3 at $DIR/inline-shims.rs:12:14: 12:40
++         }
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/inline-shims.rs:11:5: 11:42
+          StorageLive(_4);                 // scope 1 at $DIR/inline-shims.rs:11:38: 11:39
+          _4 = _1;                         // scope 1 at $DIR/inline-shims.rs:11:38: 11:39
+          _3 = drop_in_place::<Vec<A>>(move _4) -> bb1; // scope 1 at $DIR/inline-shims.rs:11:14: 11:40
+                                           // mir::Constant
+                                           // + span: $DIR/inline-shims.rs:11:14: 11:37
+                                           // + literal: Const { ty: unsafe fn(*mut std::vec::Vec<A>) {std::intrinsics::drop_in_place::<std::vec::Vec<A>>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_4);                 // scope 1 at $DIR/inline-shims.rs:11:39: 11:40
+          StorageDead(_3);                 // scope 0 at $DIR/inline-shims.rs:11:41: 11:42
+          StorageLive(_5);                 // scope 2 at $DIR/inline-shims.rs:12:38: 12:39
+          _5 = _2;                         // scope 2 at $DIR/inline-shims.rs:12:38: 12:39
+-         _0 = drop_in_place::<Option<B>>(move _5) -> bb2; // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
+-                                          // mir::Constant
+-                                          // + span: $DIR/inline-shims.rs:12:14: 12:37
+-                                          // + literal: Const { ty: unsafe fn(*mut std::option::Option<B>) {std::intrinsics::drop_in_place::<std::option::Option<B>>}, val: Value(Scalar(<ZST>)) }
++         _6 = discriminant((*_5));        // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
++         switchInt(move _6) -> [0_isize: bb2, otherwise: bb3]; // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
+      }
+  
+      bb2: {
+          StorageDead(_5);                 // scope 2 at $DIR/inline-shims.rs:12:39: 12:40
+          return;                          // scope 0 at $DIR/inline-shims.rs:13:2: 13:2
++     }
++ 
++     bb3: {
++         drop((((*_5) as Some).0: B)) -> bb2; // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
+      }
+  }
+  

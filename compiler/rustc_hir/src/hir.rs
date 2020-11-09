@@ -732,6 +732,9 @@ pub struct Pat<'hir> {
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
+    // Whether to use default binding modes.
+    // At present, this is false only for destructuring assignment.
+    pub default_binding_modes: bool,
 }
 
 impl Pat<'_> {
@@ -1680,6 +1683,9 @@ pub enum LocalSource {
     AsyncFn,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
+    /// A desugared `expr = expr`, where the LHS is a tuple, struct or array.
+    /// The span is that of the `=` sign.
+    AssignDesugar(Span),
 }
 
 /// Hints at the original code for a `match _ { .. }`.
@@ -2677,6 +2683,9 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { ident, .. })
             | Node::ImplItem(ImplItem { ident, .. })
             | Node::ForeignItem(ForeignItem { ident, .. })
+            | Node::Field(StructField { ident, .. })
+            | Node::Variant(Variant { ident, .. })
+            | Node::MacroDef(MacroDef { ident, .. })
             | Node::Item(Item { ident, .. }) => Some(*ident),
             _ => None,
         }

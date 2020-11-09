@@ -63,7 +63,12 @@ pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, No
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
 
-#[unstable(feature = "int_error_matching", issue = "22639")]
+#[unstable(
+    feature = "int_error_matching",
+    reason = "it can be useful to match errors when making error messages \
+              for integer parsing",
+    issue = "22639"
+)]
 pub use error::IntErrorKind;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
@@ -830,14 +835,13 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let src = src.as_bytes();
 
     let (is_positive, digits) = match src[0] {
+        b'+' | b'-' if src[1..].is_empty() => {
+            return Err(PIE { kind: InvalidDigit });
+        }
         b'+' => (true, &src[1..]),
         b'-' if is_signed_ty => (false, &src[1..]),
         _ => (true, src),
     };
-
-    if digits.is_empty() {
-        return Err(PIE { kind: Empty });
-    }
 
     let mut result = T::from_u32(0);
     if is_positive {
@@ -849,11 +853,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Overflow }),
+                None => return Err(PIE { kind: PosOverflow }),
             };
             result = match result.checked_add(x) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Overflow }),
+                None => return Err(PIE { kind: PosOverflow }),
             };
         }
     } else {
@@ -865,11 +869,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Underflow }),
+                None => return Err(PIE { kind: NegOverflow }),
             };
             result = match result.checked_sub(x) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Underflow }),
+                None => return Err(PIE { kind: NegOverflow }),
             };
         }
     }

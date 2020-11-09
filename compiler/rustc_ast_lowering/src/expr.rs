@@ -9,6 +9,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_session::parse::feature_err;
 use rustc_span::hygiene::ForLoopLoc;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -146,7 +147,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Block(self.lower_block(blk, opt_label.is_some()), opt_label)
                 }
                 ExprKind::Assign(ref el, ref er, span) => {
-                    hir::ExprKind::Assign(self.lower_expr(el), self.lower_expr(er), span)
+                    self.lower_expr_assign(el, er, span, e.span)
                 }
                 ExprKind::AssignOp(op, ref el, ref er) => hir::ExprKind::AssignOp(
                     self.lower_binop(op),
@@ -838,6 +839,134 @@ impl<'hir> LoweringContext<'_, 'hir> {
             });
             hir::ExprKind::Closure(capture_clause, fn_decl, body_id, fn_decl_span, None)
         })
+    }
+
+    /// Destructure the LHS of complex assignments.
+    /// For instance, lower `(a, b) = t` to `{ let (lhs1, lhs2) = t; a = lhs1; b = lhs2; }`.
+    fn lower_expr_assign(
+        &mut self,
+        lhs: &Expr,
+        rhs: &Expr,
+        eq_sign_span: Span,
+        whole_span: Span,
+    ) -> hir::ExprKind<'hir> {
+        // Return early in case of an ordinary assignment.
+        fn is_ordinary(lhs: &Expr) -> bool {
+            match &lhs.kind {
+                ExprKind::Tup(..) => false,
+                ExprKind::Paren(e) => {
+                    match e.kind {
+                        // We special-case `(..)` for consistency with patterns.
+                        ExprKind::Range(None, None, RangeLimits::HalfOpen) => false,
+                        _ => is_ordinary(e),
+                    }
+                }
+                _ => true,
+            }
+        }
+        if is_ordinary(lhs) {
+            return hir::ExprKind::Assign(self.lower_expr(lhs), self.lower_expr(rhs), eq_sign_span);
+        }
+        if !self.sess.features_untracked().destructuring_assignment {
+            feature_err(
+                &self.sess.parse_sess,
+                sym::destructuring_assignment,
+                eq_sign_span,
+                "destructuring assignments are unstable",
+            )
+            .span_label(lhs.span, "cannot assign to this expression")
+            .emit();
+        }
+
+        let mut assignments = vec![];
+
+        // The LHS becomes a pattern: `(lhs1, lhs2)`.
+        let pat = self.destructure_assign(lhs, eq_sign_span, &mut assignments);
+        let rhs = self.lower_expr(rhs);
+
+        // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
+        let destructure_let = self.stmt_let_pat(
+            ThinVec::new(),
+            whole_span,
+            Some(rhs),
+            pat,
+            hir::LocalSource::AssignDesugar(eq_sign_span),
+        );
+
+        // `a = lhs1; b = lhs2;`.
+        let stmts = self
+            .arena
+            .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
+
+        // Wrap everything in a block.
+        hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
+    }
+
+    /// Convert the LHS of a destructuring assignment to a pattern.
+    /// Each sub-assignment is recorded in `assignments`.
+    fn destructure_assign(
+        &mut self,
+        lhs: &Expr,
+        eq_sign_span: Span,
+        assignments: &mut Vec<hir::Stmt<'hir>>,
+    ) -> &'hir hir::Pat<'hir> {
+        match &lhs.kind {
+            // Tuples.
+            ExprKind::Tup(elements) => {
+                let (pats, rest) =
+                    self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
+                let tuple_pat = hir::PatKind::Tuple(pats, rest.map(|r| r.0));
+                return self.pat_without_dbm(lhs.span, tuple_pat);
+            }
+            ExprKind::Paren(e) => {
+                // We special-case `(..)` for consistency with patterns.
+                if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
+                    let tuple_pat = hir::PatKind::Tuple(&[], Some(0));
+                    return self.pat_without_dbm(lhs.span, tuple_pat);
+                } else {
+                    return self.destructure_assign(e, eq_sign_span, assignments);
+                }
+            }
+            _ => {}
+        }
+        // Treat all other cases as normal lvalue.
+        let ident = Ident::new(sym::lhs, lhs.span);
+        let (pat, binding) = self.pat_ident(lhs.span, ident);
+        let ident = self.expr_ident(lhs.span, ident, binding);
+        let assign = hir::ExprKind::Assign(self.lower_expr(lhs), ident, eq_sign_span);
+        let expr = self.expr(lhs.span, assign, ThinVec::new());
+        assignments.push(self.stmt_expr(lhs.span, expr));
+        pat
+    }
+
+    /// Destructure a sequence of expressions occurring on the LHS of an assignment.
+    /// Such a sequence occurs in a tuple (struct)/slice.
+    /// Return a sequence of corresponding patterns, and the index and the span of `..` if it
+    /// exists.
+    /// Each sub-assignment is recorded in `assignments`.
+    fn destructure_sequence(
+        &mut self,
+        elements: &[AstP<Expr>],
+        ctx: &str,
+        eq_sign_span: Span,
+        assignments: &mut Vec<hir::Stmt<'hir>>,
+    ) -> (&'hir [&'hir hir::Pat<'hir>], Option<(usize, Span)>) {
+        let mut rest = None;
+        let elements =
+            self.arena.alloc_from_iter(elements.iter().enumerate().filter_map(|(i, e)| {
+                // Check for `..` pattern.
+                if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
+                    if let Some((_, prev_span)) = rest {
+                        self.ban_extra_rest_pat(e.span, prev_span, ctx);
+                    } else {
+                        rest = Some((i, e.span));
+                    }
+                    None
+                } else {
+                    Some(self.destructure_assign(e, eq_sign_span, assignments))
+                }
+            }));
+        (elements, rest)
     }
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.

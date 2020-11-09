@@ -2531,6 +2531,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir_id,
                 kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
+                default_binding_modes: true,
             }),
             hir_id,
         )
@@ -2541,7 +2542,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn pat(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat { hir_id: self.next_id(), kind, span })
+        self.arena.alloc(hir::Pat {
+            hir_id: self.next_id(),
+            kind,
+            span,
+            default_binding_modes: true,
+        })
+    }
+
+    fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
+        self.arena.alloc(hir::Pat {
+            hir_id: self.next_id(),
+            kind,
+            span,
+            default_binding_modes: false,
+        })
     }
 
     fn ty_path(
