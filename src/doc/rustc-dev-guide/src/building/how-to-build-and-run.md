@@ -74,7 +74,7 @@ To read more about the bootstrap process and why `x.py` is necessary,
 
 There is a binary that wraps `x.py` called `x` in `src/tools/x`. All it does is
 run `x.py`, but it can be installed system-wide and run from any subdirectory
-of a checkout.
+of a checkout. It also looks up the appropriate version of `python` to use.
 
 You can install it with `cargo install --path src/tools/x`.
 
