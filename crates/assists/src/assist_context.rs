@@ -277,9 +277,10 @@ impl AssistBuilder {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
     }
     pub(crate) fn rewrite(&mut self, rewriter: SyntaxRewriter) {
-        let node = rewriter.rewrite_root().unwrap();
-        let new = rewriter.rewrite(&node);
-        algo::diff(&node, &new).into_text_edit(&mut self.edit);
+        if let Some(node) = rewriter.rewrite_root() {
+            let new = rewriter.rewrite(&node);
+            algo::diff(&node, &new).into_text_edit(&mut self.edit);
+        }
     }
 
     fn finish(mut self) -> SourceChange {

@@ -382,6 +382,36 @@ fn f() {
         )
     }
 
+    #[test]
+    fn test_several_files_record() {
+        // FIXME: this should fix the usage as well!
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+//- /main.rs
+enum E {
+    <|>V { i: i32, j: i32 }
+}
+mod foo;
+
+//- /foo.rs
+use crate::E;
+fn f() {
+    let e = E::V { i: 9, j: 2 };
+}
+"#,
+            r#"
+struct V{ pub i: i32, pub j: i32 }
+
+enum E {
+    V(V)
+}
+mod foo;
+
+"#,
+        )
+    }
+
     fn check_not_applicable(ra_fixture: &str) {
         let fixture =
             format!("//- /main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
