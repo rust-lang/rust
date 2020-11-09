@@ -140,11 +140,11 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
 
     let mut imported_symbols = Vec::new();
     for path in dylib_paths {
-        use object::Object;
+        use object::{Object, ObjectSymbol};
         let lib = libloading::Library::new(&path).unwrap();
         let obj = std::fs::read(path).unwrap();
         let obj = object::File::parse(&obj).unwrap();
-        imported_symbols.extend(obj.dynamic_symbols().filter_map(|(_idx, symbol)| {
+        imported_symbols.extend(obj.dynamic_symbols().filter_map(|symbol| {
             let name = symbol.name().unwrap().to_string();
             if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
                 return None;
