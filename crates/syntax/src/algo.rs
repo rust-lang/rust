@@ -331,7 +331,10 @@ pub struct SyntaxRewriter<'a> {
 
 impl fmt::Debug for SyntaxRewriter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SyntaxRewriter").field("replacements", &self.replacements).finish()
+        f.debug_struct("SyntaxRewriter")
+            .field("replacements", &self.replacements)
+            .field("insertions", &self.insertions)
+            .finish()
     }
 }
 
