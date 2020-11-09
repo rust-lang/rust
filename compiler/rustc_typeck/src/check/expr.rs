@@ -718,39 +718,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    fn is_destructuring_place_expr(&self, expr: &'tcx hir::Expr<'tcx>) -> bool {
-        match &expr.kind {
-            ExprKind::Array(comps) | ExprKind::Tup(comps) => {
-                comps.iter().all(|e| self.is_destructuring_place_expr(e))
-            }
-            ExprKind::Struct(_path, fields, rest) => {
-                rest.as_ref().map(|e| self.is_destructuring_place_expr(e)).unwrap_or(true)
-                    && fields.iter().all(|f| self.is_destructuring_place_expr(&f.expr))
-            }
-            _ => expr.is_syntactic_place_expr(),
-        }
-    }
-
     pub(crate) fn check_lhs_assignable(
         &self,
         lhs: &'tcx hir::Expr<'tcx>,
         err_code: &'static str,
         expr_span: &Span,
     ) {
-        if !lhs.is_syntactic_place_expr() {
-            // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
-            let mut err = self.tcx.sess.struct_span_err_with_code(
-                *expr_span,
-                "invalid left-hand side of assignment",
-                DiagnosticId::Error(err_code.into()),
-            );
-            err.span_label(lhs.span, "cannot assign to this expression");
-            if self.is_destructuring_place_expr(lhs) {
-                err.note("destructuring assignments are not currently supported");
-                err.note("for more information, see https://github.com/rust-lang/rfcs/issues/372");
-            }
-            err.emit();
+        if lhs.is_syntactic_place_expr() {
+            return;
         }
+
+        // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
+        let mut err = self.tcx.sess.struct_span_err_with_code(
+            *expr_span,
+            "invalid left-hand side of assignment",
+            DiagnosticId::Error(err_code.into()),
+        );
+        err.span_label(lhs.span, "cannot assign to this expression");
+        err.emit();
     }
 
     /// Type check assignment expression `expr` of form `lhs = rhs`.

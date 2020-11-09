@@ -1,4 +1,4 @@
-error[E0070]: invalid left-hand side of assignment
+error[E0658]: destructuring assignments are unstable
   --> $DIR/note-unsupported.rs:6:12
    |
 LL |     (a, b) = (3, 4);
@@ -6,8 +6,19 @@ LL |     (a, b) = (3, 4);
    |     |
    |     cannot assign to this expression
    |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
+
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/note-unsupported.rs:25:17
+   |
+LL |     ((a, b), c) = ((3, 4), 5);
+   |     ----------- ^
+   |     |
+   |     cannot assign to this expression
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `({integer}, {integer})`
   --> $DIR/note-unsupported.rs:7:5
@@ -24,9 +35,6 @@ LL |     (a, b) += (3, 4);
    |     ------ ^^
    |     |
    |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:10:12
@@ -35,9 +43,6 @@ LL |     [a, b] = [3, 4];
    |     ------ ^
    |     |
    |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `[{integer}; 2]`
   --> $DIR/note-unsupported.rs:11:5
@@ -54,9 +59,6 @@ LL |     [a, b] += [3, 4];
    |     ------ ^^
    |     |
    |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:16:22
@@ -65,9 +67,6 @@ LL |     S { x: a, y: b } = s;
    |     ---------------- ^
    |     |
    |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `S`
   --> $DIR/note-unsupported.rs:17:5
@@ -86,9 +85,6 @@ LL |     S { x: a, y: b } += s;
    |     ---------------- ^^
    |     |
    |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/note-unsupported.rs:20:21
@@ -97,22 +93,8 @@ LL |     S { x: a, ..s } = S { x: 3, y: 4 };
    |     --------------- ^
    |     |
    |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
-
-error[E0070]: invalid left-hand side of assignment
-  --> $DIR/note-unsupported.rs:24:17
-   |
-LL |     ((a, b), c) = ((3, 4), 5);
-   |     ----------- ^
-   |     |
-   |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
 
 error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0067, E0070, E0368.
+Some errors have detailed explanations: E0067, E0070, E0368, E0658.
 For more information about an error, try `rustc --explain E0067`.

@@ -273,11 +273,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
     fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat { hir_id: self.lower_node_id(p.id), kind, span: p.span })
+        self.arena.alloc(hir::Pat {
+            hir_id: self.lower_node_id(p.id),
+            kind,
+            span: p.span,
+            default_binding_modes: true,
+        })
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
-    fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
+    crate fn ban_extra_rest_pat(&self, sp: Span, prev_sp: Span, ctx: &str) {
         self.diagnostic()
             .struct_span_err(sp, &format!("`..` can only be used once per {} pattern", ctx))
             .span_label(sp, &format!("can only be used once per {} pattern", ctx))
