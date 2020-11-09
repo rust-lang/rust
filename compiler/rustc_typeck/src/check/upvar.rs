@@ -46,9 +46,9 @@ use rustc_span::{Span, Symbol};
 
 /// Describe the relationship between the paths of two places
 /// eg:
-/// - foo is ancestor of foo.bar.baz
-/// - foo.bar.baz is an descendant of foo.bar,
-/// - foo.bar and foo.baz are divergent
+/// - `foo` is ancestor of `foo.bar.baz`
+/// - `foo.bar.baz` is an descendant of `foo.bar`
+/// - `foo.bar` and `foo.baz` are divergent
 enum PlaceAncestryRelation {
     Ancestor,
     Descendant,
@@ -124,7 +124,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let local_def_id = closure_def_id.expect_local();
 
-        let mut capture_information = FxIndexMap::<Place<'tcx>, ty::CaptureInfo<'tcx>>::default();
+        let mut capture_information: FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>> =
+            Default::default();
         if !self.tcx.features().capture_disjoint_fields {
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for (&var_hir_id, _) in upvars.iter() {
@@ -186,7 +187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.compute_min_captures(closure_def_id, delegate);
         self.log_closure_min_capture_info(closure_def_id, span);
 
-        self.set_closure_captures(closure_def_id);
+        self.min_captures_to_closure_captures_bridge(closure_def_id);
 
         // Now that we've analyzed the closure, we know how each
         // variable is borrowed, and we know what traits the closure
@@ -274,8 +275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// 2. upvar_capture_map
     /// UpvarId(foo,c) -> MutBorrow, UpvarId(bar, c) -> ByValue
-
-    fn set_closure_captures(&self, closure_def_id: DefId) {
+    fn min_captures_to_closure_captures_bridge(&self, closure_def_id: DefId) {
         let mut closure_captures: FxIndexMap<hir::HirId, ty::UpvarId> = Default::default();
         let mut upvar_capture_map = ty::UpvarCaptureMap::default();
 
@@ -304,8 +304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // so we create a fake capture info with no expression.
                         let fake_capture_info =
                             ty::CaptureInfo { expr_id: None, capture_kind: capture_kind.clone() };
-                        self.determine_capture_info(fake_capture_info, capture_info.clone())
-                            .capture_kind
+                        determine_capture_info(fake_capture_info, capture_info).capture_kind
                     } else {
                         capture_info.capture_kind
                     };
@@ -329,7 +328,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Analyses the information collected by InferBorrowKind to compute the min number of
+    /// Analyzes the information collected by `InferBorrowKind` to compute the min number of
     /// Places (and corresponding capture kind) that we need to keep track of to support all
     /// the required captured paths.
     ///
@@ -420,8 +419,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // current place is ancestor of possible_descendant
                     PlaceAncestryRelation::Ancestor => {
                         descendant_found = true;
-                        updated_capture_info = self
-                            .determine_capture_info(updated_capture_info, possible_descendant.info);
+                        updated_capture_info =
+                            determine_capture_info(updated_capture_info, possible_descendant.info);
                         false
                     }
 
@@ -437,7 +436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         PlaceAncestryRelation::Descendant => {
                             ancestor_found = true;
                             possible_ancestor.info =
-                                self.determine_capture_info(possible_ancestor.info, capture_info);
+                                determine_capture_info(possible_ancestor.info, capture_info);
 
                             // Only one ancestor of the current place will be in the list.
                             break;
@@ -498,60 +497,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn should_log_capture_analysis(&self, closure_def_id: DefId) -> bool {
         self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
-    }
-
-    /// Helper function to determine if we need to escalate CaptureKind from
-    /// CaptureInfo A to B and returns the escalated CaptureInfo.
-    /// (Note: CaptureInfo contains CaptureKind and an expression that led to capture it in that way)
-    ///
-    /// If both `CaptureKind`s are considered equivalent, then the CaptureInfo is selected based
-    /// on the `CaptureInfo` containing an associated expression id.
-    ///
-    /// If both the CaptureKind and Expression are considered to be equivalent,
-    /// then `CaptureInfo` A is preferred.
-    fn determine_capture_info(
-        &self,
-        capture_info_a: ty::CaptureInfo<'tcx>,
-        capture_info_b: ty::CaptureInfo<'tcx>,
-    ) -> ty::CaptureInfo<'tcx> {
-        // If the capture kind is equivalent then, we don't need to escalate and can compare the
-        // expressions.
-        let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (ty::UpvarCapture::ByValue(_), ty::UpvarCapture::ByValue(_)) => true,
-            (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
-                ref_a.kind == ref_b.kind
-            }
-            _ => false,
-        };
-
-        if eq_capture_kind {
-            match (capture_info_a.expr_id, capture_info_b.expr_id) {
-                (Some(_), _) | (None, None) => capture_info_a,
-                (None, Some(_)) => capture_info_b,
-            }
-        } else {
-            match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-                (ty::UpvarCapture::ByValue(_), _) => capture_info_a,
-                (_, ty::UpvarCapture::ByValue(_)) => capture_info_b,
-                (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
-                    match (ref_a.kind, ref_b.kind) {
-                        // Take LHS:
-                        (ty::UniqueImmBorrow | ty::MutBorrow, ty::ImmBorrow)
-                        | (ty::MutBorrow, ty::UniqueImmBorrow) => capture_info_a,
-
-                        // Take RHS:
-                        (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
-                        | (ty::UniqueImmBorrow, ty::MutBorrow) => capture_info_b,
-
-                        (ty::ImmBorrow, ty::ImmBorrow)
-                        | (ty::UniqueImmBorrow, ty::UniqueImmBorrow)
-                        | (ty::MutBorrow, ty::MutBorrow) => {
-                            bug!("Expected unequal capture kinds");
-                        }
-                    }
-                }
-            }
-        }
     }
 
     fn log_closure_capture_info(
@@ -617,8 +562,9 @@ struct InferBorrowKind<'a, 'tcx> {
     // variable access that caused us to do so.
     current_origin: Option<(Span, Symbol)>,
 
-    /// For each Place that we access, we track the minimal kind of
+    /// For each Place that is captured by the closure, we track the minimal kind of
     /// access we need (ref, ref mut, move, etc) and the expression that resulted in such access.
+    ///
     /// Consider closure where s.str1 is captured via an ImmutableBorrow and
     /// s.str2 via a MutableBorrow
     ///
@@ -686,7 +632,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         };
 
         let curr_info = self.capture_information[&place_with_id.place];
-        let updated_info = self.fcx.determine_capture_info(curr_info, capture_info);
+        let updated_info = determine_capture_info(curr_info, capture_info);
 
         self.capture_information[&place_with_id.place] = updated_info;
     }
@@ -804,7 +750,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
                 expr_id: Some(diag_expr_id),
                 capture_kind: ty::UpvarCapture::ByRef(new_upvar_borrow),
             };
-            let updated_info = self.fcx.determine_capture_info(curr_capture_info, capture_info);
+            let updated_info = determine_capture_info(curr_capture_info, capture_info);
             self.capture_information[&place_with_id.place] = updated_info;
         };
     }
@@ -859,13 +805,13 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
             assert_eq!(self.closure_def_id.expect_local(), upvar_id.closure_expr_id);
 
-            debug!("Capturing new place {:?}", place_with_id);
-
             let capture_kind =
                 self.fcx.init_capture_kind(self.capture_clause, upvar_id, self.closure_span);
 
             let expr_id = Some(diag_expr_id);
             let capture_info = ty::CaptureInfo { expr_id, capture_kind };
+
+            debug!("Capturing new place {:?}, capture_info={:?}", place_with_id, capture_info);
 
             self.capture_information.insert(place_with_id.place.clone(), capture_info);
         } else {
@@ -962,6 +908,92 @@ fn construct_capture_info_string(
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
+}
+
+/// Helper function to determine if we need to escalate CaptureKind from
+/// CaptureInfo A to B and returns the escalated CaptureInfo.
+/// (Note: CaptureInfo contains CaptureKind and an expression that led to capture it in that way)
+///
+/// If both `CaptureKind`s are considered equivalent, then the CaptureInfo is selected based
+/// on the `CaptureInfo` containing an associated expression id.
+///
+/// If both the CaptureKind and Expression are considered to be equivalent,
+/// then `CaptureInfo` A is preferred. This can be useful in cases where we want to priortize
+/// expressions reported back to the user as part of diagnostics based on which appears earlier
+/// in the closure. This can be acheived simply by calling
+/// `determine_capture_info(existing_info, current_info)`. This works out because the
+/// expressions that occur earlier in the closure body than the current expression are processed before.
+/// Consider the following example
+/// ```rust
+/// let mut p: Point { x: 10, y: 10 };
+///
+/// let c = || {
+///     p.x     += 10;
+/// // ^ E1 ^
+///     // ...
+///     // More code
+///     // ...
+///     p.x += 10; // E2
+/// // ^ E2 ^
+/// }
+/// ```
+/// `CaptureKind` associated with both `E1` and `E2` will be ByRef(MutBorrow),
+/// and both have an expression associated, however for diagnostics we prfer reporting
+/// `E1` since it appears earlier in the closure body. When `E2` is being processed we
+/// would've already handled `E1`, and have an existing capture_information for it.
+/// Calling `determine_capture_info(existing_info_e1, current_info_e2)` will return
+/// `existing_info_e1` in this case, allowing us to point to `E1` in case of diagnostics.
+fn determine_capture_info(
+    capture_info_a: ty::CaptureInfo<'tcx>,
+    capture_info_b: ty::CaptureInfo<'tcx>,
+) -> ty::CaptureInfo<'tcx> {
+    // If the capture kind is equivalent then, we don't need to escalate and can compare the
+    // expressions.
+    let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
+        (ty::UpvarCapture::ByValue(_), ty::UpvarCapture::ByValue(_)) => {
+            // We don't need to worry about the spans being ignored here.
+            //
+            // The expr_id in capture_info corresponds to the span that is stored within
+            // ByValue(span) and therefore it gets handled with priortizing based on
+            // expressions below.
+            true
+        }
+        (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
+            ref_a.kind == ref_b.kind
+        }
+        (ty::UpvarCapture::ByValue(_), _) | (ty::UpvarCapture::ByRef(_), _) => false,
+    };
+
+    if eq_capture_kind {
+        match (capture_info_a.expr_id, capture_info_b.expr_id) {
+            (Some(_), _) | (None, None) => capture_info_a,
+            (None, Some(_)) => capture_info_b,
+        }
+    } else {
+        // We select the CaptureKind which ranks higher based the following priority order:
+        // ByValue > MutBorrow > UniqueImmBorrow > ImmBorrow
+        match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
+            (ty::UpvarCapture::ByValue(_), _) => capture_info_a,
+            (_, ty::UpvarCapture::ByValue(_)) => capture_info_b,
+            (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
+                match (ref_a.kind, ref_b.kind) {
+                    // Take LHS:
+                    (ty::UniqueImmBorrow | ty::MutBorrow, ty::ImmBorrow)
+                    | (ty::MutBorrow, ty::UniqueImmBorrow) => capture_info_a,
+
+                    // Take RHS:
+                    (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
+                    | (ty::UniqueImmBorrow, ty::MutBorrow) => capture_info_b,
+
+                    (ty::ImmBorrow, ty::ImmBorrow)
+                    | (ty::UniqueImmBorrow, ty::UniqueImmBorrow)
+                    | (ty::MutBorrow, ty::MutBorrow) => {
+                        bug!("Expected unequal capture kinds");
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Determines the Ancestry relationship of Place A relative to Place B

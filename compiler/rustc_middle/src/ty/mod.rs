@@ -763,6 +763,31 @@ pub struct UpvarBorrow<'tcx> {
     pub region: ty::Region<'tcx>,
 }
 
+/// Given the closure DefId this map provides a map of root variables to minimum
+/// set of `CapturedPlace`s that need to be tracked to support all captures of that closure.
+pub type MinCaptureInformationMap<'tcx> = FxHashMap<DefId, RootVariableMinCaptureList<'tcx>>;
+
+/// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
+/// Used to track the minimum set of `Place`s that need to be captured to support all
+/// Places captured by the closure starting at a given root variable.
+///
+/// This provides a convenient and quick way of checking if a variable being used within
+/// a closure is a capture of a local variable.
+pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureList<'tcx>>;
+
+/// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
+pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
+
+/// A `Place` and the corresponding `CaptureInfo`.
+#[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct CapturedPlace<'tcx> {
+    pub place: HirPlace<'tcx>,
+    pub info: CaptureInfo<'tcx>,
+}
+
+/// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)
+/// for a particular capture as well as identifying the part of the source code
+/// that triggered this capture to occur.
 #[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
 pub struct CaptureInfo<'tcx> {
     /// Expr Id pointing to use that resulted in selecting the current capture kind
@@ -788,18 +813,8 @@ pub struct CaptureInfo<'tcx> {
     pub capture_kind: UpvarCapture<'tcx>,
 }
 
-#[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct CapturedPlace<'tcx> {
-    pub place: HirPlace<'tcx>,
-    pub info: CaptureInfo<'tcx>,
-}
-
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
-
-pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
-pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureList<'tcx>>;
-pub type MinCaptureInformationMap<'tcx> = FxHashMap<DefId, RootVariableMinCaptureList<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {

@@ -415,9 +415,8 @@ pub struct TypeckResults<'tcx> {
     /// entire variable.
     pub closure_captures: ty::UpvarListMap,
 
-    /// Given the closure DefId this map provides a map of
-    /// root variables to minimum set of `Place`s (and how) that need to be tracked
-    /// to support all captures of that closure.
+    /// Tracks the minimum captures required for a closure;
+    /// see `MinCaptureInformationMap` for more details.
     pub closure_min_captures: ty::MinCaptureInformationMap<'tcx>,
 
     /// Stores the type, expression, span and optional scope span of all types
