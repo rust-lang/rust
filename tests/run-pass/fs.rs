@@ -3,14 +3,14 @@
 
 #![feature(rustc_private)]
 
+extern crate libc;
+
 use std::fs::{
     File, create_dir, OpenOptions, read_dir, remove_dir, remove_dir_all, remove_file, rename,
 };
 use std::ffi::CString;
 use std::io::{Read, Write, Error, ErrorKind, Result, Seek, SeekFrom};
 use std::path::{PathBuf, Path};
-
-extern crate libc;
 
 
 fn main() {
