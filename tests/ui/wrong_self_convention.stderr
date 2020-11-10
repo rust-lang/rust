@@ -77,8 +77,6 @@ error: methods called `as_*` usually take self by reference or self by mutable r
    |
 LL |         fn as_i32(self) {}
    |                   ^^^^
-   |
-   = note: `-D clippy::wrong-pub-self-convention` implied by `-D warnings`
 
 error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
   --> $DIR/wrong_self_convention.rs:97:21

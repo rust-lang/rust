@@ -90,7 +90,7 @@ mod issue4037 {
 }
 
 // Lint also in trait definition (see #6307)
-mod issue6307{
+mod issue6307 {
     trait T: Sized {
         fn as_i32(self) {}
         fn as_u32(&self) {}
@@ -102,7 +102,7 @@ mod issue6307{
         fn to_u32(&self) {}
         fn from_i32(self) {}
         // check whether the lint can be allowed at the function level
-        #[allow(clippy::wrong_pub_self_convention)]
+        #[allow(clippy::wrong_self_convention)]
         fn from_cake(self) {}
 
         // test for false positives

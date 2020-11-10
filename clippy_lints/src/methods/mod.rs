@@ -1674,32 +1674,14 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     }
                 }
 
-                if let Some((ref conv, self_kinds)) = &CONVENTIONS
-                    .iter()
-                    .find(|(ref conv, _)| conv.check(&name))
-                {
-                    if !self_kinds.iter().any(|k| k.matches(cx, self_ty, first_arg_ty)) {
-                        let lint = if item.vis.node.is_pub() {
-                            WRONG_PUB_SELF_CONVENTION
-                        } else {
-                            WRONG_SELF_CONVENTION
-                        };
-
-                        span_lint(
-                            cx,
-                            lint,
-                            first_arg.pat.span,
-                            &format!("methods called `{}` usually take {}; consider choosing a less ambiguous name",
-                                conv,
-                                &self_kinds
-                                    .iter()
-                                    .map(|k| k.description())
-                                    .collect::<Vec<_>>()
-                                    .join(" or ")
-                            ),
-                        );
-                    }
-                }
+                lint_wrong_self_convention(
+                    cx,
+                    &name,
+                    item.vis.node.is_pub(),
+                    self_ty,
+                    first_arg_ty,
+                    first_arg.pat.span
+                );
             }
         }
 
@@ -1748,26 +1730,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let self_ty = TraitRef::identity(cx.tcx, item.hir_id.owner.to_def_id()).self_ty();
 
             then {
-                if let Some((ref conv, self_kinds)) = &CONVENTIONS
-                    .iter()
-                    .find(|(ref conv, _)| conv.check(&item.ident.name.as_str()))
-                {
-                    if !self_kinds.iter().any(|k| k.matches(cx, self_ty, first_arg_ty)) {
-                        span_lint(
-                            cx,
-                            WRONG_PUB_SELF_CONVENTION,
-                            first_arg_span,
-                            &format!("methods called `{}` usually take {}; consider choosing a less ambiguous name",
-                                conv,
-                                &self_kinds
-                                    .iter()
-                                    .map(|k| k.description())
-                                    .collect::<Vec<_>>()
-                                    .join(" or ")
-                            ),
-                        );
-                    }
-                }
+                lint_wrong_self_convention(cx, &item.ident.name.as_str(), false, self_ty, first_arg_ty, first_arg_span);
             }
         }
 
@@ -1790,6 +1753,39 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     extract_msrv_attr!(LateContext);
+}
+
+fn lint_wrong_self_convention<'tcx>(
+    cx: &LateContext<'tcx>,
+    item_name: &str,
+    is_pub: bool,
+    self_ty: &'tcx TyS<'tcx>,
+    first_arg_ty: &'tcx TyS<'tcx>,
+    first_arg_span: Span,
+) {
+    let lint = if is_pub {
+        WRONG_PUB_SELF_CONVENTION
+    } else {
+        WRONG_SELF_CONVENTION
+    };
+    if let Some((ref conv, self_kinds)) = &CONVENTIONS.iter().find(|(ref conv, _)| conv.check(item_name)) {
+        if !self_kinds.iter().any(|k| k.matches(cx, self_ty, first_arg_ty)) {
+            span_lint(
+                cx,
+                lint,
+                first_arg_span,
+                &format!(
+                    "methods called `{}` usually take {}; consider choosing a less ambiguous name",
+                    conv,
+                    &self_kinds
+                        .iter()
+                        .map(|k| k.description())
+                        .collect::<Vec<_>>()
+                        .join(" or ")
+                ),
+            );
+        }
+    }
 }
 
 /// Checks for the `OR_FUN_CALL` lint.
