@@ -96,6 +96,30 @@ pub fn main() {
     process::exit(exit_code);
 }
 
+// Taken from
+// https://github.com/rust-lang/miri/blob/master/src/bin/miri.rs
+/// Returns the "default sysroot" that will be used if no `--sysroot` flag is set.
+/// Should be a compile-time constant.
+fn compile_time_sysroot() -> Option<String> {
+    if option_env!("RUSTC_STAGE").is_some() {
+        // This is being built as part of rustc, and gets shipped with rustup.
+        // We can rely on the sysroot computation in librustc_session.
+        return None;
+    }
+    // For builds outside rustc, we need to ensure that we got a sysroot
+    // that gets used as a default.  The sysroot computation in librustc_session would
+    // end up somewhere in the build dir (see `get_or_default_sysroot`).
+    // Taken from PR <https://github.com/Manishearth/rust-clippy/pull/911>.
+    let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
+    let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
+    Some(match (home, toolchain) {
+        (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
+        _ => option_env!("RUST_SYSROOT")
+            .expect("To build rustdoc without rustup, set the `RUST_SYSROOT` env var at build time")
+            .to_owned(),
+    })
+}
+
 fn get_args() -> Option<Vec<String>> {
     env::args_os()
         .enumerate()
@@ -109,7 +133,25 @@ fn get_args() -> Option<Vec<String>> {
                 })
                 .ok()
         })
-        .collect()
+        .collect::<Option<_>>()
+        .map(|mut args: Vec<String>| {
+            // Make sure we use the right default sysroot. The default sysroot is wrong,
+            // because `get_or_default_sysroot` in `librustc_session` bases that on `current_exe`.
+            //
+            // Make sure we always call `compile_time_sysroot` as that also does some sanity-checks
+            // of the environment we were built in.
+            // FIXME: Ideally we'd turn a bad build env into a compile-time error via CTFE or so.
+            if let Some(sysroot) = compile_time_sysroot() {
+                let sysroot_flag = "--sysroot";
+                if !args.iter().any(|e| e == sysroot_flag) {
+                    // We need to overwrite the default that librustc_session would compute.
+                    args.push(sysroot_flag.to_owned());
+                    args.push(sysroot);
+                }
+            }
+
+            args
+        })
 }
 
 fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
