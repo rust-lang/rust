@@ -241,7 +241,7 @@ pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
     pub custom_eq: bool,
-    pub error_occured: bool,
+    pub error_occured: Option<ErrorReported>,
 }
 
 /// After we borrow check a closure, we are left with various

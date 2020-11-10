@@ -2,6 +2,7 @@
 //!
 //! See the `Qualif` trait for more info.
 
+use rustc_errors::ErrorReported;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
@@ -12,7 +13,7 @@ use super::ConstCx;
 pub fn in_any_value_of_ty(
     cx: &ConstCx<'_, 'tcx>,
     ty: Ty<'tcx>,
-    error_occured: bool,
+    error_occured: Option<ErrorReported>,
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),

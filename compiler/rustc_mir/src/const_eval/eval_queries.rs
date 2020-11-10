@@ -282,9 +282,8 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             );
             return Err(ErrorHandled::Reported(ErrorReported {}));
         }
-        let qualif = tcx.mir_const_qualif_opt_const_arg(def);
-        if qualif.error_occured {
-            return Err(ErrorHandled::Reported(ErrorReported {}));
+        if let Some(error_reported) = tcx.mir_const_qualif_opt_const_arg(def).error_occured {
+            return Err(ErrorHandled::Reported(error_reported));
         }
     }
 

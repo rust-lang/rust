@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -126,7 +126,7 @@ impl Qualifs<'mir, 'tcx> {
     fn in_return_place(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
-        error_occured: bool,
+        error_occured: Option<ErrorReported>,
     ) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
@@ -186,7 +186,7 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
-    error_emitted: bool,
+    error_emitted: Option<ErrorReported>,
     secondary_errors: Vec<Diagnostic>,
 }
 
@@ -204,7 +204,7 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
-            error_emitted: false,
+            error_emitted: None,
             secondary_errors: Vec::new(),
         }
     }
@@ -271,7 +271,7 @@ impl Validator<'mir, 'tcx> {
         // If we got through const-checking without emitting any "primary" errors, emit any
         // "secondary" errors if they occurred.
         let secondary_errors = mem::take(&mut self.secondary_errors);
-        if !self.error_emitted {
+        if self.error_emitted.is_none() {
             for error in secondary_errors {
                 self.tcx.sess.diagnostic().emit_diagnostic(&error);
             }
@@ -323,7 +323,7 @@ impl Validator<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagnosticImportance::Primary => {
-                self.error_emitted = true;
+                self.error_emitted = Some(ErrorReported);
                 err.emit();
             }
 
