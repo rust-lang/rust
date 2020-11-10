@@ -101,7 +101,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(
     product.add_rustc_section(
         rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),
         compressed,
-        tcx.sess.target.options.is_like_osx,
+        tcx.sess.target.is_like_osx,
     );
 
     metadata
