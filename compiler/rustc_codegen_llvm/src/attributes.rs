@@ -153,11 +153,7 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
         .target_feature
         .split(',')
         .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
-    sess.target
-        .features
-        .split(',')
-        .chain(cmdline)
-        .filter(|l| !l.is_empty())
+    sess.target.features.split(',').chain(cmdline).filter(|l| !l.is_empty())
 }
 
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
