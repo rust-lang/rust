@@ -109,24 +109,21 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 args.visit_with(visitor)
             }
             Assert { ref cond, ref msg, .. } => {
-                if cond.visit_with(visitor).is_break() {
-                    use AssertKind::*;
-                    match msg {
-                        BoundsCheck { ref len, ref index } => {
-                            len.visit_with(visitor)?;
-                            index.visit_with(visitor)
-                        }
-                        Overflow(_, l, r) => {
-                            l.visit_with(visitor)?;
-                            r.visit_with(visitor)
-                        }
-                        OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
-                            op.visit_with(visitor)
-                        }
-                        ResumedAfterReturn(_) | ResumedAfterPanic(_) => ControlFlow::CONTINUE,
+                cond.visit_with(visitor)?;
+                use AssertKind::*;
+                match msg {
+                    BoundsCheck { ref len, ref index } => {
+                        len.visit_with(visitor)?;
+                        index.visit_with(visitor)
                     }
-                } else {
-                    ControlFlow::CONTINUE
+                    Overflow(_, l, r) => {
+                        l.visit_with(visitor)?;
+                        r.visit_with(visitor)
+                    }
+                    OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
+                        op.visit_with(visitor)
+                    }
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => ControlFlow::CONTINUE,
                 }
             }
             InlineAsm { ref operands, .. } => operands.visit_with(visitor),

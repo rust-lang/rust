@@ -328,9 +328,6 @@ jobs:
           - name: dist-i586-gnu-i586-i686-musl
             <<: *job-linux-xl
 
-          - name: dist-i686-freebsd
-            <<: *job-linux-xl
-
           - name: dist-i686-linux
             <<: *job-linux-xl
 

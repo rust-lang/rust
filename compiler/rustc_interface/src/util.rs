@@ -880,12 +880,6 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             })
         }
     }
-
-    // in general the pretty printer processes unexpanded code, so
-    // we override the default `visit_mac` method which panics.
-    fn visit_mac(&mut self, mac: &mut ast::MacCall) {
-        noop_visit_mac(mac, self)
-    }
 }
 
 /// Returns a version string such as "rustc 1.46.0 (04488afe3 2020-08-24)"

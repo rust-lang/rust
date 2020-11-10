@@ -385,8 +385,4 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
             |item| !matches!(item.kind, ast::ItemKind::MacCall(_) if !self.cx.ecfg.keep_macs),
         );
     }
-
-    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
-        // Do nothing.
-    }
 }

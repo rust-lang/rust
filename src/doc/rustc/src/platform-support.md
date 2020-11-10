@@ -94,7 +94,7 @@ target | std | host | notes
 `i586-unknown-linux-gnu` | ✓ |  | 32-bit Linux w/o SSE (kernel 4.4, glibc 2.23)
 `i586-unknown-linux-musl` | ✓ |  | 32-bit Linux w/o SSE, MUSL
 `i686-linux-android` | ✓ |  | 32-bit x86 Android
-`i686-unknown-freebsd` | ✓ | ✓ | 32-bit FreeBSD
+`i686-unknown-freebsd` | ✓ |  | 32-bit FreeBSD
 `i686-unknown-linux-musl` | ✓ |  | 32-bit Linux with MUSL
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
 `mips-unknown-linux-musl` | ✓ |  | MIPS Linux with MUSL

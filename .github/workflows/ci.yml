@@ -183,9 +183,6 @@ jobs:
           - name: dist-i586-gnu-i586-i686-musl
             os: ubuntu-latest-xl
             env: {}
-          - name: dist-i686-freebsd
-            os: ubuntu-latest-xl
-            env: {}
           - name: dist-i686-linux
             os: ubuntu-latest-xl
             env: {}

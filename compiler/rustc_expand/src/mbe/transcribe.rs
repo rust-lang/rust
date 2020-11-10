@@ -5,7 +5,6 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, NtTT, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
-use rustc_ast::MacCall;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{pluralize, PResult};
@@ -26,10 +25,6 @@ impl MutVisitor for Marker {
 
     fn visit_span(&mut self, span: &mut Span) {
         *span = span.apply_mark(self.0, self.1)
-    }
-
-    fn visit_mac(&mut self, mac: &mut MacCall) {
-        mut_visit::noop_visit_mac(mac, self)
     }
 }
 

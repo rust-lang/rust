@@ -257,6 +257,10 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
+        if let Some(true) = builder.config.llvm_polly {
+            enabled_llvm_projects.push("polly");
+        }
+
         // We want libxml to be disabled.
         // See https://github.com/rust-lang/rust/pull/50104
         cfg.define("LLVM_ENABLE_LIBXML2", "OFF");

@@ -326,6 +326,7 @@ symbols! {
         cfg_attr,
         cfg_attr_multi,
         cfg_doctest,
+        cfg_panic,
         cfg_sanitize,
         cfg_target_feature,
         cfg_target_has_atomic,

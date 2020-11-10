@@ -37,6 +37,7 @@
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
+use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -174,6 +175,13 @@ impl PanicStrategy {
         match *self {
             PanicStrategy::Unwind => "unwind",
             PanicStrategy::Abort => "abort",
+        }
+    }
+
+    pub fn desc_symbol(&self) -> Symbol {
+        match *self {
+            PanicStrategy::Unwind => sym::unwind,
+            PanicStrategy::Abort => sym::abort,
         }
     }
 }

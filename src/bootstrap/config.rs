@@ -99,6 +99,7 @@ pub struct Config {
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: Option<bool>,
+    pub llvm_polly: Option<bool>,
     pub llvm_from_ci: bool,
 
     pub use_lld: bool,
@@ -418,6 +419,7 @@ struct Llvm {
     use_libcxx: Option<bool>,
     use_linker: Option<String>,
     allow_old_toolchain: Option<bool>,
+    polly: Option<bool>,
     download_ci_llvm: Option<StringOrBool>,
 }
 
@@ -762,6 +764,7 @@ impl Config {
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
+            config.llvm_polly = llvm.polly;
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
@@ -795,6 +798,7 @@ impl Config {
                 check_ci_llvm!(llvm.use_libcxx);
                 check_ci_llvm!(llvm.use_linker);
                 check_ci_llvm!(llvm.allow_old_toolchain);
+                check_ci_llvm!(llvm.polly);
 
                 // CI-built LLVM is shared
                 config.llvm_link_shared = true;
