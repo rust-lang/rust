@@ -107,5 +107,10 @@ rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
 # source code for this crate.
 backtrace = { path = "library/backtrace" }
 
+# Fixes for trailing semi
+git2 = { git = "https://github.com/Aaron1011/git2-rs", branch = "fix/trailing-semi" }
+libgit2-sys = { git = "https://github.com/Aaron1011/git2-rs", branch = "fix/trailing-semi" }
+log = { git = "https://github.com/Aaron1011/log", branch = "fix/semi" }
+
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }

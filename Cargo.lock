@@ -1297,8 +1297,7 @@ dependencies = [
 [[package]]
 name = "git2"
 version = "0.13.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca6f1a0238d7f8f8fd5ee642f4ebac4dbc03e03d1f78fbe7a3ede35dcf7e2224"
+source = "git+https://github.com/Aaron1011/git2-rs?branch=fix/trailing-semi#7d261e8a4674f13d8c8c06da1583a941d0553efe"
 dependencies = [
  "bitflags",
  "libc",
@@ -1717,8 +1716,7 @@ dependencies = [
 [[package]]
 name = "libgit2-sys"
 version = "0.12.14+1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f25af58e6495f7caf2919d08f212de550cfa3ed2f5e744988938ea292b9f549"
+source = "git+https://github.com/Aaron1011/git2-rs?branch=fix/trailing-semi#7d261e8a4674f13d8c8c06da1583a941d0553efe"
 dependencies = [
  "cc",
  "libc",
@@ -1808,10 +1806,9 @@ dependencies = [
 [[package]]
 name = "log"
 version = "0.4.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fabed175da42fed1fa0746b0ea71f412aa9d35e76e95e59b192c64b9dc2bf8b"
+source = "git+https://github.com/Aaron1011/log?branch=fix/semi#ed7a622a3f016822888412249d20642d57c0849e"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
 ]
 
 [[package]]
@@ -5252,7 +5249,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.0",
  "regex",
  "serde",
  "serde_json",
