@@ -1032,18 +1032,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_assoc_ty_constraint(
         &mut self,
         constraint: &AssocTyConstraint,
-        itctx: ImplTraitContext<'_, 'hir>,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
 
         let kind = match constraint.kind {
             AssocTyConstraintKind::Equality { ref ty } => {
-                hir::TypeBindingKind::Equality { ty: self.lower_ty(ty, itctx) }
+                hir::TypeBindingKind::Equality { ty: self.lower_ty(ty, itctx.reborrow()) }
             }
             AssocTyConstraintKind::Bound { ref bounds } => {
                 let mut capturable_lifetimes;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let (desugar_to_impl_trait, itctx) = match itctx {
+                let (desugar_to_impl_trait, mut itctx) = match itctx {
                     // We are in the return position:
                     //
                     //     fn foo() -> impl Iterator<Item: Debug>
@@ -1052,7 +1052,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     //
                     //     fn foo() -> impl Iterator<Item = impl Debug>
                     ImplTraitContext::ReturnPositionOpaqueTy { .. }
-                    | ImplTraitContext::OtherOpaqueTy { .. } => (true, itctx),
+                    | ImplTraitContext::OtherOpaqueTy { .. } => (true, itctx.reborrow()),
 
                     // We are in the argument position, but within a dyn type:
                     //
@@ -1061,7 +1061,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so desugar to
                     //
                     //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    ImplTraitContext::Universal(..) if self.is_in_dyn_type => (true, itctx),
+                    ImplTraitContext::Universal(..) if self.is_in_dyn_type => {
+                        (true, itctx.reborrow())
+                    }
 
                     // In `type Foo = dyn Iterator<Item: Debug>` we desugar to
                     // `type Foo = dyn Iterator<Item = impl Debug>` but we have to override the
@@ -1087,7 +1089,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so we leave it as is and this gets expanded in astconv to a bound like
                     // `<T as Iterator>::Item: Debug` where `T` is the type parameter for the
                     // `impl Iterator`.
-                    _ => (false, itctx),
+                    _ => (false, itctx.reborrow()),
                 };
 
                 if desugar_to_impl_trait {
@@ -1113,7 +1115,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: constraint.span,
                                 tokens: None,
                             },
-                            itctx,
+                            itctx.reborrow(),
                         );
 
                         hir::TypeBindingKind::Equality { ty }
@@ -1121,16 +1123,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 } else {
                     // Desugar `AssocTy: Bounds` into a type binding where the
                     // later desugars into a trait predicate.
-                    let bounds = self.lower_param_bounds(bounds, itctx);
+                    let bounds = self.lower_param_bounds(bounds, itctx.reborrow());
 
                     hir::TypeBindingKind::Constraint { bounds }
                 }
             }
         };
 
+        debug!(
+            "lower_assoc_ty_constraint: generic args of AssocTyConstraint: {:?}",
+            constraint.gen_args
+        );
+        let args: &'hir mut [GenericArg<'hir>] = self.arena.alloc_from_iter(
+            constraint.gen_args.iter().map(|arg| self.lower_generic_arg(&arg, itctx.reborrow())),
+        );
+        debug!("lower_assoc_ty_constraint: lowered generic args: {:?}", args);
+        let bindings: &'hir mut [hir::TypeBinding<'hir>] = arena_vec![self;];
+        let gen_args = self.arena.alloc(hir::GenericArgs { args, bindings, parenthesized: false });
+
         hir::TypeBinding {
             hir_id: self.lower_node_id(constraint.id),
             ident: constraint.ident,
+            gen_args,
             kind,
             span: constraint.span,
         }
