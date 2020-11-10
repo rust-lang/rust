@@ -1118,6 +1118,13 @@ vec![
         module: "returns",
     },
     Lint {
+        name: "let_underscore_drop",
+        group: "pedantic",
+        desc: "non-binding let on a type that implements `Drop`",
+        deprecation: None,
+        module: "let_underscore",
+    },
+    Lint {
         name: "let_underscore_lock",
         group: "correctness",
         desc: "non-binding let on a synchronization lock",
@@ -2257,6 +2264,13 @@ vec![
         desc: "using `x.extend(s.chars())` where s is a `&str` or `String`",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "string_from_utf8_as_bytes",
+        group: "complexity",
+        desc: "casting string slices to byte slices and back",
+        deprecation: None,
+        module: "strings",
     },
     Lint {
         name: "string_lit_as_bytes",

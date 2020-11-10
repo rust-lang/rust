@@ -2,6 +2,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::iter_cloned_collect)]
 #![allow(clippy::clone_on_copy, clippy::redundant_clone)]
+#![allow(clippy::let_underscore_drop)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::many_single_char_names)]
@@ -43,5 +44,13 @@ fn main() {
         let mut d = 21;
         let v = vec![&mut d];
         let _: Vec<u32> = v.into_iter().map(|&mut x| x).collect();
+    }
+
+    // Issue #6299
+    {
+        let mut aa = 5;
+        let mut bb = 3;
+        let items = vec![&mut aa, &mut bb];
+        let _: Vec<_> = items.into_iter().map(|x| x.clone()).collect();
     }
 }

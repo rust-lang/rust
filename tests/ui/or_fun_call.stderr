@@ -78,17 +78,29 @@ error: use of `unwrap_or` followed by a function call
 LL |     let _ = stringy.unwrap_or("".to_owned());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
 
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:76:21
+   |
+LL |     let _ = Some(1).unwrap_or(map[&1]);
+   |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
+
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:78:21
+   |
+LL |     let _ = Some(1).unwrap_or(map[&1]);
+   |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
+
 error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:93:35
+  --> $DIR/or_fun_call.rs:102:35
    |
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some("b".to_string()))`
 
 error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:97:10
+  --> $DIR/or_fun_call.rs:106:10
    |
 LL |         .or(Some(Bar(b, Duration::from_secs(2))));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(Bar(b, Duration::from_secs(2))))`
 
-error: aborting due to 15 previous errors
+error: aborting due to 17 previous errors
 
