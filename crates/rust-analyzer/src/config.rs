@@ -385,10 +385,13 @@ impl Config {
             }
 
             if let Some(code_action) = &doc_caps.code_action {
-                if let Some(resolve_support) = &code_action.resolve_support {
-                    if resolve_support.properties.iter().any(|it| it == "edit") {
-                        self.client_caps.code_action_resolve = true;
+                match (code_action.data_support, &code_action.resolve_support) {
+                    (Some(true), Some(resolve_support)) => {
+                        if resolve_support.properties.iter().any(|it| it == "edit") {
+                            self.client_caps.code_action_resolve = true;
+                        }
                     }
+                    _ => (),
                 }
             }
         }
