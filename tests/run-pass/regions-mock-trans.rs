@@ -3,6 +3,7 @@
 #![feature(rustc_private)]
 
 extern crate libc;
+
 use std::mem;
 
 struct Arena(());

@@ -2,9 +2,9 @@
 
 #![feature(rustc_private)]
 
-use core::slice;
-
 extern crate libc;
+
+use core::slice;
 
 fn main() {
     unsafe {

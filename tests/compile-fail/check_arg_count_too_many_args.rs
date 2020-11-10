@@ -1,5 +1,4 @@
 #![feature(core_intrinsics)]
-#![feature(rustc_private)]
 
 fn main() {
     extern "C" {

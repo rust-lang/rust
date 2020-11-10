@@ -2,9 +2,9 @@
 
 #![feature(rustc_private)]
 
-use core::{slice, ptr};
-
 extern crate libc;
+
+use core::{slice, ptr};
 
 fn main() {
     // Test that small allocations sometimes *are* not very aligned.
