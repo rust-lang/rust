@@ -51,7 +51,6 @@
         fixes: [
             CodeAction {
                 title: "return the expression directly",
-                id: None,
                 group: None,
                 kind: Some(
                     CodeActionKind(
@@ -98,6 +97,7 @@
                 is_preferred: Some(
                     true,
                 ),
+                data: None,
             },
         ],
     },

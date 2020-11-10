@@ -395,7 +395,7 @@ export function showReferences(ctx: Ctx): Cmd {
 }
 
 export function applyActionGroup(_ctx: Ctx): Cmd {
-    return async (actions: { label: string; arguments: ra.ResolveCodeActionParams }[]) => {
+    return async (actions: { label: string; arguments: lc.CodeAction }[]) => {
         const selectedAction = await vscode.window.showQuickPick(actions);
         if (!selectedAction) return;
         vscode.commands.executeCommand(
@@ -442,12 +442,13 @@ export function openDocs(ctx: Ctx): Cmd {
 
 export function resolveCodeAction(ctx: Ctx): Cmd {
     const client = ctx.client;
-    return async (params: ra.ResolveCodeActionParams) => {
-        const item: lc.WorkspaceEdit = await client.sendRequest(ra.resolveCodeAction, params);
-        if (!item) {
+    return async (params: lc.CodeAction) => {
+        params.command = undefined;
+        const item = await client.sendRequest(lc.CodeActionResolveRequest.type, params);
+        if (!item.edit) {
             return;
         }
-        const edit = client.protocol2CodeConverter.asWorkspaceEdit(item);
+        const edit = client.protocol2CodeConverter.asWorkspaceEdit(item.edit);
         await applySnippetWorkspaceEdit(edit);
     };
 }

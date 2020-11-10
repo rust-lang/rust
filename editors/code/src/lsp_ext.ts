@@ -43,12 +43,6 @@ export const matchingBrace = new lc.RequestType<MatchingBraceParams, lc.Position
 
 export const parentModule = new lc.RequestType<lc.TextDocumentPositionParams, lc.LocationLink[], void>("experimental/parentModule");
 
-export interface ResolveCodeActionParams {
-    id: string;
-    codeActionParams: lc.CodeActionParams;
-}
-export const resolveCodeAction = new lc.RequestType<ResolveCodeActionParams, lc.WorkspaceEdit, unknown>('experimental/resolveCodeAction');
-
 export interface JoinLinesParams {
     textDocument: lc.TextDocumentIdentifier;
     ranges: lc.Range[];

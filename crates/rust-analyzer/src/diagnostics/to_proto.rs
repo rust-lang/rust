@@ -110,7 +110,6 @@ fn map_rust_child_diagnostic(
     } else {
         MappedRustChildDiagnostic::SuggestedFix(lsp_ext::CodeAction {
             title: rd.message.clone(),
-            id: None,
             group: None,
             kind: Some(lsp_types::CodeActionKind::QUICKFIX),
             edit: Some(lsp_ext::SnippetWorkspaceEdit {
@@ -119,6 +118,7 @@ fn map_rust_child_diagnostic(
                 document_changes: None,
             }),
             is_preferred: Some(true),
+            data: None,
         })
     }
 }

@@ -806,11 +806,11 @@ fn handle_fixes(
         let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
         let action = lsp_ext::CodeAction {
             title: fix.label.to_string(),
-            id: None,
             group: None,
             kind: Some(CodeActionKind::QUICKFIX),
             edit: Some(edit),
             is_preferred: Some(false),
+            data: None,
         };
         res.push(action);
     }
@@ -852,11 +852,11 @@ pub(crate) fn handle_code_action(
 
     handle_fixes(&snap, &params, &mut res)?;
 
-    if snap.config.client_caps.resolve_code_action {
+    if snap.config.client_caps.code_action_resolve {
         for (index, assist) in
             snap.analysis.unresolved_assists(&snap.config.assist, frange)?.into_iter().enumerate()
         {
-            res.push(to_proto::unresolved_code_action(&snap, assist, index)?);
+            res.push(to_proto::unresolved_code_action(&snap, params.clone(), assist, index)?);
         }
     } else {
         for assist in snap.analysis.resolved_assists(&snap.config.assist, frange)?.into_iter() {
@@ -867,11 +867,16 @@ pub(crate) fn handle_code_action(
     Ok(Some(res))
 }
 
-pub(crate) fn handle_resolve_code_action(
+pub(crate) fn handle_code_action_resolve(
     mut snap: GlobalStateSnapshot,
-    params: lsp_ext::ResolveCodeActionParams,
-) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
-    let _p = profile::span("handle_resolve_code_action");
+    mut code_action: lsp_ext::CodeAction,
+) -> Result<lsp_ext::CodeAction> {
+    let _p = profile::span("handle_code_action_resolve");
+    let params = match code_action.data.take() {
+        Some(it) => it,
+        None => Err("can't resolve code action without data")?,
+    };
+
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
     let line_index = snap.analysis.file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.code_action_params.range);
@@ -888,7 +893,9 @@ pub(crate) fn handle_resolve_code_action(
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
     assert!(assist.assist.id.0 == id);
-    Ok(to_proto::resolved_code_action(&snap, assist.clone())?.edit)
+    let edit = to_proto::resolved_code_action(&snap, assist.clone())?.edit;
+    code_action.edit = edit;
+    Ok(code_action)
 }
 
 pub(crate) fn handle_code_lens(
