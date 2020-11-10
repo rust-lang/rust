@@ -64,7 +64,7 @@ pub trait AstConv<'tcx> {
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
     fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
-    -> Option<ty::Region<'tcx>>;
+        -> Option<ty::Region<'tcx>>;
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
@@ -112,12 +112,15 @@ pub enum SizedByDefault {
     No,
 }
 
+#[derive(Debug)]
 struct ConvertedBinding<'a, 'tcx> {
     item_name: Ident,
     kind: ConvertedBindingKind<'a, 'tcx>,
+    gen_args: &'a GenericArgs<'a>,
     span: Span,
 }
 
+#[derive(Debug)]
 enum ConvertedBindingKind<'a, 'tcx> {
     Equality(Ty<'tcx>),
     Constraint(&'a [hir::GenericBound<'a>]),
@@ -475,7 +478,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ConvertedBindingKind::Constraint(bounds)
                     }
                 };
-                ConvertedBinding { item_name: binding.ident, kind, span: binding.span }
+                ConvertedBinding {
+                    item_name: binding.ident,
+                    kind,
+                    gen_args: binding.gen_args,
+                    span: binding.span,
+                }
             })
             .collect();
 
@@ -812,7 +820,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds.trait_bounds.sort_by_key(|(t, _, _)| t.def_id());
 
         bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
-            if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
+            if !self.is_unsized(ast_bounds, span) {
+                Some(span)
+            } else {
+                None
+            }
         } else {
             None
         };
@@ -836,60 +848,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         dup_bindings: &mut FxHashMap<DefId, Span>,
         path_span: Span,
     ) -> Result<(), ErrorReported> {
+        // Given something like `U: SomeTrait<T = X>`, we want to produce a
+        // predicate like `<U as SomeTrait>::T = X`. This is somewhat
+        // subtle in the event that `T` is defined in a supertrait of
+        // `SomeTrait`, because in that case we need to upcast.
+        //
+        // That is, consider this case:
+        //
+        // ```
+        // trait SubTrait: SuperTrait<i32> { }
+        // trait SuperTrait<A> { type T; }
+        //
+        // ... B: SubTrait<T = foo> ...
+        // ```
+        //
+        // We want to produce `<B as SuperTrait<i32>>::T == foo`.
+
+        debug!("add_predicates_for_ast_type_binding(hir_ref_id {:?}, trait_ref {:?}, binding {:?}, bounds {:?}",
+               hir_ref_id, trait_ref, binding, bounds);
         let tcx = self.tcx();
-
-        if !speculative {
-            // Given something like `U: SomeTrait<T = X>`, we want to produce a
-            // predicate like `<U as SomeTrait>::T = X`. This is somewhat
-            // subtle in the event that `T` is defined in a supertrait of
-            // `SomeTrait`, because in that case we need to upcast.
-            //
-            // That is, consider this case:
-            //
-            // ```
-            // trait SubTrait: SuperTrait<i32> { }
-            // trait SuperTrait<A> { type T; }
-            //
-            // ... B: SubTrait<T = foo> ...
-            // ```
-            //
-            // We want to produce `<B as SuperTrait<i32>>::T == foo`.
-
-            // Find any late-bound regions declared in `ty` that are not
-            // declared in the trait-ref. These are not well-formed.
-            //
-            // Example:
-            //
-            //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
-            //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
-            if let ConvertedBindingKind::Equality(ty) = binding.kind {
-                let late_bound_in_trait_ref =
-                    tcx.collect_constrained_late_bound_regions(&trait_ref);
-                let late_bound_in_ty =
-                    tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(ty));
-                debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
-                debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
-
-                // FIXME: point at the type params that don't have appropriate lifetimes:
-                // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
-                //                         ----  ----     ^^^^^^^
-                self.validate_late_bound_regions(
-                    late_bound_in_trait_ref,
-                    late_bound_in_ty,
-                    |br_name| {
-                        struct_span_err!(
-                            tcx.sess,
-                            binding.span,
-                            E0582,
-                            "binding for associated type `{}` references {}, \
-                             which does not appear in the trait input types",
-                            binding.item_name,
-                            br_name
-                        )
-                    },
-                );
-            }
-        }
 
         let candidate =
             if self.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
@@ -948,20 +925,81 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .or_insert(binding.span);
         }
 
+        // Include substitutions for generic parameters of associated types
+        let candidate_new = candidate.map_bound(|trait_ref| {
+            let item_segment = hir::PathSegment {
+                ident: assoc_ty.ident,
+                hir_id: None,
+                res: None,
+                args: Some(binding.gen_args),
+                infer_args: false,
+            };
+
+            let substs_assoc_item = self.create_substs_for_associated_item(
+                tcx,
+                path_span,
+                assoc_ty.def_id,
+                &item_segment,
+                trait_ref.substs,
+            );
+
+            debug!("substs for assoc_item: {:?}", substs_assoc_item);
+            ty::TraitRef::new(trait_ref.def_id, substs_assoc_item)
+        });
+
+        if !speculative {
+            // Find any late-bound regions declared in `ty` that are not
+            // declared in the trait-ref. These are not well-formed.
+            //
+            // Example:
+            //
+            //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+            //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+            if let ConvertedBindingKind::Equality(ty) = binding.kind {
+                let late_bound_in_trait_ref =
+                    tcx.collect_constrained_late_bound_regions(&candidate_new);
+                let late_bound_in_ty =
+                    tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(ty));
+                debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
+                debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
+
+                // FIXME: point at the type params that don't have appropriate lifetimes:
+                // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
+                //                         ----  ----     ^^^^^^^
+                self.validate_late_bound_regions(
+                    late_bound_in_trait_ref,
+                    late_bound_in_ty,
+                    |br_name| {
+                        struct_span_err!(
+                            tcx.sess,
+                            binding.span,
+                            E0582,
+                            "binding for associated type `{}` references {}, \
+                             which does not appear in the trait input types",
+                            binding.item_name,
+                            br_name
+                        )
+                    },
+                );
+            }
+        }
+
         match binding.kind {
             ConvertedBindingKind::Equality(ref ty) => {
                 // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
+
                 bounds.projection_bounds.push((
-                    candidate.map_bound(|trait_ref| ty::ProjectionPredicate {
-                        projection_ty: ty::ProjectionTy::from_ref_and_name(
-                            tcx,
-                            trait_ref,
-                            binding.item_name,
-                        ),
-                        ty,
+                    candidate_new.map_bound(|trait_ref| {
+                        let projection_ty =
+                            ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, binding.item_name);
+                        debug!(
+                            "projection_ty {:?}, substs: {:?}",
+                            projection_ty, projection_ty.substs
+                        );
+                        ty::ProjectionPredicate { projection_ty, ty }
                     }),
                     binding.span,
                 ));
@@ -1908,7 +1946,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     path_segs.iter().map(|PathSeg(_, index)| index).collect();
                 self.prohibit_generics(path.segments.iter().enumerate().filter_map(
                     |(index, seg)| {
-                        if !generic_segs.contains(&index) { Some(seg) } else { None }
+                        if !generic_segs.contains(&index) {
+                            Some(seg)
+                        } else {
+                            None
+                        }
                     },
                 ));
 
