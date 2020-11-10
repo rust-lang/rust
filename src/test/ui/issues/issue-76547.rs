@@ -1,4 +1,4 @@
-// Test for for diagnostic improvement issue #76547
+// Test for diagnostic improvement issue #76547
 // edition:2018
 
 use std::{
