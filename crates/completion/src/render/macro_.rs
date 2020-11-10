@@ -1,6 +1,6 @@
 //! Renderer for macro invocations.
 
-use hir::{Documentation, HasSource};
+use hir::{db::HirDatabase, Documentation, HasAttrs, HasSource};
 use syntax::display::macro_label;
 use test_utils::mark;
 
@@ -27,12 +27,48 @@ struct MacroRender<'a> {
     ket: &'static str,
 }
 
+pub fn guess_macro_braces(
+    db: &dyn HirDatabase,
+    macro_: hir::MacroDef,
+) -> (&'static str, &'static str) {
+    let macro_name = match macro_.name(db) {
+        Some(name) => name.to_string(),
+        None => return ("(", ")"),
+    };
+    let macro_docs = macro_.docs(db);
+    let macro_docs = macro_docs.as_ref().map(Documentation::as_str).unwrap_or("");
+
+    let mut votes = [0, 0, 0];
+    for (idx, s) in macro_docs.match_indices(&macro_name) {
+        let (before, after) = (&macro_docs[..idx], &macro_docs[idx + s.len()..]);
+        // Ensure to match the full word
+        if after.starts_with('!')
+            && !before.ends_with(|c: char| c == '_' || c.is_ascii_alphanumeric())
+        {
+            // It may have spaces before the braces like `foo! {}`
+            match after[1..].chars().find(|&c| !c.is_whitespace()) {
+                Some('{') => votes[0] += 1,
+                Some('[') => votes[1] += 1,
+                Some('(') => votes[2] += 1,
+                _ => {}
+            }
+        }
+    }
+
+    // Insert a space before `{}`.
+    // We prefer the last one when some votes equal.
+    let (_vote, (bra, ket)) = votes
+        .iter()
+        .zip(&[(" {", "}"), ("[", "]"), ("(", ")")])
+        .max_by_key(|&(&vote, _)| vote)
+        .unwrap();
+    (*bra, *ket)
+}
+
 impl<'a> MacroRender<'a> {
     fn new(ctx: RenderContext<'a>, name: String, macro_: hir::MacroDef) -> MacroRender<'a> {
         let docs = ctx.docs(macro_);
-        let docs_str = docs.as_ref().map_or("", |s| s.as_str());
-        let (bra, ket) = guess_macro_braces(&name, docs_str);
-
+        let (bra, ket) = guess_macro_braces(ctx.db(), macro_);
         MacroRender { ctx, name, macro_, docs, bra, ket }
     }
 
@@ -95,34 +131,6 @@ impl<'a> MacroRender<'a> {
         let ast_node = self.macro_.source(self.ctx.db()).value;
         macro_label(&ast_node)
     }
-}
-
-fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static str) {
-    let mut votes = [0, 0, 0];
-    for (idx, s) in docs.match_indices(&macro_name) {
-        let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
-        // Ensure to match the full word
-        if after.starts_with('!')
-            && !before.ends_with(|c: char| c == '_' || c.is_ascii_alphanumeric())
-        {
-            // It may have spaces before the braces like `foo! {}`
-            match after[1..].chars().find(|&c| !c.is_whitespace()) {
-                Some('{') => votes[0] += 1,
-                Some('[') => votes[1] += 1,
-                Some('(') => votes[2] += 1,
-                _ => {}
-            }
-        }
-    }
-
-    // Insert a space before `{}`.
-    // We prefer the last one when some votes equal.
-    let (_vote, (bra, ket)) = votes
-        .iter()
-        .zip(&[(" {", "}"), ("[", "]"), ("(", ")")])
-        .max_by_key(|&(&vote, _)| vote)
-        .unwrap();
-    (*bra, *ket)
 }
 
 #[cfg(test)]

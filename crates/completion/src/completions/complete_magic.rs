@@ -1,7 +1,8 @@
 //! TODO kb move this into the complete_unqualified_path when starts to work properly
 
 use assists::utils::{insert_use, mod_path_to_ast, ImportScope, MergeBehaviour};
-use hir::Query;
+use either::Either;
+use hir::{db::HirDatabase, MacroDef, ModuleDef, Query};
 use itertools::Itertools;
 use syntax::{algo, AstNode};
 use text_edit::TextEdit;
@@ -28,14 +29,23 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
         // TODO kb use imports_locator instead?
         .query_external_importables(ctx.db, Query::new(&potential_import_name).limit(40))
         .unique()
-        .filter_map(|import_candidate| match import_candidate {
-            either::Either::Left(module_def) => current_module.find_use_path(ctx.db, module_def),
-            either::Either::Right(macro_def) => current_module.find_use_path(ctx.db, macro_def),
+        .filter_map(|import_candidate| {
+            let use_path = match import_candidate {
+                Either::Left(module_def) => current_module.find_use_path(ctx.db, module_def),
+                Either::Right(macro_def) => current_module.find_use_path(ctx.db, macro_def),
+            }?;
+            // TODO kb need to omit braces when there are some already.
+            // maybe remove braces completely?
+            Some((use_path, additional_completion(ctx.db, import_candidate)))
         })
-        .filter_map(|mod_path| {
+        .filter_map(|(mod_path, additional_completion)| {
             let mut builder = TextEdit::builder();
 
-            let correct_qualifier = mod_path.segments.last()?.to_string();
+            let correct_qualifier = format!(
+                "{}{}",
+                mod_path.segments.last()?,
+                additional_completion.unwrap_or_default()
+            );
             builder.replace(anchor.syntax().text_range(), correct_qualifier);
 
             // TODO kb: assists already have the merge behaviour setting, need to unite both
@@ -58,6 +68,21 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
     acc.add_all(possible_imports);
 
     Some(())
+}
+
+fn additional_completion(
+    db: &dyn HirDatabase,
+    import_candidate: Either<ModuleDef, MacroDef>,
+) -> Option<String> {
+    match import_candidate {
+        Either::Left(ModuleDef::Function(_)) => Some("()".to_string()),
+        Either::Right(macro_def) => {
+            let (left_brace, right_brace) =
+                crate::render::macro_::guess_macro_braces(db, macro_def);
+            Some(format!("!{}{}", left_brace, right_brace))
+        }
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -83,7 +108,34 @@ fn main() {
 use dep::io::stdin;
 
 fn main() {
-    stdin
+    stdin()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn macro_magic_completion() {
+        check_edit(
+            "dep::macro_with_curlies",
+            r#"
+//- /lib.rs crate:dep
+/// Please call me as macro_with_curlies! {}
+#[macro_export]
+macro_rules! macro_with_curlies {
+    () => {}
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    curli<|>
+}
+"#,
+            r#"
+use dep::macro_with_curlies;
+
+fn main() {
+    macro_with_curlies! {}
 }
 "#,
         );
