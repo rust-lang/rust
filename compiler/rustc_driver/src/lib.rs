@@ -1288,8 +1288,6 @@ pub fn init_env_logger(env: &str) {
         .with_indent_lines(true)
         .with_ansi(true)
         .with_targets(true)
-        .with_thread_ids(true)
-        .with_thread_names(true)
         .with_wraparound(10)
         .with_verbose_exit(true)
         .with_verbose_entry(true)
