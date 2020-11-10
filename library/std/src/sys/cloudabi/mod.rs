@@ -66,3 +66,8 @@ pub fn hashmap_random_keys() -> (u64, u64) {
         v.assume_init()
     }
 }
+
+#[cfg_attr(feature = "backtrace", link(name = "unwind"))]
+#[link(name = "c")]
+#[link(name = "compiler_rt")]
+extern "C" {}
