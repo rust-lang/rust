@@ -21,7 +21,7 @@ fn main() {
     || {
         println!("{}", w.p.x);
         //~^ ERROR: Capturing w[(0, 0),(0, 0)] -> ImmBorrow
-        //~^^ ERROR: Min Capture w[(0, 0),(0, 0)] -> ImmBorrow
+        //~| ERROR: Min Capture w[(0, 0),(0, 0)] -> ImmBorrow
     };
 
     // `c` only captures `w.p.x`, therefore it's safe to mutate `w.p.y`.

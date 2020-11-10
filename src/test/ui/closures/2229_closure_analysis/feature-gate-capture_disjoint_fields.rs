@@ -10,6 +10,6 @@ fn main() {
     || {
         println!("This uses new capture analyysis to capture s={}", s);
         //~^ ERROR: Capturing s[] -> ImmBorrow
-        //~^^ ERROR: Min Capture s[] -> ImmBorrow
+        //~| ERROR: Min Capture s[] -> ImmBorrow
     };
 }

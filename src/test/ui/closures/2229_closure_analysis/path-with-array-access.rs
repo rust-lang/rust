@@ -25,6 +25,6 @@ fn main() {
     || {
         println!("{}", pent.points[5].x);
         //~^ ERROR: Capturing pent[(0, 0)] -> ImmBorrow
-        //~^^ ERROR: Min Capture pent[(0, 0)] -> ImmBorrow
+        //~| ERROR: Min Capture pent[(0, 0)] -> ImmBorrow
     };
 }

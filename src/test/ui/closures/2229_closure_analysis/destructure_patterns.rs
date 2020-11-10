@@ -12,7 +12,7 @@ fn arrays() {
     || {
         let [a, b, .., e] = arr;
         //~^ ERROR: Capturing arr[Index] -> ByValue
-        //~^^ ERROR: Min Capture arr[] -> ByValue
+        //~| ERROR: Min Capture arr[] -> ByValue
         assert_eq!(a, "A");
         assert_eq!(b, "B");
         assert_eq!(e, "E");
@@ -35,9 +35,9 @@ fn structs() {
     || {
         let Point { x: ref mut x, y: _, id: moved_id } = p;
         //~^ ERROR: Capturing p[(0, 0)] -> MutBorrow
-        //~^^ ERROR: Capturing p[(2, 0)] -> ByValue
-        //~^^^ ERROR: Min Capture p[(0, 0)] -> MutBorrow
-        //~^^^^ ERROR: Min Capture p[(2, 0)] -> ByValue
+        //~| ERROR: Capturing p[(2, 0)] -> ByValue
+        //~| ERROR: Min Capture p[(0, 0)] -> MutBorrow
+        //~| ERROR: Min Capture p[(2, 0)] -> ByValue
 
         println!("{}, {}", x, moved_id);
     };
@@ -52,11 +52,11 @@ fn tuples() {
     || {
         let (ref mut x, ref ref_str, (moved_s, _)) = t;
         //~^ ERROR: Capturing t[(0, 0)] -> MutBorrow
-        //~^^ ERROR: Capturing t[(1, 0)] -> ImmBorrow
-        //~^^^ ERROR: Capturing t[(2, 0),(0, 0)] -> ByValue
-        //~^^^^ ERROR: Min Capture t[(0, 0)] -> MutBorrow
-        //~^^^^^ ERROR: Min Capture t[(1, 0)] -> ImmBorrow
-        //~^^^^^^ ERROR: Min Capture t[(2, 0),(0, 0)] -> ByValue
+        //~| ERROR: Capturing t[(1, 0)] -> ImmBorrow
+        //~| ERROR: Capturing t[(2, 0),(0, 0)] -> ByValue
+        //~| ERROR: Min Capture t[(0, 0)] -> MutBorrow
+        //~| ERROR: Min Capture t[(1, 0)] -> ImmBorrow
+        //~| ERROR: Min Capture t[(2, 0),(0, 0)] -> ByValue
 
         println!("{}, {} {}", x, ref_str, moved_s);
     };

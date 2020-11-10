@@ -938,7 +938,7 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
 /// }
 /// ```
 /// `CaptureKind` associated with both `E1` and `E2` will be ByRef(MutBorrow),
-/// and both have an expression associated, however for diagnostics we prfer reporting
+/// and both have an expression associated, however for diagnostics we prefer reporting
 /// `E1` since it appears earlier in the closure body. When `E2` is being processed we
 /// would've already handled `E1`, and have an existing capture_information for it.
 /// Calling `determine_capture_info(existing_info_e1, current_info_e2)` will return

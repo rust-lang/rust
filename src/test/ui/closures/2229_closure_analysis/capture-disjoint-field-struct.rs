@@ -17,7 +17,7 @@ fn main() {
     || {
         println!("{}", p.x);
         //~^ ERROR: Capturing p[(0, 0)] -> ImmBorrow
-        //~^^ ERROR: Min Capture p[(0, 0)] -> ImmBorrow
+        //~| ERROR: Min Capture p[(0, 0)] -> ImmBorrow
     };
 
     // `c` should only capture `p.x`, therefore mutating `p.y` is allowed.

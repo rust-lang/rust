@@ -27,7 +27,7 @@ fn main() {
     || {
         p.x += 10;
         //~^ ERROR: Capturing p[(0, 0)] -> MutBorrow
-        //~^^ ERROR: Min Capture p[] -> MutBorrow
+        //~| ERROR: Min Capture p[] -> MutBorrow
         println!("{:?}", p);
         //~^ ERROR: Capturing p[] -> ImmBorrow
     };

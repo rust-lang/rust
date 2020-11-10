@@ -23,7 +23,7 @@ fn wild_struct() {
         // FIXME(arora-aman): Change `_x` to `_`
         let Point { x: _x, y: _ } = p;
         //~^ ERROR: Capturing p[(0, 0)] -> ImmBorrow
-        //~^^ ERROR: Min Capture p[(0, 0)] -> ImmBorrow
+        //~| ERROR: Min Capture p[(0, 0)] -> ImmBorrow
     };
 
     c();
@@ -38,7 +38,7 @@ fn wild_tuple() {
         // FIXME(arora-aman): Change `_x` to `_`
         let (_x, _) = t;
         //~^ ERROR: Capturing t[(0, 0)] -> ByValue
-        //~^^ ERROR: Min Capture t[(0, 0)] -> ByValue
+        //~| ERROR: Min Capture t[(0, 0)] -> ByValue
     };
 
     c();
@@ -53,7 +53,7 @@ fn wild_arr() {
         // FIXME(arora-aman): Change `_x` to `_`
         let [_x, _] = arr;
         //~^ ERROR: Capturing arr[Index] -> ByValue
-        //~^^ ERROR: Min Capture arr[] -> ByValue
+        //~| ERROR: Min Capture arr[] -> ByValue
     };
 
     c();
