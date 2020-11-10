@@ -788,7 +788,7 @@ extern "rust-intrinsic" {
 
     /// The size of the referenced value in bytes.
     ///
-    /// The stabilized version of this intrinsic is [`size_of_val`].
+    /// The stabilized version of this intrinsic is [`mem::size_of_val`].
     #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
     /// The required alignment of the referenced value.
@@ -1704,7 +1704,7 @@ extern "rust-intrinsic" {
     /// Returns the number of variants of the type `T` cast to a `usize`;
     /// if `T` has no variants, returns 0. Uninhabited variants will be counted.
     ///
-    /// The to-be-stabilized version of this intrinsic is [`variant_count`].
+    /// The to-be-stabilized version of this intrinsic is [`mem::variant_count`].
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
     pub fn variant_count<T>() -> usize;
 
