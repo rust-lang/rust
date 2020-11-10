@@ -1350,6 +1350,29 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
+fn get_generic_args_from_path_segment(path_segment: &PathSegment) -> Vec<GenericArg> {
+    let mut generic_args: Vec<GenericArg> = vec![];
+    if let Some(ref args) = path_segment.args {
+        match &**args {
+            GenericArgs::AngleBracketed(ref angle_args) => {
+                for arg in &angle_args.args {
+                    match arg {
+                        AngleBracketedArg::Arg(gen_arg) => match gen_arg {
+                            GenericArg::Lifetime(_) | GenericArg::Type(_) => {
+                                generic_args.push((*gen_arg).clone())
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    generic_args
+}
+
 /// When encountering an equality constraint in a `where` clause, emit an error. If the code seems
 /// like it's setting an associated type, provide an appropriate suggestion.
 fn deny_equality_constraints(
@@ -1372,16 +1395,18 @@ fn deny_equality_constraints(
                         if param.ident == *ident {
                             let param = ident;
                             match &full_path.segments[qself.position..] {
-                                [PathSegment { ident, .. }] => {
+                                [path @ PathSegment { ident, .. }] => {
                                     // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
                                     let mut assoc_path = full_path.clone();
                                     // Remove `Bar` from `Foo::Bar`.
                                     assoc_path.segments.pop();
                                     let len = assoc_path.segments.len() - 1;
+                                    let generic_args = get_generic_args_from_path_segment(&path);
                                     // Build `<Bar = RhsTy>`.
                                     let arg = AngleBracketedArg::Constraint(AssocTyConstraint {
                                         id: rustc_ast::node_id::DUMMY_NODE_ID,
                                         ident: *ident,
+                                        gen_args: generic_args,
                                         kind: AssocTyConstraintKind::Equality {
                                             ty: predicate.rhs_ty.clone(),
                                         },

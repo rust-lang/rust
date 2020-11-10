@@ -4,7 +4,8 @@ use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::{
-    self as ast, AngleBracketedArg, AngleBracketedArgs, GenericArg, ParenthesizedArgs,
+    self as ast, AngleBracketedArg, AngleBracketedArgs, GenericArg, GenericArgs, ParenthesizedArgs,
+    TyKind,
 };
 use rustc_ast::{AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
 use rustc_ast::{Path, PathSegment, QSelf};
@@ -420,7 +421,7 @@ impl<'a> Parser<'a> {
             let lo = self.token.span;
             let ident = self.parse_ident()?;
             let kind = if self.eat(&token::Eq) {
-                let ty = self.parse_assoc_equality_term(ident, self.prev_token.span)?;
+                let ty = self.parse_assoc_equality_term(Some(ident), self.prev_token.span)?;
                 AssocTyConstraintKind::Equality { ty }
             } else if self.eat(&token::Colon) {
                 let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
@@ -435,38 +436,92 @@ impl<'a> Parser<'a> {
             if let AssocTyConstraintKind::Bound { .. } = kind {
                 self.sess.gated_spans.gate(sym::associated_type_bounds, span);
             }
-
-            let constraint = AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, kind, span };
+            let constraint =
+                AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args: vec![], kind, span };
             Ok(Some(AngleBracketedArg::Constraint(constraint)))
         } else {
-            Ok(self.parse_generic_arg()?.map(AngleBracketedArg::Arg))
+            let lo = self.token.span;
+            let arg = self.parse_generic_arg()?;
+            if self.eat(&token::Eq) {
+                // Parse the type of the equality constraint even if parsing of the associated type failed
+                match self.get_assoc_type_with_generic_args(arg, lo) {
+                    Ok((ident, gen_args)) => {
+                        let ty = self.parse_assoc_equality_term(ident, self.prev_token.span)?;
+                        let kind = AssocTyConstraintKind::Equality { ty };
+                        let span = lo.to(self.prev_token.span);
+                        let constraint = AssocTyConstraint {
+                            id: ast::DUMMY_NODE_ID,
+                            ident: ident.unwrap(), // parse_assoc_equality_terms return Ok(Some) iff ident is Some
+                            gen_args,
+                            kind,
+                            span,
+                        };
+                        return Ok(Some(AngleBracketedArg::Constraint(constraint)));
+                    }
+                    Err(err) => {
+                        let _ = self.parse_assoc_equality_term(None, self.prev_token.span);
+                        return Err(err);
+                    }
+                }
+            /*
+            let (ident, gen_args) = self.get_assoc_type_with_generic_args(arg, lo)?;
+            // Parse the type of the equality constraint even if parsing of the associated type failed
+            if let Ok(Some(ty)) = self.parse_assoc_equality_term(ident, self.prev_token.span) {
+                let kind = AssocTyConstraintKind::Equality { ty };
+                let span = lo.to(self.prev_token.span);
+                let constraint = AssocTyConstraint {
+                    id: ast::DUMMY_NODE_ID,
+                    ident: ident.unwrap(), // parse_assoc_equality_terms return Ok(Some) iff ident is Some
+                    gen_args,
+                    kind,
+                    span,
+                };
+                return Ok(Some(AngleBracketedArg::Constraint(constraint)));
+            */
+            } else {
+                Ok(arg.map(AngleBracketedArg::Arg))
+            }
         }
     }
 
     /// Parse the term to the right of an associated item equality constraint.
     /// That is, parse `<term>` in `Item = <term>`.
     /// Right now, this only admits types in `<term>`.
-    fn parse_assoc_equality_term(&mut self, ident: Ident, eq: Span) -> PResult<'a, P<ast::Ty>> {
+    fn parse_assoc_equality_term(
+        &mut self,
+        ident: Option<Ident>,
+        eq: Span,
+    ) -> PResult<'a, P<ast::Ty>> {
         let arg = self.parse_generic_arg()?;
-        let span = ident.span.to(self.prev_token.span);
-        match arg {
-            Some(GenericArg::Type(ty)) => return Ok(ty),
-            Some(GenericArg::Const(expr)) => {
-                self.struct_span_err(span, "cannot constrain an associated constant to a value")
+
+        if let Some(ident) = ident {
+            let span = ident.span.to(self.prev_token.span);
+            match arg {
+                Some(GenericArg::Type(ty)) => return Ok(ty),
+                Some(GenericArg::Const(expr)) => {
+                    self.struct_span_err(
+                        span,
+                        "cannot constrain an associated constant to a value",
+                    )
                     .span_label(ident.span, "this associated constant...")
                     .span_label(expr.value.span, "...cannot be constrained to this value")
                     .emit();
-            }
-            Some(GenericArg::Lifetime(lt)) => {
-                self.struct_span_err(span, "associated lifetimes are not supported")
-                    .span_label(lt.ident.span, "the lifetime is given here")
-                    .help("if you meant to specify a trait object, write `dyn Trait + 'lifetime`")
-                    .emit();
-            }
-            None => {
-                let after_eq = eq.shrink_to_hi();
-                let before_next = self.token.span.shrink_to_lo();
-                self.struct_span_err(after_eq.to(before_next), "missing type to the right of `=`")
+                }
+                Some(GenericArg::Lifetime(lt)) => {
+                    self.struct_span_err(span, "associated lifetimes are not supported")
+                        .span_label(lt.ident.span, "the lifetime is given here")
+                        .help(
+                            "if you meant to specify a trait object, write `dyn Trait + 'lifetime`",
+                        )
+                        .emit();
+                }
+                None => {
+                    let after_eq = eq.shrink_to_hi();
+                    let before_next = self.token.span.shrink_to_lo();
+                    self.struct_span_err(
+                        after_eq.to(before_next),
+                        "missing type to the right of `=`",
+                    )
                     .span_suggestion(
                         self.sess.source_map().next_point(eq).to(before_next),
                         "to constrain the associated type, add a type after `=`",
@@ -480,9 +535,10 @@ impl<'a> Parser<'a> {
                         Applicability::MaybeIncorrect,
                     )
                     .emit();
+                }
             }
         }
-        Ok(self.mk_ty(span, ast::TyKind::Err))
+        Ok(self.mk_ty(eq, ast::TyKind::Err))
     }
 
     /// We do not permit arbitrary expressions as const arguments. They must be one of:
@@ -503,35 +559,141 @@ impl<'a> Parser<'a> {
     /// Parse a generic argument in a path segment.
     /// This does not include constraints, e.g., `Item = u8`, which is handled in `parse_angle_arg`.
     fn parse_generic_arg(&mut self) -> PResult<'a, Option<GenericArg>> {
-        let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.
             GenericArg::Lifetime(self.expect_lifetime())
         } else if self.check_const_arg() {
             // Parse const argument.
-            let value = if let token::OpenDelim(token::Brace) = self.token.kind {
+            let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
                 self.parse_block_expr(
                     None,
                     self.token.span,
                     BlockCheckMode::Default,
                     ast::AttrVec::new(),
                 )?
+            } else if self.token.is_ident() {
+                // FIXME(const_generics): to distinguish between idents for types and consts,
+                // we should introduce a GenericArg::Ident in the AST and distinguish when
+                // lowering to the HIR. For now, idents for const args are not permitted.
+                if self.token.is_bool_lit() {
+                    self.parse_literal_maybe_minus()?
+                } else {
+                    let span = self.token.span;
+                    let msg = "identifiers may currently not be used for const generics";
+                    self.struct_span_err(span, msg).emit();
+                    let block = self.mk_block_err(span);
+                    self.mk_expr(span, ast::ExprKind::Block(block, None), ast::AttrVec::new())
+                }
             } else {
-                self.handle_unambiguous_unbraced_const_arg()?
+                self.parse_literal_maybe_minus()?
             };
-            GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
+            GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: expr })
         } else if self.check_type() {
             // Parse type argument.
-            match self.parse_ty() {
-                Ok(ty) => GenericArg::Type(ty),
-                Err(err) => {
-                    // Try to recover from possible `const` arg without braces.
-                    return self.recover_const_arg(start, err).map(Some);
-                }
-            }
+            GenericArg::Type(self.parse_ty()?)
         } else {
             return Ok(None);
         };
         Ok(Some(arg))
+    }
+
+    fn get_assoc_type_with_generic_args(
+        &self,
+        gen_arg: Option<GenericArg>,
+        lo: Span,
+    ) -> PResult<'a, (Option<Ident>, Vec<GenericArg>)> {
+        if let Some(arg) = gen_arg {
+            match arg {
+                GenericArg::Type(t) => match &(*t).kind {
+                    TyKind::Path(_, path) => {
+                        if path.segments.len() == 1 {
+                            let path_seg = &path.segments[0];
+                            let ident = path_seg.ident;
+                            let gen_args = self.get_generic_args_from_path_segment(&path_seg)?;
+                            debug!("get_assoc_type_with_generic_args gen_args: {:?}", gen_args);
+                            return Ok((Some(ident), gen_args));
+                        } else {
+                            let mut err = self.struct_span_err(
+                                path.span,
+                                "found a Path with multiple segments, expected a Path with a single segment",
+                            );
+                            err.span_label(path.span, "expected the name of an associated type");
+                            err.span_suggestion(
+                                path.span,
+                                "try to use only the last segment:",
+                                format!("{}", path.segments.last().unwrap().ident),
+                                Applicability::MaybeIncorrect,
+                            );
+                            return Err(err);
+                        }
+                    }
+                    _ => {
+                        let mut err = self.struct_span_err(
+                            lo.to(self.prev_token.span),
+                            "Incorrect type of generic argument, expected a Path with a single path segment",
+                        );
+                        err.span_label(
+                            self.prev_token.span,
+                            "Expected the name of an associated type",
+                        );
+                        return Err(err);
+                    }
+                },
+                _ => {
+                    let span = lo.to(self.prev_token.span);
+                    let mut err = self.struct_span_err(
+                        span,
+                        "Incorrect type of generic argument, expected a path with a single segment",
+                    );
+                    err.span_label(span, "expected the name of an associated type");
+                    return Err(err);
+                }
+            };
+        }
+        // Wrong span here
+        let err = self.struct_span_err(lo, "unable to parse generic argument");
+        Err(err)
+    }
+
+    fn get_generic_args_from_path_segment(
+        &self,
+        path_segment: &PathSegment,
+    ) -> PResult<'a, Vec<GenericArg>> {
+        debug!("get_generic_args_from_path_segment(path_segment: {:?}", path_segment);
+        let span = path_segment.ident.span;
+        let mut generic_args: Vec<GenericArg> = vec![];
+        if let Some(ref args) = path_segment.args {
+            match &**args {
+                GenericArgs::AngleBracketed(ref angle_args) => {
+                    for arg in &angle_args.args {
+                        match arg {
+                            AngleBracketedArg::Arg(gen_arg) => match gen_arg {
+                                GenericArg::Lifetime(_) | GenericArg::Type(_) => {
+                                    generic_args.push((*gen_arg).clone())
+                                }
+                                _ => {
+                                    self.struct_span_err(
+                                        span,
+                                        "generic arguments of associated types must be lifetimes or types",
+                                    )
+                                    .emit();
+                                }
+                            },
+                            AngleBracketedArg::Constraint(_) => unreachable!(),
+                        }
+                    }
+                }
+                GenericArgs::Parenthesized(paren_args) => {
+                    let span = paren_args.span;
+                    self.struct_span_err(
+                        span,
+                        "invalid use of parenthesized generic arguments, expected angle \
+                         bracketed (`<...>`) generic arguments",
+                    )
+                    .emit();
+                }
+            }
+        }
+        Ok(generic_args)
     }
 }

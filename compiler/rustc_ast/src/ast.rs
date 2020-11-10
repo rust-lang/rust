@@ -1095,7 +1095,11 @@ impl Expr {
     pub fn is_potential_trivial_const_param(&self) -> bool {
         let this = if let ExprKind::Block(ref block, None) = self.kind {
             if block.stmts.len() == 1 {
-                if let StmtKind::Expr(ref expr) = block.stmts[0].kind { expr } else { self }
+                if let StmtKind::Expr(ref expr) = block.stmts[0].kind {
+                    expr
+                } else {
+                    self
+                }
             } else {
                 self
             }
@@ -1833,6 +1837,7 @@ impl UintTy {
 pub struct AssocTyConstraint {
     pub id: NodeId,
     pub ident: Ident,
+    pub gen_args: Vec<GenericArg>,
     pub kind: AssocTyConstraintKind,
     pub span: Span,
 }
@@ -1938,7 +1943,11 @@ impl TyKind {
     }
 
     pub fn is_unit(&self) -> bool {
-        if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
+        if let TyKind::Tup(ref tys) = *self {
+            tys.is_empty()
+        } else {
+            false
+        }
     }
 }
 

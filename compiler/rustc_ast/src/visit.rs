@@ -490,6 +490,9 @@ pub fn walk_assoc_ty_constraint<'a, V: Visitor<'a>>(
     constraint: &'a AssocTyConstraint,
 ) {
     visitor.visit_ident(constraint.ident);
+    for arg in &constraint.gen_args {
+        visitor.visit_generic_arg(arg);
+    }
     match constraint.kind {
         AssocTyConstraintKind::Equality { ref ty } => {
             visitor.visit_ty(ty);
