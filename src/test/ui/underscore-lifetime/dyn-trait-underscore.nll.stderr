@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/dyn-trait-underscore.rs:8:5
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {

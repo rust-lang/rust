@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variance-associated-types2.rs:13:12
    |
 LL | fn take<'a>(_: &'a u32) {

@@ -9,7 +9,7 @@ impl<'a, 'b> Foo<'a, 'b> {
 }
 
 pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
-    Foo::xmute(u) //~ ERROR lifetime may not live long enough
+    Foo::xmute(u) //~ ERROR lifetime may not be long enough
 }
 
 fn main() {}

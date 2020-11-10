@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/ex3-both-anon-regions-self-is-anon.rs:7:19
    |
 LL |     fn foo<'a>(&self, x: &Foo) -> &Foo {

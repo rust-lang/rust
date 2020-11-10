@@ -7,7 +7,7 @@ fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
     t //[migrate]~ ERROR E0312
-        //[nll]~^ ERROR lifetime may not live long enough
+        //[nll]~^ ERROR lifetime may not be long enough
 }
 
 fn error(u: &(), v: &()) {

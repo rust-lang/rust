@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:3:23
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
@@ -11,7 +11,7 @@ help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, ad
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                       ^^^^^^^^^^^^^^
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:5:32
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
@@ -25,7 +25,7 @@ help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, ad
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                ^^^^^^^^^^^^^^
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:7:46
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
@@ -35,7 +35,7 @@ LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |
    = help: consider replacing `'1` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:9:55
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
@@ -52,7 +52,7 @@ LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
    |               |
    |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:22:24
    |
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
@@ -60,7 +60,7 @@ LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
    |               |
    |               let's call the lifetime of this reference `'1`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:28:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
@@ -69,7 +69,7 @@ LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    = help: consider replacing `'a` with `'static`
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:32:61
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {

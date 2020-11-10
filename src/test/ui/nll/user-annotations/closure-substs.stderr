@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/closure-substs.rs:8:16
    |
 LL | fn foo<'a>() {
@@ -9,7 +9,7 @@ LL |         return x;
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/closure-substs.rs:15:16
    |
 LL |     |x: &i32| -> &'static i32 {
@@ -17,7 +17,7 @@ LL |     |x: &i32| -> &'static i32 {
 LL |         return x;
    |                ^ returning this value requires that `'1` must outlive `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/closure-substs.rs:22:9
    |
 LL | fn bar<'a>() {

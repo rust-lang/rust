@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-addr-of-self.rs:7:16
    |
 LL |     pub fn chase_cat(&mut self) {

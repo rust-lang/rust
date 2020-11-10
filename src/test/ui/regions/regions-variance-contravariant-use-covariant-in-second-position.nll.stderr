@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-variance-contravariant-use-covariant-in-second-position.rs:25:12
    |
 LL | fn use_<'short,'long>(c: S<'long, 'short>,

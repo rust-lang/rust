@@ -184,7 +184,7 @@ LL | | }
    |
    = note: defining type: two_regions::<'_#1r, T>
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:87:29
    |
 LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)

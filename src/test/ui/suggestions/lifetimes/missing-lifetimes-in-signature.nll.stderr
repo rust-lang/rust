@@ -6,7 +6,7 @@ LL | fn baz<G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |        |
    |        help: consider introducing lifetime `'a` here: `'a,`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/missing-lifetimes-in-signature.rs:15:37
    |
 LL | fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()

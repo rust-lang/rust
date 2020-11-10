@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/issue-53432-nested-closure-outlives-borrowed-value.rs:4:9
    |
 LL |     let _action = move || {

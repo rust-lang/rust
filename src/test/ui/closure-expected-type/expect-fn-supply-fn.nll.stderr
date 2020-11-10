@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/expect-fn-supply-fn.rs:16:49
    |
 LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
@@ -10,7 +10,7 @@ LL |     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
    |                                                 has type `fn(&'1 u32)`
    |                                                 requires that `'1` must outlive `'x`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/expect-fn-supply-fn.rs:16:49
    |
 LL | fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {

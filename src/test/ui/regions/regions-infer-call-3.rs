@@ -6,7 +6,7 @@ fn with<T, F>(f: F) -> T where F: FnOnce(&isize) -> T {
 
 fn manip<'a>(x: &'a isize) -> isize {
     let z = with(|y| { select(x, y) });
-    //~^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not be long enough
     *z
 }
 

@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-static-method.rs:17:9
    |
 LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
@@ -11,7 +11,7 @@ LL |         u
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-static-method.rs:26:18
    |
 LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
@@ -24,7 +24,7 @@ LL |         let me = Self::make_me();
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-static-method.rs:33:9
    |
 LL | impl<'a, 'b> Evil<'a, 'b> {
@@ -37,7 +37,7 @@ LL |         u
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-static-method.rs:41:5
    |
 LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
@@ -49,7 +49,7 @@ LL |     <()>::static_evil(b)
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-static-method.rs:45:5
    |
 LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
@@ -61,7 +61,7 @@ LL |     <IndirectEvil>::static_evil(b)
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-static-method.rs:50:5
    |
 LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {

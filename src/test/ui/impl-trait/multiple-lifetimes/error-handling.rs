@@ -21,7 +21,7 @@ fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
     let _: *mut &'a i32 = u.1;
     unsafe {
         let _: &'b i32 = *u.0;
-        //~^ ERROR lifetime may not live long enough
+        //~^ ERROR lifetime may not be long enough
     }
     u.0
 }

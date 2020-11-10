@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/ex3-both-anon-regions-using-impl-items.rs:6:9
    |
 LL |     fn foo(x: &mut Vec<&u8>, y: &u8) {

@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:6:5
    |
 LL | fn foo1<'a, 'b>(x: &'a usize) -> &'b usize {
@@ -10,7 +10,7 @@ LL |     x
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:10:5
    |
 LL | fn foo2<'a>(x: &'a usize) -> &'static usize {
@@ -20,7 +20,7 @@ LL |     x
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:14:5
    |
 LL | fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
@@ -32,7 +32,7 @@ LL |     (x, y)
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:14:5
    |
 LL | fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
@@ -46,7 +46,7 @@ LL |     (x, y)
 
 help: `'a` and `'b` must be the same: replace one with the other
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:22:5
    |
 LL | fn foo4<'a, 'b, 'c>(x: &'a usize) -> (&'b usize, &'c usize) {
@@ -59,7 +59,7 @@ LL |     (x, x)
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:22:5
    |
 LL | fn foo4<'a, 'b, 'c>(x: &'a usize) -> (&'b usize, &'c usize) {
@@ -74,7 +74,7 @@ LL |     (x, x)
 
 help: add bound `'a: 'b + 'c`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:31:9
    |
 LL |     pub fn foo<'a>(x: &'a usize) -> Self {
@@ -84,7 +84,7 @@ LL |         Foo { x }
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:41:9
    |
 LL | impl<'a> Bar<'a> {
@@ -96,7 +96,7 @@ LL |         self.x
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-simple.rs:52:9
    |
 LL | impl<'a> Baz<'a> {

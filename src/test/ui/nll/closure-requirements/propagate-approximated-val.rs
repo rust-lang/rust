@@ -36,7 +36,7 @@ fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
         // Only works if 'x: 'y:
         demand_y(outlives1, outlives2, x.get())
-        //~^ ERROR lifetime may not live long enough
+        //~^ ERROR lifetime may not be long enough
     });
 }
 

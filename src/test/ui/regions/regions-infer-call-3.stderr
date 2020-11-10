@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-infer-call-3.rs:8:24
    |
 LL |     let z = with(|y| { select(x, y) });

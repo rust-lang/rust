@@ -85,7 +85,7 @@ where
     T: Anything<'b, 'b>,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not be long enough
 }
 
 #[rustc_regions]

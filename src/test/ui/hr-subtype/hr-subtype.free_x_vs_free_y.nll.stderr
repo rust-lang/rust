@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/hr-subtype.rs:45:13
    |
 LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {

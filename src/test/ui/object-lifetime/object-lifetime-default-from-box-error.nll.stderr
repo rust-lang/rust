@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {

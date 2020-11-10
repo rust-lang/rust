@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:9:5
    |
 LL | fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
@@ -11,7 +11,7 @@ LL |     *x = *y;
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:16:5
    |
 LL | fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {

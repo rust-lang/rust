@@ -4,7 +4,7 @@ error: higher-ranked subtype error
 LL |     want_hrtb::<StaticInt>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/hrtb-just-for-static.rs:30:5
    |
 LL | fn give_some<'a>() {

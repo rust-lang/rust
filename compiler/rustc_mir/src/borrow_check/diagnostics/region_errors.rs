@@ -514,7 +514,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         } = errci;
 
         let mut diag =
-            self.infcx.tcx.sess.struct_span_err(*span, "lifetime may not live long enough");
+            self.infcx.tcx.sess.struct_span_err(*span, "lifetime may not be long enough");
 
         let (_, mir_def_name) =
             self.infcx.tcx.article_and_description(self.mir_def_id().to_def_id());

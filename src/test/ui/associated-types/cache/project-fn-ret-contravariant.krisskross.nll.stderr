@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/project-fn-ret-contravariant.rs:45:4
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
@@ -11,7 +11,7 @@ LL |    (a, b)
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/project-fn-ret-contravariant.rs:45:4
    |
 LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {

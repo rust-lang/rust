@@ -10,7 +10,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
                (),
            ]
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/escape-argument-callee.rs:26:45
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);

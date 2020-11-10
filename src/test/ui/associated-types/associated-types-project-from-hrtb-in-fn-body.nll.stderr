@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:29
    |
 LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
@@ -11,7 +11,7 @@ LL |     let z: I::A = if cond { x } else { y };
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:40
    |
 LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(

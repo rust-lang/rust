@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/ex3-both-anon-regions-2.rs:2:5
    |
 LL | fn foo(&mut (ref mut v, w): &mut (&u8, &u8), x: &u8) {

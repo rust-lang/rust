@@ -27,7 +27,7 @@ LL | | }
    |
    = note: defining type: no_relationships_late::<'_#1r, T>
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/projection-one-region-trait-bound-closure.rs:37:39
    |
 LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
@@ -68,7 +68,7 @@ LL | | }
    |
    = note: defining type: no_relationships_early::<'_#1r, '_#2r, T>
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/projection-one-region-trait-bound-closure.rs:47:39
    |
 LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)

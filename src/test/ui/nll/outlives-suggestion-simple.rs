@@ -3,23 +3,23 @@
 #![feature(nll)]
 
 fn foo1<'a, 'b>(x: &'a usize) -> &'b usize {
-    x //~ERROR lifetime may not live long enough
+    x //~ERROR lifetime may not be long enough
 }
 
 fn foo2<'a>(x: &'a usize) -> &'static usize {
-    x //~ERROR lifetime may not live long enough
+    x //~ERROR lifetime may not be long enough
 }
 
 fn foo3<'a, 'b>(x: &'a usize, y: &'b usize) -> (&'b usize, &'a usize) {
-    (x, y) //~ERROR lifetime may not live long enough
-           //~^ERROR lifetime may not live long enough
+    (x, y) //~ERROR lifetime may not be long enough
+           //~^ERROR lifetime may not be long enough
 }
 
 fn foo4<'a, 'b, 'c>(x: &'a usize) -> (&'b usize, &'c usize) {
     // FIXME: ideally, we suggest 'a: 'b + 'c, but as of today (may 04, 2019), the null error
     // reporting stops after the first error in a MIR def so as not to produce too many errors, so
     // currently we only report 'a: 'b. The user would then re-run and get another error.
-    (x, x) //~ERROR lifetime may not live long enough
+    (x, x) //~ERROR lifetime may not be long enough
 }
 
 struct Foo<'a> {
@@ -28,7 +28,7 @@ struct Foo<'a> {
 
 impl Foo<'static> {
     pub fn foo<'a>(x: &'a usize) -> Self {
-        Foo { x } //~ERROR lifetime may not live long enough
+        Foo { x } //~ERROR lifetime may not be long enough
     }
 }
 
@@ -38,7 +38,7 @@ struct Bar<'a> {
 
 impl<'a> Bar<'a> {
     pub fn get<'b>(&self) -> &'b usize {
-        self.x //~ERROR lifetime may not live long enough
+        self.x //~ERROR lifetime may not be long enough
     }
 }
 
@@ -49,7 +49,7 @@ struct Baz<'a> {
 
 impl<'a> Baz<'a> {
     fn get<'b>(&'b self) -> &'a i32 {
-        self.x //~ERROR lifetime may not live long enough
+        self.x //~ERROR lifetime may not be long enough
     }
 }
 

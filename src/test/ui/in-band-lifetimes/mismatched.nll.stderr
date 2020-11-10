@@ -6,7 +6,7 @@ LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y }
    |                       |
    |                       help: add explicit lifetime `'a` to the type of `y`: `&'a u32`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/mismatched.rs:6:46
    |
 LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y }

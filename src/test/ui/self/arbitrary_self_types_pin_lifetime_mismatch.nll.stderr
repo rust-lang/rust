@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:6:46
    |
 LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
@@ -7,7 +7,7 @@ LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                    |         let's call the lifetime of this reference `'1`
    |                    let's call the lifetime of this reference `'2`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:8:69
    |
 LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
@@ -16,7 +16,7 @@ LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, 
    |                    |          let's call the lifetime of this reference `'1`
    |                    let's call the lifetime of this reference `'2`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:13:58
    |
 LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }

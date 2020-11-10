@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/object-lifetime-default-elision.rs:71:5
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {

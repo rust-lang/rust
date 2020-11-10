@@ -6,7 +6,7 @@
 
 fn doit(data: &'static mut ()) {
     || doit(data);
-    //~^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not be long enough
     //~| ERROR `data` does not live long enough
 }
 

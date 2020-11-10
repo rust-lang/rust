@@ -14,12 +14,12 @@ fn uncoupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
 
 fn coupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
     let ((y, _z),) = ((s, _x),): (PairCoupledTypes<_>,);
-    y //~ ERROR lifetime may not live long enough
+    y //~ ERROR lifetime may not be long enough
 }
 
 fn coupled_regions_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
     let ((y, _z),) = ((s, _x),): (PairCoupledRegions<_>,);
-    y //~ ERROR lifetime may not live long enough
+    y //~ ERROR lifetime may not be long enough
 }
 
 fn cast_uncoupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
@@ -29,12 +29,12 @@ fn cast_uncoupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
 
 fn cast_coupled_wilds_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
     let ((y, _z),) = ((s, _x),) as (PairCoupledTypes<_>,);
-    y //~ ERROR lifetime may not live long enough
+    y //~ ERROR lifetime may not be long enough
 }
 
 fn cast_coupled_regions_rhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
     let ((y, _z),) = ((s, _x),) as (PairCoupledRegions<_>,);
-    y //~ ERROR lifetime may not live long enough
+    y //~ ERROR lifetime may not be long enough
 }
 
 fn main() {}

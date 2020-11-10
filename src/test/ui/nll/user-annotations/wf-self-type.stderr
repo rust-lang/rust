@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-self-type.rs:12:5
    |
 LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {

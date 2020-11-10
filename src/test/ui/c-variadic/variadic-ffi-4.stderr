@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:8:5
    |
 LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
@@ -8,7 +8,7 @@ LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f
 LL |     ap
    |     ^^ function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'f`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:8:5
    |
 LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f> {
@@ -18,7 +18,7 @@ LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f
 LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'f`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:14:5
    |
 LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaListImpl<'static> {
@@ -26,7 +26,7 @@ LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaListImpl<'stati
 LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:18:31
    |
 LL |     let _ = ap.with_copy(|ap| ap);
@@ -35,7 +35,7 @@ LL |     let _ = ap.with_copy(|ap| ap);
    |                           | return type of closure is VaList<'2, '_>
    |                           has type `VaList<'1, '_>`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:22:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -45,7 +45,7 @@ LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'1` must outlive `'2`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:22:5
    |
 LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -55,7 +55,7 @@ LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'2` must outlive `'1`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:28:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -65,7 +65,7 @@ LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     ap0 = &mut ap1;
    |     ^^^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:28:5
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -89,7 +89,7 @@ LL |     ap0 = &mut ap1;
 LL | }
    | - `ap1` dropped here while still borrowed
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:35:12
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -99,7 +99,7 @@ LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variadic-ffi-4.rs:35:12
    |
 LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {

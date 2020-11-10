@@ -11,7 +11,7 @@ where
 
 fn bar<'a, 'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
     foo(x, y)
-    //~^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not be long enough
 }
 
 fn main() {}

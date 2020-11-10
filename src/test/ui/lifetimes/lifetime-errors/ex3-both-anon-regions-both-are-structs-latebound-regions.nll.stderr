@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/ex3-both-anon-regions-both-are-structs-latebound-regions.rs:6:5
    |
 LL | fn foo<'a, 'b>(mut x: Vec<Ref<'a>>, y: Ref<'b>) {

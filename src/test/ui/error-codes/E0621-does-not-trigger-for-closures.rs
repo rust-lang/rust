@@ -10,7 +10,7 @@ where F: FnOnce(&'a i32, &i32) -> &'a i32
 }
 
 fn foo<'a>(x: &'a i32) {
-    invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR lifetime may not live long enough
+    invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR lifetime may not be long enough
 }
 
 fn main() {}

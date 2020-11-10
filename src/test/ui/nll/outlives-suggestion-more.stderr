@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-more.rs:7:5
    |
 LL | fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usize) {
@@ -10,7 +10,7 @@ LL |     (x, y)
    |
    = help: consider adding the following bound: `'a: 'c`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-more.rs:7:5
    |
 LL | fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usize) {
@@ -27,7 +27,7 @@ help: the following changes may resolve your lifetime errors
    = help: add bound `'a: 'c`
    = help: add bound `'b: 'd`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-more.rs:13:5
    |
 LL | fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usize) {
@@ -39,7 +39,7 @@ LL |     (x, y)
    |
    = help: consider adding the following bound: `'a: 'c`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-more.rs:13:5
    |
 LL | fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usize) {
@@ -54,7 +54,7 @@ help: the following changes may resolve your lifetime errors
    = help: add bound `'a: 'c`
    = help: replace `'b` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-more.rs:23:5
    |
 LL | fn foo3<'a, 'b, 'c, 'd, 'e>(
@@ -67,7 +67,7 @@ LL |     (x, y, z)
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-more.rs:23:5
    |
 LL | fn foo3<'a, 'b, 'c, 'd, 'e>(
@@ -80,7 +80,7 @@ LL |     (x, y, z)
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/outlives-suggestion-more.rs:23:5
    |
 LL | fn foo3<'a, 'b, 'c, 'd, 'e>(

@@ -10,7 +10,7 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
                (),
            ]
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/return-wrong-bound-region.rs:11:23
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`

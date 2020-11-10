@@ -45,7 +45,7 @@ LL | | }
    |
    = help: a `loop` may express intention better if this is on purpose
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
 LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)

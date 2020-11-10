@@ -29,7 +29,7 @@ fn with_assoc<'a,'b>() {
 
     let _: &'a WithHrAssoc<TheType<'b>> = loop { };
     //[migrate]~^ ERROR reference has a longer lifetime
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //[nll]~^^ ERROR lifetime may not be long enough
 }
 
 pub trait TheSubTrait : for<'a> TheTrait<'a> {
@@ -49,7 +49,7 @@ fn with_assoc_sub<'a,'b>() {
 
     let _: &'a WithHrAssocSub<TheType<'b>> = loop { };
     //[migrate]~^ ERROR reference has a longer lifetime
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //[nll]~^^ ERROR lifetime may not be long enough
 }
 
 

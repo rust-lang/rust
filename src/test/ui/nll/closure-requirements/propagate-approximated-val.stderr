@@ -33,7 +33,7 @@ LL | | }
    |
    = note: defining type: test
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/propagate-approximated-val.rs:38:9
    |
 LL | fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {

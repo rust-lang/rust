@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/issue-52213.rs:3:20
    |
 LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {

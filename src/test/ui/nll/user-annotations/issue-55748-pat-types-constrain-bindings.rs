@@ -32,7 +32,7 @@ fn coupled_regions_lhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
     // swap_regions((y, _z));
 
     // ... but the ascribed type also invalidates this use of `y`
-    y //~ ERROR lifetime may not live long enough
+    y //~ ERROR lifetime may not be long enough
 }
 
 fn swap_types((mut y, mut _z): PairCoupledTypes<&u32>) {
@@ -46,7 +46,7 @@ fn coupled_types_lhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
     // swap_types((y, _z));
 
     // ... but the ascribed type also invalidates this use of `y`
-    y //~ ERROR lifetime may not live long enough
+    y //~ ERROR lifetime may not be long enough
 }
 
 fn swap_wilds((mut y, mut _z): PairCoupledTypes<&u32>) {
@@ -59,7 +59,7 @@ fn coupled_wilds_lhs<'a>(_x: &'a u32, s: &'static u32) -> &'static u32 {
     // swap_wilds((y, _z));
 
     // ... but the ascribed type also invalidates this use of `y`
-    y //~ ERROR lifetime may not live long enough
+    y //~ ERROR lifetime may not be long enough
 }
 
 fn main() {

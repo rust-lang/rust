@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variance-use-contravariant-struct-1.rs:12:5
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)

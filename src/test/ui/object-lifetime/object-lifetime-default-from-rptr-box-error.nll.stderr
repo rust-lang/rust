@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/object-lifetime-default-from-rptr-box-error.rs:15:5
    |
 LL | fn c<'a>(t: &'a Box<dyn Test+'a>, mut ss: SomeStruct<'a>) {

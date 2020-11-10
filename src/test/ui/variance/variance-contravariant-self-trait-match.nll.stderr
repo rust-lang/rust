@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variance-contravariant-self-trait-match.rs:13:5
    |
 LL | fn get_min_from_max<'min, 'max, G>()
@@ -11,7 +11,7 @@ LL |     impls_get::<&'min G>();
    |
    = help: consider adding the following bound: `'min: 'max`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variance-contravariant-self-trait-match.rs:22:5
    |
 LL | fn get_max_from_min<'min, 'max, G>()

@@ -7,7 +7,7 @@ impl A<'static> {
 }
 
 fn non_wf_associated_const<'a>(x: i32) {
-    A::<'a>::IC; //~ ERROR lifetime may not live long enough
+    A::<'a>::IC; //~ ERROR lifetime may not be long enough
 }
 
 fn wf_associated_const<'a>(x: i32) {

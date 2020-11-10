@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/issue-48238.rs:9:13
    |
 LL |     move || use_val(&orig);

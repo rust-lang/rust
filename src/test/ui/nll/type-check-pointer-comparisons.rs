@@ -4,20 +4,20 @@
 
 fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
     x == y;
-    //~^ ERROR lifetime may not live long enough
-    //~| ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not be long enough
+    //~| ERROR lifetime may not be long enough
 }
 
 fn compare_mut<'a, 'b>(x: *mut &'a i32, y: *mut &'b i32) {
     x == y;
-    //~^ ERROR lifetime may not live long enough
-    //~| ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not be long enough
+    //~| ERROR lifetime may not be long enough
 }
 
 fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
     f == g;
-    //~^ ERROR lifetime may not live long enough
-    //~| ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not be long enough
+    //~| ERROR lifetime may not be long enough
 }
 
 fn compare_hr_fn_ptr<'a>(f: fn(&'a i32), g: fn(&i32)) {

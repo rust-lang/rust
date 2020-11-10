@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/issue-54943.rs:6:13
    |
 LL | fn boo<'a>() {

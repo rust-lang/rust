@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/issue-55401.rs:3:5
    |
 LL | fn static_to_a_to_static_through_ref_in_tuple<'a>(x: &'a u32) -> &'static u32 {

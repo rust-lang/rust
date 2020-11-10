@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/unboxed-closures-infer-argument-types-two-region-pointers.rs:17:9
    |
 LL |     doit(0, &|x, y| {

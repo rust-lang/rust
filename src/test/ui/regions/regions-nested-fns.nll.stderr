@@ -37,7 +37,7 @@ LL |         if false { return ay; }
 LL | }
    | - `y` dropped here while still borrowed
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-nested-fns.rs:14:27
    |
 LL | fn nested<'x>(x: &'x isize) {

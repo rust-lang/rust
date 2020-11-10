@@ -33,7 +33,7 @@ LL | | }
    |
    = note: defining type: supply
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/propagate-approximated-ref.rs:45:9
    |
 LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {

@@ -18,7 +18,7 @@ LL |     closure_expecting_bound(|x: &u32| {
 LL |         f = Some(x);
    |         ^^^^^^^^^^^ `x` escapes the closure body here
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/expect-region-supply-region.rs:37:30
    |
 LL | fn expect_bound_supply_named<'x>() {
@@ -41,7 +41,7 @@ LL |     closure_expecting_bound(|x: &'x u32| {
 LL |         f = Some(x);
    |         ^^^^^^^^^^^ `x` escapes the closure body here
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/expect-region-supply-region.rs:37:30
    |
 LL | fn expect_bound_supply_named<'x>() {

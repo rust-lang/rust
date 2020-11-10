@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-infer-not-param.rs:15:54
    |
 LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
@@ -8,7 +8,7 @@ LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-infer-not-param.rs:19:63
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
@@ -18,7 +18,7 @@ LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
    |
    = help: consider adding the following bound: `'b: 'a`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-infer-not-param.rs:19:63
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }

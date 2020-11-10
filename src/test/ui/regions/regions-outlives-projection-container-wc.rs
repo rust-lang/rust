@@ -32,7 +32,7 @@ fn with_assoc<'a,'b>() {
 
     let _: &'a WithAssoc<TheType<'b>> = loop { };
     //[migrate]~^ ERROR reference has a longer lifetime
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //[nll]~^^ ERROR lifetime may not be long enough
 }
 
 fn main() {

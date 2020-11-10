@@ -6,7 +6,7 @@ LL |     box B(&*v) as Box<dyn X>
    |
    = help: consider adding an explicit lifetime bound `U: 'static`...
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-close-object-into-object-4.rs:10:5
    |
 LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {

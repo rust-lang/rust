@@ -31,7 +31,7 @@ fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> impl B
         let value: &'a u32 = value;
         data.push(value);
     };
-    x //~ ERROR lifetime may not live long enough
+    x //~ ERROR lifetime may not be long enough
 }
 
 fn main() {}

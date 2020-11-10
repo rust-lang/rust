@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/issue-10291.rs:3:9
    |
 LL | fn test<'x>(x: &'x isize) {

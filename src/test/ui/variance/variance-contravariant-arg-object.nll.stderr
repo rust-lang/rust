@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variance-contravariant-arg-object.rs:14:5
    |
 LL | fn get_min_from_max<'min, 'max>(v: Box<dyn Get<&'max i32>>)
@@ -11,7 +11,7 @@ LL |     v
    |
    = help: consider adding the following bound: `'min: 'max`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/variance-contravariant-arg-object.rs:22:5
    |
 LL | fn get_max_from_min<'min, 'max, G>(v: Box<dyn Get<&'min i32>>)

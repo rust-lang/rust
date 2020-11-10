@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/lub-if.rs:28:9
    |
 LL | pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
@@ -9,7 +9,7 @@ LL |         s
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/lub-if.rs:35:9
    |
 LL | pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {

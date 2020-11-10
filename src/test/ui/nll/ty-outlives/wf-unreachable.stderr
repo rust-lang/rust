@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:8:12
    |
 LL | fn uninit<'a>() {
@@ -9,7 +9,7 @@ LL |     let x: &'static &'a ();
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:13:12
    |
 LL | fn var_type<'a>() {
@@ -20,7 +20,7 @@ LL |     let x: &'static &'a () = &&();
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:17:12
    |
 LL | fn uninit_infer<'a>() {
@@ -30,7 +30,7 @@ LL |     let x: &'static &'a _;
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:23:12
    |
 LL | fn infer<'a>() {
@@ -41,7 +41,7 @@ LL |     let x: &'static &'a _ = &&();
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:28:12
    |
 LL | fn uninit_no_var<'a>() {
@@ -52,7 +52,7 @@ LL |     let _: &'static &'a ();
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:33:12
    |
 LL | fn no_var<'a>() {
@@ -63,7 +63,7 @@ LL |     let _: &'static &'a () = &&();
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:38:12
    |
 LL | fn infer_no_var<'a>() {
@@ -74,7 +74,7 @@ LL |     let _: &'static &'a _ = &&();
    |
    = help: consider replacing `'a` with `'static`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/wf-unreachable.rs:51:12
    |
 LL | fn required_substs<'a>() {

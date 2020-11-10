@@ -6,7 +6,7 @@ LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {
 LL |   y.push(z);
    |   ^ cannot borrow as mutable
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/ex3-both-anon-regions-using-fn-items.rs:2:3
    |
 LL | fn foo(x:fn(&u8, &u8), y: Vec<&u8>, z: &u8) {

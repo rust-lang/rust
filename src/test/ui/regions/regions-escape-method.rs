@@ -12,5 +12,5 @@ impl S {
 
 fn main() {
     let s = S;
-    s.f(|p| p) //~ ERROR lifetime may not live long enough
+    s.f(|p| p) //~ ERROR lifetime may not be long enough
 }

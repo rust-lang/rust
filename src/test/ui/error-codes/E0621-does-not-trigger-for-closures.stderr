@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/E0621-does-not-trigger-for-closures.rs:13:45
    |
 LL |     invoke(&x, |a, b| if a > b { a } else { b });

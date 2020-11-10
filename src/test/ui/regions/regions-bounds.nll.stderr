@@ -1,4 +1,4 @@
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-bounds.rs:9:12
    |
 LL | fn a_fn1<'a,'b>(e: TupleStruct<'a>) -> TupleStruct<'b> {
@@ -10,7 +10,7 @@ LL |     return e;
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: lifetime may not live long enough
+error: lifetime may not be long enough
   --> $DIR/regions-bounds.rs:13:12
    |
 LL | fn a_fn3<'a,'b>(e: Struct<'a>) -> Struct<'b> {
