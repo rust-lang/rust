@@ -1,5 +1,3 @@
-#![feature(rustc_private, renamed_spin_loop)]
-
 use std::sync::{Mutex, TryLockError};
 use std::sync::atomic;
 use std::hint;
