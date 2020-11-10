@@ -206,7 +206,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
     }
 
     fn llvm_archive_kind(&self) -> Result<ArchiveKind, &str> {
-        let kind = &*self.config.sess.target.options.archive_format;
+        let kind = &*self.config.sess.target.archive_format;
         kind.parse().map_err(|_| kind)
     }
 

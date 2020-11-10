@@ -12,7 +12,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+strict-align,+v6".to_string(),
             unsupported_abis: super::arm_base::unsupported_abis(),
-            target_mcount: "\u{1}__gnu_mcount_nc".to_string(),
+            mcount: "\u{1}__gnu_mcount_nc".to_string(),
             ..base
         },
     }

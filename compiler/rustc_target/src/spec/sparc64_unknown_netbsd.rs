@@ -12,8 +12,8 @@ pub fn target() -> Target {
         data_layout: "E-m:e-i64:64-n32:64-S128".to_string(),
         arch: "sparc64".to_string(),
         options: TargetOptions {
-            target_endian: "big".to_string(),
-            target_mcount: "__mcount".to_string(),
+            endian: "big".to_string(),
+            mcount: "__mcount".to_string(),
             ..base
         },
     }

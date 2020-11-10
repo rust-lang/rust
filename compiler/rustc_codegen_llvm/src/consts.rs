@@ -91,7 +91,7 @@ fn set_global_alignment(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Alig
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
-    if let Some(min) = cx.sess().target.options.min_global_align {
+    if let Some(min) = cx.sess().target.min_global_align {
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
@@ -283,7 +283,7 @@ impl CodegenCx<'ll, 'tcx> {
             // argument validation.
             debug_assert!(
                 !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
-                    && self.tcx.sess.target.options.is_like_windows
+                    && self.tcx.sess.target.is_like_windows
                     && self.tcx.sess.opts.cg.prefer_dynamic)
             );
 
@@ -435,7 +435,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 // will use load-unaligned instructions instead, and thus avoiding the crash.
                 //
                 // We could remove this hack whenever we decide to drop macOS 10.10 support.
-                if self.tcx.sess.target.options.is_like_osx {
+                if self.tcx.sess.target.is_like_osx {
                     // The `inspect` method is okay here because we checked relocations, and
                     // because we are doing this access to inspect the final interpreter state
                     // (not as part of the interpreter execution).

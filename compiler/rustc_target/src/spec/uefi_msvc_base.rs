@@ -37,7 +37,7 @@ pub fn opts() -> TargetOptions {
         .extend(pre_link_args_msvc);
 
     TargetOptions {
-        target_os: "uefi".to_string(),
+        os: "uefi".to_string(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Link),
         disable_redzone: true,
         exe_suffix: ".efi".to_string(),

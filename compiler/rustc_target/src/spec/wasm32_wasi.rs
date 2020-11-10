@@ -78,8 +78,8 @@ use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
 pub fn target() -> Target {
     let mut options = wasm32_base::options();
 
-    options.target_os = "wasi".to_string();
-    options.target_vendor = String::new();
+    options.os = "wasi".to_string();
+    options.vendor = String::new();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     options
         .pre_link_args

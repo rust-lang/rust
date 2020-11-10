@@ -156,11 +156,11 @@ impl TargetDataLayout {
             Endian::Little => "little",
             Endian::Big => "big",
         };
-        if endian_str != target.target_endian {
+        if endian_str != target.endian {
             return Err(format!(
                 "inconsistent target specification: \"data-layout\" claims \
                                 architecture is {}-endian, while \"target-endian\" is `{}`",
-                endian_str, target.target_endian
+                endian_str, target.endian
             ));
         }
 

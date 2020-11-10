@@ -11,7 +11,7 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
 
         options: TargetOptions {
-            target_vendor: String::new(),
+            vendor: String::new(),
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             executables: true,
             linker: Some("rust-lld".to_owned()),

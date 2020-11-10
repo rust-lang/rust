@@ -8,7 +8,7 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        target_env: "gnu".to_string(),
+        env: "gnu".to_string(),
         disable_redzone: true,
         panic_strategy: PanicStrategy::Abort,
         stack_probes: true,

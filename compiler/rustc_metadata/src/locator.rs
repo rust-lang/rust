@@ -373,11 +373,10 @@ impl<'a> CrateLocator<'a> {
         seen_paths: &mut FxHashSet<PathBuf>,
     ) -> Result<Option<Library>, CrateError> {
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix =
-            format!("{}{}{}", self.target.options.dll_prefix, self.crate_name, extra_prefix);
+        let dylib_prefix = format!("{}{}{}", self.target.dll_prefix, self.crate_name, extra_prefix);
         let rlib_prefix = format!("lib{}{}", self.crate_name, extra_prefix);
         let staticlib_prefix =
-            format!("{}{}{}", self.target.options.staticlib_prefix, self.crate_name, extra_prefix);
+            format!("{}{}{}", self.target.staticlib_prefix, self.crate_name, extra_prefix);
 
         let mut candidates: FxHashMap<_, (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>)> =
             Default::default();
@@ -405,17 +404,14 @@ impl<'a> CrateLocator<'a> {
                 (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
             } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
                 (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
-            } else if file.starts_with(&dylib_prefix)
-                && file.ends_with(&self.target.options.dll_suffix)
-            {
+            } else if file.starts_with(&dylib_prefix) && file.ends_with(&self.target.dll_suffix) {
                 (
-                    &file
-                        [(dylib_prefix.len())..(file.len() - self.target.options.dll_suffix.len())],
+                    &file[(dylib_prefix.len())..(file.len() - self.target.dll_suffix.len())],
                     CrateFlavor::Dylib,
                 )
             } else {
                 if file.starts_with(&staticlib_prefix)
-                    && file.ends_with(&self.target.options.staticlib_suffix)
+                    && file.ends_with(&self.target.staticlib_suffix)
                 {
                     staticlibs
                         .push(CrateMismatch { path: spf.path.clone(), got: "static".to_string() });
@@ -679,8 +675,8 @@ impl<'a> CrateLocator<'a> {
             };
 
             if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))
-                || file.starts_with(&self.target.options.dll_prefix)
-                    && file.ends_with(&self.target.options.dll_suffix)
+                || file.starts_with(&self.target.dll_prefix)
+                    && file.ends_with(&self.target.dll_suffix)
             {
                 // Make sure there's at most one rlib and at most one dylib.
                 // Note to take care and match against the non-canonicalized name:
@@ -712,8 +708,8 @@ impl<'a> CrateLocator<'a> {
             crate_name: self.crate_name,
             root: self.root.cloned(),
             triple: self.triple,
-            dll_prefix: self.target.options.dll_prefix.clone(),
-            dll_suffix: self.target.options.dll_suffix.clone(),
+            dll_prefix: self.target.dll_prefix.clone(),
+            dll_suffix: self.target.dll_suffix.clone(),
             rejected_via_hash: self.rejected_via_hash,
             rejected_via_triple: self.rejected_via_triple,
             rejected_via_kind: self.rejected_via_kind,

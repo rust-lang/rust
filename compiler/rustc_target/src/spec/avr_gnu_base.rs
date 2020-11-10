@@ -10,8 +10,8 @@ pub fn target(target_cpu: String) -> Target {
         llvm_target: "avr-unknown-unknown".to_string(),
         pointer_width: 16,
         options: TargetOptions {
-            target_c_int_width: "16".to_string(),
-            target_os: "unknown".to_string(),
+            c_int_width: "16".to_string(),
+            os: "unknown".to_string(),
             cpu: target_cpu.clone(),
             exe_suffix: ".elf".to_string(),
 

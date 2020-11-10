@@ -2653,7 +2653,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                             set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
                         match segments.as_slice() {
                             [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                                if !tcx.sess.target.options.has_thumb_interworking {
+                                if !tcx.sess.target.has_thumb_interworking {
                                     struct_span_err!(
                                         tcx.sess.diagnostic(),
                                         attr.span,

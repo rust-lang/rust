@@ -11,7 +11,7 @@ pub fn target() -> Target {
         arch: "aarch64".to_string(),
         options: TargetOptions {
             unsupported_abis: super::arm_base::unsupported_abis(),
-            target_mcount: "\u{1}_mcount".to_string(),
+            mcount: "\u{1}_mcount".to_string(),
             ..base
         },
     }
