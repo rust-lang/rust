@@ -4,12 +4,15 @@
 //! module, and we use to statically check that we only produce snippet
 //! completions if we are allowed to.
 
+use assists::utils::MergeBehaviour;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
     pub enable_postfix_completions: bool,
     pub add_call_parenthesis: bool,
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
+    pub merge: Option<MergeBehaviour>,
 }
 
 impl CompletionConfig {
@@ -30,6 +33,7 @@ impl Default for CompletionConfig {
             add_call_parenthesis: true,
             add_call_argument_snippets: true,
             snippet_cap: Some(SnippetCap { _private: () }),
+            merge: Some(MergeBehaviour::Full),
         }
     }
 }

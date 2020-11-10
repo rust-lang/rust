@@ -1,6 +1,6 @@
 //! TODO kb move this into the complete_unqualified_path when starts to work properly
 
-use assists::utils::{insert_use, mod_path_to_ast, ImportScope, MergeBehaviour};
+use assists::utils::{insert_use, mod_path_to_ast, ImportScope};
 use either::Either;
 use hir::{db::HirDatabase, MacroDef, ModuleDef, Query};
 use itertools::Itertools;
@@ -48,10 +48,7 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
             );
             builder.replace(anchor.syntax().text_range(), correct_qualifier);
 
-            // TODO kb: assists already have the merge behaviour setting, need to unite both
-            // also consider a settings toggle for this particular feature?
-            let rewriter =
-                insert_use(&import_scope, mod_path_to_ast(&mod_path), Some(MergeBehaviour::Full));
+            let rewriter = insert_use(&import_scope, mod_path_to_ast(&mod_path), ctx.config.merge);
             let old_ast = rewriter.rewrite_root()?;
             algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut builder);
 
