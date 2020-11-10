@@ -36,7 +36,6 @@
         fixes: [
             CodeAction {
                 title: "consider prefixing with an underscore",
-                id: None,
                 group: None,
                 kind: Some(
                     CodeActionKind(
@@ -70,6 +69,7 @@
                 is_preferred: Some(
                     true,
                 ),
+                data: None,
             },
         ],
     },

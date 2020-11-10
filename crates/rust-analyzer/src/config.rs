@@ -144,7 +144,7 @@ pub struct ClientCapsConfig {
     pub code_action_literals: bool,
     pub work_done_progress: bool,
     pub code_action_group: bool,
-    pub resolve_code_action: bool,
+    pub code_action_resolve: bool,
     pub hover_actions: bool,
     pub status_notification: bool,
     pub signature_help_label_offsets: bool,
@@ -383,6 +383,14 @@ impl Config {
                     }
                 }
             }
+
+            if let Some(code_action) = &doc_caps.code_action {
+                if let Some(resolve_support) = &code_action.resolve_support {
+                    if resolve_support.properties.iter().any(|it| it == "edit") {
+                        self.client_caps.code_action_resolve = true;
+                    }
+                }
+            }
         }
 
         if let Some(window_caps) = caps.window.as_ref() {
@@ -400,7 +408,6 @@ impl Config {
             self.assist.allow_snippets(snippet_text_edit);
 
             self.client_caps.code_action_group = get_bool("codeActionGroup");
-            self.client_caps.resolve_code_action = get_bool("resolveCodeAction");
             self.client_caps.hover_actions = get_bool("hoverActions");
             self.client_caps.status_notification = get_bool("statusNotification");
         }

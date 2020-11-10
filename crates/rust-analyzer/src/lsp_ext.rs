@@ -113,22 +113,6 @@ pub struct JoinLinesParams {
     pub ranges: Vec<Range>,
 }
 
-pub enum ResolveCodeActionRequest {}
-
-impl Request for ResolveCodeActionRequest {
-    type Params = ResolveCodeActionParams;
-    type Result = Option<SnippetWorkspaceEdit>;
-    const METHOD: &'static str = "experimental/resolveCodeAction";
-}
-
-/// Params for the ResolveCodeActionRequest
-#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ResolveCodeActionParams {
-    pub code_action_params: lsp_types::CodeActionParams,
-    pub id: String,
-}
-
 pub enum OnEnter {}
 
 impl Request for OnEnter {
@@ -265,12 +249,17 @@ impl Request for CodeActionRequest {
     const METHOD: &'static str = "textDocument/codeAction";
 }
 
+pub enum CodeActionResolveRequest {}
+impl Request for CodeActionResolveRequest {
+    type Params = CodeAction;
+    type Result = CodeAction;
+    const METHOD: &'static str = "codeAction/resolve";
+}
+
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodeAction {
     pub title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -282,6 +271,16 @@ pub struct CodeAction {
     pub edit: Option<SnippetWorkspaceEdit>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_preferred: Option<bool>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<CodeActionData>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeActionData {
+    pub code_action_params: lsp_types::CodeActionParams,
+    pub id: String,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
