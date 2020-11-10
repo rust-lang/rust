@@ -1,8 +1,9 @@
 #![feature(rustc_private)]
 
 // NOTE: For the example to compile, you will need to first run the following:
-//   rustup component add rustc-dev
+//     rustup component add rustc-dev llvm-tools-preview
 
+extern crate rustc_ast_pretty;
 extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_hash;
@@ -11,8 +12,11 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
+use rustc_ast_pretty::pprust::item_to_string;
 use rustc_errors::registry;
 use rustc_session::config;
+use rustc_session::config::PpMode::PpmSource;
+use rustc_session::config::PpSourceMode::PpmExpanded;
 use rustc_span::source_map;
 use std::path;
 use std::process;
@@ -46,16 +50,24 @@ fn main() {
         lint_caps: rustc_hash::FxHashMap::default(),
         register_lints: None,
         override_queries: None,
+        make_codegen_backend: None,
         registry: registry::Registry::new(&rustc_error_codes::DIAGNOSTICS),
     };
     rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
+            // TODO: add this to -Z unpretty
+            let ast_krate = queries.parse().unwrap().take();
+            let ast_krate_mod = ast_krate.module;
+            for item in ast_krate_mod.items {
+                println!("{}", item_to_string(&item));
+            }
+
             // Analyze the crate and inspect the types under the cursor.
             queries.global_ctxt().unwrap().take().enter(|tcx| {
                 // Every compilation contains a single crate.
-                let krate = tcx.hir().krate();
+                let hir_krate = tcx.hir().krate();
                 // Iterate over the top-level items in the crate, looking for the main function.
-                for (_, item) in &krate.items {
+                for (_, item) in &hir_krate.items {
                     // Use pattern-matching to find a specific node inside the main function.
                     if let rustc_hir::ItemKind::Fn(_, _, body_id) = item.kind {
                         let expr = &tcx.hir().body(body_id).value;
