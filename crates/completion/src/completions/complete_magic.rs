@@ -10,6 +10,7 @@ use crate::{context::CompletionContext, item::CompletionKind, CompletionItem, Co
 
 use super::Completions;
 
+// TODO kb when typing, completes partial results, need to rerun manually to see the proper ones
 pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
         return None;
@@ -19,7 +20,7 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
 
     // TODO kb consider heuristics, such as "don't show `hash_map` import if `HashMap` is the import for completion"
-    // TODO kb module functions are not completed, consider `std::io::stdin` one
+    // also apply completion ordering
     let potential_import_name = ctx.token.to_string();
 
     let possible_imports = ctx
@@ -38,6 +39,7 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
             builder.replace(anchor.syntax().text_range(), correct_qualifier);
 
             // TODO kb: assists already have the merge behaviour setting, need to unite both
+            // also consider a settings toggle for this particular feature?
             let rewriter =
                 insert_use(&import_scope, mod_path_to_ast(&mod_path), Some(MergeBehaviour::Full));
             let old_ast = rewriter.rewrite_root()?;
@@ -60,37 +62,10 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
-
-    use crate::{
-        item::CompletionKind,
-        test_utils::{check_edit, completion_list},
-    };
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Magic);
-        expect.assert_eq(&actual)
-    }
+    use crate::test_utils::check_edit;
 
     #[test]
     fn function_magic_completion() {
-        check(
-            r#"
-//- /lib.rs crate:dep
-pub mod io {
-    pub fn stdin() {}
-};
-
-//- /main.rs crate:main deps:dep
-fn main() {
-    stdi<|>
-}
-"#,
-            expect![[r#"
-                st dep::io::stdin
-            "#]],
-        );
-
         check_edit(
             "dep::io::stdin",
             r#"
@@ -116,37 +91,28 @@ fn main() {
 
     #[test]
     fn case_insensitive_magic_completion_works() {
-        check(
-            r#"
-//- /lib.rs crate:dep
-pub struct TestStruct;
-
-//- /main.rs crate:main deps:dep
-fn main() {
-    teru<|>
-}
-"#,
-            expect![[r#"
-                st dep::TestStruct
-            "#]],
-        );
-
         check_edit(
-            "dep::TestStruct",
+            "dep::some_module::ThirdStruct",
             r#"
 //- /lib.rs crate:dep
-pub struct TestStruct;
+pub struct FirstStruct;
+pub mod some_module {
+    pub struct SecondStruct;
+    pub struct ThirdStruct;
+}
 
 //- /main.rs crate:main deps:dep
+use dep::{FirstStruct, some_module::SecondStruct};
+
 fn main() {
-    teru<|>
+    this<|>
 }
 "#,
             r#"
-use dep::TestStruct;
+use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
 
 fn main() {
-    TestStruct
+    ThirdStruct
 }
 "#,
         );
