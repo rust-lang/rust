@@ -20,7 +20,6 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         os: "linux".to_string(),
-        env: "gnu".to_string(),
         dynamic_linking: true,
         executables: true,
         os_family: Some("unix".to_string()),
