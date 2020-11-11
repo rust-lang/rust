@@ -152,7 +152,7 @@ These crates are used in compiler for logging:
 * [env-logger]
 
 [log]: https://docs.rs/log/0.4.6/log/index.html
-[env-logger]: https://docs.rs/env_logger/0.8.1/env_logger/
+[env-logger]: https://docs.rs/env_logger
 
 The compiler has a lot of `debug!` calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
