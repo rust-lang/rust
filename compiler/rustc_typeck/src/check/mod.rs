@@ -108,7 +108,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirIdMap, Node};
+use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -137,6 +137,7 @@ use crate::util::common::indenter;
 
 use self::coercion::DynamicCoerceMany;
 pub use self::Expectation::*;
+use rustc_target::spec::abi;
 
 #[macro_export]
 macro_rules! type_error_struct {
@@ -519,6 +520,35 @@ fn typeck_with_fallback<'tcx>(
             );
 
             let fn_sig = fixup_opaque_types(tcx, &fn_sig);
+
+            if fn_sig.abi == abi::Abi::RustCall {
+                let expected_args = if let ImplicitSelfKind::None = decl.implicit_self { 1 } else { 2 };
+
+                let err = || {
+                    if let Node::Item(item) = tcx.hir().get(id) {
+                        if let hir::ItemKind::Fn(header, ..) = &item.kind {
+                            tcx.sess.span_err(header.span, "A function with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
+                        }
+                    } else {
+                        bug!("Couldn't get span of FnHeader being checked")
+                    }
+                };
+
+                if fn_sig.inputs().len() != expected_args {
+                    err()
+                } else {
+                    match fn_sig.inputs()[expected_args - 1].kind() {
+                        ty::Tuple(_) => (),
+                        // FIXME(CraftSpider) Add a check on parameter expansion, so we don't just make the ICE happen later on
+                        //   This will probably require wide-scale changes to support a TupleKind obligation
+                        //   We can't resolve this without knowing the type of the param
+                        ty::Param(_) => (),
+                        _ => {
+                            err()
+                        }
+                    }
+                }
+            }
 
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx
