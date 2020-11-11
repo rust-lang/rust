@@ -22,7 +22,8 @@ use hir_def::{
     AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::AstDatabase, InFile};
-use stdx::{format_to, RacyFlag};
+use once_cell::race::OnceBool;
+use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, AstNode},
@@ -40,8 +41,8 @@ use crate::{
 // `env UPDATE_EXPECT=1 cargo test -p hir_ty` to update the snapshots.
 
 fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
-    static ENABLE: RacyFlag = RacyFlag::new();
-    if !ENABLE.get(|| env::var("CHALK_DEBUG").is_ok()) {
+    static ENABLE: OnceBool = OnceBool::new();
+    if !ENABLE.get_or_init(|| env::var("CHALK_DEBUG").is_ok()) {
         return None;
     }
 

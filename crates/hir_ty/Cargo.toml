@@ -35,3 +35,4 @@ expect-test = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
 tracing-tree = { version = "0.1.4" }
+once_cell = { version = "1.5.0", features = ["unstable"] }
