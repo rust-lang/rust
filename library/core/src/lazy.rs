@@ -178,6 +178,16 @@ impl<T> OnceCell<T> {
         }
     }
 
+    /// Deprecated, use `get_or_insert_with` instead.
+    #[rustc_deprecated = "use get_or_insert_with instead"]
+    #[unstable(feature = "once_cell", issue = "74465")]
+    pub fn get_or_init<F>(&self, f: F) -> &T
+    where
+        F: FnOnce() -> T,
+    {
+        self.get_or_insert_with(f)
+    }
+
     /// Gets the contents of the cell, initializing it with `f` if
     /// the cell was empty. If the cell was empty and `f` failed, an
     /// error is returned.
@@ -221,6 +231,16 @@ impl<T> OnceCell<T> {
         // better to panic, rather than to silently use an old value.
         assert!(self.set(val).is_ok(), "reentrant init");
         Ok(self.get().unwrap())
+    }
+
+    /// Deprecated, use `try_get_or_insert_with` instead.
+    #[rustc_deprecated = "use try_get_or_insert_with instead"]
+    #[unstable(feature = "once_cell", issue = "74465")]
+    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        self.try_get_or_insert_with(f)
     }
 
     /// Consumes the cell, returning the wrapped value.
