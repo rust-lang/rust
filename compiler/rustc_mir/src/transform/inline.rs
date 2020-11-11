@@ -203,12 +203,6 @@ impl Inliner<'tcx> {
         debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
-        // Cannot inline generators which haven't been transformed yet
-        if callee_body.yield_ty.is_some() {
-            debug!("    yield ty present - not inlining");
-            return false;
-        }
-
         let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
 
         let self_features = &self.codegen_fn_attrs.target_features;
