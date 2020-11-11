@@ -200,6 +200,11 @@ pub trait Emitter {
         true
     }
 
+    /// Checks if we can use colors in the current output stream.
+    fn supports_color(&self) -> bool {
+        false
+    }
+
     fn source_map(&self) -> Option<&Lrc<SourceMap>>;
 
     /// Formats the substitutions of the primary_span
@@ -503,6 +508,10 @@ impl Emitter for EmitterWriter {
 
     fn should_show_explain(&self) -> bool {
         !self.short_message
+    }
+
+    fn supports_color(&self) -> bool {
+        self.dst.supports_color()
     }
 }
 
@@ -2055,6 +2064,14 @@ impl Destination {
             }
             Destination::Raw(ref mut t, false) => WritableDst::Raw(t),
             Destination::Raw(ref mut t, true) => WritableDst::ColoredRaw(Ansi::new(t)),
+        }
+    }
+
+    fn supports_color(&self) -> bool {
+        match *self {
+            Self::Terminal(ref stream) => stream.supports_color(),
+            Self::Buffered(ref buffer) => buffer.buffer().supports_color(),
+            Self::Raw(_, supports_color) => supports_color,
         }
     }
 }
