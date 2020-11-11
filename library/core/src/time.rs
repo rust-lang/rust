@@ -108,18 +108,20 @@ impl Duration {
     #[unstable(feature = "duration_constants", issue = "57391")]
     pub const NANOSECOND: Duration = Duration::from_nanos(1);
 
-    /// The minimum duration.
+    /// A duration of zero time.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constants)]
+    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
-    /// assert_eq!(Duration::MIN, Duration::new(0, 0));
+    /// let duration = Duration::ZERO;
+    /// assert!(duration.is_zero());
+    /// assert_eq!(duration.as_nanos(), 0);
     /// ```
-    #[unstable(feature = "duration_constants", issue = "57391")]
-    pub const MIN: Duration = Duration::from_nanos(0);
+    #[unstable(feature = "duration_zero", issue = "73544")]
+    pub const ZERO: Duration = Duration::from_nanos(0);
 
     /// The maximum duration.
     ///
@@ -164,24 +166,6 @@ impl Duration {
         };
         let nanos = nanos % NANOS_PER_SEC;
         Duration { secs, nanos }
-    }
-
-    /// Creates a new `Duration` that spans no time.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(duration_zero)]
-    /// use std::time::Duration;
-    ///
-    /// let duration = Duration::zero();
-    /// assert!(duration.is_zero());
-    /// assert_eq!(duration.as_nanos(), 0);
-    /// ```
-    #[unstable(feature = "duration_zero", issue = "73544")]
-    #[inline]
-    pub const fn zero() -> Duration {
-        Duration { secs: 0, nanos: 0 }
     }
 
     /// Creates a new `Duration` from the specified number of whole seconds.
@@ -277,7 +261,7 @@ impl Duration {
     /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
-    /// assert!(Duration::zero().is_zero());
+    /// assert!(Duration::ZERO.is_zero());
     /// assert!(Duration::new(0, 0).is_zero());
     /// assert!(Duration::from_nanos(0).is_zero());
     /// assert!(Duration::from_secs(0).is_zero());
@@ -536,18 +520,18 @@ impl Duration {
         }
     }
 
-    /// Saturating `Duration` subtraction. Computes `self - other`, returning [`Duration::MIN`]
+    /// Saturating `Duration` subtraction. Computes `self - other`, returning [`Duration::ZERO`]
     /// if the result would be negative or if overflow occurred.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(duration_saturating_ops)]
-    /// #![feature(duration_constants)]
+    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
-    /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::MIN);
+    /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
     /// ```
     #[unstable(feature = "duration_saturating_ops", issue = "76416")]
     #[inline]
@@ -555,7 +539,7 @@ impl Duration {
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
         match self.checked_sub(rhs) {
             Some(res) => res,
-            None => Duration::MIN,
+            None => Duration::ZERO,
         }
     }
 
