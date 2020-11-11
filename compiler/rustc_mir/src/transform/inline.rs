@@ -218,11 +218,7 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        let self_no_sanitize =
-            self.codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
-        let callee_no_sanitize =
-            codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
-        if self_no_sanitize != callee_no_sanitize {
+        if self.codegen_fn_attrs.no_sanitize != codegen_fn_attrs.no_sanitize {
             debug!("`callee has incompatible no_sanitize attribute - not inlining");
             return false;
         }

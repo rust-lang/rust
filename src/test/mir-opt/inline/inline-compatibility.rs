@@ -1,8 +1,6 @@
 // Checks that only functions with compatible attributes are inlined.
 //
 // only-x86_64
-// needs-sanitizer-address
-// compile-flags: -Zsanitizer=address
 
 #![crate_type = "lib"]
 #![feature(no_sanitize)]
@@ -35,5 +33,5 @@ pub unsafe fn not_inlined_no_sanitize() {
 pub unsafe fn target_feature() {}
 
 #[inline]
-#[no_sanitize(address, memory)]
+#[no_sanitize(address)]
 pub unsafe fn no_sanitize() {}
