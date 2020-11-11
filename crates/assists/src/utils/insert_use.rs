@@ -72,6 +72,11 @@ impl ImportScope {
                     if is_inner_node(maybe_inner_node.clone()) {
                         last_inner_element = Some(NodeOrToken::Node(maybe_inner_node))
                     } else {
+                        // FIXME: https://doc.rust-lang.org/reference/comments.html#doc-comments
+                        // states that inner comments (`//!` and `/*!`) are equal to inner attribute `#![doc="..."]`
+                        // yet RA treats them differently now: inner attributes never belong to child nodes,
+                        // but inner comments can, ergo this check.
+                        // We need to align this and treat both cases the same way.
                         if let Some(maybe_inner_token) = maybe_inner_node.first_token() {
                             if is_inner_token(maybe_inner_token.clone()) {
                                 last_inner_element = Some(NodeOrToken::Token(maybe_inner_token))
@@ -877,11 +882,11 @@ use foo::bar::Baz;"#,
             "foo::bar::Baz",
             r#"/*! Multiline inner comments do not allow any code before them. */
 
-/*! RA considers this inner comment belonging to the function, yet we still cannot place the code before it. */
+/*! Still an inner comment, cannot place any code before. */
 fn main() {}"#,
             r#"/*! Multiline inner comments do not allow any code before them. */
 
-/*! RA considers this inner comment belonging to the function, yet we still cannot place the code before it. */
+/*! Still an inner comment, cannot place any code before. */
 
 use foo::bar::Baz;
 fn main() {}"#,
