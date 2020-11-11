@@ -109,6 +109,32 @@ longer change (the fixpoint will be top).
     state. Each basic block's entry state is initialized to bottom before the
     analysis starts.
 
+## A Brief Example
+
+This section provides a brief example of a simple data-flow analysis at a high
+level. It doesn't explain everything you need to know, but hopefully it will
+make the rest of this page clearer.
+
+Let's say we want to do a simple analysis to find if `mem::transmute` may have
+been called by a certain point in the program. Our analysis domain will just
+be a `bool` that records whether `transmute` has been called so far. The bottom
+value will be `false`, since by default `transmute` has not been called. The top
+value will be `true`, since our analysis is done as soon as we determine that
+`transmute` has been called. Our join operator will just be the boolean OR (`||`)
+operator. We use OR and not AND because of this case:
+
+```
+let x = if some_cond {
+    std::mem::transmute<i32, u32>(0_i32); // transmute was called!
+} else {
+    1_u32; // transmute was not called
+};
+
+// Has transmute been called by this point? We conservatively approximate that
+// as yes, and that is why we use the OR operator.
+println!("x: {}", x);
+```
+
 ## Inspecting the Results of a Dataflow Analysis
 
 Once you have constructed an analysis, you must pass it to an [`Engine`], which
