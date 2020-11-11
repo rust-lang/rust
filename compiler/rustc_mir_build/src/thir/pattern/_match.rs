@@ -392,7 +392,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     fn head_ctor<'a>(&'a self, cx: &MatchCheckCtxt<'p, 'tcx>) -> &'a Constructor<'tcx> {
-        self.head_ctor.get_or_init(|| pat_constructor(cx, self.head()))
+        self.head_ctor.get_or_insert_with(|| pat_constructor(cx, self.head()))
     }
 
     fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {

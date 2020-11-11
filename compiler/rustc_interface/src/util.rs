@@ -278,7 +278,7 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 
     const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
 
-    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(BIN_PATH)).as_ref().map(|v| &**v)
+    RUSTC_PATH.get_or_insert_with(|| get_rustc_path_inner(BIN_PATH)).as_ref().map(|v| &**v)
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {

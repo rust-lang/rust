@@ -39,7 +39,7 @@ impl PredecessorCache {
         &self,
         basic_blocks: &IndexVec<BasicBlock, BasicBlockData<'_>>,
     ) -> &Predecessors {
-        self.cache.get_or_init(|| {
+        self.cache.get_or_insert_with(|| {
             let mut preds = IndexVec::from_elem(SmallVec::new(), basic_blocks);
             for (bb, data) in basic_blocks.iter_enumerated() {
                 if let Some(term) = &data.terminator {

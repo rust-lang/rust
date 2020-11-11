@@ -8,10 +8,10 @@ use core::{
 fn once_cell() {
     let c = OnceCell::new();
     assert!(c.get().is_none());
-    c.get_or_init(|| 92);
+    c.get_or_insert_with(|| 92);
     assert_eq!(c.get(), Some(&92));
 
-    c.get_or_init(|| panic!("Kabom!"));
+    c.get_or_insert_with(|| panic!("Kabom!"));
     assert_eq!(c.get(), Some(&92));
 }
 
@@ -35,7 +35,7 @@ fn once_cell_drop() {
     }
 
     let x = OnceCell::new();
-    x.get_or_init(|| Dropper);
+    x.get_or_insert_with(|| Dropper);
     assert_eq!(DROP_CNT.load(SeqCst), 0);
     drop(x);
     assert_eq!(DROP_CNT.load(SeqCst), 1);
@@ -115,8 +115,8 @@ fn aliasing_in_get() {
 fn reentrant_init() {
     let x: OnceCell<Box<i32>> = OnceCell::new();
     let dangling_ref: Cell<Option<&i32>> = Cell::new(None);
-    x.get_or_init(|| {
-        let r = x.get_or_init(|| Box::new(92));
+    x.get_or_insert_with(|| {
+        let r = x.get_or_insert_with(|| Box::new(92));
         dangling_ref.set(Some(r));
         Box::new(62)
     });

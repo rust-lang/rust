@@ -1357,7 +1357,7 @@ impl PrimitiveType {
     pub fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>> {
         static CELL: OnceCell<FxHashMap<PrimitiveType, SmallVec<[DefId; 4]>>> = OnceCell::new();
 
-        CELL.get_or_init(move || {
+        CELL.get_or_insert_with(move || {
             use self::PrimitiveType::*;
 
             /// A macro to create a FxHashMap.

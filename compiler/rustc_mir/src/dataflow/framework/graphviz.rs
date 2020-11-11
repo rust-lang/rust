@@ -567,7 +567,7 @@ where
 macro_rules! regex {
     ($re:literal $(,)?) => {{
         static RE: SyncOnceCell<regex::Regex> = SyncOnceCell::new();
-        RE.get_or_init(|| Regex::new($re).unwrap())
+        RE.get_or_insert_with(|| Regex::new($re).unwrap())
     }};
 }
 

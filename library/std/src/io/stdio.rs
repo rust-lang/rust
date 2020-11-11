@@ -310,7 +310,7 @@ pub struct StdinLock<'a> {
 pub fn stdin() -> Stdin {
     static INSTANCE: SyncOnceCell<Mutex<BufReader<StdinRaw>>> = SyncOnceCell::new();
     Stdin {
-        inner: INSTANCE.get_or_init(|| {
+        inner: INSTANCE.get_or_insert_with(|| {
             Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin_raw()))
         }),
     }
@@ -549,7 +549,7 @@ pub fn stdout() -> Stdout {
     static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> =
         SyncOnceCell::new();
     Stdout {
-        inner: INSTANCE.get_or_init(|| unsafe {
+        inner: INSTANCE.get_or_insert_with(|| unsafe {
             let _ = sys_common::at_exit(|| {
                 if let Some(instance) = INSTANCE.get() {
                     // Flush the data and disable buffering during shutdown
@@ -764,7 +764,7 @@ pub fn stderr() -> Stderr {
     static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<StderrRaw>>> = SyncOnceCell::new();
 
     Stderr {
-        inner: INSTANCE.get_or_init(|| unsafe {
+        inner: INSTANCE.get_or_insert_with(|| unsafe {
             let r = ReentrantMutex::new(RefCell::new(stderr_raw()));
             r.init();
             r

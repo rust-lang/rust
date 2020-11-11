@@ -20,7 +20,7 @@ use crate::ops::Deref;
 /// let cell = OnceCell::new();
 /// assert!(cell.get().is_none());
 ///
-/// let value: &String = cell.get_or_init(|| {
+/// let value: &String = cell.get_or_insert_with(|| {
 ///     "Hello, World!".to_string()
 /// });
 /// assert_eq!(value, "Hello, World!");
@@ -163,17 +163,17 @@ impl<T> OnceCell<T> {
     /// use std::lazy::OnceCell;
     ///
     /// let cell = OnceCell::new();
-    /// let value = cell.get_or_init(|| 92);
+    /// let value = cell.get_or_insert_with(|| 92);
     /// assert_eq!(value, &92);
-    /// let value = cell.get_or_init(|| unreachable!());
+    /// let value = cell.get_or_insert_with(|| unreachable!());
     /// assert_eq!(value, &92);
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_init<F>(&self, f: F) -> &T
+    pub fn get_or_insert_with<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
     {
-        match self.get_or_try_init(|| Ok::<T, !>(f())) {
+        match self.try_get_or_insert_with(|| Ok::<T, !>(f())) {
             Ok(val) => val,
         }
     }
@@ -198,16 +198,16 @@ impl<T> OnceCell<T> {
     /// use std::lazy::OnceCell;
     ///
     /// let cell = OnceCell::new();
-    /// assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
+    /// assert_eq!(cell.try_get_or_insert_with(|| Err(())), Err(()));
     /// assert!(cell.get().is_none());
-    /// let value = cell.get_or_try_init(|| -> Result<i32, ()> {
+    /// let value = cell.try_get_or_insert_with(|| -> Result<i32, ()> {
     ///     Ok(92)
     /// });
     /// assert_eq!(value, Ok(&92));
     /// assert_eq!(cell.get(), Some(&92))
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
-    pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
+    pub fn try_get_or_insert_with<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,
     {
@@ -355,7 +355,7 @@ impl<T, F: FnOnce() -> T> Lazy<T, F> {
     /// ```
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn force(this: &Lazy<T, F>) -> &T {
-        this.cell.get_or_init(|| match this.init.take() {
+        this.cell.get_or_insert_with(|| match this.init.take() {
             Some(f) => f(),
             None => panic!("`Lazy` instance has previously been poisoned"),
         })

@@ -1713,7 +1713,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
-        self.cdata.source_map_import_info.get_or_init(|| {
+        self.cdata.source_map_import_info.get_or_insert_with(|| {
             let external_source_map = self.root.source_map.decode(self);
 
             external_source_map

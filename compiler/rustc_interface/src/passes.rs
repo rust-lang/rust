@@ -766,7 +766,7 @@ pub fn create_global_ctxt<'tcx>(
     }
 
     let gcx = sess.time("setup_global_ctxt", || {
-        global_ctxt.get_or_init(|| {
+        global_ctxt.get_or_insert_with(|| {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,

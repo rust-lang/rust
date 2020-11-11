@@ -54,11 +54,11 @@ fn sync_once_cell() {
     assert!(ONCE_CELL.get().is_none());
 
     spawn_and_wait(|| {
-        ONCE_CELL.get_or_init(|| 92);
+        ONCE_CELL.get_or_insert_with(|| 92);
         assert_eq!(ONCE_CELL.get(), Some(&92));
     });
 
-    ONCE_CELL.get_or_init(|| panic!("Kabom!"));
+    ONCE_CELL.get_or_insert_with(|| panic!("Kabom!"));
     assert_eq!(ONCE_CELL.get(), Some(&92));
 }
 
@@ -92,7 +92,7 @@ fn sync_once_cell_drop() {
 
     let x = SyncOnceCell::new();
     spawn_and_wait(move || {
-        x.get_or_init(|| Dropper);
+        x.get_or_insert_with(|| Dropper);
         assert_eq!(DROP_CNT.load(SeqCst), 0);
         drop(x);
     });
@@ -118,18 +118,21 @@ fn clone() {
 }
 
 #[test]
-fn get_or_try_init() {
+fn try_get_or_insert_with() {
     let cell: SyncOnceCell<String> = SyncOnceCell::new();
     assert!(cell.get().is_none());
 
-    let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
+    let res = panic::catch_unwind(|| cell.try_get_or_insert_with(|| -> Result<_, ()> { panic!() }));
     assert!(res.is_err());
     assert!(!cell.is_initialized());
     assert!(cell.get().is_none());
 
-    assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
+    assert_eq!(cell.try_get_or_insert_with(|| Err(())), Err(()));
 
-    assert_eq!(cell.get_or_try_init(|| Ok::<_, ()>("hello".to_string())), Ok(&"hello".to_string()));
+    assert_eq!(
+        cell.try_get_or_insert_with(|| Ok::<_, ()>("hello".to_string())),
+        Ok(&"hello".to_string())
+    );
     assert_eq!(cell.get(), Some(&"hello".to_string()));
 }
 
@@ -224,7 +227,7 @@ fn static_sync_lazy() {
 fn static_sync_lazy_via_fn() {
     fn xs() -> &'static Vec<i32> {
         static XS: SyncOnceCell<Vec<i32>> = SyncOnceCell::new();
-        XS.get_or_init(|| {
+        XS.get_or_insert_with(|| {
             let mut xs = Vec::new();
             xs.push(1);
             xs.push(2);
@@ -261,7 +264,7 @@ fn eval_once_macro() {
             fn init() -> $ty {
                 $($body)*
             }
-            ONCE_CELL.get_or_init(init)
+            ONCE_CELL.get_or_insert_with(init)
         }};
     }
 

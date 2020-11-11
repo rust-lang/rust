@@ -433,7 +433,7 @@ impl<'sess> OnDiskCache<'sess> {
         T: Decodable<CacheDecoder<'a, 'tcx>>,
     {
         let cnum_map =
-            self.cnum_map.get_or_init(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
+            self.cnum_map.get_or_insert_with(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
 
         let mut decoder = CacheDecoder {
             tcx,
