@@ -89,7 +89,21 @@ statement must be considered separately from the left-hand side.
 
 ### Convergence
 
-TODO
+Your analysis must converge to "fixpoint", otherwise it will run forever.
+Converging to fixpoint is just another way of saying "reaching equilibrium".
+In order to reach equilibrium, your analysis must obey some laws. One of the
+laws it must obey is that the bottom value joined with some other value equals
+the second value. Or, as an equation:
+
+> *bottom* join *x* = *x*
+
+Another law is that your analysis must have a "top value" such that
+
+> *top* join *x* = *top*
+
+Having a top value ensures that your semilattice has a finite height, and the
+law state above ensures that once the dataflow state reaches top, it will no
+longer change (the fixpoint will be top).
 
 ## Inspecting the Results of a Dataflow Analysis
 
