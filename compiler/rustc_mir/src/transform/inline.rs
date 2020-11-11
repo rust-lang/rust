@@ -16,9 +16,6 @@ use crate::transform::MirPass;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
-const DEFAULT_THRESHOLD: usize = 50;
-const HINT_THRESHOLD: usize = 100;
-
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
@@ -248,7 +245,11 @@ impl Inliner<'tcx> {
             }
         }
 
-        let mut threshold = if hinted { HINT_THRESHOLD } else { DEFAULT_THRESHOLD };
+        let mut threshold = if hinted {
+            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
+        } else {
+            self.tcx.sess.opts.debugging_opts.inline_mir_threshold
+        };
 
         // Significantly lower the threshold for inlining cold functions
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
