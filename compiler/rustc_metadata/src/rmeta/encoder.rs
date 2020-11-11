@@ -1324,7 +1324,7 @@ impl EncodeContext<'a, 'tcx> {
                 fm.items
                     .iter()
                     .map(|foreign_item| tcx.hir().local_def_id(
-                        foreign_item.hir_id).local_def_index)
+                        foreign_item.id.hir_id).local_def_index)
             ),
             hir::ItemKind::Enum(..) => record!(self.tables.children[def_id] <-
                 self.tcx.adt_def(def_id).variants.iter().map(|v| {
@@ -1913,6 +1913,8 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
     fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem<'v>) {
         // handled in `visit_item` above
     }
+
+    fn visit_foreign_item(&mut self, _foreign_item: &'v hir::ForeignItem<'v>) {}
 }
 
 /// Used to prefetch queries which will be needed later by metadata encoding.
@@ -1976,6 +1978,11 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
             }
             hir::ImplItemKind::TyAlias(..) => (),
         }
+    }
+
+    fn visit_foreign_item(&self, _foreign_item: &'v hir::ForeignItem<'v>) {
+        // This should be kept in sync with `encode_info_for_foreign_item`.
+        // Foreign items contain no MIR.
     }
 }
 

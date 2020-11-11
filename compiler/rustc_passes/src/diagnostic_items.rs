@@ -37,6 +37,8 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         self.observe_item(&impl_item.attrs, impl_item.hir_id);
     }
+
+    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
 }
 
 impl<'tcx> DiagnosticItemCollector<'tcx> {

@@ -112,6 +112,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 items: _,
                 trait_items: _,
                 impl_items: _,
+                foreign_items: _,
                 bodies: _,
                 trait_impls: _,
                 body_ids: _,
@@ -319,6 +320,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.visit_impl_item(self.krate.impl_item(item_id));
     }
 
+    fn visit_nested_foreign_item(&mut self, foreign_id: ForeignItemId) {
+        self.visit_foreign_item(self.krate.foreign_item(foreign_id));
+    }
+
     fn visit_nested_body(&mut self, id: BodyId) {
         self.visit_body(self.krate.body(id));
     }
@@ -351,11 +356,17 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
-        self.insert(foreign_item.span, foreign_item.hir_id, Node::ForeignItem(foreign_item));
+    fn visit_foreign_item(&mut self, fi: &'hir ForeignItem<'hir>) {
+        debug_assert_eq!(
+            fi.hir_id.owner,
+            self.definitions.opt_hir_id_to_local_def_id(fi.hir_id).unwrap()
+        );
+        self.with_dep_node_owner(fi.hir_id.owner, fi, |this, hash| {
+            this.insert_with_hash(fi.span, fi.hir_id, Node::ForeignItem(fi), hash);
 
-        self.with_parent(foreign_item.hir_id, |this| {
-            intravisit::walk_foreign_item(this, foreign_item);
+            this.with_parent(fi.hir_id, |this| {
+                intravisit::walk_foreign_item(this, fi);
+            });
         });
     }
 

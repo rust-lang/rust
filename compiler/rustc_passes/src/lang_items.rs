@@ -54,6 +54,8 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
             impl_item.attrs,
         )
     }
+
+    fn visit_foreign_item(&mut self, _: &hir::ForeignItem<'_>) {}
 }
 
 impl LanguageItemCollector<'tcx> {

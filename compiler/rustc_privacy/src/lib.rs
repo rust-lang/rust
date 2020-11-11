@@ -657,7 +657,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in foreign_mod.items {
                     if foreign_item.vis.node.is_pub() {
-                        self.update(foreign_item.hir_id, item_level);
+                        self.update(foreign_item.id.hir_id, item_level);
                     }
                 }
             }
@@ -772,9 +772,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             // Visit everything, but foreign items have their own levels.
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in foreign_mod.items {
-                    let foreign_item_level = self.get(foreign_item.hir_id);
+                    let foreign_item_level = self.get(foreign_item.id.hir_id);
                     if foreign_item_level.is_some() {
-                        self.reach(foreign_item.hir_id, foreign_item_level)
+                        self.reach(foreign_item.id.hir_id, foreign_item_level)
                             .generics()
                             .predicates()
                             .ty();
@@ -1950,8 +1950,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of foreign modules have their own publicity.
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
                 for foreign_item in foreign_mod.items {
-                    let vis = tcx.visibility(tcx.hir().local_def_id(foreign_item.hir_id));
-                    self.check(foreign_item.hir_id, vis).generics().predicates().ty();
+                    let vis = tcx.visibility(tcx.hir().local_def_id(foreign_item.id.hir_id));
+                    self.check(foreign_item.id.hir_id, vis).generics().predicates().ty();
                 }
             }
             // Subitems of structs and unions have their own publicity.

@@ -309,6 +309,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        match self.find(id.hir_id).unwrap() {
+            Node::ForeignItem(item) => item,
+            _ => bug!(),
+        }
+    }
+
     pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies.get(&id.hir_id.local_id).unwrap()
     }
@@ -469,6 +476,10 @@ impl<'hir> Map<'hir> {
 
         for id in &module.impl_items {
             visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
+        }
+
+        for id in &module.foreign_items {
+            visitor.visit_foreign_item(self.expect_foreign_item(id.hir_id));
         }
     }
 
@@ -936,6 +947,10 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         self.impl_item(id)
+    }
+
+    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        self.foreign_item(id)
     }
 }
 

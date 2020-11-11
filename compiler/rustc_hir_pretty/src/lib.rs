@@ -36,6 +36,7 @@ pub enum Nested {
     Item(hir::ItemId),
     TraitItem(hir::TraitItemId),
     ImplItem(hir::ImplItemId),
+    ForeignItem(hir::ForeignItemId),
     Body(hir::BodyId),
     BodyParamPat(hir::BodyId, usize),
 }
@@ -56,6 +57,7 @@ impl PpAnn for hir::Crate<'_> {
             Nested::Item(id) => state.print_item(self.item(id.id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
             Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
         }
@@ -70,6 +72,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
             Nested::Item(id) => state.print_item(self.item(id.id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
             Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
         }
@@ -352,7 +355,7 @@ impl<'a> State<'a> {
     pub fn print_foreign_mod(&mut self, nmod: &hir::ForeignMod<'_>, attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
         for item in nmod.items {
-            self.print_foreign_item(item);
+            self.ann.nested(self, Nested::ForeignItem(item.id));
         }
     }
 

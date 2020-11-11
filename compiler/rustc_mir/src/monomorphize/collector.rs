@@ -1066,6 +1066,8 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             self.push_if_root(def_id);
         }
     }
+
+    fn visit_foreign_item(&mut self, _foreign_item: &'v hir::ForeignItem<'v>) {}
 }
 
 impl RootCollector<'_, 'v> {

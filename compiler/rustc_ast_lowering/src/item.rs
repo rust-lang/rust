@@ -43,6 +43,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
                 items: BTreeSet::new(),
                 trait_items: BTreeSet::new(),
                 impl_items: BTreeSet::new(),
+                foreign_items: BTreeSet::new(),
             },
         );
 
@@ -104,6 +105,17 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         });
 
         visit::walk_assoc_item(self, item, ctxt);
+    }
+
+    fn visit_foreign_item(&mut self, item: &'a ForeignItem) {
+        self.lctx.with_hir_id_owner(item.id, |lctx| {
+            let hir_item = lctx.lower_foreign_item(item);
+            let id = hir::ForeignItemId { hir_id: hir_item.hir_id };
+            lctx.foreign_items.insert(id, hir_item);
+            lctx.modules.get_mut(&lctx.current_module).unwrap().foreign_items.insert(id);
+        });
+
+        visit::walk_foreign_item(self, item);
     }
 }
 
@@ -704,10 +716,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef<'hir> {
+        hir::ForeignItemRef {
+            id: hir::ForeignItemId { hir_id: self.lower_node_id(i.id) },
+            ident: i.ident,
+            span: i.span,
+            vis: self.lower_visibility(&i.vis, Some(i.id)),
+        }
+    }
+
     fn lower_foreign_mod(&mut self, fm: &ForeignMod) -> hir::ForeignMod<'hir> {
         hir::ForeignMod {
             abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
-            items: self.arena.alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item(x))),
+            items: self
+                .arena
+                .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
         }
     }
 

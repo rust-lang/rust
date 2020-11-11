@@ -127,6 +127,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
     fn visit_trait_item(&mut self, _it: &'tcx hir::TraitItem<'tcx>) {}
     fn visit_impl_item(&mut self, _it: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_foreign_item(&mut self, _it: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
 impl Collector<'tcx> {

@@ -334,6 +334,8 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
+
+    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
 }
 
 impl InherentCollect<'tcx> {
