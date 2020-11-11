@@ -979,12 +979,14 @@ fn generic_simd_intrinsic(
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind() {
-            ty::Int(i) => {
-                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
-            }
-            ty::Uint(i) => {
-                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
-            }
+            ty::Int(i) => (
+                args[0].immediate(),
+                i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
+            ),
+            ty::Uint(i) => (
+                args[0].immediate(),
+                i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
+            ),
             _ => return_error!(
                 "vector argument `{}`'s element type `{}`, expected integer element type",
                 in_ty,

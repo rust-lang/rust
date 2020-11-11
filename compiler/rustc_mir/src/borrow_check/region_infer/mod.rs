@@ -582,7 +582,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.check_member_constraints(infcx, &mut errors_buffer);
         }
 
-        let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
+        let outlives_requirements = outlives_requirements.unwrap_or_default();
 
         if outlives_requirements.is_empty() {
             (None, errors_buffer)
