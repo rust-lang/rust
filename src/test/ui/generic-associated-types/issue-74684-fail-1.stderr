@@ -1,0 +1,18 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/issue-74684-fail-1.rs:1:12
+  |
+1 | #![feature(generic_associated_types)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 0
+  --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/issue-74684-fail-1.rs:12:28
+   |
+12 | fn bug<'a, T: ?Sized + Fun<F = [u8]>>(t: Box<T>) -> &'static T::F<'a> {
+   |                            ^^^^^^^^ expected 1 lifetime argument
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0107`.
