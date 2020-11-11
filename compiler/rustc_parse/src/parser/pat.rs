@@ -62,6 +62,16 @@ impl<'a> Parser<'a> {
         Ok(pat)
     }
 
+    pub(super) fn parse_top_pat_no_commas(&mut self) -> PResult<'a, P<Pat>> {
+        // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
+        self.eat_or_separator(None);
+
+        // Parse the possibly-or-pattern, but don't recorver commas.
+        let pat = self.parse_pat_with_or(None, GateOr::No, RecoverComma::No)?;
+
+        Ok(pat)
+    }
+
     /// Parse the pattern for a function or function pointer parameter.
     /// Special recovery is provided for or-patterns and leading `|`.
     pub(super) fn parse_fn_param_pat(&mut self) -> PResult<'a, P<Pat>> {

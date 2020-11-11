@@ -61,6 +61,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(token::Bracket) |  // slice pattern
                 token::BinOp(token::And) |          // reference
                 token::BinOp(token::Minus) |        // negative literal
+                token::BinOp(token::Or) |           // leading vert `|` or-pattern
                 token::AndAnd |                     // double reference
                 token::Literal(..) |                // literal
                 token::DotDot |                     // range pattern (future compat)
@@ -128,7 +129,8 @@ impl<'a> Parser<'a> {
                 }
             }
             NonterminalKind::Pat => {
-                let (mut pat, tokens) = self.collect_tokens(|this| this.parse_pat(None))?;
+                let (mut pat, tokens) =
+                    self.collect_tokens(|this| this.parse_top_pat_no_commas())?;
                 // We have have eaten an NtPat, which could already have tokens
                 if pat.tokens.is_none() {
                     pat.tokens = tokens;
