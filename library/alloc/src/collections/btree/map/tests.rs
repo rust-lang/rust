@@ -1685,6 +1685,33 @@ create_append_test!(test_append_239, 239);
 #[cfg(not(miri))] // Miri is too slow
 create_append_test!(test_append_1700, 1700);
 
+#[test]
+fn test_append_drop_leak() {
+    static DROPS: AtomicUsize = AtomicUsize::new(0);
+
+    struct D;
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            if DROPS.fetch_add(1, Ordering::SeqCst) == 0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut left = BTreeMap::new();
+    let mut right = BTreeMap::new();
+    left.insert(0, D);
+    left.insert(1, D); // first to be dropped during append
+    left.insert(2, D);
+    right.insert(1, D);
+    right.insert(2, D);
+
+    catch_unwind(move || left.append(&mut right)).unwrap_err();
+
+    assert_eq!(DROPS.load(Ordering::SeqCst), 4); // Rust issue #47949 ate one little piggy
+}
+
 fn rand_data(len: usize) -> Vec<(u32, u32)> {
     assert!(len * 2 <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
