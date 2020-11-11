@@ -8,6 +8,7 @@
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(libstd_sys_internals)]
+#[cfg_attr(not(any(bootstrap, test)), rustc_diagnostic_item = "std_panic_macro")]
 macro_rules! panic {
     () => ({ $crate::panic!("explicit panic") });
     ($msg:expr $(,)?) => ({ $crate::rt::begin_panic($msg) });
