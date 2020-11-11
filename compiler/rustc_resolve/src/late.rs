@@ -298,9 +298,7 @@ impl<'a> PathSource<'a> {
                     _,
                 )
                 | Res::SelfCtor(..)),
-            PathSource::TupleStruct(..) => {
-                matches!(res, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
-            }
+            PathSource::TupleStruct(..) => res.expected_in_tuple_struct_pat(),
             PathSource::Struct => matches!(res, Res::Def(
                     DefKind::Struct
                     | DefKind::Union

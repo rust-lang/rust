@@ -484,4 +484,9 @@ impl<Id> Res<Id> {
     pub fn matches_ns(&self, ns: Namespace) -> bool {
         self.ns().map_or(true, |actual_ns| actual_ns == ns)
     }
+
+    /// Returns whether such a resolved path can occur in a tuple struct/variant pattern
+    pub fn expected_in_tuple_struct_pat(&self) -> bool {
+        matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
+    }
 }
