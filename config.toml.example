@@ -586,6 +586,15 @@ changelog-seen = 2
 # build native code.
 #android-ndk = "/path/to/ndk"
 
+# Build the sanitizer runtimes for this target.
+# This option will override the same option under [build] section.
+#sanitizers = false
+
+# Build the profiler runtime for this target(required when compiling with options that depend
+# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
+# This option will override the same option under [build] section.
+#profiler = false
+
 # Force static or dynamic linkage of the standard library for this target. If
 # this target is a host for rustc, this will also affect the linkage of the
 # compiler itself. This is useful for building rustc on targets that normally
