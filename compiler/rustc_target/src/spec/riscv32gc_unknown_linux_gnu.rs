@@ -13,7 +13,7 @@ pub fn target() -> Target {
             features: "+m,+a,+f,+d,+c".to_string(),
             llvm_abiname: "ilp32d".to_string(),
             max_atomic_width: Some(32),
-            ..super::linux_base::opts()
+            ..super::linux_gnu_base::opts()
         },
     }
 }

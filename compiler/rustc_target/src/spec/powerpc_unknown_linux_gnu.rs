@@ -1,7 +1,7 @@
 use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::linux_base::opts();
+    let mut base = super::linux_gnu_base::opts();
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m32".to_string());
     base.max_atomic_width = Some(32);
 

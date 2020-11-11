@@ -13,7 +13,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(32),
             mcount: "_mcount".to_string(),
 
-            ..super::linux_base::opts()
+            ..super::linux_gnu_base::opts()
         },
     }
 }
