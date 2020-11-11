@@ -1,0 +1,10 @@
+error: found a Path with multiple segments, expected a Path with a single segment
+  --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/parse/issue-67510-1.rs:13:12
+   |
+13 | impl<T : X<X::Y<'a> = &'a u32>> Z for T {} 
+   |            ^^^^^^^^
+   |            |
+   |            expected the name of an associated type
+   |            help: try to use only the last segment:: `Y`
+
+error: aborting due to previous error

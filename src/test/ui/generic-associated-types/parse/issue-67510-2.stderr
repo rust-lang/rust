@@ -1,0 +1,18 @@
+error: Incorrect type of generic argument, expected a Path with a single path segment
+ --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/parse/issue-67510-2.rs:9:27
+  |
+9 | fn f1<'a>(arg : Box<dyn X<(Y<'a>) = &'a ()>>) {} 
+  |                           ^^^^^^^^-
+  |                                   |
+  |                                   Expected the name of an associated type
+
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/parse/issue-67510-2.rs:3:12
+  |
+3 | #![feature(generic_associated_types)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error: aborting due to previous error; 1 warning emitted

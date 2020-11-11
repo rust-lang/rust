@@ -1,0 +1,24 @@
+error: generic arguments of associated types must be lifetimes or types
+  --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/parse/issue-67510-4.rs:10:27
+   |
+10 | fn f1<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}  
+   |                           ^
+
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+ --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/parse/issue-67510-4.rs:4:12
+  |
+4 | #![feature(generic_associated_types)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(incomplete_features)]` on by default
+  = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0107]: wrong number of lifetime arguments: expected 1, found 0
+  --> /Users/bn/Documents/rust_fork/rust/src/test/ui/generic-associated-types/parse/issue-67510-4.rs:10:27
+   |
+10 | fn f1<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}  
+   |                           ^^^^^^^^^^^^^ expected 1 lifetime argument
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0107`.
