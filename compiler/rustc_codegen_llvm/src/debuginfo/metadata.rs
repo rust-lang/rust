@@ -870,7 +870,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
 
     // When targeting MSVC, emit MSVC style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
-    let msvc_like_names = cx.tcx.sess.target.options.is_like_msvc;
+    let msvc_like_names = cx.tcx.sess.target.is_like_msvc;
 
     let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
@@ -981,7 +981,7 @@ pub fn compile_unit_metadata(
     // if multiple object files with the same `DW_AT_name` are linked together.
     // As a workaround we generate unique names for each object file. Those do
     // not correspond to an actual source file but that should be harmless.
-    if tcx.sess.target.options.is_like_osx {
+    if tcx.sess.target.is_like_osx {
         name_in_debuginfo.push("@");
         name_in_debuginfo.push(codegen_unit_name);
     }
@@ -1397,7 +1397,7 @@ fn prepare_union_metadata(
 /// on MSVC we have to use the fallback mode, because LLVM doesn't
 /// lower variant parts to PDB.
 fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
-    cx.sess().target.options.is_like_msvc
+    cx.sess().target.is_like_msvc
 }
 
 // FIXME(eddyb) maybe precompute this? Right now it's computed once

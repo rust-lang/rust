@@ -85,6 +85,60 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         })
     }
 
+    pub(super) fn future_return_type(
+        &self,
+        local_def_id: LocalDefId,
+    ) -> Option<&rustc_hir::Ty<'_>> {
+        if let Some(hir::IsAsync::Async) = self.asyncness(local_def_id) {
+            if let rustc_middle::ty::Opaque(def_id, _) =
+                self.tcx().type_of(local_def_id).fn_sig(self.tcx()).output().skip_binder().kind()
+            {
+                match self.tcx().hir().get_if_local(*def_id) {
+                    Some(hir::Node::Item(hir::Item {
+                        kind:
+                            hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+                                bounds,
+                                origin: hir::OpaqueTyOrigin::AsyncFn,
+                                ..
+                            }),
+                        ..
+                    })) => {
+                        for b in bounds.iter() {
+                            if let hir::GenericBound::LangItemTrait(
+                                hir::LangItem::Future,
+                                _span,
+                                _hir_id,
+                                generic_args,
+                            ) = b
+                            {
+                                for type_binding in generic_args.bindings.iter() {
+                                    if type_binding.ident.name == rustc_span::sym::Output {
+                                        if let hir::TypeBindingKind::Equality { ty } =
+                                            type_binding.kind
+                                        {
+                                            return Some(ty);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        None
+    }
+
+    pub(super) fn asyncness(&self, local_def_id: LocalDefId) -> Option<hir::IsAsync> {
+        // similar to the asyncness fn in rustc_ty::ty
+        let hir_id = self.tcx().hir().local_def_id_to_hir_id(local_def_id);
+        let node = self.tcx().hir().get(hir_id);
+        let fn_like = rustc_middle::hir::map::blocks::FnLikeNode::from_node(node)?;
+
+        Some(fn_like.asyncness())
+    }
+
     // Here, we check for the case where the anonymous region
     // is in the return type.
     // FIXME(#42703) - Need to handle certain cases here.

@@ -90,8 +90,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        let mcount_name =
-            CString::new(cx.sess().target.options.target_mcount.as_str().as_bytes()).unwrap();
+        let mcount_name = CString::new(cx.sess().target.mcount.as_str().as_bytes()).unwrap();
 
         llvm::AddFunctionAttrStringValue(
             llfn,
@@ -105,7 +104,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
-    if !cx.sess().target.options.stack_probes {
+    if !cx.sess().target.stack_probes {
         return;
     }
 
@@ -174,7 +173,6 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
         .split(',')
         .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
     sess.target
-        .options
         .features
         .split(',')
         .chain(cmdline)

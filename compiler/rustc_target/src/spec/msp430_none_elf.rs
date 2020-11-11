@@ -8,8 +8,8 @@ pub fn target() -> Target {
         arch: "msp430".to_string(),
 
         options: TargetOptions {
-            target_c_int_width: "16".to_string(),
-            target_vendor: String::new(),
+            c_int_width: "16".to_string(),
+            vendor: String::new(),
             executables: true,
 
             // The LLVM backend currently can't generate object files. To

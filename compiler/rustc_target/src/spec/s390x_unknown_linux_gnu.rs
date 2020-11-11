@@ -2,7 +2,7 @@ use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::linux_base::opts();
-    base.target_endian = "big".to_string();
+    base.endian = "big".to_string();
     // z10 is the oldest CPU supported by LLVM
     base.cpu = "z10".to_string();
     // FIXME: The data_layout string below and the ABI implementation in

@@ -323,7 +323,7 @@ where
     Ty: TyAndLayoutMethods<'a, C> + Copy,
     C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
 {
-    let flen = match &cx.target_spec().options.llvm_abiname[..] {
+    let flen = match &cx.target_spec().llvm_abiname[..] {
         "ilp32f" | "lp64f" => 32,
         "ilp32d" | "lp64d" => 64,
         _ => 0,

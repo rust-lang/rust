@@ -55,9 +55,9 @@ pub fn target() -> Target {
         "TEXT_SIZE",
     ];
     let opts = TargetOptions {
-        target_os: "unknown".into(),
-        target_env: "sgx".into(),
-        target_vendor: "fortanix".into(),
+        os: "unknown".into(),
+        env: "sgx".into(),
+        vendor: "fortanix".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         dynamic_linking: false,
         executables: true,

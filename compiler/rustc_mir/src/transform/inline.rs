@@ -729,6 +729,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
+        for elem in place.projection {
+            // FIXME: Make sure that return place is not used in an indexing projection, since it
+            // won't be rebased as it is supposed to be.
+            assert_ne!(ProjectionElem::Index(RETURN_PLACE), elem);
+        }
+
         // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
         let dest_proj_len = self.destination.projection.len();
         if place.local == RETURN_PLACE && dest_proj_len > 0 {

@@ -17,7 +17,7 @@ pub fn target() -> Target {
     );
 
     let opts = TargetOptions {
-        target_os: "emscripten".to_string(),
+        os: "emscripten".to_string(),
         linker_flavor: LinkerFlavor::Em,
         // emcc emits two files - a .js file to instantiate the wasm and supply platform
         // functionality, and a .wasm file.
@@ -27,7 +27,7 @@ pub fn target() -> Target {
         is_like_emscripten: true,
         panic_strategy: PanicStrategy::Unwind,
         post_link_args,
-        target_family: Some("unix".to_string()),
+        os_family: Some("unix".to_string()),
         ..wasm32_base::options()
     };
     Target {

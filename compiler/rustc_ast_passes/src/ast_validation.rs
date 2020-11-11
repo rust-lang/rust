@@ -796,7 +796,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
-            ExprKind::LlvmInlineAsm(..) if !self.session.target.options.allow_asm => {
+            ExprKind::LlvmInlineAsm(..) if !self.session.target.allow_asm => {
                 struct_span_err!(
                     self.session,
                     expr.span,

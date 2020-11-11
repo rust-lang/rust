@@ -9,8 +9,8 @@ pub fn target() -> Target {
         pointer_width: 64,
 
         options: TargetOptions {
-            target_os: "cuda".to_string(),
-            target_vendor: "nvidia".to_string(),
+            os: "cuda".to_string(),
+            vendor: "nvidia".to_string(),
             linker_flavor: LinkerFlavor::PtxLinker,
             // The linker can be installed from `crates.io`.
             linker: Some("rust-ptx-linker".to_string()),

@@ -129,7 +129,7 @@ pub unsafe fn create_module(
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
-    if sess.target.options.is_builtin {
+    if sess.target.is_builtin {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
@@ -190,7 +190,7 @@ pub unsafe fn create_module(
     }
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
-    if sess.target.options.is_like_msvc {
+    if sess.target.is_like_msvc {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
@@ -265,7 +265,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // linker will take care of everything. Fixing this problem will likely
         // require adding a few attributes to Rust itself (feature gated at the
         // start) and then strongly recommending static linkage on Windows!
-        let use_dll_storage_attrs = tcx.sess.target.options.is_like_windows;
+        let use_dll_storage_attrs = tcx.sess.target.is_like_windows;
 
         let check_overflow = tcx.sess.overflow_checks();
 
@@ -839,7 +839,7 @@ impl CodegenCx<'b, 'tcx> {
             return eh_catch_typeinfo;
         }
         let tcx = self.tcx;
-        assert!(self.sess().target.options.is_like_emscripten);
+        assert!(self.sess().target.is_like_emscripten);
         let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
             Some(def_id) => self.get_static(def_id),
             _ => {

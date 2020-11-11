@@ -32,7 +32,7 @@ use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOpti
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
     TargetOptions {
-        target_vendor: String::new(),
+        vendor: String::new(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         executables: true,
         // In most cases, LLD is good enough

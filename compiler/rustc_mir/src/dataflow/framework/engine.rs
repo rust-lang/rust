@@ -208,12 +208,19 @@ where
             }
         }
 
+        // `state` is not actually used between iterations;
+        // this is just an optimization to avoid reallocating
+        // every iteration.
         let mut state = analysis.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
             let bb_data = &body[bb];
 
-            // Apply the block transfer function, using the cached one if it exists.
+            // Set the state to the entry state of the block.
+            // This is equivalent to `state = entry_sets[bb].clone()`,
+            // but it saves an allocation, thus improving compile times.
             state.clone_from(&entry_sets[bb]);
+
+            // Apply the block transfer function, using the cached one if it exists.
             match &apply_trans_for_block {
                 Some(apply) => apply(bb, &mut state),
                 None => A::Direction::apply_effects_in_block(&analysis, &mut state, bb, bb_data),

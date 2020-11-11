@@ -2,7 +2,7 @@ use crate::spec::{LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut base = super::openbsd_base::opts();
-    base.target_endian = "big".to_string();
+    base.endian = "big".to_string();
     base.cpu = "v9".to_string();
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
     base.max_atomic_width = Some(64);

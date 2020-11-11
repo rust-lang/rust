@@ -4,16 +4,16 @@ pub fn opts() -> TargetOptions {
     let base = super::msvc_base::opts();
 
     TargetOptions {
-        target_os: "windows".to_string(),
-        target_env: "msvc".to_string(),
-        target_vendor: "pc".to_string(),
+        os: "windows".to_string(),
+        env: "msvc".to_string(),
+        vendor: "pc".to_string(),
         dynamic_linking: true,
         dll_prefix: String::new(),
         dll_suffix: ".dll".to_string(),
         exe_suffix: ".exe".to_string(),
         staticlib_prefix: String::new(),
         staticlib_suffix: ".lib".to_string(),
-        target_family: Some("windows".to_string()),
+        os_family: Some("windows".to_string()),
         crt_static_allows_dylibs: true,
         crt_static_respected: true,
         requires_uwtable: true,

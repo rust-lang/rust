@@ -17,14 +17,14 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        target_os: "vxworks".to_string(),
-        target_env: "gnu".to_string(),
-        target_vendor: "wrs".to_string(),
+        os: "vxworks".to_string(),
+        env: "gnu".to_string(),
+        vendor: "wrs".to_string(),
         linker: Some("wr-c++".to_string()),
         exe_suffix: ".vxe".to_string(),
         dynamic_linking: true,
         executables: true,
-        target_family: Some("unix".to_string()),
+        os_family: Some("unix".to_string()),
         linker_is_gnu: true,
         has_rpath: true,
         pre_link_args: args,
@@ -34,7 +34,7 @@ pub fn opts() -> TargetOptions {
         crt_static_respected: true,
         crt_static_allows_dylibs: true,
         // VxWorks needs to implement this to support profiling
-        target_mcount: "_mcount".to_string(),
+        mcount: "_mcount".to_string(),
         ..Default::default()
     }
 }

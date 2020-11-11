@@ -15,7 +15,7 @@ use super::{LinkerFlavor, LldFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = wasm32_base::options();
-    options.target_os = "unknown".to_string();
+    options.os = "unknown".to_string();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     let clang_args = options.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
 

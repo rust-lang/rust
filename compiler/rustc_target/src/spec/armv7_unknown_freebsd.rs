@@ -9,11 +9,11 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
 
         options: TargetOptions {
-            target_env: "gnueabihf".to_string(),
+            env: "gnueabihf".to_string(),
             features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
             max_atomic_width: Some(64),
             unsupported_abis: super::arm_base::unsupported_abis(),
-            target_mcount: "\u{1}__gnu_mcount_nc".to_string(),
+            mcount: "\u{1}__gnu_mcount_nc".to_string(),
             ..base
         },
     }

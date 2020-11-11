@@ -10,7 +10,7 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOp
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        target_vendor: String::new(),
+        vendor: String::new(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         features: "+strict-align,-neon,-fp-armv8".to_string(),
