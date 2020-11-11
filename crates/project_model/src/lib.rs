@@ -409,69 +409,6 @@ impl ProjectWorkspace {
                 cfg_options.insert_atom("test".into());
                 cfg_options.insert_atom("debug_assertions".into());
 
-                let mut rustc_pkg_crates = FxHashMap::default();
-
-                // Add crate roots for rustc_private libs if a path to source is provided
-                if let Some(rustc_workspace) = rustc {
-                    for pkg in rustc_workspace.packages() {
-                        for &tgt in rustc_workspace[pkg].targets.iter() {
-                            if rustc_workspace[tgt].kind != TargetKind::Lib {
-                                continue;
-                            }
-                            // Exclude alloc / core / std
-                            if rustc_workspace[tgt]
-                                .root
-                                .components()
-                                .any(|c| c == Component::Normal("library".as_ref()))
-                            {
-                                continue;
-                            }
-
-                            if let Some(crate_id) = add_target_crate_root(
-                                &mut crate_graph,
-                                &rustc_workspace[pkg],
-                                &rustc_workspace[tgt],
-                                &cfg_options,
-                                proc_macro_client,
-                                load,
-                            ) {
-                                pkg_to_lib_crate.insert(pkg, crate_id);
-                                // Add dependencies on the core / std / alloc for rustc
-                                for (name, krate) in public_deps.iter() {
-                                    if let Err(_) =
-                                        crate_graph.add_dep(crate_id, name.clone(), *krate)
-                                    {
-                                        log::error!(
-                                            "cyclic dependency on {} for {}",
-                                            name,
-                                            &cargo[pkg].name
-                                        )
-                                    }
-                                }
-                                rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
-                            }
-                        }
-                    }
-                    // Now add a dep edge from all targets of upstream to the lib
-                    // target of downstream.
-                    for pkg in rustc_workspace.packages() {
-                        for dep in rustc_workspace[pkg].dependencies.iter() {
-                            let name = CrateName::new(&dep.name).unwrap();
-                            if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
-                                for &from in rustc_pkg_crates.get(&pkg).into_iter().flatten() {
-                                    if let Err(_) = crate_graph.add_dep(from, name.clone(), to) {
-                                        log::error!(
-                                            "cyclic dependency {} -> {}",
-                                            &rustc_workspace[pkg].name,
-                                            &rustc_workspace[dep.pkg].name
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                };
-
                 let mut pkg_crates = FxHashMap::default();
 
                 // Next, create crates for each package, target pair
@@ -535,30 +472,6 @@ impl ProjectWorkspace {
                     }
                 }
 
-                // If we have access to the rust sources, create dependencies onto rustc_private libraries from all targets
-                // that are members of the current workspace
-                if let Some(rustc_workspace) = rustc {
-                    for dep in rustc_workspace.packages() {
-                        let name = CrateName::normalize_dashes(&rustc_workspace[dep].name);
-
-                        if let Some(&from) = pkg_to_lib_crate.get(&dep) {
-                            for pkg in cargo.packages() {
-                                if !cargo[pkg].is_member {
-                                    continue;
-                                }
-                                for &to in pkg_crates.get(&pkg).into_iter().flatten() {
-                                    if let Err(_) = crate_graph.add_dep(to, name.clone(), from) {
-                                        log::error!(
-                                            "cyclic dependency22 {} -> {}",
-                                            &cargo[pkg].name,
-                                            &rustc_workspace[dep].name
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
                 // Now add a dep edge from all targets of upstream to the lib
                 // target of downstream.
                 for pkg in cargo.packages() {
@@ -572,6 +485,92 @@ impl ProjectWorkspace {
                                         &cargo[pkg].name,
                                         &cargo[dep.pkg].name
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let mut rustc_pkg_crates = FxHashMap::default();
+
+                // If the user provided a path to rustc sources, we add all the rustc_private crates
+                // and create dependencies on them for the crates in the current workspace
+                if let Some(rustc_workspace) = rustc {
+                    for pkg in rustc_workspace.packages() {
+                        for &tgt in rustc_workspace[pkg].targets.iter() {
+                            if rustc_workspace[tgt].kind != TargetKind::Lib {
+                                continue;
+                            }
+                            // Exclude alloc / core / std
+                            if rustc_workspace[tgt]
+                                .root
+                                .components()
+                                .any(|c| c == Component::Normal("library".as_ref()))
+                            {
+                                continue;
+                            }
+
+                            if let Some(crate_id) = add_target_crate_root(
+                                &mut crate_graph,
+                                &rustc_workspace[pkg],
+                                &rustc_workspace[tgt],
+                                &cfg_options,
+                                proc_macro_client,
+                                load,
+                            ) {
+                                pkg_to_lib_crate.insert(pkg, crate_id);
+                                // Add dependencies on the core / std / alloc for rustc
+                                for (name, krate) in public_deps.iter() {
+                                    if let Err(_) =
+                                        crate_graph.add_dep(crate_id, name.clone(), *krate)
+                                    {
+                                        log::error!(
+                                            "cyclic dependency on {} for {}",
+                                            name,
+                                            &cargo[pkg].name
+                                        )
+                                    }
+                                }
+                                rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
+                            }
+                        }
+                    }
+                    // Now add a dep edge from all targets of upstream to the lib
+                    // target of downstream.
+                    for pkg in rustc_workspace.packages() {
+                        for dep in rustc_workspace[pkg].dependencies.iter() {
+                            let name = CrateName::new(&dep.name).unwrap();
+                            if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
+                                for &from in rustc_pkg_crates.get(&pkg).into_iter().flatten() {
+                                    if let Err(_) = crate_graph.add_dep(from, name.clone(), to) {
+                                        log::error!(
+                                            "cyclic dependency {} -> {}",
+                                            &rustc_workspace[pkg].name,
+                                            &rustc_workspace[dep.pkg].name
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Add dependencies for all the crates of the current workspace to rustc_private libraries
+                    for dep in rustc_workspace.packages() {
+                        let name = CrateName::normalize_dashes(&rustc_workspace[dep].name);
+
+                        if let Some(&to) = pkg_to_lib_crate.get(&dep) {
+                            for pkg in cargo.packages() {
+                                if !cargo[pkg].is_member {
+                                    continue;
+                                }
+                                for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+                                    if let Err(_) = crate_graph.add_dep(from, name.clone(), to) {
+                                        log::error!(
+                                            "cyclic dependency {} -> {}",
+                                            &cargo[pkg].name,
+                                            &rustc_workspace[dep].name
+                                        )
+                                    }
                                 }
                             }
                         }
