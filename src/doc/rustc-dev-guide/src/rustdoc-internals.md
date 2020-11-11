@@ -177,7 +177,8 @@ a set of tests in `src/test/rustdoc` that make sure the final HTML is what we
 expect in various situations. These tests also use a supplementary script,
 `src/etc/htmldocck.py`, that allows it to look through the final HTML using
 XPath notation to get a precise look at the output. The full description of all
-the commands available to rustdoc tests is in `htmldocck.py`.
+the commands available to rustdoc tests (e.g. [`@has`] and [`@matches`]) is in
+[`htmldocck.py`].
 
 To use multiple crates in a rustdoc test, add `// aux-build:filename.rs`
 to the top of the test file. `filename.rs` should be placed in an `auxiliary`
@@ -192,6 +193,10 @@ runtime. These tests don't have as thorough of a writeup, but a broad example
 that features results in all tabs can be found in `basic.js`. The basic idea is
 that you match a given `QUERY` with a set of `EXPECTED` results, complete with
 the full item path of each item.
+
+[`htmldocck.py`]: https://github.com/rust-lang/rust/blob/master/src/etc/htmldocck.py
+[`@has`]: https://github.com/rust-lang/rust/blob/master/src/etc/htmldocck.py#L39
+[`@matches`]: https://github.com/rust-lang/rust/blob/master/src/etc/htmldocck.py#L44
 
 ## Testing locally
 
