@@ -1,4 +1,7 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::ptr;
+use crate::sys::sgx::abi::mem as sgx_mem;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use super::waitqueue::SpinMutex;
 
@@ -10,7 +13,48 @@ use super::waitqueue::SpinMutex;
 // dlmalloc.c from C to Rust.
 #[cfg_attr(test, linkage = "available_externally")]
 #[export_name = "_ZN16__rust_internals3std3sys3sgx5alloc8DLMALLOCE"]
-static DLMALLOC: SpinMutex<dlmalloc::Dlmalloc> = SpinMutex::new(dlmalloc::DLMALLOC_INIT);
+static DLMALLOC: SpinMutex<dlmalloc::Dlmalloc<Sgx>> =
+    SpinMutex::new(dlmalloc::Dlmalloc::new_with_allocator(Sgx {}));
+
+struct Sgx;
+
+unsafe impl dlmalloc::Allocator for Sgx {
+    /// Allocs system resources
+    fn alloc(&self, _size: usize) -> (*mut u8, usize, u32) {
+        static INIT: AtomicBool = AtomicBool::new(false);
+
+        // No ordering requirement since this function is protected by the global lock.
+        if !INIT.swap(true, Ordering::Relaxed) {
+            (sgx_mem::heap_base() as _, sgx_mem::heap_size(), 0)
+        } else {
+            (ptr::null_mut(), 0, 0)
+        }
+    }
+
+    fn remap(&self, _ptr: *mut u8, _oldsize: usize, _newsize: usize, _can_move: bool) -> *mut u8 {
+        ptr::null_mut()
+    }
+
+    fn free_part(&self, _ptr: *mut u8, _oldsize: usize, _newsize: usize) -> bool {
+        false
+    }
+
+    fn free(&self, _ptr: *mut u8, _size: usize) -> bool {
+        return false;
+    }
+
+    fn can_release_part(&self, _flags: u32) -> bool {
+        false
+    }
+
+    fn allocates_zeros(&self) -> bool {
+        false
+    }
+
+    fn page_size(&self) -> usize {
+        0x1000
+    }
+}
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
