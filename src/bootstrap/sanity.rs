@@ -91,7 +91,7 @@ pub fn check(build: &mut Build) {
                 .unwrap_or(true)
         })
         .any(|build_llvm_ourselves| build_llvm_ourselves);
-    if building_llvm || build.config.sanitizers {
+    if building_llvm || build.config.any_sanitizers_enabled() {
         cmd_finder.must_have("cmake");
     }
 

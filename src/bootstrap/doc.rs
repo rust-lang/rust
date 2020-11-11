@@ -535,8 +535,12 @@ impl Step for Rustc {
         // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
         for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
-            compiler_crates
-                .extend(builder.in_tree_crates(root_crate).into_iter().map(|krate| krate.name));
+            compiler_crates.extend(
+                builder
+                    .in_tree_crates(root_crate, Some(target))
+                    .into_iter()
+                    .map(|krate| krate.name),
+            );
         }
 
         for krate in &compiler_crates {
