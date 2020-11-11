@@ -64,6 +64,7 @@ mod hermit_kernel_base;
 mod illumos_base;
 mod l4re_base;
 mod linux_base;
+mod linux_gnu_base;
 mod linux_kernel_base;
 mod linux_musl_base;
 mod linux_uclibc_base;
@@ -823,9 +824,6 @@ pub struct TargetOptions {
     /// library naming convention. Defaults to false.
     pub is_like_windows: bool,
     pub is_like_msvc: bool,
-    /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
-    /// Defaults to false.
-    pub is_like_android: bool,
     /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
     /// Emscripten toolchain.
     /// Defaults to false.
@@ -1033,7 +1031,6 @@ impl Default for TargetOptions {
             is_like_osx: false,
             is_like_solaris: false,
             is_like_windows: false,
-            is_like_android: false,
             is_like_emscripten: false,
             is_like_msvc: false,
             is_like_fuchsia: false,
@@ -1476,7 +1473,6 @@ impl Target {
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
         key!(is_like_emscripten, bool);
-        key!(is_like_android, bool);
         key!(is_like_fuchsia, bool);
         key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
@@ -1712,7 +1708,6 @@ impl ToJson for Target {
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_emscripten);
-        target_option_val!(is_like_android);
         target_option_val!(is_like_fuchsia);
         target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);

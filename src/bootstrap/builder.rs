@@ -264,7 +264,7 @@ impl<'a> ShouldRun<'a> {
     /// `all_krates` should probably be removed at some point.
     pub fn all_krates(mut self, name: &str) -> Self {
         let mut set = BTreeSet::new();
-        for krate in self.builder.in_tree_crates(name) {
+        for krate in self.builder.in_tree_crates(name, None) {
             let path = krate.local_path(self.builder);
             set.insert(path);
         }
@@ -277,7 +277,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// `make_run` will be called separately for each matching command-line path.
     pub fn krate(mut self, name: &str) -> Self {
-        for krate in self.builder.in_tree_crates(name) {
+        for krate in self.builder.in_tree_crates(name, None) {
             let path = krate.local_path(self.builder);
             self.paths.insert(PathSet::one(path));
         }

@@ -1,7 +1,7 @@
 use crate::spec::Target;
 
 pub fn target() -> Target {
-    let mut base = super::linux_base::opts();
+    let mut base = super::linux_gnu_base::opts();
     base.endian = "big".to_string();
     // z10 is the oldest CPU supported by LLVM
     base.cpu = "z10".to_string();
