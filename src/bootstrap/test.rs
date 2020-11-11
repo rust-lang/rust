@@ -1271,11 +1271,11 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         cmd.env("RUSTC_BOOTSTRAP", "1");
         builder.add_rust_test_threads(&mut cmd);
 
-        if builder.config.sanitizers {
+        if builder.config.sanitizers_enabled(target) {
             cmd.env("RUSTC_SANITIZER_SUPPORT", "1");
         }
 
-        if builder.config.profiler {
+        if builder.config.profiler_enabled(target) {
             cmd.env("RUSTC_PROFILER_SUPPORT", "1");
         }
 
@@ -1591,7 +1591,7 @@ impl Step for CrateLibrustc {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.build_triple());
 
-        for krate in builder.in_tree_crates("rustc-main") {
+        for krate in builder.in_tree_crates("rustc-main", Some(run.target)) {
             if krate.path.ends_with(&run.path) {
                 let test_kind = builder.kind.into();
 
@@ -1698,7 +1698,7 @@ impl Step for Crate {
             });
         };
 
-        for krate in builder.in_tree_crates("test") {
+        for krate in builder.in_tree_crates("test", Some(run.target)) {
             if krate.path.ends_with(&run.path) {
                 make(Mode::Std, krate);
             }
