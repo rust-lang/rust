@@ -92,8 +92,8 @@ statement must be considered separately from the left-hand side.
 Your analysis must converge to "fixpoint", otherwise it will run forever.
 Converging to fixpoint is just another way of saying "reaching equilibrium".
 In order to reach equilibrium, your analysis must obey some laws. One of the
-laws it must obey is that the bottom value joined with some other value equals
-the second value. Or, as an equation:
+laws it must obey is that the bottom value[^bottom-purpose] joined with some
+other value equals the second value. Or, as an equation:
 
 > *bottom* join *x* = *x*
 
@@ -104,6 +104,10 @@ Another law is that your analysis must have a "top value" such that
 Having a top value ensures that your semilattice has a finite height, and the
 law state above ensures that once the dataflow state reaches top, it will no
 longer change (the fixpoint will be top).
+
+[^bottom-purpose]: The bottom value's primary purpose is as the initial dataflow
+    state. Each basic block's entry state is initialized to bottom before the
+    analysis starts.
 
 ## Inspecting the Results of a Dataflow Analysis
 
