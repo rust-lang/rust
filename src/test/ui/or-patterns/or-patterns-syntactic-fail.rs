@@ -5,16 +5,6 @@
 
 fn main() {}
 
-// Test the `pat` macro fragment parser:
-macro_rules! accept_pat {
-    ($p:pat) => {}
-}
-
-accept_pat!(p | q); //~ ERROR no rules expected the token `|`
-accept_pat!(| p | q); //~ ERROR no rules expected the token `|`
-
-// Non-macro tests:
-
 enum E { A, B }
 use E::*;
 
