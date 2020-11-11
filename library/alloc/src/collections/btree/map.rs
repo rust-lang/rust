@@ -9,7 +9,6 @@ use core::ops::{Index, RangeBounds};
 use core::ptr;
 
 use super::borrow::DormantMutRef;
-use super::merge_iter::MergeIterInner;
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef};
 use super::search::{self, SearchResult::*};
 use super::unwrap_unchecked;
@@ -458,9 +457,6 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
     }
 }
 
-// An iterator for merging two sorted sequences into one
-struct MergeIter<K, V, I: Iterator<Item = (K, V)>>(MergeIterInner<I>);
-
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap.
     ///
@@ -908,13 +904,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
             return;
         }
 
-        // First, we merge `self` and `other` into a sorted sequence in linear time.
         let self_iter = mem::take(self).into_iter();
         let other_iter = mem::take(other).into_iter();
-        let iter = MergeIter(MergeIterInner::new(self_iter, other_iter));
-
-        // Second, we build a tree from the sorted sequence in linear time.
-        self.from_sorted_iter(iter);
+        let root = BTreeMap::ensure_is_owned(&mut self.root);
+        root.append_from_sorted_iters(self_iter, other_iter, &mut self.length)
     }
 
     /// Constructs a double-ended iterator over a sub-range of elements in the map.
@@ -1036,78 +1029,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
             GoDown(handle) => {
                 Vacant(VacantEntry { key, handle, dormant_map, _marker: PhantomData })
             }
-        }
-    }
-
-    fn from_sorted_iter<I: Iterator<Item = (K, V)>>(&mut self, iter: I) {
-        let root = Self::ensure_is_owned(&mut self.root);
-        let mut cur_node = root.node_as_mut().last_leaf_edge().into_node();
-        // Iterate through all key-value pairs, pushing them into nodes at the right level.
-        for (key, value) in iter {
-            // Try to push key-value pair into the current leaf node.
-            if cur_node.len() < node::CAPACITY {
-                cur_node.push(key, value);
-            } else {
-                // No space left, go up and push there.
-                let mut open_node;
-                let mut test_node = cur_node.forget_type();
-                loop {
-                    match test_node.ascend() {
-                        Ok(parent) => {
-                            let parent = parent.into_node();
-                            if parent.len() < node::CAPACITY {
-                                // Found a node with space left, push here.
-                                open_node = parent;
-                                break;
-                            } else {
-                                // Go up again.
-                                test_node = parent.forget_type();
-                            }
-                        }
-                        Err(_) => {
-                            // We are at the top, create a new root node and push there.
-                            open_node = root.push_internal_level();
-                            break;
-                        }
-                    }
-                }
-
-                // Push key-value pair and new right subtree.
-                let tree_height = open_node.height() - 1;
-                let mut right_tree = node::Root::new_leaf();
-                for _ in 0..tree_height {
-                    right_tree.push_internal_level();
-                }
-                open_node.push(key, value, right_tree);
-
-                // Go down to the right-most leaf again.
-                cur_node = open_node.forget_type().last_leaf_edge().into_node();
-            }
-
-            self.length += 1;
-        }
-        Self::fix_right_edge(root)
-    }
-
-    fn fix_right_edge(root: &mut node::Root<K, V>) {
-        // Handle underfull nodes, start from the top.
-        let mut cur_node = root.node_as_mut();
-        while let Internal(internal) = cur_node.force() {
-            // Check if right-most child is underfull.
-            let mut last_edge = internal.last_edge();
-            let right_child_len = last_edge.reborrow().descend().len();
-            if right_child_len < MIN_LEN {
-                // We need to steal.
-                let mut last_kv = match last_edge.left_kv() {
-                    Ok(left) => left,
-                    Err(_) => unreachable!(),
-                };
-                last_kv.bulk_steal_left(MIN_LEN - right_child_len);
-                last_edge = last_kv.right_edge();
-            }
-
-            // Go further down.
-            cur_node = last_edge.descend();
         }
     }
 
@@ -2217,19 +2138,6 @@ impl<K, V> BTreeMap<K, V> {
     /// own node. Is an associated function to avoid borrowing the entire BTreeMap.
     fn ensure_is_owned(root: &mut Option<node::Root<K, V>>) -> &mut node::Root<K, V> {
         root.get_or_insert_with(node::Root::new_leaf)
-    }
-}
-
-impl<K: Ord, V, I> Iterator for MergeIter<K, V, I>
-where
-    I: Iterator<Item = (K, V)> + ExactSizeIterator + FusedIterator,
-{
-    type Item = (K, V);
-
-    /// If two keys are equal, returns the key/value-pair from the right source.
-    fn next(&mut self) -> Option<(K, V)> {
-        let (a_next, b_next) = self.0.nexts(|a: &(K, V), b: &(K, V)| K::cmp(&a.0, &b.0));
-        b_next.or(a_next)
     }
 }
 
