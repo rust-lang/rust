@@ -252,9 +252,9 @@ impl Inliner<'tcx> {
             self.tcx.sess.opts.debugging_opts.inline_mir_threshold
         };
 
-        // Significantly lower the threshold for inlining cold functions
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
-            threshold /= 5;
+            debug!("#[cold] present - not inlining");
+            return false;
         }
 
         // Give a bonus functions with a small number of blocks,
