@@ -1089,6 +1089,9 @@ impl<'a> Parser<'a> {
             self.parse_yield_expr(attrs)
         } else if self.eat_keyword(kw::Let) {
             self.parse_let_expr(attrs)
+        } else if self.eat_keyword(kw::Underscore) {
+            self.sess.gated_spans.gate(sym::destructuring_assignment, self.prev_token.span);
+            Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore, attrs))
         } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
             // Don't complain about bare semicolons after unclosed braces
             // recovery in order to keep the error count down. Fixing the

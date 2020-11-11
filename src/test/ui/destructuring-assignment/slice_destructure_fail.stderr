@@ -12,6 +12,12 @@ error[E0527]: pattern requires 3 elements but array has 2
 LL |   [a, a, b] = [1, 2];
    |   ^^^^^^^^^ expected 2 elements
 
-error: aborting due to 2 previous errors
+error[E0527]: pattern requires 1 element but array has 2
+  --> $DIR/slice_destructure_fail.rs:7:3
+   |
+LL |   [_] = [1, 2];
+   |   ^^^ expected 2 elements
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0527`.

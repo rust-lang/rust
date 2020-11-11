@@ -23,8 +23,17 @@ LL | struct TupleStruct<S, T>(S, T);
 LL |     TupleStruct(a, a, b) = TupleStruct(1, 2);
    |     ^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
 
-error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
   --> $DIR/tuple_struct_destructure_fail.rs:32:5
+   |
+LL | struct TupleStruct<S, T>(S, T);
+   | ------------------------------- tuple struct defined here
+...
+LL |     TupleStruct(_) = TupleStruct(1, 2);
+   |     ^^^^^^^^^^^^^^ expected 2 fields, found 1
+
+error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:34:5
    |
 LL |     SingleVariant(S, T)
    |     ------------------- tuple variant defined here
@@ -32,8 +41,17 @@ LL |     SingleVariant(S, T)
 LL |     Enum::SingleVariant(a, a, b) = Enum::SingleVariant(1, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
 
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:36:5
+   |
+LL |     SingleVariant(S, T)
+   |     ------------------- tuple variant defined here
+...
+LL |     Enum::SingleVariant(_) = Enum::SingleVariant(1, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 1
+
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/tuple_struct_destructure_fail.rs:36:12
+  --> $DIR/tuple_struct_destructure_fail.rs:40:12
    |
 LL |     test() = TupleStruct(0, 0);
    |     ------ ^
@@ -41,7 +59,7 @@ LL |     test() = TupleStruct(0, 0);
    |     cannot assign to this expression
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/tuple_struct_destructure_fail.rs:38:14
+  --> $DIR/tuple_struct_destructure_fail.rs:42:14
    |
 LL |     (test)() = TupleStruct(0, 0);
    |     -------- ^
@@ -49,14 +67,14 @@ LL |     (test)() = TupleStruct(0, 0);
    |     cannot assign to this expression
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/tuple_struct_destructure_fail.rs:40:38
+  --> $DIR/tuple_struct_destructure_fail.rs:44:38
    |
 LL |     <Alias::<isize> as Test>::test() = TupleStruct(0, 0);
    |     -------------------------------- ^
    |     |
    |     cannot assign to this expression
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0023, E0070.
 For more information about an error, try `rustc --explain E0023`.

@@ -29,8 +29,12 @@ fn main() {
 
     TupleStruct(a, a, b) = TupleStruct(1, 2);
     //~^ ERROR this pattern has 3 fields, but the corresponding tuple struct has 2 fields
+    TupleStruct(_) = TupleStruct(1, 2);
+    //~^ ERROR this pattern has 1 field, but the corresponding tuple struct has 2 fields
     Enum::SingleVariant(a, a, b) = Enum::SingleVariant(1, 2);
     //~^ ERROR this pattern has 3 fields, but the corresponding tuple variant has 2 fields
+    Enum::SingleVariant(_) = Enum::SingleVariant(1, 2);
+    //~^ ERROR this pattern has 1 field, but the corresponding tuple variant has 2 fields
 
     // Check if `test` is recognized as not a tuple struct but a function call:
     test() = TupleStruct(0, 0);

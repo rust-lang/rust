@@ -164,6 +164,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Range(ref e1, ref e2, lims) => {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
                 }
+                ExprKind::Underscore => {
+                    self.sess
+                        .struct_span_err(
+                            e.span,
+                            "in expressions, `_` can only be used on the left-hand side of an assignment",
+                        )
+                        .span_label(e.span, "`_` not allowed here")
+                        .emit();
+                    hir::ExprKind::Err
+                }
                 ExprKind::Path(ref qself, ref path) => {
                     let qpath = self.lower_qpath(
                         e.id,
@@ -863,7 +873,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Return early in case of an ordinary assignment.
         fn is_ordinary(lower_ctx: &mut LoweringContext<'_, '_>, lhs: &Expr) -> bool {
             match &lhs.kind {
-                ExprKind::Array(..) | ExprKind::Struct(..) | ExprKind::Tup(..) => false,
+                ExprKind::Array(..)
+                | ExprKind::Struct(..)
+                | ExprKind::Tup(..)
+                | ExprKind::Underscore => false,
                 // Check for tuple struct constructor.
                 ExprKind::Call(callee, ..) => lower_ctx.extract_tuple_struct_path(callee).is_none(),
                 ExprKind::Paren(e) => {
@@ -943,6 +956,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
         match &lhs.kind {
+            // Underscore pattern.
+            ExprKind::Underscore => {
+                return self.pat_without_dbm(lhs.span, hir::PatKind::Wild);
+            }
             // Slice patterns.
             ExprKind::Array(elements) => {
                 let (pats, rest) =
