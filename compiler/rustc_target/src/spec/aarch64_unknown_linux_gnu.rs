@@ -1,7 +1,7 @@
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::linux_base::opts();
+    let mut base = super::linux_gnu_base::opts();
     base.max_atomic_width = Some(128);
 
     Target {

@@ -4,7 +4,7 @@ use crate::spec::{Target, TargetOptions};
 // thumb-mode. See the thumbv7neon variant for enabling both.
 
 pub fn target() -> Target {
-    let base = super::linux_base::opts();
+    let base = super::linux_gnu_base::opts();
     Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".to_string(),
         pointer_width: 32,

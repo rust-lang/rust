@@ -1,7 +1,7 @@
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = super::linux_base::opts();
+    let base = super::linux_gnu_base::opts();
     Target {
         llvm_target: "armv4t-unknown-linux-gnueabi".to_string(),
         pointer_width: 32,
