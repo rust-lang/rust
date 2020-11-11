@@ -206,6 +206,11 @@ impl Inliner<'tcx> {
         debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
+        if callsite.fn_sig.c_variadic() {
+            debug!("callee is variadic - not inlining");
+            return false;
+        }
+
         let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
 
         let self_features = &self.codegen_fn_attrs.target_features;
