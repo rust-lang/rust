@@ -53,4 +53,11 @@ fn main() {
         let items = vec![&mut aa, &mut bb];
         let _: Vec<_> = items.into_iter().map(|x| x.clone()).collect();
     }
+
+    // Issue #6239 deref coercion and clone deref
+    {
+        use std::cell::RefCell;
+
+        let _ = Some(RefCell::new(String::new()).borrow()).map(|s| s.clone());
+    }
 }
