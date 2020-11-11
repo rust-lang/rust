@@ -340,7 +340,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // This is the first time we got asked to schedule a destructor. The
             // Windows schedule destructor function must be called exactly once,
             // this is why it is in this block.
-            if this.tcx.sess.target.target_os == "windows" {
+            if this.tcx.sess.target.os == "windows" {
                 // On Windows, we signal that the thread quit by starting the
                 // relevant function, reenabling the thread, and going back to
                 // the scheduler.

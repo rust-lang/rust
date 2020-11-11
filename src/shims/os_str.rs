@@ -234,7 +234,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         direction: PathConversion,
     ) -> Cow<'a, OsStr> {
         let this = self.eval_context_ref();
-        let target_os = &this.tcx.sess.target.target_os;
+        let target_os = &this.tcx.sess.target.os;
         #[cfg(windows)]
         return if target_os == "windows" {
             // Windows-on-Windows, all fine.

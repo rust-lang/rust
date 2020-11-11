@@ -555,7 +555,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 },
                 None => return this.handle_not_found(),
             }
-        } else if this.tcx.sess.target.target_os == "macos"
+        } else if this.tcx.sess.target.os == "macos"
             && cmd == this.eval_libc_i32("F_FULLFSYNC")?
         {
             let &[_, _] = check_arg_count(args)?;
@@ -989,7 +989,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("`mkdir`")?;
 
         #[cfg_attr(not(unix), allow(unused_variables))]
-        let mode = if this.tcx.sess.target.target_os == "macos" {
+        let mode = if this.tcx.sess.target.os == "macos" {
             u32::from(this.read_scalar(mode_op)?.check_init()?.to_u16()?)
         } else {
             this.read_scalar(mode_op)?.to_u32()?
