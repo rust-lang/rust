@@ -28,10 +28,10 @@ fn main() {
                    ).is_some();
 
     // Check that we don't lint if the caller is not an `Iterator` or string
-    let foo = IteratorFalsePositives { foo: 0 };
-    let _ = foo.find().is_some();
-    let _ = foo.position().is_some();
-    let _ = foo.rposition().is_some();
+    let falsepos = IteratorFalsePositives { foo: 0 };
+    let _ = falsepos.find().is_some();
+    let _ = falsepos.position().is_some();
+    let _ = falsepos.rposition().is_some();
     // check that we don't lint if `find()` is called with
     // `Pattern` that is not a string
     let _ = "hello world".find(|c: char| c == 'o' || c == 'l').is_some();
