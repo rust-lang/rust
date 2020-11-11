@@ -149,10 +149,10 @@ $ # Cool, now I have a backtrace for the error
 These crates are used in compiler for logging:
 
 * [log]
-* [env-logger]: check the link to see the full `RUSTC_LOG` syntax
+* [env-logger]
 
 [log]: https://docs.rs/log/0.4.6/log/index.html
-[env-logger]: https://docs.rs/env_logger/0.4.3/env_logger/
+[env-logger]: https://docs.rs/env_logger/0.8.1/env_logger/
 
 The compiler has a lot of `debug!` calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
@@ -165,6 +165,10 @@ compiler as `RUSTC_LOG=module::path rustc my-file.rs`. All `debug!` output will
 then appear in standard error.
 
 If you are developing rustdoc, use `RUSTDOC_LOG` instead.
+
+See the [env-logger] doc for more info on the full syntax. (Note: unlike the
+compiler, the env-logger crate and its examples use the `RUST_LOG` env
+variable.)
 
 **Note that unless you use a very strict filter, the logger will emit a lot of
 output, so use the most specific module(s) you can (comma-separated if
