@@ -352,13 +352,6 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_foreign_mod(&mut self, nmod: &hir::ForeignMod<'_>, attrs: &[ast::Attribute]) {
-        self.print_inner_attributes(attrs);
-        for item in nmod.items {
-            self.ann.nested(self, Nested::ForeignItem(item.id));
-        }
-    }
-
     pub fn print_opt_lifetime(&mut self, lifetime: &hir::Lifetime) {
         if !lifetime.is_elided() {
             self.print_lifetime(lifetime);
@@ -647,11 +640,14 @@ impl<'a> State<'a> {
                 self.print_mod(_mod, &item.attrs);
                 self.bclose(item.span);
             }
-            hir::ItemKind::ForeignMod(ref nmod) => {
+            hir::ItemKind::ForeignMod { abi, items } => {
                 self.head("extern");
-                self.word_nbsp(nmod.abi.to_string());
+                self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_foreign_mod(nmod, &item.attrs);
+                self.print_inner_attributes(item.attrs);
+                for item in items {
+                    self.ann.nested(self, Nested::ForeignItem(item.id));
+                }
                 self.bclose(item.span);
             }
             hir::ItemKind::GlobalAsm(ref ga) => {

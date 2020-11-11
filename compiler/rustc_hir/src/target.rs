@@ -91,7 +91,7 @@ impl Target {
             ItemKind::Const(..) => Target::Const,
             ItemKind::Fn(..) => Target::Fn,
             ItemKind::Mod(..) => Target::Mod,
-            ItemKind::ForeignMod(..) => Target::ForeignMod,
+            ItemKind::ForeignMod { .. } => Target::ForeignMod,
             ItemKind::GlobalAsm(..) => Target::GlobalAsm,
             ItemKind::TyAlias(..) => Target::TyAlias,
             ItemKind::OpaqueTy(..) => Target::OpaqueTy,

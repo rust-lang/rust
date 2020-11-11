@@ -205,7 +205,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::TraitAlias(..) => DefKind::TraitAlias,
                 ItemKind::ExternCrate(_) => DefKind::ExternCrate,
                 ItemKind::Use(..) => DefKind::Use,
-                ItemKind::ForeignMod(..) => DefKind::ForeignMod,
+                ItemKind::ForeignMod { .. } => DefKind::ForeignMod,
                 ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
                 ItemKind::Impl { .. } => DefKind::Impl,
             },
@@ -729,10 +729,11 @@ impl<'hir> Map<'hir> {
         let parent = self.get_parent_item(hir_id);
         if let Some(entry) = self.find_entry(parent) {
             if let Entry {
-                node: Node::Item(Item { kind: ItemKind::ForeignMod(ref nm), .. }), ..
+                node: Node::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }),
+                ..
             } = entry
             {
-                return nm.abi;
+                return *abi;
             }
         }
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
@@ -1045,7 +1046,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
                 ItemKind::Const(..) => "const",
                 ItemKind::Fn(..) => "fn",
                 ItemKind::Mod(..) => "mod",
-                ItemKind::ForeignMod(..) => "foreign mod",
+                ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::TyAlias(..) => "ty",
                 ItemKind::OpaqueTy(..) => "opaque type",

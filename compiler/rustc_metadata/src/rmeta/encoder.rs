@@ -1225,7 +1225,7 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::Mod(ref m) => {
                 return self.encode_info_for_mod(item.hir_id, m, &item.attrs);
             }
-            hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
+            hir::ItemKind::ForeignMod{..} => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemKind::TyAlias(..) => EntryKind::Type,
             hir::ItemKind::OpaqueTy(..) => {
@@ -1320,8 +1320,8 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
-            hir::ItemKind::ForeignMod(ref fm) => record!(self.tables.children[def_id] <-
-                fm.items
+            hir::ItemKind::ForeignMod { items, .. } => record!(self.tables.children[def_id] <-
+                items
                     .iter()
                     .map(|foreign_item| tcx.hir().local_def_id(
                         foreign_item.id.hir_id).local_def_index)
@@ -1836,7 +1836,7 @@ impl EncodeContext<'a, 'tcx> {
             | hir::ItemKind::Const(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Mod(..)
-            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)

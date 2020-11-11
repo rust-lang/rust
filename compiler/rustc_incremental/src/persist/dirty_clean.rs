@@ -280,7 +280,7 @@ impl DirtyCleanVisitor<'tcx> {
                     HirItem::Mod(..) => ("ItemMod", LABELS_HIR_ONLY),
 
                     // // An external module
-                    HirItem::ForeignMod(..) => ("ItemForeignMod", LABELS_HIR_ONLY),
+                    HirItem::ForeignMod { .. } => ("ItemForeignMod", LABELS_HIR_ONLY),
 
                     // Module-level inline assembly (from global_asm!)
                     HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),

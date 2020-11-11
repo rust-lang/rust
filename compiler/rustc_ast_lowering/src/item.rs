@@ -316,7 +316,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 })
             }
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
-            ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
+            ItemKind::ForeignMod(ref fm) => hir::ItemKind::ForeignMod {
+                abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
+                items: self
+                    .arena
+                    .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
+            },
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
             ItemKind::TyAlias(_, ref gen, _, Some(ref ty)) => {
                 // We lower
@@ -722,15 +727,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
-        }
-    }
-
-    fn lower_foreign_mod(&mut self, fm: &ForeignMod) -> hir::ForeignMod<'hir> {
-        hir::ForeignMod {
-            abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
-            items: self
-                .arena
-                .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
         }
     }
 

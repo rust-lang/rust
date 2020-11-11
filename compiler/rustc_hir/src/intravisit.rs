@@ -589,9 +589,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_mod()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_mod(module, item.span, item.hir_id)
         }
-        ItemKind::ForeignMod(ref foreign_module) => {
+        ItemKind::ForeignMod { abi: _, items } => {
             visitor.visit_id(item.hir_id);
-            walk_list!(visitor, visit_foreign_item_ref, foreign_module.items);
+            walk_list!(visitor, visit_foreign_item_ref, items);
         }
         ItemKind::GlobalAsm(_) => {
             visitor.visit_id(item.hir_id);

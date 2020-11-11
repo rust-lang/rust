@@ -156,8 +156,8 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         hir::ItemKind::Const(ref ty, ..) => {
             check_item_type(tcx, item.hir_id, ty.span, false);
         }
-        hir::ItemKind::ForeignMod(ref module) => {
-            for it in module.items.iter() {
+        hir::ItemKind::ForeignMod { items, .. } => {
+            for it in items.iter() {
                 let it = tcx.hir().foreign_item(it.id);
                 match it.kind {
                     hir::ForeignItemKind::Fn(ref decl, ..) => {

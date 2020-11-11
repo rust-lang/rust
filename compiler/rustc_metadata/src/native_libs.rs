@@ -33,12 +33,12 @@ struct Collector<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let fm = match it.kind {
-            hir::ItemKind::ForeignMod(ref fm) => fm,
+        let abi = match it.kind {
+            hir::ItemKind::ForeignMod { abi, .. } => abi,
             _ => return,
         };
 
-        if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
+        if abi == Abi::Rust || abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             return;
         }
 

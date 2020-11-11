@@ -262,7 +262,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Static(..)
                     | hir::ItemKind::Mod(..)
-                    | hir::ItemKind::ForeignMod(..)
+                    | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl { .. }
                     | hir::ItemKind::Trait(..)
                     | hir::ItemKind::TraitAlias(..)

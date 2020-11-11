@@ -190,7 +190,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
                     intravisit::walk_item(self, &item);
                 }
-                hir::ItemKind::ForeignMod(..) => {}
+                hir::ItemKind::ForeignMod { .. } => {}
                 _ => {
                     intravisit::walk_item(self, &item);
                 }

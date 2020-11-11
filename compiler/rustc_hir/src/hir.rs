@@ -2284,12 +2284,6 @@ pub struct Mod<'hir> {
     pub item_ids: &'hir [ItemId],
 }
 
-#[derive(Debug, HashStable_Generic)]
-pub struct ForeignMod<'hir> {
-    pub abi: Abi,
-    pub items: &'hir [ForeignItemRef<'hir>],
-}
-
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct GlobalAsm {
     pub asm: Symbol,
@@ -2536,7 +2530,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod(ForeignMod<'hir>),
+    ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir GlobalAsm),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
