@@ -3089,7 +3089,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     }
 }
 
-/// Detect the occurences of calls to `iter` or `into_iter` for the
+/// Detect the occurrences of calls to `iter` or `into_iter` for the
 /// given identifier
 fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
