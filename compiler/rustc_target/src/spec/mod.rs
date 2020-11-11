@@ -713,6 +713,9 @@ pub struct TargetOptions {
     /// Width of c_int type. Defaults to "32".
     pub c_int_width: String,
     /// OS name to use for conditional compilation. Defaults to "none".
+    /// "none" implies a bare metal target without `std` library.
+    /// A couple of targets having `std` also use "unknown" as an `os` value,
+    /// but they are exceptions.
     pub os: String,
     /// Environment name to use for conditional compilation. Defaults to "".
     pub env: String,
