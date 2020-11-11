@@ -172,7 +172,7 @@ impl MemoryExtra {
     pub fn init_extern_statics<'tcx, 'mir>(
         this: &mut MiriEvalContext<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
-        match this.tcx.sess.target.target_os.as_str() {
+        match this.tcx.sess.target.os.as_str() {
             "linux" => {
                 // "__cxa_thread_atexit_impl"
                 // This should be all-zero, pointer-sized.

@@ -387,7 +387,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// if this is not the case.
     fn assert_target_os(&self, target_os: &str, name: &str) {
         assert_eq!(
-            self.eval_context_ref().tcx.sess.target.target_os,
+            self.eval_context_ref().tcx.sess.target.os,
             target_os,
             "`{}` is only available on the `{}` target OS",
             name,
@@ -431,8 +431,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         use std::io::ErrorKind::*;
         let this = self.eval_context_mut();
         let target = &this.tcx.sess.target;
-        let target_os = &target.target_os;
-        let last_error = if target.options.target_family == Some("unix".to_owned()) {
+        let target_os = &target.os;
+        let last_error = if target.os_family == Some("unix".to_owned()) {
             this.eval_libc(match e.kind() {
                 ConnectionRefused => "ECONNREFUSED",
                 ConnectionReset => "ECONNRESET",

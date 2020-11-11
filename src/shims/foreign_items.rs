@@ -486,7 +486,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Platform-specific shims
-            _ => match this.tcx.sess.target.target_os.as_str() {
+            _ => match this.tcx.sess.target.os.as_str() {
                 "linux" | "macos" => return shims::posix::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                 "windows" => return shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                 target => throw_unsup_format!("the target `{}` is not supported", target),

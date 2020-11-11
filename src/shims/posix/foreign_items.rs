@@ -165,7 +165,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.read_scalar(handle)?.to_machine_usize(this)?;
                 let symbol = this.read_scalar(symbol)?.check_init()?;
                 let symbol_name = this.memory.read_c_str(symbol)?;
-                if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.target_os)? {
+                if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
                     this.write_scalar(Scalar::from(ptr), dest)?;
                 } else {
@@ -452,7 +452,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Platform-specific shims
             _ => {
-                match this.tcx.sess.target.target_os.as_str() {
+                match this.tcx.sess.target.os.as_str() {
                     "linux" => return shims::posix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                     "macos" => return shims::posix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
                     _ => unreachable!(),

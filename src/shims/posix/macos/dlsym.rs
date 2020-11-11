@@ -32,7 +32,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (dest, ret) = ret.expect("we don't support any diverging dlsym");
-        assert!(this.tcx.sess.target.target_os == "macos");
+        assert!(this.tcx.sess.target.os == "macos");
 
         match dlsym {
             Dlsym::getentropy => {
