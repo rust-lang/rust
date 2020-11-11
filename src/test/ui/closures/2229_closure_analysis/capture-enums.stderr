@@ -1,0 +1,78 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-enums.rs:16:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/capture-enums.rs:44:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/capture-enums.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: Capturing point[] -> ImmBorrow
+  --> $DIR/capture-enums.rs:19:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+
+error: Capturing point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:19:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+
+error: Capturing meta[] -> ImmBorrow
+  --> $DIR/capture-enums.rs:26:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+
+error: Capturing meta[(1, 1)] -> ByValue
+  --> $DIR/capture-enums.rs:26:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+
+error: Min Capture point[] -> ByValue
+  --> $DIR/capture-enums.rs:19:41
+   |
+LL |         if let Info::Point(_, _, str) = point {
+   |                                         ^^^^^
+
+error: Min Capture meta[] -> ByValue
+  --> $DIR/capture-enums.rs:26:35
+   |
+LL |         if let Info::Meta(_, v) = meta {
+   |                                   ^^^^
+
+error: Capturing point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:47:43
+   |
+LL |     let SingleVariant::Point(_, _, str) = point;
+   |                                           ^^^^^
+
+error: Min Capture point[(2, 0)] -> ByValue
+  --> $DIR/capture-enums.rs:47:43
+   |
+LL |     let SingleVariant::Point(_, _, str) = point;
+   |                                           ^^^^^
+
+error: aborting due to 10 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.
