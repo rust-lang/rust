@@ -279,6 +279,13 @@ pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
 
 #[inline]
 pub(crate) fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr) -> bool {
+    // Never try to insert semicolons on expressions when we're inside
+    // a macro definition - this can prevent the macro from compiling
+    // when used in expression position
+    if context.is_macro_def {
+        return false;
+    }
+
     match expr.kind {
         ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => {
             context.config.trailing_semicolon()

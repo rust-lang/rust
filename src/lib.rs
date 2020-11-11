@@ -286,7 +286,7 @@ impl fmt::Display for FormatReport {
 
 /// Format the given snippet. The snippet is expected to be *complete* code.
 /// When we cannot parse the given snippet, this function returns `None`.
-fn format_snippet(snippet: &str, config: &Config) -> Option<FormattedSnippet> {
+fn format_snippet(snippet: &str, config: &Config, is_macro_def: bool) -> Option<FormattedSnippet> {
     let mut config = config.clone();
     panic::catch_unwind(|| {
         let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
@@ -297,7 +297,7 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<FormattedSnippet> {
         let (formatting_error, result) = {
             let input = Input::Text(snippet.into());
             let mut session = Session::new(config, Some(&mut out));
-            let result = session.format(input);
+            let result = session.format_input_inner(input, is_macro_def);
             (
                 session.errors.has_macro_format_failure
                     || session.out.as_ref().unwrap().is_empty() && !snippet.is_empty()
@@ -323,7 +323,11 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<FormattedSnippet> {
 /// The code block may be incomplete (i.e., parser may be unable to parse it).
 /// To avoid panic in parser, we wrap the code block with a dummy function.
 /// The returned code block does **not** end with newline.
-fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSnippet> {
+fn format_code_block(
+    code_snippet: &str,
+    config: &Config,
+    is_macro_def: bool,
+) -> Option<FormattedSnippet> {
     const FN_MAIN_PREFIX: &str = "fn main() {\n";
 
     fn enclose_in_main_block(s: &str, config: &Config) -> String {
@@ -356,7 +360,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSni
     config_with_unix_newline
         .set()
         .newline_style(NewlineStyle::Unix);
-    let mut formatted = format_snippet(&snippet, &config_with_unix_newline)?;
+    let mut formatted = format_snippet(&snippet, &config_with_unix_newline, is_macro_def)?;
     // Remove wrapping main block
     formatted.unwrap_code_block();
 
@@ -435,7 +439,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
     /// The main entry point for Rustfmt. Formats the given input according to the
     /// given config. `out` is only necessary if required by the configuration.
     pub fn format(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
-        self.format_input_inner(input)
+        self.format_input_inner(input, false)
     }
 
     pub fn override_config<F, U>(&mut self, mut config: Config, f: F) -> U
@@ -550,15 +554,15 @@ mod unit_tests {
         // `format_snippet()` and `format_code_block()` should not panic
         // even when we cannot parse the given snippet.
         let snippet = "let";
-        assert!(format_snippet(snippet, &Config::default()).is_none());
-        assert!(format_code_block(snippet, &Config::default()).is_none());
+        assert!(format_snippet(snippet, &Config::default(), false).is_none());
+        assert!(format_code_block(snippet, &Config::default(), false).is_none());
     }
 
     fn test_format_inner<F>(formatter: F, input: &str, expected: &str) -> bool
     where
-        F: Fn(&str, &Config) -> Option<FormattedSnippet>,
+        F: Fn(&str, &Config, bool) -> Option<FormattedSnippet>,
     {
-        let output = formatter(input, &Config::default());
+        let output = formatter(input, &Config::default(), false);
         output.is_some() && output.unwrap().snippet == expected
     }
 
@@ -580,7 +584,7 @@ mod unit_tests {
     fn test_format_code_block_fail() {
         #[rustfmt::skip]
         let code_block = "this_line_is_100_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(x, y, z);";
-        assert!(format_code_block(code_block, &Config::default()).is_none());
+        assert!(format_code_block(code_block, &Config::default(), false).is_none());
     }
 
     #[test]

@@ -659,7 +659,7 @@ impl<'a> CommentRewrite<'a> {
                         config.set().wrap_comments(false);
                         if config.format_code_in_doc_comments() {
                             if let Some(s) =
-                                crate::format_code_block(&self.code_block_buffer, &config)
+                                crate::format_code_block(&self.code_block_buffer, &config, false)
                             {
                                 trim_custom_comment_prefix(&s.snippet)
                             } else {

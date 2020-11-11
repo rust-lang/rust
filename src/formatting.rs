@@ -25,7 +25,11 @@ pub(crate) type SourceFile = Vec<FileRecord>;
 pub(crate) type FileRecord = (FileName, String);
 
 impl<'b, T: Write + 'b> Session<'b, T> {
-    pub(crate) fn format_input_inner(&mut self, input: Input) -> Result<FormatReport, ErrorKind> {
+    pub(crate) fn format_input_inner(
+        &mut self,
+        input: Input,
+        is_macro_def: bool,
+    ) -> Result<FormatReport, ErrorKind> {
         if !self.config.version_meets_requirement() {
             return Err(ErrorKind::VersionMismatch);
         }
@@ -42,7 +46,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             }
 
             let config = &self.config.clone();
-            let format_result = format_project(input, config, self);
+            let format_result = format_project(input, config, self, is_macro_def);
 
             format_result.map(|report| {
                 self.errors.add(&report.internal.borrow().1);
@@ -57,6 +61,7 @@ fn format_project<T: FormatHandler>(
     input: Input,
     config: &Config,
     handler: &mut T,
+    is_macro_def: bool,
 ) -> Result<FormatReport, ErrorKind> {
     let mut timer = Timer::start();
 
@@ -103,7 +108,7 @@ fn format_project<T: FormatHandler>(
             continue;
         }
         should_emit_verbose(input_is_stdin, config, || println!("Formatting {}", path));
-        context.format_file(path, &module)?;
+        context.format_file(path, &module, is_macro_def)?;
     }
     timer = timer.done_formatting();
 
@@ -134,7 +139,12 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
     }
 
     // Formats a single file/module.
-    fn format_file(&mut self, path: FileName, module: &Module<'_>) -> Result<(), ErrorKind> {
+    fn format_file(
+        &mut self,
+        path: FileName,
+        module: &Module<'_>,
+        is_macro_def: bool,
+    ) -> Result<(), ErrorKind> {
         let snippet_provider = self.parse_session.snippet_provider(module.as_ref().inner);
         let mut visitor = FmtVisitor::from_parse_sess(
             &self.parse_session,
@@ -143,7 +153,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             self.report.clone(),
         );
         visitor.skip_context.update_with_attrs(&self.krate.attrs);
-
+        visitor.is_macro_def = is_macro_def;
         visitor.last_pos = snippet_provider.start_pos();
         visitor.skip_empty_lines(snippet_provider.end_pos());
         visitor.format_separate_mod(module, snippet_provider.end_pos());

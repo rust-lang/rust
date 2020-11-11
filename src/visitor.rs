@@ -86,6 +86,7 @@ pub(crate) struct FmtVisitor<'a> {
     pub(crate) macro_rewrite_failure: bool,
     pub(crate) report: FormatReport,
     pub(crate) skip_context: SkipContext,
+    pub(crate) is_macro_def: bool,
 }
 
 impl<'a> Drop for FmtVisitor<'a> {
@@ -811,6 +812,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             snippet_provider,
             line_number: 0,
             skipped_range: Rc::new(RefCell::new(vec![])),
+            is_macro_def: false,
             macro_rewrite_failure: false,
             report,
             skip_context: Default::default(),
@@ -1003,6 +1005,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             force_one_line_chain: Cell::new(false),
             snippet_provider: self.snippet_provider,
             macro_rewrite_failure: Cell::new(false),
+            is_macro_def: self.is_macro_def,
             report: self.report.clone(),
             skip_context: self.skip_context.clone(),
             skipped_range: self.skipped_range.clone(),
