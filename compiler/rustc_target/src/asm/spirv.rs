@@ -2,12 +2,12 @@ use super::{InlineAsmArch, InlineAsmType};
 use rustc_macros::HashStable_Generic;
 
 def_reg_class! {
-    Spirv SpirvInlineAsmRegClass {
+    SpirV SpirVInlineAsmRegClass {
         reg,
     }
 }
 
-impl SpirvInlineAsmRegClass {
+impl SpirVInlineAsmRegClass {
     pub fn valid_modifiers(self, _arch: super::InlineAsmArch) -> &'static [char] {
         &[]
     }
@@ -42,5 +42,5 @@ impl SpirvInlineAsmRegClass {
 
 def_regs! {
     // SPIR-V is SSA-based, it does not have registers.
-    Spirv SpirvInlineAsmReg SpirvInlineAsmRegClass {}
+    SpirV SpirVInlineAsmReg SpirVInlineAsmRegClass {}
 }
