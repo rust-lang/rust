@@ -1292,6 +1292,8 @@ pub fn init_env_logger(env: &str) {
         .with_verbose_exit(true)
         .with_verbose_entry(true)
         .with_indent_amount(2);
+    #[cfg(parallel_compiler)]
+    let layer = layer.with_thread_ids(true).with_thread_names(true);
 
     use tracing_subscriber::layer::SubscriberExt;
     let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
