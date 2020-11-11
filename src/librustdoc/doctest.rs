@@ -249,7 +249,8 @@ fn run_test(
     outdir: DirState,
     path: PathBuf,
 ) -> Result<(), TestFailure> {
-    let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts, edition);
+    let (test, line_offset, supports_color) =
+        make_test(test, Some(cratename), as_test_harness, opts, edition);
 
     let output_file = outdir.path().join("rust_out");
 
@@ -294,38 +295,19 @@ fn run_test(
             path.to_str().expect("target path must be valid unicode").to_string()
         }
     });
-    match options.error_format {
-        ErrorOutputType::HumanReadable(kind) => {
-            let (_, color_config) = kind.unzip();
-            match color_config {
-                ColorConfig::Never => {
-                    compiler.arg("--color").arg("never");
-                }
-                ColorConfig::Always => {
-                    compiler.arg("--color").arg("always");
-                }
-                ColorConfig::Auto => {
-                    #[cfg(windows)]
-                    {
-                        // This specific check is because old windows consoles require a connection
-                        // to be able to display colors (and they don't support ANSI), which we
-                        // cannot in here, so in case this is an old windows console, we can't
-                        // display colors.
-                        use crate::termcolor::{ColorChoice, StandardStream, WriteColor};
-                        if StandardStream::stdout(ColorChoice::Auto).is_synchronous() {
-                            compiler.arg("--color").arg("never");
-                        } else {
-                            compiler.arg("--color").arg("always");
-                        }
-                    }
-                    #[cfg(not(windows))]
-                    {
-                        compiler.arg("--color").arg("always");
-                    }
-                }
+    if let ErrorOutputType::HumanReadable(kind) = options.error_format {
+        let (_, color_config) = kind.unzip();
+        match color_config {
+            ColorConfig::Never => {
+                compiler.arg("--color").arg("never");
+            }
+            ColorConfig::Always => {
+                compiler.arg("--color").arg("always");
+            }
+            ColorConfig::Auto => {
+                compiler.arg("--color").arg(if supports_color { "always" } else { "never" });
             }
         }
-        _ => {}
     }
 
     compiler.arg("-");
@@ -396,18 +378,19 @@ fn run_test(
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
-/// lines before the test code begins.
+/// lines before the test code begins as well as if the output stream supports colors or not.
 crate fn make_test(
     s: &str,
     cratename: Option<&str>,
     dont_insert_main: bool,
     opts: &TestOptions,
     edition: Edition,
-) -> (String, usize) {
+) -> (String, usize, bool) {
     let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
+    let mut supports_color = false;
 
     if opts.attrs.is_empty() && !opts.display_warnings {
         // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
@@ -433,7 +416,7 @@ crate fn make_test(
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::with_session_globals(edition, || {
-            use rustc_errors::emitter::EmitterWriter;
+            use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
             use rustc_session::parse::ParseSess;
@@ -447,6 +430,9 @@ crate fn make_test(
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let emitter =
                 EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+
+            supports_color = emitter.supports_color();
+
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = Handler::with_emitter(false, None, box emitter);
             let sess = ParseSess::with_span_handler(handler, sm);
@@ -516,7 +502,7 @@ crate fn make_test(
         Err(ErrorReported) => {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
-            return (s.to_owned(), 0);
+            return (s.to_owned(), 0, false);
         }
     };
 
@@ -566,7 +552,7 @@ crate fn make_test(
 
     debug!("final doctest:\n{}", prog);
 
-    (prog, line_offset)
+    (prog, line_offset, supports_color)
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes

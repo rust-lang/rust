@@ -4301,7 +4301,6 @@ dependencies = [
  "serde_json",
  "smallvec 1.4.2",
  "tempfile",
- "termcolor",
 ]
 
 [[package]]
