@@ -3053,7 +3053,7 @@ fn lint_search_is_some<'tcx>(
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!(
-            "called `is_some()` after searching an `Iterator` with {}",
+            "called `is_some()` after searching an `Iterator` with `{}`",
             search_method
         );
         let hint = "this is more succinctly expressed by calling `any()`";
