@@ -37,9 +37,9 @@ impl TryIntoInner<FileDesc> for Socket {
     }
 }
 
-impl FromInner<FileDesc> for Socket {
-    fn from_inner(inner: FileDesc) -> Socket {
-        Socket { inner: Arc::new(inner), local_addr: None }
+impl FromInner<(FileDesc, Option<String>)> for Socket {
+    fn from_inner((inner, local_addr): (FileDesc, Option<String>)) -> Socket {
+        Socket { inner: Arc::new(inner), local_addr }
     }
 }
 
