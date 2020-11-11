@@ -233,14 +233,15 @@ pub struct BorrowCheckResult<'tcx> {
 
 /// The result of the `mir_const_qualif` query.
 ///
-/// Each field corresponds to an implementer of the `Qualif` trait in
-/// `librustc_mir/transform/check_consts/qualifs.rs`. See that file for more information on each
+/// Each field (except `error_occured`) corresponds to an implementer of the `Qualif` trait in
+/// `rustc_mir/src/transform/check_consts/qualifs.rs`. See that file for more information on each
 /// `Qualif`.
 #[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
 pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
     pub custom_eq: bool,
+    pub error_occured: Option<ErrorReported>,
 }
 
 /// After we borrow check a closure, we are left with various
