@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME(60707): Consider removing hack with principled solution.
             self.check_expr_has_type_or_error(scrut, self.tcx.types.bool, |_| {})
         } else {
-            self.demand_scrutinee_type(arms, scrut)
+            self.demand_scrutinee_type(scrut, arms_contain_ref_bindings(arms), arms.is_empty())
         };
 
         // If there are no arms, that is a diverging match; a special case.
@@ -98,7 +98,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.diverges.set(Diverges::Maybe);
                 match g {
                     hir::Guard::If(e) => {
-                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {})
+                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
+                    }
+                    hir::Guard::IfLet(pat, e) => {
+                        let scrutinee_ty = self.demand_scrutinee_type(
+                            e,
+                            pat.contains_explicit_ref_binding(),
+                            false,
+                        );
+                        self.check_pat_top(&pat, scrutinee_ty, None, true);
                     }
                 };
             }
@@ -450,8 +458,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn demand_scrutinee_type(
         &self,
-        arms: &'tcx [hir::Arm<'tcx>],
         scrut: &'tcx hir::Expr<'tcx>,
+        contains_ref_bindings: Option<hir::Mutability>,
+        no_arms: bool,
     ) -> Ty<'tcx> {
         // Not entirely obvious: if matches may create ref bindings, we want to
         // use the *precise* type of the scrutinee, *not* some supertype, as
@@ -505,17 +514,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // (once introduced) is populated by the time we get here.
         //
         // See #44848.
-        let contains_ref_bindings = arms
-            .iter()
-            .filter_map(|a| a.pat.contains_explicit_ref_binding())
-            .max_by_key(|m| match *m {
-                hir::Mutability::Mut => 1,
-                hir::Mutability::Not => 0,
-            });
-
         if let Some(m) = contains_ref_bindings {
             self.check_expr_with_needs(scrut, Needs::maybe_mut_place(m))
-        } else if arms.is_empty() {
+        } else if no_arms {
             self.check_expr(scrut)
         } else {
             // ...but otherwise we want to use any supertype of the
@@ -545,4 +546,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (block.span, None)
         }
     }
+}
+
+fn arms_contain_ref_bindings(arms: &'tcx [hir::Arm<'tcx>]) -> Option<hir::Mutability> {
+    arms.iter().filter_map(|a| a.pat.contains_explicit_ref_binding()).max_by_key(|m| match *m {
+        hir::Mutability::Mut => 1,
+        hir::Mutability::Not => 0,
+    })
 }
