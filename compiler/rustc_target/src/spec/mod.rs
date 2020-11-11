@@ -64,6 +64,7 @@ mod hermit_kernel_base;
 mod illumos_base;
 mod l4re_base;
 mod linux_base;
+mod linux_gnu_base;
 mod linux_kernel_base;
 mod linux_musl_base;
 mod linux_uclibc_base;
