@@ -1,12 +1,13 @@
 // ignore-tidy-linelength
 
 pub mod internal {
+    // @has 'raw_ident_eliminate_r_hashtag/internal/struct.mod.html'
     pub struct r#mod;
 
     /// See [name], [other name]
     ///
     /// [name]: mod
-    /// [other name]: ../internal/struct.mod.html
+    /// [other name]: crate::internal::mod
     // @has 'raw_ident_eliminate_r_hashtag/internal/struct.B.html' '//a[@href="../raw_ident_eliminate_r_hashtag/internal/struct.mod.html"]' 'name'
     // @has 'raw_ident_eliminate_r_hashtag/internal/struct.B.html' '//a[@href="../raw_ident_eliminate_r_hashtag/internal/struct.mod.html"]' 'other name'
     pub struct B;
