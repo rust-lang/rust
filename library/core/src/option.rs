@@ -527,6 +527,7 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.ok_or(0), Err(0));
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
@@ -553,6 +554,7 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.ok_or_else(|| 0), Err(0));
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
@@ -1241,6 +1243,7 @@ impl<T, E> Option<Result<T, E>> {
     /// let y: Option<Result<i32, SomeErr>> = Some(Ok(5));
     /// assert_eq!(x, y.transpose());
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
     pub fn transpose(self) -> Result<Option<T>, E> {
