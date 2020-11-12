@@ -19,7 +19,6 @@ use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast as ast;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err, Applicability};
@@ -37,6 +36,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_session::SessionLintStore;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
 
@@ -411,7 +411,7 @@ impl LintStore {
                         self.by_name.keys().map(|name| Symbol::intern(&name)).collect::<Vec<_>>();
 
                     let suggestion = find_best_match_for_name(
-                        symbols.iter(),
+                        &symbols,
                         Symbol::intern(&lint_name.to_lowercase()),
                         None,
                     );

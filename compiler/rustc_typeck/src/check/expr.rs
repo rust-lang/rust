@@ -22,7 +22,6 @@ use crate::type_error_struct;
 
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use rustc_ast as ast;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
@@ -40,6 +39,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
@@ -1441,18 +1441,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Symbol,
         skip: Vec<Symbol>,
     ) -> Option<Symbol> {
-        let names = variant.fields.iter().filter_map(|field| {
-            // ignore already set fields and private fields from non-local crates
-            if skip.iter().any(|&x| x == field.ident.name)
-                || (!variant.def_id.is_local() && field.vis != Visibility::Public)
-            {
-                None
-            } else {
-                Some(&field.ident.name)
-            }
-        });
+        let names = variant
+            .fields
+            .iter()
+            .filter_map(|field| {
+                // ignore already set fields and private fields from non-local crates
+                if skip.iter().any(|&x| x == field.ident.name)
+                    || (!variant.def_id.is_local() && field.vis != Visibility::Public)
+                {
+                    None
+                } else {
+                    Some(field.ident.name)
+                }
+            })
+            .collect::<Vec<Symbol>>();
 
-        find_best_match_for_name(names, field, None)
+        find_best_match_for_name(&names, field, None)
     }
 
     fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<Symbol> {
