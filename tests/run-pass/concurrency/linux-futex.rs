@@ -90,7 +90,7 @@ fn wait_timeout() {
         assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
     }
 
-    assert!((200..500).contains(&start.elapsed().as_millis()));
+    assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn wait_wake() {
@@ -120,7 +120,7 @@ fn wait_wake() {
         ), 0);
     }
 
-    assert!((200..500).contains(&start.elapsed().as_millis()));
+    assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn main() {
