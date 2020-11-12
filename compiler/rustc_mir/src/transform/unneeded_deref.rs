@@ -51,7 +51,7 @@ struct UnneededDerefVisitor<'a, 'tcx> {
     refs: FxHashMap<Local, Place<'tcx>>,
     optimizations: &'a mut FxHashMap<(Location, Place<'tcx>), Place<'tcx>>,
     results: &'a Results<'tcx, AvailableLocals>,
-    state: Option<Dual<BitSet<LocalWithLocationIndex>>>,
+    state: *const Dual<BitSet<LocalWithLocationIndex>>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnneededDerefVisitor<'a, 'tcx> {
@@ -59,7 +59,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnneededDerefVisitor<'a, 'tcx> {
         let analysis = &self.results.analysis;
         let _: Option<_> = try {
             debug!("Visiting place {:?}", place);
-            let state = self.state.as_ref()?;
+            // SAFETY: We only use self.state here which is always called from statement_before_primary_effect, 
+            // which guarantees that self.state is still alive.
+            let state = unsafe{self.state.as_ref().unwrap()};
 
             match place.as_ref() {
                 PlaceRef { projection: [ProjectionElem::Deref], .. } => {
@@ -112,7 +114,7 @@ impl<'a, 'tcx> UnneededDerefVisitor<'a, 'tcx> {
             refs,
             optimizations: &mut optimizations,
             results: &results,
-            state: None,
+            state: std::ptr::null(),
         };
 
         results.visit_reachable_with(body, &mut _self);
@@ -129,7 +131,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx> for UnneededDerefVisitor<'a, 'tcx> {
         stmt: &'mir Statement<'tcx>,
         location: Location,
     ) {
-        self.state = Some(state.clone());
+        self.state = state;
         let analysis = &self.results.analysis;
         debug!("state: {:?} before statement {:?}", analysis.debug_state(state), stmt);
         let _: Option<_> = try {
