@@ -1,0 +1,70 @@
+- // MIR for `do_not_miscompile_mut_ref` before UnneededDeref
++ // MIR for `do_not_miscompile_mut_ref` after UnneededDeref
+  
+  fn do_not_miscompile_mut_ref() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/unneeded_deref_do_not_opt.rs:31:32: 31:32
+      let _1: u32;                         // in scope 0 at $DIR/unneeded_deref_do_not_opt.rs:32:9: 32:10
+      let _4: &u32;                        // in scope 0 at $DIR/unneeded_deref_do_not_opt.rs:35:29: 35:31
+      let _6: &u32;                        // in scope 0 at $DIR/unneeded_deref_do_not_opt.rs:36:19: 36:21
+      let mut _8: *const u32;              // in scope 0 at $DIR/unneeded_deref_do_not_opt.rs:39:9: 39:10
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/unneeded_deref_do_not_opt.rs:32:9: 32:10
+          let _2: u32;                     // in scope 1 at $DIR/unneeded_deref_do_not_opt.rs:33:9: 33:10
+          scope 2 {
+              debug b => _2;               // in scope 2 at $DIR/unneeded_deref_do_not_opt.rs:33:9: 33:10
+              let mut _3: *const u32;      // in scope 2 at $DIR/unneeded_deref_do_not_opt.rs:35:9: 35:14
+              scope 3 {
+                  debug c => _3;           // in scope 3 at $DIR/unneeded_deref_do_not_opt.rs:35:9: 35:14
+                  let _5: &u32;            // in scope 3 at $DIR/unneeded_deref_do_not_opt.rs:36:9: 36:10
+                  scope 4 {
+                      debug d => _5;       // in scope 4 at $DIR/unneeded_deref_do_not_opt.rs:36:9: 36:10
+                      let _7: &u32;        // in scope 4 at $DIR/unneeded_deref_do_not_opt.rs:38:9: 38:10
+                      scope 5 {
+                          debug x => _7;   // in scope 5 at $DIR/unneeded_deref_do_not_opt.rs:38:9: 38:10
+                          let _9: u32;     // in scope 5 at $DIR/unneeded_deref_do_not_opt.rs:40:9: 40:10
+                          scope 7 {
+                              debug z => _9; // in scope 7 at $DIR/unneeded_deref_do_not_opt.rs:40:9: 40:10
+                          }
+                      }
+                      scope 6 {
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/unneeded_deref_do_not_opt.rs:32:9: 32:10
+          _1 = const 1_u32;                // scope 0 at $DIR/unneeded_deref_do_not_opt.rs:32:13: 32:17
+          StorageLive(_2);                 // scope 1 at $DIR/unneeded_deref_do_not_opt.rs:33:9: 33:10
+          _2 = const 2_u32;                // scope 1 at $DIR/unneeded_deref_do_not_opt.rs:33:13: 33:17
+          StorageLive(_3);                 // scope 2 at $DIR/unneeded_deref_do_not_opt.rs:35:9: 35:14
+          StorageLive(_4);                 // scope 2 at $DIR/unneeded_deref_do_not_opt.rs:35:29: 35:31
+          _4 = &_1;                        // scope 2 at $DIR/unneeded_deref_do_not_opt.rs:35:29: 35:31
+-         _3 = &raw const (*_4);           // scope 2 at $DIR/unneeded_deref_do_not_opt.rs:35:29: 35:31
++         _3 = &raw const _1;              // scope 2 at $DIR/unneeded_deref_do_not_opt.rs:35:29: 35:31
+          StorageDead(_4);                 // scope 2 at $DIR/unneeded_deref_do_not_opt.rs:35:31: 35:32
+          StorageLive(_5);                 // scope 3 at $DIR/unneeded_deref_do_not_opt.rs:36:9: 36:10
+          StorageLive(_6);                 // scope 3 at $DIR/unneeded_deref_do_not_opt.rs:36:19: 36:21
+          _6 = &_2;                        // scope 3 at $DIR/unneeded_deref_do_not_opt.rs:36:19: 36:21
+          _5 = _6;                         // scope 3 at $DIR/unneeded_deref_do_not_opt.rs:36:19: 36:21
+          StorageDead(_6);                 // scope 3 at $DIR/unneeded_deref_do_not_opt.rs:36:21: 36:22
+          StorageLive(_7);                 // scope 4 at $DIR/unneeded_deref_do_not_opt.rs:38:9: 38:10
+          _7 = &(*_3);                     // scope 6 at $DIR/unneeded_deref_do_not_opt.rs:38:22: 38:25
+          StorageLive(_8);                 // scope 5 at $DIR/unneeded_deref_do_not_opt.rs:39:9: 39:10
+          _8 = &raw const (*_5);           // scope 5 at $DIR/unneeded_deref_do_not_opt.rs:39:9: 39:10
+          _3 = move _8;                    // scope 5 at $DIR/unneeded_deref_do_not_opt.rs:39:5: 39:10
+          StorageDead(_8);                 // scope 5 at $DIR/unneeded_deref_do_not_opt.rs:39:9: 39:10
+          StorageLive(_9);                 // scope 5 at $DIR/unneeded_deref_do_not_opt.rs:40:9: 40:10
+          _9 = (*_7);                      // scope 5 at $DIR/unneeded_deref_do_not_opt.rs:40:13: 40:15
+          _0 = const ();                   // scope 0 at $DIR/unneeded_deref_do_not_opt.rs:31:32: 41:2
+          StorageDead(_9);                 // scope 5 at $DIR/unneeded_deref_do_not_opt.rs:41:1: 41:2
+          StorageDead(_7);                 // scope 4 at $DIR/unneeded_deref_do_not_opt.rs:41:1: 41:2
+          StorageDead(_5);                 // scope 3 at $DIR/unneeded_deref_do_not_opt.rs:41:1: 41:2
+          StorageDead(_3);                 // scope 2 at $DIR/unneeded_deref_do_not_opt.rs:41:1: 41:2
+          StorageDead(_2);                 // scope 1 at $DIR/unneeded_deref_do_not_opt.rs:41:1: 41:2
+          StorageDead(_1);                 // scope 0 at $DIR/unneeded_deref_do_not_opt.rs:41:1: 41:2
+          return;                          // scope 0 at $DIR/unneeded_deref_do_not_opt.rs:41:2: 41:2
+      }
+  }
+  

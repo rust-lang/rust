@@ -34,46 +34,6 @@ fn opt_struct(s: S) -> u64 {
     *b + x
 }
 
-// EMIT_MIR unneeded_deref.dont_opt.UnneededDeref.diff
-// do not optimize a sequence looking like this:
-// _1 = &_2;
-// _1 = _3;
-// _4 = *_1;
-// as the _1 = _3 assignment makes it not legal to replace the last statement with _4 = _2
-fn dont_opt() -> u64 {
-    let y = 5;
-    let _ref = &y;
-    let x = 5;
-    let mut _1 = &x;
-    _1 = _ref;
-    let _4 = *_1;
-    0
-}
-
-// EMIT_MIR unneeded_deref.do_not_miscompile.UnneededDeref.diff
-fn do_not_miscompile() {
-    let x = 42;
-    let a = 99;
-    let mut y = &x;
-    let z = &mut y;
-    *z = &a;
-    assert!(*y == 99);
-}
-
-// EMIT_MIR unneeded_deref.do_not_miscompile_mut_ref.UnneededDeref.diff
-// See #78192
-fn do_not_miscompile_mut_ref() {
-    let a = 1u32;
-    let b = 2u32;
-
-    let mut c: *const u32 = &a;
-    let d: &u32 = &b;
-
-    let x = unsafe { &*c };
-    c = d;
-    let z = *x;
-}
-
 // EMIT_MIR unneeded_deref.very_deep_opt.UnneededDeref.diff
 fn very_deep_opt() -> (u64, u64, u64, u64, u64, u64, u64, u64, u64) {
     let x1 = 1;
@@ -106,12 +66,6 @@ fn very_deep_opt() -> (u64, u64, u64, u64, u64, u64, u64, u64, u64) {
     (z1, z2, z3, z4, z5, z6, z7, z8, z9)
 }
 
-// EMIT_MIR unneeded_deref.do_not_use_moved.UnneededDeref.diff
-fn do_not_use_moved<T>(x: T) {
-    let b = x;
-    let z = &b;
-}
-
 // EMIT_MIR unneeded_deref.opt_different_bbs.UnneededDeref.diff
 fn opt_different_bbs(input: bool) -> u64 {
     let x = 5;
@@ -129,15 +83,6 @@ fn opt_different_bbs2(input: bool) -> u64 {
     z
 }
 
-// EMIT_MIR unneeded_deref.do_not_opt_different_bbs.UnneededDeref.diff
-// We cannot know whether z should be 5 or 33
-fn do_not_opt_different_bbs(input: bool) -> u64 {
-    let x = 5;
-    let y = if input { &x } else { &33 };
-    let z = *y;
-    z
-}
-
 // EMIT_MIR unneeded_deref.operand_opt.UnneededDeref.diff
 fn operand_opt<T: Copy>(input: Option<T>) -> bool {
     let x = input.is_some();
@@ -149,13 +94,8 @@ fn main() {
     simple_opt();
     deep_opt();
     opt_struct(S { a: 0, b: 1 });
-    dont_opt();
-    do_not_miscompile();
-    do_not_miscompile_mut_ref();
     very_deep_opt();
-    do_not_use_moved(String::new());
     opt_different_bbs(false);
     opt_different_bbs2(false);
-    do_not_opt_different_bbs(false);
     operand_opt(Some(true));
 }
