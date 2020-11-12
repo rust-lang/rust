@@ -1199,12 +1199,10 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
     match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
         CopyResult::Ended(result) => result,
-        CopyResult::Fallback(written) => {
-            // fallback is only > 0 on EOVERFLOW, which shouldn't happen
-            // because the copy loop starts at a file offset 0 and countns down from `len`
-            assert_eq!(0, written);
-            io::copy::generic_copy(&mut reader, &mut writer)
-        }
+        CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
+            Ok(bytes) => Ok(bytes + written),
+            Err(e) => Err(e),
+        },
     }
 }
 

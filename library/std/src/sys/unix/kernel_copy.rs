@@ -438,7 +438,6 @@ pub(super) enum CopyResult {
 /// Callers must handle fallback to a generic copy loop.
 /// `Fallback` may indicate non-zero number of bytes already written
 /// if one of the files' cursor +`max_len` would exceed u64::MAX (`EOVERFLOW`).
-/// If the initial file offset was 0 then `Fallback` will only contain `0`.
 pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
 
@@ -462,10 +461,10 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
     while written < max_len {
         let copy_result = if has_copy_file_range {
             let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
-            // cap to 2GB chunks in case u64::MAX is passed in as file size and the file has a non-zero offset
-            // this allows us to copy large chunks without hitting the limit,
-            // unless someone sets a file offset close to u64::MAX - 2GB, in which case the fallback would kick in
-            let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x8000_0000usize);
+            // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek position
+            // this allows us to copy large chunks without hitting EOVERFLOW,
+            // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
+            let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
@@ -560,6 +559,7 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
 
     let mut written = 0u64;
     while written < len {
+        // according to its manpage that's the maximum size sendfile() will copy per invocation
         let chunk_size = crate::cmp::min(len - written, 0x7ffff000_u64) as usize;
 
         let result = match mode {
