@@ -7,18 +7,19 @@ use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyS};
+use rustc_middle::ty::{self, DebruijnIndex, TyS, TypeFlags};
 use rustc_span::DUMMY_SP;
 
-use std::lazy::SyncOnceCell;
+fn dummy_ty() -> &'static TyS<'static> {
+    thread_local! {
+        static DUMMY_TYS: &'static TyS<'static> = Box::leak(box TyS::make_for_test(
+            ty::Bool,
+            TypeFlags::empty(),
+            DebruijnIndex::from_usize(0),
+        ));
+    }
 
-fn dummy_ty<'tcx>() -> &'static TyS<'tcx> {
-    static DUMMY_TYS: SyncOnceCell<TyS<'_>> = SyncOnceCell::new();
-
-    &DUMMY_TYS.get_or_init(|| {
-        let fake_type_bytes = vec![0 as u8; std::mem::size_of::<TyS<'_>>()];
-        unsafe { std::ptr::read_unaligned::<TyS<'_>>(fake_type_bytes.as_ptr() as *const TyS<'_>) }
-    })
+    &DUMMY_TYS.with(|tys| *tys)
 }
 
 struct MockBlocks<'tcx> {

@@ -611,6 +611,18 @@ pub struct TyS<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
+impl<'tcx> TyS<'tcx> {
+    /// A constructor used only for internal testing.
+    #[allow(rustc::usage_of_ty_tykind)]
+    pub fn make_for_test(
+        kind: TyKind<'tcx>,
+        flags: TypeFlags,
+        outer_exclusive_binder: ty::DebruijnIndex,
+    ) -> TyS<'tcx> {
+        TyS { kind, flags, outer_exclusive_binder }
+    }
+}
+
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(TyS<'_>, 32);
