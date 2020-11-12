@@ -1,5 +1,5 @@
 error: `[u8; 0]` is forbidden as the type of a const generic parameter
-  --> $DIR/complex-types.rs:3:21
+  --> $DIR/complex-types.rs:4:21
    |
 LL | struct Foo<const N: [u8; 0]>;
    |                     ^^^^^^^
@@ -8,7 +8,7 @@ LL | struct Foo<const N: [u8; 0]>;
    = note: more complex types are supported with `#[feature(const_generics)]`
 
 error: `()` is forbidden as the type of a const generic parameter
-  --> $DIR/complex-types.rs:6:21
+  --> $DIR/complex-types.rs:7:21
    |
 LL | struct Bar<const N: ()>;
    |                     ^^
@@ -17,7 +17,7 @@ LL | struct Bar<const N: ()>;
    = note: more complex types are supported with `#[feature(const_generics)]`
 
 error: `No` is forbidden as the type of a const generic parameter
-  --> $DIR/complex-types.rs:11:21
+  --> $DIR/complex-types.rs:12:21
    |
 LL | struct Fez<const N: No>;
    |                     ^^
@@ -26,7 +26,7 @@ LL | struct Fez<const N: No>;
    = note: more complex types are supported with `#[feature(const_generics)]`
 
 error: `&'static u8` is forbidden as the type of a const generic parameter
-  --> $DIR/complex-types.rs:14:21
+  --> $DIR/complex-types.rs:15:21
    |
 LL | struct Faz<const N: &'static u8>;
    |                     ^^^^^^^^^^^
@@ -34,5 +34,32 @@ LL | struct Faz<const N: &'static u8>;
    = note: the only supported types are integers, `bool` and `char`
    = note: more complex types are supported with `#[feature(const_generics)]`
 
-error: aborting due to 4 previous errors
+error: `!` is forbidden as the type of a const generic parameter
+  --> $DIR/complex-types.rs:18:21
+   |
+LL | struct Fiz<const N: !>;
+   |                     ^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: `()` is forbidden as the type of a const generic parameter
+  --> $DIR/complex-types.rs:21:19
+   |
+LL | enum Goo<const N: ()> { A, B }
+   |                   ^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: `()` is forbidden as the type of a const generic parameter
+  --> $DIR/complex-types.rs:24:20
+   |
+LL | union Boo<const N: ()> { a: () }
+   |                    ^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = note: more complex types are supported with `#[feature(const_generics)]`
+
+error: aborting due to 7 previous errors
 

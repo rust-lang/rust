@@ -70,8 +70,7 @@ pub async fn a_sink<const N: usize>(v: [u8; N]) -> impl Trait<N> {
 }
 
 // @has foo/fn.b_sink.html '//pre[@class="rust fn"]' \
-//      'pub async fn b_sink<const N: usize>(__arg0: impl Trait<N>)'
-// FIXME(const_generics): This should be `_` not `__arg0`.
+//      'pub async fn b_sink<const N: usize>(_: impl Trait<N>)'
 pub async fn b_sink<const N: usize>(_: impl Trait<N>) {}
 
 // @has foo/fn.concrete.html '//pre[@class="rust fn"]' \
