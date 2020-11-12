@@ -1209,7 +1209,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
     // Kernel prior to 4.5 don't have copy_file_range
     // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
+    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(false);
 
     unsafe fn copy_file_range(
         fd_in: libc::c_int,
