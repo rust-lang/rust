@@ -352,6 +352,20 @@ impl Backtrace {
             Inner::Captured(_) => BacktraceStatus::Captured,
         }
     }
+
+    /// Returns an iterator over the backtrace frames.
+    #[unstable(feature = "backtrace_frames")]
+    pub fn frames(&self) -> Frames {
+        if let Inner::Captured(captured) = self.inner {
+            Frames {
+                frames: captured.lock().unwrap().frames.clone()
+            }
+        } else {
+            Frames {
+                frames: vec![]
+            }
+        }
+    }
 }
 
 impl fmt::Display for Backtrace {
@@ -452,7 +466,6 @@ impl RawFrame {
 
 #[unstable(feature = "backtrace_frames")]
 impl<'a> AsRef<[BacktraceFrame]> for Frames<'a> {
-    /// Returns an iterator over the backtrace frames.
     fn as_ref(&self) -> &[BacktraceFrame] {
         &self.inner
     }
