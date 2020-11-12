@@ -550,7 +550,7 @@ where
 
     // If `-Zincremental-verify-ich` is specified, re-hash results from
     // the cache and make sure that they have the expected fingerprint.
-    if unlikely!(tcx.incremental_verify_ich()) {
+    if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
         incremental_verify_ich(*tcx.dep_context(), &result, dep_node, dep_node_index, query);
     }
 

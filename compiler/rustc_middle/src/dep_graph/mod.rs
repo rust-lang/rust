@@ -2,6 +2,7 @@ use crate::ich::StableHashingContext;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
+use rustc_session::Session;
 
 #[macro_use]
 mod dep_node;
@@ -101,20 +102,18 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         TyCtxt::create_stable_hashing_context(*self)
     }
 
-    fn debug_dep_tasks(&self) -> bool {
-        self.sess.opts.debugging_opts.dep_tasks
-    }
-    fn debug_dep_node(&self) -> bool {
-        self.sess.opts.debugging_opts.incremental_info
-            || self.sess.opts.debugging_opts.query_dep_graph
-    }
-
     #[inline]
     fn dep_graph(&self) -> &DepGraph {
         &self.dep_graph
     }
 
+    #[inline(always)]
     fn profiler(&self) -> &SelfProfilerRef {
         &self.prof
+    }
+
+    #[inline(always)]
+    fn sess(&self) -> &Session {
+        self.sess
     }
 }

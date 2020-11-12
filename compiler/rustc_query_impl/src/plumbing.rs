@@ -47,13 +47,6 @@ impl HasDepContext for QueryCtxt<'tcx> {
 impl QueryContext for QueryCtxt<'tcx> {
     type Query = Query<'tcx>;
 
-    fn incremental_verify_ich(&self) -> bool {
-        self.sess.opts.debugging_opts.incremental_verify_ich
-    }
-    fn verbose(&self) -> bool {
-        self.sess.verbose()
-    }
-
     fn def_path_str(&self, def_id: DefId) -> String {
         self.tcx.def_path_str(def_id)
     }
@@ -130,14 +123,6 @@ impl QueryContext for QueryCtxt<'tcx> {
 
         let cb = &super::QUERY_CALLBACKS[dep_node.kind as usize];
         (cb.force_from_dep_node)(*self, dep_node)
-    }
-
-    fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.sess.has_errors_or_delayed_span_bugs()
-    }
-
-    fn diagnostic(&self) -> &rustc_errors::Handler {
-        self.sess.diagnostic()
     }
 
     // Interactions with on_disk_cache

@@ -26,9 +26,6 @@ use rustc_span::def_id::DefId;
 pub trait QueryContext: HasDepContext {
     type Query: Clone + HashStable<Self::StableHashingContext>;
 
-    fn incremental_verify_ich(&self) -> bool;
-    fn verbose(&self) -> bool;
-
     /// Get string representation from DefPath.
     fn def_path_str(&self, def_id: DefId) -> String;
 
@@ -42,12 +39,6 @@ pub trait QueryContext: HasDepContext {
 
     /// Try to force a dep node to execute and see if it's green.
     fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
-
-    /// Return whether the current session is tainted by errors.
-    fn has_errors_or_delayed_span_bugs(&self) -> bool;
-
-    /// Return the diagnostic handler.
-    fn diagnostic(&self) -> &rustc_errors::Handler;
 
     /// Load diagnostics associated to the node in the previous session.
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;

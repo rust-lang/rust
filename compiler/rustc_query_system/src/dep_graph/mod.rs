@@ -13,6 +13,7 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
+use rustc_session::Session;
 
 use std::fmt;
 use std::hash::Hash;
@@ -24,9 +25,6 @@ pub trait DepContext: Copy {
     /// Create a hashing context for hashing new results.
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
 
-    fn debug_dep_tasks(&self) -> bool;
-    fn debug_dep_node(&self) -> bool;
-
     /// Access the DepGraph.
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
 
@@ -34,6 +32,9 @@ pub trait DepContext: Copy {
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
+
+    /// Access the compiler session.
+    fn sess(&self) -> &Session;
 }
 
 pub trait HasDepContext: Copy {

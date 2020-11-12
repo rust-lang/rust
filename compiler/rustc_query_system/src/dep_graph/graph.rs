@@ -280,7 +280,7 @@ impl<K: DepKind> DepGraph<K> {
             let mut hcx = dcx.create_stable_hashing_context();
             let current_fingerprint = hash_result(&mut hcx, &result);
 
-            let print_status = cfg!(debug_assertions) && dcx.debug_dep_tasks();
+            let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
             // Intern the new `DepNode`.
             let dep_node_index = if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
@@ -731,7 +731,7 @@ impl<K: DepKind> DepGraph<K> {
                                 return None;
                             }
                             None => {
-                                if !tcx.has_errors_or_delayed_span_bugs() {
+                                if !tcx.dep_context().sess().has_errors_or_delayed_span_bugs() {
                                     panic!(
                                         "try_mark_previous_green() - Forcing the DepNode \
                                           should have set its color"
@@ -835,7 +835,7 @@ impl<K: DepKind> DepGraph<K> {
             // Promote the previous diagnostics to the current session.
             tcx.store_diagnostics(dep_node_index, diagnostics.clone().into());
 
-            let handle = tcx.diagnostic();
+            let handle = tcx.dep_context().sess().diagnostic();
 
             for diagnostic in diagnostics {
                 handle.emit_diagnostic(&diagnostic);
