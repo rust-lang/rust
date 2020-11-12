@@ -140,7 +140,7 @@ fn insert_import(
         enum_module_def.clone(),
         ctx.config.insert_use.prefix_kind,
     );
-    if let Some(mut mod_path) = mod_path.filter(|path| !path.is_ident()) {
+    if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
         let scope = ImportScope::find_insert_use_container(scope_node, ctx)?;
@@ -447,6 +447,33 @@ fn f() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn test_extract_struct_record_nested_call_exp() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum A { <|>One { a: u32, b: u32 } }
+
+struct B(A);
+
+fn foo() {
+    let _ = B(A::One { a: 1, b: 2 });
+}
+"#,
+            r#"
+struct One{ pub a: u32, pub b: u32 }
+
+enum A { One(One) }
+
+struct B(A);
+
+fn foo() {
+    let _ = B(A::One(One { a: 1, b: 2 }));
+}
+"#,
+        );
     }
 
     fn check_not_applicable(ra_fixture: &str) {
