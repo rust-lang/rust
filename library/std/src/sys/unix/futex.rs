@@ -42,14 +42,13 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
         ) -> libc::c_int;
     }
 
-    let timeout_ms = timeout.map(|d| d.as_millis());
     unsafe {
         emscripten_futex_wait(
             futex as *const AtomicI32,
             // `val` is declared unsigned to match the Emscripten headers, but since it's used as
             // an opaque value, we can ignore the meaning of signed vs. unsigned and cast here.
             expected as libc::c_uint,
-            timeout_ms.map_or(crate::f64::INFINITY, |d| d as libc::c_double),
+            timeout.map_or(crate::f64::INFINITY, |d| d.as_secs_f64() * 1000.0),
         );
     }
 }
