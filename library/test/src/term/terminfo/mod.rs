@@ -125,6 +125,10 @@ impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
         Ok(false)
     }
 
+    fn supports_ansi_colors(&self) -> bool {
+        self.num_colors > 0
+    }
+
     fn reset(&mut self) -> io::Result<bool> {
         // are there any terminals that have color/attrs and not sgr0?
         // Try falling back to sgr, then op

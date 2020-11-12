@@ -53,6 +53,7 @@ struct CONSOLE_SCREEN_BUFFER_INFO {
 #[link(name = "kernel32")]
 extern "system" {
     fn SetConsoleTextAttribute(handle: HANDLE, attr: WORD) -> BOOL;
+    fn GetConsoleMode(handle: HANDLE, mode: *mut DWORD) -> BOOL;
     fn GetStdHandle(which: DWORD) -> HANDLE;
     fn GetConsoleScreenBufferInfo(handle: HANDLE, info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> BOOL;
 }
@@ -91,6 +92,21 @@ fn bits_to_color(bits: u16) -> color::Color {
     color | (u32::from(bits) & 0x8) // copy the hi-intensity bit
 }
 
+fn get_stdout_handle() -> HANDLE {
+    unsafe {
+        // Magic -11 means stdout, from
+        // https://docs.microsoft.com/en-us/windows/console/getstdhandle
+        //
+        // You may be wondering, "but what about stderr?", and the answer
+        // to that is that setting terminal attributes on the stdout
+        // handle also sets them for stderr, since they go to the same
+        // terminal! Admittedly, this is fragile, since stderr could be
+        // redirected to a different console. This is good enough for
+        // rustc though. See #13400.
+        GetStdHandle(-11i32 as DWORD)
+    }
+}
+
 impl<T: Write + Send + 'static> WinConsole<T> {
     fn apply(&mut self) {
         let _unused = self.buf.flush();
@@ -98,17 +114,8 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         accum |= color_to_bits(self.foreground);
         accum |= color_to_bits(self.background) << 4;
 
+        let out = get_stdout_handle();
         unsafe {
-            // Magic -11 means stdout, from
-            // https://docs.microsoft.com/en-us/windows/console/getstdhandle
-            //
-            // You may be wondering, "but what about stderr?", and the answer
-            // to that is that setting terminal attributes on the stdout
-            // handle also sets them for stderr, since they go to the same
-            // terminal! Admittedly, this is fragile, since stderr could be
-            // redirected to a different console. This is good enough for
-            // rustc though. See #13400.
-            let out = GetStdHandle(-11i32 as DWORD);
             SetConsoleTextAttribute(out, accum);
         }
     }
@@ -158,6 +165,21 @@ impl<T: Write + Send + 'static> Terminal for WinConsole<T> {
         self.apply();
 
         Ok(true)
+    }
+
+    fn supports_ansi_colors(&self) -> bool {
+        // From https://docs.microsoft.com/en-us/windows/console/getconsolemode
+        const ENABLE_VIRTUAL_TERMINAL_PROCESSING: DWORD = 0x0004;
+
+        let stdout = get_stdout_handle();
+        let mut mode: DWORD = 0;
+        unsafe {
+            if GetConsoleMode(stdout, &mut mode) != 0 {
+                mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING != 0
+            } else {
+                false
+            }
+        }
     }
 
     fn reset(&mut self) -> io::Result<bool> {
