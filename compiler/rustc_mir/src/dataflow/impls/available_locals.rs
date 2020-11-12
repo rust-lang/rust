@@ -62,11 +62,14 @@ impl<'a, 'tcx> AvailableLocals {
 
     /// Returns whether the given local is available at the given state
     pub fn is_available(&self, local: Local, state: &'a State) -> bool {
-        self.local_with_location_map.local_with_locations(local).any(
-            |place_taken_ref_local_with_location| {
+        let locations_opt = self.local_with_location_map.local_with_locations(local);
+        if let Some(mut locations) = locations_opt {
+            locations.any(|place_taken_ref_local_with_location| {
                 state.0.contains(place_taken_ref_local_with_location)
-            },
-        )
+            })
+        } else {
+            false
+        }
     }
 
     fn transfer_function<T>(&'a self, available: &'a mut T) -> TransferFunction<'a, T>
@@ -160,7 +163,7 @@ impl LocalWithLocationMap {
             .or_insert(SmallVec::with_capacity(2))
             .push((0usize.into(), None));
 
-        for arg in body.args_iter().chain(body.vars_and_temps_iter()) {
+        for arg in body.args_iter() {
             map.entry(arg).or_insert(SmallVec::with_capacity(2)).push((0usize.into(), None));
         }
 
@@ -196,10 +199,10 @@ impl LocalWithLocationMap {
     fn local_with_locations(
         &self,
         local: Local,
-    ) -> impl Iterator<Item = LocalWithLocationIndex> + '_ {
+    ) -> Option<impl Iterator<Item = LocalWithLocationIndex> + '_> {
         debug!("Looking for {:?} in {:?}", local, self.0);
-        let locations = self.0.get(&local).unwrap();
-        return locations.iter().map(move |(location_idx, _)| *location_idx);
+        let locations = self.0.get(&local)?;
+        return Some(locations.iter().map(move |(location_idx, _)| *location_idx));
     }
 
     fn len(&self) -> usize {
@@ -261,9 +264,13 @@ where
     T: GenKill<LocalWithLocationIndex>,
 {
     fn invalidate_local(&mut self, local_invalidated: Local, _location: Location) {
-        for x in self.local_with_location_map.local_with_locations(local_invalidated) {
-            debug!("Invalidating {:?} which corresponds to {:?}", x, local_invalidated);
-            self.available.kill(x);
+        if let Some(locations) =
+            self.local_with_location_map.local_with_locations(local_invalidated)
+        {
+            for x in locations {
+                debug!("Invalidating {:?} which corresponds to {:?}", x, local_invalidated);
+                self.available.kill(x);
+            }
         }
     }
 
@@ -278,9 +285,15 @@ where
 
         let all_participating_alive =
             rvalue.participating_locals(location).all(|participating_local| {
-                self.local_with_location_map
-                    .local_with_locations(participating_local)
-                    .any(|participating_local_idx| self.available.is_alive(participating_local_idx))
+                let location_opt =
+                    self.local_with_location_map.local_with_locations(participating_local);
+                if let Some(mut locations) = location_opt {
+                    locations.any(|participating_local_idx| {
+                        self.available.is_alive(participating_local_idx)
+                    })
+                } else {
+                    false
+                }
             });
         if all_participating_alive {
             let index =
