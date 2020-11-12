@@ -96,8 +96,6 @@ impl<'a, 'tcx> UnneededDerefVisitor<'a, 'tcx> {
         body: &'a Body<'tcx>,
         tcx: TyCtxt<'tcx>,
     ) -> FxHashMap<(Location, Place<'tcx>), Place<'tcx>> {
-        let analysis = AvailableLocals::new(body);
-
         let mut ref_finder = RefFinder::new();
         ref_finder.visit_body(body);
         let refs = ref_finder.refs;
@@ -108,6 +106,7 @@ impl<'a, 'tcx> UnneededDerefVisitor<'a, 'tcx> {
             return optimizations;
         }
 
+        let analysis = AvailableLocals::new(body);
         let results = analysis.into_engine(tcx, body).iterate_to_fixpoint();
 
         let mut _self = UnneededDerefVisitor {
