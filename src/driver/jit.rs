@@ -81,11 +81,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     tcx.sess.abort_if_errors();
 
-    let jit_product = jit_module.finish();
+    jit_module.finalize_definitions();
 
-    let _unwind_register_guard = unsafe { unwind_context.register_jit(&jit_product) };
+    let _unwind_register_guard = unsafe { unwind_context.register_jit(&jit_module) };
 
-    let finalized_main: *const u8 = jit_product.lookup_func(main_func_id);
+    let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
 
     println!("Rustc codegen cranelift will JIT run the executable, because --jit was passed");
 
