@@ -1,6 +1,13 @@
 [
     MappedRustDiagnostic {
-        url: "file:///test/runtime/compiler_support.rs",
+        url: Url {
+            scheme: "file",
+            host: None,
+            port: None,
+            path: "/test/runtime/compiler_support.rs",
+            query: None,
+            fragment: None,
+        },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {

@@ -1,6 +1,13 @@
 [
     MappedRustDiagnostic {
-        url: "file:///test/compiler/mir/tagset.rs",
+        url: Url {
+            scheme: "file",
+            host: None,
+            port: None,
+            path: "/test/compiler/mir/tagset.rs",
+            query: None,
+            fragment: None,
+        },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
@@ -29,7 +36,14 @@
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/compiler/lib.rs",
+                            uri: Url {
+                                scheme: "file",
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/lib.rs",
+                                query: None,
+                                fragment: None,
+                            },
                             range: Range {
                                 start: Position {
                                     line: 0,
@@ -45,7 +59,14 @@
                     },
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/compiler/mir/tagset.rs",
+                            uri: Url {
+                                scheme: "file",
+                                host: None,
+                                port: None,
+                                path: "/test/compiler/mir/tagset.rs",
+                                query: None,
+                                fragment: None,
+                            },
                             range: Range {
                                 start: Position {
                                     line: 41,

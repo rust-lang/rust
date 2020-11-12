@@ -1,6 +1,13 @@
 [
     MappedRustDiagnostic {
-        url: "file:///test/crates/hir_def/src/data.rs",
+        url: Url {
+            scheme: "file",
+            host: None,
+            port: None,
+            path: "/test/crates/hir_def/src/data.rs",
+            query: None,
+            fragment: None,
+        },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
@@ -25,7 +32,14 @@
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/crates/hir_def/src/path.rs",
+                            uri: Url {
+                                scheme: "file",
+                                host: None,
+                                port: None,
+                                path: "/test/crates/hir_def/src/path.rs",
+                                query: None,
+                                fragment: None,
+                            },
                             range: Range {
                                 start: Position {
                                     line: 264,
@@ -47,7 +61,14 @@
         fixes: [],
     },
     MappedRustDiagnostic {
-        url: "file:///test/crates/hir_def/src/path.rs",
+        url: Url {
+            scheme: "file",
+            host: None,
+            port: None,
+            path: "/test/crates/hir_def/src/path.rs",
+            query: None,
+            fragment: None,
+        },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
@@ -72,7 +93,14 @@
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/crates/hir_def/src/data.rs",
+                            uri: Url {
+                                scheme: "file",
+                                host: None,
+                                port: None,
+                                path: "/test/crates/hir_def/src/data.rs",
+                                query: None,
+                                fragment: None,
+                            },
                             range: Range {
                                 start: Position {
                                     line: 79,

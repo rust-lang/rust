@@ -1,6 +1,13 @@
 [
     MappedRustDiagnostic {
-        url: "file:///test/driver/subcommand/repl.rs",
+        url: Url {
+            scheme: "file",
+            host: None,
+            port: None,
+            path: "/test/driver/subcommand/repl.rs",
+            query: None,
+            fragment: None,
+        },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
@@ -46,7 +53,14 @@
                     SnippetWorkspaceEdit {
                         changes: Some(
                             {
-                                "file:///test/driver/subcommand/repl.rs": [
+                                Url {
+                                    scheme: "file",
+                                    host: None,
+                                    port: None,
+                                    path: "/test/driver/subcommand/repl.rs",
+                                    query: None,
+                                    fragment: None,
+                                }: [
                                     TextEdit {
                                         range: Range {
                                             start: Position {
