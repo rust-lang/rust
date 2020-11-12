@@ -55,13 +55,13 @@ struct UnneededDerefVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnneededDerefVisitor<'a, 'tcx> {
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, _context: PlaceContext, location: Location) {
         let analysis = &self.results.analysis;
         let _: Option<_> = try {
             debug!("Visiting place {:?}", place);
-            // SAFETY: We only use self.state here which is always called from statement_before_primary_effect, 
+            // SAFETY: We only use self.state here which is always called from statement_before_primary_effect,
             // which guarantees that self.state is still alive.
-            let state = unsafe{self.state.as_ref().unwrap()};
+            let state = unsafe { self.state.as_ref().unwrap() };
 
             match place.as_ref() {
                 PlaceRef { projection: [ProjectionElem::Deref], .. } => {
@@ -87,7 +87,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnneededDerefVisitor<'a, 'tcx> {
                 _ => None?,
             }
         };
-        self.super_place(place, context, location);
+        // We explicitly do not call super_place as we don't need to explore the graph deeper
     }
 }
 
