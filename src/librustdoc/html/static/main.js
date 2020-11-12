@@ -415,6 +415,15 @@ function defocusSearchBar() {
                 displayHelp(true, ev);
                 break;
 
+            case "t":
+            case "T":
+                displayHelp(false, ev);
+                ev.preventDefault();
+                var themePicker = getThemePickerElement();
+                themePicker.click();
+                themePicker.focus();
+                break;
+
             default:
                 var themePicker = getThemePickerElement();
                 if (themePicker.parentNode.contains(ev.target)) {
@@ -2852,6 +2861,7 @@ function defocusSearchBar() {
         var shortcuts = [
             ["?", "Show this help dialog"],
             ["S", "Focus the search field"],
+            ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
             ["↹", "Switch tab"],
