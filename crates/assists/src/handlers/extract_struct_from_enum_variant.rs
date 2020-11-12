@@ -135,8 +135,12 @@ fn insert_import(
     variant_hir_name: &Name,
 ) -> Option<()> {
     let db = ctx.db();
-    let mod_path = module.find_use_path(db, enum_module_def.clone());
-    if let Some(mut mod_path) = mod_path.filter(|path| path.len() > 1) {
+    let mod_path = module.find_use_path_prefixed(
+        db,
+        enum_module_def.clone(),
+        ctx.config.insert_use.prefix_kind,
+    );
+    if let Some(mut mod_path) = mod_path.filter(|path| !path.is_ident()) {
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
         let scope = ImportScope::find_insert_use_container(scope_node, ctx)?;
@@ -323,7 +327,7 @@ fn another_fn() {
             r#"use my_mod::my_other_mod::MyField;
 
 mod my_mod {
-    use my_other_mod::MyField;
+    use self::my_other_mod::MyField;
 
     fn another_fn() {
         let m = my_other_mod::MyEnum::MyField(MyField(1, 1));
@@ -402,7 +406,7 @@ enum E {
 mod foo;
 
 //- /foo.rs
-use crate::E;
+use crate::{E, V};
 fn f() {
     let e = E::V(V(9, 2));
 }
@@ -437,7 +441,7 @@ enum E {
 mod foo;
 
 //- /foo.rs
-use crate::E;
+use crate::{E, V};
 fn f() {
     let e = E::V(V { i: 9, j: 2 });
 }
