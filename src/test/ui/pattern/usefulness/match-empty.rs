@@ -1,4 +1,5 @@
 #![feature(never_type)]
+#![feature(never_type_fallback)]
 #![deny(unreachable_patterns)]
 enum Foo {}
 
@@ -41,11 +42,24 @@ macro_rules! match_false {
 }
 
 fn foo(x: Foo) {
-    match_empty!(x); // ok
-    match_false!(x); // Not detected as unreachable nor exhaustive.
-    //~^ ERROR non-exhaustive patterns: `_` not covered
+    match x {} // ok
     match x {
         _ => {}, // Not detected as unreachable, see #55123.
+    }
+    match x {
+    //~^ ERROR non-exhaustive patterns: `_` not covered
+        _ if false => {}, // Not detected as unreachable nor exhaustive.
+    }
+}
+
+fn never(x: !) {
+    match x {} // ok
+    match x {
+        _ => {}, // Not detected as unreachable.
+    }
+    match x {
+    //~^ ERROR non-exhaustive patterns: `_` not covered
+        _ if false => {}, // Not detected as unreachable nor exhaustive.
     }
 }
 

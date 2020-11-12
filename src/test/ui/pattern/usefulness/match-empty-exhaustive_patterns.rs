@@ -1,4 +1,5 @@
 #![feature(never_type)]
+#![feature(never_type_fallback)]
 #![feature(exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 enum Foo {}
@@ -42,7 +43,17 @@ macro_rules! match_false {
 }
 
 fn foo(x: Foo) {
-    match_empty!(x); // ok
+    match x {} // ok
+    match x {
+        _ => {}, //~ ERROR unreachable pattern
+    }
+    match x {
+        _ if false => {}, //~ ERROR unreachable pattern
+    }
+}
+
+fn never(x: !) {
+    match x {} // ok
     match x {
         _ => {}, //~ ERROR unreachable pattern
     }
