@@ -2439,13 +2439,12 @@ pub struct Attribute {
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrKind {
     /// A normal attribute.
-    Normal(AttrItem),
+    Normal(AttrItem, Option<LazyTokenStream>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`

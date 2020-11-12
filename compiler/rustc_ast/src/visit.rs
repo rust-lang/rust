@@ -881,7 +881,7 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
     match attr.kind {
-        AttrKind::Normal(ref item) => walk_mac_args(visitor, &item.args),
+        AttrKind::Normal(ref item, ref _tokens) => walk_mac_args(visitor, &item.args),
         AttrKind::DocComment(..) => {}
     }
 }
