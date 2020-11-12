@@ -357,7 +357,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Call { func, args, destination, cleanup, .. } => {
+                let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
+                let func_ty = self.tcx.normalize_erasing_regions(param_env, func_ty);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
                     _ => self.fail(
