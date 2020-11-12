@@ -9,7 +9,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         make, AstNode, PathSegmentKind, VisibilityOwner,
     },
-    InsertPosition, SyntaxElement, SyntaxNode,
+    AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
 use test_utils::mark;
 
@@ -63,25 +63,28 @@ impl ImportScope {
         }
     }
 
-    fn insert_pos_after_inner_attribute(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
-        // check if the scope has inner attributes, we dont want to insert in front of them
-        match self
-            .as_syntax_node()
-            .children()
-            // no flat_map here cause we want to short circuit the iterator
-            .map(ast::Attr::cast)
-            .take_while(|attr| {
-                attr.as_ref().map(|attr| attr.kind() == ast::AttrKind::Inner).unwrap_or(false)
+    fn insert_pos_after_last_inner_element(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
+        self.as_syntax_node()
+            .children_with_tokens()
+            .filter(|child| match child {
+                NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
+                NodeOrToken::Token(token) => is_inner_comment(token.clone()),
             })
             .last()
-            .flatten()
-        {
-            Some(attr) => {
-                (InsertPosition::After(attr.syntax().clone().into()), AddBlankLine::BeforeTwice)
-            }
-            None => self.first_insert_pos(),
-        }
+            .map(|last_inner_element| {
+                (InsertPosition::After(last_inner_element.into()), AddBlankLine::BeforeTwice)
+            })
+            .unwrap_or_else(|| self.first_insert_pos())
     }
+}
+
+fn is_inner_attribute(node: SyntaxNode) -> bool {
+    ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
+}
+
+fn is_inner_comment(token: SyntaxToken) -> bool {
+    ast::Comment::cast(token).and_then(|comment| comment.kind().doc)
+        == Some(ast::CommentPlacement::Inner)
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
@@ -558,7 +561,7 @@ fn find_insert_position(
                             (InsertPosition::After(node.into()), AddBlankLine::BeforeTwice)
                         }
                         // there are no imports in this file at all
-                        None => scope.insert_pos_after_inner_attribute(),
+                        None => scope.insert_pos_after_last_inner_element(),
                     },
                 }
             }
@@ -830,12 +833,67 @@ use foo::bar;",
             "foo::bar",
             r"#![allow(unused_imports)]
 
+#![no_std]
 fn main() {}",
             r"#![allow(unused_imports)]
 
-use foo::bar;
+#![no_std]
 
+use foo::bar;
 fn main() {}",
+        );
+    }
+
+    #[test]
+    fn inserts_after_single_line_inner_comments() {
+        check_none(
+            "foo::bar::Baz",
+            "//! Single line inner comments do not allow any code before them.",
+            r#"//! Single line inner comments do not allow any code before them.
+
+use foo::bar::Baz;"#,
+        );
+    }
+
+    #[test]
+    fn inserts_after_multiline_inner_comments() {
+        check_none(
+            "foo::bar::Baz",
+            r#"/*! Multiline inner comments do not allow any code before them. */
+
+/*! Still an inner comment, cannot place any code before. */
+fn main() {}"#,
+            r#"/*! Multiline inner comments do not allow any code before them. */
+
+/*! Still an inner comment, cannot place any code before. */
+
+use foo::bar::Baz;
+fn main() {}"#,
+        )
+    }
+
+    #[test]
+    fn inserts_after_all_inner_items() {
+        check_none(
+            "foo::bar::Baz",
+            r#"#![allow(unused_imports)]
+/*! Multiline line comment 2 */
+
+
+//! Single line comment 1
+#![no_std]
+//! Single line comment 2
+fn main() {}"#,
+            r#"#![allow(unused_imports)]
+/*! Multiline line comment 2 */
+
+
+//! Single line comment 1
+#![no_std]
+//! Single line comment 2
+
+use foo::bar::Baz;
+fn main() {}"#,
         )
     }
 
