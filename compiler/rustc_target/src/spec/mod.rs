@@ -37,7 +37,9 @@
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
+use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
@@ -62,8 +64,10 @@ mod hermit_kernel_base;
 mod illumos_base;
 mod l4re_base;
 mod linux_base;
+mod linux_gnu_base;
 mod linux_kernel_base;
 mod linux_musl_base;
+mod linux_uclibc_base;
 mod msvc_base;
 mod netbsd_base;
 mod openbsd_base;
@@ -172,6 +176,13 @@ impl PanicStrategy {
         match *self {
             PanicStrategy::Unwind => "unwind",
             PanicStrategy::Abort => "abort",
+        }
+    }
+
+    pub fn desc_symbol(&self) -> Symbol {
+        match *self {
+            PanicStrategy::Unwind => sym::unwind,
+            PanicStrategy::Abort => sym::abort,
         }
     }
 }
@@ -444,7 +455,7 @@ macro_rules! supported_targets {
                 $( $($triple)|+ => $module::target(), )+
                 _ => return None,
             };
-            t.options.is_builtin = true;
+            t.is_builtin = true;
             debug!("got builtin target: {:?}", t);
             Some(t)
         }
@@ -653,6 +664,7 @@ supported_targets! {
     ("powerpc64-wrs-vxworks", powerpc64_wrs_vxworks),
 
     ("mipsel-sony-psp", mipsel_sony_psp),
+    ("mipsel-unknown-none", mipsel_unknown_none),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
 }
 
@@ -663,26 +675,13 @@ supported_targets! {
 pub struct Target {
     /// Target triple to pass to LLVM.
     pub llvm_target: String,
-    /// String to use as the `target_endian` `cfg` variable.
-    pub target_endian: String,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
-    /// Width of c_int type
-    pub target_c_int_width: String,
-    /// OS name to use for conditional compilation.
-    pub target_os: String,
-    /// Environment name to use for conditional compilation.
-    pub target_env: String,
-    /// Vendor name to use for conditional compilation.
-    pub target_vendor: String,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
-    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
-    /// on the command line.
-    pub linker_flavor: LinkerFlavor,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -701,10 +700,28 @@ impl HasTargetSpec for Target {
 ///
 /// This has an implementation of `Default`, see each field for what the default is. In general,
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
+///
+/// `TargetOptions` as a separate structure is mostly an implementation detail of `Target`
+/// construction, all its fields logically belong to `Target` and available from `Target`
+/// through `Deref` impls.
 #[derive(PartialEq, Clone, Debug)]
 pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
+
+    /// String to use as the `target_endian` `cfg` variable. Defaults to "little".
+    pub endian: String,
+    /// Width of c_int type. Defaults to "32".
+    pub c_int_width: String,
+    /// OS name to use for conditional compilation. Defaults to "none".
+    pub os: String,
+    /// Environment name to use for conditional compilation. Defaults to "".
+    pub env: String,
+    /// Vendor name to use for conditional compilation. Defaults to "unknown".
+    pub vendor: String,
+    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
+    /// on the command line. Defaults to `LinkerFlavor::Gcc`.
+    pub linker_flavor: LinkerFlavor,
 
     /// Linker to invoke
     pub linker: Option<String>,
@@ -792,7 +809,7 @@ pub struct TargetOptions {
     /// String to append to the name of every static library. Defaults to ".a".
     pub staticlib_suffix: String,
     /// OS family to use for conditional compilation. Valid options: "unix", "windows".
-    pub target_family: Option<String>,
+    pub os_family: Option<String>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
@@ -807,9 +824,6 @@ pub struct TargetOptions {
     /// library naming convention. Defaults to false.
     pub is_like_windows: bool,
     pub is_like_msvc: bool,
-    /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
-    /// Defaults to false.
-    pub is_like_android: bool,
     /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
     /// Emscripten toolchain.
     /// Defaults to false.
@@ -949,11 +963,11 @@ pub struct TargetOptions {
     /// The MergeFunctions pass is generally useful, but some targets may need
     /// to opt out. The default is "aliases".
     ///
-    /// Workaround for: https://github.com/rust-lang/rust/issues/57356
+    /// Workaround for: <https://github.com/rust-lang/rust/issues/57356>
     pub merge_functions: MergeFunctions,
 
     /// Use platform dependent mcount function
-    pub target_mcount: String,
+    pub mcount: String,
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: String,
@@ -984,6 +998,12 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
+            endian: "little".to_string(),
+            c_int_width: "32".to_string(),
+            os: "none".to_string(),
+            env: String::new(),
+            vendor: "unknown".to_string(),
+            linker_flavor: LinkerFlavor::Gcc,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
@@ -1006,12 +1026,11 @@ impl Default for TargetOptions {
             exe_suffix: String::new(),
             staticlib_prefix: "lib".to_string(),
             staticlib_suffix: ".a".to_string(),
-            target_family: None,
+            os_family: None,
             abi_return_struct_as_int: false,
             is_like_osx: false,
             is_like_solaris: false,
             is_like_windows: false,
-            is_like_android: false,
             is_like_emscripten: false,
             is_like_msvc: false,
             is_like_fuchsia: false,
@@ -1063,7 +1082,7 @@ impl Default for TargetOptions {
             limit_rdylib_exports: true,
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
-            target_mcount: "mcount".to_string(),
+            mcount: "mcount".to_string(),
             llvm_abiname: "".to_string(),
             relax_elf_relocations: false,
             llvm_args: vec![],
@@ -1074,12 +1093,28 @@ impl Default for TargetOptions {
     }
 }
 
+/// `TargetOptions` being a separate type is basically an implementation detail of `Target` that is
+/// used for providing defaults. Perhaps there's a way to merge `TargetOptions` into `Target` so
+/// this `Deref` implementation is no longer necessary.
+impl Deref for Target {
+    type Target = TargetOptions;
+
+    fn deref(&self) -> &Self::Target {
+        &self.options
+    }
+}
+impl DerefMut for Target {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.options
+    }
+}
+
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
             Abi::System => {
-                if self.options.is_like_windows && self.arch == "x86" {
+                if self.is_like_windows && self.arch == "x86" {
                     Abi::Stdcall
                 } else {
                     Abi::C
@@ -1089,7 +1124,7 @@ impl Target {
             // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
             // and the individual pages for __stdcall et al.
             Abi::Stdcall | Abi::Fastcall | Abi::Vectorcall | Abi::Thiscall => {
-                if self.options.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
+                if self.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
             }
             Abi::EfiApi => {
                 if self.arch == "x86_64" {
@@ -1105,17 +1140,17 @@ impl Target {
     /// Minimum integer size in bits that this target can perform atomic
     /// operations on.
     pub fn min_atomic_width(&self) -> u64 {
-        self.options.min_atomic_width.unwrap_or(8)
+        self.min_atomic_width.unwrap_or(8)
     }
 
     /// Maximum integer size in bits that this target can perform atomic
     /// operations on.
     pub fn max_atomic_width(&self) -> u64 {
-        self.options.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
+        self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
     pub fn is_abi_supported(&self, abi: Abi) -> bool {
-        abi.generic() || !self.options.unsupported_abis.contains(&abi)
+        abi.generic() || !self.unsupported_abis.contains(&abi)
     }
 
     /// Loads a target descriptor from a JSON object.
@@ -1134,27 +1169,13 @@ impl Target {
                 .ok_or_else(|| format!("Field {} in target specification is required", name))
         };
 
-        let get_opt_field = |name: &str, default: &str| {
-            obj.find(name)
-                .and_then(|s| s.as_string())
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| default.to_string())
-        };
-
         let mut base = Target {
             llvm_target: get_req_field("llvm-target")?,
-            target_endian: get_req_field("target-endian")?,
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
-            target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
-            target_os: get_req_field("os")?,
-            target_env: get_opt_field("env", ""),
-            target_vendor: get_opt_field("vendor", "unknown"),
-            linker_flavor: LinkerFlavor::from_str(&*get_req_field("linker-flavor")?)
-                .ok_or_else(|| format!("linker flavor must be {}", LinkerFlavor::one_of()))?,
             options: Default::default(),
         };
 
@@ -1162,13 +1183,19 @@ impl Target {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_string) {
-                    base.options.$key_name = s.to_string();
+                    base.$key_name = s.to_string();
+                }
+            } );
+            ($key_name:ident = $json_name:expr) => ( {
+                let name = $json_name;
+                if let Some(s) = obj.find(&name).and_then(Json::as_string) {
+                    base.$key_name = s.to_string();
                 }
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_boolean) {
-                    base.options.$key_name = s;
+                    base.$key_name = s;
                 }
             } );
             ($key_name:ident, Option<u32>) => ( {
@@ -1177,20 +1204,20 @@ impl Target {
                     if s < 1 || s > 5 {
                         return Err("Not a valid DWARF version number".to_string());
                     }
-                    base.options.$key_name = Some(s as u32);
+                    base.$key_name = Some(s as u32);
                 }
             } );
             ($key_name:ident, Option<u64>) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.find(&name).and_then(Json::as_u64) {
-                    base.options.$key_name = Some(s);
+                    base.$key_name = Some(s);
                 }
             } );
             ($key_name:ident, MergeFunctions) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<MergeFunctions>() {
-                        Ok(mergefunc) => base.options.$key_name = mergefunc,
+                        Ok(mergefunc) => base.$key_name = mergefunc,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       merge-functions. Use 'disabled', \
                                                       'trampolines', or 'aliases'.",
@@ -1203,7 +1230,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<RelocModel>() {
-                        Ok(relocation_model) => base.options.$key_name = relocation_model,
+                        Ok(relocation_model) => base.$key_name = relocation_model,
                         _ => return Some(Err(format!("'{}' is not a valid relocation model. \
                                                       Run `rustc --print relocation-models` to \
                                                       see the list of supported values.", s))),
@@ -1215,7 +1242,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<CodeModel>() {
-                        Ok(code_model) => base.options.$key_name = Some(code_model),
+                        Ok(code_model) => base.$key_name = Some(code_model),
                         _ => return Some(Err(format!("'{}' is not a valid code model. \
                                                       Run `rustc --print code-models` to \
                                                       see the list of supported values.", s))),
@@ -1227,7 +1254,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<TlsModel>() {
-                        Ok(tls_model) => base.options.$key_name = tls_model,
+                        Ok(tls_model) => base.$key_name = tls_model,
                         _ => return Some(Err(format!("'{}' is not a valid TLS model. \
                                                       Run `rustc --print tls-models` to \
                                                       see the list of supported values.", s))),
@@ -1239,8 +1266,8 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s {
-                        "unwind" => base.options.$key_name = PanicStrategy::Unwind,
-                        "abort" => base.options.$key_name = PanicStrategy::Abort,
+                        "unwind" => base.$key_name = PanicStrategy::Unwind,
+                        "abort" => base.$key_name = PanicStrategy::Abort,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       panic-strategy. Use 'unwind' or 'abort'.",
                                                      s))),
@@ -1252,7 +1279,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<RelroLevel>() {
-                        Ok(level) => base.options.$key_name = level,
+                        Ok(level) => base.$key_name = level,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
                                                       relro-level. Use 'full', 'partial, or 'off'.",
                                                       s))),
@@ -1263,7 +1290,7 @@ impl Target {
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(v) = obj.find(&name).and_then(Json::as_array) {
-                    base.options.$key_name = v.iter()
+                    base.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string())
                         .collect();
                 }
@@ -1271,7 +1298,7 @@ impl Target {
             ($key_name:ident, opt_list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(v) = obj.find(&name).and_then(Json::as_array) {
-                    base.options.$key_name = Some(v.iter()
+                    base.$key_name = Some(v.iter()
                         .map(|a| a.as_string().unwrap().to_string())
                         .collect());
                 }
@@ -1279,7 +1306,15 @@ impl Target {
             ($key_name:ident, optional) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(o) = obj.find(&name[..]) {
-                    base.options.$key_name = o
+                    base.$key_name = o
+                        .as_string()
+                        .map(|s| s.to_string() );
+                }
+            } );
+            ($key_name:ident = $json_name:expr, optional) => ( {
+                let name = $json_name;
+                if let Some(o) = obj.find(&name[..]) {
+                    base.$key_name = o
                         .as_string()
                         .map(|s| s.to_string() );
                 }
@@ -1288,7 +1323,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     if let Some(flavor) = LldFlavor::from_str(&s) {
-                        base.options.$key_name = flavor;
+                        base.$key_name = flavor;
                     } else {
                         return Some(Err(format!(
                             "'{}' is not a valid value for lld-flavor. \
@@ -1300,18 +1335,20 @@ impl Target {
             } );
             ($key_name:ident, LinkerFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().map(|s| {
-                    LinkerFlavor::from_str(&s).ok_or_else(|| {
-                        Err(format!("'{}' is not a valid value for linker-flavor. \
-                                     Use 'em', 'gcc', 'ld' or 'msvc.", s))
-                    })
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match LinkerFlavor::from_str(s) {
+                        Some(linker_flavor) => base.$key_name = linker_flavor,
+                        _ => return Some(Err(format!("'{}' is not a valid value for linker-flavor. \
+                                                      Use {}", s, LinkerFlavor::one_of()))),
+                    }
+                    Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
             ($key_name:ident, crt_objects_fallback) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
                     match s.parse::<CrtObjectsFallback>() {
-                        Ok(fallback) => base.options.$key_name = Some(fallback),
+                        Ok(fallback) => base.$key_name = Some(fallback),
                         _ => return Some(Err(format!("'{}' is not a valid CRT objects fallback. \
                                                       Use 'musl', 'mingw' or 'wasm'", s))),
                     }
@@ -1343,7 +1380,7 @@ impl Target {
 
                         args.insert(kind, v);
                     }
-                    base.options.$key_name = args;
+                    base.$key_name = args;
                 }
             } );
             ($key_name:ident, link_args) => ( {
@@ -1370,7 +1407,7 @@ impl Target {
 
                         args.insert(flavor, v);
                     }
-                    base.options.$key_name = args;
+                    base.$key_name = args;
                 }
             } );
             ($key_name:ident, env) => ( {
@@ -1382,7 +1419,7 @@ impl Target {
                             if p.len() == 2 {
                                 let k = p[0].to_string();
                                 let v = p[1].to_string();
-                                base.options.$key_name.push((k, v));
+                                base.$key_name.push((k, v));
                             }
                         }
                     }
@@ -1391,6 +1428,12 @@ impl Target {
         }
 
         key!(is_builtin, bool);
+        key!(endian = "target_endian");
+        key!(c_int_width = "target_c_int_width");
+        key!(os);
+        key!(env);
+        key!(vendor);
+        key!(linker_flavor, LinkerFlavor)?;
         key!(linker, optional);
         key!(lld_flavor, LldFlavor)?;
         key!(pre_link_objects, link_objects);
@@ -1423,14 +1466,13 @@ impl Target {
         key!(exe_suffix);
         key!(staticlib_prefix);
         key!(staticlib_suffix);
-        key!(target_family, optional);
+        key!(os_family = "target_family", optional);
         key!(abi_return_struct_as_int, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
         key!(is_like_emscripten, bool);
-        key!(is_like_android, bool);
         key!(is_like_fuchsia, bool);
         key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
@@ -1469,7 +1511,7 @@ impl Target {
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
-        key!(target_mcount);
+        key!(mcount = "target_mcount");
         key!(llvm_abiname);
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
@@ -1492,7 +1534,7 @@ impl Target {
                                 ));
                             }
 
-                            base.options.unsupported_abis.push(abi)
+                            base.unsupported_abis.push(abi)
                         }
                         None => {
                             return Err(format!(
@@ -1581,21 +1623,20 @@ impl ToJson for Target {
         macro_rules! target_option_val {
             ($attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.options.$attr {
-                    d.insert(name, self.options.$attr.to_json());
+                if default.$attr != self.$attr {
+                    d.insert(name, self.$attr.to_json());
                 }
             }};
             ($attr:ident, $key_name:expr) => {{
                 let name = $key_name;
-                if default.$attr != self.options.$attr {
-                    d.insert(name.to_string(), self.options.$attr.to_json());
+                if default.$attr != self.$attr {
+                    d.insert(name.to_string(), self.$attr.to_json());
                 }
             }};
             (link_args - $attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.options.$attr {
+                if default.$attr != self.$attr {
                     let obj = self
-                        .options
                         .$attr
                         .iter()
                         .map(|(k, v)| (k.desc().to_owned(), v.clone()))
@@ -1605,9 +1646,8 @@ impl ToJson for Target {
             }};
             (env - $attr:ident) => {{
                 let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != self.options.$attr {
+                if default.$attr != self.$attr {
                     let obj = self
-                        .options
                         .$attr
                         .iter()
                         .map(|&(ref k, ref v)| k.clone() + "=" + &v)
@@ -1618,17 +1658,17 @@ impl ToJson for Target {
         }
 
         target_val!(llvm_target);
-        target_val!(target_endian);
         d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
-        target_val!(target_c_int_width);
         target_val!(arch);
-        target_val!(target_os, "os");
-        target_val!(target_env, "env");
-        target_val!(target_vendor, "vendor");
         target_val!(data_layout);
-        target_val!(linker_flavor);
 
         target_option_val!(is_builtin);
+        target_option_val!(endian, "target_endian");
+        target_option_val!(c_int_width, "target_c_int_width");
+        target_option_val!(os);
+        target_option_val!(env);
+        target_option_val!(vendor);
+        target_option_val!(linker_flavor);
         target_option_val!(linker);
         target_option_val!(lld_flavor);
         target_option_val!(pre_link_objects);
@@ -1661,14 +1701,13 @@ impl ToJson for Target {
         target_option_val!(exe_suffix);
         target_option_val!(staticlib_prefix);
         target_option_val!(staticlib_suffix);
-        target_option_val!(target_family);
+        target_option_val!(os_family, "target_family");
         target_option_val!(abi_return_struct_as_int);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_emscripten);
-        target_option_val!(is_like_android);
         target_option_val!(is_like_fuchsia);
         target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);
@@ -1707,7 +1746,7 @@ impl ToJson for Target {
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);
-        target_option_val!(target_mcount);
+        target_option_val!(mcount, "target_mcount");
         target_option_val!(llvm_abiname);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);
@@ -1715,11 +1754,10 @@ impl ToJson for Target {
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
 
-        if default.unsupported_abis != self.options.unsupported_abis {
+        if default.unsupported_abis != self.unsupported_abis {
             d.insert(
                 "unsupported-abis".to_string(),
-                self.options
-                    .unsupported_abis
+                self.unsupported_abis
                     .iter()
                     .map(|&name| Abi::name(name).to_json())
                     .collect::<Vec<_>>()

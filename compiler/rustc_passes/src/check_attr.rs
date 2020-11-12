@@ -85,6 +85,10 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_export_name(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::rustc_args_required_const) {
                 self.check_rustc_args_required_const(&attr, span, target, item)
+            } else if self.tcx.sess.check_name(attr, sym::allow_internal_unstable) {
+                self.check_allow_internal_unstable(&attr, span, target, &attrs)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_allow_const_fn_unstable) {
+                self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -104,7 +108,7 @@ impl CheckAttrVisitor<'tcx> {
             return;
         }
 
-        if matches!(target, Target::Fn | Target::Method(_) | Target::ForeignFn) {
+        if matches!(target, Target::Closure | Target::Fn | Target::Method(_) | Target::ForeignFn) {
             self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
@@ -195,7 +199,7 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid. Returns `true` if valid.
     fn check_non_exhaustive(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Struct | Target::Enum => true,
+            Target::Struct | Target::Enum | Target::Variant => true,
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
@@ -587,6 +591,9 @@ impl CheckAttrVisitor<'tcx> {
 
         for hint in &hints {
             let (article, allowed_targets) = match hint.name_or_empty() {
+                _ if !matches!(target, Target::Struct | Target::Enum | Target::Union) => {
+                    ("a", "struct, enum, or union")
+                }
                 name @ sym::C | name @ sym::align => {
                     is_c |= name == sym::C;
                     match target {
@@ -652,12 +659,16 @@ impl CheckAttrVisitor<'tcx> {
                 }
                 _ => continue,
             };
-            self.emit_repr_error(
+
+            struct_span_err!(
+                self.tcx.sess,
                 hint.span(),
-                *span,
-                &format!("attribute should be applied to {}", allowed_targets),
-                &format!("not {} {}", article, allowed_targets),
+                E0517,
+                "{}",
+                &format!("attribute should be applied to {} {}", article, allowed_targets)
             )
+            .span_label(*span, &format!("not {} {}", article, allowed_targets))
+            .emit();
         }
 
         // Just point at all repr hints if there are any incompatibilities.
@@ -703,56 +714,6 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn emit_repr_error(
-        &self,
-        hint_span: Span,
-        label_span: Span,
-        hint_message: &str,
-        label_message: &str,
-    ) {
-        struct_span_err!(self.tcx.sess, hint_span, E0517, "{}", hint_message)
-            .span_label(label_span, label_message)
-            .emit();
-    }
-
-    fn check_stmt_attributes(&self, stmt: &hir::Stmt<'_>) {
-        // When checking statements ignore expressions, they will be checked later
-        if let hir::StmtKind::Local(ref l) = stmt.kind {
-            self.check_attributes(l.hir_id, &l.attrs, &stmt.span, Target::Statement, None);
-            for attr in l.attrs.iter() {
-                if self.tcx.sess.check_name(attr, sym::repr) {
-                    self.emit_repr_error(
-                        attr.span,
-                        stmt.span,
-                        "attribute should not be applied to a statement",
-                        "not a struct, enum, or union",
-                    );
-                }
-            }
-        }
-    }
-
-    fn check_expr_attributes(&self, expr: &hir::Expr<'_>) {
-        let target = match expr.kind {
-            hir::ExprKind::Closure(..) => Target::Closure,
-            _ => Target::Expression,
-        };
-        self.check_attributes(expr.hir_id, &expr.attrs, &expr.span, target, None);
-        for attr in expr.attrs.iter() {
-            if self.tcx.sess.check_name(attr, sym::repr) {
-                self.emit_repr_error(
-                    attr.span,
-                    expr.span,
-                    "attribute should not be applied to an expression",
-                    "not defining a struct, enum, or union",
-                );
-            }
-        }
-        if target == Target::Closure {
-            self.tcx.ensure().codegen_fn_attrs(self.tcx.hir().local_def_id(expr.hir_id));
-        }
-    }
-
     fn check_used(&self, attrs: &'hir [Attribute], target: Target) {
         for attr in attrs {
             if self.tcx.sess.check_name(attr, sym::used) && target != Target::Static {
@@ -761,6 +722,55 @@ impl CheckAttrVisitor<'tcx> {
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }
         }
+    }
+
+    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
+    fn check_allow_internal_unstable(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+        attrs: &[Attribute],
+    ) -> bool {
+        debug!("Checking target: {:?}", target);
+        if target == Target::Fn {
+            for attr in attrs {
+                if self.tcx.sess.is_proc_macro_attr(attr) {
+                    debug!("Is proc macro attr");
+                    return true;
+                }
+            }
+            debug!("Is not proc macro attr");
+        }
+        self.tcx
+            .sess
+            .struct_span_err(attr.span, "attribute should be applied to a macro")
+            .span_label(*span, "not a macro")
+            .emit();
+        false
+    }
+
+    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
+    /// (Allows proc_macro functions)
+    fn check_rustc_allow_const_fn_unstable(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
+        if let Target::Fn | Target::Method(_) = target {
+            if self.tcx.is_const_fn_raw(self.tcx.hir().local_def_id(hir_id)) {
+                return true;
+            }
+        }
+        self.tcx
+            .sess
+            .struct_span_err(attr.span, "attribute should be applied to `const fn`")
+            .span_label(*span, "not a `const fn`")
+            .emit();
+        false
     }
 }
 
@@ -808,13 +818,31 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
-        self.check_stmt_attributes(stmt);
+        // When checking statements ignore expressions, they will be checked later.
+        if let hir::StmtKind::Local(ref l) = stmt.kind {
+            self.check_attributes(l.hir_id, &l.attrs, &stmt.span, Target::Statement, None);
+        }
         intravisit::walk_stmt(self, stmt)
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        self.check_expr_attributes(expr);
+        let target = match expr.kind {
+            hir::ExprKind::Closure(..) => Target::Closure,
+            _ => Target::Expression,
+        };
+
+        self.check_attributes(expr.hir_id, &expr.attrs, &expr.span, target, None);
         intravisit::walk_expr(self, expr)
+    }
+
+    fn visit_variant(
+        &mut self,
+        variant: &'tcx hir::Variant<'tcx>,
+        generics: &'tcx hir::Generics<'tcx>,
+        item_id: HirId,
+    ) {
+        self.check_attributes(variant.id, variant.attrs, &variant.span, Target::Variant, None);
+        intravisit::walk_variant(self, variant, generics, item_id)
     }
 }
 

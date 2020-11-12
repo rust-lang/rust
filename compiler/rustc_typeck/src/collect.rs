@@ -50,6 +50,8 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 
+use std::ops::ControlFlow;
+
 mod item_bounds;
 mod type_of;
 
@@ -2060,14 +2062,14 @@ fn const_evaluatable_predicates_of<'tcx>(
             }
 
             impl<'a, 'tcx> TypeVisitor<'tcx> for TyAliasVisitor<'a, 'tcx> {
-                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> bool {
+                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> ControlFlow<()> {
                     if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
                         self.preds.insert((
                             ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
                             self.span,
                         ));
                     }
-                    false
+                    ControlFlow::CONTINUE
                 }
             }
 
@@ -2090,25 +2092,25 @@ fn const_evaluatable_predicates_of<'tcx>(
     if let hir::Node::Item(item) = node {
         if let hir::ItemKind::Impl { ref of_trait, ref self_ty, .. } = item.kind {
             if let Some(of_trait) = of_trait {
-                warn!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+                debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
                 collector.visit_trait_ref(of_trait);
             }
 
-            warn!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+            debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
             collector.visit_ty(self_ty);
         }
     }
 
     if let Some(generics) = node.generics() {
-        warn!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
+        debug!("const_evaluatable_predicates_of({:?}): visit_generics", def_id);
         collector.visit_generics(generics);
     }
 
     if let Some(fn_sig) = tcx.hir().fn_sig_by_hir_id(hir_id) {
-        warn!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
+        debug!("const_evaluatable_predicates_of({:?}): visit_fn_decl", def_id);
         collector.visit_fn_decl(fn_sig.decl);
     }
-    warn!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
+    debug!("const_evaluatable_predicates_of({:?}) = {:?}", def_id, collector.preds);
 
     collector.preds
 }
@@ -2409,6 +2411,7 @@ fn from_target_feature(
                 Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
+                Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
@@ -2650,7 +2653,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                             set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
                         match segments.as_slice() {
                             [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                                if !tcx.sess.target.options.has_thumb_interworking {
+                                if !tcx.sess.target.has_thumb_interworking {
                                     struct_span_err!(
                                         tcx.sess.diagnostic(),
                                         attr.span,

@@ -1,6 +1,7 @@
 use super::{DirectedGraph, WithNumNodes, WithStartNode, WithSuccessors};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use std::ops::ControlFlow;
 
 #[cfg(test)]
 mod tests;
@@ -32,16 +33,31 @@ fn post_order_walk<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     result: &mut Vec<G::Node>,
     visited: &mut IndexVec<G::Node, bool>,
 ) {
+    struct PostOrderFrame<Node, Iter> {
+        node: Node,
+        iter: Iter,
+    }
+
     if visited[node] {
         return;
     }
-    visited[node] = true;
 
-    for successor in graph.successors(node) {
-        post_order_walk(graph, successor, result, visited);
+    let mut stack = vec![PostOrderFrame { node, iter: graph.successors(node) }];
+
+    'recurse: while let Some(frame) = stack.last_mut() {
+        let node = frame.node;
+        visited[node] = true;
+
+        while let Some(successor) = frame.iter.next() {
+            if !visited[successor] {
+                stack.push(PostOrderFrame { node: successor, iter: graph.successors(successor) });
+                continue 'recurse;
+            }
+        }
+
+        let _ = stack.pop();
+        result.push(node);
     }
-
-    result.push(node);
 }
 
 pub fn reverse_post_order<G: DirectedGraph + WithSuccessors + WithNumNodes>(
@@ -85,10 +101,6 @@ where
         Some(n)
     }
 }
-
-/// Allows searches to terminate early with a value.
-// FIXME (#75744): remove the alias once the generics are in a better order and `C=()`.
-pub type ControlFlow<T> = std::ops::ControlFlow<(), T>;
 
 /// The status of a node in the depth-first search.
 ///

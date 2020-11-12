@@ -323,7 +323,7 @@ where
     Ty: TyAndLayoutMethods<'a, C> + Copy,
     C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
 {
-    let flen = match &cx.target_spec().options.llvm_abiname[..] {
+    let flen = match &cx.target_spec().llvm_abiname[..] {
         "ilp32f" | "lp64f" => 32,
         "ilp32d" | "lp64d" => 64,
         _ => 0,
@@ -333,10 +333,8 @@ where
     let mut avail_gprs = 8;
     let mut avail_fprs = 8;
 
-    if !fn_abi.ret.is_ignore() {
-        if classify_ret(cx, &mut fn_abi.ret, xlen, flen) {
-            avail_gprs -= 1;
-        }
+    if !fn_abi.ret.is_ignore() && classify_ret(cx, &mut fn_abi.ret, xlen, flen) {
+        avail_gprs -= 1;
     }
 
     for (i, arg) in fn_abi.args.iter_mut().enumerate() {

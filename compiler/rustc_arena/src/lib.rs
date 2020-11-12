@@ -228,7 +228,7 @@ impl<T> TypedArena<T> {
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
                 new_cap = last_chunk.storage.len().min(HUGE_PAGE / elem_size / 2);
-                new_cap = new_cap * 2;
+                new_cap *= 2;
             } else {
                 new_cap = PAGE / elem_size;
             }
@@ -346,7 +346,7 @@ impl DroplessArena {
                 // bytes, then this chunk will be least double the previous
                 // chunk's size.
                 new_cap = last_chunk.storage.len().min(HUGE_PAGE / 2);
-                new_cap = new_cap * 2;
+                new_cap *= 2;
             } else {
                 new_cap = PAGE;
             }
@@ -533,7 +533,7 @@ impl DropArena {
         ptr::write(mem, object);
         let result = &mut *mem;
         // Record the destructor after doing the allocation as that may panic
-        // and would cause `object`'s destuctor to run twice if it was recorded before
+        // and would cause `object`'s destructor to run twice if it was recorded before
         self.destructors
             .borrow_mut()
             .push(DropType { drop_fn: drop_for_type::<T>, obj: result as *mut T as *mut u8 });
@@ -560,12 +560,10 @@ impl DropArena {
         mem::forget(vec.drain(..));
 
         // Record the destructors after doing the allocation as that may panic
-        // and would cause `object`'s destuctor to run twice if it was recorded before
+        // and would cause `object`'s destructor to run twice if it was recorded before
         for i in 0..len {
-            destructors.push(DropType {
-                drop_fn: drop_for_type::<T>,
-                obj: start_ptr.offset(i as isize) as *mut u8,
-            });
+            destructors
+                .push(DropType { drop_fn: drop_for_type::<T>, obj: start_ptr.add(i) as *mut u8 });
         }
 
         slice::from_raw_parts_mut(start_ptr, len)

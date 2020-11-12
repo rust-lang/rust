@@ -1,8 +1,8 @@
-error: expected `;` or `{`, found `:`
-  --> $DIR/not-a-pred.rs:3:26
+error: expected one of `->`, `;`, `where`, or `{`, found `:`
+  --> $DIR/not-a-pred.rs:1:26
    |
 LL | fn f(a: isize, b: isize) : lt(a, b) { }
-   |                          ^ expected `;` or `{`
+   |                          ^ expected one of `->`, `;`, `where`, or `{`
 
 error: aborting due to previous error
 

@@ -10,17 +10,14 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "mipsel-sony-psp".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 32,
-        target_c_int_width: "32".to_string(),
         data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
         arch: "mips".to_string(),
-        target_os: "psp".to_string(),
-        target_env: "".to_string(),
-        target_vendor: "sony".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
+            os: "psp".to_string(),
+            vendor: "sony".to_string(),
+            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             cpu: "mips2".to_string(),
             executables: true,
             linker: Some("rust-lld".to_owned()),

@@ -532,7 +532,7 @@ fn mono_item_visibility(
 }
 
 fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibility {
-    if !tcx.sess.target.options.default_hidden_visibility {
+    if !tcx.sess.target.default_hidden_visibility {
         return Visibility::Default;
     }
 

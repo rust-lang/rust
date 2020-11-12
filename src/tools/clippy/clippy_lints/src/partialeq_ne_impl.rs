@@ -3,6 +3,7 @@ use if_chain::if_chain;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual re-implementations of `PartialEq::ne`.
@@ -39,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
             if trait_ref.path.res.def_id() == eq_trait;
             then {
                 for impl_item in impl_items {
-                    if impl_item.ident.name == sym!(ne) {
+                    if impl_item.ident.name == sym::ne {
                         span_lint_hir(
                             cx,
                             PARTIALEQ_NE_IMPL,

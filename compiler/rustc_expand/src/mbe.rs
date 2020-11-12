@@ -102,10 +102,7 @@ impl TokenTree {
 
     /// Returns `true` if the given token tree is delimited.
     fn is_delimited(&self) -> bool {
-        match *self {
-            TokenTree::Delimited(..) => true,
-            _ => false,
-        }
+        matches!(*self, TokenTree::Delimited(..))
     }
 
     /// Returns `true` if the given token tree is a token of the given kind.

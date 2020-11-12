@@ -108,24 +108,24 @@ fn sub() {
 
 #[test]
 fn checked_sub() {
-    let zero = Duration::new(0, 0);
-    let one_nano = Duration::new(0, 1);
-    let one_sec = Duration::new(1, 0);
-    assert_eq!(one_nano.checked_sub(zero), Some(Duration::new(0, 1)));
-    assert_eq!(one_sec.checked_sub(one_nano), Some(Duration::new(0, 999_999_999)));
-    assert_eq!(zero.checked_sub(one_nano), None);
-    assert_eq!(zero.checked_sub(one_sec), None);
+    assert_eq!(Duration::NANOSECOND.checked_sub(Duration::ZERO), Some(Duration::NANOSECOND));
+    assert_eq!(
+        Duration::SECOND.checked_sub(Duration::NANOSECOND),
+        Some(Duration::new(0, 999_999_999))
+    );
+    assert_eq!(Duration::ZERO.checked_sub(Duration::NANOSECOND), None);
+    assert_eq!(Duration::ZERO.checked_sub(Duration::SECOND), None);
 }
 
 #[test]
 fn saturating_sub() {
-    let zero = Duration::new(0, 0);
-    let one_nano = Duration::new(0, 1);
-    let one_sec = Duration::new(1, 0);
-    assert_eq!(one_nano.saturating_sub(zero), Duration::new(0, 1));
-    assert_eq!(one_sec.saturating_sub(one_nano), Duration::new(0, 999_999_999));
-    assert_eq!(zero.saturating_sub(one_nano), Duration::MIN);
-    assert_eq!(zero.saturating_sub(one_sec), Duration::MIN);
+    assert_eq!(Duration::NANOSECOND.saturating_sub(Duration::ZERO), Duration::NANOSECOND);
+    assert_eq!(
+        Duration::SECOND.saturating_sub(Duration::NANOSECOND),
+        Duration::new(0, 999_999_999)
+    );
+    assert_eq!(Duration::ZERO.saturating_sub(Duration::NANOSECOND), Duration::ZERO);
+    assert_eq!(Duration::ZERO.saturating_sub(Duration::SECOND), Duration::ZERO);
 }
 
 #[test]
@@ -337,87 +337,82 @@ fn duration_const() {
     const SUB_SEC_NANOS: u32 = DURATION.subsec_nanos();
     assert_eq!(SUB_SEC_NANOS, 123_456_789);
 
-    const ZERO: Duration = Duration::zero();
-    assert_eq!(ZERO, Duration::new(0, 0));
-
-    const IS_ZERO: bool = ZERO.is_zero();
+    const IS_ZERO: bool = Duration::ZERO.is_zero();
     assert!(IS_ZERO);
 
-    const ONE: Duration = Duration::new(1, 0);
-
-    const SECONDS: u64 = ONE.as_secs();
+    const SECONDS: u64 = Duration::SECOND.as_secs();
     assert_eq!(SECONDS, 1);
 
     const FROM_SECONDS: Duration = Duration::from_secs(1);
-    assert_eq!(FROM_SECONDS, ONE);
+    assert_eq!(FROM_SECONDS, Duration::SECOND);
 
-    const SECONDS_F32: f32 = ONE.as_secs_f32();
+    const SECONDS_F32: f32 = Duration::SECOND.as_secs_f32();
     assert_eq!(SECONDS_F32, 1.0);
 
     const FROM_SECONDS_F32: Duration = Duration::from_secs_f32(1.0);
-    assert_eq!(FROM_SECONDS_F32, ONE);
+    assert_eq!(FROM_SECONDS_F32, Duration::SECOND);
 
-    const SECONDS_F64: f64 = ONE.as_secs_f64();
+    const SECONDS_F64: f64 = Duration::SECOND.as_secs_f64();
     assert_eq!(SECONDS_F64, 1.0);
 
     const FROM_SECONDS_F64: Duration = Duration::from_secs_f64(1.0);
-    assert_eq!(FROM_SECONDS_F64, ONE);
+    assert_eq!(FROM_SECONDS_F64, Duration::SECOND);
 
-    const MILLIS: u128 = ONE.as_millis();
+    const MILLIS: u128 = Duration::SECOND.as_millis();
     assert_eq!(MILLIS, 1_000);
 
     const FROM_MILLIS: Duration = Duration::from_millis(1_000);
-    assert_eq!(FROM_MILLIS, ONE);
+    assert_eq!(FROM_MILLIS, Duration::SECOND);
 
-    const MICROS: u128 = ONE.as_micros();
+    const MICROS: u128 = Duration::SECOND.as_micros();
     assert_eq!(MICROS, 1_000_000);
 
     const FROM_MICROS: Duration = Duration::from_micros(1_000_000);
-    assert_eq!(FROM_MICROS, ONE);
+    assert_eq!(FROM_MICROS, Duration::SECOND);
 
-    const NANOS: u128 = ONE.as_nanos();
+    const NANOS: u128 = Duration::SECOND.as_nanos();
     assert_eq!(NANOS, 1_000_000_000);
 
     const FROM_NANOS: Duration = Duration::from_nanos(1_000_000_000);
-    assert_eq!(FROM_NANOS, ONE);
+    assert_eq!(FROM_NANOS, Duration::SECOND);
 
     const MAX: Duration = Duration::new(u64::MAX, 999_999_999);
 
-    const CHECKED_ADD: Option<Duration> = MAX.checked_add(ONE);
+    const CHECKED_ADD: Option<Duration> = MAX.checked_add(Duration::SECOND);
     assert_eq!(CHECKED_ADD, None);
 
-    const CHECKED_SUB: Option<Duration> = ZERO.checked_sub(ONE);
+    const CHECKED_SUB: Option<Duration> = Duration::ZERO.checked_sub(Duration::SECOND);
     assert_eq!(CHECKED_SUB, None);
 
-    const CHECKED_MUL: Option<Duration> = ONE.checked_mul(1);
-    assert_eq!(CHECKED_MUL, Some(ONE));
+    const CHECKED_MUL: Option<Duration> = Duration::SECOND.checked_mul(1);
+    assert_eq!(CHECKED_MUL, Some(Duration::SECOND));
 
-    const MUL_F32: Duration = ONE.mul_f32(1.0);
-    assert_eq!(MUL_F32, ONE);
+    const MUL_F32: Duration = Duration::SECOND.mul_f32(1.0);
+    assert_eq!(MUL_F32, Duration::SECOND);
 
-    const MUL_F64: Duration = ONE.mul_f64(1.0);
-    assert_eq!(MUL_F64, ONE);
+    const MUL_F64: Duration = Duration::SECOND.mul_f64(1.0);
+    assert_eq!(MUL_F64, Duration::SECOND);
 
-    const CHECKED_DIV: Option<Duration> = ONE.checked_div(1);
-    assert_eq!(CHECKED_DIV, Some(ONE));
+    const CHECKED_DIV: Option<Duration> = Duration::SECOND.checked_div(1);
+    assert_eq!(CHECKED_DIV, Some(Duration::SECOND));
 
-    const DIV_F32: Duration = ONE.div_f32(1.0);
-    assert_eq!(DIV_F32, ONE);
+    const DIV_F32: Duration = Duration::SECOND.div_f32(1.0);
+    assert_eq!(DIV_F32, Duration::SECOND);
 
-    const DIV_F64: Duration = ONE.div_f64(1.0);
-    assert_eq!(DIV_F64, ONE);
+    const DIV_F64: Duration = Duration::SECOND.div_f64(1.0);
+    assert_eq!(DIV_F64, Duration::SECOND);
 
-    const DIV_DURATION_F32: f32 = ONE.div_duration_f32(ONE);
+    const DIV_DURATION_F32: f32 = Duration::SECOND.div_duration_f32(Duration::SECOND);
     assert_eq!(DIV_DURATION_F32, 1.0);
 
-    const DIV_DURATION_F64: f64 = ONE.div_duration_f64(ONE);
+    const DIV_DURATION_F64: f64 = Duration::SECOND.div_duration_f64(Duration::SECOND);
     assert_eq!(DIV_DURATION_F64, 1.0);
 
-    const SATURATING_ADD: Duration = MAX.saturating_add(ONE);
+    const SATURATING_ADD: Duration = MAX.saturating_add(Duration::SECOND);
     assert_eq!(SATURATING_ADD, MAX);
 
-    const SATURATING_SUB: Duration = ZERO.saturating_sub(ONE);
-    assert_eq!(SATURATING_SUB, ZERO);
+    const SATURATING_SUB: Duration = Duration::ZERO.saturating_sub(Duration::SECOND);
+    assert_eq!(SATURATING_SUB, Duration::ZERO);
 
     const SATURATING_MUL: Duration = MAX.saturating_mul(2);
     assert_eq!(SATURATING_MUL, MAX);

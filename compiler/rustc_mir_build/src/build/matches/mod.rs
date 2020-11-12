@@ -231,7 +231,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
-                debug!("lowering arm {:?}\ncanidate = {:?}", arm, candidate);
+                debug!("lowering arm {:?}\ncandidate = {:?}", arm, candidate);
 
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);

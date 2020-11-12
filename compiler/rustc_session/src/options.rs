@@ -717,7 +717,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
 
     ar: String = (String::new(), parse_string, [UNTRACKED],
@@ -814,7 +814,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
 }
 
@@ -825,7 +825,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     // This list is in alphabetical order.
     //
     // If you add a new option, please update:
-    // - src/librustc_interface/tests.rs
+    // - compiler/rustc_interface/src/tests.rs
 
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (space separated)"),
@@ -887,12 +887,17 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
         "exclude the pass number when dumping MIR (used in tests) (default: no)"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],
-        "in addition to `.mir` files, create graphviz `.dot` files (default: no)"),
+        "in addition to `.mir` files, create graphviz `.dot` files (and with \
+        `-Z instrument-coverage`, also create a `.dot` file for the MIR-derived \
+        coverage graph) (default: no)"),
     dump_mir_spanview: Option<MirSpanview> = (None, parse_mir_spanview, [UNTRACKED],
         "in addition to `.mir` files, create `.html` files to view spans for \
         all `statement`s (including terminators), only `terminator` spans, or \
         computed `block` spans (one span encompassing a block's terminator and \
-        all statements)."),
+        all statements). If `-Z instrument-coverage` is also enabled, create \
+        an additional `.html` file showing the computed coverage spans."),
+    emit_future_incompat_report: bool = (false, parse_bool, [UNTRACKED],
+        "emits a future-incompatibility report for lints (RFC 2834)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     fewer_names: bool = (false, parse_bool, [TRACKED],
@@ -904,6 +909,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "force all crates to be `rustc_private` unstable (default: no)"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
+    function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "whether each function should go in its own section"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
@@ -922,6 +929,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify incr. comp. hashes of green query instances (default: no)"),
+    inline_mir_threshold: usize = (50, parse_uint, [TRACKED],
+        "a default MIR inlining threshold (default: 50)"),
+    inline_mir_hint_threshold: usize = (100, parse_uint, [TRACKED],
+        "inlining threshold for functions with inline hint (default: 100)"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether `#[inline]` functions are in all CGUs"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -967,6 +978,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "use new LLVM pass manager (default: no)"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
+    nll_facts_dir: String = ("nll-facts".to_string(), parse_string, [UNTRACKED],
+        "the directory the NLL facts are dumped into (default: `nll-facts`)"),
     no_analysis: bool = (false, parse_no_flag, [UNTRACKED],
         "parse and expand the source, but run no analysis"),
     no_codegen: bool = (false, parse_no_flag, [TRACKED],
@@ -1028,6 +1041,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable queries of the dependency graph for regression testing (default: no)"),
     query_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some statistics about the query system (default: no)"),
+    relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "whether ELF relocations can be relaxed"),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
@@ -1068,7 +1083,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
-        "hash algorithm of source files in debug info (`md5`, or `sha1`)"),
+        "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     symbol_mangling_version: SymbolManglingVersion = (SymbolManglingVersion::Legacy,

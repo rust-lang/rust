@@ -606,7 +606,7 @@ where
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `HashMap<K,V>`. The collection may reserve more space to avoid
+    /// in the given `HashMap<K, V>`. The collection may reserve more space to avoid
     /// frequent reallocations.
     ///
     /// # Errors
@@ -619,6 +619,7 @@ where
     /// ```
     /// #![feature(try_reserve)]
     /// use std::collections::HashMap;
+    ///
     /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
@@ -898,14 +899,14 @@ where
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map: HashMap<i32, i32> = (0..8).map(|x|(x, x*10)).collect();
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
     /// map.retain(|&k, _| k % 2 == 0);
     /// assert_eq!(map.len(), 4);
     /// ```
@@ -1389,8 +1390,6 @@ pub struct IntoValues<K, V> {
 /// A builder for computing where in a HashMap a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
-///
-/// [`HashMap::raw_entry_mut`]: HashMap::raw_entry_mut
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a mut HashMap<K, V, S>,
@@ -1429,8 +1428,6 @@ pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// A builder for computing where in a HashMap a key-value pair would be stored.
 ///
 /// See the [`HashMap::raw_entry`] docs for usage examples.
-///
-/// [`HashMap::raw_entry`]: HashMap::raw_entry
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a HashMap<K, V, S>,

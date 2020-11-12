@@ -5,7 +5,6 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, NtTT, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
-use rustc_ast::MacCall;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{pluralize, PResult};
@@ -20,12 +19,12 @@ use std::mem;
 struct Marker(ExpnId, Transparency);
 
 impl MutVisitor for Marker {
-    fn visit_span(&mut self, span: &mut Span) {
-        *span = span.apply_mark(self.0, self.1)
+    fn token_visiting_enabled(&self) -> bool {
+        true
     }
 
-    fn visit_mac(&mut self, mac: &mut MacCall) {
-        mut_visit::noop_visit_mac(mac, self)
+    fn visit_span(&mut self, span: &mut Span) {
+        *span = span.apply_mark(self.0, self.1)
     }
 }
 
@@ -232,17 +231,19 @@ pub(super) fn transcribe<'a>(
                 // the meta-var.
                 let ident = MacroRulesNormalizedIdent::new(orignal_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    if let MatchedNonterminal(ref nt) = cur_matched {
-                        // FIXME #2887: why do we apply a mark when matching a token tree meta-var
-                        // (e.g. `$x:tt`), but not when we are matching any other type of token
-                        // tree?
-                        if let NtTT(ref tt) = **nt {
-                            result.push(tt.clone().into());
+                    if let MatchedNonterminal(nt) = cur_matched {
+                        let token = if let NtTT(tt) = &**nt {
+                            // `tt`s are emitted into the output stream directly as "raw tokens",
+                            // without wrapping them into groups.
+                            tt.clone()
                         } else {
+                            // Other variables are emitted into the output stream as groups with
+                            // `Delimiter::None` to maintain parsing priorities.
+                            // `Interpolated` is currenty used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
-                            result.push(token.into());
-                        }
+                            TokenTree::token(token::Interpolated(nt.clone()), sp)
+                        };
+                        result.push(token.into());
                     } else {
                         // We were unable to descend far enough. This is an error.
                         return Err(cx.struct_span_err(
@@ -275,7 +276,7 @@ pub(super) fn transcribe<'a>(
             // preserve syntax context.
             mbe::TokenTree::Token(token) => {
                 let mut tt = TokenTree::Token(token);
-                marker.visit_tt(&mut tt);
+                mut_visit::visit_tt(&mut tt, &mut marker);
                 result.push(tt.into());
             }
 

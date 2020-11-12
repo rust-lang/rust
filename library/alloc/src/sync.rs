@@ -10,6 +10,7 @@ use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::hint;
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
@@ -128,13 +129,27 @@ macro_rules! acquire {
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
 /// clashes with `T`'s methods, the methods of `Arc<T>` itself are associated
-/// functions, called using function-like syntax:
+/// functions, called using [fully qualified syntax]:
 ///
 /// ```
 /// use std::sync::Arc;
-/// let my_arc = Arc::new(());
 ///
+/// let my_arc = Arc::new(());
 /// Arc::downgrade(&my_arc);
+/// ```
+///
+/// `Arc<T>`'s implementations of traits like `Clone` may also be called using
+/// fully qualified syntax. Some people prefer to use fully qualified syntax,
+/// while others prefer using method-call syntax.
+///
+/// ```
+/// use std::sync::Arc;
+///
+/// let arc = Arc::new(());
+/// // Method-call syntax
+/// let arc2 = arc.clone();
+/// // Fully qualified syntax
+/// let arc3 = Arc::clone(&arc);
 /// ```
 ///
 /// [`Weak<T>`][Weak] does not auto-dereference to `T`, because the inner value may have
@@ -153,6 +168,7 @@ macro_rules! acquire {
 /// [`RefCell<T>`]: core::cell::RefCell
 /// [`std::sync`]: ../../std/sync/index.html
 /// [`Arc::clone(&from)`]: Arc::clone
+/// [fully qualified syntax]: https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#fully-qualified-syntax-for-disambiguation-calling-methods-with-the-same-name
 ///
 /// # Examples
 ///
@@ -764,6 +780,7 @@ impl<T: ?Sized> Arc<T> {
         loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
+                hint::spin_loop();
                 cur = this.inner().weak.load(Relaxed);
                 continue;
             }
@@ -1006,7 +1023,7 @@ impl<T: ?Sized> Arc<T> {
 
     fn from_box(v: Box<T>) -> Arc<T> {
         unsafe {
-            let box_unique = Box::into_unique(v);
+            let (box_unique, alloc) = Box::into_unique(v);
             let bptr = box_unique.as_ptr();
 
             let value_size = size_of_val(&*bptr);
@@ -1020,7 +1037,7 @@ impl<T: ?Sized> Arc<T> {
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique);
+            box_free(box_unique, alloc);
 
             Self::from_ptr(ptr)
         }

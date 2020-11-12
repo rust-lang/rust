@@ -28,11 +28,10 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{Index, IndexMut};
+use std::ops::{ControlFlow, Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
@@ -161,7 +160,7 @@ pub struct Body<'tcx> {
 
     /// A list of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
-    pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
+    pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
 
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
@@ -210,16 +209,6 @@ pub struct Body<'tcx> {
     /// We hold in this field all the constants we are not able to evaluate yet.
     pub required_consts: Vec<Constant<'tcx>>,
 
-    /// The user may be writing e.g. `&[(SOME_CELL, 42)][i].1` and this would get promoted, because
-    /// we'd statically know that no thing with interior mutability will ever be available to the
-    /// user without some serious unsafe code.  Now this means that our promoted is actually
-    /// `&[(SOME_CELL, 42)]` and the MIR using it will do the `&promoted[i].1` projection because
-    /// the index may be a runtime value. Such a promoted value is illegal because it has reachable
-    /// interior mutability. This flag just makes this situation very obvious where the previous
-    /// implementation without the flag hid this situation silently.
-    /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
-    pub ignore_interior_mut_in_const_validation: bool,
-
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
     /// Note that this does not actually mean that this body is not computable right now.
@@ -244,7 +233,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new(
         source: MirSource<'tcx>,
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-        source_scopes: IndexVec<SourceScope, SourceScopeData>,
+        source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
@@ -276,7 +265,6 @@ impl<'tcx> Body<'tcx> {
             var_debug_info,
             span,
             required_consts: Vec::new(),
-            ignore_interior_mut_in_const_validation: false,
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
         };
@@ -306,7 +294,6 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             generator_kind: None,
             var_debug_info: Vec::new(),
-            ignore_interior_mut_in_const_validation: false,
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
         };
@@ -1598,21 +1585,10 @@ impl Debug for Statement<'_> {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Coverage(box ref coverage) => {
-                let rgn = &coverage.code_region;
-                match coverage.kind {
-                    CoverageKind::Counter { id, .. } => {
-                        write!(fmt, "Coverage::Counter({:?}) for {:?}", id.index(), rgn)
-                    }
-                    CoverageKind::Expression { id, lhs, op, rhs } => write!(
-                        fmt,
-                        "Coverage::Expression({:?}) = {} {} {} for {:?}",
-                        id.index(),
-                        lhs.index(),
-                        if op == coverage::Op::Add { "+" } else { "-" },
-                        rhs.index(),
-                        rgn
-                    ),
-                    CoverageKind::Unreachable => write!(fmt, "Coverage::Unreachable for {:?}", rgn),
+                if let Some(rgn) = &coverage.code_region {
+                    write!(fmt, "Coverage::{:?} for {:?}", coverage.kind, rgn)
+                } else {
+                    write!(fmt, "Coverage::{:?}", coverage.kind)
                 }
             }
             Nop => write!(fmt, "nop"),
@@ -1623,7 +1599,7 @@ impl Debug for Statement<'_> {
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct Coverage {
     pub kind: CoverageKind,
-    pub code_region: CodeRegion,
+    pub code_region: Option<CodeRegion>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1865,10 +1841,20 @@ rustc_index::newtype_index! {
     }
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct SourceScopeData {
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+pub struct SourceScopeData<'tcx> {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
+
+    /// Whether this scope is the root of a scope tree of another body,
+    /// inlined into this body by the MIR inliner.
+    /// `ty::Instance` is the callee, and the `Span` is the call site.
+    pub inlined: Option<(ty::Instance<'tcx>, Span)>,
+
+    /// Nearest (transitive) parent scope (if any) which is inlined.
+    /// This is an optimization over walking up `parent_scope`
+    /// until a scope with `inlined: Some(...)` is found.
+    pub inlined_parent_scope: Option<SourceScope>,
 
     /// Crate-local information for this source scope, that can't (and
     /// needn't) be tracked across crates.
@@ -1954,10 +1940,10 @@ impl<'tcx> Operand<'tcx> {
                 .layout_of(param_env_and_ty)
                 .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
                 .size;
-            let scalar_size = abi::Size::from_bytes(match val {
-                Scalar::Raw { size, .. } => size,
+            let scalar_size = match val {
+                Scalar::Int(int) => int.size(),
                 _ => panic!("Invalid scalar type {:?}", val),
-            });
+            };
             scalar_size == type_size
         });
         Operand::Constant(box Constant {
@@ -2491,7 +2477,7 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
         UserTypeProjection { base, projs }
     }
 
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<()> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }

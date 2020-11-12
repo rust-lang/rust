@@ -1,0 +1,16 @@
+error: usage of `FromIterator::from_iter`
+  --> $DIR/from_iter_instead_of_collect.rs:8:5
+   |
+LL |     Vec::from_iter(iter_expr);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `iter_expr.collect()`
+   |
+   = note: `-D clippy::from-iter-instead-of-collect` implied by `-D warnings`
+
+error: usage of `FromIterator::from_iter`
+  --> $DIR/from_iter_instead_of_collect.rs:10:5
+   |
+LL |     HashMap::<usize, &i8>::from_iter(vec![5, 5, 5, 5].iter().enumerate());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `.collect()` instead of `::from_iter()`: `vec![5, 5, 5, 5].iter().enumerate().collect()`
+
+error: aborting due to 2 previous errors
+

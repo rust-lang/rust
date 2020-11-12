@@ -10,9 +10,8 @@
 
 use std::env;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use build_helper::{output, t};
 
@@ -503,6 +502,19 @@ impl Step for Rustc {
                     }
                 }
             }
+
+            // Copy over the codegen backends
+            let backends_src = builder.sysroot_codegen_backends(compiler);
+            let backends_rel = backends_src
+                .strip_prefix(&src)
+                .unwrap()
+                .strip_prefix(builder.sysroot_libdir_relative(compiler))
+                .unwrap();
+            // Don't use custom libdir here because ^lib/ will be resolved again with installer
+            let backends_dst = image.join("lib").join(&backends_rel);
+
+            t!(fs::create_dir_all(&backends_dst));
+            builder.cp_r(&backends_src, &backends_dst);
 
             // Copy libLLVM.so to the lib dir as well, if needed. While not
             // technically needed by rustc itself it's needed by lots of other
@@ -1028,6 +1040,30 @@ impl Step for Src {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }
 
+        // libtest includes std and everything else, so vendoring it
+        // creates exactly what's needed for `cargo -Zbuild-std` or any
+        // other analysis of the stdlib's source. Cargo also needs help
+        // finding the lock, so we copy it to libtest temporarily.
+        //
+        // Note that this requires std to only have one version of each
+        // crate. e.g. two versions of getopts won't be patchable.
+        let dst_libtest = dst_src.join("library/test");
+        let dst_vendor = dst_src.join("vendor");
+        let root_lock = dst_src.join("Cargo.lock");
+        let temp_lock = dst_libtest.join("Cargo.lock");
+
+        // `cargo vendor` will delete everything from the lockfile that
+        // isn't used by libtest, so we need to not use any links!
+        builder.really_copy(&root_lock, &temp_lock);
+
+        let mut cmd = Command::new(&builder.initial_cargo);
+        cmd.arg("vendor").arg(dst_vendor).current_dir(&dst_libtest);
+        builder.info("Dist src");
+        let _time = timeit(builder);
+        builder.run(&mut cmd);
+
+        builder.remove(&temp_lock);
+
         // Create source tarball in rust-installer format
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -1044,8 +1080,6 @@ impl Step for Src {
             .arg("--component-name=rust-src")
             .arg("--legacy-manifest-dirs=rustlib,cargo");
 
-        builder.info("Dist src");
-        let _time = timeit(builder);
         builder.run(&mut cmd);
 
         builder.remove_dir(&image);
@@ -1115,6 +1149,7 @@ impl Step for PlainSourceTarball {
             cmd.arg("vendor")
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
+                .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
                 .current_dir(&plain_dst_src);
             builder.run(&mut cmd);
         }
@@ -2306,61 +2341,6 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
         cmd.env("CFG_PLATFORM", "x64");
     } else {
         cmd.env("CFG_PLATFORM", "x86");
-    }
-}
-
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct HashSign;
-
-impl Step for HashSign {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("hash-and-sign")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(HashSign);
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        // This gets called by `promote-release`
-        // (https://github.com/rust-lang/rust-central-station/tree/master/promote-release).
-        let mut cmd = builder.tool_cmd(Tool::BuildManifest);
-        if builder.config.dry_run {
-            return;
-        }
-        let sign = builder.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
-        });
-        let addr = builder.config.dist_upload_addr.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
-        });
-        let pass = if env::var("BUILD_MANIFEST_DISABLE_SIGNING").is_err() {
-            let file = builder.config.dist_gpg_password_file.as_ref().unwrap_or_else(|| {
-                panic!("\n\nfailed to specify `dist.gpg-password-file` in `config.toml`\n\n")
-            });
-            t!(fs::read_to_string(&file))
-        } else {
-            String::new()
-        };
-
-        let today = output(Command::new("date").arg("+%Y-%m-%d"));
-
-        cmd.arg(sign);
-        cmd.arg(distdir(builder));
-        cmd.arg(today.trim());
-        cmd.arg(addr);
-        cmd.arg(&builder.config.channel);
-        cmd.env("BUILD_MANIFEST_LEGACY", "1");
-
-        builder.create_dir(&distdir(builder));
-
-        let mut child = t!(cmd.stdin(Stdio::piped()).spawn());
-        t!(child.stdin.take().unwrap().write_all(pass.as_bytes()));
-        let status = t!(child.wait());
-        assert!(status.success());
     }
 }
 

@@ -28,11 +28,14 @@ impl Mutex {
 
     pub unsafe fn lock(&self) {
         while !self.try_lock() {
-            let val = wasm32::memory_atomic_wait32(
-                self.ptr(),
-                1,  // we expect our mutex is locked
-                -1, // wait infinitely
-            );
+            // SAFETY: the caller must uphold the safety contract for `memory_atomic_wait32`.
+            let val = unsafe {
+                wasm32::memory_atomic_wait32(
+                    self.ptr(),
+                    1,  // we expect our mutex is locked
+                    -1, // wait infinitely
+                )
+            };
             // we should have either woke up (0) or got a not-equal due to a
             // race (1). We should never time out (2)
             debug_assert!(val == 0 || val == 1);
@@ -93,19 +96,20 @@ impl ReentrantMutex {
     pub unsafe fn lock(&self) {
         let me = thread::my_id();
         while let Err(owner) = self._try_lock(me) {
-            let val = wasm32::memory_atomic_wait32(self.ptr(), owner as i32, -1);
+            // SAFETY: the caller must gurantee that `self.ptr()` and `owner` are valid i32.
+            let val = unsafe { wasm32::memory_atomic_wait32(self.ptr(), owner as i32, -1) };
             debug_assert!(val == 0 || val == 1);
         }
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        self._try_lock(thread::my_id()).is_ok()
+        unsafe { self._try_lock(thread::my_id()).is_ok() }
     }
 
     #[inline]
     unsafe fn _try_lock(&self, id: u32) -> Result<(), u32> {
-        let id = id.checked_add(1).unwrap(); // make sure `id` isn't 0
+        let id = id.checked_add(1).unwrap();
         match self.owner.compare_exchange(0, id, SeqCst, SeqCst) {
             // we transitioned from unlocked to locked
             Ok(_) => {
@@ -132,7 +136,10 @@ impl ReentrantMutex {
         match *self.recursions.get() {
             0 => {
                 self.owner.swap(0, SeqCst);
-                wasm32::memory_atomic_notify(self.ptr() as *mut i32, 1); // wake up one waiter, if any
+                // SAFETY: the caller must gurantee that `self.ptr()` is valid i32.
+                unsafe {
+                    wasm32::atomic_notify(self.ptr() as *mut i32, 1);
+                } // wake up one waiter, if any
             }
             ref mut n => *n -= 1,
         }

@@ -1,0 +1,62 @@
+error[E0412]: cannot find type `PhantomData` in this scope
+  --> $DIR/issue-78372.rs:2:23
+   |
+LL | struct Smaht<T, MISC>(PhantomData);
+   |                       ^^^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL | use std::marker::PhantomData;
+   |
+
+error[E0412]: cannot find type `U` in this scope
+  --> $DIR/issue-78372.rs:3:31
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |      -                        ^ help: a type parameter with a similar name exists: `T`
+   |      |
+   |      similarly named type parameter `T` defined here
+
+error[E0412]: cannot find type `MISC` in this scope
+  --> $DIR/issue-78372.rs:3:34
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |       -                          ^^^^ not found in this scope
+   |       |
+   |       help: you might be missing a type parameter: `, MISC`
+
+error[E0658]: use of unstable library feature 'dispatch_from_dyn'
+  --> $DIR/issue-78372.rs:1:5
+   |
+LL | use std::ops::DispatchFromDyn;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'dispatch_from_dyn'
+  --> $DIR/issue-78372.rs:3:9
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
+
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+  --> $DIR/issue-78372.rs:3:1
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Smaht<[type error], [type error]>`)
+  --> $DIR/issue-78372.rs:3:6
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Smaht<[type error], [type error]>`)
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
+   = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0210, E0378, E0412, E0658.
+For more information about an error, try `rustc --explain E0210`.

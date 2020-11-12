@@ -5,7 +5,7 @@ LL |     fn baz(_: Self::Target) where Self: Deref {}
    |            ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `<Self as Deref>::Target`
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized fn params are gated as an unstable feature
 help: consider further restricting the associated type
    |
 LL |     fn baz(_: Self::Target) where Self: Deref, <Self as Deref>::Target: Sized {}
@@ -22,7 +22,7 @@ LL | pub fn f(_: dyn ToString) {}
    |          ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn ToString + 'static)`
-   = help: unsized locals are gated as an unstable feature
+   = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | pub fn f(_: &dyn ToString) {}

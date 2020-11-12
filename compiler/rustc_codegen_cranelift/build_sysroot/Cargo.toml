@@ -1,0 +1,26 @@
+[package]
+authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
+name = "sysroot"
+version = "0.0.0"
+
+[dependencies]
+core = { path = "./sysroot_src/library/core" }
+compiler_builtins = "0.1"
+alloc = { path = "./sysroot_src/library/alloc" }
+std = { path = "./sysroot_src/library/std", features = ["panic_unwind", "backtrace"] }
+test = { path = "./sysroot_src/library/test" }
+
+alloc_system = { path = "./alloc_system" }
+
+[patch.crates-io]
+rustc-std-workspace-core = { path = "./sysroot_src/library/rustc-std-workspace-core" }
+rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-alloc" }
+rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-std" }
+
+[profile.dev]
+lto = "off"
+
+[profile.release]
+debug = true
+incremental = true
+lto = "off"

@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `=`
+  --> $DIR/default_function_param.rs:3:26
+   |
+LL | fn foo<const SIZE: usize = 5>() {}
+   |                          ^ expected one of 7 possible tokens
+
+error: aborting due to previous error
+

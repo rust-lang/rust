@@ -1,10 +1,10 @@
 use crate::snippet::Style;
-use crate::Applicability;
 use crate::CodeSuggestion;
 use crate::Level;
 use crate::Substitution;
 use crate::SubstitutionPart;
 use crate::SuggestionStyle;
+use rustc_lint_defs::Applicability;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -27,7 +27,7 @@ pub struct Diagnostic {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticId {
     Error(String),
-    Lint(String),
+    Lint { name: String, has_future_breakage: bool },
 }
 
 /// For example a note attached to an error.
@@ -107,7 +107,14 @@ impl Diagnostic {
         match self.level {
             Level::Bug | Level::Fatal | Level::Error | Level::FailureNote => true,
 
-            Level::Warning | Level::Note | Level::Help | Level::Cancelled => false,
+            Level::Warning | Level::Note | Level::Help | Level::Cancelled | Level::Allow => false,
+        }
+    }
+
+    pub fn has_future_breakage(&self) -> bool {
+        match self.code {
+            Some(DiagnosticId::Lint { has_future_breakage, .. }) => has_future_breakage,
+            _ => false,
         }
     }
 

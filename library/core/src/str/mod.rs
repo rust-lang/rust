@@ -219,7 +219,8 @@ impl str {
     #[rustc_const_stable(feature = "str_as_bytes", since = "1.32.0")]
     #[inline(always)]
     #[allow(unused_attributes)]
-    #[allow_internal_unstable(const_fn_transmute)]
+    #[cfg_attr(not(bootstrap), rustc_allow_const_fn_unstable(const_fn_transmute))]
+    #[cfg_attr(bootstrap, allow_internal_unstable(const_fn_transmute))]
     pub const fn as_bytes(&self) -> &[u8] {
         // SAFETY: const sound because we transmute two types with the same layout
         unsafe { mem::transmute(self) }
@@ -841,7 +842,9 @@ impl str {
     /// Lines are ended with either a newline (`\n`) or a carriage return with
     /// a line feed (`\r\n`).
     ///
-    /// The final line ending is optional.
+    /// The final line ending is optional. A string that ends with a final line
+    /// ending will return the same lines as an otherwise identical string
+    /// without a final line ending.
     ///
     /// # Examples
     ///
@@ -1711,6 +1714,7 @@ impl str {
     ///
     /// assert_eq!("Hello\tworld", s.trim());
     /// ```
+    #[inline]
     #[must_use = "this returns the trimmed string as a slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1748,6 +1752,7 @@ impl str {
     /// let s = "  עברית  ";
     /// assert!(Some('ע') == s.trim_start().chars().next());
     /// ```
+    #[inline]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
@@ -1785,6 +1790,7 @@ impl str {
     /// let s = "  עברית  ";
     /// assert!(Some('ת') == s.trim_end().chars().rev().next());
     /// ```
+    #[inline]
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
@@ -1823,6 +1829,7 @@ impl str {
     /// let s = "  עברית";
     /// assert!(Some('ע') == s.trim_left().chars().next());
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
         since = "1.33.0",
@@ -1864,6 +1871,7 @@ impl str {
     /// let s = "עברית  ";
     /// assert!(Some('ת') == s.trim_right().chars().rev().next());
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(
         since = "1.33.0",
@@ -1964,11 +1972,10 @@ impl str {
 
     /// Returns a string slice with the prefix removed.
     ///
-    /// If the string starts with the pattern `prefix`, `Some` is returned with the substring where
-    /// the prefix is removed. Unlike `trim_start_matches`, this method removes the prefix exactly
-    /// once.
+    /// If the string starts with the pattern `prefix`, returns substring after the prefix, wrapped
+    /// in `Some`.  Unlike `trim_start_matches`, this method removes the prefix exactly once.
     ///
-    /// If the string does not start with `prefix`, `None` is returned.
+    /// If the string does not start with `prefix`, returns `None`.
     ///
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
@@ -1992,11 +1999,10 @@ impl str {
 
     /// Returns a string slice with the suffix removed.
     ///
-    /// If the string ends with the pattern `suffix`, `Some` is returned with the substring where
-    /// the suffix is removed. Unlike `trim_end_matches`, this method removes the suffix exactly
-    /// once.
+    /// If the string ends with the pattern `suffix`, returns the substring before the suffix,
+    /// wrapped in `Some`.  Unlike `trim_end_matches`, this method removes the suffix exactly once.
     ///
-    /// If the string does not end with `suffix`, `None` is returned.
+    /// If the string does not end with `suffix`, returns `None`.
     ///
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
@@ -2261,6 +2267,7 @@ impl str {
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         // SAFETY: safe because we transmute two types with the same layout.
         let me = unsafe { self.as_bytes_mut() };
@@ -2287,6 +2294,7 @@ impl str {
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         // SAFETY: safe because we transmute two types with the same layout.
         let me = unsafe { self.as_bytes_mut() };
@@ -2424,6 +2432,7 @@ impl AsRef<[u8]> for str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for &str {
     /// Creates an empty str
+    #[inline]
     fn default() -> Self {
         ""
     }
@@ -2432,6 +2441,7 @@ impl Default for &str {
 #[stable(feature = "default_mut_str", since = "1.28.0")]
 impl Default for &mut str {
     /// Creates an empty mutable str
+    #[inline]
     fn default() -> Self {
         // SAFETY: The empty string is valid UTF-8.
         unsafe { from_utf8_unchecked_mut(&mut []) }

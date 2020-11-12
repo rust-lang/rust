@@ -1,12 +1,10 @@
-error: expected `;` or `{`, found `}`
+error: expected one of `->`, `;`, `where`, or `{`, found `}`
   --> $DIR/issue-6610.rs:1:20
    |
 LL | trait Foo { fn a() }
-   |           -        ^
-   |           |        |
-   |           |        expected `;` or `{`
-   |           |        the item list ends here
-   |           while parsing this item list starting here
+   |                -   ^ expected one of `->`, `;`, `where`, or `{`
+   |                |
+   |                while parsing this `fn`
 
 error: aborting due to previous error
 

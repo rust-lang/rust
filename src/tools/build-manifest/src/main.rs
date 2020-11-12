@@ -4,22 +4,17 @@
 //! via `x.py dist hash-and-sign`; the cmdline arguments are set up
 //! by rustbuild (in `src/bootstrap/dist.rs`).
 
+mod checksum;
 mod manifest;
 mod versions;
 
-use crate::manifest::{Component, FileHash, Manifest, Package, Rename, Target};
+use crate::checksum::Checksums;
+use crate::manifest::{Component, Manifest, Package, Rename, Target};
 use crate::versions::{PkgType, Versions};
-use rayon::prelude::*;
-use sha2::Digest;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
-use std::error::Error;
 use std::fs::{self, File};
-use std::io::{self, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::Mutex;
-use std::time::Instant;
 
 static HOSTS: &[&str] = &[
     "aarch64-apple-darwin",
@@ -160,6 +155,7 @@ static TARGETS: &[&str] = &[
 ];
 
 static DOCS_TARGETS: &[&str] = &[
+    "aarch64-unknown-linux-gnu",
     "i686-apple-darwin",
     "i686-pc-windows-gnu",
     "i686-pc-windows-msvc",
@@ -170,6 +166,16 @@ static DOCS_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-musl",
 ];
+
+static MSI_INSTALLERS: &[&str] = &[
+    "aarch64-pc-windows-msvc",
+    "i686-pc-windows-gnu",
+    "i686-pc-windows-msvc",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+];
+
+static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
@@ -186,34 +192,17 @@ macro_rules! t {
 
 struct Builder {
     versions: Versions,
+    checksums: Checksums,
+    shipped_files: HashSet<String>,
 
     input: PathBuf,
     output: PathBuf,
     s3_address: String,
     date: String,
-
-    legacy: bool,
-    legacy_gpg_passphrase: String,
 }
 
 fn main() {
-    // Up until Rust 1.48 the release process relied on build-manifest to create the SHA256
-    // checksums of released files and to sign the tarballs. That was moved over to promote-release
-    // in time for the branching of Rust 1.48, but the old release process still had to work the
-    // old way.
-    //
-    // When running build-manifest through the old ./x.py dist hash-and-sign the environment
-    // variable will be set, enabling the legacy behavior of generating the .sha256 files and
-    // signing the tarballs.
-    //
-    // Once the old release process is fully decommissioned, the environment variable, all the
-    // related code in this tool and ./x.py dist hash-and-sign can be removed.
-    let legacy = env::var_os("BUILD_MANIFEST_LEGACY").is_some();
-
-    let num_threads = if legacy {
-        // Avoid overloading the old server in legacy mode.
-        1
-    } else if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
+    let num_threads = if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
         num.to_str().unwrap().parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
     } else {
         num_cpus::get()
@@ -230,23 +219,15 @@ fn main() {
     let s3_address = args.next().unwrap();
     let channel = args.next().unwrap();
 
-    // Do not ask for a passphrase while manually testing
-    let mut passphrase = String::new();
-    if legacy {
-        // `x.py` passes the passphrase via stdin.
-        t!(io::stdin().read_to_string(&mut passphrase));
-    }
-
     Builder {
         versions: Versions::new(&channel, &input).unwrap(),
+        checksums: t!(Checksums::new()),
+        shipped_files: HashSet::new(),
 
         input,
         output,
         s3_address,
         date,
-
-        legacy,
-        legacy_gpg_passphrase: passphrase,
     }
     .build();
 }
@@ -254,21 +235,25 @@ fn main() {
 impl Builder {
     fn build(&mut self) {
         self.check_toolstate();
-        if self.legacy {
-            self.digest_and_sign();
-        }
         let manifest = self.build_manifest();
 
-        self.write_channel_files(self.versions.channel(), &manifest);
-        if self.versions.channel() == "stable" {
+        let channel = self.versions.channel().to_string();
+        self.write_channel_files(&channel, &manifest);
+        if channel == "stable" {
             // channel-rust-1.XX.YY.toml
-            let rust_version = self.versions.rustc_version();
-            self.write_channel_files(rust_version, &manifest);
+            let rust_version = self.versions.rustc_version().to_string();
+            self.write_channel_files(&rust_version, &manifest);
 
             // channel-rust-1.XX.toml
             let major_minor = rust_version.split('.').take(2).collect::<Vec<_>>().join(".");
             self.write_channel_files(&major_minor, &manifest);
         }
+
+        if let Some(path) = std::env::var_os("BUILD_MANIFEST_SHIPPED_FILES_PATH") {
+            self.write_shipped_files(&Path::new(&path));
+        }
+
+        t!(self.checksums.store_cache());
     }
 
     /// If a tool does not pass its tests, don't ship it.
@@ -292,29 +277,22 @@ impl Builder {
         }
     }
 
-    /// Hash all files, compute their signatures, and collect the hashes in `self.digests`.
-    fn digest_and_sign(&mut self) {
-        for file in t!(self.input.read_dir()).map(|e| t!(e).path()) {
-            file.file_name().unwrap().to_str().unwrap();
-            self.hash(&file);
-            self.sign(&file);
-        }
-    }
-
     fn build_manifest(&mut self) -> Manifest {
         let mut manifest = Manifest {
             manifest_version: "2".to_string(),
             date: self.date.to_string(),
             pkg: BTreeMap::new(),
+            artifacts: BTreeMap::new(),
             renames: BTreeMap::new(),
             profiles: BTreeMap::new(),
         };
         self.add_packages_to(&mut manifest);
+        self.add_artifacts_to(&mut manifest);
         self.add_profiles_to(&mut manifest);
         self.add_renames_to(&mut manifest);
         manifest.pkg.insert("rust".to_string(), self.rust_package(&manifest));
 
-        self.fill_missing_hashes(&mut manifest);
+        self.checksums.fill_missing_checksums(&mut manifest);
 
         manifest
     }
@@ -336,6 +314,27 @@ impl Builder {
         package("rustfmt-preview", HOSTS);
         package("rust-analysis", TARGETS);
         package("llvm-tools-preview", TARGETS);
+    }
+
+    fn add_artifacts_to(&mut self, manifest: &mut Manifest) {
+        manifest.add_artifact("source-code", |artifact| {
+            let tarball = self.versions.tarball_name(&PkgType::Rustc, "src").unwrap();
+            artifact.add_tarball(self, "*", &tarball);
+        });
+
+        manifest.add_artifact("installer-msi", |artifact| {
+            for target in MSI_INSTALLERS {
+                let msi = self.versions.archive_name(&PkgType::Rust, target, "msi").unwrap();
+                artifact.add_file(self, target, &msi);
+            }
+        });
+
+        manifest.add_artifact("installer-pkg", |artifact| {
+            for target in PKG_INSTALLERS {
+                let pkg = self.versions.archive_name(&PkgType::Rust, target, "pkg").unwrap();
+                artifact.add_file(self, target, &pkg);
+            }
+        });
     }
 
     fn add_profiles_to(&mut self, manifest: &mut Manifest) {
@@ -543,87 +542,7 @@ impl Builder {
         format!("{}/{}/{}", self.s3_address, self.date, file_name)
     }
 
-    fn hash(&self, path: &Path) -> String {
-        let sha = t!(Command::new("shasum")
-            .arg("-a")
-            .arg("256")
-            .arg(path.file_name().unwrap())
-            .current_dir(path.parent().unwrap())
-            .output());
-        assert!(sha.status.success());
-
-        let filename = path.file_name().unwrap().to_str().unwrap();
-        let sha256 = self.output.join(format!("{}.sha256", filename));
-        t!(fs::write(&sha256, &sha.stdout));
-
-        let stdout = String::from_utf8_lossy(&sha.stdout);
-        stdout.split_whitespace().next().unwrap().to_string()
-    }
-
-    fn sign(&self, path: &Path) {
-        if !self.legacy {
-            return;
-        }
-
-        let filename = path.file_name().unwrap().to_str().unwrap();
-        let asc = self.output.join(format!("{}.asc", filename));
-        println!("signing: {:?}", path);
-        let mut cmd = Command::new("gpg");
-        cmd.arg("--pinentry-mode=loopback")
-            .arg("--no-tty")
-            .arg("--yes")
-            .arg("--batch")
-            .arg("--passphrase-fd")
-            .arg("0")
-            .arg("--personal-digest-preferences")
-            .arg("SHA512")
-            .arg("--armor")
-            .arg("--output")
-            .arg(&asc)
-            .arg("--detach-sign")
-            .arg(path)
-            .stdin(Stdio::piped());
-        let mut child = t!(cmd.spawn());
-        t!(child.stdin.take().unwrap().write_all(self.legacy_gpg_passphrase.as_bytes()));
-        assert!(t!(child.wait()).success());
-    }
-
-    fn fill_missing_hashes(&self, manifest: &mut Manifest) {
-        // First collect all files that need hashes
-        let mut need_hashes = HashSet::new();
-        crate::manifest::visit_file_hashes(manifest, |file_hash| {
-            if let FileHash::Missing(path) = file_hash {
-                need_hashes.insert(path.clone());
-            }
-        });
-
-        let collected = Mutex::new(HashMap::new());
-        let collection_start = Instant::now();
-        println!(
-            "collecting hashes for {} tarballs across {} threads",
-            need_hashes.len(),
-            rayon::current_num_threads().min(need_hashes.len()),
-        );
-        need_hashes.par_iter().for_each(|path| match fetch_hash(path) {
-            Ok(hash) => {
-                collected.lock().unwrap().insert(path, hash);
-            }
-            Err(err) => eprintln!("error while fetching the hash for {}: {}", path.display(), err),
-        });
-        let collected = collected.into_inner().unwrap();
-        println!("collected {} hashes in {:.2?}", collected.len(), collection_start.elapsed());
-
-        crate::manifest::visit_file_hashes(manifest, |file_hash| {
-            if let FileHash::Missing(path) = file_hash {
-                match collected.get(path) {
-                    Some(hash) => *file_hash = FileHash::Present(hash.clone()),
-                    None => panic!("missing hash for file {}", path.display()),
-                }
-            }
-        })
-    }
-
-    fn write_channel_files(&self, channel_name: &str, manifest: &Manifest) {
+    fn write_channel_files(&mut self, channel_name: &str, manifest: &Manifest) {
         self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
         self.write(&manifest.date, channel_name, "-date.txt");
         self.write(
@@ -633,19 +552,19 @@ impl Builder {
         );
     }
 
-    fn write(&self, contents: &str, channel_name: &str, suffix: &str) {
-        let dst = self.output.join(format!("channel-rust-{}{}", channel_name, suffix));
-        t!(fs::write(&dst, contents));
-        if self.legacy {
-            self.hash(&dst);
-            self.sign(&dst);
-        }
-    }
-}
+    fn write(&mut self, contents: &str, channel_name: &str, suffix: &str) {
+        let name = format!("channel-rust-{}{}", channel_name, suffix);
+        self.shipped_files.insert(name.clone());
 
-fn fetch_hash(path: &Path) -> Result<String, Box<dyn Error>> {
-    let mut file = BufReader::new(File::open(path)?);
-    let mut sha256 = sha2::Sha256::default();
-    std::io::copy(&mut file, &mut sha256)?;
-    Ok(hex::encode(sha256.finalize()))
+        let dst = self.output.join(name);
+        t!(fs::write(&dst, contents));
+    }
+
+    fn write_shipped_files(&self, path: &Path) {
+        let mut files = self.shipped_files.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        files.sort();
+        let content = format!("{}\n", files.join("\n"));
+
+        t!(std::fs::write(path, content.as_bytes()));
+    }
 }

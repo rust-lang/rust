@@ -41,10 +41,11 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
         debug_assert!(!attr.is_doc_comment());
 
         let ast::Attribute { kind, id: _, style, span } = attr;
-        if let ast::AttrKind::Normal(item) = kind {
+        if let ast::AttrKind::Normal(item, tokens) = kind {
             item.hash_stable(self, hasher);
             style.hash_stable(self, hasher);
             span.hash_stable(self, hasher);
+            tokens.as_ref().expect_none("Tokens should have been removed during lowering!");
         } else {
             unreachable!();
         }

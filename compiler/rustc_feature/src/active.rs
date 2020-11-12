@@ -210,6 +210,11 @@ declare_features! (
     /// it is not on path for eventual stabilization).
     (active, no_niche, "1.42.0", None, None),
 
+    /// Allows using `#[rustc_allow_const_fn_unstable]`.
+    /// This is an attribute on `const fn` for the same
+    /// purpose as `#[allow_internal_unstable]`.
+    (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
+
     // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
@@ -238,6 +243,7 @@ declare_features! (
     (active, rtm_target_feature, "1.35.0", Some(44839), None),
     (active, f16c_target_feature, "1.36.0", Some(44839), None),
     (active, riscv_target_feature, "1.45.0", Some(44839), None),
+    (active, ermsb_target_feature, "1.49.0", Some(44839), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates (target features)
@@ -601,6 +607,15 @@ declare_features! (
     /// Allow anonymous constants from an inline `const` block
     (active, inline_const, "1.49.0", Some(76001), None),
 
+    /// Allows unsized fn parameters.
+    (active, unsized_fn_params, "1.49.0", Some(48055), None),
+
+    /// Allows the use of destructuring assignments.
+    (active, destructuring_assignment, "1.49.0", Some(71126), None),
+
+    /// Enables `#[cfg(panic = "...")]` config key.
+    (active, cfg_panic, "1.49.0", Some(77443), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -623,6 +638,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::specialization,
     sym::inline_const,
     sym::repr128,
+    sym::unsized_locals,
 ];
 
 /// Some features are not allowed to be used together at the same time, if

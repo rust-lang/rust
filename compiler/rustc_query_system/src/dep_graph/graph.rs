@@ -292,10 +292,8 @@ impl<K: DepKind> DepGraph<K> {
                 );
 
                 data.colors.insert(prev_index, color);
-            } else {
-                if print_status {
-                    eprintln!("[task::new] {:?}", key);
-                }
+            } else if print_status {
+                eprintln!("[task::new] {:?}", key);
             }
 
             (result, dep_node_index)

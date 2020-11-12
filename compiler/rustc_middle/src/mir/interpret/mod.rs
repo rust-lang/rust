@@ -110,7 +110,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_target::abi::{Endian, Size};
+use rustc_target::abi::Endian;
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -588,39 +588,6 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
     };
     debug_assert!(source.len() == 0); // We should have consumed the source buffer.
     uint
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Methods to facilitate working with signed integers stored in a u128
-////////////////////////////////////////////////////////////////////////////////
-
-/// Truncates `value` to `size` bits and then sign-extend it to 128 bits
-/// (i.e., if it is negative, fill with 1's on the left).
-#[inline]
-pub fn sign_extend(value: u128, size: Size) -> u128 {
-    let size = size.bits();
-    if size == 0 {
-        // Truncated until nothing is left.
-        return 0;
-    }
-    // Sign-extend it.
-    let shift = 128 - size;
-    // Shift the unsigned value to the left, then shift back to the right as signed
-    // (essentially fills with FF on the left).
-    (((value << shift) as i128) >> shift) as u128
-}
-
-/// Truncates `value` to `size` bits.
-#[inline]
-pub fn truncate(value: u128, size: Size) -> u128 {
-    let size = size.bits();
-    if size == 0 {
-        // Truncated until nothing is left.
-        return 0;
-    }
-    let shift = 128 - size;
-    // Truncate (shift left to drop out leftover values, shift right to fill with zeroes).
-    (value << shift) >> shift
 }
 
 /// Computes the unsigned absolute value without wrapping or panicking.

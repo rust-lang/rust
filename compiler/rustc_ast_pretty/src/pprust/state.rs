@@ -156,24 +156,13 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
-        TokenTree::Token(token) => match token.kind {
-            token::Comma => false,
-            _ => true,
-        },
-        TokenTree::Delimited(_, DelimToken::Paren, _) => match prev {
-            TokenTree::Token(token) => match token.kind {
-                token::Ident(_, _) => false,
-                _ => true,
-            },
-            _ => true,
-        },
-        TokenTree::Delimited(_, DelimToken::Bracket, _) => match prev {
-            TokenTree::Token(token) => match token.kind {
-                token::Pound => false,
-                _ => true,
-            },
-            _ => true,
-        },
+        TokenTree::Token(token) => token.kind != token::Comma,
+        TokenTree::Delimited(_, DelimToken::Paren, _) => {
+            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
+        }
+        TokenTree::Delimited(_, DelimToken::Bracket, _) => {
+            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
+        }
         TokenTree::Delimited(..) => true,
     }
 }
@@ -437,7 +426,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
         self.maybe_print_comment(attr.span.lo());
         match attr.kind {
-            ast::AttrKind::Normal(ref item) => {
+            ast::AttrKind::Normal(ref item, _) => {
                 match attr.style {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
@@ -650,13 +639,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
         if !self.is_beginning_of_line() {
             self.break_offset(n, off)
-        } else {
-            if off != 0 && self.last_token().is_hardbreak_tok() {
-                // We do something pretty sketchy here: tuck the nonzero
-                // offset-adjustment we were going to deposit along with the
-                // break into the previous hardbreak.
-                self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
-            }
+        } else if off != 0 && self.last_token().is_hardbreak_tok() {
+            // We do something pretty sketchy here: tuck the nonzero
+            // offset-adjustment we were going to deposit along with the
+            // break into the previous hardbreak.
+            self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
         }
     }
 

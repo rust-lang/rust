@@ -1,32 +1,14 @@
-error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:11:19
-   |
-LL |     let a @ NC(b, c) = NC(C, C);
-   |         ----------^-   -------- move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait
-   |         |         |
-   |         |         value used here after move
-   |         value moved here
-
-error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:14:19
+error[E0382]: use of partially moved value
+  --> $DIR/copy-and-move-mixed.rs:14:9
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
-   |         ----------^^^^^^^^^^^^-   --------------- move occurs because value has type `NC<C, NC<C, C>>`, which does not implement the `Copy` trait
+   |         ^^^^^^^^^^------------^
    |         |         |
-   |         |         value used here after move
-   |         value moved here
-
-error[E0382]: use of moved value
-  --> $DIR/copy-and-move-mixed.rs:14:29
+   |         |         value partially moved here
+   |         value used here after partial move
    |
-LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
-   |                   ----------^-
-   |                   |         |
-   |                   |         value used here after move
-   |                   value moved here
-   |
-   = note: move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait
+   = note: partial move occurs because value has type `NC<C, C>`, which does not implement the `Copy` trait
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0382`.

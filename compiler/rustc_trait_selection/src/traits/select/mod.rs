@@ -279,7 +279,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// tracking is not enabled, just returns an empty vector.
     pub fn take_intercrate_ambiguity_causes(&mut self) -> Vec<IntercrateAmbiguityCause> {
         assert!(self.intercrate);
-        self.intercrate_ambiguity_causes.take().unwrap_or(vec![])
+        self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
     pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'tcx> {

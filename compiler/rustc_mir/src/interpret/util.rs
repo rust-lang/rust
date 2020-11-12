@@ -1,6 +1,7 @@
 use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use std::convert::TryInto;
+use std::ops::ControlFlow;
 
 /// Returns `true` if a used generic parameter requires substitution.
 crate fn ensure_monomorphic_enough<'tcx, T>(tcx: TyCtxt<'tcx>, ty: T) -> InterpResult<'tcx>
@@ -17,24 +18,24 @@ where
     };
 
     impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
             if !c.needs_subst() {
-                return false;
+                return ControlFlow::CONTINUE;
             }
 
             match c.val {
-                ty::ConstKind::Param(..) => true,
+                ty::ConstKind::Param(..) => ControlFlow::BREAK,
                 _ => c.super_visit_with(self),
             }
         }
 
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
             if !ty.needs_subst() {
-                return false;
+                return ControlFlow::CONTINUE;
             }
 
             match *ty.kind() {
-                ty::Param(_) => true,
+                ty::Param(_) => ControlFlow::BREAK,
                 ty::Closure(def_id, substs)
                 | ty::Generator(def_id, substs, ..)
                 | ty::FnDef(def_id, substs) => {
@@ -50,11 +51,7 @@ where
                         match (is_used, subst.needs_subst()) {
                             // Just in case there are closures or generators within this subst,
                             // recurse.
-                            (true, true) if subst.super_visit_with(self) => {
-                                // Only return when we find a parameter so the remaining substs
-                                // are not skipped.
-                                return true;
-                            }
+                            (true, true) => return subst.super_visit_with(self),
                             // Confirm that polymorphization replaced the parameter with
                             // `ty::Param`/`ty::ConstKind::Param`.
                             (false, true) if cfg!(debug_assertions) => match subst.unpack() {
@@ -69,7 +66,7 @@ where
                             _ => {}
                         }
                     }
-                    false
+                    ControlFlow::CONTINUE
                 }
                 _ => ty.super_visit_with(self),
             }
@@ -77,7 +74,7 @@ where
     }
 
     let mut vis = UsedParamsNeedSubstVisitor { tcx };
-    if ty.visit_with(&mut vis) {
+    if ty.visit_with(&mut vis).is_break() {
         throw_inval!(TooGeneric);
     } else {
         Ok(())

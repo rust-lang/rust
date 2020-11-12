@@ -1,6 +1,6 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet,
+    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet, snippet_opt,
     span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -10,6 +10,7 @@ use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, MatchSource, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for the use of `format!("string literal with no
@@ -91,7 +92,7 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
         if pats.len() == 1;
         then {
             let ty = cx.typeck_results().pat_ty(&pats[0]).peel_refs();
-            if *ty.kind() != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym!(string_type)) {
+            if *ty.kind() != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym::string_type) {
                 return None;
             }
             if let ExprKind::Lit(ref lit) = format_args.kind {
@@ -132,7 +133,11 @@ fn on_new_v1<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Strin
         then {
             // `format!("foo")` expansion contains `match () { () => [], }`
             if tup.is_empty() {
-                return Some(format!("{:?}.to_string()", s.as_str()));
+                if let Some(s_src) = snippet_opt(cx, lit.span) {
+                    // Simulate macro expansion, converting {{ and }} to { and }.
+                    let s_expand = s_src.replace("{{", "{").replace("}}", "}");
+                    return Some(format!("{}.to_string()", s_expand))
+                }
             } else if s.as_str().is_empty() {
                 return on_argumentv1_new(cx, &tup[0], arms);
             }
@@ -182,15 +187,15 @@ fn check_unformatted(expr: &Expr<'_>) -> bool {
         if exprs.len() == 1;
         // struct `core::fmt::rt::v1::Argument`
         if let ExprKind::Struct(_, ref fields, _) = exprs[0].kind;
-        if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym!(format));
+        if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym::format);
         // struct `core::fmt::rt::v1::FormatSpec`
         if let ExprKind::Struct(_, ref fields, _) = format_field.expr.kind;
-        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == sym!(precision));
+        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == sym::precision);
         if let ExprKind::Path(ref precision_path) = precision_field.expr.kind;
-        if last_path_segment(precision_path).ident.name == sym!(Implied);
-        if let Some(width_field) = fields.iter().find(|f| f.ident.name == sym!(width));
+        if last_path_segment(precision_path).ident.name == sym::Implied;
+        if let Some(width_field) = fields.iter().find(|f| f.ident.name == sym::width);
         if let ExprKind::Path(ref width_qpath) = width_field.expr.kind;
-        if last_path_segment(width_qpath).ident.name == sym!(Implied);
+        if last_path_segment(width_qpath).ident.name == sym::Implied;
         then {
             return true;
         }

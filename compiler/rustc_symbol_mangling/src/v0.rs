@@ -4,7 +4,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::mir::interpret::sign_extend;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
@@ -200,15 +199,9 @@ impl SymbolMangler<'tcx> {
 
         let lifetimes = regions
             .into_iter()
-            .map(|br| {
-                match br {
-                    ty::BrAnon(i) => {
-                        // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
-                        assert_ne!(i, 0);
-                        i - 1
-                    }
-                    _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
-                }
+            .map(|br| match br {
+                ty::BrAnon(i) => i,
+                _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
             })
             .max()
             .map_or(0, |max| max + 1);
@@ -327,10 +320,6 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
             ty::ReLateBound(debruijn, ty::BrAnon(i)) => {
-                // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
-                assert_ne!(i, 0);
-                let i = i - 1;
-
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + i;
 
@@ -537,7 +526,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 let param_env = ty::ParamEnv::reveal_all();
                 ct.try_eval_bits(self.tcx, param_env, ct.ty).and_then(|b| {
                     let sz = self.tcx.layout_of(param_env.and(ct.ty)).ok()?.size;
-                    let val = sign_extend(b, sz) as i128;
+                    let val = sz.sign_extend(b) as i128;
                     if val < 0 {
                         neg = true;
                     }

@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, ExprKind, Node};
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{sign_extend, truncate};
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
@@ -18,6 +17,7 @@ use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
 use std::cmp;
+use std::ops::ControlFlow;
 use tracing::debug;
 
 declare_lint! {
@@ -217,11 +217,11 @@ fn report_bin_hex_error(
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
-                let actually = sign_extend(val, size) as i128;
+                let actually = size.sign_extend(val) as i128;
                 (t.name_str(), actually.to_string())
             }
             attr::IntType::UnsignedInt(t) => {
-                let actually = truncate(val, size);
+                let actually = size.truncate(val);
                 (t.name_str(), actually.to_string())
             }
         };
@@ -439,7 +439,7 @@ fn lint_literal<'tcx>(
                 cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
                     lint.build(&format!("literal out of range for `{}`", t.name_str()))
                         .note(&format!(
-                            "the literal `{}` does not fit into the type `{}` and will be converted to `std::{}::INFINITY`",
+                            "the literal `{}` does not fit into the type `{}` and will be converted to `{}::INFINITY`",
                             cx.sess()
                                 .source_map()
                                 .span_to_snippet(lit.span)
@@ -544,15 +544,15 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
         }
 
         fn is_comparison(binop: hir::BinOp) -> bool {
-            match binop.node {
+            matches!(
+                binop.node,
                 hir::BinOpKind::Eq
-                | hir::BinOpKind::Lt
-                | hir::BinOpKind::Le
-                | hir::BinOpKind::Ne
-                | hir::BinOpKind::Ge
-                | hir::BinOpKind::Gt => true,
-                _ => false,
-            }
+                    | hir::BinOpKind::Lt
+                    | hir::BinOpKind::Le
+                    | hir::BinOpKind::Ne
+                    | hir::BinOpKind::Ge
+                    | hir::BinOpKind::Gt
+            )
         }
     }
 }
@@ -1135,11 +1135,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         };
 
         impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
                 match ty.kind() {
                     ty::Opaque(..) => {
                         self.ty = Some(ty);
-                        true
+                        ControlFlow::BREAK
                     }
                     // Consider opaque types within projections FFI-safe if they do not normalize
                     // to more opaque types.
@@ -1148,7 +1148,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         // If `ty` is a opaque type directly then `super_visit_with` won't invoke
                         // this function again.
-                        if ty.has_opaque_types() { self.visit_ty(ty) } else { false }
+                        if ty.has_opaque_types() {
+                            self.visit_ty(ty)
+                        } else {
+                            ControlFlow::CONTINUE
+                        }
                     }
                     _ => ty.super_visit_with(self),
                 }
@@ -1233,15 +1237,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn is_internal_abi(&self, abi: SpecAbi) -> bool {
-        if let SpecAbi::Rust
-        | SpecAbi::RustCall
-        | SpecAbi::RustIntrinsic
-        | SpecAbi::PlatformIntrinsic = abi
-        {
-            true
-        } else {
-            false
-        }
+        matches!(
+            abi,
+            SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustIntrinsic | SpecAbi::PlatformIntrinsic
+        )
     }
 }
 

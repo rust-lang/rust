@@ -1,4 +1,5 @@
-use super::node::{self, marker, ForceResult, Handle, NodeRef};
+use super::map::MIN_LEN;
+use super::node::{marker, ForceResult, Handle, NodeRef};
 use super::unwrap_unchecked;
 use core::mem;
 use core::ptr;
@@ -40,7 +41,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
         // Handle underflow
         let mut cur_node = unsafe { ptr::read(&pos).into_node().forget_type() };
         let mut at_leaf = true;
-        while cur_node.len() < node::MIN_LEN {
+        while cur_node.len() < MIN_LEN {
             match handle_underfull_node(cur_node) {
                 UnderflowResult::AtRoot => break,
                 UnderflowResult::Merged(edge, merged_with_left, offset) => {

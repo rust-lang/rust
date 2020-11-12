@@ -15,7 +15,6 @@ use crate::{
 };
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 
-use rustc_ast::token::{self, Token};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use rustc_ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
@@ -95,6 +94,27 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// Walks up the tree of definitions starting at `def_id`,
+    /// stopping at the first `DefKind::Mod` encountered
+    fn nearest_mod_parent(&mut self, def_id: DefId) -> Module<'a> {
+        let def_key = self.cstore().def_key(def_id);
+
+        let mut parent_id = DefId {
+            krate: def_id.krate,
+            index: def_key.parent.expect("failed to get parent for module"),
+        };
+        // The immediate parent may not be a module
+        // (e.g. `const _: () =  { #[path = "foo.rs"] mod foo; };`)
+        // Walk up the tree until we hit a module or the crate root.
+        while parent_id.index != CRATE_DEF_INDEX
+            && self.cstore().def_kind(parent_id) != DefKind::Mod
+        {
+            let parent_def_key = self.cstore().def_key(parent_id);
+            parent_id.index = parent_def_key.parent.expect("failed to get parent for module");
+        }
+        self.get_module(parent_id)
+    }
+
     crate fn get_module(&mut self, def_id: DefId) -> Module<'a> {
         // If this is a local module, it will be in `module_map`, no need to recalculate it.
         if let Some(def_id) = def_id.as_local() {
@@ -116,11 +136,8 @@ impl<'a> Resolver<'a> {
                 .data
                 .get_opt_name()
                 .expect("given a DefId that wasn't a module");
-            // This unwrap is safe since we know this isn't the root
-            let parent = Some(self.get_module(DefId {
-                index: def_key.parent.expect("failed to get parent for module"),
-                ..def_id
-            }));
+
+            let parent = Some(self.nearest_mod_parent(def_id));
             (name, parent)
         };
 
@@ -145,8 +162,24 @@ impl<'a> Resolver<'a> {
         if let Some(id) = def_id.as_local() {
             self.local_macro_def_scopes[&id]
         } else {
-            let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
-            self.get_module(module_def_id)
+            // This is not entirely correct - a `macro_rules!` macro may occur
+            // inside a 'block' module:
+            //
+            // ```rust
+            // const _: () = {
+            // #[macro_export]
+            // macro_rules! my_macro {
+            //     () => {};
+            // }
+            // `
+            // We don't record this information for external crates, so
+            // the module we compute here will be the closest 'mod' item
+            // (not necesssarily the actual parent of the `macro_rules!`
+            // macro). `macro_rules!` macros can't use def-site hygiene,
+            // so this hopefully won't be a problem.
+            //
+            // See https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508
+            self.nearest_mod_parent(def_id)
         }
     }
 
@@ -310,10 +343,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
         // If any statements are items, we need to create an anonymous module
-        block.stmts.iter().any(|statement| match statement.kind {
-            StmtKind::Item(_) | StmtKind::MacCall(_) => true,
-            _ => false,
-        })
+        block
+            .stmts
+            .iter()
+            .any(|statement| matches!(statement.kind, StmtKind::Item(_) | StmtKind::MacCall(_)))
     }
 
     // Add an import to the current module.
@@ -1359,16 +1392,6 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         }
 
         visit::walk_assoc_item(self, item, ctxt);
-    }
-
-    fn visit_token(&mut self, t: Token) {
-        if let token::Interpolated(nt) = t.kind {
-            if let token::NtExpr(ref expr) = *nt {
-                if let ast::ExprKind::MacCall(..) = expr.kind {
-                    self.visit_invoc(expr.id);
-                }
-            }
-        }
     }
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {

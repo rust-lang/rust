@@ -62,9 +62,9 @@ macro_rules! CloneTypeFoldableImpls {
                 fn super_visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
                     &self,
                     _: &mut F)
-                    -> bool
+                    -> ::std::ops::ControlFlow<()>
                 {
-                    false
+                    ::std::ops::ControlFlow::CONTINUE
                 }
             }
         )+
@@ -105,7 +105,7 @@ macro_rules! EnumTypeFoldableImpl {
             fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
                 &self,
                 visitor: &mut V,
-            ) -> bool {
+            ) -> ::std::ops::ControlFlow<()> {
                 EnumTypeFoldableImpl!(@VisitVariants(self, visitor) input($($variants)*) output())
             }
         }
@@ -179,9 +179,10 @@ macro_rules! EnumTypeFoldableImpl {
                 input($($input)*)
                 output(
                     $variant ( $($variant_arg),* ) => {
-                        false $(|| $crate::ty::fold::TypeFoldable::visit_with(
+                        $($crate::ty::fold::TypeFoldable::visit_with(
                             $variant_arg, $visitor
-                        ))*
+                        )?;)*
+                        ::std::ops::ControlFlow::CONTINUE
                     }
                     $($output)*
                 )
@@ -196,9 +197,10 @@ macro_rules! EnumTypeFoldableImpl {
                 input($($input)*)
                 output(
                     $variant { $($variant_arg),* } => {
-                        false $(|| $crate::ty::fold::TypeFoldable::visit_with(
+                        $($crate::ty::fold::TypeFoldable::visit_with(
                             $variant_arg, $visitor
-                        ))*
+                        )?;)*
+                        ::std::ops::ControlFlow::CONTINUE
                     }
                     $($output)*
                 )
@@ -212,7 +214,7 @@ macro_rules! EnumTypeFoldableImpl {
             @VisitVariants($this, $visitor)
                 input($($input)*)
                 output(
-                    $variant => { false }
+                    $variant => { ::std::ops::ControlFlow::CONTINUE }
                     $($output)*
                 )
         )

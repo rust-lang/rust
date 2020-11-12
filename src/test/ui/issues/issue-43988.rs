@@ -13,18 +13,17 @@ fn main() {
 
     #[repr(nothing)]
     let _x = 0;
-    //~^^ ERROR attribute should not be applied to a statement
+    //~^^ ERROR attribute should be applied to a struct, enum, or union
 
     #[repr(something_not_real)]
     loop {
         ()
     };
-    //~^^^^ ERROR attribute should not be applied to an expression
+    //~^^^^ ERROR attribute should be applied to a struct, enum, or union
 
     #[repr]
     let _y = "123";
-    //~^^ ERROR attribute should not be applied to a statement
-    //~| ERROR malformed `repr` attribute
+    //~^^ ERROR malformed `repr` attribute
 
     fn foo() {}
 
@@ -33,6 +32,5 @@ fn main() {
     //~^^ ERROR attribute should be applied to function or closure
 
     let _z = #[repr] 1;
-    //~^ ERROR attribute should not be applied to an expression
-    //~| ERROR malformed `repr` attribute
+    //~^ ERROR malformed `repr` attribute
 }

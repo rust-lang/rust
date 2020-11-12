@@ -8,7 +8,7 @@ error[E0425]: cannot find function `clone` in this scope
   --> $DIR/issue-2356.rs:24:5
    |
 LL |     clone();
-   |     ^^^^^ help: try: `self.clone`
+   |     ^^^^^ help: you might have meant to call the method: `self.clone`
 
 error[E0425]: cannot find function `default` in this scope
   --> $DIR/issue-2356.rs:31:5
@@ -16,7 +16,7 @@ error[E0425]: cannot find function `default` in this scope
 LL |     default();
    |     ^^^^^^^
    |
-help: try
+help: you might have meant to call the associated function
    |
 LL |     Self::default();
    |     ^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:41:5
    |
 LL |     shave(4);
-   |     ^^^^^ help: try: `Self::shave`
+   |     ^^^^^ help: you might have meant to call the associated function: `Self::shave`
 
 error[E0425]: cannot find function `purr` in this scope
   --> $DIR/issue-2356.rs:43:5

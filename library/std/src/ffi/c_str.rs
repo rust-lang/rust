@@ -110,6 +110,7 @@ use crate::sys;
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "cstring_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
     // Invariant 1: the slice ends with a zero byte and has a length of at least one.
@@ -1265,7 +1266,7 @@ impl CStr {
     /// behavior when `ptr` is used inside the `unsafe` block:
     ///
     /// ```no_run
-    /// # #![allow(unused_must_use)]
+    /// # #![allow(unused_must_use)] #![cfg_attr(not(bootstrap), allow(temporary_cstring_as_ptr))]
     /// use std::ffi::CString;
     ///
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();

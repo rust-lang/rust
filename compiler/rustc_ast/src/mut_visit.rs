@@ -34,6 +34,13 @@ impl<A: Array> ExpectOne<A> for SmallVec<A> {
 }
 
 pub trait MutVisitor: Sized {
+    /// Mutable token visiting only exists for the `macro_rules` token marker and should not be
+    /// used otherwise. Token visitor would be entirely separate from the regular visitor if
+    /// the marker didn't have to visit AST fragments in nonterminal tokens.
+    fn token_visiting_enabled(&self) -> bool {
+        false
+    }
+
     // Methods in this trait have one of three forms:
     //
     //   fn visit_t(&mut self, t: &mut T);                      // common
@@ -203,11 +210,8 @@ pub trait MutVisitor: Sized {
         noop_visit_local(l, self);
     }
 
-    fn visit_mac(&mut self, _mac: &mut MacCall) {
-        panic!("visit_mac disabled by default");
-        // N.B., see note about macros above. If you really want a visitor that
-        // works on macros, use this definition in your trait impl:
-        //   mut_visit::noop_visit_mac(_mac, self);
+    fn visit_mac_call(&mut self, mac: &mut MacCall) {
+        noop_visit_mac(mac, self);
     }
 
     fn visit_macro_def(&mut self, def: &mut MacroDef) {
@@ -244,22 +248,6 @@ pub trait MutVisitor: Sized {
 
     fn flat_map_generic_param(&mut self, param: GenericParam) -> SmallVec<[GenericParam; 1]> {
         noop_flat_map_generic_param(param, self)
-    }
-
-    fn visit_tt(&mut self, tt: &mut TokenTree) {
-        noop_visit_tt(tt, self);
-    }
-
-    fn visit_tts(&mut self, tts: &mut TokenStream) {
-        noop_visit_tts(tts, self);
-    }
-
-    fn visit_token(&mut self, t: &mut Token) {
-        noop_visit_token(t, self);
-    }
-
-    fn visit_interpolated(&mut self, nt: &mut token::Nonterminal) {
-        noop_visit_interpolated(nt, self);
     }
 
     fn visit_param_bound(&mut self, tpb: &mut GenericBound) {
@@ -375,11 +363,30 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
         MacArgs::Empty => {}
         MacArgs::Delimited(dspan, _delim, tokens) => {
             visit_delim_span(dspan, vis);
-            vis.visit_tts(tokens);
+            visit_tts(tokens, vis);
         }
         MacArgs::Eq(eq_span, tokens) => {
             vis.visit_span(eq_span);
-            vis.visit_tts(tokens);
+            visit_tts(tokens, vis);
+            // The value in `#[key = VALUE]` must be visited as an expression for backward
+            // compatibility, so that macros can be expanded in that position.
+            if !vis.token_visiting_enabled() {
+                if let Some(TokenTree::Token(token)) = tokens.trees_ref().next() {
+                    if let token::Interpolated(..) = token.kind {
+                        // ^^ Do not `make_mut` unless we have to.
+                        match Lrc::make_mut(&mut tokens.0).get_mut(0) {
+                            Some((TokenTree::Token(token), _spacing)) => match &mut token.kind {
+                                token::Interpolated(nt) => match Lrc::make_mut(nt) {
+                                    token::NtExpr(expr) => vis.visit_expr(expr),
+                                    t => panic!("unexpected token in key-value attribute: {:?}", t),
+                                },
+                                t => panic!("unexpected token in key-value attribute: {:?}", t),
+                            },
+                            t => panic!("unexpected token in key-value attribute: {:?}", t),
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -451,7 +458,7 @@ pub fn noop_visit_ty_constraint<T: MutVisitor>(
 }
 
 pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
-    let Ty { id, kind, span, tokens: _ } = ty.deref_mut();
+    let Ty { id, kind, span, tokens } = ty.deref_mut();
     vis.visit_id(id);
     match kind {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never | TyKind::CVarArgs => {}
@@ -484,9 +491,10 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_id(id);
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
         }
-        TyKind::MacCall(mac) => vis.visit_mac(mac),
+        TyKind::MacCall(mac) => vis.visit_mac_call(mac),
     }
     vis.visit_span(span);
+    visit_lazy_tts(tokens, vis);
 }
 
 pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: &mut T) {
@@ -513,13 +521,14 @@ pub fn noop_visit_ident<T: MutVisitor>(Ident { name: _, span }: &mut Ident, vis:
     vis.visit_span(span);
 }
 
-pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens: _ }: &mut Path, vis: &mut T) {
+pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens }: &mut Path, vis: &mut T) {
     vis.visit_span(span);
     for PathSegment { ident, id, args } in segments {
         vis.visit_ident(ident);
         vis.visit_id(id);
         visit_opt(args, |args| vis.visit_generic_args(args));
     }
+    visit_lazy_tts(tokens, vis);
 }
 
 pub fn noop_visit_qself<T: MutVisitor>(qself: &mut Option<QSelf>, vis: &mut T) {
@@ -579,9 +588,11 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
-        AttrKind::Normal(AttrItem { path, args, tokens: _ }) => {
+        AttrKind::Normal(AttrItem { path, args, tokens }, attr_tokens) => {
             vis.visit_path(path);
             visit_mac_args(args, vis);
+            visit_lazy_tts(tokens, vis);
+            visit_lazy_tts(attr_tokens, vis);
         }
         AttrKind::DocComment(..) => {}
     }
@@ -626,28 +637,43 @@ pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> Smal
     smallvec![param]
 }
 
-pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
         TokenTree::Token(token) => {
-            vis.visit_token(token);
+            visit_token(token, vis);
         }
         TokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
             vis.visit_span(open);
             vis.visit_span(close);
-            vis.visit_tts(tts);
+            visit_tts(tts, vis);
         }
     }
 }
 
-pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
-    let tts = Lrc::make_mut(tts);
-    visit_vec(tts, |(tree, _is_joint)| vis.visit_tt(tree));
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T) {
+    if vis.token_visiting_enabled() && !tts.is_empty() {
+        let tts = Lrc::make_mut(tts);
+        visit_vec(tts, |(tree, _is_joint)| visit_tt(tree, vis));
+    }
 }
 
+pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis: &mut T) {
+    if vis.token_visiting_enabled() {
+        visit_opt(lazy_tts, |lazy_tts| {
+            let mut tts = lazy_tts.create_token_stream();
+            visit_tts(&mut tts, vis);
+            *lazy_tts = LazyTokenStream::new(tts);
+        })
+    }
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 // Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
 // In practice the ident part is not actually used by specific visitors right now,
 // but there's a test below checking that it works.
-pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
+pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
     let Token { kind, span } = t;
     match kind {
         token::Ident(name, _) | token::Lifetime(name) => {
@@ -659,13 +685,14 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
         }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
-            vis.visit_interpolated(&mut nt);
+            visit_interpolated(&mut nt, vis);
         }
         _ => {}
     }
     vis.visit_span(span);
 }
 
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 /// Applies the visitor to elements of interpolated nodes.
 //
 // N.B., this can occur only when applying a visitor to partially expanded
@@ -689,7 +716,7 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
 // contain multiple items, but decided against it when I looked at
 // `parse_item_or_view_item` and tried to figure out what I would do with
 // multiple items there....
-pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
+pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
         token::NtItem(item) => visit_clobber(item, |item| {
             // This is probably okay, because the only visitors likely to
@@ -709,12 +736,13 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {
-            let AttrItem { path, args, tokens: _ } = item.deref_mut();
+            let AttrItem { path, args, tokens } = item.deref_mut();
             vis.visit_path(path);
             visit_mac_args(args, vis);
+            visit_lazy_tts(tokens, vis);
         }
         token::NtPath(path) => vis.visit_path(path),
-        token::NtTT(tt) => vis.visit_tt(tt),
+        token::NtTT(tt) => visit_tt(tt, vis),
         token::NtVis(visib) => vis.visit_vis(visib),
     }
 }
@@ -871,10 +899,11 @@ pub fn noop_visit_mt<T: MutVisitor>(MutTy { ty, mutbl: _ }: &mut MutTy, vis: &mu
 }
 
 pub fn noop_visit_block<T: MutVisitor>(block: &mut P<Block>, vis: &mut T) {
-    let Block { id, stmts, rules: _, span, tokens: _ } = block.deref_mut();
+    let Block { id, stmts, rules: _, span, tokens } = block.deref_mut();
     vis.visit_id(id);
     stmts.flat_map_in_place(|stmt| vis.flat_map_stmt(stmt));
     vis.visit_span(span);
+    visit_lazy_tts(tokens, vis);
 }
 
 pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
@@ -930,7 +959,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
         }
-        ItemKind::MacCall(m) => vis.visit_mac(m),
+        ItemKind::MacCall(m) => vis.visit_mac_call(m),
         ItemKind::MacroDef(def) => vis.visit_macro_def(def),
     }
 }
@@ -939,7 +968,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
     mut item: P<AssocItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<AssocItem>; 1]> {
-    let Item { id, ident, vis, attrs, kind, span, tokens: _ } = item.deref_mut();
+    let Item { id, ident, vis, attrs, kind, span, tokens } = item.deref_mut();
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
@@ -959,9 +988,10 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
-        AssocItemKind::MacCall(mac) => visitor.visit_mac(mac),
+        AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
     }
     visitor.visit_span(span);
+    visit_lazy_tts(tokens, visitor);
     smallvec![item]
 }
 
@@ -1012,16 +1042,14 @@ pub fn noop_flat_map_item<T: MutVisitor>(
     mut item: P<Item>,
     visitor: &mut T,
 ) -> SmallVec<[P<Item>; 1]> {
-    let Item { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     visitor.visit_id(id);
     visitor.visit_item_kind(kind);
     visitor.visit_vis(vis);
     visitor.visit_span(span);
-
-    // FIXME: if `tokens` is modified with a call to `vis.visit_tts` it causes
-    //        an ICE during resolve... odd!
+    visit_lazy_tts(tokens, visitor);
 
     smallvec![item]
 }
@@ -1030,7 +1058,7 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
     mut item: P<ForeignItem>,
     visitor: &mut T,
 ) -> SmallVec<[P<ForeignItem>; 1]> {
-    let Item { ident, attrs, id, kind, vis, span, tokens: _ } = item.deref_mut();
+    let Item { ident, attrs, id, kind, vis, span, tokens } = item.deref_mut();
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
@@ -1050,14 +1078,15 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
-        ForeignItemKind::MacCall(mac) => visitor.visit_mac(mac),
+        ForeignItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
     }
     visitor.visit_span(span);
+    visit_lazy_tts(tokens, visitor);
     smallvec![item]
 }
 
 pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
-    let Pat { id, kind, span, tokens: _ } = pat.deref_mut();
+    let Pat { id, kind, span, tokens } = pat.deref_mut();
     vis.visit_id(id);
     match kind {
         PatKind::Wild | PatKind::Rest => {}
@@ -1089,9 +1118,10 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
             visit_vec(elems, |elem| vis.visit_pat(elem))
         }
         PatKind::Paren(inner) => vis.visit_pat(inner),
-        PatKind::MacCall(mac) => vis.visit_mac(mac),
+        PatKind::MacCall(mac) => vis.visit_mac_call(mac),
     }
     vis.visit_span(span);
+    visit_lazy_tts(tokens, vis);
 }
 
 pub fn noop_visit_anon_const<T: MutVisitor>(AnonConst { id, value }: &mut AnonConst, vis: &mut T) {
@@ -1100,7 +1130,7 @@ pub fn noop_visit_anon_const<T: MutVisitor>(AnonConst { id, value }: &mut AnonCo
 }
 
 pub fn noop_visit_expr<T: MutVisitor>(
-    Expr { kind, id, span, attrs, tokens: _ }: &mut Expr,
+    Expr { kind, id, span, attrs, tokens }: &mut Expr,
     vis: &mut T,
 ) {
     match kind {
@@ -1254,7 +1284,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             }
             visit_vec(inputs, |(_c, expr)| vis.visit_expr(expr));
         }
-        ExprKind::MacCall(mac) => vis.visit_mac(mac),
+        ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
         ExprKind::Struct(path, fields, expr) => {
             vis.visit_path(path);
             fields.flat_map_in_place(|field| vis.flat_map_field(field));
@@ -1279,6 +1309,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
     vis.visit_id(id);
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
+    visit_lazy_tts(tokens, vis);
 }
 
 pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Option<P<Expr>> {
@@ -1289,11 +1320,12 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
 }
 
 pub fn noop_flat_map_stmt<T: MutVisitor>(
-    Stmt { kind, mut span, mut id, tokens }: Stmt,
+    Stmt { kind, mut span, mut id, mut tokens }: Stmt,
     vis: &mut T,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
+    visit_lazy_tts(&mut tokens, vis);
     noop_flat_map_stmt_kind(kind, vis)
         .into_iter()
         .map(|kind| Stmt { id, kind, span, tokens: tokens.clone() })
@@ -1315,7 +1347,7 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
         StmtKind::Empty => smallvec![StmtKind::Empty],
         StmtKind::MacCall(mut mac) => {
             let MacCallStmt { mac: mac_, style: _, attrs } = mac.deref_mut();
-            vis.visit_mac(mac_);
+            vis.visit_mac_call(mac_);
             visit_thin_attrs(attrs, vis);
             smallvec![StmtKind::MacCall(mac)]
         }

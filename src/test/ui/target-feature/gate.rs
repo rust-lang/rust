@@ -26,6 +26,7 @@
 // gate-test-rtm_target_feature
 // gate-test-f16c_target_feature
 // gate-test-riscv_target_feature
+// gate-test-ermsb_target_feature
 
 #[target_feature(enable = "avx512bw")]
 //~^ ERROR: currently unstable

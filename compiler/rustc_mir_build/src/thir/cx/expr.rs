@@ -316,16 +316,14 @@ fn make_mirror_unadjusted<'a, 'tcx>(
         hir::ExprKind::Unary(hir::UnOp::UnNeg, ref arg) => {
             if cx.typeck_results().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
-            } else {
-                if let hir::ExprKind::Lit(ref lit) = arg.kind {
-                    ExprKind::Literal {
-                        literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
-                        user_ty: None,
-                        const_id: None,
-                    }
-                } else {
-                    ExprKind::Unary { op: UnOp::Neg, arg: arg.to_ref() }
+            } else if let hir::ExprKind::Lit(ref lit) = arg.kind {
+                ExprKind::Literal {
+                    literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
+                    user_ty: None,
+                    const_id: None,
                 }
+            } else {
+                ExprKind::Unary { op: UnOp::Neg, arg: arg.to_ref() }
             }
         }
 

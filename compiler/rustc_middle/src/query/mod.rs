@@ -1168,7 +1168,7 @@ rustc_queries! {
     }
 
     Other {
-        query foreign_modules(_: CrateNum) -> &'tcx [ForeignModule] {
+        query foreign_modules(_: CrateNum) -> Lrc<FxHashMap<DefId, ForeignModule>> {
             desc { "looking up the foreign modules of a linked crate" }
         }
 

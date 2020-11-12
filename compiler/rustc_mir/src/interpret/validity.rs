@@ -113,6 +113,17 @@ pub enum PathElem {
     DynDowncast,
 }
 
+/// Extra things to check for during validation of CTFE results.
+pub enum CtfeValidationMode {
+    /// Regular validation, nothing special happening.
+    Regular,
+    /// Validation of a `const`. `inner` says if this is an inner, indirect allocation (as opposed
+    /// to the top-level const allocation).
+    /// Being an inner allocation makes a difference because the top-level allocation of a `const`
+    /// is copied for each use, but the inner allocations are implicitly shared.
+    Const { inner: bool },
+}
+
 /// State for tracking recursive validation of references
 pub struct RefTracking<T, PATH = ()> {
     pub seen: FxHashSet<T>,
@@ -202,9 +213,9 @@ struct ValidityVisitor<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// starts must not be changed!  `visit_fields` and `visit_array` rely on
     /// this stack discipline.
     path: Vec<PathElem>,
-    ref_tracking_for_consts:
-        Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>>,
-    may_ref_to_static: bool,
+    ref_tracking: Option<&'rt mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>>,
+    /// `None` indicates this is not validating for CTFE (but for runtime).
+    ctfe_mode: Option<CtfeValidationMode>,
     ecx: &'rt InterpCx<'mir, 'tcx, M>,
 }
 
@@ -418,7 +429,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 { "a dangling {} (use-after-free)", kind },
         );
         // Recursive checking
-        if let Some(ref mut ref_tracking) = self.ref_tracking_for_consts {
+        if let Some(ref mut ref_tracking) = self.ref_tracking {
             if let Some(ptr) = ptr {
                 // not a ZST
                 // Skip validation entirely for some external statics
@@ -426,19 +437,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
                     assert!(!self.ecx.tcx.is_thread_local_static(did));
                     assert!(self.ecx.tcx.is_static(did));
-                    if self.may_ref_to_static {
-                        // We skip checking other statics. These statics must be sound by
-                        // themselves, and the only way to get broken statics here is by using
-                        // unsafe code.
-                        // The reasons we don't check other statics is twofold. For one, in all
-                        // sound cases, the static was already validated on its own, and second, we
-                        // trigger cycle errors if we try to compute the value of the other static
-                        // and that static refers back to us.
-                        // We might miss const-invalid data,
-                        // but things are still sound otherwise (in particular re: consts
-                        // referring to statics).
-                        return Ok(());
-                    } else {
+                    if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
                         // See const_eval::machine::MemoryExtra::can_access_statics for why
                         // this check is so important.
                         // This check is reachable when the const just referenced the static,
@@ -447,6 +446,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             { "a {} pointing to a static variable", kind }
                         );
                     }
+                    // We skip checking other statics. These statics must be sound by
+                    // themselves, and the only way to get broken statics here is by using
+                    // unsafe code.
+                    // The reasons we don't check other statics is twofold. For one, in all
+                    // sound cases, the static was already validated on its own, and second, we
+                    // trigger cycle errors if we try to compute the value of the other static
+                    // and that static refers back to us.
+                    // We might miss const-invalid data,
+                    // but things are still sound otherwise (in particular re: consts
+                    // referring to statics).
+                    return Ok(());
                 }
             }
             // Proceed recursively even for ZST, no reason to skip them!
@@ -504,7 +514,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let value = self.ecx.read_scalar(value)?;
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                if self.ref_tracking_for_consts.is_some() {
+                if self.ctfe_mode.is_some() {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     let is_bits = value.check_init().map_or(false, |v| v.is_bits());
                     if !is_bits {
@@ -532,7 +542,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 }
                 Ok(true)
             }
-            ty::Ref(..) => {
+            ty::Ref(_, ty, mutbl) => {
+                if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
+                    && *mutbl == hir::Mutability::Mut
+                {
+                    // A mutable reference inside a const? That does not seem right (except if it is
+                    // a ZST).
+                    let layout = self.ecx.layout_of(ty)?;
+                    if !layout.is_zst() {
+                        throw_validation_failure!(self.path, { "mutable reference in a `const`" });
+                    }
+                }
                 self.check_safe_pointer(value, "reference")?;
                 Ok(true)
             }
@@ -559,9 +579,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Nothing to check.
                 Ok(true)
             }
-            // The above should be all the (inhabited) primitive types. The rest is compound, we
+            // The above should be all the primitive types. The rest is compound, we
             // check them by visiting their fields/variants.
-            // (`Str` UTF-8 check happens in `visit_aggregate`, too.)
             ty::Adt(..)
             | ty::Tuple(..)
             | ty::Array(..)
@@ -723,6 +742,15 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Sanity check: `builtin_deref` does not know any pointers that are not primitive.
         assert!(op.layout.ty.builtin_deref(true).is_none());
 
+        // Special check preventing `UnsafeCell` in constants
+        if let Some(def) = op.layout.ty.ty_adt_def() {
+            if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true }))
+                && Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type()
+            {
+                throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
+            }
+        }
+
         // Recursively walk the value at its type.
         self.walk_value(op)?;
 
@@ -775,17 +803,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
-                if {
-                    // This optimization applies for types that can hold arbitrary bytes (such as
-                    // integer and floating point types) or for structs or tuples with no fields.
-                    // FIXME(wesleywiser) This logic could be extended further to arbitrary structs
-                    // or tuples made up of integer/floating point types or inhabited ZSTs with no
-                    // padding.
-                    match tys.kind() {
-                        ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
-                        _ => false,
-                    }
-                } =>
+                // This optimization applies for types that can hold arbitrary bytes (such as
+                // integer and floating point types) or for structs or tuples with no fields.
+                // FIXME(wesleywiser) This logic could be extended further to arbitrary structs
+                // or tuples made up of integer/floating point types or inhabited ZSTs with no
+                // padding.
+                if matches!(tys.kind(), ty::Int(..) | ty::Uint(..) | ty::Float(..))
+                =>
             {
                 // Optimized handling for arrays of integer/float type.
 
@@ -818,7 +842,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.ecx,
                     ptr,
                     size,
-                    /*allow_uninit_and_ptr*/ self.ref_tracking_for_consts.is_none(),
+                    /*allow_uninit_and_ptr*/ self.ctfe_mode.is_none(),
                 ) {
                     // In the happy case, we needn't check anything else.
                     Ok(()) => {}
@@ -853,7 +877,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             // of an array and not all of them, because there's only a single value of a specific
             // ZST type, so either validation fails for all elements or none.
             ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(tys)?.is_zst() => {
-                // Validate just the first element
+                // Validate just the first element (if any).
                 self.walk_aggregate(op, fields.take(1))?
             }
             _ => {
@@ -869,16 +893,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: OpTy<'tcx, M::PointerTag>,
         path: Vec<PathElem>,
-        ref_tracking_for_consts: Option<
-            &mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>,
-        >,
-        may_ref_to_static: bool,
+        ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>>,
+        ctfe_mode: Option<CtfeValidationMode>,
     ) -> InterpResult<'tcx> {
         trace!("validate_operand_internal: {:?}, {:?}", *op, op.layout.ty);
 
         // Construct a visitor
-        let mut visitor =
-            ValidityVisitor { path, ref_tracking_for_consts, may_ref_to_static, ecx: self };
+        let mut visitor = ValidityVisitor { path, ref_tracking, ctfe_mode, ecx: self };
 
         // Try to cast to ptr *once* instead of all the time.
         let op = self.force_op_ptr(op).unwrap_or(op);
@@ -906,16 +927,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// `ref_tracking` is used to record references that we encounter so that they
     /// can be checked recursively by an outside driving loop.
     ///
-    /// `may_ref_to_static` controls whether references are allowed to point to statics.
+    /// `constant` controls whether this must satisfy the rules for constants:
+    /// - no pointers to statics.
+    /// - no `UnsafeCell` or non-ZST `&mut`.
     #[inline(always)]
     pub fn const_validate_operand(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
         path: Vec<PathElem>,
         ref_tracking: &mut RefTracking<MPlaceTy<'tcx, M::PointerTag>, Vec<PathElem>>,
-        may_ref_to_static: bool,
+        ctfe_mode: CtfeValidationMode,
     ) -> InterpResult<'tcx> {
-        self.validate_operand_internal(op, path, Some(ref_tracking), may_ref_to_static)
+        self.validate_operand_internal(op, path, Some(ref_tracking), Some(ctfe_mode))
     }
 
     /// This function checks the data at `op` to be runtime-valid.
@@ -923,6 +946,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
     pub fn validate_operand(&self, op: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
-        self.validate_operand_internal(op, vec![], None, false)
+        self.validate_operand_internal(op, vec![], None, None)
     }
 }

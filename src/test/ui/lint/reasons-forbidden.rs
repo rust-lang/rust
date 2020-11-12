@@ -5,6 +5,9 @@
     //~^ NOTE `forbid` level set here
     //~| NOTE `forbid` level set here
     //~| NOTE `forbid` level set here
+    //~| NOTE `forbid` level set here
+    //~| NOTE `forbid` level set here
+    //~| NOTE `forbid` level set here
     reason = "our errors & omissions insurance policy doesn't cover unsafe Rust"
 )]
 
@@ -17,9 +20,18 @@ fn main() {
     //~^ ERROR allow(unsafe_code) overruled by outer forbid(unsafe_code)
     //~| ERROR allow(unsafe_code) overruled by outer forbid(unsafe_code)
     //~| ERROR allow(unsafe_code) overruled by outer forbid(unsafe_code)
+    //~| ERROR allow(unsafe_code) overruled by outer forbid(unsafe_code)
+    //~| ERROR allow(unsafe_code) overruled by outer forbid(unsafe_code)
+    //~| ERROR allow(unsafe_code) overruled by outer forbid(unsafe_code)
     //~| NOTE overruled by previous forbid
     //~| NOTE overruled by previous forbid
     //~| NOTE overruled by previous forbid
+    //~| NOTE overruled by previous forbid
+    //~| NOTE overruled by previous forbid
+    //~| NOTE overruled by previous forbid
+    //~| NOTE our errors & omissions insurance policy doesn't cover unsafe Rust
+    //~| NOTE our errors & omissions insurance policy doesn't cover unsafe Rust
+    //~| NOTE our errors & omissions insurance policy doesn't cover unsafe Rust
     //~| NOTE our errors & omissions insurance policy doesn't cover unsafe Rust
     //~| NOTE our errors & omissions insurance policy doesn't cover unsafe Rust
     //~| NOTE our errors & omissions insurance policy doesn't cover unsafe Rust

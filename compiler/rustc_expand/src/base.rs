@@ -793,7 +793,7 @@ impl SyntaxExtension {
             allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
             stability,
-            deprecation: attr::find_deprecation(&sess, attrs, span),
+            deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
             is_builtin,

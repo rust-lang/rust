@@ -18,7 +18,7 @@ fn main() {
     //~^ ERROR `..` required with struct marked as non-exhaustive
 
     let ts = TupleStruct(640, 480);
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `TupleStruct` [E0423]
+    //~^ ERROR cannot initialize a tuple struct which contains private fields [E0423]
 
     let ts_explicit = structs::TupleStruct(640, 480);
     //~^ ERROR tuple struct constructor `TupleStruct` is private [E0603]

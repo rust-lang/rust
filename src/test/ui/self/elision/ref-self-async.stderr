@@ -3,70 +3,77 @@ error[E0623]: lifetime mismatch
    |
 LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                       -----              ----
-   |                       |
-   |                       this parameter and the return type are declared with different lifetimes...
+   |                       |                  |
+   |                       |                  this `async fn` implicitly returns an `impl Future<Output = &u32>`
+   |                       this parameter and the returned future are declared with different lifetimes...
 LL |         f
-   |         ^ ...but data from `f` is returned here
+   |         ^ ...but data from `f` is held across an await point here
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:29:9
    |
 LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                             -----              ----
-   |                             |
-   |                             this parameter and the return type are declared with different lifetimes...
+   |                             |                  |
+   |                             |                  this `async fn` implicitly returns an `impl Future<Output = &u32>`
+   |                             this parameter and the returned future are declared with different lifetimes...
 LL |         f
-   |         ^ ...but data from `f` is returned here
+   |         ^ ...but data from `f` is held across an await point here
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:33:9
    |
 LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                     -----               ----
-   |                                     |
-   |                                     this parameter and the return type are declared with different lifetimes...
+   |                                     |                   |
+   |                                     |                   this `async fn` implicitly returns an `impl Future<Output = &u32>`
+   |                                     this parameter and the returned future are declared with different lifetimes...
 LL |         f
-   |         ^ ...but data from `f` is returned here
+   |         ^ ...but data from `f` is held across an await point here
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:37:9
    |
 LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                     -----               ----
-   |                                     |
-   |                                     this parameter and the return type are declared with different lifetimes...
+   |                                     |                   |
+   |                                     |                   this `async fn` implicitly returns an `impl Future<Output = &u32>`
+   |                                     this parameter and the returned future are declared with different lifetimes...
 LL |         f
-   |         ^ ...but data from `f` is returned here
+   |         ^ ...but data from `f` is held across an await point here
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:41:9
    |
 LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                             -----                ----
-   |                                             |
-   |                                             this parameter and the return type are declared with different lifetimes...
+   |                                             |                    |
+   |                                             |                    this `async fn` implicitly returns an `impl Future<Output = &u32>`
+   |                                             this parameter and the returned future are declared with different lifetimes...
 LL |         f
-   |         ^ ...but data from `f` is returned here
+   |         ^ ...but data from `f` is held across an await point here
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:45:9
    |
 LL |     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                             -----                ----
-   |                                             |
-   |                                             this parameter and the return type are declared with different lifetimes...
+   |                                             |                    |
+   |                                             |                    this `async fn` implicitly returns an `impl Future<Output = &u32>`
+   |                                             this parameter and the returned future are declared with different lifetimes...
 LL |         f
-   |         ^ ...but data from `f` is returned here
+   |         ^ ...but data from `f` is held across an await point here
 
 error[E0623]: lifetime mismatch
   --> $DIR/ref-self-async.rs:49:9
    |
 LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    |                                            -----                    ---
-   |                                            |
-   |                                            this parameter and the return type are declared with different lifetimes...
+   |                                            |                        |
+   |                                            |                        this `async fn` implicitly returns an `impl Future<Output = &u8>`
+   |                                            this parameter and the returned future are declared with different lifetimes...
 LL |         f
-   |         ^ ...but data from `f` is returned here
+   |         ^ ...but data from `f` is held across an await point here
 
 error: aborting due to 7 previous errors
 

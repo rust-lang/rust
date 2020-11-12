@@ -134,10 +134,7 @@ enum Stack<'a, T> {
 impl<'a, T> Stack<'a, T> {
     /// Returns whether a stack is empty.
     fn is_empty(&self) -> bool {
-        match *self {
-            Stack::Empty => true,
-            _ => false,
-        }
+        matches!(*self, Stack::Empty)
     }
 
     /// Returns a new stack with an element of top.

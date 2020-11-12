@@ -2,7 +2,6 @@
 
 use crate::ich::NodeIdHashingMode;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::mir::interpret::{sign_extend, truncate};
 use crate::ty::fold::TypeFolder;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
@@ -38,7 +37,7 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
                 let size = ty::tls::with(|tcx| Integer::from_attr(&tcx, SignedInt(ity)).size());
                 let x = self.val;
                 // sign extend the raw representation to be an i128
-                let x = sign_extend(x, size) as i128;
+                let x = size.sign_extend(x) as i128;
                 write!(fmt, "{}", x)
             }
             _ => write!(fmt, "{}", self.val),
@@ -47,7 +46,7 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
 }
 
 fn signed_min(size: Size) -> i128 {
-    sign_extend(1_u128 << (size.bits() - 1), size) as i128
+    size.sign_extend(1_u128 << (size.bits() - 1)) as i128
 }
 
 fn signed_max(size: Size) -> i128 {
@@ -77,14 +76,14 @@ impl<'tcx> Discr<'tcx> {
         let (val, oflo) = if signed {
             let min = signed_min(size);
             let max = signed_max(size);
-            let val = sign_extend(self.val, size) as i128;
+            let val = size.sign_extend(self.val) as i128;
             assert!(n < (i128::MAX as u128));
             let n = n as i128;
             let oflo = val > max - n;
             let val = if oflo { min + (n - (max - val) - 1) } else { val + n };
             // zero the upper bits
             let val = val as u128;
-            let val = truncate(val, size);
+            let val = size.truncate(val);
             (val, oflo)
         } else {
             let max = unsigned_max(size);
@@ -650,7 +649,7 @@ impl<'tcx> ty::TyS<'tcx> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
-                let val = if signed { truncate(signed_min(size) as u128, size) } else { 0 };
+                let val = if signed { size.truncate(signed_min(size) as u128) } else { 0 };
                 Some(val)
             }
             ty::Char => Some(0),

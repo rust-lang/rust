@@ -11,6 +11,9 @@ use crate::core::DocContext;
 mod stripper;
 pub use stripper::*;
 
+mod non_autolinks;
+pub use self::non_autolinks::CHECK_NON_AUTOLINKS;
+
 mod collapse_docs;
 pub use self::collapse_docs::COLLAPSE_DOCS;
 
@@ -90,6 +93,7 @@ pub const PASSES: &[Pass] = &[
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
     CHECK_INVALID_HTML_TAGS,
+    CHECK_NON_AUTOLINKS,
 ];
 
 /// The list of passes run by default.
@@ -105,6 +109,7 @@ pub const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
     ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
+    ConditionalPass::always(CHECK_NON_AUTOLINKS),
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.

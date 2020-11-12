@@ -303,6 +303,13 @@ impl TokenKind {
             _ => None,
         }
     }
+
+    pub fn should_end_const_arg(&self) -> bool {
+        match self {
+            Gt | Ge | BinOp(Shr) | BinOpEq(Shr) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Token {

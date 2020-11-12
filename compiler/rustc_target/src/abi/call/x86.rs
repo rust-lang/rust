@@ -41,10 +41,10 @@ where
             // http://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
             let t = cx.target_spec();
-            if t.options.abi_return_struct_as_int {
+            if t.abi_return_struct_as_int {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
-                if !t.options.is_like_msvc && is_single_fp_element(cx, fn_abi.ret.layout) {
+                if !t.is_like_msvc && is_single_fp_element(cx, fn_abi.ret.layout) {
                     match fn_abi.ret.layout.size.bytes() {
                         4 => fn_abi.ret.cast_to(Reg::f32()),
                         8 => fn_abi.ret.cast_to(Reg::f64()),

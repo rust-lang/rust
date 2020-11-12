@@ -1,3 +1,4 @@
+#!/bin/sh
 set -exuo pipefail
 
 CRATE=example

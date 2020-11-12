@@ -233,6 +233,8 @@ fn inside_const_generic_arguments() {
     // admit non-IDENT expressions in const generic arguments.
 
     if A::<
-        true && let 1 = 1 //~ ERROR expected one of `,` or `>`, found `&&`
+        true && let 1 = 1
+        //~^ ERROR `let` expressions are not supported here
+        //~| ERROR  expressions must be enclosed in braces
     >::O == 5 {}
 }

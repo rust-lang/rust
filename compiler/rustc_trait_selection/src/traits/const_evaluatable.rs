@@ -24,6 +24,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 use std::cmp;
+use std::ops::ControlFlow;
 
 /// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
@@ -85,8 +86,12 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                         } else if leaf.has_param_types_or_consts() {
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
+
+                        ControlFlow::CONTINUE
                     }
-                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => (),
+                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
+                        ControlFlow::CONTINUE
+                    }
                 });
 
                 match failure_kind {
@@ -194,12 +199,12 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 ///
 /// This is only able to represent a subset of `MIR`,
 /// and should not leak any information about desugarings.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct AbstractConst<'tcx> {
     // FIXME: Consider adding something like `IndexSlice`
     // and use this here.
-    inner: &'tcx [Node<'tcx>],
-    substs: SubstsRef<'tcx>,
+    pub inner: &'tcx [Node<'tcx>],
+    pub substs: SubstsRef<'tcx>,
 }
 
 impl AbstractConst<'tcx> {
@@ -209,7 +214,19 @@ impl AbstractConst<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         let inner = tcx.mir_abstract_const_opt_const_arg(def)?;
+        debug!("AbstractConst::new({:?}) = {:?}", def, inner);
         Ok(inner.map(|inner| AbstractConst { inner, substs }))
+    }
+
+    pub fn from_const(
+        tcx: TyCtxt<'tcx>,
+        ct: &ty::Const<'tcx>,
+    ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
+        match ct.val {
+            ty::ConstKind::Unevaluated(def, substs, None) => AbstractConst::new(tcx, def, substs),
+            ty::ConstKind::Error(_) => Err(ErrorReported),
+            _ => Ok(None),
+        }
     }
 
     #[inline]
@@ -223,11 +240,23 @@ impl AbstractConst<'tcx> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct WorkNode<'tcx> {
+    node: Node<'tcx>,
+    span: Span,
+    used: bool,
+}
+
 struct AbstractConstBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a mir::Body<'tcx>,
     /// The current WIP node tree.
-    nodes: IndexVec<NodeId, Node<'tcx>>,
+    ///
+    /// We require all nodes to be used in the final abstract const,
+    /// so we store this here. Note that we also consider nodes as used
+    /// if they are mentioned in an assert, so some used nodes are never
+    /// actually reachable by walking the [`AbstractConst`].
+    nodes: IndexVec<NodeId, WorkNode<'tcx>>,
     locals: IndexVec<mir::Local, NodeId>,
     /// We only allow field accesses if they access
     /// the result of a checked operation.
@@ -274,6 +303,27 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         Ok(Some(builder))
     }
 
+    fn add_node(&mut self, node: Node<'tcx>, span: Span) -> NodeId {
+        // Mark used nodes.
+        match node {
+            Node::Leaf(_) => (),
+            Node::Binop(_, lhs, rhs) => {
+                self.nodes[lhs].used = true;
+                self.nodes[rhs].used = true;
+            }
+            Node::UnaryOp(_, input) => {
+                self.nodes[input].used = true;
+            }
+            Node::FunctionCall(func, nodes) => {
+                self.nodes[func].used = true;
+                nodes.iter().for_each(|&n| self.nodes[n].used = true);
+            }
+        }
+
+        // Nodes start as unused.
+        self.nodes.push(WorkNode { node, span, used: false })
+    }
+
     fn place_to_local(
         &mut self,
         span: Span,
@@ -311,7 +361,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let local = self.place_to_local(span, p)?;
                 Ok(self.locals[local])
             }
-            mir::Operand::Constant(ct) => Ok(self.nodes.push(Node::Leaf(ct.literal))),
+            mir::Operand::Constant(ct) => Ok(self.add_node(Node::Leaf(ct.literal), span)),
         }
     }
 
@@ -336,19 +386,19 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
     fn build_statement(&mut self, stmt: &mir::Statement<'tcx>) -> Result<(), ErrorReported> {
         debug!("AbstractConstBuilder: stmt={:?}", stmt);
+        let span = stmt.source_info.span;
         match stmt.kind {
             StatementKind::Assign(box (ref place, ref rvalue)) => {
-                let local = self.place_to_local(stmt.source_info.span, place)?;
+                let local = self.place_to_local(span, place)?;
                 match *rvalue {
                     Rvalue::Use(ref operand) => {
-                        self.locals[local] =
-                            self.operand_to_node(stmt.source_info.span, operand)?;
+                        self.locals[local] = self.operand_to_node(span, operand)?;
                         Ok(())
                     }
                     Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
-                        let lhs = self.operand_to_node(stmt.source_info.span, lhs)?;
-                        let rhs = self.operand_to_node(stmt.source_info.span, rhs)?;
-                        self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
+                        let lhs = self.operand_to_node(span, lhs)?;
+                        let rhs = self.operand_to_node(span, rhs)?;
+                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs), span);
                         if op.is_checkable() {
                             bug!("unexpected unchecked checkable binary operation");
                         } else {
@@ -356,18 +406,18 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                         }
                     }
                     Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
-                        let lhs = self.operand_to_node(stmt.source_info.span, lhs)?;
-                        let rhs = self.operand_to_node(stmt.source_info.span, rhs)?;
-                        self.locals[local] = self.nodes.push(Node::Binop(op, lhs, rhs));
+                        let lhs = self.operand_to_node(span, lhs)?;
+                        let rhs = self.operand_to_node(span, rhs)?;
+                        self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs), span);
                         self.checked_op_locals.insert(local);
                         Ok(())
                     }
                     Rvalue::UnaryOp(op, ref operand) if Self::check_unop(op) => {
-                        let operand = self.operand_to_node(stmt.source_info.span, operand)?;
-                        self.locals[local] = self.nodes.push(Node::UnaryOp(op, operand));
+                        let operand = self.operand_to_node(span, operand)?;
+                        self.locals[local] = self.add_node(Node::UnaryOp(op, operand), span);
                         Ok(())
                     }
-                    _ => self.error(Some(stmt.source_info.span), "unsupported rvalue")?,
+                    _ => self.error(Some(span), "unsupported rvalue")?,
                 }
             }
             // These are not actually relevant for us here, so we can ignore them.
@@ -415,13 +465,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                         .map(|arg| self.operand_to_node(terminator.source_info.span, arg))
                         .collect::<Result<Vec<NodeId>, _>>()?,
                 );
-                self.locals[local] = self.nodes.push(Node::FunctionCall(func, args));
+                self.locals[local] = self.add_node(Node::FunctionCall(func, args), fn_span);
                 Ok(Some(target))
             }
-            // We only allow asserts for checked operations.
-            //
-            // These asserts seem to all have the form `!_local.0` so
-            // we only allow exactly that.
             TerminatorKind::Assert { ref cond, expected: false, target, .. } => {
                 let p = match cond {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => p,
@@ -430,7 +476,15 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
                 const ONE_FIELD: mir::Field = mir::Field::from_usize(1);
                 debug!("proj: {:?}", p.projection);
-                if let &[mir::ProjectionElem::Field(ONE_FIELD, _)] = p.projection.as_ref() {
+                if let Some(p) = p.as_local() {
+                    debug_assert!(!self.checked_op_locals.contains(p));
+                    // Mark locals directly used in asserts as used.
+                    //
+                    // This is needed because division does not use `CheckedBinop` but instead
+                    // adds an explicit assert for `divisor != 0`.
+                    self.nodes[self.locals[p]].used = true;
+                    return Ok(Some(target));
+                } else if let &[mir::ProjectionElem::Field(ONE_FIELD, _)] = p.projection.as_ref() {
                     // Only allow asserts checking the result of a checked operation.
                     if self.checked_op_locals.contains(p.local) {
                         return Ok(Some(target));
@@ -457,7 +511,20 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             if let Some(next) = self.build_terminator(block.terminator())? {
                 block = &self.body.basic_blocks()[next];
             } else {
-                return Ok(self.tcx.arena.alloc_from_iter(self.nodes));
+                assert_eq!(self.locals[mir::RETURN_PLACE], self.nodes.last().unwrap());
+                // `AbstractConst`s should not contain any promoteds as they require references which
+                // are not allowed.
+                assert!(!self.nodes.iter().any(|n| matches!(
+                    n.node,
+                    Node::Leaf(ty::Const { val: ty::ConstKind::Unevaluated(_, _, Some(_)), ty: _ })
+                )));
+
+                self.nodes[self.locals[mir::RETURN_PLACE]].used = true;
+                if let Some(&unused) = self.nodes.iter().find(|n| !n.used) {
+                    self.error(Some(unused.span), "dead code")?;
+                }
+
+                return Ok(self.tcx.arena.alloc_from_iter(self.nodes.into_iter().map(|n| n.node)));
             }
         }
     }
@@ -507,31 +574,36 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // on `ErrorReported`.
 }
 
-fn walk_abstract_const<'tcx, F>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, mut f: F)
+pub fn walk_abstract_const<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    ct: AbstractConst<'tcx>,
+    mut f: F,
+) -> ControlFlow<()>
 where
-    F: FnMut(Node<'tcx>),
+    F: FnMut(Node<'tcx>) -> ControlFlow<()>,
 {
-    recurse(tcx, ct, &mut f);
-    fn recurse<'tcx>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, f: &mut dyn FnMut(Node<'tcx>)) {
+    fn recurse<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        ct: AbstractConst<'tcx>,
+        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<()>,
+    ) -> ControlFlow<()> {
         let root = ct.root();
-        f(root);
+        f(root)?;
         match root {
-            Node::Leaf(_) => (),
+            Node::Leaf(_) => ControlFlow::CONTINUE,
             Node::Binop(_, l, r) => {
-                recurse(tcx, ct.subtree(l), f);
-                recurse(tcx, ct.subtree(r), f);
+                recurse(tcx, ct.subtree(l), f)?;
+                recurse(tcx, ct.subtree(r), f)
             }
-            Node::UnaryOp(_, v) => {
-                recurse(tcx, ct.subtree(v), f);
-            }
+            Node::UnaryOp(_, v) => recurse(tcx, ct.subtree(v), f),
             Node::FunctionCall(func, args) => {
-                recurse(tcx, ct.subtree(func), f);
-                for &arg in args {
-                    recurse(tcx, ct.subtree(arg), f);
-                }
+                recurse(tcx, ct.subtree(func), f)?;
+                args.iter().try_for_each(|&arg| recurse(tcx, ct.subtree(arg), f))
             }
         }
     }
+
+    recurse(tcx, ct, &mut f)
 }
 
 /// Tries to unify two abstract constants using structural equality.
@@ -544,6 +616,10 @@ pub(super) fn try_unify<'tcx>(
         (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
             let a_ct = a_ct.subst(tcx, a.substs);
             let b_ct = b_ct.subst(tcx, b.substs);
+            if a_ct.ty != b_ct.ty {
+                return false;
+            }
+
             match (a_ct.val, b_ct.val) {
                 // We can just unify errors with everything to reduce the amount of
                 // emitted errors here.
@@ -556,6 +632,12 @@ pub(super) fn try_unify<'tcx>(
                 // we do not want to use `assert_eq!(a(), b())` to infer that `N` and `M` have to be `1`. This
                 // means that we only allow inference variables if they are equal.
                 (ty::ConstKind::Infer(a_val), ty::ConstKind::Infer(b_val)) => a_val == b_val,
+                // We may want to instead recurse into unevaluated constants here. That may require some
+                // care to prevent infinite recursion, so let's just ignore this for now.
+                (
+                    ty::ConstKind::Unevaluated(a_def, a_substs, None),
+                    ty::ConstKind::Unevaluated(b_def, b_substs, None),
+                ) => a_def == b_def && a_substs == b_substs,
                 // FIXME(const_evaluatable_checked): We may want to either actually try
                 // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
                 // this, for now we just return false here.

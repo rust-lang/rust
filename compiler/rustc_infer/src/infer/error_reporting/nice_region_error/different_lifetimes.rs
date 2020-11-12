@@ -102,43 +102,89 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             None => String::new(),
         };
 
-        let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
-            (None, None) => {
-                let (main_label_1, span_label_1) = if ty_sup.hir_id == ty_sub.hir_id {
-                    (
-                        "this type is declared with multiple lifetimes...".to_owned(),
-                        "...but data with one lifetime flows into the other here".to_owned(),
-                    )
-                } else {
-                    (
-                        "these two types are declared with different lifetimes...".to_owned(),
-                        format!("...but data{} flows{} here", span_label_var1, span_label_var2),
-                    )
-                };
-                (ty_sup.span, ty_sub.span, main_label_1, span_label_1)
-            }
+        let (span_1, span_2, main_label, span_label, future_return_type) =
+            match (sup_is_ret_type, sub_is_ret_type) {
+                (None, None) => {
+                    let (main_label_1, span_label_1) = if ty_sup.hir_id == ty_sub.hir_id {
+                        (
+                            "this type is declared with multiple lifetimes...".to_owned(),
+                            "...but data with one lifetime flows into the other here".to_owned(),
+                        )
+                    } else {
+                        (
+                            "these two types are declared with different lifetimes...".to_owned(),
+                            format!("...but data{} flows{} here", span_label_var1, span_label_var2),
+                        )
+                    };
+                    (ty_sup.span, ty_sub.span, main_label_1, span_label_1, None)
+                }
 
-            (Some(ret_span), _) => (
-                ty_sub.span,
-                ret_span,
-                "this parameter and the return type are declared with different lifetimes..."
-                    .to_owned(),
-                format!("...but data{} is returned here", span_label_var1),
-            ),
-            (_, Some(ret_span)) => (
-                ty_sup.span,
-                ret_span,
-                "this parameter and the return type are declared with different lifetimes..."
-                    .to_owned(),
-                format!("...but data{} is returned here", span_label_var1),
-            ),
-        };
+                (Some(ret_span), _) => {
+                    let sup_future = self.future_return_type(scope_def_id_sup);
+                    let (return_type, action) = if let Some(_) = sup_future {
+                        ("returned future", "held across an await point")
+                    } else {
+                        ("return type", "returned")
+                    };
 
-        struct_span_err!(self.tcx().sess, span, E0623, "lifetime mismatch")
-            .span_label(span_1, main_label)
-            .span_label(span_2, String::new())
-            .span_label(span, span_label)
-            .emit();
+                    (
+                        ty_sub.span,
+                        ret_span,
+                        format!(
+                            "this parameter and the {} are declared with different lifetimes...",
+                            return_type
+                        ),
+                        format!("...but data{} is {} here", span_label_var1, action),
+                        sup_future,
+                    )
+                }
+                (_, Some(ret_span)) => {
+                    let sub_future = self.future_return_type(scope_def_id_sub);
+                    let (return_type, action) = if let Some(_) = sub_future {
+                        ("returned future", "held across an await point")
+                    } else {
+                        ("return type", "returned")
+                    };
+
+                    (
+                        ty_sup.span,
+                        ret_span,
+                        format!(
+                            "this parameter and the {} are declared with different lifetimes...",
+                            return_type
+                        ),
+                        format!("...but data{} is {} here", span_label_var1, action),
+                        sub_future,
+                    )
+                }
+            };
+
+        let mut e = struct_span_err!(self.tcx().sess, span, E0623, "lifetime mismatch");
+
+        e.span_label(span_1, main_label);
+        e.span_label(span_2, String::new());
+        e.span_label(span, span_label);
+
+        if let Some(t) = future_return_type {
+            let snip = self
+                .tcx()
+                .sess
+                .source_map()
+                .span_to_snippet(t.span)
+                .ok()
+                .and_then(|s| match (&t.kind, s.as_str()) {
+                    (rustc_hir::TyKind::Tup(&[]), "") => Some("()".to_string()),
+                    (_, "") => None,
+                    _ => Some(s),
+                })
+                .unwrap_or("{unnamed_type}".to_string());
+
+            e.span_label(
+                t.span,
+                &format!("this `async fn` implicitly returns an `impl Future<Output = {}>`", snip),
+            );
+        }
+        e.emit();
         Some(ErrorReported)
     }
 }

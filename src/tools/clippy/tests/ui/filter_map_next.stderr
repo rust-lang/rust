@@ -1,14 +1,5 @@
-error: called `filter_map(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(p)` instead.
-  --> $DIR/filter_map_next.rs:6:32
-   |
-LL |     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::filter-map-next` implied by `-D warnings`
-   = note: replace `filter_map(|s| s.parse().ok()).next()` with `find_map(|s| s.parse().ok())`
-
-error: called `filter_map(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(p)` instead.
-  --> $DIR/filter_map_next.rs:10:26
+error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead.
+  --> $DIR/filter_map_next.rs:7:26
    |
 LL |       let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
    |  __________________________^
@@ -19,6 +10,8 @@ LL | |             if x == 2 {
 LL | |         })
 LL | |         .next();
    | |_______________^
+   |
+   = note: `-D clippy::filter-map-next` implied by `-D warnings`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

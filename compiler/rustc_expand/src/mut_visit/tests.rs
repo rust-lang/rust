@@ -1,7 +1,7 @@
 use crate::tests::{matches_codepattern, string_to_crate};
 
 use rustc_ast as ast;
-use rustc_ast::mut_visit::{self, MutVisitor};
+use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast_pretty::pprust;
 use rustc_span::symbol::Ident;
 use rustc_span::with_default_session_globals;
@@ -15,11 +15,11 @@ fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
 struct ToZzIdentMutVisitor;
 
 impl MutVisitor for ToZzIdentMutVisitor {
+    fn token_visiting_enabled(&self) -> bool {
+        true
+    }
     fn visit_ident(&mut self, ident: &mut Ident) {
         *ident = Ident::from_str("zz");
-    }
-    fn visit_mac(&mut self, mac: &mut ast::MacCall) {
-        mut_visit::noop_visit_mac(mac, self)
     }
 }
 

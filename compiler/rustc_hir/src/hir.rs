@@ -272,10 +272,7 @@ impl GenericArg<'_> {
     }
 
     pub fn is_const(&self) -> bool {
-        match self {
-            GenericArg::Const(_) => true,
-            _ => false,
-        }
+        matches!(self, GenericArg::Const(_))
     }
 
     pub fn descr(&self) -> &'static str {
@@ -486,6 +483,8 @@ impl Generics<'hir> {
 #[derive(HashStable_Generic)]
 pub enum SyntheticTyParamKind {
     ImplTrait,
+    // Created by the `#[rustc_synthetic]` attribute.
+    FromAttr,
 }
 
 /// A where-clause in a definition.
@@ -733,6 +732,9 @@ pub struct Pat<'hir> {
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
+    // Whether to use default binding modes.
+    // At present, this is false only for destructuring assignment.
+    pub default_binding_modes: bool,
 }
 
 impl Pat<'_> {
@@ -978,17 +980,11 @@ impl BinOpKind {
     }
 
     pub fn is_lazy(self) -> bool {
-        match self {
-            BinOpKind::And | BinOpKind::Or => true,
-            _ => false,
-        }
+        matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
     pub fn is_shift(self) -> bool {
-        match self {
-            BinOpKind::Shl | BinOpKind::Shr => true,
-            _ => false,
-        }
+        matches!(self, BinOpKind::Shl | BinOpKind::Shr)
     }
 
     pub fn is_comparison(self) -> bool {
@@ -1068,10 +1064,7 @@ impl UnOp {
 
     /// Returns `true` if the unary operator takes its argument by value.
     pub fn is_by_value(self) -> bool {
-        match self {
-            Self::UnNeg | Self::UnNot => true,
-            _ => false,
-        }
+        matches!(self, Self::UnNeg | Self::UnNot)
     }
 }
 
@@ -1099,11 +1092,11 @@ pub enum StmtKind<'hir> {
     Semi(&'hir Expr<'hir>),
 }
 
-impl StmtKind<'hir> {
-    pub fn attrs(&self) -> &'hir [Attribute] {
+impl<'hir> StmtKind<'hir> {
+    pub fn attrs(&self, get_item: impl FnOnce(ItemId) -> &'hir Item<'hir>) -> &'hir [Attribute] {
         match *self {
             StmtKind::Local(ref l) => &l.attrs,
-            StmtKind::Item(_) => &[],
+            StmtKind::Item(ref item_id) => &get_item(*item_id).attrs,
             StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => &e.attrs,
         }
     }
@@ -1407,10 +1400,9 @@ impl Expr<'_> {
     /// on the given expression should be considered a place expression.
     pub fn is_place_expr(&self, mut allow_projections_from: impl FnMut(&Self) -> bool) -> bool {
         match self.kind {
-            ExprKind::Path(QPath::Resolved(_, ref path)) => match path.res {
-                Res::Local(..) | Res::Def(DefKind::Static, _) | Res::Err => true,
-                _ => false,
-            },
+            ExprKind::Path(QPath::Resolved(_, ref path)) => {
+                matches!(path.res, Res::Local(..) | Res::Def(DefKind::Static, _) | Res::Err)
+            }
 
             // Type ascription inherits its place expression kind from its
             // operand. See:
@@ -1691,6 +1683,9 @@ pub enum LocalSource {
     AsyncFn,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
+    /// A desugared `expr = expr`, where the LHS is a tuple, struct or array.
+    /// The span is that of the `=` sign.
+    AssignDesugar(Span),
 }
 
 /// Hints at the original code for a `match _ { .. }`.
@@ -2202,10 +2197,7 @@ pub enum ImplicitSelfKind {
 impl ImplicitSelfKind {
     /// Does this represent an implicit self?
     pub fn has_implicit_self(&self) -> bool {
-        match *self {
-            ImplicitSelfKind::None => false,
-            _ => true,
-        }
+        !matches!(*self, ImplicitSelfKind::None)
     }
 }
 
@@ -2235,10 +2227,7 @@ impl Defaultness {
     }
 
     pub fn is_default(&self) -> bool {
-        match *self {
-            Defaultness::Default { .. } => true,
-            _ => false,
-        }
+        matches!(*self, Defaultness::Default { .. })
     }
 }
 
@@ -2369,10 +2358,7 @@ pub enum VisibilityKind<'hir> {
 
 impl VisibilityKind<'_> {
     pub fn is_pub(&self) -> bool {
-        match *self {
-            VisibilityKind::Public => true,
-            _ => false,
-        }
+        matches!(*self, VisibilityKind::Public)
     }
 
     pub fn is_pub_restricted(&self) -> bool {
@@ -2500,10 +2486,7 @@ pub struct FnHeader {
 
 impl FnHeader {
     pub fn is_const(&self) -> bool {
-        match &self.constness {
-            Constness::Const => true,
-            _ => false,
-        }
+        matches!(&self.constness, Constness::Const)
     }
 }
 
@@ -2700,6 +2683,9 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { ident, .. })
             | Node::ImplItem(ImplItem { ident, .. })
             | Node::ForeignItem(ForeignItem { ident, .. })
+            | Node::Field(StructField { ident, .. })
+            | Node::Variant(Variant { ident, .. })
+            | Node::MacroDef(MacroDef { ident, .. })
             | Node::Item(Item { ident, .. }) => Some(*ident),
             _ => None,
         }

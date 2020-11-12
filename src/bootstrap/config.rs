@@ -10,6 +10,7 @@ use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use crate::cache::{Interned, INTERNER};
 use crate::flags::Flags;
@@ -65,7 +66,7 @@ pub struct Config {
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub test_compare_mode: bool,
-    pub llvm_libunwind: bool,
+    pub llvm_libunwind: Option<LlvmLibunwind>,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -98,6 +99,7 @@ pub struct Config {
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: Option<bool>,
+    pub llvm_polly: Option<bool>,
     pub llvm_from_ci: bool,
 
     pub use_lld: bool,
@@ -177,6 +179,32 @@ pub struct Config {
     pub out: PathBuf,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LlvmLibunwind {
+    No,
+    InTree,
+    System,
+}
+
+impl Default for LlvmLibunwind {
+    fn default() -> Self {
+        Self::No
+    }
+}
+
+impl FromStr for LlvmLibunwind {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "no" => Ok(Self::No),
+            "in-tree" => Ok(Self::InTree),
+            "system" => Ok(Self::System),
+            invalid => Err(format!("Invalid value '{}' for rust.llvm-libunwind config.", invalid)),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TargetSelection {
     pub triple: Interned<String>,
@@ -251,6 +279,8 @@ pub struct Target {
     pub ranlib: Option<PathBuf>,
     pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
+    pub sanitizers: bool,
+    pub profiler: bool,
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub musl_libdir: Option<PathBuf>,
@@ -391,6 +421,7 @@ struct Llvm {
     use_libcxx: Option<bool>,
     use_linker: Option<String>,
     allow_old_toolchain: Option<bool>,
+    polly: Option<bool>,
     download_ci_llvm: Option<StringOrBool>,
 }
 
@@ -457,7 +488,7 @@ struct Rust {
     remap_debuginfo: Option<bool>,
     jemalloc: Option<bool>,
     test_compare_mode: Option<bool>,
-    llvm_libunwind: Option<bool>,
+    llvm_libunwind: Option<String>,
     control_flow_guard: Option<bool>,
     new_symbol_mangling: Option<bool>,
 }
@@ -474,6 +505,8 @@ struct TomlTarget {
     llvm_config: Option<String>,
     llvm_filecheck: Option<String>,
     android_ndk: Option<String>,
+    sanitizers: Option<bool>,
+    profiler: Option<bool>,
     crt_static: Option<bool>,
     musl_root: Option<String>,
     musl_libdir: Option<String>,
@@ -735,6 +768,7 @@ impl Config {
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
+            config.llvm_polly = llvm.polly;
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
@@ -768,6 +802,7 @@ impl Config {
                 check_ci_llvm!(llvm.use_libcxx);
                 check_ci_llvm!(llvm.use_linker);
                 check_ci_llvm!(llvm.allow_old_toolchain);
+                check_ci_llvm!(llvm.polly);
 
                 // CI-built LLVM is shared
                 config.llvm_link_shared = true;
@@ -799,7 +834,9 @@ impl Config {
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
-            set(&mut config.llvm_libunwind, rust.llvm_libunwind);
+            config.llvm_libunwind = rust
+                .llvm_libunwind
+                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel);
             set(&mut config.rust_dist_src, rust.dist_src);
@@ -857,6 +894,8 @@ impl Config {
                 target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
                 target.wasi_root = cfg.wasi_root.map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
+                target.sanitizers = cfg.sanitizers.unwrap_or(build.sanitizers.unwrap_or_default());
+                target.profiler = cfg.profiler.unwrap_or(build.profiler.unwrap_or_default());
 
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
@@ -884,11 +923,18 @@ impl Config {
             set(&mut config.missing_tools, t.missing_tools);
         }
 
-        // Cargo does not provide a RUSTFMT environment variable, so we
-        // synthesize it manually. Note that we also later check the config.toml
-        // and set this to that path if necessary.
-        let rustfmt = config.initial_rustc.with_file_name(exe("rustfmt", config.build));
-        config.initial_rustfmt = if rustfmt.exists() { Some(rustfmt) } else { None };
+        config.initial_rustfmt = config.initial_rustfmt.or_else({
+            let build = config.build;
+            let initial_rustc = &config.initial_rustc;
+
+            move || {
+                // Cargo does not provide a RUSTFMT environment variable, so we
+                // synthesize it manually.
+                let rustfmt = initial_rustc.with_file_name(exe("rustfmt", build));
+
+                if rustfmt.exists() { Some(rustfmt) } else { None }
+            }
+        });
 
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
@@ -957,6 +1003,22 @@ impl Config {
 
     pub fn very_verbose(&self) -> bool {
         self.verbose > 1
+    }
+
+    pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {
+        self.target_config.get(&target).map(|t| t.sanitizers).unwrap_or(self.sanitizers)
+    }
+
+    pub fn any_sanitizers_enabled(&self) -> bool {
+        self.target_config.values().any(|t| t.sanitizers) || self.sanitizers
+    }
+
+    pub fn profiler_enabled(&self, target: TargetSelection) -> bool {
+        self.target_config.get(&target).map(|t| t.profiler).unwrap_or(self.profiler)
+    }
+
+    pub fn any_profiler_enabled(&self) -> bool {
+        self.target_config.values().any(|t| t.profiler) || self.profiler
     }
 
     pub fn llvm_enabled(&self) -> bool {

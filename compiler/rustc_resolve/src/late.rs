@@ -57,6 +57,12 @@ enum PatternSource {
     FnParam,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum IsRepeatExpr {
+    No,
+    Yes,
+}
+
 impl PatternSource {
     fn descr(self) -> &'static str {
         match self {
@@ -251,16 +257,12 @@ impl<'a> PathSource<'a> {
     }
 
     fn is_call(self) -> bool {
-        match self {
-            PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })) => true,
-            _ => false,
-        }
+        matches!(self, PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })))
     }
 
     crate fn is_expected(self, res: Res) -> bool {
         match self {
-            PathSource::Type => match res {
-                Res::Def(
+            PathSource::Type => matches!(res, Res::Def(
                     DefKind::Struct
                     | DefKind::Union
                     | DefKind::Enum
@@ -274,19 +276,12 @@ impl<'a> PathSource<'a> {
                     _,
                 )
                 | Res::PrimTy(..)
-                | Res::SelfTy(..) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::No) => match res {
-                Res::Def(DefKind::Trait, _) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::Maybe) => match res {
-                Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => true,
-                _ => false,
-            },
-            PathSource::Expr(..) => match res {
-                Res::Def(
+                | Res::SelfTy(..)),
+            PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
+            PathSource::Trait(AliasPossibility::Maybe) => {
+                matches!(res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+            }
+            PathSource::Expr(..) => matches!(res, Res::Def(
                     DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
                     | DefKind::Const
                     | DefKind::Static
@@ -297,23 +292,16 @@ impl<'a> PathSource<'a> {
                     _,
                 )
                 | Res::Local(..)
-                | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::Pat => match res {
-                Res::Def(
+                | Res::SelfCtor(..)),
+            PathSource::Pat => matches!(res, Res::Def(
                     DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst,
                     _,
                 )
-                | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::TupleStruct(..) => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::Struct => match res {
-                Res::Def(
+                | Res::SelfCtor(..)),
+            PathSource::TupleStruct(..) => {
+                matches!(res, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
+            }
+            PathSource::Struct => matches!(res, Res::Def(
                     DefKind::Struct
                     | DefKind::Union
                     | DefKind::Variant
@@ -321,9 +309,7 @@ impl<'a> PathSource<'a> {
                     | DefKind::AssocTy,
                     _,
                 )
-                | Res::SelfTy(..) => true,
-                _ => false,
-            },
+                | Res::SelfTy(..)),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
@@ -353,8 +339,8 @@ impl<'a> PathSource<'a> {
 
 #[derive(Default)]
 struct DiagnosticMetadata<'ast> {
-    /// The current trait's associated types' ident, used for diagnostic suggestions.
-    current_trait_assoc_types: Vec<Ident>,
+    /// The current trait's associated items' ident, used for diagnostic suggestions.
+    current_trait_assoc_items: Option<&'ast [P<AssocItem>]>,
 
     /// The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
@@ -437,10 +423,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.resolve_block(block);
     }
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
-        debug!("visit_anon_const {:?}", constant);
-        self.with_constant_rib(constant.value.is_potential_trivial_const_param(), |this| {
-            visit::walk_anon_const(this, constant);
-        });
+        // We deal with repeat expressions explicitly in `resolve_expr`.
+        self.resolve_anon_const(constant, IsRepeatExpr::No);
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);
@@ -647,7 +631,11 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
                             // This must be equivalent to `visit_anon_const`, but we cannot call it
                             // directly due to visitor lifetimes so we have to copy-paste some code.
-                            self.with_constant_rib(true, |this| {
+                            //
+                            // Note that we might not be inside of an repeat expression here,
+                            // but considering that `IsRepeatExpr` is only relevant for
+                            // non-trivial constants this is doesn't matter.
+                            self.with_constant_rib(IsRepeatExpr::No, true, |this| {
                                 this.smart_resolve_path(
                                     ty.id,
                                     qself.as_ref(),
@@ -980,9 +968,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             //
                                             // Type parameters can already be used and as associated consts are
                                             // not used as part of the type system, this is far less surprising.
-                                            this.with_constant_rib(true, |this| {
-                                                this.visit_expr(expr)
-                                            });
+                                            this.with_constant_rib(
+                                                IsRepeatExpr::No,
+                                                true,
+                                                |this| this.visit_expr(expr),
+                                            );
                                         }
                                     }
                                     AssocItemKind::Fn(_, _, generics, _) => {
@@ -1023,7 +1013,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.with_item_rib(HasGenericParams::No, |this| {
                     this.visit_ty(ty);
                     if let Some(expr) = expr {
-                        this.with_constant_rib(expr.is_potential_trivial_const_param(), |this| {
+                        // We already forbid generic params because of the above item rib,
+                        // so it doesn't matter whether this is a trivial constant.
+                        this.with_constant_rib(IsRepeatExpr::No, true, |this| {
                             this.visit_expr(expr)
                         });
                     }
@@ -1122,12 +1114,29 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_rib(ValueNS, kind, |this| this.with_rib(TypeNS, kind, f))
     }
 
-    fn with_constant_rib(&mut self, trivial: bool, f: impl FnOnce(&mut Self)) {
-        debug!("with_constant_rib");
-        self.with_rib(ValueNS, ConstantItemRibKind(trivial), |this| {
-            this.with_rib(TypeNS, ConstantItemRibKind(trivial), |this| {
-                this.with_label_rib(ConstantItemRibKind(trivial), f);
-            })
+    // HACK(min_const_generics,const_evaluatable_unchecked): We
+    // want to keep allowing `[0; std::mem::size_of::<*mut T>()]`
+    // with a future compat lint for now. We do this by adding an
+    // additional special case for repeat expressions.
+    //
+    // Note that we intentionally still forbid `[0; N + 1]` during
+    // name resolution so that we don't extend the future
+    // compat lint to new cases.
+    fn with_constant_rib(
+        &mut self,
+        is_repeat: IsRepeatExpr,
+        is_trivial: bool,
+        f: impl FnOnce(&mut Self),
+    ) {
+        debug!("with_constant_rib: is_repeat={:?} is_trivial={}", is_repeat, is_trivial);
+        self.with_rib(ValueNS, ConstantItemRibKind(is_trivial), |this| {
+            this.with_rib(
+                TypeNS,
+                ConstantItemRibKind(is_repeat == IsRepeatExpr::Yes || is_trivial),
+                |this| {
+                    this.with_label_rib(ConstantItemRibKind(is_trivial), f);
+                },
+            )
         });
     }
 
@@ -1148,26 +1157,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         result
     }
 
-    /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
+    /// When evaluating a `trait` use its associated types' idents for suggestions in E0412.
     fn with_trait_items<T>(
         &mut self,
-        trait_items: &Vec<P<AssocItem>>,
+        trait_items: &'ast Vec<P<AssocItem>>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
-        let trait_assoc_types = replace(
-            &mut self.diagnostic_metadata.current_trait_assoc_types,
-            trait_items
-                .iter()
-                .filter_map(|item| match &item.kind {
-                    AssocItemKind::TyAlias(_, _, bounds, _) if bounds.is_empty() => {
-                        Some(item.ident)
-                    }
-                    _ => None,
-                })
-                .collect(),
+        let trait_assoc_items = replace(
+            &mut self.diagnostic_metadata.current_trait_assoc_items,
+            Some(&trait_items[..]),
         );
         let result = f(self);
-        self.diagnostic_metadata.current_trait_assoc_types = trait_assoc_types;
+        self.diagnostic_metadata.current_trait_assoc_items = trait_assoc_items;
         result
     }
 
@@ -1272,9 +1273,17 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             //
                                             // Type parameters can already be used and as associated consts are
                                             // not used as part of the type system, this is far less surprising.
-                                            this.with_constant_rib(true, |this| {
-                                                visit::walk_assoc_item(this, item, AssocCtxt::Impl)
-                                            });
+                                            this.with_constant_rib(
+                                                IsRepeatExpr::No,
+                                                true,
+                                                |this| {
+                                                    visit::walk_assoc_item(
+                                                        this,
+                                                        item,
+                                                        AssocCtxt::Impl,
+                                                    )
+                                                },
+                                            );
                                         }
                                         AssocItemKind::Fn(_, _, generics, _) => {
                                             // We also need a new scope for the impl item type parameters.
@@ -1413,10 +1422,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn is_base_res_local(&self, nid: NodeId) -> bool {
-        match self.r.partial_res_map.get(&nid).map(|res| res.base_res()) {
-            Some(Res::Local(..)) => true,
-            _ => false,
-        }
+        matches!(self.r.partial_res_map.get(&nid).map(|res| res.base_res()), Some(Res::Local(..)))
     }
 
     /// Checks that all of the arms in an or-pattern have exactly the
@@ -2199,6 +2205,17 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("(resolving block) leaving block");
     }
 
+    fn resolve_anon_const(&mut self, constant: &'ast AnonConst, is_repeat: IsRepeatExpr) {
+        debug!("resolve_anon_const {:?} is_repeat: {:?}", constant, is_repeat);
+        self.with_constant_rib(
+            is_repeat,
+            constant.value.is_potential_trivial_const_param(),
+            |this| {
+                visit::walk_anon_const(this, constant);
+            },
+        );
+    }
+
     fn resolve_expr(&mut self, expr: &'ast Expr, parent: Option<&'ast Expr>) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
@@ -2321,6 +2338,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
             ExprKind::Async(..) | ExprKind::Closure(..) => {
                 self.with_label_rib(ClosureOrAsyncRibKind, |this| visit::walk_expr(this, expr));
+            }
+            ExprKind::Repeat(ref elem, ref ct) => {
+                self.visit_expr(elem);
+                self.resolve_anon_const(ct, IsRepeatExpr::Yes);
             }
             _ => {
                 visit::walk_expr(self, expr);

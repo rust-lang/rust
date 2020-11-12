@@ -12,7 +12,7 @@ pub use crate::*;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{AtomicU32, Lock, LockGuard, Lrc, MappedLockGuard};
+use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
 use std::cmp;
 use std::convert::TryFrom;
 use std::hash::Hash;
@@ -168,7 +168,7 @@ pub struct SourceMap {
     /// The address space below this value is currently used by the files in the source map.
     used_address_space: AtomicU32,
 
-    files: Lock<SourceMapFiles>,
+    files: RwLock<SourceMapFiles>,
     file_loader: Box<dyn FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
     // `--remap-path-prefix` to all `SourceFile`s allocated within this `SourceMap`.
@@ -236,8 +236,8 @@ impl SourceMap {
 
     // By returning a `MonotonicVec`, we ensure that consumers cannot invalidate
     // any existing indices pointing into `files`.
-    pub fn files(&self) -> MappedLockGuard<'_, monotonic::MonotonicVec<Lrc<SourceFile>>> {
-        LockGuard::map(self.files.borrow(), |files| &mut files.source_files)
+    pub fn files(&self) -> MappedReadGuard<'_, monotonic::MonotonicVec<Lrc<SourceFile>>> {
+        ReadGuard::map(self.files.borrow(), |files| &files.source_files)
     }
 
     pub fn source_file_by_stable_id(

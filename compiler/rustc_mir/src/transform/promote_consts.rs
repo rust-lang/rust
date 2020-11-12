@@ -301,17 +301,6 @@ impl std::ops::Deref for Validator<'a, 'tcx> {
 struct Unpromotable;
 
 impl<'tcx> Validator<'_, 'tcx> {
-    /// Determines if this code could be executed at runtime and thus is subject to codegen.
-    /// That means even unused constants need to be evaluated.
-    ///
-    /// `const_kind` should not be used in this file other than through this method!
-    fn maybe_runtime(&self) -> bool {
-        match self.const_kind {
-            None | Some(hir::ConstContext::ConstFn) => true,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const) => false,
-        }
-    }
-
     fn validate_candidate(&self, candidate: Candidate) -> Result<(), Unpromotable> {
         match candidate {
             Candidate::Ref(loc) => {
@@ -562,14 +551,12 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
 
                     ProjectionElem::Field(..) => {
-                        if self.maybe_runtime() {
-                            let base_ty =
-                                Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
-                            if let Some(def) = base_ty.ty_adt_def() {
-                                // No promotion of union field accesses.
-                                if def.is_union() {
-                                    return Err(Unpromotable);
-                                }
+                        let base_ty =
+                            Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
+                        if let Some(def) = base_ty.ty_adt_def() {
+                            // No promotion of union field accesses.
+                            if def.is_union() {
+                                return Err(Unpromotable);
                             }
                         }
                     }
@@ -751,7 +738,14 @@ impl<'tcx> Validator<'_, 'tcx> {
     ) -> Result<(), Unpromotable> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
-        if !self.explicit && self.maybe_runtime() {
+        // When doing explicit promotion and inside const/static items, we promote all (eligible) function calls.
+        // Everywhere else, we require `#[rustc_promotable]` on the callee.
+        let promote_all_const_fn = self.explicit
+            || matches!(
+                self.const_kind,
+                Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
+            );
+        if !promote_all_const_fn {
             if let ty::FnDef(def_id, _) = *fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
@@ -1176,7 +1170,7 @@ pub fn promote_candidates<'tcx>(
         let mut scope = body.source_scopes[candidate.source_info(body).scope].clone();
         scope.parent_scope = None;
 
-        let mut promoted = Body::new(
+        let promoted = Body::new(
             body.source, // `promoted` gets filled in below
             IndexVec::new(),
             IndexVec::from_elem_n(scope, 1),
@@ -1187,7 +1181,6 @@ pub fn promote_candidates<'tcx>(
             body.span,
             body.generator_kind,
         );
-        promoted.ignore_interior_mut_in_const_validation = true;
 
         let promoter = Promoter {
             promoted,

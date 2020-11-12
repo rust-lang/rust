@@ -322,7 +322,8 @@ pub fn run_core(
     let cpath = Some(input.clone());
     let input = Input::File(input);
 
-    let intra_link_resolution_failure_name = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
+    let broken_intra_doc_links = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
+    let private_intra_doc_links = lint::builtin::PRIVATE_INTRA_DOC_LINKS.name;
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
@@ -330,12 +331,14 @@ pub fn run_core(
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
     let invalid_html_tags = rustc_lint::builtin::INVALID_HTML_TAGS.name;
     let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
+    let non_autolinks = rustc_lint::builtin::NON_AUTOLINKS.name;
     let unknown_lints = rustc_lint::builtin::UNKNOWN_LINTS.name;
 
     // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
     let lints_to_show = vec![
-        intra_link_resolution_failure_name.to_owned(),
+        broken_intra_doc_links.to_owned(),
+        private_intra_doc_links.to_owned(),
         missing_docs.to_owned(),
         missing_doc_example.to_owned(),
         private_doc_tests.to_owned(),
@@ -344,12 +347,12 @@ pub fn run_core(
         invalid_html_tags.to_owned(),
         renamed_and_removed_lints.to_owned(),
         unknown_lints.to_owned(),
+        non_autolinks.to_owned(),
     ];
 
     let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {
-        if lint.name == intra_link_resolution_failure_name
-            || lint.name == invalid_codeblock_attributes_name
-        {
+        // FIXME: why is this necessary?
+        if lint.name == broken_intra_doc_links || lint.name == invalid_codeblock_attributes_name {
             None
         } else {
             Some((lint.name_lower(), lint::Allow))
@@ -663,7 +666,7 @@ fn run_global_ctxt(
     (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
 }
 
-/// Due to https://github.com/rust-lang/rust/pull/73566,
+/// Due to <https://github.com/rust-lang/rust/pull/73566>,
 /// the name resolution pass may find errors that are never emitted.
 /// If typeck is called after this happens, then we'll get an ICE:
 /// 'Res::Error found but not reported'. To avoid this, emit the errors now.

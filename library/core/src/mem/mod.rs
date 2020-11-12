@@ -884,10 +884,10 @@ pub fn drop<T>(_x: T) {}
 /// Interprets `src` as having type `&U`, and then reads `src` without moving
 /// the contained value.
 ///
-/// This function will unsafely assume the pointer `src` is valid for
-/// [`size_of::<U>`][size_of] bytes by transmuting `&T` to `&U` and then reading
-/// the `&U`. It will also unsafely create a copy of the contained value instead of
-/// moving out of `src`.
+/// This function will unsafely assume the pointer `src` is valid for [`size_of::<U>`][size_of]
+/// bytes by transmuting `&T` to `&U` and then reading the `&U` (except that this is done in a way
+/// that is correct even when `&U` makes stricter alignment requirements than `&T`). It will also
+/// unsafely create a copy of the contained value instead of moving out of `src`.
 ///
 /// It is not a compile-time error if `T` and `U` have different sizes, but it
 /// is highly encouraged to only invoke this function where `T` and `U` have the

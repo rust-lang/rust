@@ -3,7 +3,7 @@
 * text=auto eol=lf
 *.cpp rust
 *.h rust
-*.rs rust
+*.rs rust diff=rust
 *.fixed linguist-language=Rust
 src/etc/installer/gfx/* binary
 *.woff binary

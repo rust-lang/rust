@@ -34,7 +34,7 @@ CHECK-SAME:   section "llvm.metadata"
 
 CHECK:        [[DEFINE_INTERNAL]] { {{.*}} } @_R{{[a-zA-Z0-9_]+}}testprog14will_be_called() unnamed_addr #{{[0-9]+}} {
 CHECK-NEXT:   start:
-CHECK-NOT:    bb{{[0-9]+}}:
+CHECK-NOT:    [[DEFINE_INTERNAL]]
 CHECK:        %pgocount = load i64, i64* getelementptr inbounds
 CHECK-SAME:   * @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called,
 

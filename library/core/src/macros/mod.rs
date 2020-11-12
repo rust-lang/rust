@@ -6,14 +6,11 @@ macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
     );
-    ($msg:literal) => (
+    ($msg:literal $(,)?) => (
         $crate::panicking::panic($msg)
     );
-    ($msg:expr) => (
-        $crate::panic!("{}", $crate::convert::identity::<&str>($msg))
-    );
-    ($msg:expr,) => (
-        $crate::panic!($msg)
+    ($msg:expr $(,)?) => (
+        $crate::panicking::panic_str($msg)
     );
     ($fmt:expr, $($arg:tt)+) => (
         $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
@@ -40,7 +37,7 @@ macro_rules! panic {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! assert_eq {
-    ($left:expr, $right:expr) => ({
+    ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -53,9 +50,6 @@ macro_rules! assert_eq {
                 }
             }
         }
-    });
-    ($left:expr, $right:expr,) => ({
-        $crate::assert_eq!($left, $right)
     });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
@@ -94,7 +88,7 @@ macro_rules! assert_eq {
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
 macro_rules! assert_ne {
-    ($left:expr, $right:expr) => ({
+    ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -108,9 +102,6 @@ macro_rules! assert_ne {
             }
         }
     });
-    ($left:expr, $right:expr,) => {
-        $crate::assert_ne!($left, $right)
-    };
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
@@ -315,7 +306,7 @@ macro_rules! matches {
 #[rustc_deprecated(since = "1.39.0", reason = "use the `?` operator instead")]
 #[doc(alias = "?")]
 macro_rules! r#try {
-    ($expr:expr) => {
+    ($expr:expr $(,)?) => {
         match $expr {
             $crate::result::Result::Ok(val) => val,
             $crate::result::Result::Err(err) => {
@@ -323,14 +314,11 @@ macro_rules! r#try {
             }
         }
     };
-    ($expr:expr,) => {
-        $crate::r#try!($expr)
-    };
 }
 
 /// Writes formatted data into a buffer.
 ///
-/// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
+/// This macro accepts a 'writer', a format string, and a list of arguments. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.
 /// The writer may be any value with a `write_fmt` method; generally this comes from an
 /// implementation of either the [`fmt::Write`] or the [`io::Write`] trait. The macro
@@ -339,7 +327,7 @@ macro_rules! r#try {
 ///
 /// See [`std::fmt`] for more information on the format string syntax.
 ///
-/// [`std::fmt`]: crate::fmt
+/// [`std::fmt`]: ../std/fmt/index.html
 /// [`fmt::Write`]: crate::fmt::Write
 /// [`io::Write`]: ../std/io/trait.Write.html
 /// [`fmt::Result`]: crate::fmt::Result
@@ -451,11 +439,8 @@ macro_rules! write {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
-    ($dst:expr) => (
+    ($dst:expr $(,)?) => (
         $crate::write!($dst, "\n")
-    );
-    ($dst:expr,) => (
-        $crate::writeln!($dst)
     );
     ($dst:expr, $($arg:tt)*) => (
         $dst.write_fmt($crate::format_args_nl!($($arg)*))
@@ -517,11 +502,8 @@ macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
     });
-    ($msg:expr) => ({
+    ($msg:expr $(,)?) => ({
         $crate::unreachable!("{}", $msg)
-    });
-    ($msg:expr,) => ({
-        $crate::unreachable!($msg)
     });
     ($fmt:expr, $($arg:tt)*) => ({
         panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
@@ -711,8 +693,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! compile_error {
-        ($msg:expr) => {{ /* compiler built-in */ }};
-        ($msg:expr,) => {{ /* compiler built-in */ }};
+        ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Constructs parameters for the other string-formatting macros.
@@ -816,8 +797,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! env {
-        ($name:expr) => {{ /* compiler built-in */ }};
-        ($name:expr,) => {{ /* compiler built-in */ }};
+        ($name:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Optionally inspects an environment variable at compile time.
@@ -841,8 +821,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! option_env {
-        ($name:expr) => {{ /* compiler built-in */ }};
-        ($name:expr,) => {{ /* compiler built-in */ }};
+        ($name:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Concatenates identifiers into one identifier.
@@ -877,8 +856,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! concat_idents {
-        ($($e:ident),+) => {{ /* compiler built-in */ }};
-        ($($e:ident,)+) => {{ /* compiler built-in */ }};
+        ($($e:ident),+ $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Concatenates literals into a static string slice.
@@ -900,8 +878,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! concat {
-        ($($e:expr),*) => {{ /* compiler built-in */ }};
-        ($($e:expr,)*) => {{ /* compiler built-in */ }};
+        ($($e:expr),* $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Expands to the line number on which it was invoked.
@@ -1043,8 +1020,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! include_str {
-        ($file:expr) => {{ /* compiler built-in */ }};
-        ($file:expr,) => {{ /* compiler built-in */ }};
+        ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Includes a file as a reference to a byte array.
@@ -1083,8 +1059,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! include_bytes {
-        ($file:expr) => {{ /* compiler built-in */ }};
-        ($file:expr,) => {{ /* compiler built-in */ }};
+        ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Expands to a string that represents the current module path.
@@ -1191,8 +1166,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! include {
-        ($file:expr) => {{ /* compiler built-in */ }};
-        ($file:expr,) => {{ /* compiler built-in */ }};
+        ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Asserts that a boolean expression is `true` at runtime.
@@ -1242,8 +1216,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! assert {
-        ($cond:expr) => {{ /* compiler built-in */ }};
-        ($cond:expr,) => {{ /* compiler built-in */ }};
+        ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
     }
 

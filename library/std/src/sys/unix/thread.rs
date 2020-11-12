@@ -22,24 +22,6 @@ pub struct Thread {
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
-// The pthread_attr_setstacksize symbol doesn't exist in the emscripten libc,
-// so we have to not link to it to satisfy emcc's ERROR_ON_UNDEFINED_SYMBOLS.
-#[cfg(not(target_os = "emscripten"))]
-unsafe fn pthread_attr_setstacksize(
-    attr: *mut libc::pthread_attr_t,
-    stack_size: libc::size_t,
-) -> libc::c_int {
-    libc::pthread_attr_setstacksize(attr, stack_size)
-}
-
-#[cfg(target_os = "emscripten")]
-unsafe fn pthread_attr_setstacksize(
-    _attr: *mut libc::pthread_attr_t,
-    _stack_size: libc::size_t,
-) -> libc::c_int {
-    panic!()
-}
-
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
@@ -50,7 +32,7 @@ impl Thread {
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
 
-        match pthread_attr_setstacksize(&mut attr, stack_size) {
+        match libc::pthread_attr_setstacksize(&mut attr, stack_size) {
             0 => {}
             n => {
                 assert_eq!(n, libc::EINVAL);
@@ -178,7 +160,8 @@ impl Thread {
                     tv_nsec: nsecs,
                 };
                 secs -= ts.tv_sec as u64;
-                if libc::nanosleep(&ts, &mut ts) == -1 {
+                let ts_ptr = &mut ts as *mut _;
+                if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
                     assert_eq!(os::errno(), libc::EINTR);
                     secs += ts.tv_sec as u64;
                     nsecs = ts.tv_nsec;

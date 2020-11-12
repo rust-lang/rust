@@ -6,11 +6,14 @@ use crate::rmeta::{self, encoder};
 
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
+use rustc_middle::middle::cstore::ForeignModule;
 use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
@@ -219,10 +222,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
-        let r = match *cdata.extern_crate.borrow() {
-            Some(extern_crate) if !extern_crate.is_direct() => true,
-            _ => false,
-        };
+        let r = matches!(*cdata.extern_crate.borrow(), Some(extern_crate) if !extern_crate.is_direct());
         r
     }
 
@@ -253,9 +253,11 @@ pub fn provide(providers: &mut Providers) {
             }
             _ => false,
         },
-        is_statically_included_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(NativeLibKind::StaticBundle | NativeLibKind::StaticNoBundle) => true,
-            _ => false,
+        is_statically_included_foreign_item: |tcx, id| {
+            matches!(
+                tcx.native_library_kind(id),
+                Some(NativeLibKind::StaticBundle | NativeLibKind::StaticNoBundle)
+            )
         },
         native_library_kind: |tcx, id| {
             tcx.native_libraries(id.krate)
@@ -266,9 +268,8 @@ pub fn provide(providers: &mut Providers) {
                         Some(id) => id,
                         None => return false,
                     };
-                    tcx.foreign_modules(id.krate)
-                        .iter()
-                        .find(|m| m.def_id == fm_id)
+                    let map = tcx.foreign_modules(id.krate);
+                    map.get(&fm_id)
                         .expect("failed to find foreign module")
                         .foreign_items
                         .contains(&id)
@@ -281,7 +282,9 @@ pub fn provide(providers: &mut Providers) {
         },
         foreign_modules: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            &tcx.arena.alloc(foreign_modules::collect(tcx))[..]
+            let modules: FxHashMap<DefId, ForeignModule> =
+                foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect();
+            Lrc::new(modules)
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -485,6 +488,10 @@ impl CrateStore for CStore {
     /// `DefId` refers to.
     fn def_key(&self, def: DefId) -> DefKey {
         self.get_crate_data(def.krate).def_key(def.index)
+    }
+
+    fn def_kind(&self, def: DefId) -> DefKind {
+        self.get_crate_data(def.krate).def_kind(def.index)
     }
 
     fn def_path(&self, def: DefId) -> DefPath {

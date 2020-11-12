@@ -33,4 +33,9 @@ fn main() {
     let fail19 = 12_3456_21;
     let fail22 = 3__4___23;
     let fail23 = 3__16___23;
+
+    let fail24 = 0xAB_ABC_AB;
+    let fail25 = 0b01_100_101;
+    let ok26 = 0x6_A0_BF;
+    let ok27 = 0b1_0010_0101;
 }

@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 URL=https://dl.google.com/android/repository

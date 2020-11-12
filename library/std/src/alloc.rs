@@ -316,7 +316,7 @@ pub fn take_alloc_error_hook() -> fn(Layout) {
 }
 
 fn default_alloc_error_hook(layout: Layout) {
-    dumb_print(format_args!("memory allocation of {} bytes failed", layout.size()));
+    dumb_print(format_args!("memory allocation of {} bytes failed\n", layout.size()));
 }
 
 #[cfg(not(test))]

@@ -1,10 +1,10 @@
-// Test that the initial version of Rust coverage injects Coverage statements at the top of each
-// function. The Coverage Counter statements are later converted into LLVM instrprof.increment
-// intrinsics, during codegen.
+// Test that `-Z instrument-coverage` injects Coverage statements. The Coverage Counter statements
+// are later converted into LLVM instrprof.increment intrinsics, during codegen.
 
 // needs-profiler-support
 // ignore-windows
-// compile-flags: -Zinstrument-coverage --remap-path-prefix={{src-base}}=/the/src
+// compile-flags: -Z instrument-coverage --remap-path-prefix={{src-base}}=/the/src
+
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
 // EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff
 fn main() {

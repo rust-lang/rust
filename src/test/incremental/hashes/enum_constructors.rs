@@ -7,7 +7,7 @@
 
 // build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
+// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans -Zmir-opt-level=0
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

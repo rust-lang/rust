@@ -850,8 +850,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 visit::walk_item(self, item);
             }
-
-            fn visit_mac(&mut self, _: &'ast ast::MacCall) {}
         }
 
         if !self.cx.ecfg.proc_macro_hygiene() {
@@ -1357,7 +1355,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
             let (attr, derives, after_derive) = if stmt.is_item() {
-                self.classify_item(&mut stmt)
+                // FIXME: Handle custom attributes on statements (#15701)
+                (None, vec![], false)
             } else {
                 // ignore derives on non-item statements so it falls through
                 // to the unused-attributes lint
@@ -1435,9 +1434,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 item.attrs = attrs;
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ItemKind::MacCall(mac) => self
-                        .collect(AstFragmentKind::Items, InvocationKind::Bang { mac, span })
-                        .make_items(),
+                    ItemKind::MacCall(mac) => {
+                        self.collect_bang(mac, span, AstFragmentKind::Items).make_items()
+                    }
                     _ => unreachable!(),
                 })
             }
@@ -1777,11 +1776,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = ast::Attribute {
-                kind: ast::AttrKind::Normal(AttrItem {
-                    path: meta.path,
-                    args: meta.kind.mac_args(meta.span),
-                    tokens: None,
-                }),
+                kind: ast::AttrKind::Normal(
+                    AttrItem { path: meta.path, args: meta.kind.mac_args(meta.span), tokens: None },
+                    None,
+                ),
                 span: at.span,
                 id: at.id,
                 style: at.style,

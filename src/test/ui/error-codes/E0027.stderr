@@ -8,7 +8,7 @@ help: include the missing field in the pattern
    |
 LL |         Dog { age: x, name } => {}
    |                     ^^^^^^
-help: if you don't care about this missing field, you can explicitely ignore it
+help: if you don't care about this missing field, you can explicitly ignore it
    |
 LL |         Dog { age: x, .. } => {}
    |                     ^^^^
@@ -23,7 +23,7 @@ help: include the missing fields in the pattern
    |
 LL |         Dog { name, age } => {}
    |             ^^^^^^^^^^^^^
-help: if you don't care about these missing fields, you can explicitely ignore them
+help: if you don't care about these missing fields, you can explicitly ignore them
    |
 LL |         Dog { .. } => {}
    |             ^^^^^^

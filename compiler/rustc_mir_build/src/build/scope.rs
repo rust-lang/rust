@@ -331,13 +331,11 @@ impl DropTree {
             }
             if let DropKind::Value = drop_data.0.kind {
                 needs_block[drop_data.1] = Block::Own;
-            } else {
-                if drop_idx != ROOT_NODE {
-                    match &mut needs_block[drop_data.1] {
-                        pred @ Block::None => *pred = Block::Shares(drop_idx),
-                        pred @ Block::Shares(_) => *pred = Block::Own,
-                        Block::Own => (),
-                    }
+            } else if drop_idx != ROOT_NODE {
+                match &mut needs_block[drop_data.1] {
+                    pred @ Block::None => *pred = Block::Shares(drop_idx),
+                    pred @ Block::Shares(_) => *pred = Block::Own,
+                    Block::Own => (),
                 }
             }
         }
@@ -461,9 +459,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
         let break_block = self.build_exit_tree(breakable_scope.break_drops, None);
-        breakable_scope.continue_drops.map(|drops| {
-            self.build_exit_tree(drops, loop_block);
-        });
+        if let Some(drops) = breakable_scope.continue_drops { self.build_exit_tree(drops, loop_block); }
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
             (None, None) => self.cfg.start_new_block().unit(),
@@ -705,6 +701,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.source_scopes.push(SourceScopeData {
             span,
             parent_scope: Some(parent),
+            inlined: None,
+            inlined_parent_scope: None,
             local_data: ClearCrossCrate::Set(scope_local_data),
         })
     }

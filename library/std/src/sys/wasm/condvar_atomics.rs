@@ -44,13 +44,19 @@ impl Condvar {
 
     pub unsafe fn notify_one(&self) {
         self.cnt.fetch_add(1, SeqCst);
-        wasm32::memory_atomic_notify(self.ptr(), 1);
+        // SAFETY: ptr() is always valid
+        unsafe {
+            wasm32::memory_atomic_notify(self.ptr(), 1);
+        }
     }
 
     #[inline]
     pub unsafe fn notify_all(&self) {
         self.cnt.fetch_add(1, SeqCst);
-        wasm32::memory_atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
+        // SAFETY: ptr() is always valid
+        unsafe {
+            wasm32::memory_atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
+        }
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {

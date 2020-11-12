@@ -1,0 +1,25 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/issue-76547.rs:20:13
+   |
+LL | async fn fut(bufs: &mut [&mut [u8]]) {
+   |                          ---------   -
+   |                          |           |
+   |                          |           this `async fn` implicitly returns an `impl Future<Output = ()>`
+   |                          this parameter and the returned future are declared with different lifetimes...
+LL |     ListFut(bufs).await
+   |             ^^^^ ...but data from `bufs` is held across an await point here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/issue-76547.rs:34:14
+   |
+LL | async fn fut2(bufs: &mut [&mut [u8]]) -> i32 {
+   |                           ---------      ---
+   |                           |              |
+   |                           |              this `async fn` implicitly returns an `impl Future<Output = i32>`
+   |                           this parameter and the returned future are declared with different lifetimes...
+LL |     ListFut2(bufs).await
+   |              ^^^^ ...but data from `bufs` is held across an await point here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0623`.

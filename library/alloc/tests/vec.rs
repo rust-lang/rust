@@ -3,7 +3,7 @@ use std::cell::Cell;
 use std::collections::TryReserveError::*;
 use std::fmt::Debug;
 use std::iter::InPlaceIterable;
-use std::mem::size_of;
+use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
@@ -1911,4 +1911,46 @@ fn test_vec_cycle_wrapped() {
     c2.refs.v[1].set(Some(&c3));
     c3.refs.v[0].set(Some(&c1));
     c3.refs.v[1].set(Some(&c2));
+}
+
+#[test]
+fn test_zero_sized_vec_push() {
+    const N: usize = 8;
+
+    for len in 0..N {
+        let mut tester = Vec::with_capacity(len);
+        assert_eq!(tester.len(), 0);
+        assert!(tester.capacity() >= len);
+        for _ in 0..len {
+            tester.push(());
+        }
+        assert_eq!(tester.len(), len);
+        assert_eq!(tester.iter().count(), len);
+        tester.clear();
+    }
+}
+
+#[test]
+fn test_vec_macro_repeat() {
+    assert_eq!(vec![1; 3], vec![1, 1, 1]);
+    assert_eq!(vec![1; 2], vec![1, 1]);
+    assert_eq!(vec![1; 1], vec![1]);
+    assert_eq!(vec![1; 0], vec![]);
+
+    // from_elem syntax (see RFC 832)
+    let el = Box::new(1);
+    let n = 3;
+    assert_eq!(vec![el; n], vec![Box::new(1), Box::new(1), Box::new(1)]);
+}
+
+#[test]
+fn test_vec_swap() {
+    let mut a: Vec<isize> = vec![0, 1, 2, 3, 4, 5, 6];
+    a.swap(2, 4);
+    assert_eq!(a[2], 4);
+    assert_eq!(a[4], 2);
+    let mut n = 42;
+    swap(&mut n, &mut a[0]);
+    assert_eq!(a[0], 42);
+    assert_eq!(n, 0);
 }

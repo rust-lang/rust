@@ -148,7 +148,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     is_collecting_in_band_lifetimes: bool,
 
     /// Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
-    /// When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
+    /// When `is_collecting_in_band_lifetimes` is true, each lifetime is checked
     /// against this list to see if it is already in-scope, or if a definition
     /// needs to be created for it.
     ///
@@ -257,7 +257,7 @@ enum ImplTraitPosition {
     /// Disallowed in `let` / `const` / `static` bindings.
     Binding,
 
-    /// All other posiitons.
+    /// All other positions.
     Other,
 }
 
@@ -363,7 +363,7 @@ enum ParenthesizedGenericArgs {
 ///   elided bounds follow special rules. Note that this only covers
 ///   cases where *nothing* is written; the `'_` in `Box<dyn Foo +
 ///   '_>` is a case of "modern" elision.
-/// - **Deprecated** -- this coverse cases like `Ref<T>`, where the lifetime
+/// - **Deprecated** -- this covers cases like `Ref<T>`, where the lifetime
 ///   parameter to ref is completely elided. `Ref<'_, T>` would be the modern,
 ///   non-deprecated equivalent.
 ///
@@ -490,10 +490,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let count = generics
                             .params
                             .iter()
-                            .filter(|param| match param.kind {
-                                ast::GenericParamKind::Lifetime { .. } => true,
-                                _ => false,
-                            })
+                            .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
                             .count();
                         self.lctx.type_def_lifetime_params.insert(def_id.to_def_id(), count);
                     }
@@ -537,6 +534,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.visit_ty(&parameter.ty)
                         }
                         self.visit_fn_ret_ty(&f.decl.output)
+                    }
+                    TyKind::ImplTrait(def_node_id, _) => {
+                        self.lctx.allocate_hir_id_counter(def_node_id);
+                        self.with_hir_id_owner(Some(def_node_id), |this| {
+                            visit::walk_ty(this, t);
+                        });
                     }
                     _ => visit::walk_ty(self, t),
                 }
@@ -963,12 +966,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
+        // Tokens are also not needed after macro expansion and parsing.
         let kind = match attr.kind {
-            AttrKind::Normal(ref item) => AttrKind::Normal(AttrItem {
-                path: item.path.clone(),
-                args: self.lower_mac_args(&item.args),
-                tokens: None,
-            }),
+            AttrKind::Normal(ref item, _) => AttrKind::Normal(
+                AttrItem {
+                    path: item.path.clone(),
+                    args: self.lower_mac_args(&item.args),
+                    tokens: None,
+                },
+                None,
+            ),
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
@@ -1346,10 +1353,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
 
-                        let hir_bounds = self.lower_param_bounds(
-                            bounds,
-                            ImplTraitContext::Universal(in_band_ty_params),
-                        );
+                        self.allocate_hir_id_counter(def_node_id);
+
+                        let hir_bounds = self.with_hir_id_owner(def_node_id, |this| {
+                            this.lower_param_bounds(
+                                bounds,
+                                ImplTraitContext::Universal(in_band_ty_params),
+                            )
+                        });
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         in_band_ty_params.push(hir::GenericParam {
@@ -1713,7 +1724,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 pat: self.lower_pat(&l.pat),
                 init,
                 span: l.span,
-                attrs: l.attrs.clone(),
+                attrs: l.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
                 source: hir::LocalSource::Normal,
             },
             ids,
@@ -2200,7 +2211,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         .attrs
                         .iter()
                         .filter(|attr| self.sess.check_name(attr, sym::rustc_synthetic))
-                        .map(|_| hir::SyntheticTyParamKind::ImplTrait)
+                        .map(|_| hir::SyntheticTyParamKind::FromAttr)
                         .next(),
                 };
 
@@ -2523,6 +2534,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir_id,
                 kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
+                default_binding_modes: true,
             }),
             hir_id,
         )
@@ -2533,7 +2545,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn pat(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat { hir_id: self.next_id(), kind, span })
+        self.arena.alloc(hir::Pat {
+            hir_id: self.next_id(),
+            kind,
+            span,
+            default_binding_modes: true,
+        })
+    }
+
+    fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
+        self.arena.alloc(hir::Pat {
+            hir_id: self.next_id(),
+            kind,
+            span,
+            default_binding_modes: false,
+        })
     }
 
     fn ty_path(

@@ -34,6 +34,7 @@ pub trait BackendTypes {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `Dbg`, `Debug`, `DebugInfo`, `DI` etc.).
     type DIScope: Copy;
+    type DILocation: Copy;
     type DIVariable: Copy;
 }
 

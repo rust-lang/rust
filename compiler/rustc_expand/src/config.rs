@@ -3,6 +3,8 @@
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
+use rustc_ast::token::{DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::{DelimSpan, LazyTokenStream, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, AttrItem, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -289,8 +291,36 @@ impl<'a> StripUnconfigured<'a> {
         expanded_attrs
             .into_iter()
             .flat_map(|(item, span)| {
-                let attr = attr::mk_attr_from_item(attr.style, item, span);
-                self.process_cfg_attr(attr)
+                let orig_tokens = attr.tokens();
+
+                // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
+                // and producing an attribute of the form `#[attr]`. We
+                // have captured tokens for `attr` itself, but we need to
+                // synthesize tokens for the wrapper `#` and `[]`, which
+                // we do below.
+
+                // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
+                // for `attr` when we expand it to `#[attr]`
+                let pound_token = orig_tokens.trees().next().unwrap();
+                if !matches!(pound_token, TokenTree::Token(Token { kind: TokenKind::Pound, .. })) {
+                    panic!("Bad tokens for attribute {:?}", attr);
+                }
+                // We don't really have a good span to use for the syntheized `[]`
+                // in `#[attr]`, so just use the span of the `#` token.
+                let bracket_group = TokenTree::Delimited(
+                    DelimSpan::from_single(pound_token.span()),
+                    DelimToken::Bracket,
+                    item.tokens
+                        .as_ref()
+                        .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
+                        .create_token_stream(),
+                );
+                let tokens = Some(LazyTokenStream::new(TokenStream::new(vec![
+                    (pound_token, Spacing::Alone),
+                    (bracket_group, Spacing::Alone),
+                ])));
+
+                self.process_cfg_attr(attr::mk_attr_from_item(item, tokens, attr.style, span))
             })
             .collect()
     }
@@ -513,11 +543,6 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 
     fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         noop_flat_map_assoc_item(configure!(self, item), self)
-    }
-
-    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
-        // Don't configure interpolated AST (cf. issue #34171).
-        // Interpolated AST will get configured once the surrounding tokens are parsed.
     }
 
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {

@@ -85,7 +85,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_source_scope_data(&mut self,
-                                           scope_data: & $($mutability)? SourceScopeData) {
+                                           scope_data: & $($mutability)? SourceScopeData<'tcx>) {
                 self.super_source_scope_data(scope_data);
             }
 
@@ -317,16 +317,49 @@ macro_rules! make_mir_visitor {
                 }
             }
 
-            fn super_source_scope_data(&mut self, scope_data: & $($mutability)? SourceScopeData) {
+            fn super_source_scope_data(
+                &mut self,
+                scope_data: & $($mutability)? SourceScopeData<'tcx>,
+            ) {
                 let SourceScopeData {
                     span,
                     parent_scope,
+                    inlined,
+                    inlined_parent_scope,
                     local_data: _,
                 } = scope_data;
 
                 self.visit_span(span);
                 if let Some(parent_scope) = parent_scope {
                     self.visit_source_scope(parent_scope);
+                }
+                if let Some((callee, callsite_span)) = inlined {
+                    let location = START_BLOCK.start_location();
+
+                    self.visit_span(callsite_span);
+
+                    let ty::Instance { def: callee_def, substs: callee_substs } = callee;
+                    match callee_def {
+                        ty::InstanceDef::Item(_def_id) => {}
+
+                        ty::InstanceDef::Intrinsic(_def_id) |
+                        ty::InstanceDef::VtableShim(_def_id) |
+                        ty::InstanceDef::ReifyShim(_def_id) |
+                        ty::InstanceDef::Virtual(_def_id, _) |
+                        ty::InstanceDef::ClosureOnceShim { call_once: _def_id } |
+                        ty::InstanceDef::DropGlue(_def_id, None) => {}
+
+                        ty::InstanceDef::FnPtrShim(_def_id, ty) |
+                        ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
+                        ty::InstanceDef::CloneShim(_def_id, ty) => {
+                            // FIXME(eddyb) use a better `TyContext` here.
+                            self.visit_ty(ty, TyContext::Location(location));
+                        }
+                    }
+                    self.visit_substs(callee_substs, location);
+                }
+                if let Some(inlined_parent_scope) = inlined_parent_scope {
+                    self.visit_source_scope(inlined_parent_scope);
                 }
             }
 

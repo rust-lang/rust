@@ -1,10 +1,10 @@
-error: generic parameters may not be used in const operations
-  --> $DIR/issue-67739.rs:12:30
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-67739.rs:12:15
    |
 LL |         [0u8; mem::size_of::<Self::Associated>()];
-   |                              ^^^^^^^^^^^^^^^^ cannot perform const operation using `Self`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: type parameters may not be used in const expressions
+   = note: this may fail depending on what value the parameter takes
 
 error: aborting due to previous error
 

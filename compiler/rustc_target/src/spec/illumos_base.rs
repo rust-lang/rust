@@ -16,10 +16,11 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
+        os: "illumos".to_string(),
         dynamic_linking: true,
         executables: true,
         has_rpath: true,
-        target_family: Some("unix".to_string()),
+        os_family: Some("unix".to_string()),
         is_like_solaris: true,
         limit_rdylib_exports: false, // Linker doesn't support this
         eliminate_frame_pointer: false,

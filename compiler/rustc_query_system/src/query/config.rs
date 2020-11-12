@@ -5,7 +5,6 @@ use crate::dep_graph::SerializedDepNodeIndex;
 use crate::query::caches::QueryCache;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryState};
-use rustc_data_structures::profiling::ProfileCategory;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use std::borrow::Cow;
@@ -14,7 +13,6 @@ use std::hash::Hash;
 
 pub trait QueryConfig {
     const NAME: &'static str;
-    const CATEGORY: ProfileCategory;
 
     type Key: Eq + Hash + Clone + Debug;
     type Value;

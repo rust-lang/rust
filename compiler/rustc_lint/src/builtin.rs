@@ -44,7 +44,6 @@ use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, layout::LayoutError, Ty, TyCtxt};
-use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
@@ -994,7 +993,8 @@ impl EarlyLintPass for UnusedDocComment {
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, stmt: &ast::Stmt) {
         let kind = match stmt.kind {
             ast::StmtKind::Local(..) => "statements",
-            ast::StmtKind::Item(..) => "inner items",
+            // Disabled pending discussion in #78306
+            ast::StmtKind::Item(..) => return,
             // expressions will be reported by `check_expr`.
             ast::StmtKind::Empty
             | ast::StmtKind::Semi(_)
@@ -1368,10 +1368,9 @@ impl TypeAliasBounds {
             hir::QPath::TypeRelative(ref ty, _) => {
                 // If this is a type variable, we found a `T::Assoc`.
                 match ty.kind {
-                    hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => match path.res {
-                        Res::Def(DefKind::TyParam, _) => true,
-                        _ => false,
-                    },
+                    hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
+                        matches!(path.res, Res::Def(DefKind::TyParam, _))
+                    }
                     _ => false,
                 }
             }
@@ -2380,10 +2379,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         return Some(InitKind::Zeroed);
                     } else if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, def_id) {
                         return Some(InitKind::Uninit);
-                    } else if cx.tcx.is_diagnostic_item(sym::transmute, def_id) {
-                        if is_zero(&args[0]) {
-                            return Some(InitKind::Zeroed);
-                        }
+                    } else if cx.tcx.is_diagnostic_item(sym::transmute, def_id) && is_zero(&args[0])
+                    {
+                        return Some(InitKind::Zeroed);
                     }
                 }
             } else if let hir::ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
@@ -2879,7 +2877,7 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, this_fi: &hir::ForeignItem<'_>) {
         trace!("ClashingExternDeclarations: check_foreign_item: {:?}", this_fi);
         if let ForeignItemKind::Fn(..) = this_fi.kind {
-            let tcx = *&cx.tcx;
+            let tcx = cx.tcx;
             if let Some(existing_hid) = self.insert(tcx, this_fi) {
                 let existing_decl_ty = tcx.type_of(tcx.hir().local_def_id(existing_hid));
                 let this_decl_ty = tcx.type_of(tcx.hir().local_def_id(this_fi.hir_id));

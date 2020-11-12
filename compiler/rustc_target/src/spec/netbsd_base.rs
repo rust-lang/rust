@@ -14,9 +14,10 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
+        os: "netbsd".to_string(),
         dynamic_linking: true,
         executables: true,
-        target_family: Some("unix".to_string()),
+        os_family: Some("unix".to_string()),
         linker_is_gnu: true,
         no_default_libraries: false,
         has_rpath: true,

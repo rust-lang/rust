@@ -9,6 +9,8 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
+        os: "hermit".to_string(),
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         executables: true,
         has_elf_tls: true,
@@ -18,7 +20,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         static_position_independent_executables: true,
         relocation_model: RelocModel::Pic,
-        target_family: None,
+        os_family: None,
         tls_model: TlsModel::InitialExec,
         ..Default::default()
     }

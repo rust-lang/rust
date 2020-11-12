@@ -3,7 +3,7 @@
 //!
 //! Table of CRT objects for popular toolchains.
 //! The `crtx` ones are generally distributed with libc and the `begin/end` ones with gcc.
-//! See https://dev.gentoo.org/~vapier/crt.txt for some more details.
+//! See <https://dev.gentoo.org/~vapier/crt.txt> for some more details.
 //!
 //! | Pre-link CRT objects | glibc                  | musl                   | bionic           | mingw             | wasi |
 //! |----------------------|------------------------|------------------------|------------------|-------------------|------|

@@ -119,7 +119,7 @@ where
     Ty: TyAndLayoutMethods<'a, C> + Copy,
     C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
 {
-    let abi = if cx.target_spec().target_env == "musl" {
+    let abi = if cx.target_spec().env == "musl" {
         ELFv2
     } else {
         match cx.data_layout().endian {

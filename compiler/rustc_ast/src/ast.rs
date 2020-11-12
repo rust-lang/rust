@@ -222,6 +222,15 @@ pub enum AngleBracketedArg {
     Constraint(AssocTyConstraint),
 }
 
+impl AngleBracketedArg {
+    pub fn span(&self) -> Span {
+        match self {
+            AngleBracketedArg::Arg(arg) => arg.span(),
+            AngleBracketedArg::Constraint(constraint) => constraint.span,
+        }
+    }
+}
+
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
     fn into(self) -> Option<P<GenericArgs>> {
         Some(P(GenericArgs::AngleBracketed(self)))
@@ -896,6 +905,13 @@ pub struct Stmt {
 }
 
 impl Stmt {
+    pub fn has_trailing_semicolon(&self) -> bool {
+        match &self.kind {
+            StmtKind::Semi(_) => true,
+            StmtKind::MacCall(mac) => matches!(mac.style, MacStmtStyle::Semicolon),
+            _ => false,
+        }
+    }
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
@@ -2428,7 +2444,7 @@ pub struct Attribute {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrKind {
     /// A normal attribute.
-    Normal(AttrItem),
+    Normal(AttrItem, Option<LazyTokenStream>),
 
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`

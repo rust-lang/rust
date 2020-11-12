@@ -630,9 +630,14 @@ impl<'tcx> SaveContext<'tcx> {
             })
             | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => match qpath {
                 hir::QPath::Resolved(_, path) => path.res,
-                hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
-                    .maybe_typeck_results
-                    .map_or(Res::Err, |typeck_results| typeck_results.qpath_res(qpath, hir_id)),
+                hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
+                    // #75962: `self.typeck_results` may be different from the `hir_id`'s result.
+                    if self.tcx.has_typeck_results(hir_id.owner.to_def_id()) {
+                        self.tcx.typeck(hir_id.owner).qpath_res(qpath, hir_id)
+                    } else {
+                        Res::Err
+                    }
+                }
             },
 
             Node::Binding(&hir::Pat {
@@ -794,7 +799,9 @@ impl<'tcx> SaveContext<'tcx> {
 
             // These are not macros.
             // FIXME(eddyb) maybe there is a way to handle them usefully?
-            ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
+            ExpnKind::Inlined | ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => {
+                return None;
+            }
         };
 
         let callee_span = self.span_from_span(callee.def_site);

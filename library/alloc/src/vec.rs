@@ -2136,10 +2136,8 @@ impl<T> InPlaceDrop<T> {
 impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
-        if mem::needs_drop::<T>() {
-            unsafe {
-                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
-            }
+        unsafe {
+            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
         }
     }
 }
@@ -2566,7 +2564,7 @@ __impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N], #[stable(feature = "rust1"
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &mut [B; N], }
 
-/// Implements comparison of vectors, lexicographically.
+/// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
@@ -2578,7 +2576,7 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for Vec<T> {}
 
-/// Implements ordering of vectors, lexicographically.
+/// Implements ordering of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
@@ -2871,10 +2869,8 @@ impl<T> IntoIter<T> {
     }
 
     fn drop_remaining(&mut self) {
-        if mem::needs_drop::<T>() {
-            unsafe {
-                ptr::drop_in_place(self.as_mut_slice());
-            }
+        unsafe {
+            ptr::drop_in_place(self.as_mut_slice());
         }
         self.ptr = self.end;
     }

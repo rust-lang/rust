@@ -4,6 +4,7 @@
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
 /* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
+/* global hideThemeButtonState, showThemeButtonState */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -45,6 +46,14 @@ function getSearchInput() {
 
 function getSearchElement() {
     return document.getElementById("search");
+}
+
+function getThemesElement() {
+    return document.getElementById("theme-choices");
+}
+
+function getThemePickerElement() {
+    return document.getElementById("theme-picker");
 }
 
 // Sets the focus on the search bar at the top of the page
@@ -89,7 +98,7 @@ function defocusSearchBar() {
                      "derive",
                      "traitalias"];
 
-    var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
+    var disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     var search_input = getSearchInput();
     var searchTimeout = null;
     var toggleAllDocsId = "toggle-all-docs";
@@ -104,6 +113,7 @@ function defocusSearchBar() {
     var mouseMovedAfterSearch = true;
 
     var titleBeforeSearch = document.title;
+    var searchTitle = null;
 
     function clearInputTimeout() {
         if (searchTimeout !== null) {
@@ -137,10 +147,6 @@ function defocusSearchBar() {
                 sidebar.appendChild(div);
             }
         }
-        var themePickers = document.getElementsByClassName("theme-picker");
-        if (themePickers && themePickers.length > 0) {
-            themePickers[0].style.display = "none";
-        }
     }
 
     function hideSidebar() {
@@ -155,10 +161,6 @@ function defocusSearchBar() {
             filler.remove();
         }
         document.getElementsByTagName("body")[0].style.marginTop = "";
-        var themePickers = document.getElementsByClassName("theme-picker");
-        if (themePickers && themePickers.length > 0) {
-            themePickers[0].style.display = null;
-        }
     }
 
     function showSearchResults(search) {
@@ -168,6 +170,7 @@ function defocusSearchBar() {
         addClass(main, "hidden");
         removeClass(search, "hidden");
         mouseMovedAfterSearch = false;
+        document.title = searchTitle;
     }
 
     function hideSearchResults(search) {
@@ -176,6 +179,7 @@ function defocusSearchBar() {
         }
         addClass(search, "hidden");
         removeClass(main, "hidden");
+        document.title = titleBeforeSearch;
     }
 
     // used for special search precedence
@@ -373,9 +377,9 @@ function defocusSearchBar() {
             clearInputTimeout();
             ev.preventDefault();
             hideSearchResults(search);
-            document.title = titleBeforeSearch;
         }
         defocusSearchBar();
+        hideThemeButtonState();
     }
 
     function handleShortcut(ev) {
@@ -412,7 +416,66 @@ function defocusSearchBar() {
             case "?":
                 displayHelp(true, ev);
                 break;
+
+            case "t":
+            case "T":
+                displayHelp(false, ev);
+                ev.preventDefault();
+                var themePicker = getThemePickerElement();
+                themePicker.click();
+                themePicker.focus();
+                break;
+
+            default:
+                var themePicker = getThemePickerElement();
+                if (themePicker.parentNode.contains(ev.target)) {
+                    handleThemeKeyDown(ev);
+                }
             }
+        }
+    }
+
+    function handleThemeKeyDown(ev) {
+        var active = document.activeElement;
+        var themes = getThemesElement();
+        switch (getVirtualKey(ev)) {
+        case "ArrowUp":
+            ev.preventDefault();
+            if (active.previousElementSibling && ev.target.id !== "theme-picker") {
+                active.previousElementSibling.focus();
+            } else {
+                showThemeButtonState();
+                themes.lastElementChild.focus();
+            }
+            break;
+        case "ArrowDown":
+            ev.preventDefault();
+            if (active.nextElementSibling && ev.target.id !== "theme-picker") {
+                active.nextElementSibling.focus();
+            } else {
+                showThemeButtonState();
+                themes.firstElementChild.focus();
+            }
+            break;
+        case "Enter":
+        case "Return":
+        case "Space":
+            if (ev.target.id === "theme-picker" && themes.style.display === "none") {
+                ev.preventDefault();
+                showThemeButtonState();
+                themes.firstElementChild.focus();
+            }
+            break;
+        case "Home":
+            ev.preventDefault();
+            themes.firstElementChild.focus();
+            break;
+        case "End":
+            ev.preventDefault();
+            themes.lastElementChild.focus();
+            break;
+        // The escape key is handled in handleEscape, not here,
+        // so that pressing escape will close the menu even if it isn't focused
         }
     }
 
@@ -1580,7 +1643,7 @@ function defocusSearchBar() {
         function showResults(results) {
             var search = getSearchElement();
             if (results.others.length === 1
-                && getCurrentValue("rustdoc-go-to-only-result") === "true"
+                && getSettingValue("go-to-only-result") === "true"
                 // By default, the search DOM element is "empty" (meaning it has no children not
                 // text content). Once a search has been run, it won't be empty, even if you press
                 // ESC or empty the search input (which also "cancels" the search).
@@ -1730,7 +1793,7 @@ function defocusSearchBar() {
             }
 
             // Update document title to maintain a meaningful browser history
-            document.title = "Results for " + query.query + " - Rust";
+            searchTitle = "Results for " + query.query + " - Rust";
 
             // Because searching is incremental by character, only the most
             // recent search query is added to the browser history.
@@ -2296,7 +2359,7 @@ function defocusSearchBar() {
     function autoCollapse(pageId, collapse) {
         if (collapse) {
             toggleAllDocs(pageId, true);
-        } else if (getCurrentValue("rustdoc-auto-hide-trait-implementations") !== "false") {
+        } else if (getSettingValue("auto-hide-trait-implementations") !== "false") {
             var impl_list = document.getElementById("trait-implementations-list");
 
             if (impl_list !== null) {
@@ -2370,8 +2433,8 @@ function defocusSearchBar() {
         }
 
         var toggle = createSimpleToggle(false);
-        var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
-        var hideImplementors = getCurrentValue("rustdoc-auto-collapse-implementors") !== "false";
+        var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
+        var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
         var pageId = getPageId();
 
         var func = function(e) {
@@ -2487,7 +2550,7 @@ function defocusSearchBar() {
                 });
             }
         }
-        var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
+        var showItemDeclarations = getSettingValue("auto-hide-" + className);
         if (showItemDeclarations === null) {
             if (className === "enum" || className === "macro") {
                 showItemDeclarations = "false";
@@ -2495,7 +2558,7 @@ function defocusSearchBar() {
                 showItemDeclarations = "true";
             } else {
                 // In case we found an unknown type, we just use the "parent" value.
-                showItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
+                showItemDeclarations = getSettingValue("auto-hide-declarations");
             }
         }
         showItemDeclarations = showItemDeclarations === "false";
@@ -2569,7 +2632,7 @@ function defocusSearchBar() {
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
         var pageId = getPageId();
 
-        autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
+        autoCollapse(pageId, getSettingValue("collapse") === "true");
 
         if (pageId !== null) {
             expandSection(pageId);
@@ -2592,7 +2655,7 @@ function defocusSearchBar() {
     (function() {
         // To avoid checking on "rustdoc-item-attributes" value on every loop...
         var itemAttributesFunc = function() {};
-        if (getCurrentValue("rustdoc-auto-hide-attributes") !== "false") {
+        if (getSettingValue("auto-hide-attributes") !== "false") {
             itemAttributesFunc = function(x) {
                 collapseDocs(x.previousSibling.childNodes[0], "toggle");
             };
@@ -2611,7 +2674,7 @@ function defocusSearchBar() {
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
         var lineNumbersFunc = function() {};
-        if (getCurrentValue("rustdoc-line-numbers") === "true") {
+        if (getSettingValue("line-numbers") === "true") {
             lineNumbersFunc = function(x) {
                 var count = x.textContent.split("\n").length;
                 var elems = [];
@@ -2684,6 +2747,7 @@ function defocusSearchBar() {
                                      "",
                                      "?search=" + encodeURIComponent(search_input.value));
             }
+            document.title = searchTitle;
         }
     }
 
@@ -2768,7 +2832,7 @@ function defocusSearchBar() {
             }
             return 0;
         });
-        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
+        var savedCrate = getSettingValue("saved-filter-crate");
         for (var i = 0; i < crates_text.length; ++i) {
             var option = document.createElement("option");
             option.value = crates_text[i];
@@ -2800,6 +2864,7 @@ function defocusSearchBar() {
         var shortcuts = [
             ["?", "Show this help dialog"],
             ["S", "Focus the search field"],
+            ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
             ["↹", "Switch tab"],

@@ -262,7 +262,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 } else {
                     let start = offset + prefix.len() + 5;
                     let end = start + name.len();
-                    // FIXME should put the proper path in there, not elipses.
+                    // FIXME should put the proper path in there, not ellipsis.
                     Ok(Signature {
                         text: prefix + "...::" + &name,
                         defs: vec![],
@@ -272,7 +272,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ty, segment)) => {
                 let nested_ty = ty.make(offset + 1, id, scx)?;
-                let prefix = format!("<{}>::", nested_ty.text,);
+                let prefix = format!("<{}>::", nested_ty.text);
 
                 let name = path_segment_to_string(segment);
                 let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
@@ -551,7 +551,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 // FIXME where clause
             }
             hir::ItemKind::ForeignMod(_) => Err("extern mod"),
-            hir::ItemKind::GlobalAsm(_) => Err("glboal asm"),
+            hir::ItemKind::GlobalAsm(_) => Err("global asm"),
             hir::ItemKind::ExternCrate(_) => Err("extern crate"),
             hir::ItemKind::OpaqueTy(..) => Err("opaque type"),
             // FIXME should implement this (e.g., pub use).

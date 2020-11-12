@@ -1,29 +1,33 @@
 error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:13:13
+  --> $DIR/borrowck-move-and-move.rs:13:9
    |
 LL |     let a @ b = U;
-   |         ----^   - move occurs because value has type `U`, which does not implement the `Copy` trait
+   |         ^^^^-   - move occurs because value has type `U`, which does not implement the `Copy` trait
    |         |   |
-   |         |   value used here after move
-   |         value moved here
+   |         |   value moved here
+   |         value used here after move
 
-error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:15:17
+error[E0382]: use of partially moved value
+  --> $DIR/borrowck-move-and-move.rs:15:9
    |
 LL |     let a @ (b, c) = (U, U);
-   |         --------^-   ------ move occurs because value has type `(U, U)`, which does not implement the `Copy` trait
+   |         ^^^^^^^^-^
    |         |       |
-   |         |       value used here after move
-   |         value moved here
+   |         |       value partially moved here
+   |         value used here after partial move
+   |
+   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:17:17
+error[E0382]: use of partially moved value
+  --> $DIR/borrowck-move-and-move.rs:17:9
    |
 LL |     let a @ (b, c) = (u(), u());
-   |         --------^-   ---------- move occurs because value has type `(U, U)`, which does not implement the `Copy` trait
+   |         ^^^^^^^^-^
    |         |       |
-   |         |       value used here after move
-   |         value moved here
+   |         |       value partially moved here
+   |         value used here after partial move
+   |
+   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value
   --> $DIR/borrowck-move-and-move.rs:20:16
@@ -47,36 +51,36 @@ LL |         a @ Ok(b) | a @ Err(b) => {}
    |                     |       value used here after move
    |                     value moved here
 
-error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:27:22
+error[E0382]: use of partially moved value
+  --> $DIR/borrowck-move-and-move.rs:27:9
    |
-LL |     match [u(), u(), u(), u()] {
-   |           -------------------- move occurs because value has type `[U; 4]`, which does not implement the `Copy` trait
 LL |         xs @ [a, .., b] => {}
-   |         -------------^-
+   |         ^^^^^^^^^^^^^-^
    |         |            |
-   |         |            value used here after move
-   |         value moved here
-
-error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:31:18
+   |         |            value partially moved here
+   |         value used here after partial move
    |
-LL |     match [u(), u(), u(), u()] {
-   |           -------------------- move occurs because value has type `[U; 4]`, which does not implement the `Copy` trait
+   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
+
+error[E0382]: use of partially moved value
+  --> $DIR/borrowck-move-and-move.rs:31:9
+   |
 LL |         xs @ [_, ys @ .., _] => {}
-   |         ---------^^^^^^^----
+   |         ^^^^^^^^^-------^^^^
    |         |        |
-   |         |        value used here after move
-   |         value moved here
+   |         |        value partially moved here
+   |         value used here after partial move
+   |
+   = note: partial move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value
-  --> $DIR/borrowck-move-and-move.rs:24:16
+  --> $DIR/borrowck-move-and-move.rs:24:12
    |
 LL |     fn fun(a @ b: U) {}
-   |            ----^
+   |            ^^^^-
    |            |   |
-   |            |   value used here after move
-   |            value moved here
+   |            |   value moved here
+   |            value used here after move
    |            move occurs because value has type `U`, which does not implement the `Copy` trait
 
 error: aborting due to 8 previous errors

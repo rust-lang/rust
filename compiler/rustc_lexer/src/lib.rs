@@ -238,9 +238,10 @@ pub fn is_whitespace(c: char) -> bool {
     // Note that this set is stable (ie, it doesn't change with different
     // Unicode versions), so it's ok to just hard-code the values.
 
-    match c {
+    matches!(
+        c,
         // Usual ASCII suspects
-        | '\u{0009}' // \t
+        '\u{0009}'   // \t
         | '\u{000A}' // \n
         | '\u{000B}' // vertical tab
         | '\u{000C}' // form feed
@@ -257,9 +258,7 @@ pub fn is_whitespace(c: char) -> bool {
         // Dedicated whitespace characters from Unicode
         | '\u{2028}' // LINE SEPARATOR
         | '\u{2029}' // PARAGRAPH SEPARATOR
-        => true,
-        _ => false,
-    }
+    )
 }
 
 /// True if `c` is valid as a first character of an identifier.

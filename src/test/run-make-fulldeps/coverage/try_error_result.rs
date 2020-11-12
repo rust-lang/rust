@@ -25,6 +25,7 @@ fn main() -> Result<(),()> {
             countdown < 5
         {
             call(/*return_error=*/ true)?;
+            call(/*return_error=*/ false)?;
         }
         else
         {

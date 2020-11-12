@@ -50,6 +50,13 @@ pub fn panic(expr: &'static str) -> ! {
     panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
 }
 
+#[inline]
+#[track_caller]
+#[cfg_attr(not(bootstrap), lang = "panic_str")] // needed for const-evaluated panics
+pub fn panic_str(expr: &str) -> ! {
+    panic_fmt(format_args!("{}", expr));
+}
+
 #[cold]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]

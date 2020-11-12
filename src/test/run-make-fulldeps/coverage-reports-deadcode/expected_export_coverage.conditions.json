@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/conditions.rs",
+          "summary": {
+            "functions": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "lines": {
+              "count": 49,
+              "covered": 23,
+              "percent": 46.93877551020408
+            },
+            "regions": {
+              "count": 69,
+              "covered": 18,
+              "notcovered": 51,
+              "percent": 26.08695652173913
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "lines": {
+          "count": 49,
+          "covered": 23,
+          "percent": 46.93877551020408
+        },
+        "regions": {
+          "count": 69,
+          "covered": 18,
+          "notcovered": 51,
+          "percent": 26.08695652173913
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

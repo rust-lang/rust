@@ -32,7 +32,7 @@ pub use poll_fn::{poll_fn, PollFn};
 /// This type is needed because:
 ///
 /// a) Generators cannot implement `for<'a, 'b> Generator<&'a mut Context<'b>>`, so we need to pass
-///    a raw pointer (see https://github.com/rust-lang/rust/issues/68923).
+///    a raw pointer (see <https://github.com/rust-lang/rust/issues/68923>).
 /// b) Raw pointers and `NonNull` aren't `Send` or `Sync`, so that would make every single future
 ///    non-Send/Sync as well, and we don't want that.
 ///

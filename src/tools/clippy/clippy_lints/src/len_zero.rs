@@ -68,7 +68,44 @@ declare_clippy_lint! {
     "traits or impls with a public `len` method but no corresponding `is_empty` method"
 }
 
-declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY]);
+declare_clippy_lint! {
+    /// **What it does:** Checks for comparing to an empty slice such as "" or [],`
+    /// and suggests using `.is_empty()` where applicable.
+    ///
+    /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
+    /// than checking for equality. So it is good to get into the habit of using
+    /// `.is_empty()`, and having it is cheap.
+    /// Besides, it makes the intent clearer than a manual comparison in some contexts.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```ignore
+    /// if s == "" {
+    ///     ..
+    /// }
+    ///
+    /// if arr == [] {
+    ///     ..
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```ignore
+    /// if s.is_empty() {
+    ///     ..
+    /// }
+    ///
+    /// if arr.is_empty() {
+    ///     ..
+    /// }
+    /// ```
+    pub COMPARISON_TO_EMPTY,
+    style,
+    "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead"
+}
+
+declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMPTY]);
 
 impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -221,6 +258,8 @@ fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>
         }
 
         check_len(cx, span, method_path.ident.name, args, &lit.node, op, compare_to)
+    } else {
+        check_empty_expr(cx, span, method, lit, op)
     }
 }
 
@@ -256,6 +295,42 @@ fn check_len(
             );
         }
     }
+}
+
+fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Expr<'_>, op: &str) {
+    if (is_empty_array(lit2) || is_empty_string(lit2)) && has_is_empty(cx, lit1) {
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_sugg(
+            cx,
+            COMPARISON_TO_EMPTY,
+            span,
+            "comparison to empty slice",
+            &format!("using `{}is_empty` is clearer and more explicit", op),
+            format!(
+                "{}{}.is_empty()",
+                op,
+                snippet_with_applicability(cx, lit1.span, "_", &mut applicability)
+            ),
+            applicability,
+        );
+    }
+}
+
+fn is_empty_string(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Lit(ref lit) = expr.kind {
+        if let LitKind::Str(lit, _) = lit.node {
+            let lit = lit.as_str();
+            return lit == "";
+        }
+    }
+    false
+}
+
+fn is_empty_array(expr: &Expr<'_>) -> bool {
+    if let ExprKind::Array(ref arr) = expr.kind {
+        return arr.is_empty();
+    }
+    false
 }
 
 /// Checks if this type has an `is_empty` method.

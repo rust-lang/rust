@@ -229,8 +229,7 @@ fn exported_symbols_provider_local(
         // needs to be exported.
         // However, on platforms that don't allow for Rust dylibs, having
         // external linkage is enough for monomorphization to be linked to.
-        let need_visibility =
-            tcx.sess.target.options.dynamic_linking && !tcx.sess.target.options.only_cdylib;
+        let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
         let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
 

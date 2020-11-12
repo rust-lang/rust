@@ -2,7 +2,7 @@ error[E0412]: cannot find type `Bla` in this scope
   --> $DIR/assoc-type-in-method-return.rs:3:25
    |
 LL |     fn to_bla(&self) -> Bla;
-   |                         ^^^ help: try: `Self::Bla`
+   |                         ^^^ help: you might have meant to use the associated type: `Self::Bla`
 
 error: aborting due to previous error
 

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
 use std::ops::Bound::*;
+use std::panic;
 
 pub trait IntoCow<'a, B: ?Sized>
 where
@@ -378,6 +379,20 @@ fn test_retain() {
 
     s.retain(|_| false);
     assert_eq!(s, "");
+
+    let mut s = String::from("0è0");
+    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        let mut count = 0;
+        s.retain(|_| {
+            count += 1;
+            match count {
+                1 => false,
+                2 => true,
+                _ => panic!(),
+            }
+        });
+    }));
+    assert!(std::str::from_utf8(s.as_bytes()).is_ok());
 }
 
 #[test]

@@ -1,0 +1,61 @@
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/macro_rules-braces.rs:34:17
+   |
+LL |     let _: baz!(N);
+   |                 ^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     let _: baz!({ N });
+   |                 ^   ^
+
+error: constant expression depends on a generic parameter
+  --> $DIR/macro_rules-braces.rs:10:13
+   |
+LL |             [u8; $x]
+   |             ^^^^^^^^
+...
+LL |     let _: foo!({{ N }});
+   |            ------------- in this macro invocation
+   |
+   = note: this may fail depending on what value the parameter takes
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: constant expression depends on a generic parameter
+  --> $DIR/macro_rules-braces.rs:15:13
+   |
+LL |             [u8; { $x }]
+   |             ^^^^^^^^^^^^
+...
+LL |     let _: bar!({ N });
+   |            ----------- in this macro invocation
+   |
+   = note: this may fail depending on what value the parameter takes
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: constant expression depends on a generic parameter
+  --> $DIR/macro_rules-braces.rs:20:13
+   |
+LL |             Foo<$x>
+   |             ^^^^^^^
+...
+LL |     let _: baz!({{ N }});
+   |            ------------- in this macro invocation
+   |
+   = note: this may fail depending on what value the parameter takes
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: constant expression depends on a generic parameter
+  --> $DIR/macro_rules-braces.rs:25:13
+   |
+LL |             Foo<{ $x }>
+   |             ^^^^^^^^^^^
+...
+LL |     let _: biz!({ N });
+   |            ----------- in this macro invocation
+   |
+   = note: this may fail depending on what value the parameter takes
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+

@@ -7,7 +7,7 @@ use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
-use rustc_ast::{self as ast, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{AssocItem, AssocItemKind, ForeignItemKind, Item, ItemKind, Mod};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
@@ -127,34 +127,19 @@ impl<'a> Parser<'a> {
 
         let (mut item, tokens) = if needs_tokens {
             let (item, tokens) = self.collect_tokens(parse_item)?;
-            (item, Some(tokens))
+            (item, tokens)
         } else {
             (parse_item(self)?, None)
         };
-
-        self.unclosed_delims.append(&mut unclosed_delims);
-
-        // Once we've parsed an item and recorded the tokens we got while
-        // parsing we may want to store `tokens` into the item we're about to
-        // return. Note, though, that we specifically didn't capture tokens
-        // related to outer attributes. The `tokens` field here may later be
-        // used with procedural macros to convert this item back into a token
-        // stream, but during expansion we may be removing attributes as we go
-        // along.
-        //
-        // If we've got inner attributes then the `tokens` we've got above holds
-        // these inner attributes. If an inner attribute is expanded we won't
-        // actually remove it from the token stream, so we'll just keep yielding
-        // it (bad!). To work around this case for now we just avoid recording
-        // `tokens` if we detect any inner attributes. This should help keep
-        // expansion correct, but we should fix this bug one day!
-        if let Some(tokens) = tokens {
-            if let Some(item) = &mut item {
-                if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-                    item.tokens = Some(tokens);
-                }
+        if let Some(item) = &mut item {
+            // If we captured tokens during parsing (due to encountering an `NtItem`),
+            // use those instead
+            if item.tokens.is_none() {
+                item.tokens = tokens;
             }
         }
+
+        self.unclosed_delims.append(&mut unclosed_delims);
         Ok(item)
     }
 
@@ -376,21 +361,19 @@ impl<'a> Parser<'a> {
                     format!(" {} ", kw),
                     Applicability::MachineApplicable,
                 );
+            } else if let Ok(snippet) = self.span_to_snippet(ident_sp) {
+                err.span_suggestion(
+                    full_sp,
+                    "if you meant to call a macro, try",
+                    format!("{}!", snippet),
+                    // this is the `ambiguous` conditional branch
+                    Applicability::MaybeIncorrect,
+                );
             } else {
-                if let Ok(snippet) = self.span_to_snippet(ident_sp) {
-                    err.span_suggestion(
-                        full_sp,
-                        "if you meant to call a macro, try",
-                        format!("{}!", snippet),
-                        // this is the `ambiguous` conditional branch
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    err.help(
-                        "if you meant to call a macro, remove the `pub` \
-                                  and add a trailing `!` after the identifier",
-                    );
-                }
+                err.help(
+                    "if you meant to call a macro, remove the `pub` \
+                              and add a trailing `!` after the identifier",
+                );
             }
             Err(err)
         } else if self.look_ahead(1, |t| *t == token::Lt) {
@@ -982,10 +965,7 @@ impl<'a> Parser<'a> {
                 if token.is_keyword(kw::Move) {
                     return true;
                 }
-                match token.kind {
-                    token::BinOp(token::Or) | token::OrOr => true,
-                    _ => false,
-                }
+                matches!(token.kind, token::BinOp(token::Or) | token::OrOr)
             })
         } else {
             false
@@ -1538,7 +1518,7 @@ impl<'a> Parser<'a> {
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
         let mut sig_hi = self.prev_token.span;
-        let body = self.parse_fn_body(attrs, &mut sig_hi)?; // `;` or `{ ... }`.
+        let body = self.parse_fn_body(attrs, &ident, &mut sig_hi)?; // `;` or `{ ... }`.
         let fn_sig_span = sig_lo.to(sig_hi);
         Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
     }
@@ -1549,12 +1529,12 @@ impl<'a> Parser<'a> {
     fn parse_fn_body(
         &mut self,
         attrs: &mut Vec<Attribute>,
+        ident: &Ident,
         sig_hi: &mut Span,
     ) -> PResult<'a, Option<P<Block>>> {
-        let (inner_attrs, body) = if self.check(&token::Semi) {
+        let (inner_attrs, body) = if self.eat(&token::Semi) {
             // Include the trailing semicolon in the span of the signature
-            *sig_hi = self.token.span;
-            self.bump(); // `;`
+            *sig_hi = self.prev_token.span;
             (Vec::new(), None)
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_inner_attrs_and_block().map(|(attrs, body)| (attrs, Some(body)))?
@@ -1574,7 +1554,21 @@ impl<'a> Parser<'a> {
                 .emit();
             (Vec::new(), Some(self.mk_block_err(span)))
         } else {
-            return self.expected_semi_or_open_brace();
+            if let Err(mut err) =
+                self.expected_one_of_not_found(&[], &[token::Semi, token::OpenDelim(token::Brace)])
+            {
+                if self.token.kind == token::CloseDelim(token::Brace) {
+                    // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
+                    // the AST for typechecking.
+                    err.span_label(ident.span, "while parsing this `fn`");
+                    err.emit();
+                    (Vec::new(), None)
+                } else {
+                    return Err(err);
+                }
+            } else {
+                unreachable!()
+            }
         };
         attrs.extend(inner_attrs);
         Ok(body)

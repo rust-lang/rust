@@ -1,5 +1,14 @@
+warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/double-move.rs:1:12
+   |
+LL | #![feature(unsized_locals, unsized_fn_params)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+
 error[E0382]: use of moved value: `y`
-  --> $DIR/double-move.rs:20:22
+  --> $DIR/double-move.rs:21:22
    |
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
@@ -9,7 +18,7 @@ LL |         drop_unsized(y);
    |                      ^ value used here after move
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/double-move.rs:26:22
+  --> $DIR/double-move.rs:27:22
    |
 LL |         let _y = *x;
    |                  -- value moved here
@@ -19,7 +28,7 @@ LL |         drop_unsized(x);
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `*x`
-  --> $DIR/double-move.rs:32:18
+  --> $DIR/double-move.rs:33:18
    |
 LL |         let x = "hello".to_owned().into_boxed_str();
    |             - move occurs because `x` has type `Box<str>`, which does not implement the `Copy` trait
@@ -29,7 +38,7 @@ LL |         let _y = *x;
    |                  ^^ value used here after move
 
 error[E0382]: use of moved value: `y`
-  --> $DIR/double-move.rs:39:9
+  --> $DIR/double-move.rs:40:9
    |
 LL |         let y = *x;
    |             - move occurs because `y` has type `str`, which does not implement the `Copy` trait
@@ -39,13 +48,13 @@ LL |         y.foo();
    |         ^ value used here after move
    |
 note: this function consumes the receiver `self` by taking ownership of it, which moves `y`
-  --> $DIR/double-move.rs:4:12
+  --> $DIR/double-move.rs:5:12
    |
 LL |     fn foo(self) -> String;
    |            ^^^^
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/double-move.rs:45:9
+  --> $DIR/double-move.rs:46:9
    |
 LL |         let _y = *x;
    |                  -- value moved here
@@ -55,7 +64,7 @@ LL |         x.foo();
    = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `*x`
-  --> $DIR/double-move.rs:51:18
+  --> $DIR/double-move.rs:52:18
    |
 LL |         let x = "hello".to_owned().into_boxed_str();
    |             - move occurs because `x` has type `Box<str>`, which does not implement the `Copy` trait
@@ -64,6 +73,6 @@ LL |         x.foo();
 LL |         let _y = *x;
    |                  ^^ value used here after move
 
-error: aborting due to 6 previous errors
+error: aborting due to 6 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0382`.

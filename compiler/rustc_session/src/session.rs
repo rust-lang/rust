@@ -3,7 +3,7 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, OutputType, PrintRequest, SanitizerSet, SwitchWithOptPath};
 use crate::filesearch;
-use crate::lint;
+use crate::lint::{self, LintId};
 use crate::parse::ParseSess;
 use crate::search_paths::{PathKind, SearchPath};
 
@@ -21,7 +21,8 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_lint_defs::FutureBreakage;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
@@ -39,6 +40,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
+
+pub trait SessionLintStore: sync::Send + sync::Sync {
+    fn name_to_lint(&self, lint_name: &str) -> LintId;
+}
 
 pub struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -130,6 +135,8 @@ pub struct Session {
     pub crate_disambiguator: OnceCell<CrateDisambiguator>,
 
     features: OnceCell<rustc_feature::Features>,
+
+    lint_store: OnceCell<Lrc<dyn SessionLintStore>>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -297,6 +304,35 @@ impl Session {
     pub fn finish_diagnostics(&self, registry: &Registry) {
         self.check_miri_unleashed_features();
         self.diagnostic().print_error_count(registry);
+        self.emit_future_breakage();
+    }
+
+    fn emit_future_breakage(&self) {
+        if !self.opts.debugging_opts.emit_future_incompat_report {
+            return;
+        }
+
+        let diags = self.diagnostic().take_future_breakage_diagnostics();
+        if diags.is_empty() {
+            return;
+        }
+        // If any future-breakage lints were registered, this lint store
+        // should be available
+        let lint_store = self.lint_store.get().expect("`lint_store` not initialized!");
+        let diags_and_breakage: Vec<(FutureBreakage, Diagnostic)> = diags
+            .into_iter()
+            .map(|diag| {
+                let lint_name = match &diag.code {
+                    Some(DiagnosticId::Lint { name, has_future_breakage: true }) => name,
+                    _ => panic!("Unexpected code in diagnostic {:?}", diag),
+                };
+                let lint = lint_store.name_to_lint(&lint_name);
+                let future_breakage =
+                    lint.lint.future_incompatible.unwrap().future_breakage.unwrap();
+                (future_breakage, diag)
+            })
+            .collect();
+        self.parse_sess.span_diagnostic.emit_future_breakage_report(diags_and_breakage);
     }
 
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
@@ -336,6 +372,12 @@ impl Session {
     }
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
+    }
+    pub fn struct_span_allow<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_span_allow(sp, msg)
+    }
+    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_allow(msg)
     }
     pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err(sp, msg)
@@ -611,10 +653,17 @@ impl Session {
         }
     }
 
+    pub fn init_lint_store(&self, lint_store: Lrc<dyn SessionLintStore>) {
+        self.lint_store
+            .set(lint_store)
+            .map_err(|_| ())
+            .expect("`lint_store` was initialized twice");
+    }
+
     /// Calculates the flavor of LTO to use for this compilation.
     pub fn lto(&self) -> config::Lto {
         // If our target has codegen requirements ignore the command line
-        if self.target.options.requires_lto {
+        if self.target.requires_lto {
             return config::Lto::Fat;
         }
 
@@ -682,7 +731,7 @@ impl Session {
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
-        self.opts.cg.panic.unwrap_or(self.target.options.panic_strategy)
+        self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
     }
     pub fn fewer_names(&self) -> bool {
         let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
@@ -706,9 +755,9 @@ impl Session {
 
     /// Check whether this compile session and crate type use static crt.
     pub fn crt_static(&self, crate_type: Option<CrateType>) -> bool {
-        if !self.target.options.crt_static_respected {
+        if !self.target.crt_static_respected {
             // If the target does not opt in to crt-static support, use its default.
-            return self.target.options.crt_static_default;
+            return self.target.crt_static_default;
         }
 
         let requested_features = self.opts.cg.target_feature.split(',');
@@ -725,20 +774,20 @@ impl Session {
             // We can't check `#![crate_type = "proc-macro"]` here.
             false
         } else {
-            self.target.options.crt_static_default
+            self.target.crt_static_default
         }
     }
 
     pub fn relocation_model(&self) -> RelocModel {
-        self.opts.cg.relocation_model.unwrap_or(self.target.options.relocation_model)
+        self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
     }
 
     pub fn code_model(&self) -> Option<CodeModel> {
-        self.opts.cg.code_model.or(self.target.options.code_model)
+        self.opts.cg.code_model.or(self.target.code_model)
     }
 
     pub fn tls_model(&self) -> TlsModel {
-        self.opts.debugging_opts.tls_model.unwrap_or(self.target.options.tls_model)
+        self.opts.debugging_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
@@ -749,7 +798,7 @@ impl Session {
         } else if let Some(x) = self.opts.cg.force_frame_pointers {
             x
         } else {
-            !self.target.options.eliminate_frame_pointer
+            !self.target.eliminate_frame_pointer
         }
     }
 
@@ -773,7 +822,7 @@ impl Session {
         // value, if it is provided, or disable them, if not.
         if self.panic_strategy() == PanicStrategy::Unwind {
             true
-        } else if self.target.options.requires_uwtable {
+        } else if self.target.requires_uwtable {
             true
         } else {
             self.opts.cg.force_unwind_tables.unwrap_or(false)
@@ -944,7 +993,7 @@ impl Session {
         if let Some(n) = self.opts.cli_forced_codegen_units {
             return n;
         }
-        if let Some(n) = self.target.options.default_codegen_units {
+        if let Some(n) = self.target.default_codegen_units {
             return n as usize;
         }
 
@@ -1029,11 +1078,11 @@ impl Session {
     pub fn needs_plt(&self) -> bool {
         // Check if the current target usually needs PLT to be enabled.
         // The user can use the command line flag to override it.
-        let needs_plt = self.target.options.needs_plt;
+        let needs_plt = self.target.needs_plt;
 
         let dbg_opts = &self.opts.debugging_opts;
 
-        let relro_level = dbg_opts.relro_level.unwrap_or(self.target.options.relro_level);
+        let relro_level = dbg_opts.relro_level.unwrap_or(self.target.relro_level);
 
         // Only enable this optimization by default if full relro is also enabled.
         // In this case, lazy binding was already unavailable, so nothing is lost.
@@ -1057,7 +1106,7 @@ impl Session {
         match self.opts.cg.link_dead_code {
             Some(explicitly_set) => explicitly_set,
             None => {
-                self.opts.debugging_opts.instrument_coverage && !self.target.options.is_like_msvc
+                self.opts.debugging_opts.instrument_coverage && !self.target.is_like_msvc
                 // Issue #76038: (rustc `-Clink-dead-code` causes MSVC linker to produce invalid
                 // binaries when LLVM InstrProf counters are enabled). As described by this issue,
                 // the "link dead code" option produces incorrect binaries when compiled and linked
@@ -1256,9 +1305,9 @@ pub fn build_session(
         early_error(sopts.error_format, &format!("Error loading host specification: {}", e))
     });
 
-    let loader = file_loader.unwrap_or(Box::new(RealFileLoader));
+    let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let hash_kind = sopts.debugging_opts.src_hash_algorithm.unwrap_or_else(|| {
-        if target_cfg.options.is_like_msvc {
+        if target_cfg.is_like_msvc {
             SourceFileHashAlgorithm::Sha1
         } else {
             SourceFileHashAlgorithm::Md5
@@ -1368,11 +1417,8 @@ pub fn build_session(
         if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
     };
 
-    let asm_arch = if target_cfg.options.allow_asm {
-        InlineAsmArch::from_str(&target_cfg.arch).ok()
-    } else {
-        None
-    };
+    let asm_arch =
+        if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
 
     let sess = Session {
         target: target_cfg,
@@ -1388,6 +1434,7 @@ pub fn build_session(
         crate_types: OnceCell::new(),
         crate_disambiguator: OnceCell::new(),
         features: OnceCell::new(),
+        lint_store: OnceCell::new(),
         recursion_limit: OnceCell::new(),
         type_length_limit: OnceCell::new(),
         const_eval_limit: OnceCell::new(),
@@ -1437,7 +1484,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // the `dllimport` attributes and `__imp_` symbols in that case.
     if sess.opts.cg.linker_plugin_lto.enabled()
         && sess.opts.cg.prefer_dynamic
-        && sess.target.options.is_like_windows
+        && sess.target.is_like_windows
     {
         sess.err(
             "Linker plugin based LTO is not supported together with \
@@ -1465,7 +1512,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             );
         }
 
-        if sess.target.options.requires_uwtable && !include_uwtables {
+        if sess.target.requires_uwtable && !include_uwtables {
             sess.err(
                 "target requires unwind tables, they cannot be disabled with \
                      `-C force-unwind-tables=no`.",
@@ -1480,7 +1527,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // We should only display this error if we're actually going to run PGO.
     // If we're just supposed to print out some data, don't show the error (#61002).
     if sess.opts.cg.profile_generate.enabled()
-        && sess.target.options.is_like_msvc
+        && sess.target.is_like_msvc
         && sess.panic_strategy() == PanicStrategy::Unwind
         && sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs)
     {

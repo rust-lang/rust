@@ -58,10 +58,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
-                let is_call = match source.kind {
-                    ExprKind::Call { .. } | ExprKind::InlineAsm { .. } => true,
-                    _ => false,
-                };
+                let is_call = matches!(source.kind, ExprKind::Call { .. } | ExprKind::InlineAsm { .. });
 
                 // (#66975) Source could be a const of type `!`, so has to
                 // exist in the generated MIR.

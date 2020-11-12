@@ -26,7 +26,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/issue-75930-derive-cfg.rs:17:24: 17:40 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:17:1: 17:2 (#0),
     },
     Group {
         delimiter: Bracket,
@@ -46,12 +46,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-75930-derive-cfg.rs:17:29: 17:40 (#0),
             },
         ],
-        span: $DIR/issue-75930-derive-cfg.rs:17:24: 17:40 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:17:1: 17:2 (#0),
     },
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/issue-75930-derive-cfg.rs:19:1: 19:17 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:19:1: 19:2 (#0),
     },
     Group {
         delimiter: Bracket,
@@ -71,12 +71,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-75930-derive-cfg.rs:19:9: 19:16 (#0),
             },
         ],
-        span: $DIR/issue-75930-derive-cfg.rs:19:1: 19:17 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:19:2: 19:17 (#0),
     },
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/issue-75930-derive-cfg.rs:20:1: 20:19 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:20:1: 20:2 (#0),
     },
     Group {
         delimiter: Bracket,
@@ -96,12 +96,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-75930-derive-cfg.rs:20:15: 20:18 (#0),
             },
         ],
-        span: $DIR/issue-75930-derive-cfg.rs:20:1: 20:19 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:20:2: 20:19 (#0),
     },
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/issue-75930-derive-cfg.rs:16:1: 16:19 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:16:1: 16:2 (#0),
     },
     Group {
         delimiter: Bracket,
@@ -121,7 +121,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-75930-derive-cfg.rs:16:15: 16:18 (#0),
             },
         ],
-        span: $DIR/issue-75930-derive-cfg.rs:16:1: 16:19 (#0),
+        span: $DIR/issue-75930-derive-cfg.rs:16:2: 16:19 (#0),
     },
     Ident {
         ident: "struct",

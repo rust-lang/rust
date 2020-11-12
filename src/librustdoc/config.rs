@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
@@ -216,6 +216,9 @@ pub struct RenderOptions {
     pub extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
     pub extern_html_root_urls: BTreeMap<String, String>,
+    /// A map of the default settings (values are as for DOM storage API). Keys should lack the
+    /// `rustdoc-` prefix.
+    pub default_settings: HashMap<String, String>,
     /// If present, suffix added to CSS/JavaScript files when referencing them in generated pages.
     pub resource_suffix: String,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
@@ -373,6 +376,32 @@ impl Options {
                 return Err(1);
             }
         };
+
+        let default_settings: Vec<Vec<(String, String)>> = vec![
+            matches
+                .opt_str("default-theme")
+                .iter()
+                .map(|theme| {
+                    vec![
+                        ("use-system-theme".to_string(), "false".to_string()),
+                        ("theme".to_string(), theme.to_string()),
+                    ]
+                })
+                .flatten()
+                .collect(),
+            matches
+                .opt_strs("default-setting")
+                .iter()
+                .map(|s| {
+                    let mut kv = s.splitn(2, '=');
+                    // never panics because `splitn` always returns at least one element
+                    let k = kv.next().unwrap().to_string();
+                    let v = kv.next().unwrap_or("true").to_string();
+                    (k, v)
+                })
+                .collect(),
+        ];
+        let default_settings = default_settings.into_iter().flatten().collect();
 
         let test_args = matches.opt_strs("test-args");
         let test_args: Vec<String> =
@@ -596,6 +625,7 @@ impl Options {
                 themes,
                 extension_css,
                 extern_html_root_urls,
+                default_settings,
                 resource_suffix,
                 enable_minification,
                 enable_index_page,
