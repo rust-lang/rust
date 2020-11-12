@@ -44,22 +44,20 @@ macro_rules! match_false {
 fn foo(x: Foo) {
     match x {} // ok
     match x {
-        _ => {}, // Not detected as unreachable, see #55123.
+        _ => {}, //~ ERROR unreachable pattern
     }
     match x {
-    //~^ ERROR non-exhaustive patterns: `_` not covered
-        _ if false => {}, // Not detected as unreachable nor exhaustive.
+        _ if false => {}, //~ ERROR unreachable pattern
     }
 }
 
 fn never(x: !) {
     match x {} // ok
     match x {
-        _ => {}, // Not detected as unreachable.
+        _ => {}, //~ ERROR unreachable pattern
     }
     match x {
-    //~^ ERROR non-exhaustive patterns: `_` not covered
-        _ if false => {}, // Not detected as unreachable nor exhaustive.
+        _ if false => {}, //~ ERROR unreachable pattern
     }
 }
 

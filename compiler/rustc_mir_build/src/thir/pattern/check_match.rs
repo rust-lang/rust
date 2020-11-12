@@ -439,24 +439,6 @@ fn check_exhaustive<'p, 'tcx>(
     hir_id: HirId,
     is_empty_match: bool,
 ) {
-    // In the absence of the `exhaustive_patterns` feature, empty matches are not detected by
-    // `is_useful` to exhaustively match uninhabited types, so we manually check here.
-    if is_empty_match && !cx.tcx.features().exhaustive_patterns {
-        let scrutinee_is_visibly_uninhabited = match scrut_ty.kind() {
-            ty::Never => true,
-            ty::Adt(def, _) => {
-                def.is_enum()
-                    && def.variants.is_empty()
-                    && !cx.is_foreign_non_exhaustive_enum(scrut_ty)
-            }
-            _ => false,
-        };
-        if scrutinee_is_visibly_uninhabited {
-            // If the type *is* uninhabited, an empty match is vacuously exhaustive.
-            return;
-        }
-    }
-
     let witnesses = match check_not_useful(cx, scrut_ty, matrix, hir_id) {
         Ok(_) => return,
         Err(err) => err,

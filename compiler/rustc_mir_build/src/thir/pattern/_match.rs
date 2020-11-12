@@ -1392,13 +1392,12 @@ impl<'tcx> Usefulness<'tcx> {
         pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-        is_top_level: bool,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => {
                 let new_witnesses = if ctor.is_wildcard() {
                     let missing_ctors = MissingConstructors::new(pcx);
-                    let new_patterns = missing_ctors.report_patterns(pcx, is_top_level);
+                    let new_patterns = missing_ctors.report_patterns(pcx);
                     witnesses
                         .into_iter()
                         .flat_map(|witness| {
@@ -1454,6 +1453,9 @@ struct PatCtxt<'a, 'p, 'tcx> {
     ty: Ty<'tcx>,
     /// Span of the current pattern under investigation.
     span: Span,
+    /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
+    /// subpattern.
+    is_top_level: bool,
 }
 
 /// A witness of non-exhaustiveness for error reporting, represented
@@ -1585,11 +1587,12 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
             // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-            // as though it had an "unknown" constructor to avoid exposing its emptyness. Note that
-            // an empty match will still be considered exhaustive because that case is handled
-            // separately in `check_match`.
-            let is_secretly_empty =
-                def.variants.is_empty() && !cx.tcx.features().exhaustive_patterns;
+            // as though it had an "unknown" constructor to avoid exposing its emptyness. The
+            // exception is if the pattern is at the top level, because we want empty matches to be
+            // considered exhaustive.
+            let is_secretly_empty = def.variants.is_empty()
+                && !cx.tcx.features().exhaustive_patterns
+                && !pcx.is_top_level;
 
             if is_secretly_empty || is_declared_nonexhaustive {
                 vec![NonExhaustive]
@@ -1635,6 +1638,13 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             let max = size.truncate(u128::MAX);
             vec![make_range(0, max)]
         }
+        // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
+        // expose its emptyness. The exception is if the pattern is at the top level, because we
+        // want empty matches to be considered exhaustive.
+        ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
+            vec![NonExhaustive]
+        }
+        ty::Never => vec![],
         _ if cx.is_uninhabited(pcx.ty) => vec![],
         ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => vec![Single],
         // This type is one for which we cannot list constructors, like `str` or `f64`.
@@ -2012,11 +2022,7 @@ impl<'tcx> MissingConstructors<'tcx> {
 
     /// List the patterns corresponding to the missing constructors. In some cases, instead of
     /// listing all constructors of a given type, we prefer to simply report a wildcard.
-    fn report_patterns<'p>(
-        &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        is_top_level: bool,
-    ) -> SmallVec<[Pat<'tcx>; 1]> {
+    fn report_patterns<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Pat<'tcx>; 1]> {
         // There are 2 ways we can report a witness here.
         // Commonly, we can report all the "free"
         // constructors as witnesses, e.g., if we have:
@@ -2044,7 +2050,7 @@ impl<'tcx> MissingConstructors<'tcx> {
         // `used_ctors` is empty.
         // The exception is: if we are at the top-level, for example in an empty match, we
         // sometimes prefer reporting the list of constructors instead of just `_`.
-        let report_when_all_missing = is_top_level && !IntRange::is_integral(pcx.ty);
+        let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
         if self.used_ctors.is_empty() && !report_when_all_missing {
             // All constructors are unused. Report only a wildcard
             // rather than each individual constructor.
@@ -2200,7 +2206,7 @@ crate fn is_useful<'p, 'tcx>(
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
     let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
-    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span };
+    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span, is_top_level };
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
 
@@ -2215,7 +2221,7 @@ crate fn is_useful<'p, 'tcx>(
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             let usefulness =
                 is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, is_top_level)
+            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
         })
         .find(|result| result.is_useful())
         .unwrap_or(NotUseful);
