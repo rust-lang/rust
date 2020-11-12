@@ -156,7 +156,7 @@ impl LocalWithLocationMap {
         );
 
         // return pointer
-        map.entry(body.local_decls.next_index())
+        map.entry(body.local_decls.indices().next().unwrap())
             .or_insert(SmallVec::with_capacity(2))
             .push((0usize.into(), None));
 
