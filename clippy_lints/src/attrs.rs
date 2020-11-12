@@ -5,7 +5,7 @@ use crate::utils::{
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -427,7 +427,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
                             .map(|l| Symbol::intern(&l.name_lower()))
                             .collect::<Vec<_>>();
                         let sugg = find_best_match_for_name(
-                            symbols.iter(),
+                            &symbols,
                             Symbol::intern(&format!("clippy::{}", name_lower)),
                             None,
                         );
