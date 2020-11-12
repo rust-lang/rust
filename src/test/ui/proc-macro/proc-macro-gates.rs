@@ -45,4 +45,9 @@ fn attrs() {
     //~^ ERROR: custom attributes cannot be applied to expressions
 }
 
+fn test_case() {
+    #![test] //~ ERROR inner macro attributes are unstable
+             //~| WARN this was previously accepted
+}
+
 fn main() {}
