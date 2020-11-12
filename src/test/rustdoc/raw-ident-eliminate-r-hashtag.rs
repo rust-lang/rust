@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 pub mod internal {
     pub struct r#mod;
 
