@@ -76,6 +76,7 @@ impl AsRawFd for net::TcpListener {
 
 /// Metadata for `TcpStream`.
 #[derive(Debug, Clone, Default)]
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub struct TcpStreamMetadata {
     /// Local address of the TCP stream
     pub local_addr: Option<String>,
@@ -95,6 +96,7 @@ impl FromRawFd for net::TcpStream {
 
 /// Metadata for `TcpListener`.
 #[derive(Debug, Clone, Default)]
+#[unstable(feature = "sgx_platform", issue = "56975")]
 pub struct TcpListenerMetadata {
     /// Local address of the TCP listener
     pub local_addr: Option<String>,
