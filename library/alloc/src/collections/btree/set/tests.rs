@@ -355,13 +355,12 @@ fn test_drain_filter_drop_panic_leak() {
     set.insert(D(4));
     set.insert(D(8));
 
-    catch_unwind(move || {
+    let _ = catch_unwind(move || {
         drop(set.drain_filter(|d| {
             PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
             true
         }))
-    })
-    .ok();
+    });
 
     assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
     assert_eq!(DROPS.load(Ordering::SeqCst), 3);
@@ -385,7 +384,7 @@ fn test_drain_filter_pred_panic_leak() {
     set.insert(D(4));
     set.insert(D(8));
 
-    catch_unwind(AssertUnwindSafe(|| {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
         drop(set.drain_filter(|d| {
             PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
             match d.0 {
@@ -393,8 +392,7 @@ fn test_drain_filter_pred_panic_leak() {
                 _ => panic!(),
             }
         }))
-    }))
-    .ok();
+    }));
 
     assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
     assert_eq!(DROPS.load(Ordering::SeqCst), 1);

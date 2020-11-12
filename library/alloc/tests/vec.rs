@@ -707,10 +707,9 @@ fn test_drain_leak() {
         D(6, false),
     ];
 
-    catch_unwind(AssertUnwindSafe(|| {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
         v.drain(2..=5);
-    }))
-    .ok();
+    }));
 
     assert_eq!(unsafe { DROPS }, 4);
     assert_eq!(v, vec![D(0, false), D(1, false), D(6, false),]);
@@ -891,7 +890,7 @@ fn test_into_iter_leak() {
 
     let v = vec![D(false), D(true), D(false)];
 
-    catch_unwind(move || drop(v.into_iter())).ok();
+    let _ = catch_unwind(move || drop(v.into_iter()));
 
     assert_eq!(unsafe { DROPS }, 3);
 }

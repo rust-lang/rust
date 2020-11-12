@@ -148,7 +148,7 @@ impl<'tcx> Queries<'tcx> {
             // load before dep_graph() is called, but it also can't happen
             // until after rustc_incremental::prepare_session_directory() is
             // called, which happens within passes::register_plugins().
-            self.dep_graph_future().ok();
+            self.dep_graph_future()?;
 
             result
         })
@@ -273,7 +273,7 @@ impl<'tcx> Queries<'tcx> {
         self.ongoing_codegen.compute(|| {
             let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE).ok();
+                tcx.analysis(LOCAL_CRATE)?;
 
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;

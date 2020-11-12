@@ -315,7 +315,7 @@ fn test_drain_sorted_leak() {
         D(5, false),
     ]);
 
-    catch_unwind(AssertUnwindSafe(|| drop(q.drain_sorted()))).ok();
+    let _ = catch_unwind(AssertUnwindSafe(|| drop(q.drain_sorted())));
 
     assert_eq!(DROPS.load(Ordering::SeqCst), 6);
 }

@@ -27,11 +27,9 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         _ => {
             if let MacArgs::Eq(..) = attr.get_normal_item().args {
                 // All key-value attributes are restricted to meta-item syntax.
-                parse_meta(sess, attr)
-                    .map_err(|mut err| {
-                        err.emit();
-                    })
-                    .ok();
+                let _ = parse_meta(sess, attr).map_err(|mut err| {
+                    err.emit();
+                });
             }
         }
     }

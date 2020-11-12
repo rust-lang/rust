@@ -22,7 +22,7 @@ static GLOBAL_CLIENT: SyncLazy<Client> = SyncLazy::new(|| unsafe {
     Client::from_env().unwrap_or_else(|| {
         let client = Client::new(32).expect("failed to create jobserver");
         // Acquire a token for the main thread which we can release later
-        client.acquire_raw().ok();
+        client.acquire_raw().expect("failed to acquire token");
         client
     })
 });
@@ -32,9 +32,9 @@ pub fn client() -> Client {
 }
 
 pub fn acquire_thread() {
-    GLOBAL_CLIENT.acquire_raw().ok();
+    GLOBAL_CLIENT.acquire_raw().expect("failed to acquire");
 }
 
 pub fn release_thread() {
-    GLOBAL_CLIENT.release_raw().ok();
+    GLOBAL_CLIENT.release_raw().expect("failed to release");
 }

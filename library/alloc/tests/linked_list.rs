@@ -559,7 +559,7 @@ fn drain_filter_drop_panic_leak() {
     q.push_front(D(true));
     q.push_front(D(false));
 
-    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|_| true)))).ok();
+    let _ = catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|_| true))));
 
     assert_eq!(unsafe { DROPS }, 8);
     assert!(q.is_empty());
@@ -590,10 +590,9 @@ fn drain_filter_pred_panic_leak() {
     q.push_front(D(1));
     q.push_front(D(0));
 
-    catch_unwind(AssertUnwindSafe(|| {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
         drop(q.drain_filter(|item| if item.0 >= 2 { panic!() } else { true }))
-    }))
-    .ok();
+    }));
 
     assert_eq!(unsafe { DROPS }, 2); // 0 and 1
     assert_eq!(q.len(), 6);
@@ -699,7 +698,7 @@ fn test_drop_panic() {
     q.push_front(D(false));
     q.push_front(D(true));
 
-    catch_unwind(move || drop(q)).ok();
+    let _ = catch_unwind(move || drop(q));
 
     assert_eq!(unsafe { DROPS }, 8);
 }
