@@ -1,9 +1,9 @@
 SOURCE_FILE@0..93
   COMMENT@0..60 "// https://github.com ..."
   WHITESPACE@60..62 "\n\n"
-  MODULE@62..93
-    COMMENT@62..70 "//! docs"
-    WHITESPACE@70..71 "\n"
+  COMMENT@62..70 "//! docs"
+  WHITESPACE@70..71 "\n"
+  MODULE@71..93
     COMMENT@71..82 "// non-docs"
     WHITESPACE@82..83 "\n"
     MOD_KW@83..86 "mod"

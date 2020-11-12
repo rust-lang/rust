@@ -5,6 +5,7 @@ use std::mem;
 use parser::{ParseError, TreeSink};
 
 use crate::{
+    ast,
     parsing::Token,
     syntax_node::GreenNode,
     SmolStr, SyntaxError,
@@ -153,24 +154,22 @@ fn n_attached_trivias<'a>(
 
             while let Some((i, (kind, text))) = trivias.next() {
                 match kind {
-                    WHITESPACE => {
-                        if text.contains("\n\n") {
-                            // we check whether the next token is a doc-comment
-                            // and skip the whitespace in this case
-                            if let Some((peek_kind, peek_text)) =
-                                trivias.peek().map(|(_, pair)| pair)
-                            {
-                                if *peek_kind == COMMENT
-                                    && peek_text.starts_with("///")
-                                    && !peek_text.starts_with("////")
-                                {
-                                    continue;
-                                }
+                    WHITESPACE if text.contains("\n\n") => {
+                        // we check whether the next token is a doc-comment
+                        // and skip the whitespace in this case
+                        if let Some((COMMENT, peek_text)) = trivias.peek().map(|(_, pair)| pair) {
+                            let comment_kind = ast::CommentKind::from_text(peek_text);
+                            if comment_kind.doc == Some(ast::CommentPlacement::Outer) {
+                                continue;
                             }
-                            break;
                         }
+                        break;
                     }
                     COMMENT => {
+                        let comment_kind = ast::CommentKind::from_text(text);
+                        if comment_kind.doc == Some(ast::CommentPlacement::Inner) {
+                            break;
+                        }
                         res = i + 1;
                     }
                     _ => (),

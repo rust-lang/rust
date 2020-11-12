@@ -115,7 +115,22 @@ fn test_doc_comment_none() {
 }
 
 #[test]
-fn test_doc_comment_of_items() {
+fn test_outer_doc_comment_of_items() {
+    let file = SourceFile::parse(
+        r#"
+        /// doc
+        // non-doc
+        mod foo {}
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("doc", module.doc_comment_text().unwrap());
+}
+
+#[test]
+fn test_inner_doc_comment_of_items() {
     let file = SourceFile::parse(
         r#"
         //! doc
@@ -126,7 +141,7 @@ fn test_doc_comment_of_items() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("doc", module.doc_comment_text().unwrap());
+    assert!(module.doc_comment_text().is_none());
 }
 
 #[test]
