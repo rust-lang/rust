@@ -29,7 +29,8 @@ mkdir ../gcc-build
 cd ../gcc-build
 hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
-    --enable-languages=c,c++
+    --enable-languages=c,c++ \
+    --disable-gnu-unique-object
 hide_output make -j10
 hide_output make install
 ln -s gcc /rustroot/bin/cc

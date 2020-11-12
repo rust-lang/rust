@@ -16,9 +16,6 @@ use crate::transform::MirPass;
 use std::iter;
 use std::ops::{Range, RangeFrom};
 
-const DEFAULT_THRESHOLD: usize = 50;
-const HINT_THRESHOLD: usize = 100;
-
 const INSTR_COST: usize = 5;
 const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
@@ -31,7 +28,8 @@ pub struct Inline;
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
     callee: Instance<'tcx>,
-    bb: BasicBlock,
+    block: BasicBlock,
+    target: Option<BasicBlock>,
     source_info: SourceInfo,
 }
 
@@ -175,8 +173,7 @@ impl Inliner<'tcx> {
 
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
-        // FIXME: Handle inlining of diverging calls
-        if let TerminatorKind::Call { func: ref op, destination: Some(_), .. } = terminator.kind {
+        if let TerminatorKind::Call { func: ref op, ref destination, .. } = terminator.kind {
             if let ty::FnDef(callee_def_id, substs) = *op.ty(caller_body, self.tcx).kind() {
                 // To resolve an instance its substs have to be fully normalized, so
                 // we do this here.
@@ -190,7 +187,12 @@ impl Inliner<'tcx> {
                     return None;
                 }
 
-                return Some(CallSite { callee, bb, source_info: terminator.source_info });
+                return Some(CallSite {
+                    callee,
+                    block: bb,
+                    target: destination.map(|(_, target)| target),
+                    source_info: terminator.source_info,
+                });
             }
         }
 
@@ -248,7 +250,11 @@ impl Inliner<'tcx> {
             }
         }
 
-        let mut threshold = if hinted { HINT_THRESHOLD } else { DEFAULT_THRESHOLD };
+        let mut threshold = if hinted {
+            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
+        } else {
+            self.tcx.sess.opts.debugging_opts.inline_mir_threshold
+        };
 
         // Significantly lower the threshold for inlining cold functions
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
@@ -398,9 +404,9 @@ impl Inliner<'tcx> {
         caller_body: &mut Body<'tcx>,
         mut callee_body: Body<'tcx>,
     ) {
-        let terminator = caller_body[callsite.bb].terminator.take().unwrap();
+        let terminator = caller_body[callsite.block].terminator.take().unwrap();
         match terminator.kind {
-            TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
+            TerminatorKind::Call { args, destination, cleanup, .. } => {
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
                 // Place could result in two different locations if `f`
@@ -417,35 +423,31 @@ impl Inliner<'tcx> {
                     false
                 }
 
-                let dest = if dest_needs_borrow(destination.0) {
-                    trace!("creating temp for return destination");
-                    let dest = Rvalue::Ref(
-                        self.tcx.lifetimes.re_erased,
-                        BorrowKind::Mut { allow_two_phase_borrow: false },
-                        destination.0,
-                    );
-
-                    let ty = dest.ty(caller_body, self.tcx);
-
-                    let temp = LocalDecl::new(ty, callsite.source_info.span);
-
-                    let tmp = caller_body.local_decls.push(temp);
-                    let tmp = Place::from(tmp);
-
-                    let stmt = Statement {
-                        source_info: callsite.source_info,
-                        kind: StatementKind::Assign(box (tmp, dest)),
-                    };
-                    caller_body[callsite.bb].statements.push(stmt);
-                    self.tcx.mk_place_deref(tmp)
+                let dest = if let Some((destination_place, _)) = destination {
+                    if dest_needs_borrow(destination_place) {
+                        trace!("creating temp for return destination");
+                        let dest = Rvalue::Ref(
+                            self.tcx.lifetimes.re_erased,
+                            BorrowKind::Mut { allow_two_phase_borrow: false },
+                            destination_place,
+                        );
+                        let dest_ty = dest.ty(caller_body, self.tcx);
+                        let temp = Place::from(self.new_call_temp(caller_body, &callsite, dest_ty));
+                        caller_body[callsite.block].statements.push(Statement {
+                            source_info: callsite.source_info,
+                            kind: StatementKind::Assign(box (temp, dest)),
+                        });
+                        self.tcx.mk_place_deref(temp)
+                    } else {
+                        destination_place
+                    }
                 } else {
-                    destination.0
+                    trace!("creating temp for return place");
+                    Place::from(self.new_call_temp(caller_body, &callsite, callee_body.return_ty()))
                 };
 
-                let return_block = destination.1;
-
                 // Copy the arguments if needed.
-                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, return_block);
+                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body);
 
                 let mut integrator = Integrator {
                     args: &args,
@@ -453,7 +455,7 @@ impl Inliner<'tcx> {
                     new_scopes: SourceScope::new(caller_body.source_scopes.len())..,
                     new_blocks: BasicBlock::new(caller_body.basic_blocks().len())..,
                     destination: dest,
-                    return_block,
+                    return_block: callsite.target,
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
                     tcx: self.tcx,
@@ -502,7 +504,7 @@ impl Inliner<'tcx> {
                 caller_body.var_debug_info.extend(callee_body.var_debug_info.drain(..));
                 caller_body.basic_blocks_mut().extend(callee_body.basic_blocks_mut().drain(..));
 
-                caller_body[callsite.bb].terminator = Some(Terminator {
+                caller_body[callsite.block].terminator = Some(Terminator {
                     source_info: callsite.source_info,
                     kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
                 });
@@ -526,7 +528,6 @@ impl Inliner<'tcx> {
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
-        return_block: BasicBlock,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -557,18 +558,8 @@ impl Inliner<'tcx> {
         // `callee_body.spread_arg == None`, instead of special-casing closures.
         if tcx.is_closure(callsite.callee.def_id()) {
             let mut args = args.into_iter();
-            let self_ = self.create_temp_if_necessary(
-                args.next().unwrap(),
-                callsite,
-                caller_body,
-                return_block,
-            );
-            let tuple = self.create_temp_if_necessary(
-                args.next().unwrap(),
-                callsite,
-                caller_body,
-                return_block,
-            );
+            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
+            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
@@ -588,13 +579,13 @@ impl Inliner<'tcx> {
                     Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty.expect_ty()));
 
                 // Spill to a local to make e.g., `tmp0`.
-                self.create_temp_if_necessary(tuple_field, callsite, caller_body, return_block)
+                self.create_temp_if_necessary(tuple_field, callsite, caller_body)
             });
 
             closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
             args.into_iter()
-                .map(|a| self.create_temp_if_necessary(a, callsite, caller_body, return_block))
+                .map(|a| self.create_temp_if_necessary(a, callsite, caller_body))
                 .collect()
         }
     }
@@ -606,46 +597,52 @@ impl Inliner<'tcx> {
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
-        return_block: BasicBlock,
     ) -> Local {
-        // FIXME: Analysis of the usage of the arguments to avoid
-        // unnecessary temporaries.
-
+        // Reuse the operand if it is a moved temporary.
         if let Operand::Move(place) = &arg {
             if let Some(local) = place.as_local() {
                 if caller_body.local_kind(local) == LocalKind::Temp {
-                    // Reuse the operand if it's a temporary already
                     return local;
                 }
             }
         }
 
+        // Otherwise, create a temporary for the argument.
         trace!("creating temp for argument {:?}", arg);
-        // Otherwise, create a temporary for the arg
-        let arg = Rvalue::Use(arg);
-
-        let ty = arg.ty(caller_body, self.tcx);
-
-        let arg_tmp = LocalDecl::new(ty, callsite.source_info.span);
-        let arg_tmp = caller_body.local_decls.push(arg_tmp);
-
-        caller_body[callsite.bb].statements.push(Statement {
+        let arg_ty = arg.ty(caller_body, self.tcx);
+        let local = self.new_call_temp(caller_body, callsite, arg_ty);
+        caller_body[callsite.block].statements.push(Statement {
             source_info: callsite.source_info,
-            kind: StatementKind::StorageLive(arg_tmp),
+            kind: StatementKind::Assign(box (Place::from(local), Rvalue::Use(arg))),
         });
-        caller_body[callsite.bb].statements.push(Statement {
-            source_info: callsite.source_info,
-            kind: StatementKind::Assign(box (Place::from(arg_tmp), arg)),
-        });
-        caller_body[return_block].statements.insert(
-            0,
-            Statement {
-                source_info: callsite.source_info,
-                kind: StatementKind::StorageDead(arg_tmp),
-            },
-        );
+        local
+    }
 
-        arg_tmp
+    /// Introduces a new temporary into the caller body that is live for the duration of the call.
+    fn new_call_temp(
+        &self,
+        caller_body: &mut Body<'tcx>,
+        callsite: &CallSite<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Local {
+        let local = caller_body.local_decls.push(LocalDecl::new(ty, callsite.source_info.span));
+
+        caller_body[callsite.block].statements.push(Statement {
+            source_info: callsite.source_info,
+            kind: StatementKind::StorageLive(local),
+        });
+
+        if let Some(block) = callsite.target {
+            caller_body[block].statements.insert(
+                0,
+                Statement {
+                    source_info: callsite.source_info,
+                    kind: StatementKind::StorageDead(local),
+                },
+            );
+        }
+
+        local
     }
 }
 
@@ -670,7 +667,7 @@ struct Integrator<'a, 'tcx> {
     new_scopes: RangeFrom<SourceScope>,
     new_blocks: RangeFrom<BasicBlock>,
     destination: Place<'tcx>,
-    return_block: BasicBlock,
+    return_block: Option<BasicBlock>,
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
@@ -816,7 +813,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 }
             }
             TerminatorKind::Return => {
-                terminator.kind = TerminatorKind::Goto { target: self.return_block };
+                terminator.kind = if let Some(tgt) = self.return_block {
+                    TerminatorKind::Goto { target: tgt }
+                } else {
+                    TerminatorKind::Unreachable
+                }
             }
             TerminatorKind::Resume => {
                 if let Some(tgt) = self.cleanup_block {

@@ -554,6 +554,8 @@ fn test_debugging_options_tracking_hash() {
     tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
     tracked!(inline_in_all_cgus, Some(true));
+    tracked!(inline_mir_threshold, 123);
+    tracked!(inline_mir_hint_threshold, 123);
     tracked!(insert_sideeffect, true);
     tracked!(instrument_coverage, true);
     tracked!(instrument_mcount, true);

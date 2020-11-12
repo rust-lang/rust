@@ -279,6 +279,8 @@ pub struct Target {
     pub ranlib: Option<PathBuf>,
     pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
+    pub sanitizers: bool,
+    pub profiler: bool,
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub musl_libdir: Option<PathBuf>,
@@ -503,6 +505,8 @@ struct TomlTarget {
     llvm_config: Option<String>,
     llvm_filecheck: Option<String>,
     android_ndk: Option<String>,
+    sanitizers: Option<bool>,
+    profiler: Option<bool>,
     crt_static: Option<bool>,
     musl_root: Option<String>,
     musl_libdir: Option<String>,
@@ -890,6 +894,8 @@ impl Config {
                 target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
                 target.wasi_root = cfg.wasi_root.map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
+                target.sanitizers = cfg.sanitizers.unwrap_or(build.sanitizers.unwrap_or_default());
+                target.profiler = cfg.profiler.unwrap_or(build.profiler.unwrap_or_default());
 
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
@@ -997,6 +1003,22 @@ impl Config {
 
     pub fn very_verbose(&self) -> bool {
         self.verbose > 1
+    }
+
+    pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {
+        self.target_config.get(&target).map(|t| t.sanitizers).unwrap_or(self.sanitizers)
+    }
+
+    pub fn any_sanitizers_enabled(&self) -> bool {
+        self.target_config.values().any(|t| t.sanitizers) || self.sanitizers
+    }
+
+    pub fn profiler_enabled(&self, target: TargetSelection) -> bool {
+        self.target_config.get(&target).map(|t| t.profiler).unwrap_or(self.profiler)
+    }
+
+    pub fn any_profiler_enabled(&self) -> bool {
+        self.target_config.values().any(|t| t.profiler) || self.profiler
     }
 
     pub fn llvm_enabled(&self) -> bool {

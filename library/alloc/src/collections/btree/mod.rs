@@ -1,3 +1,4 @@
+mod append;
 mod borrow;
 pub mod map;
 mod mem;
