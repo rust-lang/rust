@@ -1,10 +1,9 @@
 use crate::ich::StableHashingContext;
 use crate::ty::query::try_load_from_on_disk_cache;
+use crate::ty::query::OnDiskCache;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefPathHash, LocalDefId};
 use rustc_session::Session;
 
@@ -90,6 +89,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
 
 impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;
+    type OnDiskCache = OnDiskCache<'tcx>;
     type StableHashingContext = StableHashingContext<'tcx>;
 
     fn register_reused_dep_path_hash(&self, hash: DefPathHash) {
@@ -100,6 +100,11 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext {
         TyCtxt::create_stable_hashing_context(*self)
+    }
+
+    #[inline(always)]
+    fn on_disk_cache(&self) -> Option<&OnDiskCache<'tcx>> {
+        self.queries.on_disk_cache.as_ref()
     }
 
     #[inline(always)]
@@ -162,30 +167,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     // Interactions with on_disk_cache
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
         try_load_from_on_disk_cache(*self, dep_node)
-    }
-
-    fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {
-        self.queries
-            .on_disk_cache
-            .as_ref()
-            .map(|c| c.load_diagnostics(*self, prev_dep_node_index))
-            .unwrap_or_default()
-    }
-
-    fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>) {
-        if let Some(c) = self.queries.on_disk_cache.as_ref() {
-            c.store_diagnostics(dep_node_index, diagnostics)
-        }
-    }
-
-    fn store_diagnostics_for_anon_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
-    ) {
-        if let Some(c) = self.queries.on_disk_cache.as_ref() {
-            c.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
-        }
     }
 }
 

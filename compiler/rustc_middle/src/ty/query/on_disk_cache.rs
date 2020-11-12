@@ -239,14 +239,12 @@ impl<'sess> OnDiskCache<'sess> {
             def_path_hash_to_def_id_cache: Default::default(),
         }
     }
+}
 
-    crate fn serialize<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        encoder: &mut opaque::Encoder,
-    ) -> Result<(), !> {
+impl<'tcx> rustc_query_system::dep_graph::OnDiskCache<TyCtxt<'tcx>> for OnDiskCache<'tcx> {
+    fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut opaque::Encoder) {
         // Serializing the `DepGraph` should not modify it.
-        tcx.dep_graph.with_ignore(|| {
+        let ret: Result<(), !> = tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
             let (file_to_file_index, file_index_to_stable_id) = {
                 let files = tcx.sess.source_map().files();
@@ -418,11 +416,12 @@ impl<'sess> OnDiskCache<'sess> {
                 cnums.dedup();
                 cnums
             }
-        })
+        });
+        ret.unwrap()
     }
 
     /// Loads a diagnostic emitted during the previous compilation session.
-    crate fn load_diagnostics(
+    fn load_diagnostics(
         &self,
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
@@ -438,16 +437,32 @@ impl<'sess> OnDiskCache<'sess> {
     /// the next compilation session.
     #[inline(never)]
     #[cold]
-    crate fn store_diagnostics(
-        &self,
-        dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
-    ) {
+    fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
         let prev = current_diagnostics.insert(dep_node_index, diagnostics.into());
         debug_assert!(prev.is_none());
     }
 
+    /// Stores a diagnostic emitted during computation of an anonymous query.
+    /// Since many anonymous queries can share the same `DepNode`, we aggregate
+    /// them -- as opposed to regular queries where we assume that there is a
+    /// 1:1 relationship between query-key and `DepNode`.
+    #[inline(never)]
+    #[cold]
+    fn store_diagnostics_for_anon_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    ) {
+        let mut current_diagnostics = self.current_diagnostics.borrow_mut();
+
+        let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
+
+        x.extend(Into::<Vec<_>>::into(diagnostics));
+    }
+}
+
+impl<'sess> OnDiskCache<'sess> {
     fn get_raw_def_id(&self, hash: &DefPathHash) -> Option<RawDefId> {
         self.foreign_def_path_hashes.get(hash).copied()
     }
@@ -498,24 +513,6 @@ impl<'sess> OnDiskCache<'sess> {
         T: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
     {
         self.load_indexed(tcx, dep_node_index, &self.query_result_index, "query result")
-    }
-
-    /// Stores a diagnostic emitted during computation of an anonymous query.
-    /// Since many anonymous queries can share the same `DepNode`, we aggregate
-    /// them -- as opposed to regular queries where we assume that there is a
-    /// 1:1 relationship between query-key and `DepNode`.
-    #[inline(never)]
-    #[cold]
-    crate fn store_diagnostics_for_anon_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
-    ) {
-        let mut current_diagnostics = self.current_diagnostics.borrow_mut();
-
-        let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
-
-        x.extend(Into::<Vec<_>>::into(diagnostics));
     }
 
     fn load_indexed<'tcx, T>(

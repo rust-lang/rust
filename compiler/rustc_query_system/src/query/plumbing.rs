@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepKind, DepNode};
+use crate::dep_graph::{DepKind, DepNode, OnDiskCache};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
@@ -440,7 +440,9 @@ where
         tcx.dep_graph().read_index(dep_node_index);
 
         if unlikely!(!diagnostics.is_empty()) {
-            tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+            if let Some(c) = tcx.on_disk_cache() {
+                c.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
+            }
         }
 
         return job.complete(result, dep_node_index);
@@ -613,7 +615,9 @@ where
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
     if unlikely!(!diagnostics.is_empty()) && dep_node.kind != DepKind::NULL {
-        tcx.store_diagnostics(dep_node_index, diagnostics);
+        if let Some(c) = tcx.on_disk_cache() {
+            c.store_diagnostics(dep_node_index, diagnostics);
+        }
     }
 
     let result = job.complete(result, dep_node_index);

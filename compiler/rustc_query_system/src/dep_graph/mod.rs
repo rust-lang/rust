@@ -15,6 +15,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
+use rustc_serialize::opaque;
 use rustc_session::Session;
 use rustc_span::def_id::DefPathHash;
 
@@ -23,6 +24,7 @@ use std::hash::Hash;
 
 pub trait DepContext: Copy {
     type DepKind: self::DepKind;
+    type OnDiskCache: self::OnDiskCache<Self>;
     type StableHashingContext;
 
     /// Create a hashing context for hashing new results.
@@ -36,24 +38,37 @@ pub trait DepContext: Copy {
     /// Load data from the on-disk cache.
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
 
-    /// Load diagnostics associated to the node in the previous session.
-    fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;
-
-    /// Register diagnostics for the given node, for use in next session.
-    fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
-
-    /// Register diagnostics for the given node, for use in next session.
-    fn store_diagnostics_for_anon_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
-    );
+    /// Access the on_disk_cache.
+    fn on_disk_cache(&self) -> Option<&Self::OnDiskCache>;
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
 
     /// Access the compiler session.
     fn sess(&self) -> &Session;
+}
+
+pub trait OnDiskCache<CTX> {
+    fn serialize(&self, tcx: CTX, encoder: &mut opaque::Encoder);
+
+    /// Loads a diagnostic emitted during the previous compilation session.
+    fn load_diagnostics(&self, tcx: CTX, dep_node_index: SerializedDepNodeIndex)
+    -> Vec<Diagnostic>;
+
+    /// Stores a diagnostic emitted during the current compilation session.
+    /// Anything stored like this will be available via `load_diagnostics` in
+    /// the next compilation session.
+    fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
+
+    /// Stores a diagnostic emitted during computation of an anonymous query.
+    /// Since many anonymous queries can share the same `DepNode`, we aggregate
+    /// them -- as opposed to regular queries where we assume that there is a
+    /// 1:1 relationship between query-key and `DepNode`.
+    fn store_diagnostics_for_anon_node(
+        &self,
+        dep_node_index: DepNodeIndex,
+        diagnostics: ThinVec<Diagnostic>,
+    );
 }
 
 /// Describe the different families of dependency nodes.

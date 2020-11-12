@@ -21,7 +21,7 @@ use super::debug::EdgeFilter;
 use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepContext, DepKind, DepNode, WorkProductId};
+use super::{DepContext, DepKind, DepNode, OnDiskCache, WorkProductId};
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -703,7 +703,10 @@ impl<K: DepKind> DepGraph<K> {
 
         // FIXME: Store the fact that a node has diagnostics in a bit in the dep graph somewhere
         // Maybe store a list on disk and encode this fact in the DepNodeState
-        let diagnostics = tcx.load_diagnostics(prev_dep_node_index);
+        let diagnostics = tcx
+            .on_disk_cache()
+            .map(|c| c.load_diagnostics(tcx, prev_dep_node_index))
+            .unwrap_or(Vec::new());
 
         #[cfg(not(parallel_compiler))]
         debug_assert!(
@@ -751,7 +754,9 @@ impl<K: DepKind> DepGraph<K> {
             mem::drop(emitting);
 
             // Promote the previous diagnostics to the current session.
-            tcx.store_diagnostics(dep_node_index, diagnostics.clone().into());
+            if let Some(c) = tcx.on_disk_cache() {
+                c.store_diagnostics(dep_node_index, diagnostics.clone().into());
+            }
 
             let handle = tcx.sess().diagnostic();
 

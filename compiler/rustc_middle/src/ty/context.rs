@@ -47,6 +47,7 @@ use rustc_hir::{
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_query_system::dep_graph::OnDiskCache as _;
 use rustc_serialize::opaque;
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
@@ -1336,8 +1337,8 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn serialize_query_result_cache(self, encoder: &mut opaque::Encoder) -> Result<(), !> {
-        self.queries.on_disk_cache.as_ref().map(|c| c.serialize(self, encoder)).unwrap_or(Ok(()))
+    pub fn serialize_query_result_cache(self, encoder: &mut opaque::Encoder) {
+        self.queries.on_disk_cache.as_ref().map(|c| c.serialize(self, encoder)).unwrap_or(())
     }
 
     /// If `true`, we should use the MIR-based borrowck, but also

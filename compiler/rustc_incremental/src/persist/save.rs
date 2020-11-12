@@ -235,7 +235,5 @@ fn encode_work_product_index(
 }
 
 fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
-    tcx.sess.time("incr_comp_serialize_result_cache", || {
-        tcx.serialize_query_result_cache(encoder).unwrap();
-    })
+    tcx.sess.time("incr_comp_serialize_result_cache", || tcx.serialize_query_result_cache(encoder))
 }
