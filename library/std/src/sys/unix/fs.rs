@@ -1147,7 +1147,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut written = 0u64;
     while written < max_len {
         let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64) as usize;
+            let bytes_to_copy = cmp::min(max_len - written, 0x4000_0000 as u64) as usize;
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
