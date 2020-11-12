@@ -1,6 +1,13 @@
 [
     MappedRustDiagnostic {
-        url: "file:///test/src/main.rs",
+        url: Url {
+            scheme: "file",
+            host: None,
+            port: None,
+            path: "/test/src/main.rs",
+            query: None,
+            fragment: None,
+        },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
@@ -29,7 +36,14 @@
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/src/main.rs",
+                            uri: Url {
+                                scheme: "file",
+                                host: None,
+                                port: None,
+                                path: "/test/src/main.rs",
+                                query: None,
+                                fragment: None,
+                            },
                             range: Range {
                                 start: Position {
                                     line: 2,
@@ -61,7 +75,14 @@
                     SnippetWorkspaceEdit {
                         changes: Some(
                             {
-                                "file:///test/src/main.rs": [
+                                Url {
+                                    scheme: "file",
+                                    host: None,
+                                    port: None,
+                                    path: "/test/src/main.rs",
+                                    query: None,
+                                    fragment: None,
+                                }: [
                                     TextEdit {
                                         range: Range {
                                             start: Position {

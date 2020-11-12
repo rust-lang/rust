@@ -1,6 +1,13 @@
 [
     MappedRustDiagnostic {
-        url: "file:///test/compiler/ty/list_iter.rs",
+        url: Url {
+            scheme: "file",
+            host: None,
+            port: None,
+            path: "/test/compiler/ty/list_iter.rs",
+            query: None,
+            fragment: None,
+        },
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
