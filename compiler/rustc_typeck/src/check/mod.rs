@@ -525,27 +525,23 @@ fn typeck_with_fallback<'tcx>(
                 let expected_args = if let ImplicitSelfKind::None = decl.implicit_self { 1 } else { 2 };
 
                 let err = || {
-                    if let Node::Item(item) = tcx.hir().get(id) {
-                        if let hir::ItemKind::Fn(header, ..) = &item.kind {
-                            tcx.sess.span_err(header.span, "A function with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
-                        }
+                    let item = tcx.hir().expect_item(id);
+
+                    if let hir::ItemKind::Fn(header, ..) = &item.kind {
+                        tcx.sess.span_err(header.span, "A function with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
                     } else {
-                        bug!("Couldn't get span of FnHeader being checked")
+                        bug!("Item being checked wasn't a function")
                     }
                 };
 
                 if fn_sig.inputs().len() != expected_args {
                     err()
                 } else {
-                    match fn_sig.inputs()[expected_args - 1].kind() {
-                        ty::Tuple(_) => (),
-                        // FIXME(CraftSpider) Add a check on parameter expansion, so we don't just make the ICE happen later on
-                        //   This will probably require wide-scale changes to support a TupleKind obligation
-                        //   We can't resolve this without knowing the type of the param
-                        ty::Param(_) => (),
-                        _ => {
-                            err()
-                        }
+                    // FIXME(CraftSpider) Add a check on parameter expansion, so we don't just make the ICE happen later on
+                    //   This will probably require wide-scale changes to support a TupleKind obligation
+                    //   We can't resolve this without knowing the type of the param
+                    if !matches!(fn_sig.inputs()[expected_args - 1].kind(), ty::Tuple(_) | ty::Param(_)) {
+                        err()
                     }
                 }
             }
