@@ -1061,7 +1061,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 112);
+rustc_data_structures::static_assert_size!(Expr, 120);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1219,6 +1219,16 @@ pub enum RangeLimits {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub enum StructRest {
+    /// `..x`.
+    Base(P<Expr>),
+    /// `..`.
+    Rest(Span),
+    /// No trailing `..` or expression.
+    None,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
     /// A `box x` expression.
     Box(P<Expr>),
@@ -1312,7 +1322,7 @@ pub enum ExprKind {
     Field(P<Expr>, Ident),
     /// An indexing operation (e.g., `foo[2]`).
     Index(P<Expr>, P<Expr>),
-    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
+    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assingment).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
 
     /// Variable reference, possibly containing `::` and/or type
@@ -1340,9 +1350,8 @@ pub enum ExprKind {
 
     /// A struct literal expression.
     ///
-    /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
-    /// where `base` is the `Option<Expr>`.
-    Struct(Path, Vec<Field>, Option<P<Expr>>),
+    /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. rest}`.
+    Struct(Path, Vec<Field>, StructRest),
 
     /// An array literal constructed from one repeated element.
     ///

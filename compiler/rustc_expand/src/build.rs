@@ -298,7 +298,7 @@ impl<'a> ExtCtxt<'a> {
         path: ast::Path,
         fields: Vec<ast::Field>,
     ) -> P<ast::Expr> {
-        self.expr(span, ast::ExprKind::Struct(path, fields, None))
+        self.expr(span, ast::ExprKind::Struct(path, fields, ast::StructRest::None))
     }
     pub fn expr_struct_ident(
         &self,
