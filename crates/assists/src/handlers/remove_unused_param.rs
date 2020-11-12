@@ -73,7 +73,8 @@ fn process_usage(
     let source_file = ctx.sema.parse(usage.file_range.file_id);
     let call_expr: ast::CallExpr =
         find_node_at_range(source_file.syntax(), usage.file_range.range)?;
-    if call_expr.expr()?.syntax().text_range() != usage.file_range.range {
+    let call_expr_range = call_expr.expr()?.syntax().text_range();
+    if !call_expr_range.contains_range(usage.file_range.range) {
         return None;
     }
     let arg = call_expr.arg_list()?.args().nth(arg_to_remove)?;
@@ -118,6 +119,53 @@ fn b() { foo(9, ) }
     }
 
     #[test]
+    fn remove_unused_qualified_call() {
+        check_assist(
+            remove_unused_param,
+            r#"
+mod bar { pub fn foo(x: i32, <|>y: i32) { x; } }
+fn b() { bar::foo(9, 2) }
+"#,
+            r#"
+mod bar { pub fn foo(x: i32) { x; } }
+fn b() { bar::foo(9) }
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_turbofished_func() {
+        check_assist(
+            remove_unused_param,
+            r#"
+pub fn foo<T>(x: T, <|>y: i32) { x; }
+fn b() { foo::<i32>(9, 2) }
+"#,
+            r#"
+pub fn foo<T>(x: T) { x; }
+fn b() { foo::<i32>(9) }
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_generic_unused_param_func() {
+        check_assist(
+            remove_unused_param,
+            r#"
+pub fn foo<T>(x: i32, <|>y: T) { x; }
+fn b() { foo::<i32>(9, 2) }
+fn b2() { foo(9, 2) }
+"#,
+            r#"
+pub fn foo<T>(x: i32) { x; }
+fn b() { foo::<i32>(9) }
+fn b2() { foo(9) }
+"#,
+        );
+    }
+
+    #[test]
     fn keep_used() {
         mark::check!(keep_used);
         check_assist_not_applicable(
@@ -127,5 +175,38 @@ fn foo(x: i32, <|>y: i32) { y; }
 fn main() { foo(9, 2) }
 "#,
         );
+    }
+
+    #[test]
+    fn remove_across_files() {
+        check_assist(
+            remove_unused_param,
+            r#"
+//- /main.rs
+fn foo(x: i32, <|>y: i32) { x; }
+
+mod foo;
+
+//- /foo.rs
+use super::foo;
+
+fn bar() {
+    let _ = foo(1, 2);
+}
+"#,
+            r#"
+//- /main.rs
+fn foo(x: i32) { x; }
+
+mod foo;
+
+//- /foo.rs
+use super::foo;
+
+fn bar() {
+    let _ = foo(1);
+}
+"#,
+        )
     }
 }
