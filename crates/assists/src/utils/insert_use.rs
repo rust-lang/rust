@@ -63,47 +63,26 @@ impl ImportScope {
         }
     }
 
-    fn insert_pos_after_inner_elements(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
-        let mut last_inner_element = None;
-
-        for maybe_inner_element in self.as_syntax_node().children_with_tokens() {
-            match maybe_inner_element {
-                NodeOrToken::Node(maybe_inner_node) => {
-                    if is_inner_node(maybe_inner_node.clone()) {
-                        last_inner_element = Some(NodeOrToken::Node(maybe_inner_node))
-                    } else {
-                        // FIXME: https://doc.rust-lang.org/reference/comments.html#doc-comments
-                        // states that inner comments (`//!` and `/*!`) are equal to inner attribute `#![doc="..."]`
-                        // yet RA treats them differently now: inner attributes never belong to child nodes,
-                        // but inner comments can, ergo this check.
-                        // We need to align this and treat both cases the same way.
-                        if let Some(maybe_inner_token) = maybe_inner_node.first_token() {
-                            if is_inner_token(maybe_inner_token.clone()) {
-                                last_inner_element = Some(NodeOrToken::Token(maybe_inner_token))
-                            }
-                        }
-                    };
-                }
-                NodeOrToken::Token(maybe_inner_token) => {
-                    if is_inner_token(maybe_inner_token.clone()) {
-                        last_inner_element = Some(NodeOrToken::Token(maybe_inner_token))
-                    }
-                }
-            }
-        }
-
-        match last_inner_element {
-            Some(element) => (InsertPosition::After(element.into()), AddBlankLine::BeforeTwice),
-            None => self.first_insert_pos(),
-        }
+    fn insert_pos_after_last_inner_element(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
+        self.as_syntax_node()
+            .children_with_tokens()
+            .filter(|child| match child {
+                NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
+                NodeOrToken::Token(token) => is_inner_comment(token.clone()),
+            })
+            .last()
+            .map(|last_inner_element| {
+                (InsertPosition::After(last_inner_element.into()), AddBlankLine::BeforeTwice)
+            })
+            .unwrap_or_else(|| self.first_insert_pos())
     }
 }
 
-fn is_inner_node(node: SyntaxNode) -> bool {
+fn is_inner_attribute(node: SyntaxNode) -> bool {
     ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
 }
 
-fn is_inner_token(token: SyntaxToken) -> bool {
+fn is_inner_comment(token: SyntaxToken) -> bool {
     ast::Comment::cast(token).and_then(|comment| comment.kind().doc)
         == Some(ast::CommentPlacement::Inner)
 }
@@ -582,7 +561,7 @@ fn find_insert_position(
                             (InsertPosition::After(node.into()), AddBlankLine::BeforeTwice)
                         }
                         // there are no imports in this file at all
-                        None => scope.insert_pos_after_inner_elements(),
+                        None => scope.insert_pos_after_last_inner_element(),
                     },
                 }
             }
