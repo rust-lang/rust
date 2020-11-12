@@ -1028,6 +1028,7 @@ impl<'a> Resolver<'a> {
                 depr.suggestion,
                 lint,
                 span,
+                node_id,
             );
         }
     }

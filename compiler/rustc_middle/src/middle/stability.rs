@@ -4,7 +4,7 @@
 pub use self::StabilityLevel::*;
 
 use crate::ty::{self, TyCtxt};
-use rustc_ast::CRATE_NODE_ID;
+use rustc_ast::NodeId;
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -211,13 +211,14 @@ pub fn early_report_deprecation(
     suggestion: Option<Symbol>,
     lint: &'static Lint,
     span: Span,
+    node_id: NodeId,
 ) {
     if span.in_derive_expansion() {
         return;
     }
 
     let diag = BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span);
-    lint_buffer.buffer_lint_with_diagnostic(lint, CRATE_NODE_ID, span, message, diag);
+    lint_buffer.buffer_lint_with_diagnostic(lint, node_id, span, message, diag);
 }
 
 fn late_report_deprecation(
