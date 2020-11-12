@@ -14,16 +14,15 @@ use crate::{
 
 impl ast::Comment {
     pub fn kind(&self) -> CommentKind {
-        kind_by_prefix(self.text())
+        CommentKind::from_text(self.text())
     }
 
     pub fn prefix(&self) -> &'static str {
-        for (prefix, k) in COMMENT_PREFIX_TO_KIND.iter() {
-            if *k == self.kind() && self.text().starts_with(prefix) {
-                return prefix;
-            }
-        }
-        unreachable!()
+        let &(prefix, _kind) = CommentKind::BY_PREFIX
+            .iter()
+            .find(|&(prefix, kind)| self.kind() == *kind && self.text().starts_with(prefix))
+            .unwrap();
+        prefix
     }
 }
 
@@ -55,29 +54,25 @@ pub enum CommentPlacement {
     Outer,
 }
 
-const COMMENT_PREFIX_TO_KIND: &[(&str, CommentKind)] = {
-    use {CommentPlacement::*, CommentShape::*};
-    &[
-        ("////", CommentKind { shape: Line, doc: None }),
-        ("///", CommentKind { shape: Line, doc: Some(Outer) }),
-        ("//!", CommentKind { shape: Line, doc: Some(Inner) }),
-        ("/**", CommentKind { shape: Block, doc: Some(Outer) }),
-        ("/*!", CommentKind { shape: Block, doc: Some(Inner) }),
-        ("//", CommentKind { shape: Line, doc: None }),
-        ("/*", CommentKind { shape: Block, doc: None }),
-    ]
-};
+impl CommentKind {
+    const BY_PREFIX: [(&'static str, CommentKind); 8] = [
+        ("/**/", CommentKind { shape: CommentShape::Block, doc: None }),
+        ("////", CommentKind { shape: CommentShape::Line, doc: None }),
+        ("///", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Outer) }),
+        ("//!", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Inner) }),
+        ("/**", CommentKind { shape: CommentShape::Block, doc: Some(CommentPlacement::Outer) }),
+        ("/*!", CommentKind { shape: CommentShape::Block, doc: Some(CommentPlacement::Inner) }),
+        ("//", CommentKind { shape: CommentShape::Line, doc: None }),
+        ("/*", CommentKind { shape: CommentShape::Block, doc: None }),
+    ];
 
-fn kind_by_prefix(text: &str) -> CommentKind {
-    if text == "/**/" {
-        return CommentKind { shape: CommentShape::Block, doc: None };
+    pub(crate) fn from_text(text: &str) -> CommentKind {
+        let &(_prefix, kind) = CommentKind::BY_PREFIX
+            .iter()
+            .find(|&(prefix, _kind)| text.starts_with(prefix))
+            .unwrap();
+        kind
     }
-    for (prefix, kind) in COMMENT_PREFIX_TO_KIND.iter() {
-        if text.starts_with(prefix) {
-            return *kind;
-        }
-    }
-    panic!("bad comment text: {:?}", text)
 }
 
 impl ast::Whitespace {
