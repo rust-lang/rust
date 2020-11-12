@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{ffi::OsString, path::PathBuf};
+use std::{convert::TryFrom, ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use hir::PrefixKind;
@@ -227,12 +227,25 @@ impl Config {
         self.notifications =
             NotificationsConfig { cargo_toml_not_found: data.notifications_cargoTomlNotFound };
         self.cargo_autoreload = data.cargo_autoreload;
+
+        let rustc_source = if let Some(rustc_source) = data.rustcSource {
+            let rustpath: PathBuf = rustc_source.into();
+            AbsPathBuf::try_from(rustpath)
+                .map_err(|_| {
+                    log::error!("rustc source directory must be an absolute path");
+                })
+                .ok()
+        } else {
+            None
+        };
+
         self.cargo = CargoConfig {
             no_default_features: data.cargo_noDefaultFeatures,
             all_features: data.cargo_allFeatures,
             features: data.cargo_features.clone(),
             load_out_dirs_from_check: data.cargo_loadOutDirsFromCheck,
             target: data.cargo_target.clone(),
+            rustc_source: rustc_source,
         };
         self.runnables = RunnablesConfig {
             override_cargo: data.runnables_overrideCargo,
@@ -535,5 +548,6 @@ config_data! {
         rustfmt_overrideCommand: Option<Vec<String>> = None,
 
         withSysroot: bool = true,
+        rustcSource : Option<String> = None,
     }
 }

@@ -687,6 +687,14 @@
                     },
                     "default": [],
                     "description": "Additional arguments to be passed to cargo for runnables such as tests or binaries.\nFor example, it may be '--release'"
+                },
+                "rust-analyzer.rustcSource": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Path to the rust compiler sources, for usage in rustc_private projects."
                 }
             }
         },

@@ -246,7 +246,9 @@ impl GlobalState {
             .iter()
             .enumerate()
             .filter_map(|(id, w)| match w {
-                ProjectWorkspace::Cargo { cargo, sysroot: _ } => Some((id, cargo.workspace_root())),
+                ProjectWorkspace::Cargo { cargo, sysroot: _, rustc: _ } => {
+                    Some((id, cargo.workspace_root()))
+                }
                 ProjectWorkspace::Json { project, .. } => {
                     // Enable flychecks for json projects if a custom flycheck command was supplied
                     // in the workspace configuration.

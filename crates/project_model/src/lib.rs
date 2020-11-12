@@ -9,6 +9,7 @@ use std::{
     fmt,
     fs::{self, read_dir, ReadDir},
     io,
+    path::Component,
     process::Command,
 };
 
@@ -31,7 +32,7 @@ pub use proc_macro_api::ProcMacroClient;
 #[derive(Clone, Eq, PartialEq)]
 pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
-    Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
+    Cargo { cargo: CargoWorkspace, sysroot: Sysroot, rustc: Option<CargoWorkspace> },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson, sysroot: Option<Sysroot> },
 }
@@ -39,10 +40,14 @@ pub enum ProjectWorkspace {
 impl fmt::Debug for ProjectWorkspace {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProjectWorkspace::Cargo { cargo, sysroot } => f
+            ProjectWorkspace::Cargo { cargo, sysroot, rustc } => f
                 .debug_struct("Cargo")
                 .field("n_packages", &cargo.packages().len())
                 .field("n_sysroot_crates", &sysroot.crates().len())
+                .field(
+                    "n_rustc_compiler_crates",
+                    &rustc.as_ref().map_or(0, |rc| rc.packages().len()),
+                )
                 .finish(),
             ProjectWorkspace::Json { project, sysroot } => {
                 let mut debug_struct = f.debug_struct("Json");
@@ -200,7 +205,19 @@ impl ProjectWorkspace {
                 } else {
                     Sysroot::default()
                 };
-                ProjectWorkspace::Cargo { cargo, sysroot }
+
+                let rustc = if let Some(rustc_dir) = &cargo_config.rustc_source {
+                    Some(
+                        CargoWorkspace::from_cargo_metadata(&rustc_dir, cargo_config)
+                            .with_context(|| {
+                                format!("Failed to read Cargo metadata for Rust sources")
+                            })?,
+                    )
+                } else {
+                    None
+                };
+
+                ProjectWorkspace::Cargo { cargo, sysroot, rustc }
             }
         };
 
@@ -238,31 +255,43 @@ impl ProjectWorkspace {
                     })
                 }))
                 .collect::<Vec<_>>(),
-            ProjectWorkspace::Cargo { cargo, sysroot } => cargo
-                .packages()
-                .map(|pkg| {
-                    let is_member = cargo[pkg].is_member;
-                    let pkg_root = cargo[pkg].root().to_path_buf();
+            ProjectWorkspace::Cargo { cargo, sysroot, rustc } => {
+                let roots = cargo
+                    .packages()
+                    .map(|pkg| {
+                        let is_member = cargo[pkg].is_member;
+                        let pkg_root = cargo[pkg].root().to_path_buf();
 
-                    let mut include = vec![pkg_root.clone()];
-                    include.extend(cargo[pkg].out_dir.clone());
+                        let mut include = vec![pkg_root.clone()];
+                        include.extend(cargo[pkg].out_dir.clone());
 
-                    let mut exclude = vec![pkg_root.join(".git")];
-                    if is_member {
-                        exclude.push(pkg_root.join("target"));
-                    } else {
-                        exclude.push(pkg_root.join("tests"));
-                        exclude.push(pkg_root.join("examples"));
-                        exclude.push(pkg_root.join("benches"));
-                    }
-                    PackageRoot { is_member, include, exclude }
-                })
-                .chain(sysroot.crates().map(|krate| PackageRoot {
-                    is_member: false,
-                    include: vec![sysroot[krate].root_dir().to_path_buf()],
-                    exclude: Vec::new(),
-                }))
-                .collect(),
+                        let mut exclude = vec![pkg_root.join(".git")];
+                        if is_member {
+                            exclude.push(pkg_root.join("target"));
+                        } else {
+                            exclude.push(pkg_root.join("tests"));
+                            exclude.push(pkg_root.join("examples"));
+                            exclude.push(pkg_root.join("benches"));
+                        }
+                        PackageRoot { is_member, include, exclude }
+                    })
+                    .chain(sysroot.crates().map(|krate| PackageRoot {
+                        is_member: false,
+                        include: vec![sysroot[krate].root_dir().to_path_buf()],
+                        exclude: Vec::new(),
+                    }));
+                if let Some(rustc_packages) = rustc {
+                    roots
+                        .chain(rustc_packages.packages().map(|krate| PackageRoot {
+                            is_member: false,
+                            include: vec![rustc_packages[krate].root().to_path_buf()],
+                            exclude: Vec::new(),
+                        }))
+                        .collect()
+                } else {
+                    roots.collect()
+                }
+            }
         }
     }
 
@@ -273,7 +302,7 @@ impl ProjectWorkspace {
                 .filter_map(|(_, krate)| krate.proc_macro_dylib_path.as_ref())
                 .cloned()
                 .collect(),
-            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot } => cargo
+            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot, rustc: _rustc_crates } => cargo
                 .packages()
                 .filter_map(|pkg| cargo[pkg].proc_macro_dylib_path.as_ref())
                 .cloned()
@@ -284,8 +313,9 @@ impl ProjectWorkspace {
     pub fn n_packages(&self) -> usize {
         match self {
             ProjectWorkspace::Json { project, .. } => project.n_crates(),
-            ProjectWorkspace::Cargo { cargo, sysroot } => {
-                cargo.packages().len() + sysroot.crates().len()
+            ProjectWorkspace::Cargo { cargo, sysroot, rustc } => {
+                let rustc_package_len = rustc.as_ref().map_or(0, |rc| rc.packages().len());
+                cargo.packages().len() + sysroot.crates().len() + rustc_package_len
             }
         }
     }
@@ -365,7 +395,7 @@ impl ProjectWorkspace {
                     }
                 }
             }
-            ProjectWorkspace::Cargo { cargo, sysroot } => {
+            ProjectWorkspace::Cargo { cargo, sysroot, rustc } => {
                 let (public_deps, libproc_macro) =
                     sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load);
 
@@ -373,50 +403,25 @@ impl ProjectWorkspace {
                 cfg_options.extend(get_rustc_cfg_options(target));
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
-                let mut pkg_crates = FxHashMap::default();
 
                 // Add test cfg for non-sysroot crates
                 cfg_options.insert_atom("test".into());
                 cfg_options.insert_atom("debug_assertions".into());
 
+                let mut pkg_crates = FxHashMap::default();
+
                 // Next, create crates for each package, target pair
                 for pkg in cargo.packages() {
                     let mut lib_tgt = None;
                     for &tgt in cargo[pkg].targets.iter() {
-                        let root = cargo[tgt].root.as_path();
-                        if let Some(file_id) = load(root) {
-                            let edition = cargo[pkg].edition;
-                            let cfg_options = {
-                                let mut opts = cfg_options.clone();
-                                for feature in cargo[pkg].features.iter() {
-                                    opts.insert_key_value("feature".into(), feature.into());
-                                }
-                                opts.extend(cargo[pkg].cfgs.iter().cloned());
-                                opts
-                            };
-                            let mut env = Env::default();
-                            if let Some(out_dir) = &cargo[pkg].out_dir {
-                                // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-                                if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
-                                    env.set("OUT_DIR", out_dir);
-                                }
-                            }
-                            let proc_macro = cargo[pkg]
-                                .proc_macro_dylib_path
-                                .as_ref()
-                                .map(|it| proc_macro_client.by_dylib_path(&it))
-                                .unwrap_or_default();
-
-                            let display_name =
-                                CrateDisplayName::from_canonical_name(cargo[pkg].name.clone());
-                            let crate_id = crate_graph.add_crate_root(
-                                file_id,
-                                edition,
-                                Some(display_name),
-                                cfg_options,
-                                env,
-                                proc_macro.clone(),
-                            );
+                        if let Some(crate_id) = add_target_crate_root(
+                            &mut crate_graph,
+                            &cargo[pkg],
+                            &cargo[tgt],
+                            &cfg_options,
+                            proc_macro_client,
+                            load,
+                        ) {
                             if cargo[tgt].kind == TargetKind::Lib {
                                 lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
                                 pkg_to_lib_crate.insert(pkg, crate_id);
@@ -484,6 +489,92 @@ impl ProjectWorkspace {
                         }
                     }
                 }
+
+                let mut rustc_pkg_crates = FxHashMap::default();
+
+                // If the user provided a path to rustc sources, we add all the rustc_private crates
+                // and create dependencies on them for the crates in the current workspace
+                if let Some(rustc_workspace) = rustc {
+                    for pkg in rustc_workspace.packages() {
+                        for &tgt in rustc_workspace[pkg].targets.iter() {
+                            if rustc_workspace[tgt].kind != TargetKind::Lib {
+                                continue;
+                            }
+                            // Exclude alloc / core / std
+                            if rustc_workspace[tgt]
+                                .root
+                                .components()
+                                .any(|c| c == Component::Normal("library".as_ref()))
+                            {
+                                continue;
+                            }
+
+                            if let Some(crate_id) = add_target_crate_root(
+                                &mut crate_graph,
+                                &rustc_workspace[pkg],
+                                &rustc_workspace[tgt],
+                                &cfg_options,
+                                proc_macro_client,
+                                load,
+                            ) {
+                                pkg_to_lib_crate.insert(pkg, crate_id);
+                                // Add dependencies on the core / std / alloc for rustc
+                                for (name, krate) in public_deps.iter() {
+                                    if let Err(_) =
+                                        crate_graph.add_dep(crate_id, name.clone(), *krate)
+                                    {
+                                        log::error!(
+                                            "cyclic dependency on {} for {}",
+                                            name,
+                                            &cargo[pkg].name
+                                        )
+                                    }
+                                }
+                                rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
+                            }
+                        }
+                    }
+                    // Now add a dep edge from all targets of upstream to the lib
+                    // target of downstream.
+                    for pkg in rustc_workspace.packages() {
+                        for dep in rustc_workspace[pkg].dependencies.iter() {
+                            let name = CrateName::new(&dep.name).unwrap();
+                            if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
+                                for &from in rustc_pkg_crates.get(&pkg).into_iter().flatten() {
+                                    if let Err(_) = crate_graph.add_dep(from, name.clone(), to) {
+                                        log::error!(
+                                            "cyclic dependency {} -> {}",
+                                            &rustc_workspace[pkg].name,
+                                            &rustc_workspace[dep.pkg].name
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Add dependencies for all the crates of the current workspace to rustc_private libraries
+                    for dep in rustc_workspace.packages() {
+                        let name = CrateName::normalize_dashes(&rustc_workspace[dep].name);
+
+                        if let Some(&to) = pkg_to_lib_crate.get(&dep) {
+                            for pkg in cargo.packages() {
+                                if !cargo[pkg].is_member {
+                                    continue;
+                                }
+                                for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+                                    if let Err(_) = crate_graph.add_dep(from, name.clone(), to) {
+                                        log::error!(
+                                            "cyclic dependency {} -> {}",
+                                            &cargo[pkg].name,
+                                            &rustc_workspace[dep].name
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         if crate_graph.patch_cfg_if() {
@@ -537,6 +628,52 @@ fn utf8_stdout(mut cmd: Command) -> Result<String> {
     Ok(stdout.trim().to_string())
 }
 
+fn add_target_crate_root(
+    crate_graph: &mut CrateGraph,
+    pkg: &cargo_workspace::PackageData,
+    tgt: &cargo_workspace::TargetData,
+    cfg_options: &CfgOptions,
+    proc_macro_client: &ProcMacroClient,
+    load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
+) -> Option<CrateId> {
+    let root = tgt.root.as_path();
+    if let Some(file_id) = load(root) {
+        let edition = pkg.edition;
+        let cfg_options = {
+            let mut opts = cfg_options.clone();
+            for feature in pkg.features.iter() {
+                opts.insert_key_value("feature".into(), feature.into());
+            }
+            opts.extend(pkg.cfgs.iter().cloned());
+            opts
+        };
+        let mut env = Env::default();
+        if let Some(out_dir) = &pkg.out_dir {
+            // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
+            if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
+                env.set("OUT_DIR", out_dir);
+            }
+        }
+        let proc_macro = pkg
+            .proc_macro_dylib_path
+            .as_ref()
+            .map(|it| proc_macro_client.by_dylib_path(&it))
+            .unwrap_or_default();
+
+        let display_name = CrateDisplayName::from_canonical_name(pkg.name.clone());
+        let crate_id = crate_graph.add_crate_root(
+            file_id,
+            edition,
+            Some(display_name),
+            cfg_options,
+            env,
+            proc_macro.clone(),
+        );
+
+        return Some(crate_id);
+    }
+    None
+}
 fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,

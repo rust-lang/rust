@@ -64,6 +64,9 @@ pub struct CargoConfig {
 
     /// rustc target
     pub target: Option<String>,
+
+    /// rustc private crate source
+    pub rustc_source: Option<AbsPathBuf>,
 }
 
 pub type Package = Idx<PackageData>;
