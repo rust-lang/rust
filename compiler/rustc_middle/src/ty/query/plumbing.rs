@@ -19,13 +19,6 @@ use rustc_span::Span;
 impl QueryContext for TyCtxt<'tcx> {
     type Query = Query<'tcx>;
 
-    fn incremental_verify_ich(&self) -> bool {
-        self.sess.opts.debugging_opts.incremental_verify_ich
-    }
-    fn verbose(&self) -> bool {
-        self.sess.verbose()
-    }
-
     fn def_path_str(&self, def_id: DefId) -> String {
         TyCtxt::def_path_str(*self, def_id)
     }

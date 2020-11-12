@@ -258,7 +258,7 @@ impl<K: DepKind> DepGraph<K> {
                 task_deps.map(|lock| lock.into_inner()),
             );
 
-            let print_status = cfg!(debug_assertions) && cx.debug_dep_tasks();
+            let print_status = cfg!(debug_assertions) && cx.sess().opts.debugging_opts.dep_tasks;
 
             // Determine the color of the new DepNode.
             if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
@@ -645,7 +645,7 @@ impl<K: DepKind> DepGraph<K> {
                                 return None;
                             }
                             None => {
-                                if !tcx.has_errors_or_delayed_span_bugs() {
+                                if !tcx.sess().has_errors_or_delayed_span_bugs() {
                                     panic!(
                                         "try_mark_previous_green() - Forcing the DepNode \
                                           should have set its color"
@@ -753,7 +753,7 @@ impl<K: DepKind> DepGraph<K> {
             // Promote the previous diagnostics to the current session.
             tcx.store_diagnostics(dep_node_index, diagnostics.clone().into());
 
-            let handle = tcx.diagnostic();
+            let handle = tcx.sess().diagnostic();
 
             for diagnostic in diagnostics {
                 handle.emit_diagnostic(&diagnostic);

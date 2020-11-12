@@ -26,9 +26,6 @@ use rustc_span::def_id::DefId;
 pub trait QueryContext: DepContext {
     type Query: Clone + HashStable<Self::StableHashingContext>;
 
-    fn incremental_verify_ich(&self) -> bool;
-    fn verbose(&self) -> bool;
-
     /// Get string representation from DefPath.
     fn def_path_str(&self, def_id: DefId) -> String;
 

@@ -6,6 +6,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefPathHash, LocalDefId};
+use rustc_session::Session;
 
 mod dep_node;
 
@@ -101,12 +102,14 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         TyCtxt::create_stable_hashing_context(*self)
     }
 
-    fn debug_dep_tasks(&self) -> bool {
-        self.sess.opts.debugging_opts.dep_tasks
+    #[inline(always)]
+    fn profiler(&self) -> &SelfProfilerRef {
+        &self.prof
     }
-    fn debug_dep_node(&self) -> bool {
-        self.sess.opts.debugging_opts.incremental_info
-            || self.sess.opts.debugging_opts.query_dep_graph
+
+    #[inline(always)]
+    fn sess(&self) -> &Session {
+        self.sess
     }
 
     fn try_force_from_dep_node(&self, dep_node: &DepNode) -> bool {
@@ -156,14 +159,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         ty::query::force_from_dep_node(*self, dep_node)
     }
 
-    fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.sess.has_errors_or_delayed_span_bugs()
-    }
-
-    fn diagnostic(&self) -> &rustc_errors::Handler {
-        self.sess.diagnostic()
-    }
-
     // Interactions with on_disk_cache
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
         try_load_from_on_disk_cache(*self, dep_node)
@@ -191,10 +186,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         if let Some(c) = self.queries.on_disk_cache.as_ref() {
             c.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
         }
-    }
-
-    fn profiler(&self) -> &SelfProfilerRef {
-        &self.prof
     }
 }
 
