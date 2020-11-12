@@ -1,151 +1,175 @@
 error[E0367]: `Drop` impl requires `'adds_bnd: 'al` but the struct it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:23:20
+  --> $DIR/reject-specialized-drops-8142.rs:26:20
    |
 LL | impl<'al,'adds_bnd:'al> Drop for K<'al,'adds_bnd> {                        // REJECT
    |                    ^^^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:5:1
+  --> $DIR/reject-specialized-drops-8142.rs:6:1
    |
 LL | struct K<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0367]: `Drop` impl requires `'adds_bnd: 'al` but the struct it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:27:67
+  --> $DIR/reject-specialized-drops-8142.rs:30:67
    |
 LL | impl<'al,'adds_bnd>     Drop for L<'al,'adds_bnd> where 'adds_bnd:'al {    // REJECT
    |                                                                   ^^^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:6:1
+  --> $DIR/reject-specialized-drops-8142.rs:7:1
    |
 LL | struct L<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/reject-specialized-drops-8142.rs:33:1
+  --> $DIR/reject-specialized-drops-8142.rs:36:1
    |
 LL | impl                    Drop for N<'static>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected struct `N<'n>`
               found struct `N<'static>`
-note: the lifetime `'n` as defined on the struct at 8:10...
-  --> $DIR/reject-specialized-drops-8142.rs:8:10
+note: the lifetime `'n` as defined on the struct at 9:10...
+  --> $DIR/reject-specialized-drops-8142.rs:9:10
    |
 LL | struct N<'n> { x: &'n i8 }
    |          ^^
    = note: ...does not necessarily outlive the static lifetime
 
 error[E0366]: `Drop` impls cannot be specialized
-  --> $DIR/reject-specialized-drops-8142.rs:40:1
+  --> $DIR/reject-specialized-drops-8142.rs:43:1
    |
 LL | impl              Drop for P<i8>          { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: use the same sequence of generic type, lifetime and const parameters as the struct definition
-  --> $DIR/reject-specialized-drops-8142.rs:10:1
+  --> $DIR/reject-specialized-drops-8142.rs:11:1
    |
 LL | struct P<Tp> { x: *const Tp }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0367]: `Drop` impl requires `AddsBnd: Bound` but the struct it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:43:14
+  --> $DIR/reject-specialized-drops-8142.rs:46:14
    |
 LL | impl<AddsBnd:Bound> Drop for Q<AddsBnd> { fn drop(&mut self) { } } // REJECT
    |              ^^^^^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:11:1
+  --> $DIR/reject-specialized-drops-8142.rs:12:1
    |
 LL | struct Q<Tq> { x: *const Tq }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0367]: `Drop` impl requires `AddsRBnd: 'rbnd` but the struct it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:46:21
+  --> $DIR/reject-specialized-drops-8142.rs:49:21
    |
 LL | impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT
    |                     ^^^^^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:12:1
+  --> $DIR/reject-specialized-drops-8142.rs:13:1
    |
 LL | struct R<Tr> { x: *const Tr }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0366]: `Drop` impls cannot be specialized
-  --> $DIR/reject-specialized-drops-8142.rs:55:1
+  --> $DIR/reject-specialized-drops-8142.rs:58:1
    |
 LL | impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: use the same sequence of generic type, lifetime and const parameters as the struct definition
-  --> $DIR/reject-specialized-drops-8142.rs:16:1
+  --> $DIR/reject-specialized-drops-8142.rs:17:1
    |
 LL | struct V<Tva, Tvb> { x: *const Tva, y: *const Tvb }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'lw` due to conflicting requirements
-  --> $DIR/reject-specialized-drops-8142.rs:58:1
+  --> $DIR/reject-specialized-drops-8142.rs:61:1
    |
 LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'l1` as defined on the struct at 17:10...
-  --> $DIR/reject-specialized-drops-8142.rs:17:10
+note: first, the lifetime cannot outlive the lifetime `'l1` as defined on the struct at 18:10...
+  --> $DIR/reject-specialized-drops-8142.rs:18:10
    |
 LL | struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
    |          ^^^
-note: ...but the lifetime must also be valid for the lifetime `'l2` as defined on the struct at 17:15...
-  --> $DIR/reject-specialized-drops-8142.rs:17:15
+note: ...but the lifetime must also be valid for the lifetime `'l2` as defined on the struct at 18:15...
+  --> $DIR/reject-specialized-drops-8142.rs:18:15
    |
 LL | struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
    |               ^^^
 note: ...so that the types are compatible
-  --> $DIR/reject-specialized-drops-8142.rs:58:1
+  --> $DIR/reject-specialized-drops-8142.rs:61:1
    |
 LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected `W<'l1, 'l2>`
               found `W<'_, '_>`
 
+error[E0366]: `Drop` impls cannot be specialized
+  --> $DIR/reject-specialized-drops-8142.rs:64:1
+   |
+LL | impl              Drop for X<3>           { fn drop(&mut self) { } } // REJECT
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+  --> $DIR/reject-specialized-drops-8142.rs:19:1
+   |
+LL | struct X<const Ca: usize>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0366]: `Drop` impls cannot be specialized
+  --> $DIR/reject-specialized-drops-8142.rs:67:1
+   |
+LL | impl<const Ca: usize> Drop for Y<Ca, Ca>     { fn drop(&mut self) { } } // REJECT
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+  --> $DIR/reject-specialized-drops-8142.rs:20:1
+   |
+LL | struct Y<const Ca: usize, const Cb: usize>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0367]: `Drop` impl requires `AddsBnd: Bound` but the enum it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:61:14
+  --> $DIR/reject-specialized-drops-8142.rs:70:14
    |
 LL | impl<AddsBnd:Bound> Drop for Enum<AddsBnd> { fn drop(&mut self) { } } // REJECT
    |              ^^^^^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:19:1
+  --> $DIR/reject-specialized-drops-8142.rs:22:1
    |
 LL | enum Enum<T> { Variant(T) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0367]: `Drop` impl requires `AddsBnd: Bound` but the struct it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:64:14
+  --> $DIR/reject-specialized-drops-8142.rs:73:14
    |
 LL | impl<AddsBnd:Bound> Drop for TupleStruct<AddsBnd> { fn drop(&mut self) { } } // REJECT
    |              ^^^^^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:20:1
+  --> $DIR/reject-specialized-drops-8142.rs:23:1
    |
 LL | struct TupleStruct<T>(T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0367]: `Drop` impl requires `AddsBnd: Bound` but the union it is implemented for does not
-  --> $DIR/reject-specialized-drops-8142.rs:67:21
+  --> $DIR/reject-specialized-drops-8142.rs:76:21
    |
 LL | impl<AddsBnd:Copy + Bound> Drop for Union<AddsBnd> { fn drop(&mut self) { } } // REJECT
    |                     ^^^^^
    |
 note: the implementor must specify the same requirement
-  --> $DIR/reject-specialized-drops-8142.rs:21:1
+  --> $DIR/reject-specialized-drops-8142.rs:24:1
    |
 LL | union Union<T: Copy> { f: T }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0308, E0366, E0367, E0495.
 For more information about an error, try `rustc --explain E0308`.

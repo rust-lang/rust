@@ -1,5 +1,6 @@
 // Issue 8142: Test that Drop impls cannot be specialized beyond the
 // predicates attached to the type definition itself.
+#![feature(min_const_generics)]
 
 trait Bound { fn foo(&self) { } }
 struct K<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }
@@ -15,6 +16,8 @@ struct T<'t,Ts:'t> { x: &'t Ts }
 struct U;
 struct V<Tva, Tvb> { x: *const Tva, y: *const Tvb }
 struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
+struct X<const Ca: usize>;
+struct Y<const Ca: usize, const Cb: usize>;
 
 enum Enum<T> { Variant(T) }
 struct TupleStruct<T>(T);
@@ -57,6 +60,12 @@ impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
 
 impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
 //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter `'lw`
+
+impl              Drop for X<3>           { fn drop(&mut self) { } } // REJECT
+//~^ ERROR `Drop` impls cannot be specialized
+
+impl<const Ca: usize> Drop for Y<Ca, Ca>     { fn drop(&mut self) { } } // REJECT
+//~^ ERROR `Drop` impls cannot be specialized
 
 impl<AddsBnd:Bound> Drop for Enum<AddsBnd> { fn drop(&mut self) { } } // REJECT
 //~^ ERROR `Drop` impl requires `AddsBnd: Bound`
