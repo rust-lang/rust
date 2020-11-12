@@ -160,7 +160,7 @@ fn match_nested_if() {
     assert!(val);
 }
 
-fn empty_tuple_assignment() {
+fn monkey_barrel() {
     let val = ()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=();
     assert_eq!(val, ());
 }
@@ -183,5 +183,5 @@ pub fn main() {
     r#match();
     i_yield();
     match_nested_if();
-    empty_tuple_assignment();
+    monkey_barrel();
 }
