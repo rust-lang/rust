@@ -46,7 +46,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("n_sysroot_crates", &sysroot.crates().len())
                 .field(
                     "n_rustc_compiler_crates",
-                    &rustc.as_ref().map(|rc| rc.packages().len()).unwrap_or(0),
+                    &rustc.as_ref().map_or(0, |rc| rc.packages().len()),
                 )
                 .finish(),
             ProjectWorkspace::Json { project, sysroot } => {
@@ -314,8 +314,7 @@ impl ProjectWorkspace {
         match self {
             ProjectWorkspace::Json { project, .. } => project.n_crates(),
             ProjectWorkspace::Cargo { cargo, sysroot, rustc } => {
-                let rustc_package_len = rustc.as_ref().map(|rc| rc.packages().len()).unwrap_or(0);
-                dbg!(rustc_package_len);
+                let rustc_package_len = rustc.as_ref().map_or(0, |rc| rc.packages().len());
                 cargo.packages().len() + sysroot.crates().len() + rustc_package_len
             }
         }
