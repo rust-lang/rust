@@ -13,6 +13,7 @@ Compiler
   `rustc` whether to link its own C runtime and libraries or to rely on a external 
   linker to find them. (Supported only on `windows-gnu`, `linux-musl`, and `wasi` platforms.)
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
+  Note: If you're using cargo you must explicitly pass the `--target` flag.
 - [Added tier 2\* support for `aarch64-unknown-linux-musl`.][76420]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
@@ -79,8 +80,10 @@ Compatibility Notes
   disallow zero-initialization.][71274]
 - [`#[target_feature]` will now error if used in a place where it has no effect.][78143]
 - [Foreign exceptions are now caught by `catch_unwind` and will cause an abort.][70212]
+  Note: This behaviour is not guaranteed and is still considered undefined behaviour,
+  see the [`catch_unwind`] documentation for further information.
+  
 
-[78143]: https://github.com/rust-lang/rust/issues/78143
 
 Internal Only
 -------------
@@ -94,6 +97,7 @@ related tools.
 - [cg_llvm: `fewer_names` in `uncached_llvm_type`][76030]
 - [Made `ensure_sufficient_stack()` non-generic][76680]
 
+[78143]: https://github.com/rust-lang/rust/issues/78143
 [76680]: https://github.com/rust-lang/rust/pull/76680/
 [76030]: https://github.com/rust-lang/rust/pull/76030/
 [70212]: https://github.com/rust-lang/rust/pull/70212/
@@ -118,6 +122,7 @@ related tools.
 [73461]: https://github.com/rust-lang/rust/pull/73461/
 [73166]: https://github.com/rust-lang/rust/pull/73166/
 [intradoc-links]: https://doc.rust-lang.org/rustdoc/linking-to-items-by-name.html
+[`catch_unwind`]: https://doc.rust-lang.org/std/panic/fn.catch_unwind.html
 [`Option::is_some`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.is_some
 [`Option::is_none`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.is_none
 [`Option::as_ref`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.as_ref
