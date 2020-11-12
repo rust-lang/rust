@@ -13,6 +13,7 @@ fn test_debug() {
                         name: Some(b"std::backtrace::Backtrace::create".to_vec()),
                         filename: Some(BytesOrWide::Bytes(b"rust/backtrace.rs".to_vec())),
                         lineno: Some(100),
+                        colno: None,
                     }],
                 },
                 BacktraceFrame {
@@ -21,6 +22,7 @@ fn test_debug() {
                         name: Some(b"__rust_maybe_catch_panic".to_vec()),
                         filename: None,
                         lineno: None,
+                        colno: None,
                     }],
                 },
                 BacktraceFrame {
@@ -30,11 +32,13 @@ fn test_debug() {
                             name: Some(b"std::rt::lang_start_internal".to_vec()),
                             filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
                             lineno: Some(300),
+                            colno: Some(5),
                         },
                         BacktraceSymbol {
                             name: Some(b"std::rt::lang_start".to_vec()),
                             filename: Some(BytesOrWide::Bytes(b"rust/rt.rs".to_vec())),
                             lineno: Some(400),
+                            colno: None,
                         },
                     ],
                 },
