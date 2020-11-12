@@ -1,0 +1,45 @@
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/macro_rules-braces.rs:34:17
+   |
+LL |     let _: baz!(N);
+   |                 ^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     let _: baz!({ N });
+   |                 ^   ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:31:20
+   |
+LL |     let _: foo!({{ N }});
+   |                    ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:33:19
+   |
+LL |     let _: bar!({ N });
+   |                   ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:36:20
+   |
+LL |     let _: baz!({{ N }});
+   |                    ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
+
+error: generic parameters may not be used in const operations
+  --> $DIR/macro_rules-braces.rs:38:19
+   |
+LL |     let _: biz!({ N });
+   |                   ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `N`
+
+error: aborting due to 5 previous errors
+

@@ -113,6 +113,7 @@ function defocusSearchBar() {
     var mouseMovedAfterSearch = true;
 
     var titleBeforeSearch = document.title;
+    var searchTitle = null;
 
     function clearInputTimeout() {
         if (searchTimeout !== null) {
@@ -169,6 +170,7 @@ function defocusSearchBar() {
         addClass(main, "hidden");
         removeClass(search, "hidden");
         mouseMovedAfterSearch = false;
+        document.title = searchTitle;
     }
 
     function hideSearchResults(search) {
@@ -177,6 +179,7 @@ function defocusSearchBar() {
         }
         addClass(search, "hidden");
         removeClass(main, "hidden");
+        document.title = titleBeforeSearch;
     }
 
     // used for special search precedence
@@ -374,7 +377,6 @@ function defocusSearchBar() {
             clearInputTimeout();
             ev.preventDefault();
             hideSearchResults(search);
-            document.title = titleBeforeSearch;
         }
         defocusSearchBar();
         hideThemeButtonState();
@@ -1791,7 +1793,7 @@ function defocusSearchBar() {
             }
 
             // Update document title to maintain a meaningful browser history
-            document.title = "Results for " + query.query + " - Rust";
+            searchTitle = "Results for " + query.query + " - Rust";
 
             // Because searching is incremental by character, only the most
             // recent search query is added to the browser history.
@@ -2745,6 +2747,7 @@ function defocusSearchBar() {
                                      "",
                                      "?search=" + encodeURIComponent(search_input.value));
             }
+            document.title = searchTitle;
         }
     }
 
