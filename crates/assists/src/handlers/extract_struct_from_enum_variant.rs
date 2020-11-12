@@ -5,10 +5,9 @@ use hir::{AsName, EnumVariant, Module, ModuleDef, Name};
 use ide_db::{defs::Definition, search::Reference, RootDatabase};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
-    algo::find_node_at_offset,
-    algo::SyntaxRewriter,
-    ast::{self, edit::IndentLevel, make, ArgListOwner, AstNode, NameOwner, VisibilityOwner},
-    SourceFile, SyntaxElement,
+    algo::{find_node_at_offset, SyntaxRewriter},
+    ast::{self, edit::IndentLevel, make, AstNode, NameOwner, VisibilityOwner},
+    SourceFile, SyntaxElement, SyntaxNode, T,
 };
 
 use crate::{
@@ -130,17 +129,17 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &En
 fn insert_import(
     ctx: &AssistContext,
     rewriter: &mut SyntaxRewriter,
-    path: &ast::PathExpr,
+    scope_node: &SyntaxNode,
     module: &Module,
     enum_module_def: &ModuleDef,
     variant_hir_name: &Name,
 ) -> Option<()> {
     let db = ctx.db();
     let mod_path = module.find_use_path(db, enum_module_def.clone());
-    if let Some(mut mod_path) = mod_path {
+    if let Some(mut mod_path) = mod_path.filter(|path| path.len() > 1) {
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
-        let scope = ImportScope::find_insert_use_container(path.syntax(), ctx)?;
+        let scope = ImportScope::find_insert_use_container(scope_node, ctx)?;
 
         *rewriter += insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use.merge);
     }
@@ -204,27 +203,31 @@ fn update_reference(
     variant_hir_name: &Name,
     visited_modules_set: &mut FxHashSet<Module>,
 ) -> Option<()> {
-    let path_expr: ast::PathExpr = find_node_at_offset::<ast::PathExpr>(
-        source_file.syntax(),
-        reference.file_range.range.start(),
-    )?;
-    let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
-    let list = call.arg_list()?;
-    let segment = path_expr.path()?.segment()?;
-    let module = ctx.sema.scope(&path_expr.syntax()).module()?;
+    let offset = reference.file_range.range.start();
+    let (segment, expr) = if let Some(path_expr) =
+        find_node_at_offset::<ast::PathExpr>(source_file.syntax(), offset)
+    {
+        // tuple variant
+        (path_expr.path()?.segment()?, path_expr.syntax().parent()?.clone())
+    } else if let Some(record_expr) =
+        find_node_at_offset::<ast::RecordExpr>(source_file.syntax(), offset)
+    {
+        // record variant
+        (record_expr.path()?.segment()?, record_expr.syntax().clone())
+    } else {
+        return None;
+    };
+
+    let module = ctx.sema.scope(&expr).module()?;
     if !visited_modules_set.contains(&module) {
-        if insert_import(ctx, rewriter, &path_expr, &module, enum_module_def, variant_hir_name)
-            .is_some()
+        if insert_import(ctx, rewriter, &expr, &module, enum_module_def, variant_hir_name).is_some()
         {
             visited_modules_set.insert(module);
         }
     }
-
-    let lparen = syntax::SyntaxElement::from(list.l_paren_token()?);
-    let rparen = syntax::SyntaxElement::from(list.r_paren_token()?);
-    rewriter.insert_after(&lparen, segment.syntax());
-    rewriter.insert_after(&lparen, &lparen);
-    rewriter.insert_before(&rparen, &rparen);
+    rewriter.insert_after(segment.syntax(), &make::token(T!['(']));
+    rewriter.insert_after(segment.syntax(), segment.syntax());
+    rewriter.insert_after(&expr, &make::token(T![')']));
     Some(())
 }
 
@@ -346,6 +349,33 @@ fn another_fn() {
     }
 
     #[test]
+    fn extract_record_fix_references() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum E {
+    <|>V { i: i32, j: i32 }
+}
+
+fn f() {
+    let e = E::V { i: 9, j: 2 };
+}
+"#,
+            r#"
+struct V{ pub i: i32, pub j: i32 }
+
+enum E {
+    V(V)
+}
+
+fn f() {
+    let e = E::V(V { i: 9, j: 2 });
+}
+"#,
+        )
+    }
+
+    #[test]
     fn test_several_files() {
         check_assist(
             extract_struct_from_enum_variant,
@@ -372,8 +402,6 @@ enum E {
 mod foo;
 
 //- /foo.rs
-use V;
-
 use crate::E;
 fn f() {
     let e = E::V(V(9, 2));
@@ -384,7 +412,6 @@ fn f() {
 
     #[test]
     fn test_several_files_record() {
-        // FIXME: this should fix the usage as well!
         check_assist(
             extract_struct_from_enum_variant,
             r#"
@@ -401,6 +428,7 @@ fn f() {
 }
 "#,
             r#"
+//- /main.rs
 struct V{ pub i: i32, pub j: i32 }
 
 enum E {
@@ -408,6 +436,11 @@ enum E {
 }
 mod foo;
 
+//- /foo.rs
+use crate::E;
+fn f() {
+    let e = E::V(V { i: 9, j: 2 });
+}
 "#,
         )
     }
