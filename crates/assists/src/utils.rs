@@ -258,7 +258,7 @@ pub mod convert {
 }
 
 pub mod default {
-    pub trait Default: Sized {
+    pub trait Default {
        fn default() -> Self;
     }
 }
