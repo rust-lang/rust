@@ -14,7 +14,6 @@ pub fn target() -> Target {
         arch: "mips".to_string(),
 
         options: TargetOptions {
-            vendor: String::new(),
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             cpu: "mips32r2".to_string(),
             features: "+mips32r2,+soft-float,+noabicalls".to_string(),
