@@ -9,7 +9,7 @@ use rustc_index::{bit_set::BitSet, vec::Idx};
 
 use rustc_middle::{
     mir::{self, Body, Local, Location},
-    mir::{visit::Visitor, BorrowKind, Operand, Place, Rvalue, Statement, StatementKind},
+    mir::{visit::Visitor, BorrowKind, Operand, Rvalue, Statement, StatementKind},
 };
 use smallvec::SmallVec;
 
@@ -291,44 +291,36 @@ impl<'a, 'tcx, T> Visitor<'tcx> for TransferFunction<'a, T>
 where
     T: GenKill<LocalWithLocationIndex>,
 {
-    fn visit_assign(
-        &mut self,
-        assigned_place: &Place<'tcx>,
-        rvalue: &Rvalue<'tcx>,
-        location: Location,
-    ) {
-        if let Some(assigned_local) = assigned_place.as_local() {
-            let disallowed_place_opt = match rvalue {
-                Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shallow, ref_of) => {
-                    Some(ref_of)
-                }
-                Rvalue::AddressOf(_, ref_of) => Some(ref_of),
-                _ => None,
-            };
-
-            if let Some(disallowed_place) = disallowed_place_opt {
-                // It is difficult to reason about availability of mutable places or raw pointers, so throw out any
-                // availability information about the local taken a reference of.
-                debug!(
-                    "Found disallowed reference of `{:?}`. Invalidating {:?} and {:?}",
-                    disallowed_place, disallowed_place.local, assigned_local
-                );
-                self.invalidate_local(disallowed_place.local, location);
-                self.invalidate_local(assigned_local, location)
-            } else {
-                self.add_available(assigned_local, rvalue.clone(), location);
-            }
-        }
-
-        self.super_assign(assigned_place, rvalue, location);
-    }
-
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        match statement.kind {
+        match &statement.kind {
             StatementKind::StorageDead(dead) => {
-                self.invalidate_local(dead, location);
+                self.invalidate_local(*dead, location);
             }
-            _ => self.super_statement(statement, location),
+            StatementKind::Assign(box (assigned_place, rvalue)) => {
+                if let Some(assigned_local) = assigned_place.as_local() {
+                    let disallowed_place_opt = match rvalue {
+                        Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shallow, ref_of) => {
+                            Some(ref_of)
+                        }
+                        Rvalue::AddressOf(_, ref_of) => Some(ref_of),
+                        _ => None,
+                    };
+
+                    if let Some(disallowed_place) = disallowed_place_opt {
+                        // It is difficult to reason about availability of mutable places or raw pointers, so throw out any
+                        // availability information about the local taken a reference of.
+                        debug!(
+                            "Found disallowed reference of `{:?}`. Invalidating {:?} and {:?}",
+                            disallowed_place, disallowed_place.local, assigned_local
+                        );
+                        self.invalidate_local(disallowed_place.local, location);
+                        self.invalidate_local(assigned_local, location)
+                    } else {
+                        self.add_available(assigned_local, rvalue.clone(), location);
+                    }
+                }
+            }
+            _ => {}
         }
     }
 }
