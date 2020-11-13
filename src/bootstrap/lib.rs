@@ -178,6 +178,7 @@ const LLVM_TOOLS: &[&str] = &[
     "llvm-size",     // used to prints the size of the linker sections of a program
     "llvm-strip",    // used to discard symbols from binary files to reduce their size
     "llvm-ar",       // used for creating and modifying archive files
+    "llvm-as",       // used to convert LLVM assembly to LLVM bitcode
     "llvm-dis",      // used to disassemble LLVM bitcode
     "llc",           // used to compile LLVM bytecode
     "opt",           // used to optimize LLVM bytecode
