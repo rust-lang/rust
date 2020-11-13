@@ -63,9 +63,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             sess,
             dst: output.to_path_buf(),
             lib_search_paths: archive_search_paths(sess),
-            use_gnu_style_archive: sess.target.options.archive_format == "gnu",
+            use_gnu_style_archive: sess.target.archive_format == "gnu",
             // FIXME fix builtin ranlib on macOS
-            no_builtin_ranlib: sess.target.options.is_like_osx,
+            no_builtin_ranlib: sess.target.is_like_osx,
 
             src_archives,
             entries,
