@@ -1580,11 +1580,9 @@ impl UniverseIndex {
     }
 }
 
-/// The "placeholder index" fully defines a placeholder region.
-/// Placeholder regions are identified by both a **universe** as well
-/// as a "bound-region" within that universe. The `bound_region` is
-/// basically a name -- distinct bound regions within the same
-/// universe are just two regions with an unknown relationship to one
+/// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
+/// identified by both a universe, as well as a name residing within that universe. Distinct bound
+/// regions/types/consts within the same universe simply have an unknown relationship to one
 /// another.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
 pub struct Placeholder<T> {
@@ -1606,7 +1604,14 @@ pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
 pub type PlaceholderType = Placeholder<BoundVar>;
 
-pub type PlaceholderConst = Placeholder<BoundVar>;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
+pub struct BoundConst<'tcx> {
+    pub var: BoundVar,
+    pub ty: Ty<'tcx>,
+}
+
+pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 
 /// A `DefId` which is potentially bundled with its corresponding generic parameter
 /// in case `did` is a const argument.

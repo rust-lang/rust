@@ -40,7 +40,7 @@ pub struct Canonical<'tcx, V> {
     pub value: V,
 }
 
-pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo>;
+pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
@@ -88,11 +88,11 @@ impl Default for OriginalQueryValues<'tcx> {
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
-pub struct CanonicalVarInfo {
-    pub kind: CanonicalVarKind,
+pub struct CanonicalVarInfo<'tcx> {
+    pub kind: CanonicalVarKind<'tcx>,
 }
 
-impl CanonicalVarInfo {
+impl<'tcx> CanonicalVarInfo<'tcx> {
     pub fn universe(&self) -> ty::UniverseIndex {
         self.kind.universe()
     }
@@ -113,7 +113,7 @@ impl CanonicalVarInfo {
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
-pub enum CanonicalVarKind {
+pub enum CanonicalVarKind<'tcx> {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
 
@@ -132,10 +132,10 @@ pub enum CanonicalVarKind {
     Const(ty::UniverseIndex),
 
     /// A "placeholder" that represents "any const".
-    PlaceholderConst(ty::PlaceholderConst),
+    PlaceholderConst(ty::PlaceholderConst<'tcx>),
 }
 
-impl CanonicalVarKind {
+impl<'tcx> CanonicalVarKind<'tcx> {
     pub fn universe(self) -> ty::UniverseIndex {
         match self {
             CanonicalVarKind::Ty(kind) => match kind {
@@ -287,9 +287,11 @@ pub type QueryOutlivesConstraint<'tcx> =
     ty::Binder<ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
 
 CloneTypeFoldableAndLiftImpls! {
-    crate::infer::canonical::Certainty,
-    crate::infer::canonical::CanonicalVarInfo,
-    crate::infer::canonical::CanonicalVarKind,
+    for <'tcx> {
+        crate::infer::canonical::Certainty,
+        crate::infer::canonical::CanonicalVarInfo<'tcx>,
+        crate::infer::canonical::CanonicalVarKind<'tcx>,
+    }
 }
 
 CloneTypeFoldableImpls! {

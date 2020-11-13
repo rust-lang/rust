@@ -23,7 +23,7 @@ pub enum ConstKind<'tcx> {
     Bound(ty::DebruijnIndex, ty::BoundVar),
 
     /// A placeholder const - universally quantified higher-ranked const.
-    Placeholder(ty::PlaceholderConst),
+    Placeholder(ty::PlaceholderConst<'tcx>),
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
