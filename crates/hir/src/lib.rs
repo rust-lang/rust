@@ -49,7 +49,7 @@ pub use hir_def::{
     builtin_type::BuiltinType,
     docs::Documentation,
     find_path::PrefixKind,
-    import_map::Query,
+    import_map::Query as ExternalImportablesQuery,
     item_scope::ItemInNs,
     nameres::ModuleSource,
     path::{ModPath, PathKind},

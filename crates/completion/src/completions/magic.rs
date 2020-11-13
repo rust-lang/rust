@@ -2,8 +2,8 @@
 
 use assists::utils::{insert_use, mod_path_to_ast, ImportScope};
 use either::Either;
-use hir::{db::HirDatabase, MacroDef, ModuleDef, Query};
-use itertools::Itertools;
+use hir::{db::HirDatabase, MacroDef, ModuleDef};
+use ide_db::imports_locator;
 use syntax::{algo, AstNode};
 use text_edit::TextEdit;
 
@@ -22,42 +22,40 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
 
     let potential_import_name = ctx.token.to_string();
 
-    let possible_imports = ctx
-        .krate?
-        // TODO kb use imports_locator instead?
-        .query_external_importables(ctx.db, Query::new(&potential_import_name).limit(40))
-        .unique()
-        .filter_map(|import_candidate| {
-            let use_path = match import_candidate {
-                Either::Left(module_def) => current_module.find_use_path(ctx.db, module_def),
-                Either::Right(macro_def) => current_module.find_use_path(ctx.db, macro_def),
-            }?;
-            Some((use_path, additional_completion(ctx.db, import_candidate)))
-        })
-        .filter_map(|(mod_path, additional_completion)| {
-            let mut builder = TextEdit::builder();
+    let possible_imports =
+        imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name)
+            .filter_map(|import_candidate| {
+                let use_path = match import_candidate {
+                    Either::Left(module_def) => current_module.find_use_path(ctx.db, module_def),
+                    Either::Right(macro_def) => current_module.find_use_path(ctx.db, macro_def),
+                }?;
+                Some((use_path, additional_completion(ctx.db, import_candidate)))
+            })
+            .filter_map(|(mod_path, additional_completion)| {
+                let mut builder = TextEdit::builder();
 
-            let correct_qualifier = format!(
-                "{}{}",
-                mod_path.segments.last()?,
-                additional_completion.unwrap_or_default()
-            );
-            builder.replace(anchor.syntax().text_range(), correct_qualifier);
+                let correct_qualifier = format!(
+                    "{}{}",
+                    mod_path.segments.last()?,
+                    additional_completion.unwrap_or_default()
+                );
+                builder.replace(anchor.syntax().text_range(), correct_qualifier);
 
-            let rewriter = insert_use(&import_scope, mod_path_to_ast(&mod_path), ctx.config.merge);
-            let old_ast = rewriter.rewrite_root()?;
-            algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut builder);
+                let rewriter =
+                    insert_use(&import_scope, mod_path_to_ast(&mod_path), ctx.config.merge);
+                let old_ast = rewriter.rewrite_root()?;
+                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut builder);
 
-            let completion_item: CompletionItem = CompletionItem::new(
-                CompletionKind::Magic,
-                ctx.source_range(),
-                mod_path.to_string(),
-            )
-            .kind(CompletionItemKind::Struct)
-            .text_edit(builder.finish())
-            .into();
-            Some(completion_item)
-        });
+                let completion_item: CompletionItem = CompletionItem::new(
+                    CompletionKind::Magic,
+                    ctx.source_range(),
+                    mod_path.to_string(),
+                )
+                .kind(CompletionItemKind::Struct)
+                .text_edit(builder.finish())
+                .into();
+                Some(completion_item)
+            });
     acc.add_all(possible_imports);
 
     Some(())

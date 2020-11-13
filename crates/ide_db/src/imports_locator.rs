@@ -1,40 +1,69 @@
 //! This module contains an import search funcionality that is provided to the assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
-use hir::{Crate, MacroDef, ModuleDef, Query as ImportMapQuery, Semantics};
+use hir::{Crate, ExternalImportablesQuery, MacroDef, ModuleDef, Semantics};
 use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
     defs::{Definition, NameClass},
-    symbol_index::{self, FileSymbol, Query as SymbolQuery},
+    symbol_index::{self, FileSymbol, Query as LocalImportablesQuery},
     RootDatabase,
 };
 use either::Either;
 use rustc_hash::FxHashSet;
 
-pub fn find_imports<'a>(
+pub fn find_exact_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
     name_to_import: &str,
-) -> Vec<Either<ModuleDef, MacroDef>> {
-    let _p = profile::span("search_for_imports");
+) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+    let _p = profile::span("find_exact_imports");
+    find_imports(
+        sema,
+        krate,
+        {
+            let mut local_query = LocalImportablesQuery::new(name_to_import.to_string());
+            local_query.exact();
+            local_query.limit(40);
+            local_query
+        },
+        ExternalImportablesQuery::new(name_to_import).anchor_end().case_sensitive().limit(40),
+    )
+}
+
+pub fn find_similar_imports<'a>(
+    sema: &Semantics<'a, RootDatabase>,
+    krate: Crate,
+    name_to_import: &str,
+) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+    let _p = profile::span("find_similar_imports");
+    find_imports(
+        sema,
+        krate,
+        {
+            let mut local_query = LocalImportablesQuery::new(name_to_import.to_string());
+            local_query.limit(40);
+            local_query
+        },
+        ExternalImportablesQuery::new(name_to_import).limit(40),
+    )
+}
+
+fn find_imports<'a>(
+    sema: &Semantics<'a, RootDatabase>,
+    krate: Crate,
+    local_query: LocalImportablesQuery,
+    external_query: ExternalImportablesQuery,
+) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+    let _p = profile::span("find_similar_imports");
     let db = sema.db;
 
     // Query dependencies first.
-    let mut candidates: FxHashSet<_> = krate
-        .query_external_importables(
-            db,
-            ImportMapQuery::new(name_to_import).anchor_end().case_sensitive().limit(40),
-        )
-        .collect();
+    let mut candidates: FxHashSet<_> =
+        krate.query_external_importables(db, external_query).collect();
 
     // Query the local crate using the symbol index.
-    let local_results = {
-        let mut query = SymbolQuery::new(name_to_import.to_string());
-        query.exact();
-        query.limit(40);
-        symbol_index::crate_symbols(db, krate.into(), query)
-    };
+    let local_results = symbol_index::crate_symbols(db, krate.into(), local_query);
 
     candidates.extend(
         local_results
@@ -47,7 +76,7 @@ pub fn find_imports<'a>(
             }),
     );
 
-    candidates.into_iter().collect()
+    candidates.into_iter()
 }
 
 fn get_name_definition<'a>(

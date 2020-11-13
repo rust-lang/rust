@@ -118,7 +118,7 @@ pub fn completions(
     completions::macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     completions::trait_impl::complete_trait_impl(&mut acc, &ctx);
     completions::mod_::complete_mod(&mut acc, &ctx);
-    completions::complete_magic::complete_magic(&mut acc, &ctx);
+    completions::magic::complete_magic(&mut acc, &ctx);
 
     Some(acc)
 }
