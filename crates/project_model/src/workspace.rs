@@ -1,3 +1,7 @@
+//! Handles lowering of build-system specific workspace information (`cargo
+//! metadata` or `rust-project.json`) into representation stored in the salsa
+//! database -- `CrateGraph`.
+
 use std::{fmt, fs, path::Component, process::Command};
 
 use anyhow::{Context, Result};
@@ -56,11 +60,7 @@ impl fmt::Debug for ProjectWorkspace {
 }
 
 impl ProjectWorkspace {
-    pub fn load(
-        manifest: ProjectManifest,
-        cargo_config: &CargoConfig,
-        with_sysroot: bool,
-    ) -> Result<ProjectWorkspace> {
+    pub fn load(manifest: ProjectManifest, config: &CargoConfig) -> Result<ProjectWorkspace> {
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
                 let file = fs::read_to_string(&project_json).with_context(|| {
@@ -84,32 +84,30 @@ impl ProjectWorkspace {
                     cmd
                 })?;
 
-                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_config)
-                    .with_context(|| {
+                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, config).with_context(
+                    || {
                         format!(
                             "Failed to read Cargo metadata from Cargo.toml file {}, {}",
                             cargo_toml.display(),
                             cargo_version
                         )
-                    })?;
-                let sysroot = if with_sysroot {
+                    },
+                )?;
+                let sysroot = if config.no_sysroot {
+                    Sysroot::default()
+                } else {
                     Sysroot::discover(&cargo_toml).with_context(|| {
                         format!(
                             "Failed to find sysroot for Cargo.toml file {}. Is rust-src installed?",
                             cargo_toml.display()
                         )
                     })?
-                } else {
-                    Sysroot::default()
                 };
 
-                let rustc = if let Some(rustc_dir) = &cargo_config.rustc_source {
-                    Some(
-                        CargoWorkspace::from_cargo_metadata(&rustc_dir, cargo_config)
-                            .with_context(|| {
-                                format!("Failed to read Cargo metadata for Rust sources")
-                            })?,
-                    )
+                let rustc = if let Some(rustc_dir) = &config.rustc_source {
+                    Some(CargoWorkspace::from_cargo_metadata(&rustc_dir, config).with_context(
+                        || format!("Failed to read Cargo metadata for Rust sources"),
+                    )?)
                 } else {
                     None
                 };

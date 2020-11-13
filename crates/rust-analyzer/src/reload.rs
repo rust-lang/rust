@@ -96,17 +96,12 @@ impl GlobalState {
         self.task_pool.handle.spawn({
             let linked_projects = self.config.linked_projects.clone();
             let cargo_config = self.config.cargo.clone();
-            let with_sysroot = self.config.with_sysroot.clone();
             move || {
                 let workspaces = linked_projects
                     .iter()
                     .map(|project| match project {
                         LinkedProject::ProjectManifest(manifest) => {
-                            project_model::ProjectWorkspace::load(
-                                manifest.clone(),
-                                &cargo_config,
-                                with_sysroot,
-                            )
+                            project_model::ProjectWorkspace::load(manifest.clone(), &cargo_config)
                         }
                         LinkedProject::InlineJsonProject(it) => {
                             project_model::ProjectWorkspace::load_inline(it.clone())

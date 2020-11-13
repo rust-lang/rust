@@ -283,6 +283,11 @@
                     "default": null,
                     "description": "Specify the compilation target"
                 },
+                "rust-analyzer.noSysroot": {
+                    "markdownDescription": "Internal config for debugging, disables loading of sysroot crates",
+                    "type": "boolean",
+                    "default": false
+                },
                 "rust-analyzer.rustfmt.extraArgs": {
                     "type": "array",
                     "items": {
@@ -604,11 +609,6 @@
                         ]
                     },
                     "default": null
-                },
-                "rust-analyzer.withSysroot": {
-                    "markdownDescription": "Internal config for debugging, disables loading of sysroot crates",
-                    "type": "boolean",
-                    "default": true
                 },
                 "rust-analyzer.diagnostics.enable": {
                     "type": "boolean",
