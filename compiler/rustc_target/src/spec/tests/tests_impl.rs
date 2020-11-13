@@ -8,6 +8,7 @@ pub(super) fn test_target(target: Target) {
 
 impl Target {
     fn check_consistency(&self) {
+        assert!(self.is_like_windows || !self.is_like_msvc);
         // Check that LLD with the given flavor is treated identically to the linker it emulates.
         // If your target really needs to deviate from the rules below, except it and document the
         // reasons.
@@ -16,6 +17,7 @@ impl Target {
                 || self.linker_flavor == LinkerFlavor::Lld(LldFlavor::Link),
             self.lld_flavor == LldFlavor::Link,
         );
+        assert_eq!(self.is_like_msvc, self.lld_flavor == LldFlavor::Link);
         for args in &[
             &self.pre_link_args,
             &self.late_link_args,
