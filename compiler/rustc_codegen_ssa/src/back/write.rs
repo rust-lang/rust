@@ -468,6 +468,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         linker_info,
         crate_info,
         crate_hash,
+
         coordinator_send,
         codegen_worker_receive,
         shared_emitter_main,
@@ -1759,6 +1760,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
                 linker_info: self.linker_info,
                 crate_info: self.crate_info,
                 crate_hash: self.crate_hash,
+
                 modules: compiled_modules.modules,
                 allocator_module: compiled_modules.allocator_module,
                 metadata_module: compiled_modules.metadata_module,

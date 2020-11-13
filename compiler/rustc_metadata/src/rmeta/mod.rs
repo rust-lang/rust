@@ -42,7 +42,9 @@ crate fn rustc_version() -> String {
 }
 
 crate fn crate_svh(tcx: TyCtxt<'_>) -> String {
-    tcx.crate_hash(LOCAL_CRATE).to_string()
+    let mut svh = [0; 64];
+    svh.copy_from_slice(&tcx.crate_hash(LOCAL_CRATE).as_u64().to_le_bytes());
+    svh
 }
 
 /// Metadata encoding version.

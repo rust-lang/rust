@@ -692,7 +692,7 @@ fn write_out_deps(
                     )?;
                 }
                 Some(FileHash::BinaryHash(size, svh)) => {
-                    writeln!(file, "# size:{} {}:{}", size, "svh", svh)?;
+                    writeln!(file, "# size:{} svh:{}", size, svh)?;
                 }
                 None => {}
             }
