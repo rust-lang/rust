@@ -1121,6 +1121,32 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    let (mut reader, reader_metadata) = open_from(from)?;
+    let max_len = u64::MAX;
+    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
+
+
+    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
+        CopyResult::Ended(result) => result,
+        CopyResult::Fallback(written) => match io::copy(&mut reader, &mut writer) {
+            Ok(bytes) => Ok(bytes + written),
+            Err(e) => Err(e),
+        },
+    }
+}
+
+enum CopyResult {
+    Ended(crate::io::Result<u64>),
+    Fallback(u64),
+}
+
+/// linux-specific implementation that will attempt to use copy_file_range for copy offloading
+/// as the name says, it only works on regular files
+///
+/// Callers must handle fallback to a generic copy loop.
+/// `Fallback` may indicate non-zero number of bytes already written
+/// if one of the files' cursor +`max_len` would exceed u64::MAX (`EOVERFLOW`).
+fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
     use crate::sync::atomic::{AtomicBool, Ordering};
 
@@ -1139,22 +1165,22 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         libc::syscall(libc::SYS_copy_file_range, fd_in, off_in, fd_out, off_out, len, flags)
     }
 
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let max_len = u64::MAX;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
-
     let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
     let mut written = 0u64;
     while written < max_len {
         let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64) as usize;
+            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
+            // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek position
+            // this allows us to copy large chunks without hitting EOVERFLOW,
+            // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
+            let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
                 cvt(copy_file_range(
-                    reader.as_raw_fd(),
+                    reader,
                     ptr::null_mut(),
-                    writer.as_raw_fd(),
+                    writer,
                     ptr::null_mut(),
                     bytes_to_copy,
                     0,
@@ -1170,7 +1196,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             }
             copy_result
         } else {
-            Err(io::Error::from_raw_os_error(libc::ENOSYS))
+            Err(Error::from_raw_os_error(libc::ENOSYS))
         };
         match copy_result {
             Ok(0) if written == 0 => {
@@ -1179,12 +1205,14 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                 // - reading virtual files from the proc filesystem which appear to have 0 size
                 //   but are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
                 // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
-                return io::copy(&mut reader, &mut writer);
+                return CopyResult::Fallback(0);
             }
-            Ok(0) => return Ok(written), // reached EOF
+            Ok(0) => return CopyResult::Ended(Ok(written)), // reached EOF
             Ok(ret) => written += ret as u64,
             Err(err) => {
-                match err.raw_os_error() {
+                return match err.raw_os_error() {
+                    // when file offset + max_length > u64::MAX
+                    Some(libc::EOVERFLOW) => CopyResult::Fallback(written),
                     Some(
                         libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
                     ) => {
@@ -1195,14 +1223,14 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                         // - copy_file_range is disallowed, for example by seccomp (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         assert_eq!(written, 0);
-                        return io::copy(&mut reader, &mut writer);
+                        CopyResult::Fallback(0)
                     }
-                    _ => return Err(err),
-                }
+                    _ => CopyResult::Ended(Err(err)),
+                };
             }
         }
     }
-    Ok(written)
+    CopyResult::Ended(Ok(written))
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
