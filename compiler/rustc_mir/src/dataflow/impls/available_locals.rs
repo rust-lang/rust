@@ -1,17 +1,17 @@
 use std::{fmt, hash::BuildHasherDefault};
 
+use crate::dataflow::{
+    fmt::DebugWithAdapter, fmt::DebugWithContext, lattice, lattice::Dual, AnalysisDomain, Forward,
+    GenKill, GenKillAnalysis,
+};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::{bit_set::BitSet, vec::Idx};
+
 use rustc_middle::{
     mir::{self, Body, Local, Location},
     mir::{visit::Visitor, BorrowKind, Operand, Place, Rvalue, Statement, StatementKind},
 };
 use smallvec::SmallVec;
-
-use crate::dataflow::{
-    fmt::DebugWithAdapter, fmt::DebugWithContext, lattice, lattice::Dual, AnalysisDomain, Forward,
-    GenKill, GenKillAnalysis,
-};
 
 /// Dataflow analysis for availability of locals. A local is available at a given program point,
 /// if the value of the local can freely be used at the given program point.
@@ -60,16 +60,17 @@ impl<'a, 'tcx> AvailableLocals {
         DebugWithAdapter { this: state, ctxt: &self.local_with_location_map }
     }
 
+    pub fn get_local_with_location_index(
+        &self,
+        local: Local,
+        location: Location,
+    ) -> LocalWithLocationIndex {
+        self.local_with_location_map.local_with_specific_location(local, Some(location))
+    }
+
     /// Returns whether the given local is available at the given state
-    pub fn is_available(&self, local: Local, state: &'a State) -> bool {
-        let locations_opt = self.local_with_location_map.local_with_locations(local);
-        if let Some(mut locations) = locations_opt {
-            locations.any(|place_taken_ref_local_with_location| {
-                state.0.contains(place_taken_ref_local_with_location)
-            })
-        } else {
-            false
-        }
+    pub fn is_available(&self, local: Local, state: &'a State) -> Option<LocalWithLocationIndex> {
+        self.local_with_location_map.local_with_locations(local)?.find(|idx| state.0.contains(*idx))
     }
 
     fn transfer_function<T>(&'a self, available: &'a mut T) -> TransferFunction<'a, T>
@@ -283,24 +284,10 @@ where
             _ => {}
         }
 
-        let all_participating_alive =
-            rvalue.participating_locals(location).all(|participating_local| {
-                let location_opt =
-                    self.local_with_location_map.local_with_locations(participating_local);
-                if let Some(mut locations) = location_opt {
-                    locations.any(|participating_local_idx| {
-                        self.available.is_alive(participating_local_idx)
-                    })
-                } else {
-                    false
-                }
-            });
-        if all_participating_alive {
-            let index =
-                self.local_with_location_map.local_with_specific_location(local, Some(location));
-            debug!("Inserting {:?} which corresponds to {:?}", index, (local, Some(location)));
-            self.available.gen(index);
-        }
+        let index =
+            self.local_with_location_map.local_with_specific_location(local, Some(location));
+        debug!("Inserting {:?} which corresponds to {:?}", index, (local, Some(location)));
+        self.available.gen(index);
     }
 }
 
