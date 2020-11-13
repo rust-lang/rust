@@ -271,7 +271,7 @@ where
         }
     }
 
-    fn add_available(&mut self, local: Local, rvalue: Rvalue<'tcx>, location: Location) {
+    fn add_available(&mut self, local: Local, rvalue: &Rvalue<'tcx>, location: Location) {
         self.invalidate_local(local, location);
 
         // If rvalue is a move into the assigned local, then the local being moved should be invalidated
@@ -316,7 +316,7 @@ where
                         self.invalidate_local(disallowed_place.local, location);
                         self.invalidate_local(assigned_local, location)
                     } else {
-                        self.add_available(assigned_local, rvalue.clone(), location);
+                        self.add_available(assigned_local, rvalue, location);
                     }
                 }
             }
