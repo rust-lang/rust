@@ -713,11 +713,14 @@ pub struct TargetOptions {
     pub endian: String,
     /// Width of c_int type. Defaults to "32".
     pub c_int_width: String,
-    /// OS name to use for conditional compilation. Defaults to "none".
+    /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
+    /// "none" implies a bare metal target without `std` library.
+    /// A couple of targets having `std` also use "unknown" as an `os` value,
+    /// but they are exceptions.
     pub os: String,
-    /// Environment name to use for conditional compilation. Defaults to "".
+    /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
     pub env: String,
-    /// Vendor name to use for conditional compilation. Defaults to "unknown".
+    /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     pub vendor: String,
     /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
     /// on the command line. Defaults to `LinkerFlavor::Gcc`.
