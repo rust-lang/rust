@@ -34,8 +34,8 @@ use crate::sys;
 /// attacks such as HashDoS.
 ///
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
-/// [`default`], [`with_hasher`], and [`with_capacity_and_hasher`] methods. Many
-/// alternative algorithms are available on crates.io, such as the [`fnv`] crate.
+/// [`default`], [`with_hasher`], and [`with_capacity_and_hasher`] methods.
+/// There are many alternative [hashing algorithms available on crates.io].
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
@@ -57,6 +57,7 @@ use crate::sys;
 /// The original C++ version of SwissTable can be found [here], and this
 /// [CppCon talk] gives an overview of how the algorithm works.
 ///
+/// [hashing algorithms available on crates.io]: https://crates.io/keywords/hasher
 /// [SwissTable]: https://abseil.io/blog/20180927-swisstables
 /// [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
 /// [CppCon talk]: https://www.youtube.com/watch?v=ncHmEUmJZf4
@@ -154,7 +155,6 @@ use crate::sys;
 /// [`default`]: Default::default
 /// [`with_hasher`]: Self::with_hasher
 /// [`with_capacity_and_hasher`]: Self::with_capacity_and_hasher
-/// [`fnv`]: https://crates.io/crates/fnv
 ///
 /// ```
 /// use std::collections::HashMap;
