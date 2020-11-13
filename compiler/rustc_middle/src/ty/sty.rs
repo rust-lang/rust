@@ -1963,7 +1963,12 @@ impl<'tcx> TyS<'tcx> {
         match self.kind() {
             Adt(def, substs) => {
                 let variant = def.non_enum_variant();
-                (variant.fields.len() as u64, variant.fields[0].ty(tcx, substs))
+                let f0_ty = variant.fields[0].ty(tcx, substs);
+
+                match f0_ty.kind() {
+                    Array(f0_elem_ty, f0_len) => (f0_len.eval_usize(tcx, ParamEnv::empty()) as u64, f0_elem_ty),
+                    _ => (variant.fields.len() as u64, f0_ty),
+                }
             }
             _ => bug!("`simd_size_and_type` called on invalid type"),
         }
