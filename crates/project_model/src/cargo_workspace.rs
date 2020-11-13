@@ -65,6 +65,10 @@ pub struct CargoConfig {
     /// rustc target
     pub target: Option<String>,
 
+    /// Don't load sysroot crates (`std`, `core` & friends). Might be useful
+    /// when debugging isolated issues.
+    pub no_sysroot: bool,
+
     /// rustc private crate source
     pub rustc_source: Option<AbsPathBuf>,
 }
@@ -140,27 +144,27 @@ impl PackageData {
 impl CargoWorkspace {
     pub fn from_cargo_metadata(
         cargo_toml: &AbsPath,
-        cargo_features: &CargoConfig,
+        config: &CargoConfig,
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
         meta.manifest_path(cargo_toml.to_path_buf());
-        if cargo_features.all_features {
+        if config.all_features {
             meta.features(CargoOpt::AllFeatures);
         } else {
-            if cargo_features.no_default_features {
+            if config.no_default_features {
                 // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
                 // https://github.com/oli-obk/cargo_metadata/issues/79
                 meta.features(CargoOpt::NoDefaultFeatures);
             }
-            if !cargo_features.features.is_empty() {
-                meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
+            if !config.features.is_empty() {
+                meta.features(CargoOpt::SomeFeatures(config.features.clone()));
             }
         }
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent.to_path_buf());
         }
-        if let Some(target) = cargo_features.target.as_ref() {
+        if let Some(target) = config.target.as_ref() {
             meta.other_options(vec![String::from("--filter-platform"), target.clone()]);
         }
         let mut meta = meta.exec().with_context(|| {
@@ -170,8 +174,8 @@ impl CargoWorkspace {
         let mut out_dir_by_id = FxHashMap::default();
         let mut cfgs = FxHashMap::default();
         let mut proc_macro_dylib_paths = FxHashMap::default();
-        if cargo_features.load_out_dirs_from_check {
-            let resources = load_extern_resources(cargo_toml, cargo_features)?;
+        if config.load_out_dirs_from_check {
+            let resources = load_extern_resources(cargo_toml, config)?;
             out_dir_by_id = resources.out_dirs;
             cfgs = resources.cfgs;
             proc_macro_dylib_paths = resources.proc_dylib_paths;

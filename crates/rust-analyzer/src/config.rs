@@ -49,7 +49,6 @@ pub struct Config {
     pub hover: HoverConfig,
     pub semantic_tokens_refresh: bool,
 
-    pub with_sysroot: bool,
     pub linked_projects: Vec<LinkedProject>,
     pub root_path: AbsPathBuf,
 }
@@ -155,7 +154,6 @@ impl Config {
         Config {
             client_caps: ClientCapsConfig::default(),
 
-            with_sysroot: true,
             publish_diagnostics: true,
             diagnostics: DiagnosticsConfig::default(),
             diagnostics_map: DiagnosticsMapConfig::default(),
@@ -209,7 +207,6 @@ impl Config {
 
         let data = ConfigData::from_json(json);
 
-        self.with_sysroot = data.withSysroot;
         self.publish_diagnostics = data.diagnostics_enable;
         self.diagnostics = DiagnosticsConfig {
             disable_experimental: !data.diagnostics_enableExperimental,
@@ -246,6 +243,7 @@ impl Config {
             load_out_dirs_from_check: data.cargo_loadOutDirsFromCheck,
             target: data.cargo_target.clone(),
             rustc_source: rustc_source,
+            no_sysroot: data.cargo_noSysroot,
         };
         self.runnables = RunnablesConfig {
             override_cargo: data.runnables_overrideCargo,
@@ -492,6 +490,7 @@ config_data! {
         cargo_loadOutDirsFromCheck: bool = false,
         cargo_noDefaultFeatures: bool    = false,
         cargo_target: Option<String>     = None,
+        cargo_noSysroot: bool            = false,
 
         checkOnSave_enable: bool                         = true,
         checkOnSave_allFeatures: Option<bool>            = None,
@@ -544,7 +543,6 @@ config_data! {
         rustfmt_extraArgs: Vec<String>               = Vec::new(),
         rustfmt_overrideCommand: Option<Vec<String>> = None,
 
-        withSysroot: bool = true,
         rustcSource : Option<String> = None,
     }
 }

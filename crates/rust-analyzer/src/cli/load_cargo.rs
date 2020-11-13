@@ -21,7 +21,6 @@ pub fn load_cargo(
     let ws = ProjectWorkspace::load(
         root,
         &CargoConfig { load_out_dirs_from_check, ..Default::default() },
-        true,
     )?;
 
     let (sender, receiver) = unbounded();

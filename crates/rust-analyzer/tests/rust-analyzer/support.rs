@@ -12,7 +12,7 @@ use lsp_types::{
     notification::Exit, request::Shutdown, TextDocumentIdentifier, Url, WorkDoneProgress,
 };
 use lsp_types::{ProgressParams, ProgressParamsValue};
-use project_model::ProjectManifest;
+use project_model::{CargoConfig, ProjectManifest};
 use rust_analyzer::{
     config::{ClientCapsConfig, Config, FilesConfig, FilesWatcher, LinkedProject},
     main_loop,
@@ -47,8 +47,8 @@ impl<'a> Project<'a> {
         self
     }
 
-    pub(crate) fn with_sysroot(mut self, sysroot: bool) -> Project<'a> {
-        self.with_sysroot = sysroot;
+    pub(crate) fn with_sysroot(mut self, yes: bool) -> Project<'a> {
+        self.with_sysroot = yes;
         self
     }
 
@@ -90,7 +90,7 @@ impl<'a> Project<'a> {
                 work_done_progress: true,
                 ..Default::default()
             },
-            with_sysroot: self.with_sysroot,
+            cargo: CargoConfig { no_sysroot: !self.with_sysroot, ..Default::default() },
             linked_projects,
             files: FilesConfig { watcher: FilesWatcher::Client, exclude: Vec::new() },
             ..Config::new(tmp_dir_path)
