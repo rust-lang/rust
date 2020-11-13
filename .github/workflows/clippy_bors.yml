@@ -131,11 +131,18 @@ jobs:
     - name: Build
       run: cargo build --features deny-warnings
 
-    - name: Test
-      run: cargo test --features deny-warnings  --features internal-lints
+    # compiletest would panic due to "Found multiple rlibs for crate `clippy_lints`"
+    - name: clean rlibs
+      run: rm -f ./target/debug/deps/libclippy_lints*
 
-    - name: Test clippy_lints
-      run: cargo test --features deny-warnings --features internal-lints
+    - name: Build with internal lints
+      run: cargo build --features deny-warnings,internal-lints
+
+    - name: Test with internal lints
+      run: cargo test --features deny-warnings,internal-lints
+
+    - name: Test clippy_lints with internal lints
+      run: cargo test --features deny-warnings,internal-lints
       working-directory: clippy_lints
 
     - name: Test rustc_tools_util
