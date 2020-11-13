@@ -9,7 +9,6 @@ fn foo<const N: usize, const A: [u8; N]>() {}
 
 fn main() {
     foo::<_, {[1]}>();
-    //[full]~^ ERROR wrong number of const arguments
-    //[full]~| ERROR wrong number of type arguments
+    //[full]~^ ERROR type provided when a constant was expected
     //[full]~| ERROR mismatched types
 }

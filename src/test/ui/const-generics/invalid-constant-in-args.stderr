@@ -1,4 +1,4 @@
-error[E0107]: wrong number of const arguments: expected 0, found 1
+error[E0107]: wrong number of generic arguments: expected 1, found 2
   --> $DIR/invalid-constant-in-args.rs:2:22
    |
 LL |     let _: Vec<&str, "a"> = Vec::new();

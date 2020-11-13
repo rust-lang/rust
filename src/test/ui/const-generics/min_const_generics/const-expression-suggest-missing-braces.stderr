@@ -10,7 +10,7 @@ LL |     foo::<{ BAR + 3 }>();
    |           ^         ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/const-expression-suggest-missing-braces.rs:21:11
+  --> $DIR/const-expression-suggest-missing-braces.rs:20:11
    |
 LL |     foo::<3 + 3>();
    |           ^^^^^
@@ -21,7 +21,7 @@ LL |     foo::<{ 3 + 3 }>();
    |           ^       ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:24:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:23:15
    |
 LL |     foo::<BAR - 3>();
    |               ^ expected one of `,` or `>`
@@ -32,7 +32,7 @@ LL |     foo::<{ BAR - 3 }>();
    |           ^         ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:27:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:26:15
    |
 LL |     foo::<BAR - BAR>();
    |               ^ expected one of `,` or `>`
@@ -43,7 +43,7 @@ LL |     foo::<{ BAR - BAR }>();
    |           ^           ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/const-expression-suggest-missing-braces.rs:30:11
+  --> $DIR/const-expression-suggest-missing-braces.rs:29:11
    |
 LL |     foo::<100 - BAR>();
    |           ^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     foo::<{ 100 - BAR }>();
    |           ^           ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:33:19
+  --> $DIR/const-expression-suggest-missing-braces.rs:32:19
    |
 LL |     foo::<bar<i32>()>();
    |                   ^ expected one of `,` or `>`
@@ -65,7 +65,7 @@ LL |     foo::<{ bar<i32>() }>();
    |           ^            ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:36:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:35:21
    |
 LL |     foo::<bar::<i32>()>();
    |                     ^ expected one of `,` or `>`
@@ -76,7 +76,7 @@ LL |     foo::<{ bar::<i32>() }>();
    |           ^              ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:39:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:38:21
    |
 LL |     foo::<bar::<i32>() + BAR>();
    |                     ^ expected one of `,` or `>`
@@ -87,7 +87,7 @@ LL |     foo::<{ bar::<i32>() + BAR }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:42:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:41:21
    |
 LL |     foo::<bar::<i32>() - BAR>();
    |                     ^ expected one of `,` or `>`
@@ -98,7 +98,7 @@ LL |     foo::<{ bar::<i32>() - BAR }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:45:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:44:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -109,7 +109,7 @@ LL |     foo::<{ BAR - bar::<i32>() }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:48:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:47:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -139,19 +139,13 @@ LL |     foo::<BAR + BAR>();
    |
    = note: `#[warn(bare_trait_objects)]` on by default
 
-error[E0107]: wrong number of const arguments: expected 1, found 0
-  --> $DIR/const-expression-suggest-missing-braces.rs:13:5
-   |
-LL |     foo::<BAR + BAR>();
-   |     ^^^^^^^^^^^^^^^^ expected 1 const argument
-
-error[E0107]: wrong number of type arguments: expected 0, found 1
+error[E0747]: type provided when a constant was expected
   --> $DIR/const-expression-suggest-missing-braces.rs:13:11
    |
 LL |     foo::<BAR + BAR>();
-   |           ^^^^^^^^^ unexpected type argument
+   |           ^^^^^^^^^
 
-error: aborting due to 15 previous errors; 1 warning emitted
+error: aborting due to 14 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0107, E0404.
-For more information about an error, try `rustc --explain E0107`.
+Some errors have detailed explanations: E0404, E0747.
+For more information about an error, try `rustc --explain E0404`.

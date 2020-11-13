@@ -52,19 +52,13 @@ help: consider importing this trait
 LL | use foo1::Bar;
    |
 
-error[E0107]: wrong number of const arguments: expected 0, found 1
+error[E0747]: constant provided when a type was expected
   --> $DIR/privacy-ns1.rs:35:17
    |
 LL |     let _x: Box<Bar>;
-   |                 ^^^ unexpected const argument
+   |                 ^^^
 
-error[E0107]: wrong number of type arguments: expected at least 1, found 0
-  --> $DIR/privacy-ns1.rs:35:13
-   |
-LL |     let _x: Box<Bar>;
-   |             ^^^^^^^^ expected at least 1 type argument
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0107, E0412, E0423, E0425.
-For more information about an error, try `rustc --explain E0107`.
+Some errors have detailed explanations: E0412, E0423, E0425, E0747.
+For more information about an error, try `rustc --explain E0412`.
