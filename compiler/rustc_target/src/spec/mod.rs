@@ -822,10 +822,23 @@ pub struct TargetOptions {
     /// Only useful for compiling against Illumos/Solaris,
     /// as they have a different set of linker flags. Defaults to false.
     pub is_like_solaris: bool,
-    /// Whether the target toolchain is like Windows'. Only useful for compiling against Windows,
-    /// only really used for figuring out how to find libraries, since Windows uses its own
-    /// library naming convention. Defaults to false.
+    /// Whether the target is like Windows.
+    /// This is a combination of several more specific properties represented as a single flag:
+    ///   - The target uses a Windows ABI,
+    ///   - uses PE/COFF as a format for object code,
+    ///   - uses Windows-style dllexport/dllimport for shared libraries,
+    ///   - uses import libraries and .def files for symbol exports,
+    ///   - executables support setting a subsystem.
     pub is_like_windows: bool,
+    /// Whether the target is like MSVC.
+    /// This is a combination of several more specific properties represented as a single flag:
+    ///   - The target has all the properties from `is_like_windows`
+    ///     (for in-tree targets "is_like_msvc ⇒ is_like_windows" is ensured by a unit test),
+    ///   - has some MSVC-specific Windows ABI properties,
+    ///   - uses a link.exe-like linker,
+    ///   - uses CodeView/PDB for debuginfo and natvis for its visualization,
+    ///   - uses SEH-based unwinding,
+    ///   - supports control flow guard mechanism.
     pub is_like_msvc: bool,
     /// Whether the target toolchain is like Emscripten's. Only useful for compiling with
     /// Emscripten toolchain.
