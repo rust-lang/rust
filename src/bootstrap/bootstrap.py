@@ -193,7 +193,10 @@ def default_build_triple(verbose):
     # install, use their preference. This fixes most issues with Windows builds
     # being detected as GNU instead of MSVC.
     try:
-        version = subprocess.check_output(["rustc", "--version", "--verbose"])
+        # https://stackoverflow.com/questions/48333999
+        fs_root = os.path.abspath('.').split(os.path.sep)[0]+os.path.sep
+        version = subprocess.check_output(["rustc", "--version", "--verbose"],
+                cwd=fs_root)
         host = next(x for x in version.split('\n') if x.startswith("host: "))
         triple = host.split("host: ")[1]
         if verbose:
