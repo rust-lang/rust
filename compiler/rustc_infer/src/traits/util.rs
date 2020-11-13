@@ -4,6 +4,7 @@ use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
+use rustc_span::symbol::Ident;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -87,6 +88,32 @@ pub fn elaborate_trait_refs<'tcx>(
 ) -> Elaborator<'tcx> {
     let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate(tcx));
     elaborate_predicates(tcx, predicates)
+}
+
+pub fn elaborate_trait_refs_that_define_assoc_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+    assoc_name: Ident,
+) -> FxHashSet<ty::PolyTraitRef<'tcx>> {
+    let mut stack: Vec<_> = trait_refs.collect();
+    let mut trait_refs = FxHashSet::default();
+
+    while let Some(trait_ref) = stack.pop() {
+        if trait_refs.insert(trait_ref) {
+            let super_predicates =
+                tcx.super_predicates_that_define_assoc_type((trait_ref.def_id(), Some(assoc_name)));
+            for (super_predicate, _) in super_predicates.predicates {
+                let bound_predicate = super_predicate.bound_atom();
+                let subst_predicate = super_predicate
+                    .subst_supertrait(tcx, &bound_predicate.rebind(trait_ref.skip_binder()));
+                if let Some(binder) = subst_predicate.to_opt_poly_trait_ref() {
+                    stack.push(binder.value);
+                }
+            }
+        }
+    }
+
+    trait_refs
 }
 
 pub fn elaborate_predicates<'tcx>(
@@ -285,6 +312,14 @@ pub fn transitive_bounds<'tcx>(
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Supertraits<'tcx> {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
+}
+
+pub fn transitive_bounds_that_define_assoc_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+    assoc_name: Ident,
+) -> FxHashSet<ty::PolyTraitRef<'tcx>> {
+    elaborate_trait_refs_that_define_assoc_type(tcx, bounds, assoc_name)
 }
 
 ///////////////////////////////////////////////////////////////////////////

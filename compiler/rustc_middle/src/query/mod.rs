@@ -436,6 +436,16 @@ rustc_queries! {
             desc { |tcx| "computing the supertraits of `{}`", tcx.def_path_str(key) }
         }
 
+        /// Maps from the `DefId` of a trait to the list of
+        /// super-predicates. This is a subset of the full list of
+        /// predicates. We store these in a separate map because we must
+        /// evaluate them even during type conversion, often before the
+        /// full predicates are available (note that supertraits have
+        /// additional acyclicity requirements).
+        query super_predicates_that_define_assoc_type(key: (DefId, Option<rustc_span::symbol::Ident>)) -> ty::GenericPredicates<'tcx> {
+            desc { |tcx| "computing the supertraits of `{}`", tcx.def_path_str(key.0) }
+        }
+
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
         query type_param_predicates(key: (DefId, LocalDefId, rustc_span::symbol::Ident)) -> ty::GenericPredicates<'tcx> {

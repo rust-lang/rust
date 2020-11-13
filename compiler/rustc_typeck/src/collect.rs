@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -79,6 +80,7 @@ pub fn provide(providers: &mut Providers) {
         projection_ty_from_predicates,
         explicit_predicates_of,
         super_predicates_of,
+        super_predicates_that_define_assoc_type,
         trait_explicit_predicates_and_bounds,
         type_param_predicates,
         trait_def,
@@ -651,17 +653,10 @@ impl ItemCtxt<'tcx> {
             hir::GenericBound::Trait(poly_trait_ref, _) => {
                 let trait_ref = &poly_trait_ref.trait_ref;
                 let trait_did = trait_ref.trait_def_id().unwrap();
-                let traits_did = super_traits_of(self.tcx, trait_did);
-
-                traits_did.iter().any(|trait_did| {
+                super_traits_of(self.tcx, trait_did).any(|trait_did| {
                     self.tcx
-                        .associated_items(*trait_did)
-                        .find_by_name_and_kind(
-                            self.tcx,
-                            assoc_name,
-                            ty::AssocKind::Type,
-                            *trait_did,
-                        )
+                        .associated_items(trait_did)
+                        .find_by_name_and_kind(self.tcx, assoc_name, ty::AssocKind::Type, trait_did)
                         .is_some()
                 })
             }
@@ -1035,55 +1030,91 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
 /// the transitive super-predicates are converted.
 fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredicates<'_> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
-    let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_def_id.expect_local());
+    tcx.super_predicates_that_define_assoc_type((trait_def_id, None))
+}
 
-    let item = match tcx.hir().get(trait_hir_id) {
-        Node::Item(item) => item,
-        _ => bug!("trait_node_id {} is not an item", trait_hir_id),
-    };
-
-    let (generics, bounds) = match item.kind {
-        hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
-        hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
-        _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
-    };
-
-    let icx = ItemCtxt::new(tcx, trait_def_id);
-
-    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
-    let self_param_ty = tcx.types.self_param;
-    let superbounds1 =
-        AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
-
-    let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
-
-    // Convert any explicit superbounds in the where-clause,
-    // e.g., `trait Foo where Self: Bar`.
-    // In the case of trait aliases, however, we include all bounds in the where-clause,
-    // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
-    // as one of its "superpredicates".
-    let is_trait_alias = tcx.is_trait_alias(trait_def_id);
-    let superbounds2 = icx.type_parameter_bounds_in_generics(
-        generics,
-        item.hir_id,
-        self_param_ty,
-        OnlySelfBounds(!is_trait_alias),
-        None,
+/// Ensures that the super-predicates of the trait with a `DefId`
+/// of `trait_def_id` are converted and stored. This also ensures that
+/// the transitive super-predicates are converted.
+fn super_predicates_that_define_assoc_type(
+    tcx: TyCtxt<'_>,
+    (trait_def_id, assoc_name): (DefId, Option<Ident>),
+) -> ty::GenericPredicates<'_> {
+    debug!(
+        "super_predicates_that_define_assoc_type(trait_def_id={:?}, assoc_name={:?})",
+        trait_def_id, assoc_name
     );
+    if trait_def_id.is_local() {
+        debug!("super_predicates_that_define_assoc_type: local trait_def_id={:?}", trait_def_id);
+        let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_def_id.expect_local());
 
-    // Combine the two lists to form the complete set of superbounds:
-    let superbounds = &*tcx.arena.alloc_from_iter(superbounds1.into_iter().chain(superbounds2));
+        let item = match tcx.hir().get(trait_hir_id) {
+            Node::Item(item) => item,
+            _ => bug!("trait_node_id {} is not an item", trait_hir_id),
+        };
 
-    // Now require that immediate supertraits are converted,
-    // which will, in turn, reach indirect supertraits.
-    for &(pred, span) in superbounds {
-        debug!("superbound: {:?}", pred);
-        if let ty::PredicateAtom::Trait(bound, _) = pred.skip_binders() {
-            tcx.at(span).super_predicates_of(bound.def_id());
+        let (generics, bounds) = match item.kind {
+            hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
+            hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
+            _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
+        };
+
+        let icx = ItemCtxt::new(tcx, trait_def_id);
+
+        // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
+        let self_param_ty = tcx.types.self_param;
+        let superbounds1 = if let Some(assoc_name) = assoc_name {
+            AstConv::compute_bounds_that_match_assoc_type(
+                &icx,
+                self_param_ty,
+                &bounds,
+                SizedByDefault::No,
+                item.span,
+                assoc_name,
+            )
+        } else {
+            let bounds: Vec<_> = bounds.iter().collect();
+            AstConv::compute_bounds(&icx, self_param_ty, &bounds, SizedByDefault::No, item.span)
+        };
+
+        let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
+
+        // Convert any explicit superbounds in the where-clause,
+        // e.g., `trait Foo where Self: Bar`.
+        // In the case of trait aliases, however, we include all bounds in the where-clause,
+        // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
+        // as one of its "superpredicates".
+        let is_trait_alias = tcx.is_trait_alias(trait_def_id);
+        let superbounds2 = icx.type_parameter_bounds_in_generics(
+            generics,
+            item.hir_id,
+            self_param_ty,
+            OnlySelfBounds(!is_trait_alias),
+            assoc_name,
+        );
+
+        // Combine the two lists to form the complete set of superbounds:
+        let superbounds = &*tcx.arena.alloc_from_iter(superbounds1.into_iter().chain(superbounds2));
+
+        // Now require that immediate supertraits are converted,
+        // which will, in turn, reach indirect supertraits.
+        if assoc_name.is_none() {
+            // FIXME: move this into the `super_predicates_of` query
+            for &(pred, span) in superbounds {
+                debug!("superbound: {:?}", pred);
+                if let ty::PredicateAtom::Trait(bound, _) = pred.skip_binders() {
+                    tcx.at(span).super_predicates_of(bound.def_id());
+                }
+            }
         }
-    }
 
-    ty::GenericPredicates { parent: None, predicates: superbounds }
+        ty::GenericPredicates { parent: None, predicates: superbounds }
+    } else {
+        // if `assoc_name` is None, then the query should've been redirected to an
+        // external provider
+        assert!(assoc_name.is_some());
+        tcx.super_predicates_of(trait_def_id)
+    }
 }
 
 pub fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
@@ -1123,6 +1154,8 @@ pub fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> impl Iterator<It
             }
         }
     }
+
+    set.into_iter()
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
@@ -1976,8 +2009,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 index += 1;
 
                 let sized = SizedByDefault::Yes;
-                let bounds =
-                    AstConv::compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
+                let bounds: Vec<_> = param.bounds.iter().collect();
+                let bounds = AstConv::compute_bounds(&icx, param_ty, &bounds, sized, param.span);
                 predicates.extend(bounds.predicates(tcx, param_ty));
             }
             GenericParamKind::Const { .. } => {

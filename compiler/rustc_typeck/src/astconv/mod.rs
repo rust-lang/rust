@@ -6,6 +6,7 @@ mod errors;
 mod generics;
 
 use crate::bounds::Bounds;
+use crate::collect::super_traits_of;
 use crate::collect::PlaceholderHirTyCollector;
 use crate::errors::{
     AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
@@ -768,7 +769,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     // Returns `true` if a bounds list includes `?Sized`.
-    pub fn is_unsized(&self, ast_bounds: &[hir::GenericBound<'_>], span: Span) -> bool {
+    pub fn is_unsized(&self, ast_bounds: &[&hir::GenericBound<'_>], span: Span) -> bool {
         let tcx = self.tcx();
 
         // Try to find an unbound in bounds.
@@ -826,7 +827,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn add_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
+        ast_bounds: &[&hir::GenericBound<'_>],
         bounds: &mut Bounds<'tcx>,
     ) {
         let mut trait_bounds = Vec::new();
@@ -844,7 +845,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
-                        lang_item, span, hir_id, args, param_ty, bounds,
+                        *lang_item, *span, *hir_id, args, param_ty, bounds,
                     ),
                 hir::GenericBound::Outlives(ref l) => region_bounds.push(l),
             }
@@ -878,7 +879,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn compute_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
+        ast_bounds: &[&hir::GenericBound<'_>],
         sized_by_default: SizedByDefault,
         span: Span,
     ) -> Bounds<'tcx> {
@@ -894,6 +895,39 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         bounds
+    }
+
+    pub fn compute_bounds_that_match_assoc_type(
+        &self,
+        param_ty: Ty<'tcx>,
+        ast_bounds: &[hir::GenericBound<'_>],
+        sized_by_default: SizedByDefault,
+        span: Span,
+        assoc_name: Ident,
+    ) -> Bounds<'tcx> {
+        let mut result = Vec::new();
+
+        for ast_bound in ast_bounds {
+            if let Some(trait_ref) = ast_bound.trait_ref() {
+                if let Some(trait_did) = trait_ref.trait_def_id() {
+                    if super_traits_of(self.tcx(), trait_did).any(|trait_did| {
+                        self.tcx()
+                            .associated_items(trait_did)
+                            .find_by_name_and_kind(
+                                self.tcx(),
+                                assoc_name,
+                                ty::AssocKind::Type,
+                                trait_did,
+                            )
+                            .is_some()
+                    }) {
+                        result.push(ast_bound);
+                    }
+                }
+            }
+        }
+
+        self.compute_bounds(param_ty, &result, sized_by_default, span)
     }
 
     /// Given an HIR binding like `Item = Foo` or `Item: Foo`, pushes the corresponding predicates
@@ -1050,7 +1084,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
                 let param_ty = tcx.mk_projection(assoc_ty.def_id, candidate.skip_binder().substs);
-                self.add_bounds(param_ty, ast_bounds, bounds);
+                let ast_bounds: Vec<_> = ast_bounds.iter().collect();
+                self.add_bounds(param_ty, &ast_bounds, bounds);
             }
         }
         Ok(())
@@ -1377,12 +1412,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_name = tcx.hir().ty_param_name(param_hir_id);
         self.one_bound_for_assoc_type(
             || {
-                traits::transitive_bounds(
+                traits::transitive_bounds_that_define_assoc_type(
                     tcx,
                     predicates.iter().filter_map(|(p, _)| {
                         p.to_opt_poly_trait_ref().map(|trait_ref| trait_ref.value)
                     }),
+                    assoc_name,
                 )
+                .into_iter()
             },
             || param_name.to_string(),
             assoc_name,
