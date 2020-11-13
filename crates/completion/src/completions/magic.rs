@@ -13,11 +13,13 @@ use crate::{
 
 use super::Completions;
 
+// TODO kb reuse auto_import assist approach to add trait completion
 // TODO kb add a setting toggle for this feature?
 pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
         return None;
     }
+    let _p = profile::span("complete_magic");
     let current_module = ctx.scope.module()?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
@@ -25,7 +27,7 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
     let potential_import_name = ctx.token.to_string();
 
     let possible_imports =
-        imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name)
+        imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name, 400)
             .filter_map(|import_candidate| {
                 Some(match import_candidate {
                     Either::Left(module_def) => (
