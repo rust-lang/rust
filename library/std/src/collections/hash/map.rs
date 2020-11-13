@@ -34,7 +34,7 @@ use crate::sys;
 /// attacks such as HashDoS.
 ///
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
-/// [`default`], [`with_hasher`], and [`with_capacity_and_hasher`] methods. 
+/// [`default`], [`with_hasher`], and [`with_capacity_and_hasher`] methods.
 /// There are many alternative [hashing algorithms available on crates.io].
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
