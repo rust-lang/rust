@@ -190,21 +190,6 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn proc_macro_dylib_paths(&self) -> Vec<AbsPathBuf> {
-        match self {
-            ProjectWorkspace::Json { project, sysroot: _ } => project
-                .crates()
-                .filter_map(|(_, krate)| krate.proc_macro_dylib_path.as_ref())
-                .cloned()
-                .collect(),
-            ProjectWorkspace::Cargo { cargo, sysroot: _sysroot, rustc: _rustc_crates } => cargo
-                .packages()
-                .filter_map(|pkg| cargo[pkg].proc_macro_dylib_path.as_ref())
-                .cloned()
-                .collect(),
-        }
-    }
-
     pub fn n_packages(&self) -> usize {
         match self {
             ProjectWorkspace::Json { project, .. } => project.n_crates(),
