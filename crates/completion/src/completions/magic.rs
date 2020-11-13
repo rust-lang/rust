@@ -11,7 +11,7 @@ use crate::{context::CompletionContext, item::CompletionKind, CompletionItem, Co
 
 use super::Completions;
 
-// TODO kb when typing, completes partial results, need to rerun manually to see the proper ones
+// TODO kb add a setting toggle for this feature?
 pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
         return None;
@@ -20,8 +20,6 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
 
-    // TODO kb consider heuristics, such as "don't show `hash_map` import if `HashMap` is the import for completion"
-    // also apply completion ordering
     let potential_import_name = ctx.token.to_string();
 
     let possible_imports = ctx
@@ -34,8 +32,6 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
                 Either::Left(module_def) => current_module.find_use_path(ctx.db, module_def),
                 Either::Right(macro_def) => current_module.find_use_path(ctx.db, macro_def),
             }?;
-            // TODO kb need to omit braces when there are some already.
-            // maybe remove braces completely?
             Some((use_path, additional_completion(ctx.db, import_candidate)))
         })
         .filter_map(|(mod_path, additional_completion)| {
