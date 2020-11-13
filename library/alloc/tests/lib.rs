@@ -20,6 +20,7 @@
 #![feature(int_bits_const)]
 #![feature(vecdeque_binary_search)]
 #![feature(slice_group_by)]
+#![feature(vec_extend_from_within)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
