@@ -168,8 +168,17 @@ impl LocalWithLocationMap {
             map.entry(arg).or_insert(SmallVec::with_capacity(2)).push((0usize.into(), None));
         }
 
-        let mut builder = LocalWithLocationMapBuilder(&mut map);
-        builder.visit_body(body);
+        // visit all assignments which are all different "versions" of the locals
+        for (bb, bbd) in body.basic_blocks().iter_enumerated() {
+            for (stmt_idx, stmt) in bbd.statements.iter().enumerate() {
+                if let Some((lhs, _)) = stmt.kind.as_assign() {
+                    let location = Location { block: bb, statement_index: stmt_idx };
+                    map.entry(lhs.local)
+                        .or_insert(SmallVec::with_capacity(2))
+                        .push((0usize.into(), Some(location)));
+                }
+            }
+        }
 
         // set indices
         let mut idx = LocalWithLocationIndex::from(0usize);
@@ -212,19 +221,6 @@ impl LocalWithLocationMap {
             count += v.len();
         }
         count
-    }
-}
-
-struct LocalWithLocationMapBuilder<'a>(
-    &'a mut FxIndexMap<Local, SmallVec<[(LocalWithLocationIndex, Option<Location>); 2]>>,
-);
-
-impl<'a, 'tcx> Visitor<'tcx> for LocalWithLocationMapBuilder<'a> {
-    fn visit_assign(&mut self, place: &Place<'tcx>, _: &Rvalue<'tcx>, location: Location) {
-        self.0
-            .entry(place.local)
-            .or_insert(SmallVec::with_capacity(2))
-            .push((0usize.into(), Some(location)));
     }
 }
 
