@@ -1,5 +1,7 @@
 #![feature(capture_disjoint_fields)]
-//~^ WARNING the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| `#[warn(incomplete_features)]` on by default
+//~| see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 
 // Ensure that capture analysis results in arrays being completely captured.
@@ -8,10 +10,13 @@ fn main() {
 
     let mut c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         m[0] += 10;
-        //~^ ERROR: Capturing m[] -> MutBorrow
-        //~| ERROR: Min Capture m[] -> MutBorrow
+        //~^ NOTE: Capturing m[] -> MutBorrow
+        //~| NOTE: Min Capture m[] -> MutBorrow
         m[1] += 40;
     };
 

@@ -1,7 +1,9 @@
 // FIXME(arora-aman) add run-pass once 2229 is implemented
 
 #![feature(capture_disjoint_fields)]
-//~^ warning the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| NOTE: `#[warn(incomplete_features)]` on by default
+//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 #![allow(unused)]
 
@@ -18,10 +20,13 @@ fn main() {
 
     let c = #[rustc_capture_analysis]
         //~^ ERROR: attributes on expressions are experimental
+        //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         println!("{}", w.p.x);
-        //~^ ERROR: Capturing w[(0, 0),(0, 0)] -> ImmBorrow
-        //~| ERROR: Min Capture w[(0, 0),(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing w[(0, 0),(0, 0)] -> ImmBorrow
+        //~| NOTE: Min Capture w[(0, 0),(0, 0)] -> ImmBorrow
     };
 
     // `c` only captures `w.p.x`, therefore it's safe to mutate `w.p.y`.

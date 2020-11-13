@@ -1,7 +1,9 @@
 // FIXME(arora-aman) add run-pass once 2229 is implemented
 
 #![feature(capture_disjoint_fields)]
-//~^ warning the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| NOTE: `#[warn(incomplete_features)]` on by default
+//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 
 struct Point {
@@ -20,20 +22,26 @@ fn main() {
 
     let mut c1 = #[rustc_capture_analysis]
         //~^ ERROR: attributes on expressions are experimental
+        //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         println!("{}", p.x);
-        //~^ ERROR: Capturing p[(0, 0)] -> ImmBorrow
-        //~| ERROR: Min Capture p[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing p[(0, 0)] -> ImmBorrow
+        //~| NOTE: Min Capture p[(0, 0)] -> ImmBorrow
         let incr = 10;
         let mut c2 = #[rustc_capture_analysis]
         //~^ ERROR: attributes on expressions are experimental
+        //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
         || p.y += incr;
-        //~^ ERROR: Capturing p[(1, 0)] -> MutBorrow
-        //~| ERROR: Capturing incr[] -> ImmBorrow
-        //~| ERROR: Min Capture p[(1, 0)] -> MutBorrow
-        //~| ERROR: Min Capture incr[] -> ImmBorrow
-        //~| ERROR: Capturing p[(1, 0)] -> MutBorrow
-        //~| ERROR: Min Capture p[(1, 0)] -> MutBorrow
+        //~^ ERROR: First Pass analysis includes:
+        //~| ERROR: Min Capture analysis includes:
+        //~| NOTE: Capturing p[(1, 0)] -> MutBorrow
+        //~| NOTE: Capturing incr[] -> ImmBorrow
+        //~| NOTE: Min Capture p[(1, 0)] -> MutBorrow
+        //~| NOTE: Min Capture incr[] -> ImmBorrow
+        //~| NOTE: Capturing p[(1, 0)] -> MutBorrow
+        //~| NOTE: Min Capture p[(1, 0)] -> MutBorrow
         c2();
         println!("{}", p.y);
     };

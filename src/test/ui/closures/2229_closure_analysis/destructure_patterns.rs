@@ -1,5 +1,7 @@
 #![feature(capture_disjoint_fields)]
-//~^ WARNING the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| NOTE: `#[warn(incomplete_features)]` on by default
+//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 
 // Test to ensure Index projections are handled properly during capture analysis
@@ -9,10 +11,13 @@ fn arrays() {
 
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         let [a, b, .., e] = arr;
-        //~^ ERROR: Capturing arr[Index] -> ByValue
-        //~| ERROR: Min Capture arr[] -> ByValue
+        //~^ NOTE: Capturing arr[Index] -> ByValue
+        //~| NOTE: Min Capture arr[] -> ByValue
         assert_eq!(a, "A");
         assert_eq!(b, "B");
         assert_eq!(e, "E");
@@ -32,12 +37,15 @@ fn structs() {
 
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         let Point { x: ref mut x, y: _, id: moved_id } = p;
-        //~^ ERROR: Capturing p[(0, 0)] -> MutBorrow
-        //~| ERROR: Capturing p[(2, 0)] -> ByValue
-        //~| ERROR: Min Capture p[(0, 0)] -> MutBorrow
-        //~| ERROR: Min Capture p[(2, 0)] -> ByValue
+        //~^ NOTE: Capturing p[(0, 0)] -> MutBorrow
+        //~| NOTE: Capturing p[(2, 0)] -> ByValue
+        //~| NOTE: Min Capture p[(0, 0)] -> MutBorrow
+        //~| NOTE: Min Capture p[(2, 0)] -> ByValue
 
         println!("{}, {}", x, moved_id);
     };
@@ -49,14 +57,17 @@ fn tuples() {
 
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         let (ref mut x, ref ref_str, (moved_s, _)) = t;
-        //~^ ERROR: Capturing t[(0, 0)] -> MutBorrow
-        //~| ERROR: Capturing t[(1, 0)] -> ImmBorrow
-        //~| ERROR: Capturing t[(2, 0),(0, 0)] -> ByValue
-        //~| ERROR: Min Capture t[(0, 0)] -> MutBorrow
-        //~| ERROR: Min Capture t[(1, 0)] -> ImmBorrow
-        //~| ERROR: Min Capture t[(2, 0),(0, 0)] -> ByValue
+        //~^ NOTE: Capturing t[(0, 0)] -> MutBorrow
+        //~| NOTE: Capturing t[(1, 0)] -> ImmBorrow
+        //~| NOTE: Capturing t[(2, 0),(0, 0)] -> ByValue
+        //~| NOTE: Min Capture t[(0, 0)] -> MutBorrow
+        //~| NOTE: Min Capture t[(1, 0)] -> ImmBorrow
+        //~| NOTE: Min Capture t[(2, 0),(0, 0)] -> ByValue
 
         println!("{}, {} {}", x, ref_str, moved_s);
     };

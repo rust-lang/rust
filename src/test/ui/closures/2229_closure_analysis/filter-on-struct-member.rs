@@ -1,7 +1,9 @@
 // FIXME(arora-aman) add run-pass once 2229 is implemented
 
 #![feature(capture_disjoint_fields)]
-//~^ warning the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| NOTE: `#[warn(incomplete_features)]` on by default
+//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 
 struct Filter {
@@ -24,8 +26,10 @@ impl Data {
         self.list.retain(
             #[rustc_capture_analysis]
             |v| self.filter.allowed(*v),
-            //~^ ERROR: Capturing self[Deref,(0, 0)] -> ImmBorrow
-            //~| ERROR: Min Capture self[Deref,(0, 0)] -> ImmBorrow
+            //~^ ERROR: First Pass analysis includes:
+            //~| ERROR: Min Capture analysis includes:
+            //~| NOTE: Capturing self[Deref,(0, 0)] -> ImmBorrow
+            //~| NOTE: Min Capture self[Deref,(0, 0)] -> ImmBorrow
         );
     }
 }

@@ -1,5 +1,7 @@
 #![feature(capture_disjoint_fields)]
-//~^ WARNING the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| NOTE: `#[warn(incomplete_features)]` on by default
+//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 
 struct Point {
@@ -22,9 +24,12 @@ fn main() {
 
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         println!("{}", pent.points[5].x);
-        //~^ ERROR: Capturing pent[(0, 0)] -> ImmBorrow
-        //~| ERROR: Min Capture pent[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing pent[(0, 0)] -> ImmBorrow
+        //~| NOTE: Min Capture pent[(0, 0)] -> ImmBorrow
     };
 }

@@ -1,5 +1,7 @@
 #![feature(capture_disjoint_fields)]
-//~^ WARNING the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| NOTE: `#[warn(incomplete_features)]` on by default
+//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 
 enum Info {
@@ -15,18 +17,21 @@ fn multi_variant_enum() {
 
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ First Pass analysis includes:
+    //~| Min Capture analysis includes:
         if let Info::Point(_, _, str) = point {
-            //~^ Capturing point[] -> ImmBorrow
-            //~| Capturing point[(2, 0)] -> ByValue
-            //~| Min Capture point[] -> ByValue
+            //~^ NOTE: Capturing point[] -> ImmBorrow
+            //~| NOTE: Capturing point[(2, 0)] -> ByValue
+            //~| NOTE: Min Capture point[] -> ByValue
             println!("{}", str);
         }
 
         if let Info::Meta(_, v) = meta {
-            //~^ Capturing meta[] -> ImmBorrow
-            //~| Capturing meta[(1, 1)] -> ByValue
-            //~| Min Capture meta[] -> ByValue
+            //~^ NOTE: Capturing meta[] -> ImmBorrow
+            //~| NOTE: Capturing meta[(1, 1)] -> ByValue
+            //~| NOTE: Min Capture meta[] -> ByValue
             println!("{:?}", v);
         }
     };
@@ -43,10 +48,13 @@ fn single_variant_enum() {
 
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
+    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
-    let SingleVariant::Point(_, _, str) = point;
-        //~^ Capturing point[(2, 0)] -> ByValue
-        //~| Min Capture point[(2, 0)] -> ByValue
+    //~^ First Pass analysis includes:
+    //~| Min Capture analysis includes:
+        let SingleVariant::Point(_, _, str) = point;
+        //~^ NOTE: Capturing point[(2, 0)] -> ByValue
+        //~| NOTE: Min Capture point[(2, 0)] -> ByValue
         println!("{}", str);
     };
 

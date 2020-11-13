@@ -7,14 +7,26 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error: Capturing self[Deref,(0, 0)] -> ImmBorrow
-  --> $DIR/filter-on-struct-member.rs:26:17
+error: First Pass analysis includes:
+  --> $DIR/filter-on-struct-member.rs:28:13
+   |
+LL |             |v| self.filter.allowed(*v),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Capturing self[Deref,(0, 0)] -> ImmBorrow
+  --> $DIR/filter-on-struct-member.rs:28:17
    |
 LL |             |v| self.filter.allowed(*v),
    |                 ^^^^^^^^^^^
 
-error: Min Capture self[Deref,(0, 0)] -> ImmBorrow
-  --> $DIR/filter-on-struct-member.rs:26:17
+error: Min Capture analysis includes:
+  --> $DIR/filter-on-struct-member.rs:28:13
+   |
+LL |             |v| self.filter.allowed(*v),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: Min Capture self[Deref,(0, 0)] -> ImmBorrow
+  --> $DIR/filter-on-struct-member.rs:28:17
    |
 LL |             |v| self.filter.allowed(*v),
    |                 ^^^^^^^^^^^

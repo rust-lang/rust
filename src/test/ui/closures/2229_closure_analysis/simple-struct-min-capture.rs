@@ -1,7 +1,9 @@
 // FIXME(arora-aman) add run-pass once 2229 is implemented
 
 #![feature(capture_disjoint_fields)]
-//~^ WARNING the feature `capture_disjoint_fields` is incomplete
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+//~| NOTE: `#[warn(incomplete_features)]` on by default
+//~| NOTE: see issue #53488 <https://github.com/rust-lang/rust/issues/53488>
 #![feature(rustc_attrs)]
 
 // Test to ensure that min analysis meets capture kind for all paths captured.
@@ -24,12 +26,15 @@ fn main() {
     //
     let mut c = #[rustc_capture_analysis]
         //~^ ERROR: attributes on expressions are experimental
+        //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     || {
+    //~^ ERROR: First Pass analysis includes:
+    //~| ERROR: Min Capture analysis includes:
         p.x += 10;
-        //~^ ERROR: Capturing p[(0, 0)] -> MutBorrow
-        //~| ERROR: Min Capture p[] -> MutBorrow
+        //~^ NOTE: Capturing p[(0, 0)] -> MutBorrow
+        //~| NOTE: Min Capture p[] -> MutBorrow
         println!("{:?}", p);
-        //~^ ERROR: Capturing p[] -> ImmBorrow
+        //~^ NOTE: Capturing p[] -> ImmBorrow
     };
 
     c();

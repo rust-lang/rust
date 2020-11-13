@@ -166,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "For closure={:?}, capture_information={:#?}",
             closure_def_id, delegate.capture_information
         );
-        self.log_closure_capture_info(closure_def_id, &delegate.capture_information, span);
+        self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
 
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
@@ -499,20 +499,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
     }
 
-    fn log_closure_capture_info(
+    fn log_capture_analysis_first_pass(
         &self,
         closure_def_id: rustc_hir::def_id::DefId,
         capture_information: &FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>>,
         closure_span: Span,
     ) {
         if self.should_log_capture_analysis(closure_def_id) {
+            let mut diag =
+                self.tcx.sess.struct_span_err(closure_span, "First Pass analysis includes:");
             for (place, capture_info) in capture_information {
                 let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
                 let output_str = format!("Capturing {}", capture_str);
 
                 let span = capture_info.expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
-                self.tcx.sess.span_err(span, &output_str);
+                diag.span_note(span, &output_str);
             }
+            diag.emit();
         }
     }
 
@@ -521,6 +524,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(min_captures) =
                 self.typeck_results.borrow().closure_min_captures.get(&closure_def_id)
             {
+                let mut diag =
+                    self.tcx.sess.struct_span_err(closure_span, "Min Capture analysis includes:");
+
                 for (_, min_captures_for_var) in min_captures {
                     for capture in min_captures_for_var {
                         let place = &capture.place;
@@ -532,9 +538,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         let span =
                             capture_info.expr_id.map_or(closure_span, |e| self.tcx.hir().span(e));
-                        self.tcx.sess.span_err(span, &output_str);
+                        diag.span_note(span, &output_str);
                     }
                 }
+                diag.emit();
             }
         }
     }
