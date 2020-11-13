@@ -218,6 +218,10 @@ impl CompletionItem {
         &self.text_edit
     }
 
+    pub fn update_text_edit(&mut self, new_text_edit: TextEdit) {
+        self.text_edit = new_text_edit;
+    }
+
     /// Short one-line additional information, like a type
     pub fn detail(&self) -> Option<&str> {
         self.detail.as_deref()

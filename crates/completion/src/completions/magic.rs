@@ -2,12 +2,14 @@
 
 use assists::utils::{insert_use, mod_path_to_ast, ImportScope};
 use either::Either;
-use hir::{db::HirDatabase, MacroDef, ModuleDef};
+use hir::ScopeDef;
 use ide_db::imports_locator;
 use syntax::{algo, AstNode};
-use text_edit::TextEdit;
 
-use crate::{context::CompletionContext, item::CompletionKind, CompletionItem, CompletionItemKind};
+use crate::{
+    context::CompletionContext,
+    render::{render_resolution, RenderContext},
+};
 
 use super::Completions;
 
@@ -25,55 +27,39 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
     let possible_imports =
         imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name)
             .filter_map(|import_candidate| {
-                let use_path = match import_candidate {
-                    Either::Left(module_def) => current_module.find_use_path(ctx.db, module_def),
-                    Either::Right(macro_def) => current_module.find_use_path(ctx.db, macro_def),
-                }?;
-                Some((use_path, additional_completion(ctx.db, import_candidate)))
+                Some(match import_candidate {
+                    Either::Left(module_def) => (
+                        current_module.find_use_path(ctx.db, module_def)?,
+                        ScopeDef::ModuleDef(module_def),
+                    ),
+                    Either::Right(macro_def) => (
+                        current_module.find_use_path(ctx.db, macro_def)?,
+                        ScopeDef::MacroDef(macro_def),
+                    ),
+                })
             })
-            .filter_map(|(mod_path, additional_completion)| {
-                let mut builder = TextEdit::builder();
+            .filter_map(|(mod_path, definition)| {
+                let mut resolution_with_missing_import = render_resolution(
+                    RenderContext::new(ctx),
+                    mod_path.segments.last()?.to_string(),
+                    &definition,
+                )?;
 
-                let correct_qualifier = format!(
-                    "{}{}",
-                    mod_path.segments.last()?,
-                    additional_completion.unwrap_or_default()
-                );
-                builder.replace(anchor.syntax().text_range(), correct_qualifier);
+                let mut text_edits =
+                    resolution_with_missing_import.text_edit().to_owned().into_builder();
 
                 let rewriter =
                     insert_use(&import_scope, mod_path_to_ast(&mod_path), ctx.config.merge);
                 let old_ast = rewriter.rewrite_root()?;
-                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut builder);
+                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
 
-                let completion_item: CompletionItem = CompletionItem::new(
-                    CompletionKind::Magic,
-                    ctx.source_range(),
-                    mod_path.to_string(),
-                )
-                .kind(CompletionItemKind::Struct)
-                .text_edit(builder.finish())
-                .into();
-                Some(completion_item)
+                resolution_with_missing_import.update_text_edit(text_edits.finish());
+
+                Some(resolution_with_missing_import)
             });
+
     acc.add_all(possible_imports);
-
     Some(())
-}
-
-fn additional_completion(
-    db: &dyn HirDatabase,
-    import_candidate: Either<ModuleDef, MacroDef>,
-) -> Option<String> {
-    match import_candidate {
-        Either::Left(ModuleDef::Function(_)) => Some("()".to_string()),
-        Either::Right(macro_def) => {
-            let (left_brace, right_brace) =
-                crate::render::macro_::guess_macro_braces(db, macro_def);
-            Some(format!("!{}{}", left_brace, right_brace))
-        }
-        _ => None,
-    }
 }
 
 #[cfg(test)]
@@ -83,7 +69,7 @@ mod tests {
     #[test]
     fn function_magic_completion() {
         check_edit(
-            "dep::io::stdin",
+            "stdin",
             r#"
 //- /lib.rs crate:dep
 pub mod io {
@@ -99,7 +85,7 @@ fn main() {
 use dep::io::stdin;
 
 fn main() {
-    stdin()
+    stdin()$0
 }
 "#,
         );
@@ -108,7 +94,7 @@ fn main() {
     #[test]
     fn macro_magic_completion() {
         check_edit(
-            "dep::macro_with_curlies",
+            "macro_with_curlies!",
             r#"
 //- /lib.rs crate:dep
 /// Please call me as macro_with_curlies! {}
@@ -126,7 +112,7 @@ fn main() {
 use dep::macro_with_curlies;
 
 fn main() {
-    macro_with_curlies! {}
+    macro_with_curlies! {$0}
 }
 "#,
         );
@@ -135,7 +121,7 @@ fn main() {
     #[test]
     fn case_insensitive_magic_completion_works() {
         check_edit(
-            "dep::some_module::ThirdStruct",
+            "ThirdStruct",
             r#"
 //- /lib.rs crate:dep
 pub struct FirstStruct;

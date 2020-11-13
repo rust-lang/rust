@@ -48,6 +48,10 @@ impl TextEdit {
         TextEditBuilder::default()
     }
 
+    pub fn into_builder(self) -> TextEditBuilder {
+        TextEditBuilder { indels: self.indels }
+    }
+
     pub fn insert(offset: TextSize, text: String) -> TextEdit {
         let mut builder = TextEdit::builder();
         builder.insert(offset, text);
