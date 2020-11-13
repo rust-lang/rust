@@ -325,6 +325,17 @@ fn test_is_subset() {
 }
 
 #[test]
+fn test_retain() {
+    let xs = [1, 2, 3, 4, 5, 6];
+    let mut set: BTreeSet<i32> = xs.iter().cloned().collect();
+    set.retain(|&k| k % 2 == 0);
+    assert_eq!(set.len(), 3);
+    assert!(set.contains(&2));
+    assert!(set.contains(&4));
+    assert!(set.contains(&6));
+}
+
+#[test]
 fn test_drain_filter() {
     let mut x: BTreeSet<_> = [1].iter().copied().collect();
     let mut y: BTreeSet<_> = [1].iter().copied().collect();
