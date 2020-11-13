@@ -353,15 +353,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
-        let mut param_candidates = vec![];
         for bound in matching_bounds {
             let wc = self.evaluate_where_clause(stack, bound)?;
             if wc.may_apply() {
-                param_candidates.push(ParamCandidate(bound));
+                candidates.vec.push(ParamCandidate(bound));
             }
         }
-
-        candidates.vec.extend(param_candidates);
 
         Ok(())
     }

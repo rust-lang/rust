@@ -30,6 +30,8 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
     let mut builder = LintLevelMapBuilder { levels, tcx, store };
     let krate = tcx.hir().krate();
 
+    builder.levels.id_to_set.reserve(krate.exported_macros.len() + 1);
+
     let push = builder.levels.push(&krate.item.attrs, &store, true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {

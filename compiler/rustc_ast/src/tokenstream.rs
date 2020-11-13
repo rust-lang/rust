@@ -221,7 +221,7 @@ impl TokenStream {
             }
         }
         if let Some((pos, comma, sp)) = suggestion {
-            let mut new_stream = vec![];
+            let mut new_stream = Vec::with_capacity(self.0.len() + 1);
             let parts = self.0.split_at(pos + 1);
             new_stream.extend_from_slice(parts.0);
             new_stream.push(comma);

@@ -138,7 +138,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
     item_attrs => { tcx.arena.alloc_from_iter(
-        cdata.get_item_attrs(def_id.index, tcx.sess).into_iter()
+        cdata.get_item_attrs(def_id.index, tcx.sess)
     ) }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
@@ -415,11 +415,7 @@ impl CStore {
 
         let span = data.get_span(id.index, sess);
 
-        // Mark the attrs as used
-        let attrs = data.get_item_attrs(id.index, sess);
-        for attr in attrs.iter() {
-            sess.mark_attr_used(attr);
-        }
+        let attrs = data.get_item_attrs(id.index, sess).collect();
 
         let ident = data.item_ident(id.index, sess);
 
@@ -428,7 +424,7 @@ impl CStore {
                 ident,
                 id: ast::DUMMY_NODE_ID,
                 span,
-                attrs: attrs.to_vec(),
+                attrs,
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),

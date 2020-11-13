@@ -66,7 +66,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 
     let fmt = substr.nonself_args[0].clone();
 
-    let mut stmts = vec![];
+    let mut stmts = Vec::with_capacity(fields.len() + 2);
     match vdata {
         ast::VariantData::Tuple(..) | ast::VariantData::Unit(..) => {
             // tuple struct/"normal" variant
