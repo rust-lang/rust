@@ -68,7 +68,7 @@ pub fn run(update_mode: UpdateMode) {
         "end register lints",
         false,
         update_mode == UpdateMode::Change,
-        || gen_register_lint_list(usable_lints.iter().chain(internal_lints.iter())),
+        || gen_register_lint_list(internal_lints.iter(), usable_lints.iter()),
     )
     .changed;
 

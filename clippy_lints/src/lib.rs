@@ -498,6 +498,24 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
     store.register_lints(&[
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::DEFAULT_LINT,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::INVALID_PATHS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::PRODUCE_ICE,
         &approx_const::APPROX_CONSTANT,
         &arithmetic::FLOAT_ARITHMETIC,
         &arithmetic::INTEGER_ARITHMETIC,
@@ -904,24 +922,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unwrap_in_result::UNWRAP_IN_RESULT,
         &use_self::USE_SELF,
         &useless_conversion::USELESS_CONVERSION,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::DEFAULT_LINT,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::INVALID_PATHS,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
-        #[cfg(feature = "internal-lints")]
-        &utils::internal_lints::PRODUCE_ICE,
         &vec::USELESS_VEC,
         &vec_resize_to_zero::VEC_RESIZE_TO_ZERO,
         &verbose_file_reads::VERBOSE_FILE_READS,
