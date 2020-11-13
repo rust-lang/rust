@@ -111,6 +111,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.registerCommand('debug', commands.debug);
     ctx.registerCommand('newDebugConfig', commands.newDebugConfig);
     ctx.registerCommand('openDocs', commands.openDocs);
+    ctx.registerCommand('openCargoToml', commands.openCargoToml);
 
     defaultOnEnter.dispose();
     ctx.registerCommand('onEnter', commands.onEnter);

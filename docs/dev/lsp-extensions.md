@@ -1,8 +1,8 @@
 <!---
-lsp_ext.rs hash: 4f86fb54e4b2870e
+lsp_ext.rs hash: 9d5daed5b25dc4f6
 
 If you need to change the above hash to make the test pass, please check if you
-need to adjust this doc as well and ping this issue:
+need to adjust this doc as well and ping this  issue:
 
   https://github.com/rust-analyzer/rust-analyzer/issues/4604
 
@@ -537,3 +537,28 @@ Such actions on the client side are appended to a hover bottom as command links:
   +-----------------------------+
   ...
 ```
+
+## Open Cargo.toml
+
+**Issue:** https://github.com/rust-analyzer/rust-analyzer/issues/6462
+
+This request is sent from client to server to open the current project's Cargo.toml
+
+**Method:** `experimental/openCargoToml`
+
+**Request:** `OpenCargoTomlParams`
+
+**Response:** `Location | null`
+
+
+### Example
+
+```rust
+// Cargo.toml
+[package]
+// src/main.rs
+
+/* cursor here*/
+```
+
+`experimental/openCargoToml` returns a single `Link` to the start of the `[package]` keyword.

@@ -354,3 +354,17 @@ impl Request for ExternalDocs {
     type Result = Option<lsp_types::Url>;
     const METHOD: &'static str = "experimental/externalDocs";
 }
+
+pub enum OpenCargoToml {}
+
+impl Request for OpenCargoToml {
+    type Params = OpenCargoTomlParams;
+    type Result = Option<lsp_types::GotoDefinitionResponse>;
+    const METHOD: &'static str = "experimental/openCargoToml";
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenCargoTomlParams {
+    pub text_document: TextDocumentIdentifier,
+}

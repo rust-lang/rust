@@ -188,6 +188,27 @@ export function parentModule(ctx: Ctx): Cmd {
     };
 }
 
+export function openCargoToml(ctx: Ctx): Cmd {
+    return async () => {
+        const editor = ctx.activeRustEditor;
+        const client = ctx.client;
+        if (!editor || !client) return;
+
+        const response = await client.sendRequest(ra.openCargoToml, {
+            textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
+        });
+        if (!response) return;
+
+        const uri = client.protocol2CodeConverter.asUri(response.uri);
+        const range = client.protocol2CodeConverter.asRange(response.range);
+
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const e = await vscode.window.showTextDocument(doc);
+        e.selection = new vscode.Selection(range.start, range.start);
+        e.revealRange(range, vscode.TextEditorRevealType.InCenter);
+    };
+}
+
 export function ssr(ctx: Ctx): Cmd {
     return async () => {
         const editor = vscode.window.activeTextEditor;

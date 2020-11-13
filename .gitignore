@@ -10,3 +10,4 @@ crates/*/target
 generated_assists.adoc
 generated_features.adoc
 generated_diagnostic.adoc
+.DS_Store
