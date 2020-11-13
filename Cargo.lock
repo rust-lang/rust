@@ -253,6 +253,7 @@ dependencies = [
 name = "completion"
 version = "0.0.0"
 dependencies = [
+ "assists",
  "base_db",
  "expect-test",
  "hir",

@@ -257,6 +257,12 @@ pub mod convert {
     }
 }
 
+pub mod default {
+    pub trait Default: Sized {
+       fn default() -> Self;
+    }
+}
+
 pub mod iter {
     pub use self::traits::{collect::IntoIterator, iterator::Iterator};
     mod traits {
@@ -327,7 +333,7 @@ pub mod option {
 }
 
 pub mod prelude {
-    pub use crate::{convert::From, iter::{IntoIterator, Iterator}, option::Option::{self, *}};
+    pub use crate::{convert::From, iter::{IntoIterator, Iterator}, option::Option::{self, *}, default::Default};
 }
 #[prelude_import]
 pub use prelude::*;
@@ -343,6 +349,10 @@ pub use prelude::*;
 
     pub(crate) fn core_option_Option(&self) -> Option<Enum> {
         self.find_enum("core:option:Option")
+    }
+
+    pub fn core_default_Default(&self) -> Option<Trait> {
+        self.find_trait("core:default:Default")
     }
 
     pub fn core_iter_Iterator(&self) -> Option<Trait> {
