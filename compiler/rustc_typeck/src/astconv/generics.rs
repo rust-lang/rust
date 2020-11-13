@@ -409,7 +409,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (required, "")
             };
 
-            let (spans, label) = if required == permitted && provided > permitted {
+            let (spans, label) = if provided > permitted {
                 // In the case when the user has provided too many arguments,
                 // we want to point to the unexpected arguments.
                 let spans: Vec<Span> = args.args[offset + permitted..offset + provided]

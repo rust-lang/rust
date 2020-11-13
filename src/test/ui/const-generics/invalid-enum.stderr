@@ -32,10 +32,10 @@ LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
 
 error[E0107]: wrong number of type arguments: expected at most 1, found 2
-  --> $DIR/invalid-enum.rs:31:10
+  --> $DIR/invalid-enum.rs:31:34
    |
 LL |   let _: Example<CompileFlag::A, _> = Example { x: 0 };
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected at most 1 type argument
+   |                                  ^ unexpected type argument
    |
 help: If this generic argument was intended as a const parameter, try surrounding it with braces:
    |
@@ -49,10 +49,10 @@ LL |   let _: Example<Example::ASSOC_FLAG, _> = Example { x: 0 };
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 const argument
 
 error[E0107]: wrong number of type arguments: expected at most 1, found 2
-  --> $DIR/invalid-enum.rs:36:10
+  --> $DIR/invalid-enum.rs:36:39
    |
 LL |   let _: Example<Example::ASSOC_FLAG, _> = Example { x: 0 };
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected at most 1 type argument
+   |                                       ^ unexpected type argument
    |
 help: If this generic argument was intended as a const parameter, try surrounding it with braces:
    |
