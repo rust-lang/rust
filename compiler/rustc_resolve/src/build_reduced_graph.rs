@@ -1163,9 +1163,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
         assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
 
-        let scope = self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id));
-        self.r.invocation_macro_rules_scopes.entry(invoc_id).or_default().insert(scope);
-        scope
+        self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 
     fn proc_macro_stub(&self, item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
