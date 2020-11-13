@@ -645,7 +645,10 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 }
 
-fn filtered_statement_span(statement: &'a Statement<'tcx>, body_span: Span) -> Option<Span> {
+pub(super) fn filtered_statement_span(
+    statement: &'a Statement<'tcx>,
+    body_span: Span,
+) -> Option<Span> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -686,7 +689,10 @@ fn filtered_statement_span(statement: &'a Statement<'tcx>, body_span: Span) -> O
     }
 }
 
-fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -> Option<Span> {
+pub(super) fn filtered_terminator_span(
+    terminator: &'a Terminator<'tcx>,
+    body_span: Span,
+) -> Option<Span> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from

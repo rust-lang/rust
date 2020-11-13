@@ -120,7 +120,6 @@ struct BcbCounters<'a> {
     basic_coverage_blocks: &'a mut CoverageGraph,
 }
 
-// FIXME(richkadel): Add unit tests for `BcbCounters` functions/algorithms.
 impl<'a> BcbCounters<'a> {
     fn new(
         coverage_counters: &'a mut CoverageCounters,
