@@ -630,7 +630,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::MacroRules(macro_rules_scope) => {
-                    if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope {
+                    if let MacroRulesScope::Binding(macro_rules_binding) = macro_rules_scope.get() {
                         let res = macro_rules_binding.binding.res();
                         if filter_fn(res) {
                             suggestions

@@ -352,7 +352,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
                 &path,
                 None,
-                &ParentScope::module(resolver.graph_root()),
+                &ParentScope::module(resolver.graph_root(), resolver),
                 false,
                 false,
             ) {
