@@ -9,9 +9,20 @@
 BASEDIR=../coverage-spanview-base
 SOURCEDIR=../coverage
 
-ifeq ($(UNAME),Darwin)
-SED_HAS_ISSUES=1
-endif
+define SPANVIEW_HEADER
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.%s/%s
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+endef
+export SPANVIEW_HEADER
 
 all: $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
 
@@ -33,31 +44,12 @@ endif
 			-Zdump-mir-spanview \
 			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@
 
-ifdef SED_HAS_ISSUES
-	# FIXME(richkadel): MacOS's default sed has some significant limitations. Until I've come up
-	# with a better workaround, I'm disabling this test for MacOS.
-	#
-	# For future reference, see if `gsed` is available as an alternative.
-	which gsed || echo "no gsed"
-else
-
 	for path in "$(TMPDIR)"/mir_dump.$@/*; do \
-		echo $$path; \
 		file="$$(basename "$$path")"; \
-		echo $$file; \
 		urlescaped="$$("$(PYTHON)" $(BASEDIR)/escape_url.py $$file)" || exit $$?; \
-		echo $$urlescaped; \
-		sed -i -e '1a\
-<!--\
-\
-Preview this file as rendered HTML from the github source at:\
-https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.$@/'"$$urlescaped"'\
-\
-For revisions in Pull Requests (PR):\
-  * Replace "rust-lang" with the github PR author\
-  * Replace "master" with the PR branch name\
-\
--->' "$$path"; \
+		printf "$$SPANVIEW_HEADER\n" "$@" "$$urlescaped" > "$$path".modified; \
+		tail -n +2 "$$path" >> "$$path".modified; \
+		mv "$$path".modified "$$path"; \
 	done && true # for/done ends in non-zero status
 
 ifdef RUSTC_BLESS_TEST
@@ -69,6 +61,4 @@ else
 	rm -f "$(TMPDIR)"/actual_mir_dump.$@/*
 	cp "$(TMPDIR)"/mir_dump.$@/*InstrumentCoverage.0.html "$(TMPDIR)"/actual_mir_dump.$@/
 	$(DIFF) -r expected_mir_dump.$@/ "$(TMPDIR)"/actual_mir_dump.$@/
-endif
-
 endif
