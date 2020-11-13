@@ -612,6 +612,7 @@ dependencies = [
  "hir_expand",
  "itertools",
  "log",
+ "once_cell",
  "profile",
  "rustc-hash",
  "scoped-tls",
@@ -1053,9 +1054,9 @@ checksum = "8d3b63360ec3cb337817c2dbd47ab4a0f170d285d8e5a2064600f3def1402397"
 
 [[package]]
 name = "once_cell"
-version = "1.4.1"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
+checksum = "f53cef67919d7d247eb9a2f128ca9e522789967ef1eb4ccd8c71a95a8aedf596"
 
 [[package]]
 name = "oorandom"
