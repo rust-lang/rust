@@ -28,6 +28,16 @@ done
 # Build cg_clif
 unset CARGO_TARGET_DIR
 export RUSTFLAGS="-Zrun_dsymutil=no"
+unamestr=$(uname)
+if [[ "$unamestr" == 'Linux' ]]; then
+   export RUSTFLAGS='-Clink-arg=-Wl,-rpath=$ORIGIN/../lib '$RUSTFLAGS
+elif [[ "$unamestr" == 'Darwin' ]]; then
+   export RUSTFLAGS='-Clink-arg=-Wl,-rpath,@loader_path/../lib -Zosx-rpath-install-name '$RUSTFLAGS
+   dylib_ext='dylib'
+else
+   echo "Unsupported os"
+   exit 1
+fi
 if [[ "$CHANNEL" == "release" ]]; then
     cargo build --release
 else
