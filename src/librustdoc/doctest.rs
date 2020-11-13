@@ -336,6 +336,9 @@ fn run_test(
         (true, false) => {}
         (false, true) => {
             if !error_codes.is_empty() {
+                // We used to check if the output contained "error[{}]: " but since we added the
+                // colored output, we can't anymore because of the color escape characters before
+                // the ":".
                 error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
 
                 if !error_codes.is_empty() {
