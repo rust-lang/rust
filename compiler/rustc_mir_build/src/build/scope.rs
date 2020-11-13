@@ -1220,6 +1220,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         arm.guard.as_ref(),
                         &fake_borrow_temps,
                         scrutinee_span,
+                        Some(arm.span),
                         Some(arm.scope),
                     );
 
