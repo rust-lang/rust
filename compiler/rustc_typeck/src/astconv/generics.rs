@@ -449,47 +449,37 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut unexpected_spans = vec![];
 
-        let mut lifetime_count_correct = Ok(());
-        if !infer_lifetimes || arg_counts.lifetimes > param_counts.lifetimes {
-            lifetime_count_correct = check_kind_count(
-                "lifetime",
-                param_counts.lifetimes,
-                param_counts.lifetimes,
-                arg_counts.lifetimes,
-                0,
-                &mut unexpected_spans,
-                explicit_late_bound == ExplicitLateBound::Yes,
-            );
-        }
+        let lifetime_count_correct = check_kind_count(
+            "lifetime",
+            if infer_lifetimes { 0 } else { param_counts.lifetimes },
+            param_counts.lifetimes,
+            arg_counts.lifetimes,
+            0,
+            &mut unexpected_spans,
+            explicit_late_bound == ExplicitLateBound::Yes,
+        );
 
         // FIXME(const_generics:defaults)
-        let mut const_count_correct = Ok(());
-        if !infer_args || arg_counts.consts > param_counts.consts {
-            const_count_correct = check_kind_count(
-                "const",
-                param_counts.consts,
-                param_counts.consts,
-                arg_counts.consts,
-                arg_counts.lifetimes + arg_counts.types,
-                &mut unexpected_spans,
-                false,
-            );
-        }
+        let mut const_count_correct = check_kind_count(
+            "const",
+            if infer_args { 0 } else { param_counts.consts },
+            param_counts.consts,
+            arg_counts.consts,
+            arg_counts.lifetimes + arg_counts.types,
+            &mut unexpected_spans,
+            false,
+        );
 
         // Note that type errors are currently be emitted *after* const errors.
-        let mut type_count_correct = Ok(());
-        if !infer_args || arg_counts.types > param_counts.types - defaults.types - has_self as usize
-        {
-            type_count_correct = check_kind_count(
-                "type",
-                param_counts.types - defaults.types - has_self as usize,
-                param_counts.types - has_self as usize,
-                arg_counts.types,
-                arg_counts.lifetimes,
-                &mut unexpected_spans,
-                false,
-            );
-        }
+        let mut type_count_correct = check_kind_count(
+            "type",
+            if infer_args { 0 } else { param_counts.types - defaults.types - has_self as usize },
+            param_counts.types - has_self as usize,
+            arg_counts.types,
+            arg_counts.lifetimes,
+            &mut unexpected_spans,
+            false,
+        );
 
         // Emit a help message if it's possible that a type could be surrounded in braces
         if let Err((c_mismatch, Some(ref mut _const_err))) = const_count_correct {
