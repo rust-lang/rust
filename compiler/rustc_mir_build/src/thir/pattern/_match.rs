@@ -1588,7 +1588,7 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
             // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-            // as though it had an "unknown" constructor to avoid exposing its emptyness. The
+            // as though it had an "unknown" constructor to avoid exposing its emptiness. The
             // exception is if the pattern is at the top level, because we want empty matches to be
             // considered exhaustive.
             let is_secretly_empty = def.variants.is_empty()
@@ -1640,7 +1640,7 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             vec![make_range(0, max)]
         }
         // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-        // expose its emptyness. The exception is if the pattern is at the top level, because we
+        // expose its emptiness. The exception is if the pattern is at the top level, because we
         // want empty matches to be considered exhaustive.
         ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
             vec![NonExhaustive]
