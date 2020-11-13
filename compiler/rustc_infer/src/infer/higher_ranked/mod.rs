@@ -95,7 +95,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                     universe: next_universe,
-                    name: bound_var,
+                    name: ty::BoundConst { var: bound_var, ty },
                 }),
                 ty,
             })
