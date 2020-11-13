@@ -34,7 +34,7 @@ use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
 #[derive(Debug)]
-pub(self) struct Error {
+struct Error {
     message: String,
 }
 

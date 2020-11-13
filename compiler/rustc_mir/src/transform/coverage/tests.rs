@@ -35,6 +35,9 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, DebruijnIndex, TyS, TypeFlags};
 use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
 
+// All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.
+const TEMP_BLOCK: BasicBlock = BasicBlock::MAX;
+
 fn dummy_ty() -> &'static TyS<'static> {
     thread_local! {
         static DUMMY_TYS: &'static TyS<'static> = Box::leak(box TyS::make_for_test(
@@ -123,7 +126,7 @@ impl<'tcx> MockBlocks<'tcx> {
                     if branch_index > branches.len() {
                         branches.push((branches.len() as u128, old_otherwise));
                         while branches.len() < branch_index {
-                            branches.push((branches.len() as u128, START_BLOCK));
+                            branches.push((branches.len() as u128, TEMP_BLOCK));
                         }
                         to_block
                     } else {
@@ -143,7 +146,7 @@ impl<'tcx> MockBlocks<'tcx> {
             TerminatorKind::Call {
                 func: Operand::Copy(self.dummy_place.clone()),
                 args: vec![],
-                destination: Some((self.dummy_place.clone(), START_BLOCK)),
+                destination: Some((self.dummy_place.clone(), TEMP_BLOCK)),
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: DUMMY_SP,
@@ -152,16 +155,14 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn goto(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
-        self.add_block_from(some_from_block, TerminatorKind::Goto { target: START_BLOCK })
+        self.add_block_from(some_from_block, TerminatorKind::Goto { target: TEMP_BLOCK })
     }
 
     fn switchint(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
-        let move_ = |place: Place<'tcx>| Operand::Move(place);
-        let discriminant = Place::from(self.new_temp());
         let switchint_kind = TerminatorKind::SwitchInt {
-            discr: move_(discriminant),
+            discr: Operand::Move(Place::from(self.new_temp())),
             switch_ty: dummy_ty(),
-            targets: SwitchTargets::static_if(0, START_BLOCK, START_BLOCK),
+            targets: SwitchTargets::static_if(0, TEMP_BLOCK, TEMP_BLOCK),
         };
         self.add_block_from(some_from_block, switchint_kind)
     }
