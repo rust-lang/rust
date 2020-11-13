@@ -145,6 +145,9 @@ pub struct Options {
     pub render_options: RenderOptions,
     /// Output format rendering (used only for "show-coverage" option for the moment)
     pub output_format: Option<OutputFormat>,
+    /// If this option is set to `true`, rustdoc will only run checks and not generate
+    /// documentation.
+    pub run_check: bool,
 }
 
 impl fmt::Debug for Options {
@@ -185,6 +188,7 @@ impl fmt::Debug for Options {
             .field("runtool", &self.runtool)
             .field("runtool_args", &self.runtool_args)
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
+            .field("run_check", &self.run_check)
             .finish()
     }
 }
@@ -581,6 +585,7 @@ impl Options {
         let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
         let document_private = matches.opt_present("document-private-items");
         let document_hidden = matches.opt_present("document-hidden-items");
+        let run_check = matches.opt_present("check");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -616,6 +621,7 @@ impl Options {
             runtool_args,
             enable_per_target_ignores,
             test_builder,
+            run_check,
             render_options: RenderOptions {
                 output,
                 external_html,
