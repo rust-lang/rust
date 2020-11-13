@@ -2,7 +2,7 @@
 
 use assists::utils::{insert_use, mod_path_to_ast, ImportScope};
 use either::Either;
-use hir::ScopeDef;
+use hir::{ModuleDef, ScopeDef};
 use ide_db::imports_locator;
 use syntax::{algo, AstNode};
 
@@ -13,7 +13,6 @@ use crate::{
 
 use super::Completions;
 
-// TODO kb reuse auto_import assist approach to add trait completion
 // TODO kb add a setting toggle for this feature?
 pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
@@ -28,17 +27,18 @@ pub(crate) fn complete_magic(acc: &mut Completions, ctx: &CompletionContext) -> 
 
     let possible_imports =
         imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name, 400)
-            .filter_map(|import_candidate| {
-                Some(match import_candidate {
-                    Either::Left(module_def) => (
-                        current_module.find_use_path(ctx.db, module_def)?,
-                        ScopeDef::ModuleDef(module_def),
-                    ),
-                    Either::Right(macro_def) => (
-                        current_module.find_use_path(ctx.db, macro_def)?,
-                        ScopeDef::MacroDef(macro_def),
-                    ),
-                })
+            .filter_map(|import_candidate| match import_candidate {
+                // when completing outside the use declaration, modules are pretty useless
+                // and tend to bloat the completion suggestions a lot
+                Either::Left(ModuleDef::Module(_)) => None,
+                Either::Left(module_def) => Some((
+                    current_module.find_use_path(ctx.db, module_def)?,
+                    ScopeDef::ModuleDef(module_def),
+                )),
+                Either::Right(macro_def) => Some((
+                    current_module.find_use_path(ctx.db, macro_def)?,
+                    ScopeDef::MacroDef(macro_def),
+                )),
             })
             .filter_map(|(mod_path, definition)| {
                 let mut resolution_with_missing_import = render_resolution(
