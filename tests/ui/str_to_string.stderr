@@ -1,0 +1,19 @@
+error: `to_string()` called on a `&str`
+  --> $DIR/str_to_string.rs:4:17
+   |
+LL |     let hello = "hello world".to_string();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::str-to-string` implied by `-D warnings`
+   = help: consider using `.to_owned()`
+
+error: `to_string()` called on a `&str`
+  --> $DIR/str_to_string.rs:6:5
+   |
+LL |     msg.to_string();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider using `.to_owned()`
+
+error: aborting due to 2 previous errors
+
