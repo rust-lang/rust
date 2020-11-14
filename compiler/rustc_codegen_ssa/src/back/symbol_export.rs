@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, Linkage, Visibility};
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
 };
@@ -221,7 +221,7 @@ fn exported_symbols_provider_local(
     }
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
-        use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
+        use rustc_middle::mir::mono::MonoItem;
         use rustc_middle::ty::InstanceDef;
 
         // Normally, we require that shared monomorphizations are not hidden,

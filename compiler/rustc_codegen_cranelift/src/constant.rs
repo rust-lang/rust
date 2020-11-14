@@ -4,7 +4,7 @@ use rustc_span::DUMMY_SP;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorReported;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, Linkage as RLinkage};
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
 };
@@ -292,8 +292,8 @@ fn data_id_for_static(
     let rlinkage = tcx.codegen_fn_attrs(def_id).linkage;
     let linkage = if definition {
         crate::linkage::get_static_linkage(tcx, def_id)
-    } else if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
-        || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
+    } else if rlinkage == Some(RLinkage::ExternalWeak)
+        || rlinkage == Some(RLinkage::WeakAny)
     {
         Linkage::Preemptible
     } else {

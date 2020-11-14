@@ -1,7 +1,31 @@
-use crate::mir::mono::Linkage;
 use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_session::config::SanitizerSet;
 use rustc_span::symbol::Symbol;
+
+/// Specifies the linkage type for a `MonoItem`.
+///
+/// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
+#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum Linkage {
+    External,
+    AvailableExternally,
+    LinkOnceAny,
+    LinkOnceODR,
+    WeakAny,
+    WeakODR,
+    Appending,
+    Internal,
+    Private,
+    ExternalWeak,
+    Common,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
+pub enum Visibility {
+    Default,
+    Hidden,
+    Protected,
+}
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable)]
 pub struct CodegenFnAttrs {

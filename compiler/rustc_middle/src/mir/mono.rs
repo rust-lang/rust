@@ -1,5 +1,6 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
+use crate::middle::codegen_fn_attrs::{Linkage, Visibility};
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
@@ -224,31 +225,6 @@ pub struct CodegenUnit<'tcx> {
     name: Symbol,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
-}
-
-/// Specifies the linkage type for a `MonoItem`.
-///
-/// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum Linkage {
-    External,
-    AvailableExternally,
-    LinkOnceAny,
-    LinkOnceODR,
-    WeakAny,
-    WeakODR,
-    Appending,
-    Internal,
-    Private,
-    ExternalWeak,
-    Common,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
-pub enum Visibility {
-    Default,
-    Hidden,
-    Protected,
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
