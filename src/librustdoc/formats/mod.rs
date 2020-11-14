@@ -32,7 +32,7 @@ pub struct Impl {
 
 impl Impl {
     pub fn inner_impl(&self) -> &clean::Impl {
-        match self.impl_item.inner {
+        match self.impl_item.kind {
             clean::ImplItem(ref impl_) => impl_,
             _ => panic!("non-impl item found in impl"),
         }

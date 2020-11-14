@@ -86,7 +86,7 @@ pub fn run_format<T: FormatRenderer>(
             }
 
             cx.mod_item_in(&item, &name, &cache)?;
-            let module = match item.inner {
+            let module = match item.kind {
                 clean::StrippedItem(box clean::ModuleItem(m)) | clean::ModuleItem(m) => m,
                 _ => unreachable!(),
             };

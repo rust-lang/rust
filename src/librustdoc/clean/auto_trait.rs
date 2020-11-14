@@ -125,7 +125,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     def_id: self.cx.next_def_id(param_env_def_id.krate),
                     stability: None,
                     deprecation: None,
-                    inner: ImplItem(Impl {
+                    kind: ImplItem(Impl {
                         unsafety: hir::Unsafety::Normal,
                         generics: new_generics,
                         provided_trait_methods: Default::default(),
