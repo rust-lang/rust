@@ -2358,6 +2358,7 @@ impl<'test> TestCx<'test> {
         let suffix =
             self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
         let compare_dir = output_base_dir(self.config, self.testpaths, Some(&suffix));
+        // Don't give an error if the directory didn't already exist
         let _ = fs::remove_dir_all(&compare_dir);
         create_dir_all(&compare_dir).unwrap();
 
@@ -2406,18 +2407,28 @@ impl<'test> TestCx<'test> {
             self.fatal("failed to run tidy");
         }
 
-        let has_delta = Command::new("delta")
-            .arg("--version")
-            .stdout(Stdio::null())
-            .status()
-            .map_or(false, |status| status.success());
+        let pager = {
+            let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
+            output.and_then(|out| {
+                if out.status.success() {
+                    Some(String::from_utf8(out.stdout).expect("invalid UTF8 in git pager"))
+                } else {
+                    None
+                }
+            })
+        };
         let mut diff = Command::new("diff");
         diff.args(&["-u", "-r"]).args(&[out_dir, &compare_dir]);
 
-        let output = if has_delta {
+        let output = if let Some(pager) = pager {
             let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");
-            let output = Command::new("delta")
-                .arg("--paging=never")
+            let pager = pager.trim();
+            if self.config.verbose {
+                eprintln!("using pager {}", pager);
+            }
+            let output = Command::new(pager)
+                // disable paging; we want this to be non-interactive
+                .env("PAGER", "")
                 .stdin(diff_pid.stdout.unwrap())
                 // Capture output and print it explicitly so it will in turn be
                 // captured by libtest.
@@ -2426,7 +2437,10 @@ impl<'test> TestCx<'test> {
             assert!(output.status.success());
             output
         } else {
-            eprintln!("warning: `delta` not installed, falling back to `diff --color`");
+            eprintln!("warning: no pager configured, falling back to `diff --color`");
+            eprintln!(
+                "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
+            );
             let output = diff.arg("--color").output().unwrap();
             assert!(output.status.success() || output.status.code() == Some(1));
             output
