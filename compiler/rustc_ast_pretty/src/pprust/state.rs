@@ -109,7 +109,6 @@ pub fn print_crate<'a>(
     ann: &'a dyn PpAnn,
     is_expanded: bool,
     edition: Edition,
-    has_injected_crate: bool,
 ) -> String {
     let mut s = State {
         s: pp::mk_printer(),
@@ -119,7 +118,7 @@ pub fn print_crate<'a>(
         insert_extra_parens: true,
     };
 
-    if is_expanded && has_injected_crate {
+    if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However, we don't want these attributes in the AST because

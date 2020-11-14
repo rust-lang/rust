@@ -239,16 +239,12 @@ fn configure_and_expand_inner<'a>(
 
     krate = sess.time("crate_injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
-        let (krate, name) = rustc_builtin_macros::standard_library_imports::inject(
+        rustc_builtin_macros::standard_library_imports::inject(
             krate,
             &mut resolver,
             &sess,
             alt_std_name,
-        );
-        if let Some(name) = name {
-            sess.parse_sess.injected_crate_name.set(name).expect("not yet initialized");
-        }
-        krate
+        )
     });
 
     util::check_attr_crate_type(&sess, &krate.attrs, &mut resolver.lint_buffer());
