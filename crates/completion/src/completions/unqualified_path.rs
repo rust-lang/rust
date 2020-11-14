@@ -71,7 +71,6 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
     }
 }
 
-// TODO kb add a setting toggle for this feature?
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let _p = profile::span("fuzzy_completion®");
     let current_module = ctx.scope.module()?;
@@ -97,23 +96,35 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
             })
             .filter(|(mod_path, _)| mod_path.len() > 1)
             .filter_map(|(mod_path, definition)| {
-                let mut resolution_with_missing_import = render_resolution(
-                    RenderContext::new(ctx),
-                    mod_path.segments.last()?.to_string(),
-                    &definition,
-                )?;
+                let use_to_insert = mod_path_to_ast(&mod_path);
+                let mut mod_path_without_last_segment = mod_path;
+                let name_after_import = mod_path_without_last_segment.segments.pop()?.to_string();
+
+                let resolution_with_missing_import =
+                    render_resolution(RenderContext::new(ctx), name_after_import, &definition)?;
+                let lookup_string = resolution_with_missing_import.lookup().to_owned();
 
                 let mut text_edits =
                     resolution_with_missing_import.text_edit().to_owned().into_builder();
-
-                let rewriter =
-                    insert_use(&import_scope, mod_path_to_ast(&mod_path), ctx.config.merge);
+                let rewriter = insert_use(&import_scope, use_to_insert, ctx.config.merge);
                 let old_ast = rewriter.rewrite_root()?;
                 algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
 
-                resolution_with_missing_import.update_text_edit(text_edits.finish());
+                let qualifier_string = mod_path_without_last_segment.to_string();
+                let qualified_label = if qualifier_string.is_empty() {
+                    resolution_with_missing_import.label().to_owned()
+                } else {
+                    format!("{}::{}", qualifier_string, resolution_with_missing_import.label())
+                };
 
-                Some(resolution_with_missing_import)
+                Some(
+                    resolution_with_missing_import
+                        .into_builder()
+                        .text_edit(text_edits.finish())
+                        .label(qualified_label)
+                        .lookup_by(lookup_string)
+                        .build(),
+                )
             })
             .take(20);
 

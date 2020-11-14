@@ -202,6 +202,26 @@ impl CompletionItem {
             ref_match: None,
         }
     }
+
+    pub(crate) fn into_builder(self) -> Builder {
+        Builder {
+            source_range: self.source_range,
+            completion_kind: self.completion_kind,
+            label: self.label,
+            insert_text: None,
+            insert_text_format: self.insert_text_format,
+            detail: self.detail,
+            documentation: self.documentation,
+            lookup: self.lookup,
+            kind: self.kind,
+            text_edit: Some(self.text_edit),
+            deprecated: Some(self.deprecated),
+            trigger_call_info: Some(self.trigger_call_info),
+            score: self.score,
+            ref_match: self.ref_match,
+        }
+    }
+
     /// What user sees in pop-up in the UI.
     pub fn label(&self) -> &str {
         &self.label
@@ -216,10 +236,6 @@ impl CompletionItem {
 
     pub fn text_edit(&self) -> &TextEdit {
         &self.text_edit
-    }
-
-    pub fn update_text_edit(&mut self, new_text_edit: TextEdit) {
-        self.text_edit = new_text_edit;
     }
 
     /// Short one-line additional information, like a type
