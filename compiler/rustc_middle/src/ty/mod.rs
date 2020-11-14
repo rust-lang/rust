@@ -6,7 +6,6 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
-use crate::ich::StableHashingContext;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::mir::interpret::ErrorHandled;
 use crate::mir::Body;
@@ -18,6 +17,7 @@ use crate::ty::util::{Discr, IntTypeExt};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_crate::cstore::CrateStoreDyn;
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;

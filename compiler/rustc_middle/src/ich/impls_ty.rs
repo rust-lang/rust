@@ -1,10 +1,10 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_middle::ty` in no particular order.
 
-use crate::ich::StableHashingContext;
 use crate::middle::region;
 use crate::mir;
 use crate::ty;
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};

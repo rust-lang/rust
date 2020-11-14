@@ -26,6 +26,7 @@
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
+extern crate rustc_crate;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;

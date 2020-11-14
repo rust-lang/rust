@@ -1,6 +1,7 @@
 use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
 use rustc_ast::ast::InlineAsmTemplatePiece;
+use rustc_crate::ich::StableHashingContextProvider;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{
     BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FieldPat, FnRetTy,
@@ -8,7 +9,6 @@ use rustc_hir::{
     PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lint::LateContext;
-use rustc_middle::ich::StableHashingContextProvider;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::Symbol;
 use std::hash::Hash;

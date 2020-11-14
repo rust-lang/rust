@@ -20,6 +20,7 @@ use crate::value::Value;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::*;
+use rustc_crate::ich::NodeIdHashingMode;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -28,7 +29,6 @@ use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::mir::{self, Field, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::subst::GenericArgKind;

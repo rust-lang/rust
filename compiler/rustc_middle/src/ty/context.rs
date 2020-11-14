@@ -3,7 +3,6 @@
 use crate::arena::Arena;
 use crate::dep_graph::{self, DepConstructor, DepGraph};
 use crate::hir::exports::ExportMap;
-use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintSource};
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -24,6 +23,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_crate::cstore::{CrateStoreDyn, EncodedMetadata};
+use rustc_crate::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_crate::stability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;

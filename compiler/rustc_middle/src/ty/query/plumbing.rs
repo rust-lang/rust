@@ -253,11 +253,8 @@ macro_rules! define_queries {
         [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
 
         use std::mem;
-        use crate::{
-            rustc_data_structures::stable_hasher::HashStable,
-            rustc_data_structures::stable_hasher::StableHasher,
-            ich::StableHashingContext
-        };
+        use rustc_crate::ich::StableHashingContext;
+        use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
         define_queries_struct! {
             tcx: $tcx,

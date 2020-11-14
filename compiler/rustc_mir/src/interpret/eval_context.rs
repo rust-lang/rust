@@ -2,12 +2,12 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem;
 
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{self as hir, def::DefKind, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
-use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{GlobalId, InterpResult, Pointer, Scalar};
 use rustc_middle::ty::layout::{self, TyAndLayout};

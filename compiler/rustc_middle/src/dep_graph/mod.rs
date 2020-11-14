@@ -1,6 +1,6 @@
-use crate::ich::StableHashingContext;
 use crate::ty::query::try_load_from_on_disk_cache;
 use crate::ty::{self, TyCtxt};
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;

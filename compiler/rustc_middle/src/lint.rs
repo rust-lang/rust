@@ -1,6 +1,6 @@
 use std::cmp;
 
-use crate::ich::StableHashingContext;
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};

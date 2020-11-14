@@ -745,7 +745,7 @@ pub enum ImplicitSelfKind {
 CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
 
 mod binding_form_impl {
-    use crate::ich::StableHashingContext;
+    use rustc_crate::ich::StableHashingContext;
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {

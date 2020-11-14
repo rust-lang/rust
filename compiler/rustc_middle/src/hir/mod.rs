@@ -6,9 +6,9 @@ pub mod exports;
 pub mod map;
 pub mod place;
 
-use crate::ich::StableHashingContext;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

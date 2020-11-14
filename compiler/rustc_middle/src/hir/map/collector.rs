@@ -1,8 +1,8 @@
 use crate::arena::Arena;
 use crate::hir::map::{Entry, HirOwnerData, Map};
 use crate::hir::{Owner, OwnerNodes, ParentedNode};
-use crate::ich::StableHashingContext;
 use rustc_crate::cstore::CrateStore;
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

@@ -15,6 +15,7 @@ use spans::{CoverageSpan, CoverageSpans};
 use crate::transform::MirPass;
 use crate::util::pretty;
 
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -22,7 +23,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,

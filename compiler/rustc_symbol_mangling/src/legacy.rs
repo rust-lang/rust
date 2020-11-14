@@ -1,7 +1,7 @@
+use rustc_crate::ich::NodeIdHashingMode;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};

@@ -1,8 +1,8 @@
 use crate::dep_graph::{DepConstructor, DepNode, WorkProduct, WorkProductId};
-use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_crate::codegen_fn_attrs::{Linkage, Visibility};
+use rustc_crate::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;

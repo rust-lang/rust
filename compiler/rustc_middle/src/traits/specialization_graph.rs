@@ -1,7 +1,8 @@
-use crate::ich::{self, StableHashingContext};
+use crate::ich;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
+use rustc_crate::ich::StableHashingContext;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
