@@ -803,8 +803,8 @@ pub enum ImplicitSelfKind {
 TrivialTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
 
 mod binding_form_impl {
-    use crate::ich::StableHashingContext;
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+    use rustc_query_system::ich::StableHashingContext;
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
         fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

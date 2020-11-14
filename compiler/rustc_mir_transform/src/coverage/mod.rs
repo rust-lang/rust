@@ -21,7 +21,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::ich::StableHashingContext;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::dump_enabled;
@@ -30,6 +29,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{CharPos, ExpnKind, Pos, SourceFile, Span, Symbol};

@@ -18,6 +18,7 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }

@@ -21,6 +21,7 @@ rustc_infer = { path = "../rustc_infer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
+rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }

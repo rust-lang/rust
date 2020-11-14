@@ -36,7 +36,7 @@ impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
 
 impl HasDepContext for QueryCtxt<'tcx> {
     type DepKind = rustc_middle::dep_graph::DepKind;
-    type StableHashingContext = rustc_middle::ich::StableHashingContext<'tcx>;
+    type StableHashingContext = rustc_query_system::ich::StableHashingContext<'tcx>;
     type DepContext = TyCtxt<'tcx>;
 
     #[inline]

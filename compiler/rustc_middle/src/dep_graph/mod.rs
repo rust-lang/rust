@@ -1,7 +1,7 @@
-use crate::ich::StableHashingContext;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 
 #[macro_use]

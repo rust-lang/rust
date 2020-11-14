@@ -6,13 +6,13 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
-use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{self, LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};

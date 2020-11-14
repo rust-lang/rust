@@ -1,12 +1,12 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::util::common::record_time;
+use rustc_query_system::ich::NodeIdHashingMode;
 
 use tracing::debug;
 
