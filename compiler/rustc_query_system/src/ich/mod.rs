@@ -4,10 +4,8 @@ pub use self::hcx::{NodeIdHashingMode, StableHashingContext};
 use rustc_span::symbol::{sym, Symbol};
 
 mod hcx;
-
 mod impls_hir;
 mod impls_syntax;
-mod impls_ty;
 
 pub const IGNORED_ATTRIBUTES: &[Symbol] = &[
     sym::cfg,
