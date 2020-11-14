@@ -519,7 +519,7 @@ impl FileTypeExt for fs::FileType {
 
 /// Creates a new file symbolic link on the filesystem.
 ///
-/// The `dst` path will be a file symbolic link pointing to the `src`
+/// The `link` path will be a file symbolic link pointing to the `original`
 /// path.
 ///
 /// # Examples
@@ -533,13 +533,13 @@ impl FileTypeExt for fs::FileType {
 /// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
-pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    sys::fs::symlink_inner(src.as_ref(), dst.as_ref(), false)
+pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
 }
 
 /// Creates a new directory symlink on the filesystem.
 ///
-/// The `dst` path will be a directory symbolic link pointing to the `src`
+/// The `link` path will be a directory symbolic link pointing to the `original`
 /// path.
 ///
 /// # Examples
@@ -553,6 +553,6 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Resul
 /// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
-pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    sys::fs::symlink_inner(src.as_ref(), dst.as_ref(), true)
+pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
 }

@@ -1698,12 +1698,14 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 
 /// Creates a new hard link on the filesystem.
 ///
-/// The `dst` path will be a link pointing to the `src` path. Note that systems
-/// often require these two paths to both be located on the same filesystem.
+/// The `link` path will be a link pointing to the `original` path. Note that
+/// systems often require these two paths to both be located on the same
+/// filesystem.
 ///
-/// If `src` names a symbolic link, it is platform-specific whether the symbolic
-/// link is followed. On platforms where it's possible to not follow it, it is
-/// not followed, and the created hard link points to the symbolic link itself.
+/// If `original` names a symbolic link, it is platform-specific whether the
+/// symbolic link is followed. On platforms where it's possible to not follow
+/// it, it is not followed, and the created hard link points to the symbolic
+/// link itself.
 ///
 /// # Platform-specific behavior
 ///
@@ -1718,7 +1720,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The `src` path is not a file or doesn't exist.
+/// * The `original` path is not a file or doesn't exist.
 ///
 /// # Examples
 ///
@@ -1731,13 +1733,13 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    fs_imp::link(src.as_ref(), dst.as_ref())
+pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    fs_imp::link(original.as_ref(), link.as_ref())
 }
 
 /// Creates a new symbolic link on the filesystem.
 ///
-/// The `dst` path will be a symbolic link pointing to the `src` path.
+/// The `link` path will be a symbolic link pointing to the `original` path.
 /// On Windows, this will be a file symlink, not a directory symlink;
 /// for this reason, the platform-specific [`std::os::unix::fs::symlink`]
 /// and [`std::os::windows::fs::symlink_file`] or [`symlink_dir`] should be
@@ -1763,8 +1765,8 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
     reason = "replaced with std::os::unix::fs::symlink and \
               std::os::windows::fs::{symlink_file, symlink_dir}"
 )]
-pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    fs_imp::symlink(src.as_ref(), dst.as_ref())
+pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    fs_imp::symlink(original.as_ref(), link.as_ref())
 }
 
 /// Reads a symbolic link, returning the file that the link points to.
