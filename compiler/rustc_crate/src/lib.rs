@@ -9,6 +9,7 @@ extern crate rustc_macros;
 
 pub mod codegen_fn_attrs;
 pub mod cstore;
+pub mod dependency_format;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro

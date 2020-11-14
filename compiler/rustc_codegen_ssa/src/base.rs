@@ -521,7 +521,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // one instead. If nothing exists then it's our job to generate the
     // allocator!
     let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
-        use rustc_middle::middle::dependency_format::Linkage;
+        use rustc_crate::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
     let allocator_module = if any_dynamic_crate {

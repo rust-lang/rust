@@ -3,6 +3,7 @@ use crate::rmeta::*;
 
 use rustc_ast as ast;
 use rustc_crate::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLib};
+use rustc_crate::dependency_format::Linkage;
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -17,7 +18,6 @@ use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
 };

@@ -21,12 +21,12 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use rustc_crate::cstore::{CrateSource, EncodedMetadata, LibSource, NativeLib};
+use rustc_crate::dependency_format::Dependencies;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::LangItem;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::ty::query::Providers;
 use rustc_session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_span::symbol::Symbol;

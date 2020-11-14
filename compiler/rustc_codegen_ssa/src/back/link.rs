@@ -1,9 +1,9 @@
 use rustc_crate::cstore::{EncodedMetadata, LibSource, NativeLib};
+use rustc_crate::dependency_format::Linkage;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SanitizerSet};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
