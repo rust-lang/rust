@@ -1,7 +1,7 @@
 use crate::base;
 use crate::traits::*;
+use rustc_crate::codegen_fn_attrs::{Linkage, Visibility};
 use rustc_hir as hir;
-use rustc_middle::middle::codegen_fn_attrs::{Linkage, Visibility};
 use rustc_middle::ty::layout::HasTyCtxt;
 
 use rustc_middle::mir::mono::MonoItem;

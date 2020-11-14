@@ -7,11 +7,11 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use libc::c_uint;
 use rustc_codegen_ssa::traits::*;
+use rustc_crate::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_data_structures::const_cstr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     read_target_uint, Allocation, ErrorHandled, GlobalAlloc, Pointer,
 };

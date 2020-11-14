@@ -26,6 +26,7 @@ use crate::traits::*;
 use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
 use rustc_attr as attr;
+use rustc_crate::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_crate::cstore::{EncodedMetadata, LinkagePreference};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
@@ -34,7 +35,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::{lang_items, used_crates};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};

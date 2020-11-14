@@ -1,7 +1,6 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::ich::NodeIdHashingMode;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::fold::TypeFolder;
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
@@ -11,6 +10,7 @@ use crate::ty::{self, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
+use rustc_crate::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;

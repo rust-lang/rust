@@ -5,7 +5,7 @@ mod comments;
 mod pass_mode;
 mod returning;
 
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_crate::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_target::spec::abi::Abi;
 
 use cranelift_codegen::ir::{AbiParam, ArgumentPurpose};

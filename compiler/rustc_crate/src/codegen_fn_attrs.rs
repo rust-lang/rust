@@ -5,7 +5,7 @@ use rustc_span::symbol::Symbol;
 /// Specifies the linkage type for a `MonoItem`.
 ///
 /// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum Linkage {
     External,
     AvailableExternally,
@@ -20,14 +20,14 @@ pub enum Linkage {
     Common,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
 pub enum Visibility {
     Default,
     Hidden,
     Protected,
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Encodable, Decodable, HashStable_Generic)]
 pub struct CodegenFnAttrs {
     pub flags: CodegenFnAttrFlags,
     /// Parsed representation of the `#[inline]` attribute
@@ -65,7 +65,7 @@ pub struct CodegenFnAttrs {
 }
 
 bitflags! {
-    #[derive(TyEncodable, TyDecodable, HashStable)]
+    #[derive(Encodable, Decodable, HashStable_Generic)]
     pub struct CodegenFnAttrFlags: u32 {
         /// `#[cold]`: a hint to LLVM that this function, when called, is never on
         /// the hot path.

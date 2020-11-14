@@ -2,7 +2,6 @@ use crate::ty::TyCtxt;
 use rustc_crate::cstore::{LibSource, LinkagePreference};
 use rustc_span::def_id::{CrateNum, LOCAL_CRATE};
 
-pub mod codegen_fn_attrs;
 pub mod dependency_format;
 pub mod exported_symbols;
 pub mod lang_items;

@@ -1,8 +1,8 @@
 use crate::ich::StableHashingContext;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
+use rustc_crate::codegen_fn_attrs::CodegenFnAttrFlags;
 
 use rustc_ast::{self as ast, IntTy, UintTy};
 use rustc_attr as attr;

@@ -1,10 +1,10 @@
 //! Inlining pass for MIR functions
 
 use rustc_attr as attr;
+use rustc_crate::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;

@@ -3,8 +3,11 @@
 #![feature(or_patterns)]
 
 #[macro_use]
+extern crate bitflags;
+#[macro_use]
 extern crate rustc_macros;
 
+pub mod codegen_fn_attrs;
 pub mod cstore;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.

@@ -4,7 +4,7 @@
 use std::any::Any;
 
 use rustc_crate::cstore::EncodedMetadata;
-use rustc_middle::middle::codegen_fn_attrs::{Linkage as RLinkage, Visibility};
+use rustc_crate::codegen_fn_attrs::{Linkage as RLinkage, Visibility};
 use rustc_middle::mir::mono::MonoItem;
 
 use crate::prelude::*;

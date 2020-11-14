@@ -2,6 +2,7 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
+use rustc_crate::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -10,7 +11,6 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;

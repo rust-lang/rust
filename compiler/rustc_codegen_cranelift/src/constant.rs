@@ -4,7 +4,7 @@ use rustc_span::DUMMY_SP;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorReported;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, Linkage as RLinkage};
+use rustc_crate::codegen_fn_attrs::{CodegenFnAttrFlags, Linkage as RLinkage};
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
 };

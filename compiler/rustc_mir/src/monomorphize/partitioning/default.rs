@@ -1,10 +1,10 @@
 use std::collections::hash_map::Entry;
 
+use rustc_crate::codegen_fn_attrs::{CodegenFnAttrFlags, Linkage, Visibility};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, Linkage, Visibility};
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};

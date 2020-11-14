@@ -3,7 +3,6 @@ use crate::hir::exports::Export;
 use crate::hir::map;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
@@ -29,6 +28,7 @@ use crate::traits::{self, ImplSource};
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use rustc_crate::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_crate::cstore::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
