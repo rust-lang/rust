@@ -81,7 +81,6 @@ pub mod arena;
 #[macro_use]
 pub mod dep_graph;
 pub mod hir;
-pub mod ich;
 pub mod infer;
 pub mod lint;
 pub mod middle;
