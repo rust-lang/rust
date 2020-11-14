@@ -28,25 +28,19 @@ crate struct Module<'hir> {
     crate statics: Vec<Static<'hir>>,
     crate constants: Vec<Constant<'hir>>,
     crate traits: Vec<Trait<'hir>>,
-    crate vis: &'hir hir::Visibility<'hir>,
     crate impls: Vec<Impl<'hir>>,
     crate foreigns: Vec<ForeignItem<'hir>>,
-    crate macros: Vec<Macro<'hir>>,
-    crate proc_macros: Vec<ProcMacro<'hir>>,
+    crate macros: Vec<Macro>,
+    crate proc_macros: Vec<ProcMacro>,
     crate trait_aliases: Vec<TraitAlias<'hir>>,
     crate is_crate: bool,
 }
 
 impl Module<'hir> {
-    crate fn new(
-        name: Option<Symbol>,
-        attrs: &'hir [ast::Attribute],
-        vis: &'hir hir::Visibility<'hir>,
-    ) -> Module<'hir> {
+    crate fn new(name: Option<Symbol>, attrs: &'hir [ast::Attribute]) -> Module<'hir> {
         Module {
             name,
             id: hir::CRATE_HIR_ID,
-            vis,
             where_outer: rustc_span::DUMMY_SP,
             where_inner: rustc_span::DUMMY_SP,
             attrs,
@@ -83,53 +77,39 @@ crate enum StructType {
 }
 
 crate struct Struct<'hir> {
-    crate vis: &'hir hir::Visibility<'hir>,
     crate id: hir::HirId,
     crate struct_type: StructType,
     crate name: Symbol,
     crate generics: &'hir hir::Generics<'hir>,
-    crate attrs: &'hir [ast::Attribute],
     crate fields: &'hir [hir::StructField<'hir>],
-    crate span: Span,
 }
 
 crate struct Union<'hir> {
-    crate vis: &'hir hir::Visibility<'hir>,
     crate id: hir::HirId,
     crate struct_type: StructType,
     crate name: Symbol,
     crate generics: &'hir hir::Generics<'hir>,
-    crate attrs: &'hir [ast::Attribute],
     crate fields: &'hir [hir::StructField<'hir>],
-    crate span: Span,
 }
 
 crate struct Enum<'hir> {
-    crate vis: &'hir hir::Visibility<'hir>,
     crate variants: Vec<Variant<'hir>>,
     crate generics: &'hir hir::Generics<'hir>,
-    crate attrs: &'hir [ast::Attribute],
     crate id: hir::HirId,
-    crate span: Span,
     crate name: Symbol,
 }
 
 crate struct Variant<'hir> {
     crate name: Symbol,
     crate id: hir::HirId,
-    crate attrs: &'hir [ast::Attribute],
     crate def: &'hir hir::VariantData<'hir>,
-    crate span: Span,
 }
 
 crate struct Function<'hir> {
     crate decl: &'hir hir::FnDecl<'hir>,
-    crate attrs: &'hir [ast::Attribute],
     crate id: hir::HirId,
     crate name: Symbol,
-    crate vis: &'hir hir::Visibility<'hir>,
     crate header: hir::FnHeader,
-    crate span: Span,
     crate generics: &'hir hir::Generics<'hir>,
     crate body: hir::BodyId,
 }
@@ -139,18 +119,12 @@ crate struct Typedef<'hir> {
     crate gen: &'hir hir::Generics<'hir>,
     crate name: Symbol,
     crate id: hir::HirId,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
-    crate vis: &'hir hir::Visibility<'hir>,
 }
 
 crate struct OpaqueTy<'hir> {
     crate opaque_ty: &'hir hir::OpaqueTy<'hir>,
     crate name: Symbol,
     crate id: hir::HirId,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
-    crate vis: &'hir hir::Visibility<'hir>,
 }
 
 #[derive(Debug)]
@@ -169,10 +143,7 @@ crate struct Constant<'hir> {
     crate type_: &'hir hir::Ty<'hir>,
     crate expr: hir::BodyId,
     crate name: Symbol,
-    crate attrs: &'hir [ast::Attribute],
-    crate vis: &'hir hir::Visibility<'hir>,
     crate id: hir::HirId,
-    crate span: Span,
 }
 
 crate struct Trait<'hir> {
@@ -184,18 +155,13 @@ crate struct Trait<'hir> {
     crate bounds: &'hir [hir::GenericBound<'hir>],
     crate attrs: &'hir [ast::Attribute],
     crate id: hir::HirId,
-    crate span: Span,
-    crate vis: &'hir hir::Visibility<'hir>,
 }
 
 crate struct TraitAlias<'hir> {
     crate name: Symbol,
     crate generics: &'hir hir::Generics<'hir>,
     crate bounds: &'hir [hir::GenericBound<'hir>],
-    crate attrs: &'hir [ast::Attribute],
     crate id: hir::HirId,
-    crate span: Span,
-    crate vis: &'hir hir::Visibility<'hir>,
 }
 
 #[derive(Debug)]
@@ -215,22 +181,16 @@ crate struct Impl<'hir> {
 }
 
 crate struct ForeignItem<'hir> {
-    crate vis: &'hir hir::Visibility<'hir>,
     crate id: hir::HirId,
     crate name: Symbol,
     crate kind: &'hir hir::ForeignItemKind<'hir>,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
 }
 
 // For Macro we store the DefId instead of the NodeId, since we also create
 // these imported macro_rules (which only have a DUMMY_NODE_ID).
-crate struct Macro<'hir> {
+crate struct Macro {
     crate name: Symbol,
-    crate hid: hir::HirId,
     crate def_id: hir::def_id::DefId,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
     crate matchers: Vec<Span>,
     crate imported_from: Option<Symbol>,
 }
@@ -256,13 +216,11 @@ crate struct Import<'hir> {
     crate span: Span,
 }
 
-crate struct ProcMacro<'hir> {
+crate struct ProcMacro {
     crate name: Symbol,
     crate id: hir::HirId,
     crate kind: MacroKind,
     crate helpers: Vec<Symbol>,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
 }
 
 crate fn struct_type_from_def(vdata: &hir::VariantData<'_>) -> StructType {

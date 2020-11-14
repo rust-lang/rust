@@ -2280,7 +2280,7 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
     }
 }
 
-impl Clean<Item> for doctree::Macro<'_> {
+impl Clean<Item> for doctree::Macro {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item::from_def_id_and_parts(
             self.def_id,
@@ -2301,7 +2301,7 @@ impl Clean<Item> for doctree::Macro<'_> {
     }
 }
 
-impl Clean<Item> for doctree::ProcMacro<'_> {
+impl Clean<Item> for doctree::ProcMacro {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item::from_hir_id_and_parts(
             self.id,
