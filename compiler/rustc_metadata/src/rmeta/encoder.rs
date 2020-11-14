@@ -18,7 +18,6 @@ use rustc_hir::{AnonConst, GenericParamKind};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
     metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
@@ -30,6 +29,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
+use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_span::{

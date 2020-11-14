@@ -21,8 +21,6 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::{CrateSource, ExternCrate};
-use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
@@ -30,6 +28,9 @@ use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
+use rustc_session::cstore::{
+    CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
+};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::source_map::{respan, Spanned};

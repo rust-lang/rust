@@ -11,7 +11,7 @@ use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind, LLVMMachineType, LLVMRustCOFFShortExport};
 use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_middle::middle::cstore::{DllCallingConvention, DllImport};
+use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_session::Session;
 
 struct ArchiveConfig<'a> {

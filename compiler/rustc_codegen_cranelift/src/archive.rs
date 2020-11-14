@@ -242,7 +242,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     fn inject_dll_import_lib(
         &mut self,
         _lib_name: &str,
-        _dll_imports: &[rustc_middle::middle::cstore::DllImport],
+        _dll_imports: &[rustc_session::cstore::DllImport],
         _tmpdir: &rustc_data_structures::temp_dir::MaybeTempDir,
     ) {
         bug!("injecting dll imports is not supported");
