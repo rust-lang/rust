@@ -89,7 +89,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnneededDerefVisitor<'a, 'tcx> {
                     }
                 }
 
-                _ => {},
+                _ => {}
             }
         };
         // We explicitly do not call super_place as we don't need to explore the graph deeper
