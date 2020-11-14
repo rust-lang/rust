@@ -12,7 +12,6 @@ pub fn target() -> Target {
 
         options: TargetOptions {
             endian: "big".to_string(),
-            vendor: String::new(),
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
             executables: true,
             linker: Some("rust-lld".to_owned()),

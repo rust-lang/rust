@@ -79,7 +79,6 @@ pub fn target() -> Target {
     let mut options = wasm32_base::options();
 
     options.os = "wasi".to_string();
-    options.vendor = String::new();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     options
         .pre_link_args
