@@ -650,6 +650,9 @@ impl<'a> CrateLocator<'a> {
         }
 
         let hash = root.hash();
+        assert_eq!(Some(hash), metadata.get_svh());
+        // FIXME: we could move this earlier and check against the
+        // metadata hash as we could reject without decompressing the metadata blob.
         if let Some(expected_hash) = self.hash {
             if hash != expected_hash {
                 info!("Rejecting via hash: expected {} got {}", expected_hash, hash);

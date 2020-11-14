@@ -594,15 +594,36 @@ impl MetadataBlob {
     }
 
     crate fn get_rustc_version(&self) -> String {
-        Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+        if self.is_compatible() {
+           Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4 + 1 + mem::size_of::<[u8;64]>() ).unwrap())
+               .decode(self)
+        } else {
+            // Assume older...
+            Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
             .decode(self)
+        }
+    }
+
+    //used only by an assert?
+    crate fn get_svh(&self) -> Option<Svh> {
+        if !self.is_compatible() {
+            return None;
+        }
+        let hash =
+            Lazy::<[u8; 64]>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+                .decode(self);
+
+        // Currently only the first 8 bytes are in use of the svh
+        let mut smol_hash = [0_u8; 8];
+        smol_hash.copy_from_slice(&hash[..8]);
+        Some(Svh::new(u64::from_le_bytes(smol_hash)))
     }
 
     crate fn get_root(&self) -> CrateRoot<'tcx> {
         let slice = self.raw_bytes();
         let offset = METADATA_HEADER.len();
         let pos = (((slice[offset + 0] as u32) << 24)
-            | ((slice[offset + 1] as u32) << 16)
+            | ((slice[offset + 1] as u32) << 16)//TO DO replace with just one function call?
             | ((slice[offset + 2] as u32) << 8)
             | ((slice[offset + 3] as u32) << 0)) as usize;
         Lazy::<CrateRoot<'tcx>>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)

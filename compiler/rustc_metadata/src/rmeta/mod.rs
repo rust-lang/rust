@@ -41,16 +41,17 @@ crate fn rustc_version() -> String {
     format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
 }
 
-crate fn crate_svh(tcx: TyCtxt<'_>) -> String {
-    let mut svh = [0; 64];
-    svh.copy_from_slice(&tcx.crate_hash(LOCAL_CRATE).as_u64().to_le_bytes());
+crate fn crate_svh(tcx: TyCtxt<'_>) -> [u8; 64] {
+    let mut svh = [0; 64]; // 512bits for future expansion of svh size.
+    let svh_front = &mut svh[0..8];
+    svh_front.copy_from_slice(&tcx.crate_hash(LOCAL_CRATE).as_u64().to_le_bytes());
     svh
 }
 
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 5;
+const METADATA_VERSION: u8 = 6;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
