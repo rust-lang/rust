@@ -17,7 +17,7 @@ use rustc_span::{BytePos, Span, SyntaxContext};
 use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
-pub(crate) enum CoverageStatement {
+pub(super) enum CoverageStatement {
     Statement(BasicBlock, Span, usize),
     Terminator(BasicBlock, Span),
 }
@@ -66,7 +66,7 @@ impl CoverageStatement {
 /// or is subsumed by the `Span` associated with this `CoverageSpan`, and it's `BasicBlock`
 /// `is_dominated_by()` the `BasicBlock`s in this `CoverageSpan`.
 #[derive(Debug, Clone)]
-pub(crate) struct CoverageSpan {
+pub(super) struct CoverageSpan {
     pub span: Span,
     pub bcb: BasicCoverageBlock,
     pub coverage_statements: Vec<CoverageStatement>,
@@ -214,7 +214,7 @@ pub struct CoverageSpans<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
-    pub(crate) fn generate_coverage_spans(
+    pub(super) fn generate_coverage_spans(
         mir_body: &'a mir::Body<'tcx>,
         body_span: Span,
         basic_coverage_blocks: &'a CoverageGraph,
@@ -645,7 +645,10 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 }
 
-fn filtered_statement_span(statement: &'a Statement<'tcx>, body_span: Span) -> Option<Span> {
+pub(super) fn filtered_statement_span(
+    statement: &'a Statement<'tcx>,
+    body_span: Span,
+) -> Option<Span> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -686,7 +689,10 @@ fn filtered_statement_span(statement: &'a Statement<'tcx>, body_span: Span) -> O
     }
 }
 
-fn filtered_terminator_span(terminator: &'a Terminator<'tcx>, body_span: Span) -> Option<Span> {
+pub(super) fn filtered_terminator_span(
+    terminator: &'a Terminator<'tcx>,
+    body_span: Span,
+) -> Option<Span> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from

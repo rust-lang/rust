@@ -5,6 +5,9 @@ mod debug;
 mod graph;
 mod spans;
 
+#[cfg(test)]
+mod tests;
+
 use counters::CoverageCounters;
 use graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use spans::{CoverageSpan, CoverageSpans};
@@ -31,7 +34,7 @@ use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
 #[derive(Debug)]
-pub(crate) struct Error {
+struct Error {
     message: String,
 }
 
