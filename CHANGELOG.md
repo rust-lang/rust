@@ -2,6 +2,55 @@
 
 ## [Unreleased]
 
+## [1.4.26] 2020-11-14
+
+### Changed
+
+- Original comment indentation for trailing comments within an `if` is now taken into account when determining the indentation level to use for the trailing comment in formatted code. This does not modify any existing code formatted with rustfmt; it simply gives the programmer discretion to specify whether the comment is associated to the `else` block, or if the trailing comment is just a member of the `if` block. ([#1575](https://github.com/rust-lang/rustfmt/issues/1575), [#4120](https://github.com/rust-lang/rustfmt/issues/4120), [#4506](https://github.com/rust-lang/rustfmt/issues/4506)) 
+
+In this example the `// else comment` refers to the `else`:
+```rust
+// if comment
+if cond {
+    "if"
+// else comment
+} else {
+    "else"
+}
+```
+
+Whereas in this case the `// continue` comments are members of their respective blocks and do not refer to the `else` below.
+```rust
+if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"))? {
+    if toks.eat_token(Token::Colon)? {
+        // ate the token
+    } else if toks.eat_token(Token::Word("to"))? {
+        // optionally eat the colon after to, e.g.:
+        // @rustbot modify labels to: -S-waiting-on-author, +S-waiting-on-review
+        toks.eat_token(Token::Colon)?;
+    } else {
+        // It's okay if there's no to or colon, we can just eat labels
+        // afterwards.
+    }
+    1 + 2;
+    // continue
+} else if toks.eat_token(Token::Word("label"))? {
+    // continue
+} else {
+    return Ok(None);
+}
+```
+
+### Fixed
+- Formatting of empty blocks with attributes which only contained comments is no longer butchered.([#4475](https://github.com/rust-lang/rustfmt/issues/4475), [#4467](https://github.com/rust-lang/rustfmt/issues/4467), [#4452](https://github.com/rust-lang/rustfmt/issues/4452#issuecomment-705886282), [#4522](https://github.com/rust-lang/rustfmt/issues/4522))
+- Indentation of trailing comments in non-empty extern blocks is now correct. ([#4120](https://github.com/rust-lang/rustfmt/issues/4120#issuecomment-696491872)) 
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.26](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.26)
+- **Build from source** - [Tag v1.4.26](https://github.com/rust-lang/rustfmt/tree/v1.4.26), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.25] 2020-11-10
 
 ### Changed
@@ -10,7 +59,7 @@
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - Starting in `2020-11-14`
 - **GitHub Release Binaries** - [Release v1.4.25](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.25)
 - **Build from source** - [Tag v1.4.25](https://github.com/rust-lang/rustfmt/tree/v1.4.25), see instructions for how to [install rustfmt from source][install-from-source]
 
