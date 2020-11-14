@@ -1,6 +1,7 @@
 use crate::{shim, util};
 use required_consts::RequiredConstsVisitor;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -8,7 +9,6 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
