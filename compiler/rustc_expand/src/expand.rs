@@ -22,7 +22,7 @@ use rustc_errors::{struct_span_err, Applicability, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{AttemptLocalParseRecovery, Parser};
 use rustc_parse::validate_attr;
-use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
+use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Limit;
@@ -1064,17 +1064,24 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             })
             .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
-            if !self.cx.ecfg.custom_inner_attributes()
-                && attr.style == ast::AttrStyle::Inner
-                && !attr.has_name(sym::test)
-            {
-                feature_err(
-                    &self.cx.sess.parse_sess,
-                    sym::custom_inner_attributes,
-                    attr.span,
-                    "non-builtin inner attributes are unstable",
-                )
-                .emit();
+            if attr.style == ast::AttrStyle::Inner && !self.cx.ecfg.custom_inner_attributes() {
+                let msg = "non-builtin inner attributes are unstable";
+                if attr.has_name(sym::test) {
+                    self.cx.sess.parse_sess.buffer_lint(
+                        SOFT_UNSTABLE,
+                        attr.span,
+                        ast::CRATE_NODE_ID,
+                        msg,
+                    );
+                } else {
+                    feature_err(
+                        &self.cx.sess.parse_sess,
+                        sym::custom_inner_attributes,
+                        attr.span,
+                        msg,
+                    )
+                    .emit();
+                }
             }
         }
         attr
