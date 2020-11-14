@@ -6,13 +6,13 @@ use crate::passes::Pass;
 
 use std::mem::take;
 
-pub const COLLAPSE_DOCS: Pass = Pass {
+crate const COLLAPSE_DOCS: Pass = Pass {
     name: "collapse-docs",
     run: collapse_docs,
     description: "concatenates all document attributes into one document attribute",
 };
 
-pub fn collapse_docs(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
+crate fn collapse_docs(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     let mut krate = Collapser.fold_crate(krate);
     krate.collapsed = true;
     krate
@@ -66,7 +66,7 @@ fn collapse(doc_strings: &mut Vec<DocFragment>) {
 }
 
 impl clean::Attributes {
-    pub fn collapse_doc_comments(&mut self) {
+    crate fn collapse_doc_comments(&mut self) {
         collapse(&mut self.doc_strings);
     }
 }

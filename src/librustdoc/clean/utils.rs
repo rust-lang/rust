@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
-pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
+crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
 
     let krate = cx.tcx.hir().krate();
@@ -102,11 +102,11 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 }
 
 // extract the stability index for a node from tcx, if possible
-pub fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
+crate fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
     cx.tcx.lookup_stability(def_id).cloned()
 }
 
-pub fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation> {
+crate fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation> {
     cx.tcx.lookup_deprecation(def_id).clean(cx)
 }
 
@@ -183,7 +183,7 @@ pub(super) fn external_path(
 /// i.e. `[T, U]` when you have the following bounds: `T: Display, U: Option<T>` will return
 /// `[Display, Option]` (we just returns the list of the types, we don't care about the
 /// wrapped types in here).
-pub fn get_real_types(
+crate fn get_real_types(
     generics: &Generics,
     arg: &Type,
     cx: &DocContext<'_>,
@@ -261,7 +261,7 @@ pub fn get_real_types(
 ///
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
-pub fn get_all_types(
+crate fn get_all_types(
     generics: &Generics,
     decl: &FnDecl,
     cx: &DocContext<'_>,
@@ -296,7 +296,7 @@ pub fn get_all_types(
     (all_types.into_iter().collect(), ret_types)
 }
 
-pub fn strip_type(ty: Type) -> Type {
+crate fn strip_type(ty: Type) -> Type {
     match ty {
         Type::ResolvedPath { path, param_names, did, is_generic } => {
             Type::ResolvedPath { path: strip_path(&path), param_names, did, is_generic }
@@ -319,7 +319,7 @@ pub fn strip_type(ty: Type) -> Type {
     }
 }
 
-pub fn strip_path(path: &Path) -> Path {
+crate fn strip_path(path: &Path) -> Path {
     let segments = path
         .segments
         .iter()
@@ -332,7 +332,7 @@ pub fn strip_path(path: &Path) -> Path {
     Path { global: path.global, res: path.res, segments }
 }
 
-pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
+crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, ref path) => &path.segments,
         hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
@@ -351,7 +351,7 @@ pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     s
 }
 
-pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
+crate fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
     let tcx = cx.tcx;
 
     for item in items {
@@ -378,7 +378,7 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
     }
 }
 
-pub trait ToSource {
+crate trait ToSource {
     fn to_src(&self, cx: &DocContext<'_>) -> String;
 }
 
@@ -394,7 +394,7 @@ impl ToSource for rustc_span::Span {
     }
 }
 
-pub fn name_from_pat(p: &hir::Pat<'_>) -> String {
+crate fn name_from_pat(p: &hir::Pat<'_>) -> String {
     use rustc_hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 
@@ -440,7 +440,7 @@ pub fn name_from_pat(p: &hir::Pat<'_>) -> String {
     }
 }
 
-pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
+crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def, _, promoted) => {
             let mut s = if let Some(def) = def.as_local() {
@@ -470,7 +470,7 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     }
 }
 
-pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
+crate fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
     cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
         let ty = cx.tcx.type_of(def_id);
         match (val, ty.kind()) {
@@ -518,7 +518,7 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
     }
 }
 
-pub fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
+crate fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
     if let hir::Node::Expr(expr) = cx.tcx.hir().get(hir_id) {
         if let hir::ExprKind::Lit(_) = &expr.kind {
             return true;
@@ -534,7 +534,7 @@ pub fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
     false
 }
 
-pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
+crate fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
     let value = &cx.tcx.hir().body(body).value;
 
     let snippet = if !value.span.from_expansion() {
@@ -547,7 +547,7 @@ pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
-pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
+crate fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
     debug!("resolve_type({:?},{:?})", path, id);
 
     let is_generic = match path.res {
@@ -565,7 +565,7 @@ pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
     ResolvedPath { path, param_names: None, did, is_generic }
 }
 
-pub fn get_auto_trait_and_blanket_impls(
+crate fn get_auto_trait_and_blanket_impls(
     cx: &DocContext<'tcx>,
     ty: Ty<'tcx>,
     param_env_def_id: DefId,
@@ -576,7 +576,7 @@ pub fn get_auto_trait_and_blanket_impls(
         .chain(BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id))
 }
 
-pub fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
+crate fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
     debug!("register_res({:?})", res);
 
     let (did, kind) = match res {
@@ -616,14 +616,14 @@ pub fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
     did
 }
 
-pub fn resolve_use_source(cx: &DocContext<'_>, path: Path) -> ImportSource {
+crate fn resolve_use_source(cx: &DocContext<'_>, path: Path) -> ImportSource {
     ImportSource {
         did: if path.res.opt_def_id().is_none() { None } else { Some(register_res(cx, path.res)) },
         path,
     }
 }
 
-pub fn enter_impl_trait<F, R>(cx: &DocContext<'_>, f: F) -> R
+crate fn enter_impl_trait<F, R>(cx: &DocContext<'_>, f: F) -> R
 where
     F: FnOnce() -> R,
 {

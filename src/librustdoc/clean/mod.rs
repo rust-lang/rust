@@ -3,11 +3,11 @@
 
 mod auto_trait;
 mod blanket_impl;
-pub mod cfg;
-pub mod inline;
+crate mod cfg;
+crate mod inline;
 mod simplify;
-pub mod types;
-pub mod utils;
+crate mod types;
+crate mod utils;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -39,18 +39,18 @@ use crate::doctree;
 
 use utils::*;
 
-pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
+crate use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
-pub use self::types::FnRetTy::*;
-pub use self::types::ItemKind::*;
-pub use self::types::SelfTy::*;
-pub use self::types::Type::*;
-pub use self::types::Visibility::{Inherited, Public};
-pub use self::types::*;
+crate use self::types::FnRetTy::*;
+crate use self::types::ItemKind::*;
+crate use self::types::SelfTy::*;
+crate use self::types::Type::*;
+crate use self::types::Visibility::{Inherited, Public};
+crate use self::types::*;
 
 const FN_OUTPUT_NAME: &str = "Output";
 
-pub trait Clean<T> {
+crate trait Clean<T> {
     fn clean(&self, cx: &DocContext<'_>) -> T;
 }
 

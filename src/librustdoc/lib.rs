@@ -77,7 +77,7 @@ mod error;
 mod doctest;
 mod fold;
 crate mod formats;
-pub mod html;
+crate mod html;
 mod json;
 mod markdown;
 mod passes;
@@ -85,7 +85,7 @@ mod theme;
 mod visit_ast;
 mod visit_lib;
 
-pub fn main() {
+crate fn main() {
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
     rustc_driver::init_env_logger("RUSTDOC_LOG");

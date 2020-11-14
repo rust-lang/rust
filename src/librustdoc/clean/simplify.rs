@@ -21,7 +21,7 @@ use crate::clean::GenericArgs as PP;
 use crate::clean::WherePredicate as WP;
 use crate::core::DocContext;
 
-pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
+crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
     let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
     let mut lifetimes = Vec::new();
@@ -74,7 +74,7 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses
 }
 
-pub fn merge_bounds(
+crate fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
     trait_did: DefId,

@@ -15,7 +15,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::with_default_session_globals;
 
 /// Highlights `src`, returning the HTML output.
-pub fn render_with_highlighting(
+crate fn render_with_highlighting(
     src: String,
     class: Option<&str>,
     playground_button: Option<&str>,

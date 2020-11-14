@@ -13,7 +13,7 @@ use crate::html::render::{plain_text_summary, shorten};
 use crate::html::render::{Generic, IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
-pub enum ExternalLocation {
+crate enum ExternalLocation {
     /// Remote URL root of the external crate
     Remote(String),
     /// This external crate can be found in the local doc/ folder
@@ -24,7 +24,7 @@ pub enum ExternalLocation {
 
 /// Attempts to find where an external crate is located, given that we're
 /// rendering in to the specified source destination.
-pub fn extern_location(
+crate fn extern_location(
     e: &clean::ExternalCrate,
     extern_url: Option<&str>,
     dst: &Path,
@@ -62,7 +62,7 @@ pub fn extern_location(
 }
 
 /// Builds the search index from the collected metadata
-pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
+crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut defid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = vec![];
