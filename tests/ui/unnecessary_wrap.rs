@@ -102,7 +102,7 @@ trait B {
     }
 }
 
-impl A for B {
+impl B for A {
     // trait impls are not linted
     fn func13() -> Option<i32> {
         Some(0)
