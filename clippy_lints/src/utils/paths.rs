@@ -81,7 +81,6 @@ pub const OS_STR_TO_OS_STRING: [&str; 5] = ["std", "ffi", "os_str", "OsStr", "to
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 2] = ["parking_lot", "MutexGuard"];
 pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 2] = ["parking_lot", "RwLockReadGuard"];
 pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 2] = ["parking_lot", "RwLockWriteGuard"];
-pub const PARTIAL_ORD: [&str; 3] = ["std", "cmp", "PartialOrd"];
 pub const PATH: [&str; 3] = ["std", "path", "Path"];
 pub const PATH_BUF: [&str; 3] = ["std", "path", "PathBuf"];
 pub const PATH_BUF_AS_PATH: [&str; 4] = ["std", "path", "PathBuf", "as_path"];

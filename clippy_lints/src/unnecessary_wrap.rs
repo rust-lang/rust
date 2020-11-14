@@ -1,11 +1,11 @@
 use crate::utils::{
-    in_macro, is_type_diagnostic_item, match_path, match_qpath, paths, return_ty, snippet, span_lint_and_then,
-    trait_ref_of_method, visitors::find_all_ret_expressions,
+    in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
+    visitors::find_all_ret_expressions,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, ExprKind, FnDecl, HirId};
+use rustc_hir::{Body, ExprKind, FnDecl, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -63,14 +63,6 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
         span: Span,
         hir_id: HirId,
     ) {
-        if_chain! {
-            if let Some(trait_ref) = trait_ref_of_method(cx, hir_id);
-            if match_path(trait_ref.path, &paths::PARTIAL_ORD);
-            then {
-                return;
-            }
-        }
-
         match fn_kind {
             FnKind::ItemFn(.., visibility, _) | FnKind::Method(.., Some(visibility), _) => {
                 if visibility.node.is_pub() {
@@ -79,6 +71,12 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
             },
             FnKind::Closure(..) => return,
             _ => (),
+        }
+
+        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+            if matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), ..} | ItemKind::Trait(..)) {
+                return;
+            }
         }
 
         let (return_type, path) = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {

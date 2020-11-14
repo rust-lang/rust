@@ -95,6 +95,20 @@ impl A {
     }
 }
 
+trait B {
+    // trait impls are not linted
+    fn func13() -> Option<i32> {
+        Some(1)
+    }
+}
+
+impl A for B {
+    // trait impls are not linted
+    fn func13() -> Option<i32> {
+        Some(0)
+    }
+}
+
 fn main() {
     // method calls are not linted
     func1(true, true);
