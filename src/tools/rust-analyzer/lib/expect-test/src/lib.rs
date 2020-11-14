@@ -40,7 +40,7 @@
 //!
 //! `expect!` returns an instance of `Expect` struct, which holds position
 //! information and a string literal. Use `Expect::assert_eq` for string
-//! comparison. Use `Expect::assert_eq` for verbose debug comparison. Note that
+//! comparison. Use `Expect::assert_debug_eq` for verbose debug comparison. Note that
 //! leading indentation is automatically removed.
 //!
 //! ```
@@ -60,13 +60,13 @@
 //! expected.assert_debug_eq(&actual);
 //! ```
 //!
-//! Be careful with `assert_debug_eq` -- in general, stability of the debug
+//! Be careful with `assert_debug_eq` - in general, stability of the debug
 //! representation is not guaranteed. However, even if it changes, you can
 //! quickly update all the tests by running the test suite with `UPDATE_EXPECT`
 //! environmental variable set.
 //!
-//! If the expected data is to verbose for inline test, you can store it in the
-//! external file using `expect_file!` macro:
+//! If the expected data is too verbose to include inline, you can store it in an
+//! external file using the `expect_file!` macro:
 //!
 //! ```no_run
 //! use expect_test::expect_file;
@@ -80,7 +80,7 @@
 //!
 //! # Suggested Workflows
 //!
-//! I like to use data-driven test with `expect_test`. I usually define a single
+//! I like to use data-driven tests with `expect_test`. I usually define a single
 //! driver function `check` and then call it from individual tests:
 //!
 //! ```
@@ -123,9 +123,9 @@
 //!
 //! # Alternatives
 //!
-//! * [insta](https://crates.io/crates/insta) -- a more feature full snapshot
+//! * [insta](https://crates.io/crates/insta) - a more feature full snapshot
 //!   testing library.
-//! * [k9](https://crates.io/crates/k9) -- testing library which includes
+//! * [k9](https://crates.io/crates/k9) - a testing library which includes
 //!   support for snapshot testing among other things.
 //!
 //! # Maintenance status
