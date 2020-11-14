@@ -19,10 +19,10 @@
             toggles: document.getElementsByClassName("slider"),
             selects: document.getElementsByClassName("select-wrapper")
         };
-        var i;
+        var i, len;
 
         if (elems.toggles && elems.toggles.length > 0) {
-            for (i = 0; i < elems.toggles.length; ++i) {
+            for (i = 0, len = elems.toggles.length; i < len; ++i) {
                 var toggle = elems.toggles[i].previousElementSibling;
                 var settingId = toggle.id;
                 var settingValue = getSettingValue(settingId);
@@ -36,7 +36,7 @@
         }
 
         if (elems.selects && elems.selects.length > 0) {
-            for (i = 0; i < elems.selects.length; ++i) {
+            for (i = 0, len = elems.selects.length; i < len; ++i) {
                 var select = elems.selects[i].getElementsByTagName("select")[0];
                 var settingId = select.id;
                 var settingValue = getSettingValue(settingId);

@@ -649,8 +649,7 @@ function defocusSearchBar() {
          */
         function execQuery(query, searchWords, filterCrates) {
             function itemTypeFromName(typename) {
-                var length = itemTypes.length;
-                for (var i = 0; i < length; ++i) {
+                for (var i = 0, len = itemTypes.length; i < len; ++i) {
                     if (itemTypes[i] === typename) {
                         return i;
                     }
@@ -664,18 +663,15 @@ function defocusSearchBar() {
                 results = {}, results_in_args = {}, results_returned = {},
                 split = valLower.split("::");
 
-            var length = split.length;
-            for (var z = 0; z < length; ++z) {
+            for (var z = split.length - 1; z >= 0; --z) {
                 if (split[z] === "") {
                     split.splice(z, 1);
-                    z -= 1;
                 }
             }
 
             function transformResults(results, isType) {
                 var out = [];
-                var length = results.length;
-                for (var i = 0; i < length; ++i) {
+                for (var i = 0, len = results.length; i < len; ++i) {
                     if (results[i].id > -1) {
                         var obj = searchIndex[results[i].id];
                         obj.lev = results[i].lev;
@@ -704,11 +700,11 @@ function defocusSearchBar() {
                     }
                 }
                 results = ar;
-                var i;
-                var nresults = results.length;
-                for (i = 0; i < nresults; ++i) {
-                    results[i].word = searchWords[results[i].id];
-                    results[i].item = searchIndex[results[i].id] || {};
+                var i, len, result;
+                for (i = 0, len = results.length; i < len; ++i) {
+                    result = results[i];
+                    result.word = searchWords[result.id];
+                    result.item = searchIndex[result.id] || {};
                 }
                 // if there are no results then return to default and fail
                 if (results.length === 0) {
@@ -782,17 +778,17 @@ function defocusSearchBar() {
                     return 0;
                 });
 
-                var length = results.length;
-                for (i = 0; i < length; ++i) {
-                    var result = results[i];
+                var name, path, parent;
+                for (i = 0, len = results.length; i < len; ++i) {
+                    result = results[i];
 
                     // this validation does not make sense when searching by types
                     if (result.dontValidate) {
                         continue;
                     }
-                    var name = result.item.name.toLowerCase(),
-                        path = result.item.path.toLowerCase(),
-                        parent = result.item.parent;
+                    name = result.item.name.toLowerCase();
+                    path = result.item.path.toLowerCase();
+                    parent = result.item.parent;
 
                     if (isType !== true &&
                         validateResult(name, path, split, parent) === false)
@@ -837,14 +833,13 @@ function defocusSearchBar() {
                         var done = 0;
                         // We need to find the type that matches the most to remove it in order
                         // to move forward.
-                        var vlength = val.generics.length;
-                        for (var y = 0; y < vlength; ++y) {
-                            var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
-                            var elength = elems.length;
-                            var firstGeneric = getObjectFromId(val.generics[y]).name;
-                            for (var x = 0; x < elength; ++x) {
-                                var tmp_lev = levenshtein(getObjectFromId(elems[x]).name,
-                                                          firstGeneric);
+                        var x, lev, elength, firstGeneric, tmp_lev;
+                        for (var y = 0, vlength = val.generics.length; y < vlength; ++y) {
+                            lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
+                            firstGeneric = getObjectFromId(val.generics[y]).name;
+                            for (x = 0, elength = elems.length; x < elength; ++x) {
+                                tmp_lev = levenshtein(getObjectFromId(elems[x]).name,
+                                                      firstGeneric);
                                 if (tmp_lev < lev.lev) {
                                     lev.lev = tmp_lev;
                                     lev.pos = x;
@@ -868,7 +863,7 @@ function defocusSearchBar() {
             // Check for type name and type generics (if any).
             function checkType(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
-                var x;
+                var len;
                 if (obj[NAME] === val.name) {
                     if (literalSearch === true) {
                         if (val.generics && val.generics.length !== 0) {
@@ -876,11 +871,14 @@ function defocusSearchBar() {
                                   obj[GENERICS_DATA].length >= val.generics.length) {
                                 var elems = obj[GENERICS_DATA].slice(0);
                                 var allFound = true;
+                                var x, elen, firstGeneric;
 
-                                for (var y = 0; allFound === true && y < val.generics.length; ++y) {
+                                len = val.generics.length;
+                                for (var y = 0; allFound === true && y < len; ++y) {
                                     allFound = false;
-                                    var firstGeneric = getObjectFromId(val.generics[y]).name;
-                                    for (x = 0; allFound === false && x < elems.length; ++x) {
+                                    firstGeneric = getObjectFromId(val.generics[y]).name;
+                                    elen = elems.length;
+                                    for (x = 0; allFound === false && x < elen; ++x) {
                                         allFound = getObjectFromId(elems[x]).name === firstGeneric;
                                     }
                                     if (allFound === true) {
@@ -910,8 +908,7 @@ function defocusSearchBar() {
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
                      if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
-                        var length = obj[GENERICS_DATA].length;
-                        for (x = 0; x < length; ++x) {
+                        for (x = 0, len = obj[GENERICS_DATA].length; x < len; ++x) {
                             if (obj[GENERICS_DATA][x] === val.name) {
                                 return true;
                             }
@@ -927,8 +924,7 @@ function defocusSearchBar() {
                     lev_distance = Math.ceil((checkGenerics(obj, val) + lev_distance) / 2);
                 } else if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     // We can check if the type we're looking for is inside the generics!
-                    var olength = obj[GENERICS_DATA].length;
-                    for (x = 0; x < olength; ++x) {
+                    for (x = 0, len = obj[GENERICS_DATA].length; x < len; ++x) {
                         lev_distance = Math.min(levenshtein(obj[GENERICS_DATA][x], val.name),
                                                 lev_distance);
                     }
@@ -942,8 +938,7 @@ function defocusSearchBar() {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
                 if (obj && obj.type && obj.type[INPUTS_DATA] && obj.type[INPUTS_DATA].length > 0) {
-                    var length = obj.type[INPUTS_DATA].length;
-                    for (var i = 0; i < length; i++) {
+                    for (var i = 0, len = obj.type[INPUTS_DATA].length; i < len; i++) {
                         var tmp = obj.type[INPUTS_DATA][i];
                         if (typePassesFilter(typeFilter, tmp[1]) === false) {
                             continue;
@@ -972,8 +967,9 @@ function defocusSearchBar() {
                     if (typeof ret[0] === "string") {
                         ret = [ret];
                     }
-                    for (var x = 0; x < ret.length; ++x) {
-                        var tmp = ret[x];
+                    var tmp;
+                    for (var x = 0, len = ret.length; x < len; ++x) {
+                        tmp = ret[x];
                         if (typePassesFilter(typeFilter, tmp[1]) === false) {
                             continue;
                         }
@@ -1015,8 +1011,9 @@ function defocusSearchBar() {
                     }
                     var lev_total = 0;
                     var aborted = false;
+                    var lev;
                     for (var x = 0; x < clength; ++x) {
-                        var lev = levenshtein(path[i + x], contains[x]);
+                        lev = levenshtein(path[i + x], contains[x]);
                         if (lev > MAX_LEV_DISTANCE) {
                             aborted = true;
                             break;
@@ -1079,10 +1076,10 @@ function defocusSearchBar() {
                 // aliases to be before the others in the displayed results.
                 var aliases = [];
                 var crateAliases = [];
-                var i;
                 if (filterCrates !== undefined) {
                     if (ALIASES[filterCrates] && ALIASES[filterCrates][query.search]) {
-                        for (i = 0; i < ALIASES[filterCrates][query.search].length; ++i) {
+                        var len = ALIASES[filterCrates][query.search].length;
+                        for (var i = 0; i < len; ++i) {
                             aliases.push(
                                 createAliasFromItem(
                                     searchIndex[ALIASES[filterCrates][query.search][i]]));
@@ -1092,7 +1089,8 @@ function defocusSearchBar() {
                     Object.keys(ALIASES).forEach(function(crate) {
                         if (ALIASES[crate][query.search]) {
                             var pushTo = crate === window.currentCrate ? crateAliases : aliases;
-                            for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
+                            var len = ALIASES[crate][query.search].length;
+                            for (var i = 0; i < len; ++i) {
                                 pushTo.push(
                                     createAliasFromItem(
                                         searchIndex[ALIASES[crate][query.search][i]]));
@@ -1135,6 +1133,7 @@ function defocusSearchBar() {
             var fullId;
             var returned;
             var in_args;
+            var len;
             if ((val.charAt(0) === "\"" || val.charAt(0) === "'") &&
                 val.charAt(val.length - 1) === val.charAt(0))
             {
@@ -1182,16 +1181,17 @@ function defocusSearchBar() {
                 var input = parts[0];
                 // sort inputs so that order does not matter
                 var inputs = input.split(",").map(trimmer).sort();
-                for (i = 0; i < inputs.length; ++i) {
+                for (i = 0, len = inputs.length; i < len; ++i) {
                     inputs[i] = extractGenerics(inputs[i]);
                 }
                 var output = extractGenerics(parts[1]);
 
+                var it, type, allFound;
                 for (i = 0; i < nSearchWords; ++i) {
                     if (filterCrates !== undefined && searchIndex[i].crate !== filterCrates) {
                         continue;
                     }
-                    var type = searchIndex[i].type;
+                    type = searchIndex[i].type;
                     ty = searchIndex[i];
                     if (!type) {
                         continue;
@@ -1206,8 +1206,9 @@ function defocusSearchBar() {
                         if (input === "*") {
                             is_module = true;
                         } else {
-                            var allFound = true;
-                            for (var it = 0; allFound === true && it < inputs.length; it++) {
+                            allFound = true;
+                            len = inputs.length;
+                            for (it = 0; allFound === true && it < len; it++) {
                                 allFound = checkType(type, inputs[it], true);
                             }
                             in_args = allFound;
@@ -1250,7 +1251,7 @@ function defocusSearchBar() {
 
                 var paths = valLower.split("::");
                 var j;
-                for (j = 0; j < paths.length; ++j) {
+                for (j = 0, len = paths.length; j < len; ++j) {
                     if (paths[j] === "") {
                         paths.splice(j, 1);
                         j -= 1;
@@ -1259,7 +1260,7 @@ function defocusSearchBar() {
                 val = paths[paths.length - 1];
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
-                var lev;
+                var lev, index;
                 for (j = 0; j < nSearchWords; ++j) {
                     ty = searchIndex[j];
                     if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
@@ -1277,7 +1278,7 @@ function defocusSearchBar() {
 
                     returned = MAX_LEV_DISTANCE + 1;
                     in_args = MAX_LEV_DISTANCE + 1;
-                    var index = -1;
+                    index = -1;
                     // we want lev results to go lower than others
                     lev = MAX_LEV_DISTANCE + 1;
                     fullId = generateId(ty);
@@ -1372,7 +1373,7 @@ function defocusSearchBar() {
          * @return {[boolean]}       [Whether the result is valid or not]
          */
         function validateResult(name, path, keys, parent) {
-            for (var i = 0; i < keys.length; ++i) {
+            for (var i = 0, len = keys.length; i < len; ++i) {
                 // each check is for validation so we negate the conditions and invalidate
                 if (!(
                     // check for an exact name match
@@ -1695,7 +1696,7 @@ function defocusSearchBar() {
             function getSmallest(arrays, positions, notDuplicates) {
                 var start = null;
 
-                for (var it = 0; it < positions.length; ++it) {
+                for (var it = 0, len = positions.length; it < len; ++it) {
                     if (arrays[it].length > positions[it] &&
                         (start === null || start > arrays[it][positions[it]].lev) &&
                         !notDuplicates[arrays[it][positions[it]].fullPath]) {
@@ -1709,17 +1710,18 @@ function defocusSearchBar() {
                 var ret = [];
                 var positions = [];
                 var notDuplicates = {};
+                var smallest;
 
-                for (var x = 0; x < arrays.length; ++x) {
+                for (var x = 0, arrays_len = arrays.length; x < arrays_len; ++x) {
                     positions.push(0);
                 }
                 while (ret.length < MAX_RESULTS) {
-                    var smallest = getSmallest(arrays, positions, notDuplicates);
+                    smallest = getSmallest(arrays, positions, notDuplicates);
 
                     if (smallest === null) {
                         break;
                     }
-                    for (x = 0; x < arrays.length && ret.length < MAX_RESULTS; ++x) {
+                    for (x = 0; x < arrays_len && ret.length < MAX_RESULTS; ++x) {
                         if (arrays[x].length > positions[x] &&
                                 arrays[x][positions[x]].lev === smallest &&
                                 !notDuplicates[arrays[x][positions[x]].fullPath]) {
@@ -1739,7 +1741,7 @@ function defocusSearchBar() {
                 "others": [],
             };
 
-            for (var i = 0; i < queries.length; ++i) {
+            for (var i = 0, len = queries.length; i < len; ++i) {
                 query = queries[i].trim();
                 if (query.length !== 0) {
                     var tmp = execQuery(getQuery(query), searchWords, filterCrates);
@@ -1893,7 +1895,7 @@ function defocusSearchBar() {
                             ALIASES[crate][alias_name] = [];
                         }
                         local_aliases = aliases[alias_name];
-                        for (j = 0; j < local_aliases.length; ++j) {
+                        for (j = 0, len = local_aliases.length; j < len; ++j) {
                             ALIASES[crate][alias_name].push(local_aliases[j] + currentIndex);
                         }
                     }
@@ -2003,7 +2005,7 @@ function defocusSearchBar() {
                     crates.push(crate);
                 }
                 crates.sort();
-                for (var i = 0; i < crates.length; ++i) {
+                for (var i = 0, len = crates.length; i < len; ++i) {
                     var klass = "crate";
                     if (rootPath !== "./" && crates[i] === window.currentCrate) {
                         klass += " current";
@@ -2042,8 +2044,7 @@ function defocusSearchBar() {
             div.appendChild(h3);
             var ul = document.createElement("ul");
 
-            var length = filtered.length;
-            for (var i = 0; i < length; ++i) {
+            for (var i = 0, len = filtered.length; i < len; ++i) {
                 var item = filtered[i];
                 var name = item[0];
                 var desc = item[1]; // can be null
@@ -2112,21 +2113,21 @@ function defocusSearchBar() {
         }
 
         var libs = Object.getOwnPropertyNames(imp);
-        var llength = libs.length;
-        for (var i = 0; i < llength; ++i) {
+        // Declaration of all variables used in the loop instead of recreating them (wrongly) at
+        // every iteration.
+        var structs, slength, j, struct, list, k, stlength, display;
+        for (var i = 0, llength = libs.length; i < llength; ++i) {
             if (libs[i] === currentCrate) { continue; }
-            var structs = imp[libs[i]];
+            structs = imp[libs[i]];
 
-            var slength = structs.length;
             struct_loop:
-            for (var j = 0; j < slength; ++j) {
-                var struct = structs[j];
+            for (j = 0, slength = structs.length; j < slength; ++j) {
+                struct = structs[j];
 
-                var list = struct.synthetic ? synthetic_implementors : implementors;
+                list = struct.synthetic ? synthetic_implementors : implementors;
 
                 if (struct.synthetic) {
-                    var stlength = struct.types.length;
-                    for (var k = 0; k < stlength; k++) {
+                    for (k = 0, stlength = struct.types.length; k < stlength; ++k) {
                         if (inlined_types.has(struct.types[k])) {
                             continue struct_loop;
                         }
@@ -2137,15 +2138,13 @@ function defocusSearchBar() {
                 var code = document.createElement("code");
                 code.innerHTML = struct.text;
 
-                var x = code.getElementsByTagName("a");
-                var xlength = x.length;
-                for (var it = 0; it < xlength; it++) {
-                    var href = x[it].getAttribute("href");
+                onEachLazy(code.getElementsByTagName("a"), function(elem) {
+                    var href = elem.getAttribute("href");
                     if (href && href.indexOf("http") !== 0) {
-                        x[it].setAttribute("href", rootPath + href);
+                        elem.setAttribute("href", rootPath + href);
                     }
-                }
-                var display = document.createElement("h3");
+                });
+                display = document.createElement("h3");
                 addClass(display, "impl");
                 display.innerHTML = "<span class=\"in-band\"><table class=\"table-display\">" +
                     "<tbody><tr><td><code>" + code.outerHTML + "</code></td><td></td></tr>" +
@@ -2170,13 +2169,14 @@ function defocusSearchBar() {
 
     function onEveryMatchingChild(elem, className, func) {
         if (elem && className && func) {
-            var length = elem.childNodes.length;
+            var node;
             var nodes = elem.childNodes;
-            for (var i = 0; i < length; ++i) {
-                if (hasClass(nodes[i], className)) {
-                    func(nodes[i]);
+            for (var i = 0, len = nodes.length; i < len; ++i) {
+                node = nodes[i];
+                if (hasClass(node, className)) {
+                    func(node);
                 } else {
-                    onEveryMatchingChild(nodes[i], className, func);
+                    onEveryMatchingChild(node, className, func);
                 }
             }
         }
@@ -2516,17 +2516,13 @@ function defocusSearchBar() {
         }
         onEachLazy(document.getElementsByClassName("impl-items"), function(e) {
             onEachLazy(e.getElementsByClassName("associatedconstant"), func);
-            var hiddenElems = e.getElementsByClassName("hidden");
-            var needToggle = false;
 
-            var hlength = hiddenElems.length;
-            for (var i = 0; i < hlength; ++i) {
-                if (hasClass(hiddenElems[i], "content") === false &&
-                    hasClass(hiddenElems[i], "docblock") === false) {
-                    needToggle = true;
-                    break;
+            var needToggle = onEachLazy(e.getElementsByClassName("hidden"), function(hiddenElem) {
+                if (hasClass(hiddenElem, "content") === false &&
+                    hasClass(hiddenElem, "docblock") === false) {
+                    return true;
                 }
-            }
+            });
             if (needToggle === true) {
                 var inner_toggle = newToggle.cloneNode(true);
                 inner_toggle.onclick = toggleClicked;
@@ -2674,9 +2670,8 @@ function defocusSearchBar() {
         var lineNumbersFunc = function() {};
         if (getSettingValue("line-numbers") === "true") {
             lineNumbersFunc = function(x) {
-                var count = x.textContent.split("\n").length;
                 var elems = [];
-                for (var i = 0; i < count; ++i) {
+                for (var i = 0, count = x.textContent.split("\n").length; i < count; ++i) {
                     elems.push(i + 1);
                 }
                 var node = document.createElement("pre");
@@ -2830,10 +2825,12 @@ function defocusSearchBar() {
             return 0;
         });
         var savedCrate = getSettingValue("saved-filter-crate");
-        for (var i = 0; i < crates_text.length; ++i) {
-            var option = document.createElement("option");
-            option.value = crates_text[i];
-            option.innerText = crates_text[i];
+        var option, crate_text;
+        for (var i = 0, len = crates_text.length; i < len; ++i) {
+            option = document.createElement("option");
+            crate_text = crates_text[i];
+            option.value = crate_text;
+            option.innerText = crate_text;
             elem.appendChild(option);
             // Set the crate filter from saved storage, if the current page has the saved crate
             // filter.
@@ -2841,7 +2838,7 @@ function defocusSearchBar() {
             // If not, ignore the crate filter -- we want to support filtering for crates on sites
             // like doc.rust-lang.org where the crates may differ from page to page while on the
             // same domain.
-            if (crates_text[i] === savedCrate) {
+            if (crate_text === savedCrate) {
                 elem.value = savedCrate;
             }
         }
