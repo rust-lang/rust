@@ -3581,27 +3581,18 @@ name = "rustc_crate"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "chalk-ir",
- "measureme",
- "polonius-engine",
- "rustc-rayon-core",
- "rustc_apfloat",
- "rustc_arena",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
  "rustc_hir",
- "rustc_index",
  "rustc_macros",
- "rustc_query_system",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.2",
- "tracing",
 ]
 
 [[package]]
