@@ -7,6 +7,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_span::{hygiene::ExpnKind, ExpnData, Span};
 use rustc_target::spec::abi::Abi;
@@ -28,6 +29,7 @@ pub struct Inline;
 #[derive(Copy, Clone, Debug)]
 struct CallSite<'tcx> {
     callee: Instance<'tcx>,
+    fn_sig: ty::PolyFnSig<'tcx>,
     block: BasicBlock,
     target: Option<BasicBlock>,
     source_info: SourceInfo,
@@ -173,22 +175,23 @@ impl Inliner<'tcx> {
 
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { func: ref op, ref destination, .. } = terminator.kind {
-            if let ty::FnDef(callee_def_id, substs) = *op.ty(caller_body, self.tcx).kind() {
-                // To resolve an instance its substs have to be fully normalized, so
-                // we do this here.
-                let normalized_substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
+        if let TerminatorKind::Call { ref func, ref destination, .. } = terminator.kind {
+            let func_ty = func.ty(caller_body, self.tcx);
+            if let ty::FnDef(def_id, substs) = *func_ty.kind() {
+                // To resolve an instance its substs have to be fully normalized.
+                let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
                 let callee =
-                    Instance::resolve(self.tcx, self.param_env, callee_def_id, normalized_substs)
-                        .ok()
-                        .flatten()?;
+                    Instance::resolve(self.tcx, self.param_env, def_id, substs).ok().flatten()?;
 
                 if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
                     return None;
                 }
 
+                let fn_sig = self.tcx.fn_sig(def_id).subst(self.tcx, substs);
+
                 return Some(CallSite {
                     callee,
+                    fn_sig,
                     block: bb,
                     target: destination.map(|(_, target)| target),
                     source_info: terminator.source_info,
@@ -203,9 +206,8 @@ impl Inliner<'tcx> {
         debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
-        // Cannot inline generators which haven't been transformed yet
-        if callee_body.yield_ty.is_some() {
-            debug!("    yield ty present - not inlining");
+        if callsite.fn_sig.c_variadic() {
+            debug!("callee is variadic - not inlining");
             return false;
         }
 
@@ -218,11 +220,7 @@ impl Inliner<'tcx> {
             return false;
         }
 
-        let self_no_sanitize =
-            self.codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
-        let callee_no_sanitize =
-            codegen_fn_attrs.no_sanitize & self.tcx.sess.opts.debugging_opts.sanitizer;
-        if self_no_sanitize != callee_no_sanitize {
+        if self.codegen_fn_attrs.no_sanitize != codegen_fn_attrs.no_sanitize {
             debug!("`callee has incompatible no_sanitize attribute - not inlining");
             return false;
         }
@@ -256,9 +254,9 @@ impl Inliner<'tcx> {
             self.tcx.sess.opts.debugging_opts.inline_mir_threshold
         };
 
-        // Significantly lower the threshold for inlining cold functions
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
-            threshold /= 5;
+            debug!("#[cold] present - not inlining");
+            return false;
         }
 
         // Give a bonus functions with a small number of blocks,
@@ -447,7 +445,7 @@ impl Inliner<'tcx> {
                 };
 
                 // Copy the arguments if needed.
-                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body);
+                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, &callee_body);
 
                 let mut integrator = Integrator {
                     args: &args,
@@ -528,6 +526,7 @@ impl Inliner<'tcx> {
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
+        callee_body: &Body<'tcx>,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -554,9 +553,7 @@ impl Inliner<'tcx> {
         //     tmp2 = tuple_tmp.2
         //
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
-        // FIXME(eddyb) make this check for `"rust-call"` ABI combined with
-        // `callee_body.spread_arg == None`, instead of special-casing closures.
-        if tcx.is_closure(callsite.callee.def_id()) {
+        if callsite.fn_sig.abi() == Abi::RustCall && callee_body.spread_arg.is_none() {
             let mut args = args.into_iter();
             let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
