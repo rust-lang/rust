@@ -232,6 +232,11 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
         rustc_cargo_env(builder, &mut cargo, target);
 
+        builder.info(&format!(
+            "Checking {} artifacts ({} -> {})",
+            backend, &compiler.host.triple, target.triple
+        ));
+
         run_cargo(
             builder,
             cargo,
