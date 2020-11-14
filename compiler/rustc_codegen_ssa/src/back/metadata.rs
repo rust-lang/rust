@@ -8,7 +8,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_middle::middle::cstore::MetadataLoader;
+use rustc_session::cstore::MetadataLoader;
 use rustc_target::spec::Target;
 
 use crate::METADATA_FILENAME;

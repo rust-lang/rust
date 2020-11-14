@@ -1,5 +1,5 @@
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_middle::middle::cstore::DllImport;
+use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 

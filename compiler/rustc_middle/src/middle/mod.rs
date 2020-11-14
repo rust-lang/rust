@@ -1,5 +1,4 @@
 pub mod codegen_fn_attrs;
-pub mod cstore;
 pub mod dependency_format;
 pub mod exported_symbols;
 pub mod lang_items;

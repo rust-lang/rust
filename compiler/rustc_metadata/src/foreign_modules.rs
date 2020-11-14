@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_middle::middle::cstore::ForeignModule;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::cstore::ForeignModule;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {
     let mut collector = Collector { modules: Vec::new() };
