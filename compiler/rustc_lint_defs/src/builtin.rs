@@ -1,11 +1,10 @@
 // ignore-tidy-filelength
+
 //! Some lints that are built in to the compiler.
 //!
 //! These are the built-in lints that are emitted direct in the main
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
-
-// ignore-tidy-filelength
 
 use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
@@ -2922,6 +2921,52 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `legacy_derive_helpers` lint detects derive helper attributes
+    /// that are used before they are introduced.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs extern crate)
+    /// #[serde(rename_all = "camelCase")]
+    /// #[derive(Deserialize)]
+    /// struct S { /* fields */ }
+    /// ```
+    ///
+    /// produces:
+    ///
+    /// ```text
+    /// warning: derive helper attribute is used before it is introduced
+    ///   --> $DIR/legacy-derive-helpers.rs:1:3
+    ///    |
+    ///  1 | #[serde(rename_all = "camelCase")]
+    ///    |   ^^^^^
+    /// ...
+    ///  2 | #[derive(Deserialize)]
+    ///    |          ----------- the attribute is introduced here
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Attributes like this work for historical reasons, but attribute expansion works in
+    /// left-to-right order in general, so, to resolve `#[serde]`, compiler has to try to "look
+    /// into the future" at not yet expanded part of the item , but such attempts are not always
+    /// reliable.
+    ///
+    /// To fix the warning place the helper attribute after its corresponding derive.
+    /// ```rust,ignore (needs extern crate)
+    /// #[derive(Deserialize)]
+    /// #[serde(rename_all = "camelCase")]
+    /// struct S { /* fields */ }
+    /// ```
+    pub LEGACY_DERIVE_HELPERS,
+    Warn,
+    "detects derive helper attributes that are used before they are introduced",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #79202 <https://github.com/rust-lang/rust/issues/79202>",
+    };
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -3012,6 +3057,7 @@ declare_lint_pass! {
         MISSING_ABI,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         DISJOINT_CAPTURE_DROP_REORDER,
+        LEGACY_DERIVE_HELPERS,
     ]
 }
 

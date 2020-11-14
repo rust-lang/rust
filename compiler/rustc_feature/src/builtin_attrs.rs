@@ -188,7 +188,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(reexport_test_harness_main, Normal, template!(NameValueStr: "name")),
 
     // Macros:
-    ungated!(derive, Normal, template!(List: "Trait1, Trait2, ...")),
     ungated!(automatically_derived, Normal, template!(Word)),
     // FIXME(#14407)
     ungated!(macro_use, Normal, template!(Word, List: "name1, name2, ...")),

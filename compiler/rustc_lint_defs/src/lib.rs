@@ -256,6 +256,7 @@ pub enum BuiltinLintDiagnostics {
     MissingAbi(Span, Abi),
     UnusedDocComment(Span),
     PatternsInFnsWithoutBody(Span, Ident),
+    LegacyDeriveHelpers(Span),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

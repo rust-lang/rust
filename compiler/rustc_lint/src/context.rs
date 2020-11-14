@@ -636,6 +636,9 @@ pub trait LintContext: Sized {
                     db.span_label(span, "ABI should be specified here");
                     db.help(&format!("the default ABI is {}", default_abi.name()));
                 }
+                BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
+                    db.span_label(span, "the attribute is introduced here");
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));

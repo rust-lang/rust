@@ -1,24 +1,26 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::configure;
-use crate::hygiene::{ExpnData, ExpnKind, SyntaxContext};
+use crate::hygiene::SyntaxContext;
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwnership};
 use crate::placeholders::{placeholder, PlaceholderExpander};
-use crate::proc_macro::collect_derives;
 
+use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AttrItem, AttrStyle, Block, LitKind, NodeId, PatKind, Path};
-use rustc_ast::{ItemKind, MacArgs, MacCallStmt, MacStmtStyle, StmtKind, Unsafe};
+use rustc_ast::{AttrItem, AttrStyle, Block, ItemKind, LitKind, MacArgs};
+use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, NestedMetaItem};
+use rustc_ast::{NodeId, PatKind, Path, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{struct_span_err, Applicability, PResult};
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{Applicability, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{AttemptLocalParseRecovery, ForceCollect, Parser};
 use rustc_parse::validate_attr;
@@ -302,18 +304,9 @@ pub enum InvocationKind {
         item: Annotatable,
         // Required for resolving derive helper attributes.
         derives: Vec<Path>,
-        // We temporarily report errors for attribute macros placed after derives
-        after_derive: bool,
     },
     Derive {
         path: Path,
-        item: Annotatable,
-    },
-    /// "Invocation" that contains all derives from an item,
-    /// broken into multiple `Derive` invocations when expanded.
-    /// FIXME: Find a way to remove it.
-    DeriveContainer {
-        derives: Vec<Path>,
         item: Annotatable,
     },
 }
@@ -328,7 +321,6 @@ impl InvocationKind {
         match self {
             InvocationKind::Attr { item: Annotatable::StructField(field), .. }
             | InvocationKind::Derive { item: Annotatable::StructField(field), .. }
-            | InvocationKind::DeriveContainer { item: Annotatable::StructField(field), .. }
                 if field.ident.is_none() =>
             {
                 Some(field.vis.clone())
@@ -344,7 +336,6 @@ impl Invocation {
             InvocationKind::Bang { span, .. } => *span,
             InvocationKind::Attr { attr, .. } => attr.span,
             InvocationKind::Derive { path, .. } => path.span,
-            InvocationKind::DeriveContainer { item, .. } => item.span(),
         }
     }
 }
@@ -446,7 +437,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let mut undetermined_invocations = Vec::new();
         let (mut progress, mut force) = (false, !self.monotonic);
         loop {
-            let (invoc, res) = if let Some(invoc) = invocations.pop() {
+            let (invoc, ext) = if let Some(invoc) = invocations.pop() {
                 invoc
             } else {
                 self.resolve_imports();
@@ -464,8 +455,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 continue;
             };
 
-            let res = match res {
-                Some(res) => res,
+            let ext = match ext {
+                Some(ext) => ext,
                 None => {
                     let eager_expansion_root = if self.monotonic {
                         invoc.expansion_data.id
@@ -477,7 +468,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         eager_expansion_root,
                         force,
                     ) {
-                        Ok(res) => res,
+                        Ok(ext) => ext,
                         Err(Indeterminate) => {
                             // Cannot resolve, will retry this invocation later.
                             undetermined_invocations.push((invoc, None));
@@ -491,85 +482,77 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.current_expansion = invoc.expansion_data.clone();
             self.cx.force_mode = force;
 
-            // FIXME(jseyfried): Refactor out the following logic
             let fragment_kind = invoc.fragment_kind;
-            let (expanded_fragment, new_invocations) = match res {
-                InvocationRes::Single(ext) => match self.expand_invoc(invoc, &ext.kind) {
-                    ExpandResult::Ready(fragment) => self.collect_invocations(fragment, &[]),
-                    ExpandResult::Retry(invoc) => {
-                        if force {
-                            self.cx.span_bug(
-                                invoc.span(),
-                                "expansion entered force mode but is still stuck",
-                            );
-                        } else {
-                            // Cannot expand, will retry this invocation later.
-                            undetermined_invocations
-                                .push((invoc, Some(InvocationRes::Single(ext))));
-                            continue;
-                        }
-                    }
-                },
-                InvocationRes::DeriveContainer(_exts) => {
-                    // FIXME: Consider using the derive resolutions (`_exts`) immediately,
-                    // instead of enqueuing the derives to be resolved again later.
-                    let (derives, mut item) = match invoc.kind {
-                        InvocationKind::DeriveContainer { derives, item } => (derives, item),
-                        _ => unreachable!(),
-                    };
-                    let (item, derive_placeholders) = if !item.derive_allowed() {
-                        self.error_derive_forbidden_on_non_adt(&derives, &item);
-                        item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
-                        (item, Vec::new())
-                    } else {
-                        let mut visitor = StripUnconfigured {
-                            sess: self.cx.sess,
-                            features: self.cx.ecfg.features,
-                            modified: false,
-                        };
-                        let mut item = visitor.fully_configure(item);
-                        item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
-                        if visitor.modified && !derives.is_empty() {
-                            // Erase the tokens if cfg-stripping modified the item
-                            // This will cause us to synthesize fake tokens
-                            // when `nt_to_tokenstream` is called on this item.
-                            match &mut item {
-                                Annotatable::Item(item) => item.tokens = None,
-                                Annotatable::Stmt(stmt) => {
-                                    if let StmtKind::Item(item) = &mut stmt.kind {
-                                        item.tokens = None
-                                    } else {
-                                        panic!("Unexpected stmt {:?}", stmt);
-                                    }
-                                }
-                                _ => panic!("Unexpected annotatable {:?}", item),
+            let (expanded_fragment, new_invocations) = match self.expand_invoc(invoc, &ext.kind) {
+                ExpandResult::Ready(fragment) => {
+                    let derive_placeholders = self
+                        .cx
+                        .resolver
+                        .take_derive_resolutions(expn_id)
+                        .map(|derives| {
+                            enum AnnotatableRef<'a> {
+                                Item(&'a P<ast::Item>),
+                                Stmt(&'a ast::Stmt),
                             }
-                        }
+                            let item = match &fragment {
+                                AstFragment::Items(items) => match &items[..] {
+                                    [item] => AnnotatableRef::Item(item),
+                                    _ => unreachable!(),
+                                },
+                                AstFragment::Stmts(stmts) => match &stmts[..] {
+                                    [stmt] => AnnotatableRef::Stmt(stmt),
+                                    _ => unreachable!(),
+                                },
+                                _ => unreachable!(),
+                            };
 
-                        invocations.reserve(derives.len());
-                        let derive_placeholders = derives
-                            .into_iter()
-                            .map(|path| {
-                                let expn_id = ExpnId::fresh(None);
-                                invocations.push((
-                                    Invocation {
-                                        kind: InvocationKind::Derive { path, item: item.clone() },
-                                        fragment_kind,
-                                        expansion_data: ExpansionData {
-                                            id: expn_id,
-                                            ..self.cx.current_expansion.clone()
+                            invocations.reserve(derives.len());
+                            derives
+                                .into_iter()
+                                .map(|(_exts, path)| {
+                                    // FIXME: Consider using the derive resolutions (`_exts`)
+                                    // instead of enqueuing the derives to be resolved again later.
+                                    let expn_id = ExpnId::fresh(None);
+                                    invocations.push((
+                                        Invocation {
+                                            kind: InvocationKind::Derive {
+                                                path,
+                                                item: match item {
+                                                    AnnotatableRef::Item(item) => {
+                                                        Annotatable::Item(item.clone())
+                                                    }
+                                                    AnnotatableRef::Stmt(stmt) => {
+                                                        Annotatable::Stmt(P(stmt.clone()))
+                                                    }
+                                                },
+                                            },
+                                            fragment_kind,
+                                            expansion_data: ExpansionData {
+                                                id: expn_id,
+                                                ..self.cx.current_expansion.clone()
+                                            },
                                         },
-                                    },
-                                    None,
-                                ));
-                                NodeId::placeholder_from_expn_id(expn_id)
-                            })
-                            .collect::<Vec<_>>();
-                        (item, derive_placeholders)
-                    };
+                                        None,
+                                    ));
+                                    NodeId::placeholder_from_expn_id(expn_id)
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
 
-                    let fragment = fragment_kind.expect_from_annotatables(::std::iter::once(item));
                     self.collect_invocations(fragment, &derive_placeholders)
+                }
+                ExpandResult::Retry(invoc) => {
+                    if force {
+                        self.cx.span_bug(
+                            invoc.span(),
+                            "expansion entered force mode but is still stuck",
+                        );
+                    } else {
+                        // Cannot expand, will retry this invocation later.
+                        undetermined_invocations.push((invoc, Some(ext)));
+                        continue;
+                    }
                 }
             };
 
@@ -596,29 +579,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         fragment_with_placeholders
     }
 
-    fn error_derive_forbidden_on_non_adt(&self, derives: &[Path], item: &Annotatable) {
-        let attr = self.cx.sess.find_by_name(item.attrs(), sym::derive);
-        let span = attr.map_or(item.span(), |attr| attr.span);
-        let mut err = struct_span_err!(
-            self.cx.sess,
-            span,
-            E0774,
-            "`derive` may only be applied to structs, enums and unions",
-        );
-        if let Some(ast::Attribute { style: ast::AttrStyle::Inner, .. }) = attr {
-            let trait_list = derives.iter().map(|t| pprust::path_to_string(t)).collect::<Vec<_>>();
-            let suggestion = format!("#[derive({})]", trait_list.join(", "));
-            err.span_suggestion(
-                span,
-                "try an outer attribute",
-                suggestion,
-                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
-                Applicability::MaybeIncorrect,
-            );
-        }
-        err.emit();
-    }
-
     fn resolve_imports(&mut self) {
         if self.monotonic {
             self.cx.resolver.resolve_imports();
@@ -633,7 +593,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         &mut self,
         mut fragment: AstFragment,
         extra_placeholders: &[NodeId],
-    ) -> (AstFragment, Vec<(Invocation, Option<InvocationRes>)>) {
+    ) -> (AstFragment, Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
 
@@ -733,7 +693,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Attr { attr, mut item, derives, after_derive } => match ext {
+            InvocationKind::Attr { attr, mut item, derives } => match ext {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
@@ -764,12 +724,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 ExpandResult::Retry(item) => {
                                     // Reassemble the original invocation for retrying.
                                     return ExpandResult::Retry(Invocation {
-                                        kind: InvocationKind::Attr {
-                                            attr,
-                                            item,
-                                            derives,
-                                            after_derive,
-                                        },
+                                        kind: InvocationKind::Attr { attr, item, derives },
                                         ..invoc
                                     });
                                 }
@@ -813,7 +768,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::DeriveContainer { .. } => unreachable!(),
         })
     }
 
@@ -1011,29 +965,13 @@ pub fn ensure_complete_parse<'a>(
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     cfg: StripUnconfigured<'a>,
-    invocations: Vec<(Invocation, Option<InvocationRes>)>,
+    invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
     monotonic: bool,
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
-        // Expansion data for all the collected invocations is set upon their resolution,
-        // with exception of the derive container case which is not resolved and can get
-        // its expansion data immediately.
-        let expn_data = match &kind {
-            InvocationKind::DeriveContainer { item, .. } => {
-                let mut expn_data = ExpnData::default(
-                    ExpnKind::Macro(MacroKind::Attr, sym::derive),
-                    item.span(),
-                    self.cx.sess.parse_sess.edition,
-                    None,
-                );
-                expn_data.parent = self.cx.current_expansion.id;
-                Some(expn_data)
-            }
-            _ => None,
-        };
-        let expn_id = ExpnId::fresh(expn_data);
+        let expn_id = ExpnId::fresh(None);
         let vis = kind.placeholder_visibility();
         self.invocations.push((
             Invocation {
@@ -1061,64 +999,44 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_attr(
         &mut self,
-        (attr, derives, after_derive): (Option<ast::Attribute>, Vec<Path>, bool),
+        (attr, derives): (ast::Attribute, Vec<Path>),
         item: Annotatable,
         kind: AstFragmentKind,
     ) -> AstFragment {
-        self.collect(
-            kind,
-            match attr {
-                Some(attr) => InvocationKind::Attr { attr, item, derives, after_derive },
-                None => InvocationKind::DeriveContainer { derives, item },
-            },
-        )
+        self.collect(kind, InvocationKind::Attr { attr, item, derives })
     }
 
-    fn find_attr_invoc(
-        &self,
-        attrs: &mut Vec<ast::Attribute>,
-        after_derive: &mut bool,
-    ) -> Option<ast::Attribute> {
-        attrs
-            .iter()
-            .position(|a| {
-                if a.has_name(sym::derive) {
-                    *after_derive = true;
-                }
-                !self.cx.sess.is_attr_known(a) && !is_builtin_attr(a)
-            })
-            .map(|i| attrs.remove(i))
-    }
+    /// If `item` is an attribute invocation, remove the attribute and return it together with
+    /// derives following it. We have to collect the derives in order to resolve legacy derive
+    /// helpers (helpers written before derives that introduce them).
+    fn take_first_attr(&mut self, item: &mut impl HasAttrs) -> Option<(ast::Attribute, Vec<Path>)> {
+        let mut attr = None;
 
-    /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
-    fn take_first_attr(
-        &mut self,
-        item: &mut impl HasAttrs,
-    ) -> Option<(Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)> {
-        let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
+        item.visit_attrs(|attrs| {
+            attr = attrs
+                .iter()
+                .position(|a| !self.cx.sess.is_attr_known(a) && !is_builtin_attr(a))
+                .map(|attr_pos| {
+                    let attr = attrs.remove(attr_pos);
+                    let following_derives = attrs[attr_pos..]
+                        .iter()
+                        .filter(|a| a.has_name(sym::derive))
+                        .flat_map(|a| a.meta_item_list().unwrap_or_default())
+                        .filter_map(|nested_meta| match nested_meta {
+                            NestedMetaItem::MetaItem(ast::MetaItem {
+                                kind: MetaItemKind::Word,
+                                path,
+                                ..
+                            }) => Some(path),
+                            _ => None,
+                        })
+                        .collect();
 
-        item.visit_attrs(|mut attrs| {
-            attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
-            traits = collect_derives(&mut self.cx, &mut attrs);
+                    (attr, following_derives)
+                })
         });
 
-        if attr.is_some() || !traits.is_empty() { Some((attr, traits, after_derive)) } else { None }
-    }
-
-    /// Alternative to `take_first_attr()` that ignores `#[derive]` so invocations fallthrough
-    /// to the unused-attributes lint (making it an error on statements and expressions
-    /// is a breaking change)
-    fn take_first_attr_no_derive(
-        &mut self,
-        nonitem: &mut impl HasAttrs,
-    ) -> Option<(Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)> {
-        let (mut attr, mut after_derive) = (None, false);
-
-        nonitem.visit_attrs(|mut attrs| {
-            attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
-        });
-
-        attr.map(|attr| (Some(attr), Vec::new(), after_derive))
+        attr
     }
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
@@ -1132,17 +1050,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         for attr in attrs.iter() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
             validate_attr::check_meta(&self.cx.sess.parse_sess, attr);
-
-            // macros are expanded before any lint passes so this warning has to be hardcoded
-            if attr.has_name(sym::derive) {
-                self.cx
-                    .parse_sess()
-                    .span_diagnostic
-                    .struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
-                    .note("this may become a hard error in a future release")
-                    .emit();
-            }
-
             if attr.doc_str().is_some() {
                 self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
                     &UNUSED_DOC_COMMENTS,
@@ -1162,12 +1069,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         visit_clobber(expr.deref_mut(), |mut expr| {
             self.cfg.configure_expr_kind(&mut expr.kind);
 
-            if let Some(attr) = self.take_first_attr_no_derive(&mut expr) {
+            if let Some(attr) = self.take_first_attr(&mut expr) {
                 // Collect the invoc regardless of whether or not attributes are permitted here
                 // expansion will eat the attribute so it won't error later.
-                if let Some(attr) = attr.0.as_ref() {
-                    self.cfg.maybe_emit_expr_attr_err(attr)
-                }
+                self.cfg.maybe_emit_expr_attr_err(&attr.0);
 
                 // AstFragmentKind::Expr requires the macro to emit an expression.
                 return self
@@ -1263,10 +1168,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         expr.filter_map(|mut expr| {
             self.cfg.configure_expr_kind(&mut expr.kind);
 
-            if let Some(attr) = self.take_first_attr_no_derive(&mut expr) {
-                if let Some(attr) = attr.0.as_ref() {
-                    self.cfg.maybe_emit_expr_attr_err(attr)
-                }
+            if let Some(attr) = self.take_first_attr(&mut expr) {
+                self.cfg.maybe_emit_expr_attr_err(&attr.0);
 
                 return self
                     .collect_attr(attr, Annotatable::Expr(P(expr)), AstFragmentKind::OptExpr)
@@ -1308,15 +1211,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
-            let attr = if stmt.is_item() {
-                self.take_first_attr(&mut stmt)
-            } else {
-                // Ignore derives on non-item statements for backwards compatibility.
-                // This will result in a unused attribute warning
-                self.take_first_attr_no_derive(&mut stmt)
-            };
-
-            if let Some(attr) = attr {
+            if let Some(attr) = self.take_first_attr(&mut stmt) {
                 return self
                     .collect_attr(attr, Annotatable::Stmt(P(stmt)), AstFragmentKind::Stmts)
                     .make_stmts();

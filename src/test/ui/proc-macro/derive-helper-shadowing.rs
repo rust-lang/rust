@@ -17,6 +17,8 @@ macro_rules! gen_helper_use {
 }
 
 #[empty_helper] //~ ERROR `empty_helper` is ambiguous
+                //~| WARN derive helper attribute is used before it is introduced
+                //~| WARN this was previously accepted
 #[derive(Empty)]
 struct S {
     #[empty_helper] // OK, no ambiguity, derive helpers have highest priority
