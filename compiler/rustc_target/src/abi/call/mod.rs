@@ -36,9 +36,12 @@ pub enum PassMode {
     /// a single uniform or a pair of registers.
     Cast(CastTarget),
     /// Pass the argument indirectly via a hidden pointer.
-    /// The second value, if any, is for the extra data (vtable or length)
+    /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
-    Indirect(ArgAttributes, Option<ArgAttributes>),
+    /// `on_stack` defines that the the value should be passed at a fixed
+    /// stack offset in accordance to the ABI rather than passed using a
+    /// pointer. This corresponds to the `byval` LLVM argument attribute.
+    Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },
 }
 
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
@@ -52,7 +55,6 @@ mod attr_impl {
     bitflags::bitflags! {
         #[derive(Default)]
         pub struct ArgAttribute: u16 {
-            const ByVal     = 1 << 0;
             const NoAlias   = 1 << 1;
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
@@ -460,14 +462,14 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
         let extra_attrs = self.layout.is_unsized().then_some(ArgAttributes::new());
 
-        self.mode = PassMode::Indirect(attrs, extra_attrs);
+        self.mode = PassMode::Indirect { attrs, extra_attrs, on_stack: false };
     }
 
     pub fn make_indirect_byval(&mut self) {
         self.make_indirect();
         match self.mode {
-            PassMode::Indirect(ref mut attrs, _) => {
-                attrs.set(ArgAttribute::ByVal);
+            PassMode::Indirect { attrs: _, extra_attrs: _, ref mut on_stack } => {
+                *on_stack = true;
             }
             _ => unreachable!(),
         }
@@ -500,15 +502,15 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect(..))
+        matches!(self.mode, PassMode::Indirect {..})
     }
 
     pub fn is_sized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect(_, None))
+        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ })
     }
 
     pub fn is_unsized_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect(_, Some(_)))
+        matches!(self.mode, PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ })
     }
 
     pub fn is_ignore(&self) -> bool {
@@ -617,7 +619,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 
-        if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
+        if let PassMode::Indirect { ref mut attrs, extra_attrs: _, on_stack: _ } = self.ret.mode {
             attrs.set(ArgAttribute::StructRet);
         }
 

@@ -2801,7 +2801,8 @@ where
             for arg in &mut self.args {
                 fixup(arg, false);
             }
-            if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
+            if let PassMode::Indirect { ref mut attrs, extra_attrs: _, on_stack: _ } = self.ret.mode
+            {
                 attrs.set(ArgAttribute::StructRet);
             }
             return;
