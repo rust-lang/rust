@@ -1,8 +1,7 @@
-use crate::ich;
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
-use crate::ty::{Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_crate::ich::StableHashingContext;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -252,6 +251,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TraitImpls { ref blanket_impls, ref non_blanket_impls } = *self;
 
-        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, non_blanket_impls);
+        ty::hash_stable_trait_impls(hcx, hasher, blanket_impls, non_blanket_impls);
     }
 }

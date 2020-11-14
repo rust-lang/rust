@@ -114,12 +114,14 @@ pub mod walk;
 mod consts;
 mod context;
 mod diagnostics;
+mod impls_ty;
 mod instance;
 mod list;
 mod structural_impls;
 mod sty;
 
 pub use context::ENCODE_METADATA;
+pub use impls_ty::hash_stable_trait_impls;
 
 // Data types
 

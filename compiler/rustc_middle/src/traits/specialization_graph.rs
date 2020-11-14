@@ -1,4 +1,3 @@
-use crate::ich;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
@@ -241,6 +240,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for Children {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let Children { ref nonblanket_impls, ref blanket_impls } = *self;
 
-        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, nonblanket_impls);
+        ty::hash_stable_trait_impls(hcx, hasher, blanket_impls, nonblanket_impls);
     }
 }

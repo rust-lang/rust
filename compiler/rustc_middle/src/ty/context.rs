@@ -23,7 +23,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
 use rustc_crate::cstore::{CrateStoreDyn, EncodedMetadata};
-use rustc_crate::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_crate::ich::{NodeIdHashingMode, StableHashingContext, StableHashingContextProvider};
 use rustc_crate::stability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -880,6 +880,12 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.gcx
+    }
+}
+
+impl StableHashingContextProvider<'tcx> for TyCtxt<'tcx> {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
+        (*self).create_stable_hashing_context()
     }
 }
 
