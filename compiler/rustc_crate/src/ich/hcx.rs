@@ -1,22 +1,18 @@
+use crate::cstore::CrateStore;
 use crate::ich;
-use crate::ty::{fast_reject, TyCtxt};
-use rustc_crate::cstore::CrateStore;
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathHash, Definitions};
 use rustc_session::Session;
+use rustc_span::def_id::{CrateNum, CRATE_DEF_INDEX};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, CachingSourceMapView, SourceFile};
-
-use rustc_span::def_id::{CrateNum, CRATE_DEF_INDEX};
-use smallvec::SmallVec;
-use std::cmp::Ord;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
@@ -207,12 +203,6 @@ impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'
     }
 }
 
-impl StableHashingContextProvider<'tcx> for TyCtxt<'tcx> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
-        (*self).create_stable_hashing_context()
-    }
-}
-
 impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
     fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
         self.clone()
@@ -255,40 +245,14 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 }
 
-impl<'a> rustc_crate::HashStableContext for StableHashingContext<'a> {}
+impl<'a> crate::HashStableContext for StableHashingContext<'a> {}
 
-pub fn hash_stable_trait_impls<'a>(
-    hcx: &mut StableHashingContext<'a>,
-    hasher: &mut StableHasher,
-    blanket_impls: &[DefId],
-    non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
-) {
-    {
-        let mut blanket_impls: SmallVec<[_; 8]> =
-            blanket_impls.iter().map(|&def_id| hcx.def_path_hash(def_id)).collect();
+impl<'a> HashStable<StableHashingContext<'a>> for crate::privacy::AccessLevels {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            let crate::privacy::AccessLevels { ref map } = *self;
 
-        if blanket_impls.len() > 1 {
-            blanket_impls.sort_unstable();
-        }
-
-        blanket_impls.hash_stable(hcx, hasher);
-    }
-
-    {
-        let mut keys: SmallVec<[_; 8]> =
-            non_blanket_impls.keys().map(|k| (k, k.map_def(|d| hcx.def_path_hash(d)))).collect();
-        keys.sort_unstable_by(|&(_, ref k1), &(_, ref k2)| k1.cmp(k2));
-        keys.len().hash_stable(hcx, hasher);
-        for (key, ref stable_key) in keys {
-            stable_key.hash_stable(hcx, hasher);
-            let mut impls: SmallVec<[_; 8]> =
-                non_blanket_impls[key].iter().map(|&impl_id| hcx.def_path_hash(impl_id)).collect();
-
-            if impls.len() > 1 {
-                impls.sort_unstable();
-            }
-
-            impls.hash_stable(hcx, hasher);
-        }
+            map.hash_stable(hcx, hasher);
+        });
     }
 }

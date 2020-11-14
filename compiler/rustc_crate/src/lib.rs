@@ -1,5 +1,7 @@
 #![feature(int_error_matching)]
+#![feature(min_specialization)]
 #![feature(once_cell)]
+#![feature(option_expect_none)]
 #![feature(or_patterns)]
 
 #[macro_use]
@@ -13,6 +15,7 @@ use rustc_span::symbol::Symbol;
 pub mod codegen_fn_attrs;
 pub mod cstore;
 pub mod dependency_format;
+pub mod ich;
 pub mod limits;
 pub mod privacy;
 pub mod stability;

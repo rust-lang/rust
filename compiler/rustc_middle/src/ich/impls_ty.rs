@@ -1,7 +1,7 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_middle::ty` in no particular order.
 
-use crate::ich::{NodeIdHashingMode, StableHashingContext};
+use crate::ich::StableHashingContext;
 use crate::middle::region;
 use crate::mir;
 use crate::ty;
@@ -181,15 +181,5 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::FloatVid {
         // `FloatVid` values are confined to an inference context and hence
         // should not be hashed.
         bug!("ty::TyKind::hash_stable() - can't hash a FloatVid {:?}.", *self)
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for rustc_crate::privacy::AccessLevels {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let rustc_crate::privacy::AccessLevels { ref map } = *self;
-
-            map.hash_stable(hcx, hasher);
-        });
     }
 }
