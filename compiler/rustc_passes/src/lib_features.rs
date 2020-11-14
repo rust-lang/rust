@@ -5,11 +5,11 @@
 // (unlike lang features), which means we need to collect them instead.
 
 use rustc_ast::{Attribute, MetaItem, MetaItemKind};
+use rustc_crate::LibFeatures;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;

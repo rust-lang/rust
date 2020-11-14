@@ -6,7 +6,6 @@ use crate::hir::exports::ExportMap;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintSource};
-use crate::middle;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
@@ -1188,7 +1187,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.consider_optimizing(&cname, msg)
     }
 
-    pub fn lib_features(self) -> &'tcx middle::lib_features::LibFeatures {
+    pub fn lib_features(self) -> &'tcx rustc_crate::LibFeatures {
         self.get_lib_features(LOCAL_CRATE)
     }
 
