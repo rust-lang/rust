@@ -3,6 +3,7 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
@@ -12,7 +13,6 @@ use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_serialize::json;
 use rustc_session::config::{self, OutputFilenames, OutputType};
