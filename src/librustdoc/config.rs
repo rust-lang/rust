@@ -4,9 +4,9 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
+use rustc_crate::privacy::AccessLevels;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::privacy::AccessLevels;
 use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
 use rustc_session::config::{
     build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,

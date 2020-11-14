@@ -1,5 +1,6 @@
 use rustc_attr as attr;
 use rustc_crate::cstore::CrateStore;
+use rustc_crate::privacy::AccessLevels;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
@@ -15,7 +16,6 @@ use rustc_hir::{
 };
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};

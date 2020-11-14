@@ -4,12 +4,11 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
-use rustc_macros::HashStable;
 use std::fmt;
 use std::hash::Hash;
 
 // Accessibility levels, sorted in ascending order
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable_Generic)]
 pub enum AccessLevel {
     /// Superset of `AccessLevel::Reachable` used to mark impl Trait items.
     ReachableFromImplTrait,

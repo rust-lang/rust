@@ -4,7 +4,6 @@ use rustc_span::def_id::{CrateNum, LOCAL_CRATE};
 
 pub mod exported_symbols;
 pub mod lang_items;
-pub mod privacy;
 pub mod region;
 pub mod resolve_lifetime;
 pub mod stability;

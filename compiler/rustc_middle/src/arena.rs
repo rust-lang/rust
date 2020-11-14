@@ -75,7 +75,7 @@ macro_rules! arena_types {
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
             [few] all_traits: Vec<rustc_hir::def_id::DefId>,
-            [few] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
+            [few] privacy_access_levels: rustc_crate::privacy::AccessLevels,
             [few] foreign_module: rustc_crate::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc_crate::cstore::ForeignModule>,
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,

@@ -10,6 +10,7 @@ unicode-security = "0.0.5"
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }
+rustc_crate = { path = "../rustc_crate" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_target = { path = "../rustc_target" }

@@ -14,6 +14,7 @@ pub mod codegen_fn_attrs;
 pub mod cstore;
 pub mod dependency_format;
 pub mod limits;
+pub mod privacy;
 
 #[derive(HashStable_Generic)]
 pub struct LibFeatures {

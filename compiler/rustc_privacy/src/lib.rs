@@ -7,6 +7,7 @@
 #![recursion_limit = "256"]
 
 use rustc_attr as attr;
+use rustc_crate::privacy::{AccessLevel, AccessLevels};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -16,7 +17,6 @@ use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_middle::bug;
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::TypeVisitor;
 use rustc_middle::ty::query::Providers;

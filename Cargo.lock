@@ -3857,6 +3857,7 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
+ "rustc_crate",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -4080,6 +4081,7 @@ name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
  "rustc_attr",
+ "rustc_crate",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",

@@ -184,10 +184,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::FloatVid {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for crate::middle::privacy::AccessLevels {
+impl<'a> HashStable<StableHashingContext<'a>> for rustc_crate::privacy::AccessLevels {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let crate::middle::privacy::AccessLevels { ref map } = *self;
+            let rustc_crate::privacy::AccessLevels { ref map } = *self;
 
             map.hash_stable(hcx, hasher);
         });

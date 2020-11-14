@@ -1,5 +1,5 @@
+use rustc_crate::privacy::AccessLevels;
 use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;
 
 use crate::clean::{self, GetDefId, Item};
