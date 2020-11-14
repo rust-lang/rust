@@ -11,7 +11,7 @@ fn main() {
     assert!(!f("a", 0));
     assert!(!f("b", 0));
 
-    assert!(!f("asdf", 032));
+    assert!(!f("asdf", 32));
 
     ////
 
