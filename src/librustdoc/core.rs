@@ -36,8 +36,7 @@ use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::config::{OutputFormat, RenderInfo};
 use crate::passes::{self, Condition::*, ConditionalPass};
 
-crate use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
-crate use rustc_session::search_paths::SearchPath;
+crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
 crate type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
