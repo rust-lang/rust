@@ -11,6 +11,7 @@
 
 use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
 use rustc_middle::ty::tls;
+use rustc_middle::ty::TyCtxt;
 use std::fmt;
 
 /// This is a callback from librustc_ast as it cannot access the implicit state
@@ -57,5 +58,7 @@ fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) ->
 pub fn setup_callbacks() {
     rustc_span::SPAN_DEBUG.swap(&(span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+    rustc_middle::ty::ENCODE_METADATA
+        .swap(&(rustc_metadata::encode_metadata as fn(TyCtxt<'_>) -> _));
     TRACK_DIAGNOSTICS.swap(&(track_diagnostic as fn(&_)));
 }

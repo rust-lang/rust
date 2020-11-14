@@ -30,6 +30,7 @@ use std::num::NonZeroUsize;
 use decoder::DecodeContext;
 pub use decoder::{provide, provide_extern};
 crate use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
+pub use encoder::encode_metadata;
 use encoder::EncodeContext;
 use rustc_span::hygiene::SyntaxContextData;
 

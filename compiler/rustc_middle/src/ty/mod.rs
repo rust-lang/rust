@@ -119,6 +119,8 @@ mod list;
 mod structural_impls;
 mod sty;
 
+pub use context::ENCODE_METADATA;
+
 // Data types
 
 pub struct ResolverOutputs {

@@ -34,3 +34,5 @@ mod rmeta;
 pub mod creader;
 pub mod dynamic_lib;
 pub mod locator;
+
+pub use rmeta::encode_metadata;

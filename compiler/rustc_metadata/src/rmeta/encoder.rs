@@ -2002,7 +2002,7 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Since encoding metadata is not in a query, and nothing is cached,
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();

@@ -35,6 +35,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::AtomicRef;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -979,6 +980,12 @@ pub struct GlobalCtxt<'tcx> {
     output_filenames: Arc<OutputFilenames>,
 }
 
+fn dummy_encode_metadata(_: TyCtxt<'_>) -> EncodedMetadata {
+    panic!("Unregistered callback to `encode_metadata`.")
+}
+pub static ENCODE_METADATA: AtomicRef<fn(TyCtxt<'_>) -> EncodedMetadata> =
+    AtomicRef::new(&(dummy_encode_metadata as fn(TyCtxt<'_>) -> _));
+
 impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_opt_const_arg(
         self,
@@ -1279,7 +1286,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn encode_metadata(self) -> EncodedMetadata {
         let _prof_timer = self.prof.verbose_generic_activity("generate_crate_metadata");
-        self.cstore.encode_metadata(self)
+        (*ENCODE_METADATA)(self)
     }
 
     // Note that this is *untracked* and should only be used within the query
