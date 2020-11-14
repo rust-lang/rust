@@ -563,7 +563,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
     if target == "x86_64-unknown-linux-gnu" && compiler.stage > 0 {
         if builder.is_rust_llvm(target) {
-            cargo.rustflag("-Ctarget-cpu=x86-64-v2");
+            cargo.rustflag("-Ctarget-cpu=x86-64-v3");
         }
     }
     // Pass down configuration from the LLVM build into the build of
