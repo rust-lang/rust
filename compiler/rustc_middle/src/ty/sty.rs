@@ -1966,7 +1966,13 @@ impl<'tcx> TyS<'tcx> {
                 let f0_ty = variant.fields[0].ty(tcx, substs);
 
                 match f0_ty.kind() {
-                    Array(f0_elem_ty, f0_len) => (f0_len.eval_usize(tcx, ParamEnv::empty()) as u64, f0_elem_ty),
+                    Array(f0_elem_ty, f0_len) => {
+                        // FIXME(repr_simd): https://github.com/rust-lang/rust/pull/78863#discussion_r522784112
+                        // The way we evaluate the `N` in `[T; N]` here only works since we use
+                        // `simd_size_and_type` post-monomorphization. It will probably start to ICE
+                        // if we use it in generic code. See the `simd-array-trait` ui test.
+                        (f0_len.eval_usize(tcx, ParamEnv::empty()) as u64, f0_elem_ty)
+                    }
                     _ => (variant.fields.len() as u64, f0_ty),
                 }
             }
