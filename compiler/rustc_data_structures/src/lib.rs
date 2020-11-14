@@ -102,6 +102,7 @@ pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;
 pub mod sso;
+pub mod steal;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod unhash;

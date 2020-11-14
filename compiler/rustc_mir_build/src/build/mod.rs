@@ -24,7 +24,7 @@ use super::lints;
 crate fn mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx ty::steal::Steal<Body<'tcx>> {
+) -> &'tcx rustc_data_structures::steal::Steal<Body<'tcx>> {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_built(def);
     }

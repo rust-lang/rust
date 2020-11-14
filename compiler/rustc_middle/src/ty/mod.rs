@@ -106,7 +106,6 @@ pub mod outlives;
 pub mod print;
 pub mod query;
 pub mod relate;
-pub mod steal;
 pub mod subst;
 pub mod trait_def;
 pub mod util;

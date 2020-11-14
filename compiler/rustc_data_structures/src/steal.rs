@@ -1,4 +1,5 @@
-use rustc_data_structures::sync::{MappedReadGuard, ReadGuard, RwLock};
+use crate::stable_hasher::{HashStable, StableHasher};
+use crate::sync::{MappedReadGuard, ReadGuard, RwLock};
 
 /// The `Steal` struct is intended to used as the value for a query.
 /// Specifically, we sometimes have queries (*cough* MIR *cough*)
@@ -31,7 +32,7 @@ impl<T> Steal<T> {
 
     pub fn borrow(&self) -> MappedReadGuard<'_, T> {
         ReadGuard::map(self.value.borrow(), |opt| match *opt {
-            None => bug!("attempted to read from stolen value"),
+            None => panic!("attempted to read from stolen value"),
             Some(ref v) => v,
         })
     }
@@ -40,5 +41,11 @@ impl<T> Steal<T> {
         let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
         let value = value_ref.take();
         value.expect("attempt to read from stolen value")
+    }
+}
+
+impl<CTX, T: HashStable<CTX>> HashStable<CTX> for Steal<T> {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.borrow().hash_stable(hcx, hasher);
     }
 }
