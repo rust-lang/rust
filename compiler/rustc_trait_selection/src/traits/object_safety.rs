@@ -771,6 +771,8 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
     }
 
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
+        type BreakTy = ();
+
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
                 ty::Param(_) => {

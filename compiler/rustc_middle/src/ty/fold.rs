@@ -148,6 +148,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         pub struct Visitor<F>(F);
 
         impl<'tcx, F: FnMut(Ty<'tcx>) -> ControlFlow<()>> TypeVisitor<'tcx> for Visitor<F> {
+            type BreakTy = ();
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
                 self.0(ty)
             }
@@ -195,7 +196,7 @@ pub trait TypeFolder<'tcx>: Sized {
 }
 
 pub trait TypeVisitor<'tcx>: Sized {
-    type BreakTy = ();
+    type BreakTy = !;
 
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self)
@@ -331,6 +332,8 @@ impl<'tcx> TyCtxt<'tcx> {
         where
             F: FnMut(ty::Region<'tcx>) -> bool,
         {
+            type BreakTy = ();
+
             fn visit_binder<T: TypeFoldable<'tcx>>(
                 &mut self,
                 t: &Binder<T>,

@@ -318,6 +318,8 @@ struct HasUsedGenericParams<'a> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
+    type BreakTy = ();
+
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("visit_const: c={:?}", c);
         if !c.has_param_types_or_consts() {

@@ -800,6 +800,8 @@ fn check_where_clauses<'tcx, 'fcx>(
                 params: FxHashSet<u32>,
             }
             impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
+                type BreakTy = ();
+
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::Param(param) = t.kind() {
                         self.params.insert(param.index);
