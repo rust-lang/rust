@@ -15,6 +15,7 @@ pub mod cstore;
 pub mod dependency_format;
 pub mod limits;
 pub mod privacy;
+pub mod stability;
 
 #[derive(HashStable_Generic)]
 pub struct LibFeatures {

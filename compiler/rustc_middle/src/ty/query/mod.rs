@@ -6,7 +6,6 @@ use crate::lint::LintLevelMap;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::region;
 use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
-use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{ConstValue, EvalToAllocationRawResult, EvalToConstValueResult};
@@ -31,6 +30,7 @@ use rustc_crate::cstore::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
 use rustc_crate::privacy::AccessLevels;
+use rustc_crate::stability::{self, DeprecationEntry};
 use rustc_crate::LibFeatures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};

@@ -10,6 +10,7 @@ use rustc_ast::{self as ast, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
+use rustc_crate::stability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::struct_span_err;
@@ -19,7 +20,6 @@ use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationK
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
-use rustc_middle::middle::stability;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::UNUSED_MACROS;
 use rustc_session::Session;
