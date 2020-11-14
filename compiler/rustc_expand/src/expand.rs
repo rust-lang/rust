@@ -404,6 +404,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     // Recursively expand all macro invocations in this AST fragment.
     pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
+        let orig_force_mode = self.cx.force_mode;
         self.cx.current_expansion.depth = 0;
 
         // Collect all macro invocations and replace them with placeholders.
@@ -432,6 +433,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 invocations = mem::take(&mut undetermined_invocations);
                 force = !mem::replace(&mut progress, false);
+                if force && self.monotonic {
+                    self.cx.sess.delay_span_bug(
+                        invocations.last().unwrap().0.span(),
+                        "expansion entered force mode without producing any errors",
+                    );
+                }
                 continue;
             };
 
@@ -460,18 +467,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
+            self.cx.force_mode = force;
 
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = match res {
                 InvocationRes::Single(ext) => match self.expand_invoc(invoc, &ext.kind) {
                     ExpandResult::Ready(fragment) => self.collect_invocations(fragment, &[]),
-                    ExpandResult::Retry(invoc, explanation) => {
+                    ExpandResult::Retry(invoc) => {
                         if force {
-                            // We are stuck, stop retrying and produce a dummy fragment.
-                            let span = invoc.span();
-                            self.cx.span_err(span, &explanation);
-                            let fragment = invoc.fragment_kind.dummy(span);
-                            self.collect_invocations(fragment, &[])
+                            self.cx.span_bug(
+                                invoc.span(),
+                                "expansion entered force mode but is still stuck",
+                            );
                         } else {
                             // Cannot expand, will retry this invocation later.
                             undetermined_invocations
@@ -526,6 +533,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         self.cx.current_expansion = orig_expansion_data;
+        self.cx.force_mode = orig_force_mode;
 
         // Finally incorporate all the expanded macros into the input AST fragment.
         let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
@@ -735,20 +743,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         Ok(meta) => {
                             let items = match expander.expand(self.cx, span, &meta, item) {
                                 ExpandResult::Ready(items) => items,
-                                ExpandResult::Retry(item, explanation) => {
+                                ExpandResult::Retry(item) => {
                                     // Reassemble the original invocation for retrying.
-                                    return ExpandResult::Retry(
-                                        Invocation {
-                                            kind: InvocationKind::Attr {
-                                                attr,
-                                                item,
-                                                derives,
-                                                after_derive,
-                                            },
-                                            ..invoc
+                                    return ExpandResult::Retry(Invocation {
+                                        kind: InvocationKind::Attr {
+                                            attr,
+                                            item,
+                                            derives,
+                                            after_derive,
                                         },
-                                        explanation,
-                                    );
+                                        ..invoc
+                                    });
                                 }
                             };
                             fragment_kind.expect_from_annotatables(items)
@@ -781,15 +786,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let meta = ast::MetaItem { kind: ast::MetaItemKind::Word, span, path };
                     let items = match expander.expand(self.cx, span, &meta, item) {
                         ExpandResult::Ready(items) => items,
-                        ExpandResult::Retry(item, explanation) => {
+                        ExpandResult::Retry(item) => {
                             // Reassemble the original invocation for retrying.
-                            return ExpandResult::Retry(
-                                Invocation {
-                                    kind: InvocationKind::Derive { path: meta.path, item },
-                                    ..invoc
-                                },
-                                explanation,
-                            );
+                            return ExpandResult::Retry(Invocation {
+                                kind: InvocationKind::Derive { path: meta.path, item },
+                                ..invoc
+                            });
                         }
                     };
                     fragment_kind.expect_from_annotatables(items)
