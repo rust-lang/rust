@@ -5,7 +5,6 @@
 //! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 //! just peeks and looks for that attribute.
 
-use crate::bug;
 use rustc_ast as ast;
 use rustc_data_structures::sync::OnceCell;
 use rustc_session::{Limit, Session};
@@ -52,10 +51,10 @@ fn update_limit(
                         IntErrorKind::Empty => "`limit` must be a non-negative integer",
                         IntErrorKind::InvalidDigit => "not a valid integer",
                         IntErrorKind::NegOverflow => {
-                            bug!("`limit` should never negatively overflow")
+                            panic!("`limit` should never negatively overflow")
                         }
-                        IntErrorKind::Zero => bug!("zero is a valid `limit`"),
-                        kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
+                        IntErrorKind::Zero => panic!("zero is a valid `limit`"),
+                        kind => panic!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
 
                     err.span_label(value_span, error_str);

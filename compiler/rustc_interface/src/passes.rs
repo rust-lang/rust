@@ -19,7 +19,6 @@ use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -186,7 +185,7 @@ pub fn register_plugins<'a>(
     }
 
     sess.time("recursion_limit", || {
-        middle::limits::update_limits(sess, &krate);
+        rustc_crate::limits::update_limits(sess, &krate);
     });
 
     let mut lint_store = rustc_lint::new_lint_store(
