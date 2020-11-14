@@ -14,7 +14,6 @@ use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
-use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
@@ -33,6 +32,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::ErrorReported;
