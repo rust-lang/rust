@@ -1,6 +1,6 @@
+use rustc_crate::cstore::ForeignModule;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_middle::middle::cstore::ForeignModule;
 use rustc_middle::ty::TyCtxt;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<ForeignModule> {

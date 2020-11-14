@@ -6,6 +6,7 @@ use crate::rmeta::*;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
+use rustc_crate::cstore::{CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
 use rustc_data_structures::fx::FxHashMap;
@@ -22,8 +23,6 @@ use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::dep_graph::{self, DepNode, DepNodeExt, DepNodeIndex};
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::{CrateSource, ExternCrate};
-use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};

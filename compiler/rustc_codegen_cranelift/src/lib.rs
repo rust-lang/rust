@@ -18,6 +18,7 @@ extern crate snap;
 extern crate rustc_middle;
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
+extern crate rustc_crate;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_fs_util;
@@ -37,9 +38,9 @@ use std::any::Any;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
+use rustc_crate::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_errors::ErrorReported;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_middle::ty::query::Providers;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;

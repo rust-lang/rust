@@ -20,6 +20,7 @@ pathdiff = "0.2.0"
 
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
+rustc_crate = { path = "../rustc_crate" }
 rustc_span = { path = "../rustc_span" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_apfloat = { path = "../rustc_apfloat" }

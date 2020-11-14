@@ -5,9 +5,9 @@ use std::path::PathBuf;
 
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
+use rustc_crate::cstore::EncodedMetadata;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{DebugInfo, OutputType};

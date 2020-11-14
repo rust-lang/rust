@@ -1,9 +1,9 @@
 use rustc_attr as attr;
+use rustc_crate::cstore::NativeLib;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_middle::middle::cstore::NativeLib;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::utils::NativeLibKind;

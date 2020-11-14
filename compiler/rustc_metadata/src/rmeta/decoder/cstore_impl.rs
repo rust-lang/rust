@@ -6,6 +6,7 @@ use crate::rmeta;
 
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_crate::cstore::{CrateSource, CrateStore, ForeignModule};
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
@@ -13,8 +14,6 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::ForeignModule;
-use rustc_middle::middle::cstore::{CrateSource, CrateStore};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::Providers;

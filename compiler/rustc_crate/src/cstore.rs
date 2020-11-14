@@ -2,8 +2,6 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use crate::ty::TyCtxt;
-
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
@@ -11,7 +9,6 @@ use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
-use rustc_macros::HashStable;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;
@@ -26,7 +23,7 @@ use std::path::{Path, PathBuf};
 
 /// Where a crate came from on the local filesystem. One of these three options
 /// must be non-None.
-#[derive(PartialEq, Clone, Debug, HashStable, Encodable, Decodable)]
+#[derive(PartialEq, Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
@@ -40,7 +37,7 @@ impl CrateSource {
 }
 
 #[derive(Encodable, Decodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
-#[derive(HashStable)]
+#[derive(HashStable_Generic)]
 pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
@@ -81,13 +78,13 @@ impl LibSource {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable)]
+#[derive(Copy, Debug, PartialEq, Clone, Encodable, Decodable, HashStable_Generic)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
 }
 
-#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,
@@ -96,13 +93,13 @@ pub struct NativeLib {
     pub wasm_import_module: Option<Symbol>,
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Encodable, Decodable, HashStable_Generic)]
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct ExternCrate {
     pub src: ExternCrateSource,
 
@@ -133,7 +130,7 @@ impl ExternCrate {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ExternCrateSource {
     /// Crate is loaded by `extern crate`.
     Extern(
@@ -208,45 +205,3 @@ pub trait CrateStore {
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
-
-// This method is used when generating the command line to pass through to
-// system linker. The linker expects undefined symbols on the left of the
-// command line to be defined in libraries on the right, not the other way
-// around. For more info, see some comments in the add_used_library function
-// below.
-//
-// In order to get this left-to-right dependency ordering, we perform a
-// topological sort of all crates putting the leaves at the right-most
-// positions.
-pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
-    let mut libs = tcx
-        .crates()
-        .iter()
-        .cloned()
-        .filter_map(|cnum| {
-            if tcx.dep_kind(cnum).macros_only() {
-                return None;
-            }
-            let source = tcx.used_crate_source(cnum);
-            let path = match prefer {
-                LinkagePreference::RequireDynamic => source.dylib.clone().map(|p| p.0),
-                LinkagePreference::RequireStatic => source.rlib.clone().map(|p| p.0),
-            };
-            let path = match path {
-                Some(p) => LibSource::Some(p),
-                None => {
-                    if source.rmeta.is_some() {
-                        LibSource::MetadataOnly
-                    } else {
-                        LibSource::None
-                    }
-                }
-            };
-            Some((cnum, path))
-        })
-        .collect::<Vec<_>>();
-    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE).to_owned();
-    ordering.reverse();
-    libs.sort_by_cached_key(|&(a, _)| ordering.iter().position(|x| *x == a));
-    libs
-}

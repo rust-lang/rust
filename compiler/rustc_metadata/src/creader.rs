@@ -6,6 +6,8 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
+use rustc_crate::cstore::{CrateDepKind, CrateSource, ExternCrate};
+use rustc_crate::cstore::{ExternCrateSource, MetadataLoaderDyn};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -13,8 +15,6 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
-use rustc_middle::middle::cstore::{CrateDepKind, CrateSource, ExternCrate};
-use rustc_middle::middle::cstore::{ExternCrateSource, MetadataLoaderDyn};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ExternLocation};
 use rustc_session::lint;

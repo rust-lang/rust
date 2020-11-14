@@ -53,11 +53,12 @@
 
 use crate::creader::CStore;
 
+use rustc_crate::cstore::CrateDepKind;
+use rustc_crate::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::LinkagePreference::{self, RequireDynamic, RequireStatic};
-use rustc_middle::middle::cstore::{self, CrateDepKind};
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
+use rustc_middle::middle::used_crates;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_target::spec::PanicStrategy;
@@ -274,7 +275,7 @@ fn add_library(
 }
 
 fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
-    let crates = cstore::used_crates(tcx, RequireStatic);
+    let crates = used_crates(tcx, RequireStatic);
     if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
         return None;
     }

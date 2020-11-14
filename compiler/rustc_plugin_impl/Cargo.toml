@@ -10,6 +10,7 @@ doctest = false
 
 [dependencies]
 rustc_middle = { path = "../rustc_middle" }
+rustc_crate = { path = "../rustc_crate" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_lint = { path = "../rustc_lint" }

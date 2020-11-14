@@ -6,6 +6,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_crate::cstore::{CrateStore, EncodedMetadata, MetadataLoader, MetadataLoaderDyn};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
@@ -19,7 +20,6 @@ use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
-use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -920,7 +920,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 fn encode_and_write_metadata(
     tcx: TyCtxt<'_>,
     outputs: &OutputFilenames,
-) -> (middle::cstore::EncodedMetadata, bool) {
+) -> (EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
         None,
@@ -943,7 +943,7 @@ fn encode_and_write_metadata(
         .unwrap_or(MetadataKind::None);
 
     let metadata = match metadata_kind {
-        MetadataKind::None => middle::cstore::EncodedMetadata::new(),
+        MetadataKind::None => EncodedMetadata::new(),
         MetadataKind::Uncompressed | MetadataKind::Compressed => tcx.encode_metadata(),
     };
 

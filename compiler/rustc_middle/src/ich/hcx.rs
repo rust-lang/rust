@@ -1,6 +1,6 @@
 use crate::ich;
-use crate::middle::cstore::CrateStore;
 use crate::ty::{fast_reject, TyCtxt};
+use rustc_crate::cstore::CrateStore;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -254,6 +254,8 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         self.source_map().byte_pos_to_line_and_col(byte)
     }
 }
+
+impl<'a> rustc_crate::HashStableContext for StableHashingContext<'a> {}
 
 pub fn hash_stable_trait_impls<'a>(
     hcx: &mut StableHashingContext<'a>,

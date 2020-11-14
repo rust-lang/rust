@@ -5,10 +5,10 @@ use std::fs::File;
 use std::path::Path;
 
 use rustc_codegen_ssa::METADATA_FILENAME;
+use rustc_crate::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config;
 use rustc_target::spec::Target;

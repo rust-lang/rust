@@ -15,6 +15,7 @@ memmap = "0.7"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }
+rustc_crate = { path = "../rustc_crate" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }

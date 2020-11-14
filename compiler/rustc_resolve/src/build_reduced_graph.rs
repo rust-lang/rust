@@ -20,6 +20,7 @@ use rustc_ast::{self as ast, Block, ForeignItem, ForeignItemKind, Item, ItemKind
 use rustc_ast::{AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
+use rustc_crate::cstore::CrateStore;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::SyntaxExtension;
@@ -29,7 +30,6 @@ use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::bug;
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::ty;
 use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, Spanned};

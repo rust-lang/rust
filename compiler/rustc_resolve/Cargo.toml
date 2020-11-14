@@ -17,6 +17,7 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }
+rustc_crate = { path = "../rustc_crate" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }

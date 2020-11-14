@@ -1,6 +1,6 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc_middle"
+name = "rustc_crate"
 version = "0.0.0"
 edition = "2018"
 
@@ -19,7 +19,6 @@ rustc_feature = { path = "../rustc_feature" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_target = { path = "../rustc_target" }
 rustc_macros = { path = "../rustc_macros" }
-rustc_crate = { path = "../rustc_crate" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_errors = { path = "../rustc_errors" }

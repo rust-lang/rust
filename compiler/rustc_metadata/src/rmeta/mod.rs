@@ -3,6 +3,7 @@ use table::{Table, TableBuilder};
 
 use rustc_ast::{self as ast, MacroDef};
 use rustc_attr as attr;
+use rustc_crate::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
@@ -12,7 +13,6 @@ use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};

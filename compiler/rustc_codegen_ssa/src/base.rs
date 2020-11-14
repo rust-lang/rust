@@ -26,6 +26,7 @@ use crate::traits::*;
 use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
 use rustc_attr as attr;
+use rustc_crate::cstore::{EncodedMetadata, LinkagePreference};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
@@ -34,9 +35,7 @@ use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::middle::cstore::EncodedMetadata;
-use rustc_middle::middle::cstore::{self, LinkagePreference};
-use rustc_middle::middle::lang_items;
+use rustc_middle::middle::{lang_items, used_crates};
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
@@ -769,8 +768,8 @@ impl CrateInfo {
             used_libraries: tcx.native_libraries(LOCAL_CRATE),
             link_args: tcx.link_args(LOCAL_CRATE),
             crate_name: Default::default(),
-            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
-            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
+            used_crates_dynamic: used_crates(tcx, LinkagePreference::RequireDynamic),
+            used_crates_static: used_crates(tcx, LinkagePreference::RequireStatic),
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),

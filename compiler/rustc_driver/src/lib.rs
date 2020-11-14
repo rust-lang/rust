@@ -16,6 +16,7 @@ pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
+use rustc_crate::cstore::MetadataLoader;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
@@ -26,7 +27,6 @@ use rustc_interface::util::{self, collect_crate_types, get_builtin_codegen_backe
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
-use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_middle::ty::TyCtxt;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
