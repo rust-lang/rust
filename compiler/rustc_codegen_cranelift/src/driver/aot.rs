@@ -299,6 +299,7 @@ pub(super) fn run_aot(
     Box::new((
         CodegenResults {
             crate_name: tcx.crate_name(LOCAL_CRATE),
+            crate_hash: tcx.crate_hash(LOCAL_CRATE),
             modules,
             allocator_module,
             metadata_module,

@@ -117,10 +117,9 @@ fn add_svh(tcx: TyCtxt<'tcx>, llvm_module: &'ll ModuleLlvm, svh: &Svh) -> &'ll V
         unsafe { llvm::LLVMAddGlobal(metadata_llmod, common::val_ty(llconst), buf.as_ptr()) };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
+        let section_name =
+            if tcx.sess.target.options.is_like_osx { "__DATA,.rust_svh" } else { ".rust_svh" };
 
-        let section_name = format!(
-            "__DATA,.rust_svh_hash", //TO DO make work for non-OSX not ,no_dead_strip
-        );
         let name = SmallCStr::new(&section_name);
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 

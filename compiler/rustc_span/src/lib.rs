@@ -47,18 +47,17 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 
+use md5::Md5;
+use sha1::Digest;
+use sha1::Sha1;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
-use std::fmt;
+use std::fmt::{self, Display};
 use std::hash::Hash;
 use std::ops::{Add, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
-use md5::Md5;
-use sha1::Digest;
-use sha1::Sha1;
 
 use tracing::debug;
 
@@ -1036,11 +1035,11 @@ pub enum SourceFileHashAlgorithm {
     Sha1,
 }
 
-impl ToString for SourceFileHashAlgorithm {
-    fn to_string(&self) -> String {
+impl Display for SourceFileHashAlgorithm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SourceFileHashAlgorithm::Md5 => "md5".to_string(),
-            SourceFileHashAlgorithm::Sha1 => "sha1".to_string(),
+            SourceFileHashAlgorithm::Md5 => write!(f, "md5"),
+            SourceFileHashAlgorithm::Sha1 => write!(f, "sha1"),
         }
     }
 }
