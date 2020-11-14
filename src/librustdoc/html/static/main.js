@@ -1,9 +1,9 @@
 // From rust:
-/* global ALIASES, currentCrate, rootPath */
+/* global currentCrate, rootPath */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass */
-/* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
+/* global addClass, getSettingValue, hasClass */
+/* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
 /* global hideThemeButtonState, showThemeButtonState */
 
 if (!String.prototype.startsWith) {
@@ -386,6 +386,7 @@ function defocusSearchBar() {
             return;
         }
 
+        var themePicker;
         if (document.activeElement.tagName === "INPUT") {
             switch (getVirtualKey(ev)) {
             case "Escape":
@@ -419,13 +420,13 @@ function defocusSearchBar() {
             case "T":
                 displayHelp(false, ev);
                 ev.preventDefault();
-                var themePicker = getThemePickerElement();
+                themePicker = getThemePickerElement();
                 themePicker.click();
                 themePicker.focus();
                 break;
 
             default:
-                var themePicker = getThemePickerElement();
+                themePicker = getThemePickerElement();
                 if (themePicker.parentNode.contains(ev.target)) {
                     handleThemeKeyDown(ev);
                 }
@@ -490,7 +491,7 @@ function defocusSearchBar() {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    function resetMouseMoved(ev) {
+    function resetMouseMoved() {
         mouseMovedAfterSearch = true;
     }
 
@@ -569,7 +570,7 @@ function defocusSearchBar() {
                     len = rootPath.match(/\.\.\//g).length + 1;
 
                 for (i = 0; i < len; ++i) {
-                    match = url.match(/\/[^\/]*$/);
+                    match = url.match(/\/[^/]*$/);
                     if (i < len - 1) {
                         stripped = match[0] + stripped;
                     }
@@ -1245,7 +1246,7 @@ function defocusSearchBar() {
                 query.output = val;
                 query.search = val;
                 // gather matching search results up to a certain maximum
-                val = val.replace(/\_/g, "");
+                val = val.replace(/_/g, "");
 
                 var valGenerics = extractGenerics(val);
 
@@ -2845,7 +2846,7 @@ function defocusSearchBar() {
         enableSearchInput();
     };
 
-    function buildHelperPopup() {
+    var buildHelperPopup = function() {
         var popup = document.createElement("aside");
         addClass(popup, "hidden");
         popup.id = "help";
@@ -2896,7 +2897,7 @@ function defocusSearchBar() {
         insertAfter(popup, getSearchElement());
         // So that it's only built once and then it'll do nothing when called!
         buildHelperPopup = function() {};
-    }
+    };
 
     onHashChange(null);
     window.onhashchange = onHashChange;
