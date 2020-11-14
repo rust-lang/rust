@@ -195,7 +195,7 @@ impl ImportAssets {
                     }
                     .map(|path| (path, item))
                 })
-                .filter(|(use_path, _)| !use_path.segments.is_empty())
+                .filter(|(use_path, _)| use_path.len() > 1)
                 .take(20)
                 .collect::<Vec<_>>();
         res.sort_by_key(|(path, _)| path.clone());

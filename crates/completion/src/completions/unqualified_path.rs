@@ -47,6 +47,30 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     fuzzy_completion(acc, ctx).unwrap_or_default()
 }
 
+fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
+    if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
+        let variants = enum_data.variants(ctx.db);
+
+        let module = if let Some(module) = ctx.scope.module() {
+            // Compute path from the completion site if available.
+            module
+        } else {
+            // Otherwise fall back to the enum's definition site.
+            enum_data.module(ctx.db)
+        };
+
+        for variant in variants {
+            if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
+                // Variants with trivial paths are already added by the existing completion logic,
+                // so we should avoid adding these twice
+                if path.segments.len() > 1 {
+                    acc.add_qualified_enum_variant(ctx, variant, path);
+                }
+            }
+        }
+    }
+}
+
 // TODO kb add a setting toggle for this feature?
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let _p = profile::span("fuzzy_completion®");
@@ -71,6 +95,7 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
                     ScopeDef::MacroDef(macro_def),
                 )),
             })
+            .filter(|(mod_path, _)| mod_path.len() > 1)
             .filter_map(|(mod_path, definition)| {
                 let mut resolution_with_missing_import = render_resolution(
                     RenderContext::new(ctx),
@@ -89,34 +114,11 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
                 resolution_with_missing_import.update_text_edit(text_edits.finish());
 
                 Some(resolution_with_missing_import)
-            });
+            })
+            .take(20);
 
     acc.add_all(possible_imports);
     Some(())
-}
-
-fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
-    if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
-        let variants = enum_data.variants(ctx.db);
-
-        let module = if let Some(module) = ctx.scope.module() {
-            // Compute path from the completion site if available.
-            module
-        } else {
-            // Otherwise fall back to the enum's definition site.
-            enum_data.module(ctx.db)
-        };
-
-        for variant in variants {
-            if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
-                // Variants with trivial paths are already added by the existing completion logic,
-                // so we should avoid adding these twice
-                if path.segments.len() > 1 {
-                    acc.add_qualified_enum_variant(ctx, variant, path);
-                }
-            }
-        }
-    }
 }
 
 #[cfg(test)]
