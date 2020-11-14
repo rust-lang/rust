@@ -7,16 +7,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// ignore-tidy-filelength
-
-use core::array;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::iter::{repeat_with, FromIterator, FusedIterator};
+use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, replace, ManuallyDrop};
-use core::ops::{Index, IndexMut, Range, RangeBounds, Try};
+use core::mem::{self, ManuallyDrop};
+use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
 
@@ -24,10 +21,36 @@ use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
+#[macro_use]
+mod macros;
+
 #[stable(feature = "drain", since = "1.6.0")]
 pub use self::drain::Drain;
 
 mod drain;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::iter_mut::IterMut;
+
+mod iter_mut;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::into_iter::IntoIter;
+
+mod into_iter;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::iter::Iter;
+
+mod iter;
+
+use self::pair_slices::PairSlices;
+
+mod pair_slices;
+
+use self::ring_slices::RingSlices;
+
+mod ring_slices;
 
 #[cfg(test)]
 mod tests;
@@ -66,67 +89,6 @@ pub struct VecDeque<T> {
     tail: usize,
     head: usize,
     buf: RawVec<T>,
-}
-
-/// PairSlices pairs up equal length slice parts of two deques
-///
-/// For example, given deques "A" and "B" with the following division into slices:
-///
-/// A: [0 1 2] [3 4 5]
-/// B: [a b] [c d e]
-///
-/// It produces the following sequence of matching slices:
-///
-/// ([0 1], [a b])
-/// (\[2\], \[c\])
-/// ([3 4], [d e])
-///
-/// and the uneven remainder of either A or B is skipped.
-struct PairSlices<'a, 'b, T> {
-    a0: &'a mut [T],
-    a1: &'a mut [T],
-    b0: &'b [T],
-    b1: &'b [T],
-}
-
-impl<'a, 'b, T> PairSlices<'a, 'b, T> {
-    fn from(to: &'a mut VecDeque<T>, from: &'b VecDeque<T>) -> Self {
-        let (a0, a1) = to.as_mut_slices();
-        let (b0, b1) = from.as_slices();
-        PairSlices { a0, a1, b0, b1 }
-    }
-
-    fn has_remainder(&self) -> bool {
-        !self.b0.is_empty()
-    }
-
-    fn remainder(self) -> impl Iterator<Item = &'b [T]> {
-        array::IntoIter::new([self.b0, self.b1])
-    }
-}
-
-impl<'a, 'b, T> Iterator for PairSlices<'a, 'b, T> {
-    type Item = (&'a mut [T], &'b [T]);
-    fn next(&mut self) -> Option<Self::Item> {
-        // Get next part length
-        let part = cmp::min(self.a0.len(), self.b0.len());
-        if part == 0 {
-            return None;
-        }
-        let (p0, p1) = replace(&mut self.a0, &mut []).split_at_mut(part);
-        let (q0, q1) = self.b0.split_at(part);
-
-        // Move a1 into a0, if it's empty (and b1, b0 the same way).
-        self.a0 = p1;
-        self.b0 = q1;
-        if self.a0.is_empty() {
-            self.a0 = replace(&mut self.a1, &mut []);
-        }
-        if self.b0.is_empty() {
-            self.b0 = replace(&mut self.b1, &[]);
-        }
-        Some((p0, q0))
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2605,397 +2567,12 @@ fn wrap_index(index: usize, size: usize) -> usize {
     index & (size - 1)
 }
 
-/// Returns the two slices that cover the `VecDeque`'s valid range
-trait RingSlices: Sized {
-    fn slice(self, from: usize, to: usize) -> Self;
-    fn split_at(self, i: usize) -> (Self, Self);
-
-    fn ring_slices(buf: Self, head: usize, tail: usize) -> (Self, Self) {
-        let contiguous = tail <= head;
-        if contiguous {
-            let (empty, buf) = buf.split_at(0);
-            (buf.slice(tail, head), empty)
-        } else {
-            let (mid, right) = buf.split_at(tail);
-            let (left, _) = mid.split_at(head);
-            (right, left)
-        }
-    }
-}
-
-impl<T> RingSlices for &[T] {
-    fn slice(self, from: usize, to: usize) -> Self {
-        &self[from..to]
-    }
-    fn split_at(self, i: usize) -> (Self, Self) {
-        (*self).split_at(i)
-    }
-}
-
-impl<T> RingSlices for &mut [T] {
-    fn slice(self, from: usize, to: usize) -> Self {
-        &mut self[from..to]
-    }
-    fn split_at(self, i: usize) -> (Self, Self) {
-        (*self).split_at_mut(i)
-    }
-}
-
-impl<T> RingSlices for *mut [T] {
-    fn slice(self, from: usize, to: usize) -> Self {
-        assert!(from <= to && to < self.len());
-        // Not using `get_unchecked_mut` to keep this a safe operation.
-        let len = to - from;
-        ptr::slice_from_raw_parts_mut(self.as_mut_ptr().wrapping_add(from), len)
-    }
-
-    fn split_at(self, mid: usize) -> (Self, Self) {
-        let len = self.len();
-        let ptr = self.as_mut_ptr();
-        assert!(mid <= len);
-        (
-            ptr::slice_from_raw_parts_mut(ptr, mid),
-            ptr::slice_from_raw_parts_mut(ptr.wrapping_add(mid), len - mid),
-        )
-    }
-}
-
 /// Calculate the number of elements left to be read in the buffer
 #[inline]
 fn count(tail: usize, head: usize, size: usize) -> usize {
     // size is always a power of 2
     (head.wrapping_sub(tail)) & (size - 1)
 }
-
-/// An iterator over the elements of a `VecDeque`.
-///
-/// This `struct` is created by the [`iter`] method on [`VecDeque`]. See its
-/// documentation for more.
-///
-/// [`iter`]: VecDeque::iter
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Iter<'a, T: 'a> {
-    ring: &'a [T],
-    tail: usize,
-    head: usize,
-}
-
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        f.debug_tuple("Iter").field(&front).field(&back).finish()
-    }
-}
-
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Clone for Iter<'_, T> {
-    fn clone(&self) -> Self {
-        Iter { ring: self.ring, tail: self.tail, head: self.head }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Iterator for Iter<'a, T> {
-    type Item = &'a T;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a T> {
-        if self.tail == self.head {
-            return None;
-        }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
-        unsafe { Some(self.ring.get_unchecked(tail)) }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
-        (len, Some(len))
-    }
-
-    fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
-    where
-        F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        accum = front.iter().fold(accum, &mut f);
-        back.iter().fold(accum, &mut f)
-    }
-
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
-    {
-        let (mut iter, final_res);
-        if self.tail <= self.head {
-            // single slice self.ring[self.tail..self.head]
-            iter = self.ring[self.tail..self.head].iter();
-            final_res = iter.try_fold(init, &mut f);
-        } else {
-            // two slices: self.ring[self.tail..], self.ring[..self.head]
-            let (front, back) = self.ring.split_at(self.tail);
-            let mut back_iter = back.iter();
-            let res = back_iter.try_fold(init, &mut f);
-            let len = self.ring.len();
-            self.tail = (self.ring.len() - back_iter.len()) & (len - 1);
-            iter = front[..self.head].iter();
-            final_res = iter.try_fold(res?, &mut f);
-        }
-        self.tail = self.head - iter.len();
-        final_res
-    }
-
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if n >= count(self.tail, self.head, self.ring.len()) {
-            self.tail = self.head;
-            None
-        } else {
-            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
-            self.next()
-        }
-    }
-
-    #[inline]
-    fn last(mut self) -> Option<&'a T> {
-        self.next_back()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a T> {
-        if self.tail == self.head {
-            return None;
-        }
-        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
-        unsafe { Some(self.ring.get_unchecked(self.head)) }
-    }
-
-    fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
-    where
-        F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        accum = back.iter().rfold(accum, &mut f);
-        front.iter().rfold(accum, &mut f)
-    }
-
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
-    {
-        let (mut iter, final_res);
-        if self.tail <= self.head {
-            // single slice self.ring[self.tail..self.head]
-            iter = self.ring[self.tail..self.head].iter();
-            final_res = iter.try_rfold(init, &mut f);
-        } else {
-            // two slices: self.ring[self.tail..], self.ring[..self.head]
-            let (front, back) = self.ring.split_at(self.tail);
-            let mut front_iter = front[..self.head].iter();
-            let res = front_iter.try_rfold(init, &mut f);
-            self.head = front_iter.len();
-            iter = back.iter();
-            final_res = iter.try_rfold(res?, &mut f);
-        }
-        self.head = self.tail + iter.len();
-        final_res
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for Iter<'_, T> {
-    fn is_empty(&self) -> bool {
-        self.head == self.tail
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for Iter<'_, T> {}
-
-/// A mutable iterator over the elements of a `VecDeque`.
-///
-/// This `struct` is created by the [`iter_mut`] method on [`VecDeque`]. See its
-/// documentation for more.
-///
-/// [`iter_mut`]: VecDeque::iter_mut
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct IterMut<'a, T: 'a> {
-    // Internal safety invariant: the entire slice is dereferencable.
-    ring: *mut [T],
-    tail: usize,
-    head: usize,
-    phantom: PhantomData<&'a mut [T]>,
-}
-
-// SAFETY: we do nothing thread-local and there is no interior mutability,
-// so the usual structural `Send`/`Sync` apply.
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send> Send for IterMut<'_, T> {}
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
-
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferencable.
-        let (front, back) = unsafe { (&*front, &*back) };
-        f.debug_tuple("IterMut").field(&front).field(&back).finish()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Iterator for IterMut<'a, T> {
-    type Item = &'a mut T;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a mut T> {
-        if self.tail == self.head {
-            return None;
-        }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
-
-        unsafe {
-            let elem = self.ring.get_unchecked_mut(tail);
-            Some(&mut *elem)
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
-        (len, Some(len))
-    }
-
-    fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
-    where
-        F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferencable.
-        let (front, back) = unsafe { (&mut *front, &mut *back) };
-        accum = front.iter_mut().fold(accum, &mut f);
-        back.iter_mut().fold(accum, &mut f)
-    }
-
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if n >= count(self.tail, self.head, self.ring.len()) {
-            self.tail = self.head;
-            None
-        } else {
-            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
-            self.next()
-        }
-    }
-
-    #[inline]
-    fn last(mut self) -> Option<&'a mut T> {
-        self.next_back()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a mut T> {
-        if self.tail == self.head {
-            return None;
-        }
-        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
-
-        unsafe {
-            let elem = self.ring.get_unchecked_mut(self.head);
-            Some(&mut *elem)
-        }
-    }
-
-    fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
-    where
-        F: FnMut(Acc, Self::Item) -> Acc,
-    {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        // SAFETY: these are the elements we have not handed out yet, so aliasing is fine.
-        // The `IterMut` invariant also ensures everything is dereferencable.
-        let (front, back) = unsafe { (&mut *front, &mut *back) };
-        accum = back.iter_mut().rfold(accum, &mut f);
-        front.iter_mut().rfold(accum, &mut f)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IterMut<'_, T> {
-    fn is_empty(&self) -> bool {
-        self.head == self.tail
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for IterMut<'_, T> {}
-
-/// An owning iterator over the elements of a `VecDeque`.
-///
-/// This `struct` is created by the [`into_iter`] method on [`VecDeque`]
-/// (provided by the `IntoIterator` trait). See its documentation for more.
-///
-/// [`into_iter`]: VecDeque::into_iter
-#[derive(Clone)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct IntoIter<T> {
-    inner: VecDeque<T>,
-}
-
-#[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("IntoIter").field(&self.inner).finish()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Iterator for IntoIter<T> {
-    type Item = T;
-
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.inner.pop_front()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.inner.len();
-        (len, Some(len))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> DoubleEndedIterator for IntoIter<T> {
-    #[inline]
-    fn next_back(&mut self) -> Option<T> {
-        self.inner.pop_back()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IntoIter<T> {
-    fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for IntoIter<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialEq> PartialEq for VecDeque<A> {
@@ -3038,26 +2615,6 @@ impl<A: PartialEq> PartialEq for VecDeque<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Eq> Eq for VecDeque<A> {}
-
-macro_rules! __impl_slice_eq1 {
-    ([$($vars:tt)*] $lhs:ty, $rhs:ty, $($constraints:tt)*) => {
-        #[stable(feature = "vec_deque_partial_eq_slice", since = "1.17.0")]
-        impl<A, B, $($vars)*> PartialEq<$rhs> for $lhs
-        where
-            A: PartialEq<B>,
-            $($constraints)*
-        {
-            fn eq(&self, other: &$rhs) -> bool {
-                if self.len() != other.len() {
-                    return false;
-                }
-                let (sa, sb) = self.as_slices();
-                let (oa, ob) = other[..].split_at(sa.len());
-                sa == oa && sb == ob
-            }
-        }
-    }
-}
 
 __impl_slice_eq1! { [] VecDeque<A>, Vec<B>, }
 __impl_slice_eq1! { [] VecDeque<A>, &[B], }
