@@ -42,7 +42,7 @@ use utils::*;
 pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
 pub use self::types::FnRetTy::*;
-pub use self::types::ItemEnum::*;
+pub use self::types::ItemKind::*;
 pub use self::types::SelfTy::*;
 pub use self::types::Type::*;
 pub use self::types::Visibility::{Inherited, Public};
@@ -276,7 +276,7 @@ impl Clean<Item> for doctree::Module<'_> {
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
-            inner: ModuleItem(Module { is_crate: self.is_crate, items }),
+            kind: ModuleItem(Module { is_crate: self.is_crate, items }),
         }
     }
 }
@@ -916,7 +916,7 @@ impl Clean<Item> for doctree::Function<'_> {
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
             def_id: did.to_def_id(),
-            inner: FunctionItem(Function {
+            kind: FunctionItem(Function {
                 decl,
                 generics,
                 header: hir::FnHeader { constness, ..self.header },
@@ -1023,7 +1023,7 @@ impl Clean<Item> for doctree::Trait<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: TraitItem(Trait {
+            kind: TraitItem(Trait {
                 auto: self.is_auto.clean(cx),
                 unsafety: self.unsafety,
                 items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
@@ -1047,7 +1047,7 @@ impl Clean<Item> for doctree::TraitAlias<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: TraitAliasItem(TraitAlias {
+            kind: TraitAliasItem(TraitAlias {
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
             }),
@@ -1102,7 +1102,7 @@ impl Clean<TypeKind> for hir::def::DefKind {
 impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let local_did = cx.tcx.hir().local_def_id(self.hir_id);
-        let inner = match self.kind {
+        let kind = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
             }
@@ -1140,7 +1140,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
             visibility: Visibility::Inherited,
             stability: get_stability(cx, local_did.to_def_id()),
             deprecation: get_deprecation(cx, local_did.to_def_id()),
-            inner,
+            kind,
         }
     }
 }
@@ -1148,7 +1148,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
 impl Clean<Item> for hir::ImplItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let local_did = cx.tcx.hir().local_def_id(self.hir_id);
-        let inner = match self.kind {
+        let kind = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
                 AssocConstItem(ty.clean(cx), Some(print_const_expr(cx, expr)))
             }
@@ -1175,14 +1175,14 @@ impl Clean<Item> for hir::ImplItem<'_> {
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, local_did.to_def_id()),
             deprecation: get_deprecation(cx, local_did.to_def_id()),
-            inner,
+            kind,
         }
     }
 }
 
 impl Clean<Item> for ty::AssocItem {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let inner = match self.kind {
+        let kind = match self.kind {
             ty::AssocKind::Const => {
                 let ty = cx.tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
@@ -1343,7 +1343,7 @@ impl Clean<Item> for ty::AssocItem {
             def_id: self.def_id,
             attrs: inline::load_attrs(cx, self.def_id).clean(cx),
             source: cx.tcx.def_span(self.def_id).clean(cx),
-            inner,
+            kind,
         }
     }
 }
@@ -1784,7 +1784,7 @@ impl Clean<Item> for hir::StructField<'_> {
             stability: get_stability(cx, local_did.to_def_id()),
             deprecation: get_deprecation(cx, local_did.to_def_id()),
             def_id: local_did.to_def_id(),
-            inner: StructFieldItem(self.ty.clean(cx)),
+            kind: StructFieldItem(self.ty.clean(cx)),
         }
     }
 }
@@ -1799,7 +1799,7 @@ impl Clean<Item> for ty::FieldDef {
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
             def_id: self.did,
-            inner: StructFieldItem(cx.tcx.type_of(self.did).clean(cx)),
+            kind: StructFieldItem(cx.tcx.type_of(self.did).clean(cx)),
         }
     }
 }
@@ -1835,7 +1835,7 @@ impl Clean<Item> for doctree::Struct<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: StructItem(Struct {
+            kind: StructItem(Struct {
                 struct_type: self.struct_type,
                 generics: self.generics.clean(cx),
                 fields: self.fields.clean(cx),
@@ -1855,7 +1855,7 @@ impl Clean<Item> for doctree::Union<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: UnionItem(Union {
+            kind: UnionItem(Union {
                 struct_type: self.struct_type,
                 generics: self.generics.clean(cx),
                 fields: self.fields.clean(cx),
@@ -1885,7 +1885,7 @@ impl Clean<Item> for doctree::Enum<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: EnumItem(Enum {
+            kind: EnumItem(Enum {
                 variants: self.variants.iter().map(|v| v.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
                 variants_stripped: false,
@@ -1904,7 +1904,7 @@ impl Clean<Item> for doctree::Variant<'_> {
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
-            inner: VariantItem(Variant { kind: self.def.clean(cx) }),
+            kind: VariantItem(Variant { kind: self.def.clean(cx) }),
         }
     }
 }
@@ -1930,7 +1930,7 @@ impl Clean<Item> for ty::VariantDef {
                         def_id: field.did,
                         stability: get_stability(cx, field.did),
                         deprecation: get_deprecation(cx, field.did),
-                        inner: StructFieldItem(cx.tcx.type_of(field.did).clean(cx)),
+                        kind: StructFieldItem(cx.tcx.type_of(field.did).clean(cx)),
                     })
                     .collect(),
             }),
@@ -1941,7 +1941,7 @@ impl Clean<Item> for ty::VariantDef {
             source: cx.tcx.def_span(self.def_id).clean(cx),
             visibility: Inherited,
             def_id: self.def_id,
-            inner: VariantItem(Variant { kind }),
+            kind: VariantItem(Variant { kind }),
             stability: get_stability(cx, self.def_id),
             deprecation: get_deprecation(cx, self.def_id),
         }
@@ -2057,7 +2057,7 @@ impl Clean<Item> for doctree::Typedef<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: TypedefItem(Typedef { type_, generics: self.gen.clean(cx), item_type }, false),
+            kind: TypedefItem(Typedef { type_, generics: self.gen.clean(cx), item_type }, false),
         }
     }
 }
@@ -2072,7 +2072,7 @@ impl Clean<Item> for doctree::OpaqueTy<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: OpaqueTyItem(OpaqueTy {
+            kind: OpaqueTyItem(OpaqueTy {
                 bounds: self.opaque_ty.bounds.clean(cx),
                 generics: self.opaque_ty.generics.clean(cx),
             }),
@@ -2100,7 +2100,7 @@ impl Clean<Item> for doctree::Static<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: StaticItem(Static {
+            kind: StaticItem(Static {
                 type_: self.type_.clean(cx),
                 mutability: self.mutability,
                 expr: print_const_expr(cx, self.expr),
@@ -2121,7 +2121,7 @@ impl Clean<Item> for doctree::Constant<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: ConstantItem(Constant {
+            kind: ConstantItem(Constant {
                 type_: self.type_.clean(cx),
                 expr: print_const_expr(cx, self.expr),
                 value: print_evaluated_const(cx, def_id.to_def_id()),
@@ -2175,7 +2175,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner: ImplItem(Impl {
+            kind: ImplItem(Impl {
                 unsafety: self.unsafety,
                 generics: self.generics.clean(cx),
                 provided_trait_methods: provided.clone(),
@@ -2231,7 +2231,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
-            inner: ExternCrateItem(self.name.clean(cx), self.path.clone()),
+            kind: ExternCrateItem(self.name.clean(cx), self.path.clone()),
         }]
     }
 }
@@ -2302,7 +2302,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         visibility: self.vis.clean(cx),
                         stability: None,
                         deprecation: None,
-                        inner: ImportItem(Import::new_simple(
+                        kind: ImportItem(Import::new_simple(
                             self.name.clean(cx),
                             resolve_use_source(cx, path),
                             false,
@@ -2322,14 +2322,14 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
-            inner: ImportItem(inner),
+            kind: ImportItem(inner),
         }]
     }
 }
 
 impl Clean<Item> for doctree::ForeignItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let inner = match self.kind {
+        let kind = match self.kind {
             hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
                 let abi = cx.tcx.hir().get_foreign_abi(self.id);
                 let (generics, decl) =
@@ -2364,7 +2364,7 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
             visibility: self.vis.clean(cx),
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
-            inner,
+            kind,
         }
     }
 }
@@ -2380,7 +2380,7 @@ impl Clean<Item> for doctree::Macro<'_> {
             stability: cx.stability(self.hid),
             deprecation: cx.deprecation(self.hid).clean(cx),
             def_id: self.def_id,
-            inner: MacroItem(Macro {
+            kind: MacroItem(Macro {
                 source: format!(
                     "macro_rules! {} {{\n{}}}",
                     name,
@@ -2405,7 +2405,7 @@ impl Clean<Item> for doctree::ProcMacro<'_> {
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
-            inner: ProcMacroItem(ProcMacro { kind: self.kind, helpers: self.helpers.clean(cx) }),
+            kind: ProcMacroItem(ProcMacro { kind: self.kind, helpers: self.helpers.clean(cx) }),
         }
     }
 }

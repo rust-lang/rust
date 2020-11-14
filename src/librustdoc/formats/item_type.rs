@@ -60,12 +60,12 @@ impl Serialize for ItemType {
 
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
-        let inner = match item.inner {
+        let kind = match item.kind {
             clean::StrippedItem(box ref item) => item,
-            ref inner => inner,
+            ref kind => kind,
         };
 
-        match *inner {
+        match *kind {
             clean::ModuleItem(..) => ItemType::Module,
             clean::ExternCrateItem(..) => ItemType::ExternCrate,
             clean::ImportItem(..) => ItemType::Import,
