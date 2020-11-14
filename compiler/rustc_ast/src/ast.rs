@@ -1192,6 +1192,7 @@ impl Expr {
             ExprKind::Field(..) => ExprPrecedence::Field,
             ExprKind::Index(..) => ExprPrecedence::Index,
             ExprKind::Range(..) => ExprPrecedence::Range,
+            ExprKind::Underscore => ExprPrecedence::Path,
             ExprKind::Path(..) => ExprPrecedence::Path,
             ExprKind::AddrOf(..) => ExprPrecedence::AddrOf,
             ExprKind::Break(..) => ExprPrecedence::Break,
@@ -1324,6 +1325,8 @@ pub enum ExprKind {
     Index(P<Expr>, P<Expr>),
     /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assingment).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
+    /// An underscore, used in destructuring assignment to ignore a value.
+    Underscore,
 
     /// Variable reference, possibly containing `::` and/or type
     /// parameters (e.g., `foo::bar::<baz>`).

@@ -806,6 +806,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             walk_list!(visitor, visit_expr, start);
             walk_list!(visitor, visit_expr, end);
         }
+        ExprKind::Underscore => {}
         ExprKind::Path(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
