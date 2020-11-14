@@ -36,7 +36,7 @@ impl ArgAttributeExt for ArgAttribute {
     where
         F: FnMut(llvm::Attribute),
     {
-        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, StructRet, InReg)
+        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg)
     }
 }
 
@@ -429,7 +429,8 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
             PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
                 assert!(!on_stack);
-                apply(attrs);
+                let i = apply(attrs);
+                llvm::Attribute::StructRet.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
             }
             _ => {}
         }
@@ -484,7 +485,9 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             }
             PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
                 assert!(!on_stack);
-                apply(attrs);
+                let i = apply(attrs);
+                llvm::Attribute::StructRet
+                    .apply_callsite(llvm::AttributePlace::Argument(i), callsite);
             }
             _ => {}
         }

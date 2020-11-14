@@ -59,7 +59,6 @@ mod attr_impl {
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
-            const StructRet = 1 << 6;
             const InReg     = 1 << 8;
         }
     }
@@ -617,10 +616,6 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "wasm32" | "asmjs" => wasm32::compute_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
-        }
-
-        if let PassMode::Indirect { ref mut attrs, extra_attrs: _, on_stack: _ } = self.ret.mode {
-            attrs.set(ArgAttribute::StructRet);
         }
 
         Ok(())
