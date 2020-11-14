@@ -426,6 +426,28 @@ fn main() { let _: m::Spam = S<|> }
                         kind: Module,
                     },
                     CompletionItem {
+                        label: "m::Spam",
+                        source_range: 75..76,
+                        text_edit: TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "use m::Spam;",
+                                    delete: 0..0,
+                                },
+                                Indel {
+                                    insert: "\n\n",
+                                    delete: 0..0,
+                                },
+                                Indel {
+                                    insert: "Spam",
+                                    delete: 75..76,
+                                },
+                            ],
+                        },
+                        kind: Enum,
+                        lookup: "Spam",
+                    },
+                    CompletionItem {
                         label: "m::Spam::Foo",
                         source_range: 75..76,
                         delete: 75..76,

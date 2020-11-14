@@ -747,7 +747,7 @@ impl My<|>
     }
 
     #[test]
-    fn function_magic_completion() {
+    fn function_fuzzy_completion() {
         check_edit(
             "stdin",
             r#"
@@ -772,7 +772,7 @@ fn main() {
     }
 
     #[test]
-    fn macro_magic_completion() {
+    fn macro_fuzzy_completion() {
         check_edit(
             "macro_with_curlies!",
             r#"
@@ -799,7 +799,7 @@ fn main() {
     }
 
     #[test]
-    fn case_insensitive_magic_completion_works() {
+    fn struct_fuzzy_completion() {
         check_edit(
             "ThirdStruct",
             r#"
