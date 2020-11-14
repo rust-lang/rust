@@ -2101,7 +2101,9 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 // will allow us to slice the metadata to the precise length that we just
 // generated regardless of trailing bytes that end up in it.
 
-pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
+    let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
+
     // Since encoding metadata is not in a query, and nothing is cached,
     // there's no need to do dep-graph tracking for any of it.
     tcx.dep_graph.assert_ignored();

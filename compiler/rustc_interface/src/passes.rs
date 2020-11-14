@@ -16,6 +16,7 @@ use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
+use rustc_metadata::encode_metadata;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
@@ -1001,7 +1002,7 @@ fn encode_and_write_metadata(
 
     let metadata = match metadata_kind {
         MetadataKind::None => middle::cstore::EncodedMetadata::new(),
-        MetadataKind::Uncompressed | MetadataKind::Compressed => tcx.encode_metadata(),
+        MetadataKind::Uncompressed | MetadataKind::Compressed => encode_metadata(tcx),
     };
 
     let _prof_timer = tcx.sess.prof.generic_activity("write_crate_metadata");

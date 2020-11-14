@@ -7,7 +7,11 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::ty::TyCtxt;
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
-pub(crate) fn new_metadata_object(tcx: TyCtxt<'_>, cgu_name: &str, metadata: &EncodedMetadata) -> Vec<u8> {
+pub(crate) fn new_metadata_object(
+    tcx: TyCtxt<'_>,
+    cgu_name: &str,
+    metadata: &EncodedMetadata,
+) -> Vec<u8> {
     use snap::write::FrameEncoder;
     use std::io::Write;
 

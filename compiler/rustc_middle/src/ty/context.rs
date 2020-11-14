@@ -7,7 +7,6 @@ use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle;
-use crate::middle::cstore::EncodedMetadata;
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{self, AllocId, Allocation, ConstValue, Scalar};
@@ -1322,11 +1321,6 @@ impl<'tcx> TyCtxt<'tcx> {
             &(format!("{:08x}", stable_crate_id.to_u64()))[..4],
             self.def_path(def_id).to_string_no_crate_verbose()
         )
-    }
-
-    pub fn encode_metadata(self) -> EncodedMetadata {
-        let _prof_timer = self.prof.verbose_generic_activity("generate_crate_metadata");
-        self.untracked_resolutions.cstore.encode_metadata(self)
     }
 
     /// Note that this is *untracked* and should only be used within the query
