@@ -106,7 +106,11 @@ fn find_module_at_offset(
     Some(module)
 }
 
-fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFileEdit {
+fn source_edit_from_reference(
+    sema: &Semantics<RootDatabase>,
+    reference: Reference,
+    new_name: &str,
+) -> SourceFileEdit {
     let mut replacement_text = String::new();
     let file_id = reference.file_range.file_id;
     let range = match reference.kind {
@@ -121,6 +125,22 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
             replacement_text.push_str(": ");
             replacement_text.push_str(new_name);
             TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())
+        }
+        ReferenceKind::RecordExprField => {
+            replacement_text.push_str(new_name);
+            let mut range = reference.file_range.range;
+            if let Some(field_expr) = syntax::algo::find_node_at_range::<ast::RecordExprField>(
+                sema.parse(file_id).syntax(),
+                reference.file_range.range,
+            ) {
+                // use shorthand initializer if we were to write foo: foo
+                if let Some(name) = field_expr.expr().and_then(|e| e.name_ref()) {
+                    if &name.to_string() == new_name {
+                        range = field_expr.syntax().text_range();
+                    }
+                }
+            }
+            range
         }
         _ => {
             replacement_text.push_str(new_name);
@@ -170,7 +190,7 @@ fn rename_mod(
     let ref_edits = refs
         .references
         .into_iter()
-        .map(|reference| source_edit_from_reference(reference, new_name));
+        .map(|reference| source_edit_from_reference(sema, reference, new_name));
     source_file_edits.extend(ref_edits);
 
     Ok(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
@@ -211,7 +231,7 @@ fn rename_to_self(
 
     let mut edits = usages
         .into_iter()
-        .map(|reference| source_edit_from_reference(reference, "self"))
+        .map(|reference| source_edit_from_reference(sema, reference, "self"))
         .collect::<Vec<_>>();
 
     edits.push(SourceFileEdit {
@@ -300,7 +320,7 @@ fn rename_reference(
 
     let edit = refs
         .into_iter()
-        .map(|reference| source_edit_from_reference(reference, new_name))
+        .map(|reference| source_edit_from_reference(sema, reference, new_name))
         .collect::<Vec<_>>();
 
     if edit.is_empty() {
@@ -1093,6 +1113,27 @@ impl Foo {
         let self_var = 1;
         foo.i
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_initializer_use_field_init_shorthand() {
+        check(
+            "bar",
+            r#"
+struct Foo { i<|>: i32 }
+
+fn foo(bar: i32) -> Foo {
+    Foo { i: bar }
+}
+"#,
+            r#"
+struct Foo { bar: i32 }
+
+fn foo(bar: i32) -> Foo {
+    Foo { bar }
 }
 "#,
         );

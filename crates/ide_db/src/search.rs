@@ -30,6 +30,7 @@ pub enum ReferenceKind {
     FieldShorthandForField,
     FieldShorthandForLocal,
     StructLiteral,
+    RecordExprField,
     Other,
 }
 
@@ -278,12 +279,15 @@ impl<'a> FindUsages<'a> {
     ) -> bool {
         match NameRefClass::classify(self.sema, &name_ref) {
             Some(NameRefClass::Definition(def)) if &def == self.def => {
-                let kind = if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref)
-                {
-                    ReferenceKind::StructLiteral
-                } else {
-                    ReferenceKind::Other
-                };
+                let kind =
+                    if name_ref.syntax().parent().and_then(ast::RecordExprField::cast).is_some() {
+                        ReferenceKind::RecordExprField
+                    } else if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref)
+                    {
+                        ReferenceKind::StructLiteral
+                    } else {
+                        ReferenceKind::Other
+                    };
 
                 let reference = Reference {
                     file_range: self.sema.original_range(name_ref.syntax()),
