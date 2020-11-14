@@ -317,10 +317,11 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         // swap in a new set of IR maps for this body
         let mut maps = IrMaps::new(self.tcx);
         let hir_id = maps.tcx.hir().body_owner(body.id());
-        let def_id = maps.tcx.hir().local_def_id(hir_id);
+        let local_def_id = maps.tcx.hir().local_def_id(hir_id);
+        let def_id = local_def_id.to_def_id();
 
         // Don't run unused pass for #[derive()]
-        if let Some(parent) = self.tcx.parent(def_id.to_def_id()) {
+        if let Some(parent) = self.tcx.parent(def_id) {
             if let DefKind::Impl = self.tcx.def_kind(parent.expect_local()) {
                 if self.tcx.has_attr(parent, sym::automatically_derived) {
                     return;
@@ -328,8 +329,8 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
         }
 
-        if let Some(upvars) = maps.tcx.upvars_mentioned(def_id) {
-            for (&var_hir_id, _upvar) in upvars {
+        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_captures.get(&def_id) {
+            for &var_hir_id in captures.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);
                 maps.add_variable(Upvar(var_hir_id, var_name));
             }
@@ -340,7 +341,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         intravisit::walk_body(&mut maps, body);
 
         // compute liveness
-        let mut lsets = Liveness::new(&mut maps, def_id);
+        let mut lsets = Liveness::new(&mut maps, local_def_id);
         let entry_ln = lsets.compute(&body, hir_id);
         lsets.log_liveness(entry_ln, body.id().hir_id);
 
@@ -397,10 +398,18 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 // construction site.
                 let mut call_caps = Vec::new();
                 let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
-                if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
-                    call_caps.extend(upvars.iter().map(|(&var_id, upvar)| {
+                if let Some(captures) = self
+                    .tcx
+                    .typeck(closure_def_id)
+                    .closure_captures
+                    .get(&closure_def_id.to_def_id())
+                {
+                    // If closure captures is Some, upvars_mentioned must also be Some
+                    let upvars = self.tcx.upvars_mentioned(closure_def_id).unwrap();
+                    call_caps.extend(captures.keys().map(|var_id| {
+                        let upvar = upvars[var_id];
                         let upvar_ln = self.add_live_node(UpvarNode(upvar.span));
-                        CaptureInfo { ln: upvar_ln, var_hid: var_id }
+                        CaptureInfo { ln: upvar_ln, var_hid: *var_id }
                     }));
                 }
                 self.set_captures(expr.hir_id, call_caps);
@@ -564,6 +573,7 @@ struct Liveness<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
+    closure_captures: Option<&'tcx FxIndexMap<hir::HirId, ty::UpvarId>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
     rwu_table: RWUTable,
 
@@ -587,6 +597,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
         let upvars = ir.tcx.upvars_mentioned(body_owner);
+        let closure_captures = typeck_results.closure_captures.get(&body_owner.to_def_id());
 
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
@@ -600,6 +611,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             typeck_results,
             param_env,
             upvars,
+            closure_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
             rwu_table: RWUTable::new(num_live_nodes * num_vars),
             closure_ln,
@@ -850,14 +862,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // if they are live on the entry to the closure, since only the closure
         // itself can access them on subsequent calls.
 
-        if let Some(upvars) = self.upvars {
+        if let Some(closure_captures) = self.closure_captures {
             // Mark upvars captured by reference as used after closure exits.
-            for (&var_hir_id, upvar) in upvars.iter().rev() {
-                let upvar_id = ty::UpvarId {
-                    var_path: ty::UpvarPath { hir_id: var_hir_id },
-                    closure_expr_id: self.body_owner,
-                };
-                match self.typeck_results.upvar_capture(upvar_id) {
+            // Since closure_captures is Some, upvars must exists too.
+            let upvars = self.upvars.unwrap();
+            for (&var_hir_id, upvar_id) in closure_captures {
+                let upvar = upvars[&var_hir_id];
+                match self.typeck_results.upvar_capture(*upvar_id) {
                     ty::UpvarCapture::ByRef(_) => {
                         let var = self.variable(var_hir_id, upvar.span);
                         self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
@@ -869,7 +880,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let succ = self.propagate_through_expr(&body.value, self.exit_ln);
 
-        if self.upvars.is_none() {
+        if self.closure_captures.is_none() {
             // Either not a closure, or closure without any captured variables.
             // No need to determine liveness of captured variables, since there
             // are none.
@@ -1341,7 +1352,21 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         acc: u32,
     ) -> LiveNode {
         match path.res {
-            Res::Local(hid) => self.access_var(hir_id, hid, succ, acc, path.span),
+            Res::Local(hid) => {
+                let in_upvars = self.upvars.map_or(false, |u| u.contains_key(&hid));
+                let in_captures = self.closure_captures.map_or(false, |c| c.contains_key(&hid));
+
+                match (in_upvars, in_captures) {
+                    (false, _) | (true, true) => self.access_var(hir_id, hid, succ, acc, path.span),
+                    (true, false) => {
+                        // This case is possible when with RFC-2229, a wild pattern
+                        // is used within a closure.
+                        // eg: `let _ = x`. The closure doesn't capture x here,
+                        // even though it's mentioned in the closure.
+                        succ
+                    }
+                }
+            }
             _ => succ,
         }
     }
@@ -1531,11 +1556,15 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let upvars = match self.upvars {
+        let closure_captures = match self.closure_captures {
             None => return,
-            Some(upvars) => upvars,
+            Some(closure_captures) => closure_captures,
         };
-        for (&var_hir_id, upvar) in upvars.iter() {
+
+        // If closure_captures is Some(), upvars must be Some() too.
+        let upvars = self.upvars.unwrap();
+        for &var_hir_id in closure_captures.keys() {
+            let upvar = upvars[&var_hir_id];
             let var = self.variable(var_hir_id, upvar.span);
             let upvar_id = ty::UpvarId {
                 var_path: ty::UpvarPath { hir_id: var_hir_id },

@@ -387,8 +387,9 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 }
             };
             let upvars = cx
-                .tcx
-                .upvars_mentioned(def_id)
+                .typeck_results()
+                .closure_captures
+                .get(&def_id)
                 .iter()
                 .flat_map(|upvars| upvars.iter())
                 .zip(substs.upvar_tys())

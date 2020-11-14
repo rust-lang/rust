@@ -1,0 +1,57 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/multilevel-path-2.rs:21:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/multilevel-path-2.rs:3:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: First Pass analysis includes:
+  --> $DIR/multilevel-path-2.rs:24:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", w.p.x);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing w[(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/multilevel-path-2.rs:27:24
+   |
+LL |         println!("{}", w.p.x);
+   |                        ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/multilevel-path-2.rs:24:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", w.p.x);
+LL | |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture w[(0, 0),(0, 0)] -> ImmBorrow
+  --> $DIR/multilevel-path-2.rs:27:24
+   |
+LL |         println!("{}", w.p.x);
+   |                        ^^^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.
