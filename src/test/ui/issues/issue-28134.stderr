@@ -1,5 +1,5 @@
 error: cannot determine resolution for the attribute macro `test`
-  --> $DIR/issue-28134.rs:3:4
+  --> $DIR/issue-28134.rs:4:4
    |
 LL | #![test]
    |    ^^^^
