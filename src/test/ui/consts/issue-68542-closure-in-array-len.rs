@@ -4,7 +4,6 @@
 
 struct Bug {
     a: [(); (|| { 0 })()] //~ ERROR calls in constants are limited to
-    //~^ ERROR evaluation of constant value failed
 }
 
 fn main() {}

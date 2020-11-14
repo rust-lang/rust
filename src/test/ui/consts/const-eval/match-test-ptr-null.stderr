@@ -7,13 +7,6 @@ LL |         match &1 as *const i32 as usize {
    = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
    = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/match-test-ptr-null.rs:6:15
-   |
-LL |         match &1 as *const i32 as usize {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0080, E0658.
-For more information about an error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0658`.
