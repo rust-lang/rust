@@ -57,12 +57,20 @@ mod attr_impl {
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
-            const SExt      = 1 << 5;
             const StructRet = 1 << 6;
-            const ZExt      = 1 << 7;
             const InReg     = 1 << 8;
         }
     }
+}
+
+/// Sometimes an ABI requires small integers to be extended to a full or partial register. This enum
+/// defines if this extension should be zero-extension or sign-extension when necssary. When it is
+/// not necesary to extend the argument, this enum is ignored.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum ArgExtension {
+    None,
+    Zext,
+    Sext,
 }
 
 /// A compact representation of LLVM attributes (at least those relevant for this module)
@@ -70,6 +78,7 @@ mod attr_impl {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
+    pub arg_ext: ArgExtension,
     /// The minimum size of the pointee, guaranteed to be valid for the duration of the whole call
     /// (corresponding to LLVM's dereferenceable and dereferenceable_or_null attributes).
     pub pointee_size: Size,
@@ -80,9 +89,22 @@ impl ArgAttributes {
     pub fn new() -> Self {
         ArgAttributes {
             regular: ArgAttribute::default(),
+            arg_ext: ArgExtension::None,
             pointee_size: Size::ZERO,
             pointee_align: None,
         }
+    }
+
+    pub fn zext(&mut self) -> &mut Self {
+        assert_ne!(self.arg_ext, ArgExtension::Sext);
+        self.arg_ext = ArgExtension::Zext;
+        self
+    }
+
+    pub fn sext(&mut self) -> &mut Self {
+        assert_ne!(self.arg_ext, ArgExtension::Zext);
+        self.arg_ext = ArgExtension::Sext;
+        self
     }
 
     pub fn set(&mut self, attr: ArgAttribute) -> &mut Self {
@@ -457,7 +479,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             if let abi::Int(i, signed) = scalar.value {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
-                        attrs.set(if signed { ArgAttribute::SExt } else { ArgAttribute::ZExt });
+                        if signed {
+                            attrs.sext()
+                        } else {
+                            attrs.zext()
+                        };
                     }
                 }
             }

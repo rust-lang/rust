@@ -2619,7 +2619,7 @@ where
                                       is_return: bool| {
             // Booleans are always an i1 that needs to be zero-extended.
             if scalar.is_bool() {
-                attrs.set(ArgAttribute::ZExt);
+                attrs.zext();
                 return;
             }
 

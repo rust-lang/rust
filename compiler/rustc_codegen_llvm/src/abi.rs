@@ -36,7 +36,7 @@ impl ArgAttributeExt for ArgAttribute {
     where
         F: FnMut(llvm::Attribute),
     {
-        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt, InReg)
+        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, StructRet, InReg)
     }
 }
 
@@ -65,6 +65,15 @@ impl ArgAttributesExt for ArgAttributes {
                 llvm::LLVMRustAddByValAttr(llfn, idx.as_uint(), ty.unwrap());
             }
             regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
+            match self.arg_ext {
+                ArgExtension::None => {}
+                ArgExtension::Zext => {
+                    llvm::Attribute::ZExt.apply_llfn(idx, llfn);
+                }
+                ArgExtension::Sext => {
+                    llvm::Attribute::SExt.apply_llfn(idx, llfn);
+                }
+            }
         }
     }
 
@@ -95,6 +104,15 @@ impl ArgAttributesExt for ArgAttributes {
                 llvm::LLVMRustAddByValCallSiteAttr(callsite, idx.as_uint(), ty.unwrap());
             }
             regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
+            match self.arg_ext {
+                ArgExtension::None => {}
+                ArgExtension::Zext => {
+                    llvm::Attribute::ZExt.apply_callsite(idx, callsite);
+                }
+                ArgExtension::Sext => {
+                    llvm::Attribute::SExt.apply_callsite(idx, callsite);
+                }
+            }
         }
     }
 }
