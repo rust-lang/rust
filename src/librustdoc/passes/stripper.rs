@@ -50,13 +50,13 @@ impl<'a> DocFolder for Stripper<'a> {
             }
 
             clean::StructFieldItem(..) => {
-                if i.visibility != clean::Public {
+                if !i.visibility.is_public() {
                     return StripItem(i).strip();
                 }
             }
 
             clean::ModuleItem(..) => {
-                if i.def_id.is_local() && i.visibility != clean::Public {
+                if i.def_id.is_local() && !i.visibility.is_public() {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
@@ -163,9 +163,7 @@ crate struct ImportStripper;
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.kind {
-            clean::ExternCrateItem(..) | clean::ImportItem(..) if i.visibility != clean::Public => {
-                None
-            }
+            clean::ExternCrateItem(..) | clean::ImportItem(..) if !i.visibility.is_public() => None,
             _ => self.fold_item_recur(i),
         }
     }

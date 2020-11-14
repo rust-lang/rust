@@ -1812,7 +1812,7 @@ impl Clean<Visibility> for hir::Visibility<'_> {
             hir::VisibilityKind::Restricted { ref path, .. } => {
                 let path = path.clean(cx);
                 let did = register_res(cx, path.res);
-                Visibility::Restricted(did, path)
+                Visibility::Restricted(did, cx.tcx.def_path(did))
             }
         }
     }
