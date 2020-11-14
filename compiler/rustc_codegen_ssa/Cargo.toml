@@ -33,6 +33,7 @@ rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
+rustc_query_system = { path = "../rustc_query_system" }
 rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
 

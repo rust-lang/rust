@@ -5,7 +5,6 @@
 //! The providers for the queries defined here can be found in
 //! `rustc_traits`.
 
-use crate::ich::StableHashingContext;
 use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
 use crate::ty::subst::GenericArg;
@@ -14,6 +13,7 @@ use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_span::source_map::Span;
 use std::iter::FromIterator;
 use std::mem;

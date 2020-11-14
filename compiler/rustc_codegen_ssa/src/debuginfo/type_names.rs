@@ -16,10 +16,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_middle::ich::NodeIdHashingMode;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
+use rustc_query_system::ich::NodeIdHashingMode;
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
 

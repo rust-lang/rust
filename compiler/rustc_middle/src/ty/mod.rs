@@ -20,7 +20,6 @@ pub use generics::*;
 pub use vtable::*;
 
 use crate::hir::exports::ExportMap;
-use crate::ich::StableHashingContext;
 use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -36,6 +35,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, CRATE_DEF_INDEX};
 use rustc_hir::Node;
 use rustc_macros::HashStable;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStoreDyn;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;

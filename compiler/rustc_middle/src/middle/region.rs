@@ -6,10 +6,10 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::ty::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::Node;
+use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
