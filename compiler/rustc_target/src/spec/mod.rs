@@ -1444,8 +1444,8 @@ impl Target {
         }
 
         key!(is_builtin, bool);
-        key!(endian = "target_endian");
-        key!(c_int_width = "target_c_int_width");
+        key!(endian = "target-endian");
+        key!(c_int_width = "target-c-int-width");
         key!(os);
         key!(env);
         key!(vendor);
@@ -1482,7 +1482,7 @@ impl Target {
         key!(exe_suffix);
         key!(staticlib_prefix);
         key!(staticlib_suffix);
-        key!(os_family = "target_family", optional);
+        key!(os_family = "target-family", optional);
         key!(abi_return_struct_as_int, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
@@ -1527,7 +1527,7 @@ impl Target {
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
-        key!(mcount = "target_mcount");
+        key!(mcount = "target-mcount");
         key!(llvm_abiname);
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
@@ -1679,8 +1679,8 @@ impl ToJson for Target {
         target_val!(data_layout);
 
         target_option_val!(is_builtin);
-        target_option_val!(endian, "target_endian");
-        target_option_val!(c_int_width, "target_c_int_width");
+        target_option_val!(endian, "target-endian");
+        target_option_val!(c_int_width, "target-c-int-width");
         target_option_val!(os);
         target_option_val!(env);
         target_option_val!(vendor);
@@ -1717,7 +1717,7 @@ impl ToJson for Target {
         target_option_val!(exe_suffix);
         target_option_val!(staticlib_prefix);
         target_option_val!(staticlib_suffix);
-        target_option_val!(os_family, "target_family");
+        target_option_val!(os_family, "target-family");
         target_option_val!(abi_return_struct_as_int);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);
@@ -1762,7 +1762,7 @@ impl ToJson for Target {
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);
-        target_option_val!(mcount, "target_mcount");
+        target_option_val!(mcount, "target-mcount");
         target_option_val!(llvm_abiname);
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);
