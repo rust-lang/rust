@@ -110,6 +110,7 @@ mod context;
 mod diagnostics;
 mod erase_regions;
 mod generics;
+mod impls_ty;
 mod instance;
 mod list;
 mod structural_impls;
