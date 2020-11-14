@@ -1,6 +1,6 @@
 use crate::HashStableContext;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
@@ -274,8 +274,43 @@ impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     }
 }
 
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for DefId {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+        hcx.def_path_hash(*self)
+    }
+}
+
+impl<CTX: HashStableContext> HashStable<CTX> for LocalDefId {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        hcx.def_path_hash(self.to_def_id()).hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for LocalDefId {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+        hcx.def_path_hash(self.to_def_id())
+    }
+}
+
 impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         hcx.hash_crate_num(*self, hasher)
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+        let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
+        def_id.to_stable_hash_key(hcx)
     }
 }

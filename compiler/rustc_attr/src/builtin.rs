@@ -2,6 +2,7 @@
 
 use rustc_ast::{self as ast, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
@@ -1048,4 +1049,22 @@ fn allow_unstable<'a>(
         }
         name
     }))
+}
+
+impl<Ctxt> HashStable<Ctxt> for InlineAttr {
+    fn hash_stable(&self, hcx: &mut Ctxt, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+    }
+}
+
+impl<Ctxt> HashStable<Ctxt> for InstructionSetAttr {
+    fn hash_stable(&self, hcx: &mut Ctxt, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+    }
+}
+
+impl<Ctxt> HashStable<Ctxt> for OptimizeAttr {
+    fn hash_stable(&self, hcx: &mut Ctxt, hasher: &mut StableHasher) {
+        std::mem::discriminant(self).hash_stable(hcx, hasher);
+    }
 }

@@ -231,6 +231,11 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 
     #[inline]
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+        self.def_path_hash(def_id)
+    }
+
+    #[inline]
     fn hash_crate_num(&mut self, cnum: CrateNum, hasher: &mut StableHasher) {
         let hcx = self;
         hcx.def_path_hash(DefId { krate: cnum, index: CRATE_DEF_INDEX }).hash_stable(hcx, hasher);

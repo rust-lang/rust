@@ -33,7 +33,7 @@ pub use hygiene::SyntaxContext;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind};
 pub mod def_id;
-use def_id::{CrateNum, DefId, LOCAL_CRATE};
+use def_id::{CrateNum, DefId, DefPathHash, LOCAL_CRATE};
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
@@ -1840,6 +1840,7 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc_middle.
 pub trait HashStableContext {
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
     fn hash_spans(&self) -> bool;
