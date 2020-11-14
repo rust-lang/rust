@@ -1138,4 +1138,58 @@ fn foo(bar: i32) -> Foo {
 "#,
         );
     }
+
+    #[test]
+    fn test_rename_binding_in_destructure_pat_shorthand() {
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i } = foo;
+    let _ = i<|>;
+}
+"#,
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i: bar } = foo;
+    let _ = bar;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_binding_in_destructure_pat() {
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i: b } = foo;
+    let _ = b<|>;
+}
+"#,
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i: bar } = foo;
+    let _ = bar;
+}
+"#,
+        );
+    }
 }
