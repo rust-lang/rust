@@ -671,7 +671,7 @@ fn resolve_associated_trait_item(
     let implicit_impls = crate::clean::get_auto_trait_and_blanket_impls(cx, ty, did);
     let mut candidates: Vec<_> = implicit_impls
         .flat_map(|impl_outer| {
-            match impl_outer.inner {
+            match impl_outer.kind {
                 clean::ImplItem(impl_) => {
                     debug!("considering auto or blanket impl for trait {:?}", impl_.trait_);
                     // Give precedence to methods that were overridden
@@ -681,14 +681,14 @@ fn resolve_associated_trait_item(
                                 return None;
                             }
                             let kind = assoc
-                                .inner
+                                .kind
                                 .as_assoc_kind()
                                 .expect("inner items for a trait should be associated items");
                             if kind.namespace() != ns {
                                 return None;
                             }
 
-                            trace!("considering associated item {:?}", assoc.inner);
+                            trace!("considering associated item {:?}", assoc.kind);
                             // We have a slight issue: normal methods come from `clean` types,
                             // but provided methods come directly from `tcx`.
                             // Fortunately, we don't need the whole method, we just need to know
@@ -832,7 +832,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
         }
 
-        let current_item = match item.inner {
+        let current_item = match item.kind {
             clean::ModuleItem(..) => {
                 if item.attrs.inner_docs {
                     if item.def_id.is_top_level_module() { item.name.clone() } else { None }
