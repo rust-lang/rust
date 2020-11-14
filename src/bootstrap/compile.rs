@@ -499,7 +499,7 @@ impl Step for Rustc {
         });
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "build");
-        rustc_cargo(builder, &mut cargo, target);
+        rustc_cargo(builder, &mut cargo, target, compiler);
 
         builder.info(&format!(
             "Building stage{} compiler artifacts ({} -> {})",
@@ -522,16 +522,16 @@ impl Step for Rustc {
     }
 }
 
-pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection, compiler: Compiler) {
     cargo
         .arg("--features")
         .arg(builder.rustc_features())
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
-    rustc_cargo_env(builder, cargo, target);
+    rustc_cargo_env(builder, cargo, target, compiler);
 }
 
-pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
+pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection, compiler: Compiler) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo
@@ -561,7 +561,11 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
     }
-
+    if target == "x86_64-unknown-linux-gnu" && compiler.stage > 0 {
+        if builder.is_rust_llvm(target) {
+            cargo.rustflag("-Ctarget-cpu=x86-64-v4");
+        }
+    }
     // Pass down configuration from the LLVM build into the build of
     // rustc_llvm and rustc_codegen_llvm.
     //
@@ -701,7 +705,7 @@ impl Step for CodegenBackend {
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
-        rustc_cargo_env(builder, &mut cargo, target);
+        rustc_cargo_env(builder, &mut cargo, target, compiler);
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
