@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
-use ide_db::base_db::SourceDatabaseExt;
+use ide_db::base_db::{FileRange, SourceDatabaseExt};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -112,7 +112,6 @@ fn source_edit_from_reference(
     new_name: &str,
 ) -> SourceFileEdit {
     let mut replacement_text = String::new();
-    let file_id = reference.file_range.file_id;
     let range = match reference.kind {
         ReferenceKind::FieldShorthandForField => {
             mark::hit!(test_rename_struct_field_for_shorthand);
@@ -126,28 +125,49 @@ fn source_edit_from_reference(
             replacement_text.push_str(new_name);
             TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())
         }
-        ReferenceKind::RecordExprField => {
+        ReferenceKind::RecordFieldExprOrPat => {
             replacement_text.push_str(new_name);
-            let mut range = reference.file_range.range;
-            if let Some(field_expr) = syntax::algo::find_node_at_range::<ast::RecordExprField>(
-                sema.parse(file_id).syntax(),
-                reference.file_range.range,
-            ) {
-                // use shorthand initializer if we were to write foo: foo
-                if let Some(name) = field_expr.expr().and_then(|e| e.name_ref()) {
-                    if &name.to_string() == new_name {
-                        range = field_expr.syntax().text_range();
-                    }
-                }
-            }
-            range
+            edit_text_range_for_record_field_expr_or_pat(sema, reference.file_range, new_name)
         }
         _ => {
             replacement_text.push_str(new_name);
             reference.file_range.range
         }
     };
-    SourceFileEdit { file_id, edit: TextEdit::replace(range, replacement_text) }
+    SourceFileEdit {
+        file_id: reference.file_range.file_id,
+        edit: TextEdit::replace(range, replacement_text),
+    }
+}
+
+fn edit_text_range_for_record_field_expr_or_pat(
+    sema: &Semantics<RootDatabase>,
+    file_range: FileRange,
+    new_name: &str,
+) -> TextRange {
+    let mut range = file_range.range;
+    let source_file = sema.parse(file_range.file_id);
+    let file_syntax = source_file.syntax();
+    if let Some(field_expr) =
+        syntax::algo::find_node_at_range::<ast::RecordExprField>(file_syntax, range)
+    {
+        match field_expr.expr().and_then(|e| e.name_ref()) {
+            Some(name) if &name.to_string() == new_name => range = field_expr.syntax().text_range(),
+            _ => (),
+        }
+    } else if let Some(field_pat) =
+        syntax::algo::find_node_at_range::<ast::RecordPatField>(file_syntax, range)
+    {
+        match field_pat.pat() {
+            Some(ast::Pat::IdentPat(pat))
+                if pat.name().map(|n| n.to_string()).as_deref() == Some(new_name) =>
+            {
+                range = field_pat.syntax().text_range()
+            }
+            _ => (),
+        }
+    }
+    range
 }
 
 fn rename_mod(
@@ -1188,6 +1208,29 @@ struct Foo {
 fn foo(foo: Foo) {
     let Foo { i: bar } = foo;
     let _ = bar;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_struct_field_destructure_into_shorthand() {
+        check(
+            "baz",
+            r#"
+struct Foo { i<|>: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { i: baz } = foo;
+    let _ = baz;
+}
+"#,
+            r#"
+struct Foo { baz: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { baz } = foo;
+    let _ = baz;
 }
 "#,
         );

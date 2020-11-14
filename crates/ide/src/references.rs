@@ -622,7 +622,7 @@ fn foo() {
             expect![[r#"
                 f RECORD_FIELD FileId(0) 15..21 15..16 Other
 
-                FileId(0) 55..56 Other Read
+                FileId(0) 55..56 RecordFieldExprOrPat Read
                 FileId(0) 68..69 Other Write
             "#]],
         );
@@ -757,7 +757,7 @@ fn f() -> m::En {
             expect![[r#"
                 field RECORD_FIELD FileId(0) 56..65 56..61 Other
 
-                FileId(0) 125..130 Other Read
+                FileId(0) 125..130 RecordFieldExprOrPat Read
             "#]],
         );
     }

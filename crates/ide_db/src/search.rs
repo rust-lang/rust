@@ -30,7 +30,7 @@ pub enum ReferenceKind {
     FieldShorthandForField,
     FieldShorthandForLocal,
     StructLiteral,
-    RecordExprField,
+    RecordFieldExprOrPat,
     Other,
 }
 
@@ -279,15 +279,13 @@ impl<'a> FindUsages<'a> {
     ) -> bool {
         match NameRefClass::classify(self.sema, &name_ref) {
             Some(NameRefClass::Definition(def)) if &def == self.def => {
-                let kind =
-                    if name_ref.syntax().parent().and_then(ast::RecordExprField::cast).is_some() {
-                        ReferenceKind::RecordExprField
-                    } else if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref)
-                    {
-                        ReferenceKind::StructLiteral
-                    } else {
-                        ReferenceKind::Other
-                    };
+                let kind = if is_record_field_expr_or_pat(&name_ref) {
+                    ReferenceKind::RecordFieldExprOrPat
+                } else if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {
+                    ReferenceKind::StructLiteral
+                } else {
+                    ReferenceKind::Other
+                };
 
                 let reference = Reference {
                     file_range: self.sema.original_range(name_ref.syntax()),
@@ -388,4 +386,18 @@ fn is_record_lit_name_ref(name_ref: &ast::NameRef) -> bool {
         .and_then(|p| p.segment())
         .map(|p| p.name_ref().as_ref() == Some(name_ref))
         .unwrap_or(false)
+}
+
+fn is_record_field_expr_or_pat(name_ref: &ast::NameRef) -> bool {
+    if let Some(parent) = name_ref.syntax().parent() {
+        match_ast! {
+            match parent {
+                ast::RecordExprField(it) => true,
+                ast::RecordPatField(_it) => true,
+                _ => false,
+            }
+        }
+    } else {
+        false
+    }
 }
