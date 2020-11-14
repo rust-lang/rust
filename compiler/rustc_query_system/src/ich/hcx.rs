@@ -206,4 +206,4 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 }
 
-impl rustc_session::HashStableContext for StableHashingContext<'a> {}
+impl<'a> rustc_session::HashStableContext for StableHashingContext<'a> {}

@@ -10,12 +10,16 @@ doctest = false
 rustc_arena = { path = "../rustc_arena" }
 tracing = "0.1"
 rustc-rayon-core = "0.3.1"
+rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_macros = { path = "../rustc_macros" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
 parking_lot = "0.11"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
