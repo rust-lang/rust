@@ -1,6 +1,6 @@
 use super::{probe, MethodCallee};
 
-use crate::astconv::AstConv;
+use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt};
 use crate::check::{callee, FnCtxt};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
@@ -10,7 +10,7 @@ use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::subst::{self, Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -307,6 +307,52 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // parameters from the type and those from the method.
         assert_eq!(generics.parent_count, parent_substs.len());
 
+        struct MethodSubstsCtxt<'a, 'tcx> {
+            cfcx: &'a ConfirmContext<'a, 'tcx>,
+            pick: &'a probe::Pick<'tcx>,
+            seg: &'a hir::PathSegment<'a>,
+        }
+        impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for MethodSubstsCtxt<'a, 'tcx> {
+            fn args_for_def_id(
+                &mut self,
+                def_id: DefId,
+            ) -> (Option<&'a hir::GenericArgs<'a>>, bool) {
+                if def_id == self.pick.item.def_id {
+                    if let Some(ref data) = self.seg.args {
+                        return (Some(data), false);
+                    }
+                }
+                (None, false)
+            }
+
+            fn provided_kind(
+                &mut self,
+                param: &ty::GenericParamDef,
+                arg: &GenericArg<'_>,
+            ) -> subst::GenericArg<'tcx> {
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        AstConv::ast_region_to_region(self.cfcx.fcx, lt, Some(param)).into()
+                    }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                        self.cfcx.to_ty(ty).into()
+                    }
+                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                        self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            fn inferred_kind(
+                &mut self,
+                _substs: Option<&[subst::GenericArg<'tcx>]>,
+                param: &ty::GenericParamDef,
+                _infer_args: bool,
+            ) -> subst::GenericArg<'tcx> {
+                self.cfcx.var_for_def(self.cfcx.span, param)
+            }
+        }
         AstConv::create_substs_for_generic_args(
             self.tcx,
             pick.item.def_id,
@@ -314,29 +360,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             false,
             None,
             arg_count_correct,
-            // Provide the generic args, and whether types should be inferred.
-            |def_id| {
-                // The last component of the returned tuple here is unimportant.
-                if def_id == pick.item.def_id {
-                    if let Some(ref data) = seg.args {
-                        return (Some(data), false);
-                    }
-                }
-                (None, false)
-            },
-            // Provide substitutions for parameters for which (valid) arguments have been provided.
-            |param, arg| match (&param.kind, arg) {
-                (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                    AstConv::ast_region_to_region(self.fcx, lt, Some(param)).into()
-                }
-                (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => self.to_ty(ty).into(),
-                (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    self.const_arg_to_const(&ct.value, param.def_id).into()
-                }
-                _ => unreachable!(),
-            },
-            // Provide substitutions for parameters for which arguments are inferred.
-            |_, param, _| self.var_for_def(self.span, param),
+            &mut MethodSubstsCtxt { cfcx: self, pick, seg },
         )
     }
 

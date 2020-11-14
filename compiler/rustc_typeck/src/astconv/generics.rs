@@ -1,12 +1,13 @@
 use crate::astconv::{
-    AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
+    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
+    GenericArgCountResult, GenericArgPosition,
 };
 use crate::errors::AssocTypeBindingNotAllowed;
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{GenericArg, GenericArgs};
+use rustc_hir::GenericArg;
 use rustc_middle::ty::{
     self, subst, subst::SubstsRef, GenericParamDef, GenericParamDefKind, Ty, TyCtxt,
 };
@@ -90,20 +91,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ///   instantiate a `GenericArg`.
     /// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
     ///   creates a suitable inference variable.
-    pub fn create_substs_for_generic_args<'b>(
+    pub fn create_substs_for_generic_args<'a>(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         parent_substs: &[subst::GenericArg<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
         arg_count: GenericArgCountResult,
-        args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs<'b>>, bool),
-        mut provided_kind: impl FnMut(&GenericParamDef, &GenericArg<'_>) -> subst::GenericArg<'tcx>,
-        mut inferred_kind: impl FnMut(
-            Option<&[subst::GenericArg<'tcx>]>,
-            &GenericParamDef,
-            bool,
-        ) -> subst::GenericArg<'tcx>,
+        ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
     ) -> SubstsRef<'tcx> {
         // Collect the segments of the path; we need to substitute arguments
         // for parameters throughout the entire path (wherever there are
@@ -142,7 +137,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             substs.push(
                                 self_ty
                                     .map(|ty| ty.into())
-                                    .unwrap_or_else(|| inferred_kind(None, param, true)),
+                                    .unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
                             );
                             params.next();
                         }
@@ -151,7 +146,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             // Check whether this segment takes generic arguments and the user has provided any.
-            let (generic_args, infer_args) = args_for_def_id(def_id);
+            let (generic_args, infer_args) = ctx.args_for_def_id(def_id);
 
             let mut args =
                 generic_args.iter().flat_map(|generic_args| generic_args.args.iter()).peekable();
@@ -173,7 +168,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                             | (GenericArg::Type(_), GenericParamDefKind::Type { .. }, _)
                             | (GenericArg::Const(_), GenericParamDefKind::Const, _) => {
-                                substs.push(provided_kind(param, arg));
+                                substs.push(ctx.provided_kind(param, arg));
                                 args.next();
                                 params.next();
                             }
@@ -184,7 +179,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             ) => {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
-                                substs.push(inferred_kind(None, param, infer_args));
+                                substs.push(ctx.inferred_kind(None, param, infer_args));
                                 force_infer_lt = Some(arg);
                                 params.next();
                             }
@@ -302,7 +297,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (None, Some(&param)) => {
                         // If there are fewer arguments than parameters, it means
                         // we're inferring the remaining arguments.
-                        substs.push(inferred_kind(Some(&substs), param, infer_args));
+                        substs.push(ctx.inferred_kind(Some(&substs), param, infer_args));
                         params.next();
                     }
 
