@@ -12,7 +12,6 @@ use rustc_infer::infer::{self, InferCtxt, InferOk};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::config::nightly_options;
 use rustc_span::Span;
 
 use std::ops::ControlFlow;
@@ -602,7 +601,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         err.span_label(span, label);
 
-        if nightly_options::is_nightly_build() {
+        if self.tcx.sess.is_nightly_build() {
             err.help("add #![feature(member_constraints)] to the crate attributes to enable");
         }
 

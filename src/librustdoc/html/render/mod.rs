@@ -52,7 +52,6 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
@@ -397,6 +396,7 @@ impl FormatRenderer for Context {
             resource_suffix,
             static_root_path,
             generate_search_filter,
+            unstable_features,
             ..
         } = options;
 
@@ -466,7 +466,7 @@ impl FormatRenderer for Context {
             static_root_path,
             fs: DocFS::new(sender),
             edition,
-            codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
+            codes: ErrorCodes::from(unstable_features.is_nightly_build()),
             playground,
         };
 
@@ -618,7 +618,7 @@ impl FormatRenderer for Context {
 
         // Render sidebar-items.js used throughout this module.
         if !self.render_redirect_pages {
-            let module = match item.inner {
+            let module = match item.kind {
                 clean::StrippedItem(box clean::ModuleItem(ref m)) | clean::ModuleItem(ref m) => m,
                 _ => unreachable!(),
             };
@@ -1717,7 +1717,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
 
     write!(buf, "</span>"); // out-of-band
     write!(buf, "<span class=\"in-band\">");
-    let name = match item.inner {
+    let name = match item.kind {
         clean::ModuleItem(ref m) => {
             if m.is_crate {
                 "Crate "
@@ -1766,7 +1766,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
 
     write!(buf, "</span></h1>"); // in-band
 
-    match item.inner {
+    match item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
         clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) => {
             item_function(buf, cx, item, f)
@@ -2133,7 +2133,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
             );
         }
 
-        match myitem.inner {
+        match myitem.kind {
             clean::ExternCrateItem(ref name, ref src) => {
                 use crate::html::format::anchor;
 
@@ -2169,7 +2169,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                     continue;
                 }
 
-                let unsafety_flag = match myitem.inner {
+                let unsafety_flag = match myitem.kind {
                     clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
                         if func.header.unsafety == hir::Unsafety::Unsafe =>
                     {
@@ -2582,7 +2582,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             }
             for (pos, m) in provided.iter().enumerate() {
                 render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait);
-                match m.inner {
+                match m.kind {
                     clean::MethodItem(ref inner) if !inner.generics.where_predicates.is_empty() => {
                         write!(w, ",\n    {{ ... }}\n");
                     }
@@ -2958,7 +2958,7 @@ fn render_assoc_item(
             where_clause = WhereClause { gens: g, indent, end_newline }
         )
     }
-    match item.inner {
+    match item.kind {
         clean::StrippedItem(..) => {}
         clean::TyMethodItem(ref m) => method(w, item, m.header, &m.generics, &m.decl, link, parent),
         clean::MethodItem(ref m) => method(w, item, m.header, &m.generics, &m.decl, link, parent),
@@ -2994,7 +2994,7 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
     let mut fields = s
         .fields
         .iter()
-        .filter_map(|f| match f.inner {
+        .filter_map(|f| match f.kind {
             clean::StructFieldItem(ref ty) => Some((f, ty)),
             _ => None,
         })
@@ -3044,7 +3044,7 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, 
     let mut fields = s
         .fields
         .iter()
-        .filter_map(|f| match f.inner {
+        .filter_map(|f| match f.kind {
             clean::StructFieldItem(ref ty) => Some((f, ty)),
             _ => None,
         })
@@ -3097,7 +3097,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
             for v in &e.variants {
                 write!(w, "    ");
                 let name = v.name.as_ref().unwrap();
-                match v.inner {
+                match v.kind {
                     clean::VariantItem(ref var) => match var.kind {
                         clean::VariantKind::CLike => write!(w, "{}", name),
                         clean::VariantKind::Tuple(ref tys) => {
@@ -3147,7 +3147,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                 id = id,
                 name = variant.name.as_ref().unwrap()
             );
-            if let clean::VariantItem(ref var) = variant.inner {
+            if let clean::VariantItem(ref var) = variant.kind {
                 if let clean::VariantKind::Tuple(ref tys) = var.kind {
                     write!(w, "(");
                     for (i, ty) in tys.iter().enumerate() {
@@ -3164,8 +3164,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
             document_non_exhaustive(w, variant);
 
             use crate::clean::{Variant, VariantKind};
-            if let clean::VariantItem(Variant { kind: VariantKind::Struct(ref s) }) = variant.inner
-            {
+            if let clean::VariantItem(Variant { kind: VariantKind::Struct(ref s) }) = variant.kind {
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,
@@ -3179,7 +3178,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                 );
                 for field in &s.fields {
                     use crate::clean::StructFieldItem;
-                    if let StructFieldItem(ref ty) = field.inner {
+                    if let StructFieldItem(ref ty) = field.kind {
                         let id = cx.derive_id(format!(
                             "variant.{}.field.{}",
                             variant.name.as_ref().unwrap(),
@@ -3275,7 +3274,7 @@ fn render_struct(
             let mut has_visible_fields = false;
             write!(w, " {{");
             for field in fields {
-                if let clean::StructFieldItem(ref ty) = field.inner {
+                if let clean::StructFieldItem(ref ty) = field.kind {
                     write!(
                         w,
                         "\n{}    {}{}: {},",
@@ -3306,7 +3305,7 @@ fn render_struct(
                 if i > 0 {
                     write!(w, ", ");
                 }
-                match field.inner {
+                match field.kind {
                     clean::StrippedItem(box clean::StructFieldItem(..)) => write!(w, "_"),
                     clean::StructFieldItem(ref ty) => {
                         write!(w, "{}{}", field.visibility.print_with_space(), ty.print())
@@ -3352,7 +3351,7 @@ fn render_union(
 
     write!(w, " {{\n{}", tab);
     for field in fields {
-        if let clean::StructFieldItem(ref ty) = field.inner {
+        if let clean::StructFieldItem(ref ty) = field.kind {
             write!(
                 w,
                 "    {}{}: {},\n{}",
@@ -3516,7 +3515,7 @@ fn render_deref_methods(
         .inner_impl()
         .items
         .iter()
-        .find_map(|item| match item.inner {
+        .find_map(|item| match item.kind {
             clean::TypedefItem(ref t, true) => Some(match *t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
@@ -3538,7 +3537,7 @@ fn render_deref_methods(
 }
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
-    let self_type_opt = match item.inner {
+    let self_type_opt = match item.kind {
         clean::MethodItem(ref method) => method.decl.self_type(),
         clean::TyMethodItem(ref method) => method.decl.self_type(),
         _ => None,
@@ -3589,7 +3588,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
                     ));
                     let t_did = impl_.trait_.def_id().unwrap();
                     for it in &impl_.items {
-                        if let clean::TypedefItem(ref tydef, _) = it.inner {
+                        if let clean::TypedefItem(ref tydef, _) = it.kind {
                             out.push_str("<span class=\"where fmt-newline\">    ");
                             assoc_type(
                                 &mut out,
@@ -3657,7 +3656,7 @@ fn render_impl(
             fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute);
             if show_def_docs {
                 for it in &i.inner_impl().items {
-                    if let clean::TypedefItem(ref tydef, _) = it.inner {
+                    if let clean::TypedefItem(ref tydef, _) = it.kind {
                         write!(w, "<span class=\"where fmt-newline\">  ");
                         assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None), "");
                         write!(w, ";</span>");
@@ -3728,14 +3727,14 @@ fn render_impl(
         };
 
         let (is_hidden, extra_class) =
-            if (trait_.is_none() || item.doc_value().is_some() || item.inner.is_type_alias())
+            if (trait_.is_none() || item.doc_value().is_some() || item.kind.is_type_alias())
                 && !is_default_item
             {
                 (false, "")
             } else {
                 (true, " hidden")
             };
-        match item.inner {
+        match item.kind {
             clean::MethodItem(clean::Method { .. })
             | clean::TyMethodItem(clean::TyMethod { .. }) => {
                 // Only render when the method is not static or we allow static methods
@@ -4000,7 +3999,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
         write!(
             buffer,
             "<p class=\"location\">{}{}</p>",
-            match it.inner {
+            match it.kind {
                 clean::StructItem(..) => "Struct ",
                 clean::TraitItem(..) => "Trait ",
                 clean::PrimitiveItem(..) => "Primitive Type ",
@@ -4040,7 +4039,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
             it.name.as_ref().expect("crates always have a name")
         );
     }
-    match it.inner {
+    match it.kind {
         clean::StructItem(ref s) => sidebar_struct(buffer, it, s),
         clean::TraitItem(ref t) => sidebar_trait(buffer, it, t),
         clean::PrimitiveItem(_) => sidebar_primitive(buffer, it),
@@ -4180,7 +4179,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
                 if let Some((target, real_target)) =
-                    impl_.inner_impl().items.iter().find_map(|item| match item.inner {
+                    impl_.inner_impl().items.iter().find_map(|item| match item.kind {
                         clean::TypedefItem(ref t, true) => Some(match *t {
                             clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                             _ => (&t.type_, &t.type_),
@@ -4319,8 +4318,8 @@ fn get_id_for_impl_on_foreign_type(for_: &clean::Type, trait_: &clean::Type) -> 
 }
 
 fn extract_for_impl_name(item: &clean::Item) -> Option<(String, String)> {
-    match item.inner {
-        clean::ItemEnum::ImplItem(ref i) => {
+    match item.kind {
+        clean::ItemKind::ImplItem(ref i) => {
             if let Some(ref trait_) = i.trait_ {
                 Some((
                     format!("{:#}", i.for_.print()),
@@ -4470,7 +4469,7 @@ fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item) {
 fn get_struct_fields_name(fields: &[clean::Item]) -> String {
     let mut fields = fields
         .iter()
-        .filter(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false })
+        .filter(|f| if let clean::StructFieldItem(..) = f.kind { true } else { false })
         .filter_map(|f| match f.name {
             Some(ref name) => {
                 Some(format!("<a href=\"#structfield.{name}\">{name}</a>", name = name))

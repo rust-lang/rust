@@ -371,7 +371,7 @@ pub fn run_core(
         cg: codegen_options,
         externs,
         target_triple: target,
-        unstable_features: UnstableFeatures::from_environment(),
+        unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         actually_rustdoc: true,
         debugging_opts,
         error_format,

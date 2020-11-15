@@ -6,6 +6,7 @@ use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
@@ -20,7 +21,6 @@ use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
@@ -239,16 +239,12 @@ fn configure_and_expand_inner<'a>(
 
     krate = sess.time("crate_injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
-        let (krate, name) = rustc_builtin_macros::standard_library_imports::inject(
+        rustc_builtin_macros::standard_library_imports::inject(
             krate,
             &mut resolver,
             &sess,
             alt_std_name,
-        );
-        if let Some(name) = name {
-            sess.parse_sess.injected_crate_name.set(name).expect("not yet initialized");
-        }
-        krate
+        )
     });
 
     util::check_attr_crate_type(&sess, &krate.attrs, &mut resolver.lint_buffer());

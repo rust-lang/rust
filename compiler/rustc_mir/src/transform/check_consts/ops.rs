@@ -4,7 +4,6 @@ use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir;
-use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -104,7 +103,7 @@ impl NonConstOp for FnCallUnstable {
 
         if ccx.is_const_stable_const_fn() {
             err.help("Const-stable functions can only call other const-stable functions");
-        } else if nightly_options::is_nightly_build() {
+        } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
                 err.help(&format!(
                     "add `#![feature({})]` to the crate attributes to enable",

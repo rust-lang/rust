@@ -16,7 +16,6 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
-use rustc_session::config::nightly_options;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -890,7 +889,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
-                if nightly_options::is_nightly_build() {
+                if self.r.session.is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
                     if let Some(span) = self.def_span(def_id) {
@@ -1675,7 +1674,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 _ => {}
             }
         }
-        if nightly_options::is_nightly_build()
+        if self.tcx.sess.is_nightly_build()
             && !self.tcx.features().in_band_lifetimes
             && suggests_in_band
         {

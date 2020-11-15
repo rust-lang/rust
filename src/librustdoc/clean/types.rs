@@ -41,7 +41,7 @@ use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
 
 use self::FnRetTy::*;
-use self::ItemEnum::*;
+use self::ItemKind::*;
 use self::SelfTy::*;
 use self::Type::*;
 
@@ -81,7 +81,7 @@ pub struct Item {
     /// Not everything has a name. E.g., impls
     pub name: Option<String>,
     pub attrs: Attributes,
-    pub inner: ItemEnum,
+    pub kind: ItemKind,
     pub visibility: Visibility,
     pub def_id: DefId,
     pub stability: Option<Stability>,
@@ -90,14 +90,13 @@ pub struct Item {
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let fake = self.is_fake();
-        let def_id: &dyn fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
+        let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
             .field("source", &self.source)
             .field("name", &self.name)
             .field("attrs", &self.attrs)
-            .field("inner", &self.inner)
+            .field("kind", &self.kind)
             .field("visibility", &self.visibility)
             .field("def_id", def_id)
             .field("stability", &self.stability)
@@ -124,7 +123,7 @@ impl Item {
     }
 
     pub fn is_crate(&self) -> bool {
-        match self.inner {
+        match self.kind {
             StrippedItem(box ModuleItem(Module { is_crate: true, .. }))
             | ModuleItem(Module { is_crate: true, .. }) => true,
             _ => false,
@@ -176,14 +175,14 @@ impl Item {
         self.type_() == ItemType::Keyword
     }
     pub fn is_stripped(&self) -> bool {
-        match self.inner {
+        match self.kind {
             StrippedItem(..) => true,
             ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
     pub fn has_stripped_fields(&self) -> Option<bool> {
-        match self.inner {
+        match self.kind {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
             UnionItem(ref union) => Some(union.fields_stripped),
             VariantItem(Variant { kind: VariantKind::Struct(ref vstruct) }) => {
@@ -227,8 +226,8 @@ impl Item {
     }
 
     pub fn is_default(&self) -> bool {
-        match self.inner {
-            ItemEnum::MethodItem(ref meth) => {
+        match self.kind {
+            ItemKind::MethodItem(ref meth) => {
                 if let Some(defaultness) = meth.defaultness {
                     defaultness.has_value() && !defaultness.is_final()
                 } else {
@@ -248,7 +247,7 @@ impl Item {
 }
 
 #[derive(Clone, Debug)]
-pub enum ItemEnum {
+pub enum ItemKind {
     ExternCrateItem(String, Option<String>),
     ImportItem(Import),
     StructItem(Struct),
@@ -282,23 +281,23 @@ pub enum ItemEnum {
     AssocConstItem(Type, Option<String>),
     AssocTypeItem(Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
-    StrippedItem(Box<ItemEnum>),
+    StrippedItem(Box<ItemKind>),
     KeywordItem(String),
 }
 
-impl ItemEnum {
+impl ItemKind {
     pub fn is_type_alias(&self) -> bool {
         match *self {
-            ItemEnum::TypedefItem(_, _) | ItemEnum::AssocTypeItem(_, _) => true,
+            ItemKind::TypedefItem(_, _) | ItemKind::AssocTypeItem(_, _) => true,
             _ => false,
         }
     }
 
     pub fn as_assoc_kind(&self) -> Option<AssocKind> {
         match *self {
-            ItemEnum::AssocConstItem(..) => Some(AssocKind::Const),
-            ItemEnum::AssocTypeItem(..) => Some(AssocKind::Type),
-            ItemEnum::TyMethodItem(..) | ItemEnum::MethodItem(..) => Some(AssocKind::Fn),
+            ItemKind::AssocConstItem(..) => Some(AssocKind::Const),
+            ItemKind::AssocTypeItem(..) => Some(AssocKind::Type),
+            ItemKind::TyMethodItem(..) | ItemKind::MethodItem(..) => Some(AssocKind::Fn),
             _ => None,
         }
     }
@@ -681,7 +680,9 @@ impl Attributes {
                                 }
                                 Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
                                 Some(&(_, _, ExternalLocation::Unknown)) | None => String::from(
-                                    if UnstableFeatures::from_environment().is_nightly_build() {
+                                    // NOTE: intentionally doesn't pass crate name to avoid having
+                                    // different primitive links between crates
+                                    if UnstableFeatures::from_environment(None).is_nightly_build() {
                                         "https://doc.rust-lang.org/nightly"
                                     } else {
                                         "https://doc.rust-lang.org"

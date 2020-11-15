@@ -1232,6 +1232,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_opt(e1, |e1| vis.visit_expr(e1));
             visit_opt(e2, |e2| vis.visit_expr(e2));
         }
+        ExprKind::Underscore => {}
         ExprKind::Path(qself, path) => {
             vis.visit_qself(qself);
             vis.visit_path(path);

@@ -25,7 +25,18 @@ LL |     (C, ..) = (0,1);
    |      |
    |      cannot assign to this expression
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/tuple_destructure_fail.rs:10:5
+   |
+LL |     (_,) = (1, 2);
+   |     ^^^^   ------ this expression has type `({integer}, {integer})`
+   |     |
+   |     expected a tuple with 2 elements, found one with 1 element
+   |
+   = note: expected type `({integer}, {integer})`
+             found tuple `(_,)`
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0070, E0308.
 For more information about an error, try `rustc --explain E0070`.
