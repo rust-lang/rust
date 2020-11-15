@@ -48,19 +48,22 @@ impl<'tcx> MirPass<'tcx> for UnneededDeref {
 }
 
 struct UnneededDerefVisitor<'a, 'tcx> {
-    refs: FxHashMap<Local, (Place<'tcx>, (LocalWithLocationIndex, LocalWithLocationIndex))>,
+    refs: &'a mut FxHashMap<Local, (Place<'tcx>, (LocalWithLocationIndex, LocalWithLocationIndex))>,
     optimizations: &'a mut FxHashMap<(Location, Place<'tcx>), Place<'tcx>>,
     results: &'a Results<'tcx, AvailableLocals>,
-    state: *const Dual<BitSet<LocalWithLocationIndex>>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UnneededDerefVisitor<'a, 'tcx> {
+struct FindOptVisitor<'a, 'tcx> {
+    refs: &'a mut FxHashMap<Local, (Place<'tcx>, (LocalWithLocationIndex, LocalWithLocationIndex))>,
+    optimizations: &'a mut FxHashMap<(Location, Place<'tcx>), Place<'tcx>>,
+    state: &'a Dual<BitSet<LocalWithLocationIndex>>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for FindOptVisitor<'a, 'tcx> {
     fn visit_place(&mut self, place: &Place<'tcx>, _context: PlaceContext, location: Location) {
         let _: Option<_> = try {
             debug!("Visiting place {:?}", place);
-            // SAFETY: We only use self.state here which is always called from statement_before_primary_effect,
-            // which guarantees that self.state is still alive.
-            let state = unsafe { &*self.state };
+            let state = self.state;
 
             match place.as_ref() {
                 PlaceRef { projection: [ProjectionElem::Deref], .. } => {
@@ -103,14 +106,13 @@ impl<'a, 'tcx> UnneededDerefVisitor<'a, 'tcx> {
     ) -> FxHashMap<(Location, Place<'tcx>), Place<'tcx>> {
         let analysis = AvailableLocals::new(body);
         let results = analysis.into_engine(tcx, body).iterate_to_fixpoint();
-        let refs = FxHashMap::default();
+        let mut refs = FxHashMap::default();
         let mut optimizations = FxHashMap::default();
 
         let mut _self = UnneededDerefVisitor {
-            refs,
+            refs: &mut refs,
             optimizations: &mut optimizations,
             results: &results,
-            state: std::ptr::null(),
         };
 
         results.visit_reachable_with(body, &mut _self);
@@ -127,7 +129,6 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx> for UnneededDerefVisitor<'a, 'tcx> {
         stmt: &'mir Statement<'tcx>,
         location: Location,
     ) {
-        self.state = state;
         let analysis = &self.results.analysis;
         debug!("state: {:?} before statement {:?}", analysis.debug_state(state), stmt);
         let _: Option<_> = try {
@@ -149,7 +150,14 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx> for UnneededDerefVisitor<'a, 'tcx> {
                     }
                 }
                 StatementKind::Assign(box (_, rvalue)) => match rvalue {
-                    rvalue => self.visit_rvalue(rvalue, location),
+                    rvalue => {
+                        let mut _self = FindOptVisitor {
+                            refs: self.refs,
+                            optimizations: &mut self.optimizations,
+                            state: state,
+                        };
+                        _self.visit_rvalue(rvalue, location);
+                    }
                 },
                 _ => {}
             }
