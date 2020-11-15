@@ -149,6 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Outside of this module, `check_pat_top` should always be used.
     /// Conversely, inside this module, `check_pat_top` should never be used.
+    #[instrument(skip(self, ti))]
     fn check_pat(
         &self,
         pat: &'tcx Pat<'tcx>,
@@ -156,8 +157,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_bm: BindingMode,
         ti: TopInfo<'tcx>,
     ) {
-        debug!("check_pat(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
-
         let path_res = match &pat.kind {
             PatKind::Path(qpath) => Some(self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span)),
             _ => None,
@@ -398,6 +397,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Ref(_, inner_ty, _) = expected.kind() {
                 if matches!(inner_ty.kind(), ty::Slice(_)) {
                     let tcx = self.tcx;
+                    trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
+                    self.typeck_results
+                        .borrow_mut()
+                        .treat_byte_string_as_slice
+                        .insert(lt.hir_id.local_id);
                     pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
                 }
             }
