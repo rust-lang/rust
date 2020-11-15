@@ -104,7 +104,7 @@ unsafe fn configure_llvm(sess: &Session) {
         }
     }
 
-    if sess.opts.debugging_opts.llvm_time_trace && get_major_version() >= 9 {
+    if sess.opts.debugging_opts.llvm_time_trace {
         // time-trace is not thread safe and running it in parallel will cause seg faults.
         if !sess.opts.debugging_opts.no_parallel_llvm {
             bug!("`-Z llvm-time-trace` requires `-Z no-parallel-llvm")
@@ -122,10 +122,8 @@ unsafe fn configure_llvm(sess: &Session) {
 
 pub fn time_trace_profiler_finish(file_name: &str) {
     unsafe {
-        if get_major_version() >= 9 {
-            let file_name = CString::new(file_name).unwrap();
-            llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
-        }
+        let file_name = CString::new(file_name).unwrap();
+        llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
     }
 }
 
