@@ -2067,6 +2067,7 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(e, fake_prec);
                 }
             }
+            ast::ExprKind::Underscore => self.s.word("_"),
             ast::ExprKind::Path(None, ref path) => self.print_path(path, true, 0),
             ast::ExprKind::Path(Some(ref qself), ref path) => self.print_qpath(path, qself, true),
             ast::ExprKind::Break(opt_label, ref opt_expr) => {
