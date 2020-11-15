@@ -60,6 +60,7 @@ impl CodegenBackend for TheBackend {
 
         Box::new(CodegenResults {
             crate_name: tcx.crate_name(LOCAL_CRATE),
+            crate_hash: tcx.crate_hash(LOCAL_CRATE),
             modules: vec![],
             allocator_module: None,
             metadata_module: None,

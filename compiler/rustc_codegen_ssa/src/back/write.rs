@@ -1757,11 +1757,11 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         (
             CodegenResults {
                 crate_name: self.crate_name,
+                crate_hash: self.crate_hash,
                 metadata: self.metadata,
                 windows_subsystem: self.windows_subsystem,
                 linker_info: self.linker_info,
                 crate_info: self.crate_info,
-                crate_hash: self.crate_hash,
 
                 modules: compiled_modules.modules,
                 allocator_module: compiled_modules.allocator_module,

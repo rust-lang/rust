@@ -131,6 +131,7 @@ pub struct CrateInfo {
 #[derive(Encodable, Decodable)]
 pub struct CodegenResults {
     pub crate_name: Symbol,
+    pub crate_hash: Svh,
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,
@@ -138,7 +139,6 @@ pub struct CodegenResults {
     pub windows_subsystem: Option<String>,
     pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
-    pub crate_hash: Svh,
 }
 
 pub fn provide(providers: &mut Providers) {
