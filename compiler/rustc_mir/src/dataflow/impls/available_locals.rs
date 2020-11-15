@@ -178,11 +178,14 @@ impl LocalWithLocationMap {
         for (bb, bbd) in body.basic_blocks().iter_enumerated() {
             for (stmt_idx, stmt) in bbd.statements.iter().enumerate() {
                 if let Some((lhs, _)) = stmt.kind.as_assign() {
-                    let location = Location { block: bb, statement_index: stmt_idx };
-                    map.entry(lhs.local)
-                        .or_insert(SmallVec::with_capacity(2))
-                        .push((idx, Some(location)));
-                    idx.increment_by(1);
+                    // We don't handle projections for locals, so let's only add a local with no projections
+                    if lhs.as_local().is_some() {
+                        let location = Location { block: bb, statement_index: stmt_idx };
+                        map.entry(lhs.local)
+                            .or_insert(SmallVec::with_capacity(2))
+                            .push((idx, Some(location)));
+                        idx.increment_by(1);
+                    }
                 }
             }
         }
