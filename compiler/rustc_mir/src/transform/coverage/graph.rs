@@ -17,7 +17,8 @@ const ID_SEPARATOR: &str = ",";
 /// `CoverageKind` counter (to be added by `CoverageCounters::make_bcb_counters`), and an optional
 /// set of additional counters--if needed--to count incoming edges, if there are more than one.
 /// (These "edge counters" are eventually converted into new MIR `BasicBlock`s.)
-pub(crate) struct CoverageGraph {
+#[derive(Debug)]
+pub(super) struct CoverageGraph {
     bcbs: IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
     bb_to_bcb: IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     pub successors: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
@@ -275,7 +276,7 @@ impl graph::WithPredecessors for CoverageGraph {
 
 rustc_index::newtype_index! {
     /// A node in the [control-flow graph][CFG] of CoverageGraph.
-    pub(crate) struct BasicCoverageBlock {
+    pub(super) struct BasicCoverageBlock {
         DEBUG_FORMAT = "bcb{}",
     }
 }
@@ -305,7 +306,7 @@ rustc_index::newtype_index! {
 /// queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
 /// significance.
 #[derive(Debug, Clone)]
-pub(crate) struct BasicCoverageBlockData {
+pub(super) struct BasicCoverageBlockData {
     pub basic_blocks: Vec<BasicBlock>,
     pub counter_kind: Option<CoverageKind>,
     edge_from_bcbs: Option<FxHashMap<BasicCoverageBlock, CoverageKind>>,
@@ -431,7 +432,7 @@ impl BasicCoverageBlockData {
 /// the specific branching BCB, representing the edge between the two. The latter case
 /// distinguishes this incoming edge from other incoming edges to the same `target_bcb`.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) struct BcbBranch {
+pub(super) struct BcbBranch {
     pub edge_from_bcb: Option<BasicCoverageBlock>,
     pub target_bcb: BasicCoverageBlock,
 }
@@ -498,9 +499,8 @@ fn bcb_filtered_successors<'a, 'tcx>(
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
 /// CoverageGraph outside all loops. This supports traversing the BCB CFG in a way that
 /// ensures a loop is completely traversed before processing Blocks after the end of the loop.
-// FIXME(richkadel): Add unit tests for TraversalContext.
 #[derive(Debug)]
-pub(crate) struct TraversalContext {
+pub(super) struct TraversalContext {
     /// From one or more backedges returning to a loop header.
     pub loop_backedges: Option<(Vec<BasicCoverageBlock>, BasicCoverageBlock)>,
 
@@ -510,7 +510,7 @@ pub(crate) struct TraversalContext {
     pub worklist: Vec<BasicCoverageBlock>,
 }
 
-pub(crate) struct TraverseCoverageGraphWithLoops {
+pub(super) struct TraverseCoverageGraphWithLoops {
     pub backedges: IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>>,
     pub context_stack: Vec<TraversalContext>,
     visited: BitSet<BasicCoverageBlock>,
@@ -642,7 +642,7 @@ impl TraverseCoverageGraphWithLoops {
     }
 }
 
-fn find_loop_backedges(
+pub(super) fn find_loop_backedges(
     basic_coverage_blocks: &CoverageGraph,
 ) -> IndexVec<BasicCoverageBlock, Vec<BasicCoverageBlock>> {
     let num_bcbs = basic_coverage_blocks.num_nodes();
