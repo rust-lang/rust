@@ -797,12 +797,12 @@ pub struct CaptureInfo<'tcx> {
     /// None. In such case we fallback on uvpars_mentioned for span.
     ///
     /// Eg:
-    /// ```rust
-    /// let x = ...;
+    /// ```rust,no_run
+    /// let x = 5;
     ///
     /// let c = || {
     ///     let _ = x
-    /// }
+    /// };
     /// ```
     ///
     /// In this example, if `capture_disjoint_fields` is **not** set, then x will be captured,

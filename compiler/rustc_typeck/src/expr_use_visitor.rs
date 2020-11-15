@@ -611,7 +611,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// In the following example the closures `c` only captures `p.x`` even though `incr`
     /// is a capture of the nested closure
     ///
-    /// ```rust
+    /// ```rust,ignore(cannot-test-this-because-pseduo-code)
     /// let p = ..;
     /// let c = || {
     ///    let incr = 10;

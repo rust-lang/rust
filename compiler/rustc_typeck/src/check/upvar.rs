@@ -333,7 +333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// the required captured paths.
     ///
     /// Eg:
-    /// ```rust
+    /// ```rust,no_run
     /// struct Point { x: i32, y: i32 }
     ///
     /// let s: String;  // hir_id_s
@@ -575,7 +575,9 @@ struct InferBorrowKind<'a, 'tcx> {
     /// Consider closure where s.str1 is captured via an ImmutableBorrow and
     /// s.str2 via a MutableBorrow
     ///
-    /// ```rust
+    /// ```rust,no_run
+    /// struct SomeStruct { str1: String, str2: String }
+    ///
     /// // Assume that the HirId for the variable definition is `V1`
     /// let mut s = SomeStruct { str1: format!("s1"), str2: format!("s2") }
     ///
@@ -584,7 +586,7 @@ struct InferBorrowKind<'a, 'tcx> {
     ///     println!("Updating SomeStruct with str1=", s.str1);
     ///     // Assume that the HirId for the expression `*s.str2` is `E2`
     ///     s.str2 = new_s2;
-    /// }
+    /// };
     /// ```
     ///
     /// For closure `fix_s`, (at a high level) the map contains
@@ -931,7 +933,8 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
 /// `determine_capture_info(existing_info, current_info)`. This works out because the
 /// expressions that occur earlier in the closure body than the current expression are processed before.
 /// Consider the following example
-/// ```rust
+/// ```rust,no_run
+/// struct Point { x: i32, y: i32 }
 /// let mut p: Point { x: 10, y: 10 };
 ///
 /// let c = || {
@@ -942,7 +945,7 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
 ///     // ...
 ///     p.x += 10; // E2
 /// // ^ E2 ^
-/// }
+/// };
 /// ```
 /// `CaptureKind` associated with both `E1` and `E2` will be ByRef(MutBorrow),
 /// and both have an expression associated, however for diagnostics we prefer reporting
