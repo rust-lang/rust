@@ -47,9 +47,6 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 
-use md5::Md5;
-use sha1::Digest;
-use sha1::Sha1;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
@@ -1046,6 +1043,7 @@ impl Display for SourceFileHashAlgorithm {
         match self {
             SourceFileHashAlgorithm::Md5 => write!(f, "md5"),
             SourceFileHashAlgorithm::Sha1 => write!(f, "sha1"),
+            SourceFileHashAlgorithm::Sha256 => write!(f, "sha256"),
         }
     }
 }
