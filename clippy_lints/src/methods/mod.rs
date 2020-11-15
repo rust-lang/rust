@@ -897,6 +897,28 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for indirect collection of populated `Option`
+    ///
+    /// **Why is this bad?** `Option` is like a collection of 0-1 things, so `flatten`
+    /// automatically does this without suspicious-looking `unwrap` calls.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let _ = std::iter::empty::<Option<i32>>().filter(Option::is_some).map(Option::unwrap);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let _ = std::iter::empty::<Option<i32>>().flatten();
+    /// ```
+    pub OPTION_FILTER_MAP,
+    complexity,
+    "filtering `Option` for `Some` then force-unwrapping, which can be one type-safe operation"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for the use of `iter.nth(0)`.
     ///
     /// **Why is this bad?** `iter.next()` is equivalent to
@@ -1651,6 +1673,7 @@ impl_lint_pass!(Methods => [
     FILTER_MAP_IDENTITY,
     MANUAL_FILTER_MAP,
     MANUAL_FIND_MAP,
+    OPTION_FILTER_MAP,
     FILTER_MAP_NEXT,
     FLAT_MAP_IDENTITY,
     MAP_FLATTEN,
@@ -1720,10 +1743,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["next", "filter"] => filter_next::check(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => skip_while_next::check(cx, expr, arg_lists[1]),
             ["next", "iter"] => iter_next_slice::check(cx, expr, arg_lists[1]),
-            ["map", "filter"] => filter_map::check(cx, expr, false),
+            ["map", "filter"] => filter_map::check(cx, expr, false, method_spans[0]),
             ["map", "filter_map"] => filter_map_map::check(cx, expr),
             ["next", "filter_map"] => filter_map_next::check(cx, expr, arg_lists[1], self.msrv.as_ref()),
-            ["map", "find"] => filter_map::check(cx, expr, true),
+            ["map", "find"] => filter_map::check(cx, expr, true, method_spans[0]),
             ["flat_map", "filter"] => filter_flat_map::check(cx, expr),
             ["flat_map", "filter_map"] => filter_map_flat_map::check(cx, expr),
             ["flat_map", ..] => flat_map_identity::check(cx, expr, arg_lists[0], method_spans[0]),
