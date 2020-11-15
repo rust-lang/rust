@@ -46,7 +46,9 @@ fn write_header(out: &mut String, class: Option<&str>) {
 }
 
 fn write_code(out: &mut String, src: &str) {
-    Classifier::new(src).highlight(&mut |highlight| {
+    // This replace allows to fix how the code source with DOS backline characters is displayed.
+    let src = src.replace("\r\n", "\n");
+    Classifier::new(&src).highlight(&mut |highlight| {
         match highlight {
             Highlight::Token { text, class } => string(out, Escape(text), class),
             Highlight::EnterSpan { class } => enter_span(out, class),

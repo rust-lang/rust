@@ -1,17 +1,6 @@
 use super::write_code;
 use expect_test::expect_file;
 
-#[test]
-fn test_html_highlighting() {
-    let src = include_str!("fixtures/sample.rs");
-    let html = {
-        let mut out = String::new();
-        write_code(&mut out, src);
-        format!("{}<pre><code>{}</code></pre>\n", STYLE, out)
-    };
-    expect_file!["fixtures/sample.html"].assert_eq(&html);
-}
-
 const STYLE: &str = r#"
 <style>
 .kw { color: #8959A8; }
@@ -23,3 +12,24 @@ const STYLE: &str = r#"
 .question-mark { color: #ff9011; }
 </style>
 "#;
+
+#[test]
+fn test_html_highlighting() {
+    let src = include_str!("fixtures/sample.rs");
+    let html = {
+        let mut out = String::new();
+        write_code(&mut out, src);
+        format!("{}<pre><code>{}</code></pre>\n", STYLE, out)
+    };
+    expect_file!["fixtures/sample.html"].assert_eq(&html);
+}
+
+#[test]
+fn test_dos_backline() {
+    let src = "pub fn foo() {\r\n\
+    println!(\"foo\");\r\n\
+}\r\n";
+    let mut html = String::new();
+    write_code(&mut html, src);
+    expect_file!["fixtures/dos_line.html"].assert_eq(&html);
+}
