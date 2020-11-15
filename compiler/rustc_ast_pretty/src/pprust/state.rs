@@ -2327,11 +2327,12 @@ impl<'a> State<'a> {
             self.print_path(path, false, depth);
         }
         self.s.word(">");
-        self.s.word("::");
-        let item_segment = path.segments.last().unwrap();
-        self.print_ident(item_segment.ident);
-        if let Some(ref args) = item_segment.args {
-            self.print_generic_args(args, colons_before_params)
+        for item_segment in &path.segments[qself.position..] {
+            self.s.word("::");
+            self.print_ident(item_segment.ident);
+            if let Some(ref args) = item_segment.args {
+                self.print_generic_args(args, colons_before_params)
+            }
         }
     }
 

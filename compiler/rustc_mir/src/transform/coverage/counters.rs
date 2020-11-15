@@ -14,7 +14,7 @@ use rustc_middle::mir::coverage::*;
 
 /// Manages the counter and expression indexes/IDs to generate `CoverageKind` components for MIR
 /// `Coverage` statements.
-pub(crate) struct CoverageCounters {
+pub(super) struct CoverageCounters {
     function_source_hash: u64,
     next_counter_id: u32,
     num_expressions: u32,
@@ -37,7 +37,7 @@ impl CoverageCounters {
         self.debug_counters.enable();
     }
 
-    /// Makes `CoverageKind` `Counter`s and `Expressions` for the `BasicCoverageBlocks` directly or
+    /// Makes `CoverageKind` `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
     /// indirectly associated with `CoverageSpans`, and returns additional `Expression`s
     /// representing intermediate values.
     pub fn make_bcb_counters(
@@ -120,7 +120,6 @@ struct BcbCounters<'a> {
     basic_coverage_blocks: &'a mut CoverageGraph,
 }
 
-// FIXME(richkadel): Add unit tests for `BcbCounters` functions/algorithms.
 impl<'a> BcbCounters<'a> {
     fn new(
         coverage_counters: &'a mut CoverageCounters,

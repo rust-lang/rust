@@ -1,7 +1,6 @@
 // Checks if the correct annotation for the efiapi ABI is passed to llvm.
 
 // revisions:x86_64 i686 aarch64 arm riscv
-// min-llvm-version: 9.0
 // needs-llvm-components: aarch64 arm riscv
 
 //[x86_64] compile-flags: --target x86_64-unknown-uefi
