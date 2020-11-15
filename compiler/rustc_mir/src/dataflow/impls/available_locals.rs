@@ -315,7 +315,6 @@ where
                             disallowed_place, disallowed_place.local, assigned_local
                         );
                         self.invalidate_local(disallowed_place.local, location);
-                        self.invalidate_local(assigned_local, location)
                     } else {
                         self.add_available(assigned_local, rvalue, location);
                     }
