@@ -19,7 +19,7 @@ use crate::compile;
 use crate::config::TargetSelection;
 use crate::dist;
 use crate::doc;
-use crate::flags::Subcommand;
+use crate::flags::{Color, Subcommand};
 use crate::install;
 use crate::native;
 use crate::run;
@@ -809,6 +809,16 @@ impl<'a> Builder<'a> {
         cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
         if let Some(e) = env::var_os(util::dylib_path_var()) {
             cargo.env("REAL_LIBRARY_PATH", e);
+        }
+
+        match self.build.config.color {
+            Color::Always => {
+                cargo.arg("--color=always");
+            }
+            Color::Never => {
+                cargo.arg("--color=never");
+            }
+            Color::Auto => {} // nothing to do
         }
 
         if cmd != "install" {

@@ -13,8 +13,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::cache::{Interned, INTERNER};
-use crate::flags::Flags;
 pub use crate::flags::Subcommand;
+use crate::flags::{Color, Flags};
 use crate::util::exe;
 use build_helper::t;
 use merge::Merge;
@@ -67,6 +67,7 @@ pub struct Config {
     pub json_output: bool,
     pub test_compare_mode: bool,
     pub llvm_libunwind: Option<LlvmLibunwind>,
+    pub color: Color,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -577,6 +578,7 @@ impl Config {
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.bindir = "bin".into(); // default
+        config.color = flags.color;
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
