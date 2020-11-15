@@ -137,7 +137,7 @@ where
     let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
     arg.cast_to(CastTarget {
         prefix,
-        prefix_chunk: Size::from_bytes(8),
+        prefix_chunk_size: Size::from_bytes(8),
         rest: Uniform { unit: Reg::i64(), total: rest_size },
     });
 }

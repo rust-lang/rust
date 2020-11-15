@@ -203,7 +203,7 @@ impl Uniform {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct CastTarget {
     pub prefix: [Option<RegKind>; 8],
-    pub prefix_chunk: Size,
+    pub prefix_chunk_size: Size,
     pub rest: Uniform,
 }
 
@@ -215,7 +215,7 @@ impl From<Reg> for CastTarget {
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        CastTarget { prefix: [None; 8], prefix_chunk: Size::ZERO, rest: uniform }
+        CastTarget { prefix: [None; 8], prefix_chunk_size: Size::ZERO, rest: uniform }
     }
 }
 
@@ -223,13 +223,13 @@ impl CastTarget {
     pub fn pair(a: Reg, b: Reg) -> CastTarget {
         CastTarget {
             prefix: [Some(a.kind), None, None, None, None, None, None, None],
-            prefix_chunk: a.size,
+            prefix_chunk_size: a.size,
             rest: Uniform::from(b),
         }
     }
 
     pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
-        (self.prefix_chunk * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
+        (self.prefix_chunk_size * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
             .align_to(self.rest.align(cx))
             + self.rest.total
     }
@@ -237,7 +237,7 @@ impl CastTarget {
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix
             .iter()
-            .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk }.align(cx)))
+            .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk_size }.align(cx)))
             .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)), |acc, align| {
                 acc.max(align)
             })
