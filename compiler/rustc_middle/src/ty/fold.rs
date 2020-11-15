@@ -142,20 +142,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn still_further_specializable(&self) -> bool {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
-
-    /// A visitor that does not recurse into types, works like `fn walk_shallow` in `Ty`.
-    fn visit_tys_shallow(&self, visit: impl FnMut(Ty<'tcx>) -> ControlFlow<()>) -> ControlFlow<()> {
-        pub struct Visitor<F>(F);
-
-        impl<'tcx, F: FnMut(Ty<'tcx>) -> ControlFlow<()>> TypeVisitor<'tcx> for Visitor<F> {
-            type BreakTy = ();
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
-                self.0(ty)
-            }
-        }
-
-        self.visit_with(&mut Visitor(visit))
-    }
 }
 
 impl TypeFoldable<'tcx> for hir::Constness {
