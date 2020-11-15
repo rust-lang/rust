@@ -664,11 +664,7 @@ function defocusSearchBar() {
                 results = {}, results_in_args = {}, results_returned = {},
                 split = valLower.split("::");
 
-            for (var z = split.length - 1; z >= 0; --z) {
-                if (split[z] === "") {
-                    split.splice(z, 1);
-                }
-            }
+            split = split.filter(function(segment) { return segment !== ""; });
 
             function transformResults(results, isType) {
                 var out = [];
@@ -872,14 +868,14 @@ function defocusSearchBar() {
                                   obj[GENERICS_DATA].length >= val.generics.length) {
                                 var elems = obj[GENERICS_DATA].slice(0);
                                 var allFound = true;
-                                var x, elen, firstGeneric;
+                                var x, e_len, firstGeneric;
 
                                 len = val.generics.length;
                                 for (var y = 0; allFound === true && y < len; ++y) {
                                     allFound = false;
                                     firstGeneric = getObjectFromId(val.generics[y]).name;
-                                    elen = elems.length;
-                                    for (x = 0; allFound === false && x < elen; ++x) {
+                                    e_len = elems.length;
+                                    for (x = 0; allFound === false && x < e_len; ++x) {
                                         allFound = getObjectFromId(elems[x]).name === firstGeneric;
                                     }
                                     if (allFound === true) {
@@ -909,11 +905,10 @@ function defocusSearchBar() {
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
                      if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
-                        for (x = 0, len = obj[GENERICS_DATA].length; x < len; ++x) {
-                            if (obj[GENERICS_DATA][x] === val.name) {
-                                return true;
-                            }
-                        }
+                        return onEach(obj[GENERICS_DATA],
+                            function(name) {
+                                return name === val.name;
+                            });
                     }
                     return false;
                 }
