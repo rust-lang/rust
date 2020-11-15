@@ -65,12 +65,16 @@
 -                                          // + literal: Const { ty: for<'r> fn(std::pin::Pin<&'r mut impl std::ops::Generator<bool>>, bool) -> std::ops::GeneratorState<<impl std::ops::Generator<bool> as std::ops::Generator<bool>>::Yield, <impl std::ops::Generator<bool> as std::ops::Generator<bool>>::Return> {<impl std::ops::Generator<bool> as std::ops::Generator<bool>>::resume}, val: Value(Scalar(<ZST>)) }
 +         StorageLive(_7);                 // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 +         _7 = const false;                // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
++         StorageLive(_8);                 // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
++         StorageLive(_9);                 // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 +         _9 = discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41 {bool, i32}]))); // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +         switchInt(move _9) -> [0_u32: bb3, 1_u32: bb8, 3_u32: bb7, otherwise: bb9]; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
       }
   
 -     bb3: {
 +     bb1: {
++         StorageDead(_9);                 // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
++         StorageDead(_8);                 // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 +         StorageDead(_7);                 // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
           StorageDead(_2);                 // scope 0 at $DIR/inline-generator.rs:9:45: 9:46
           StorageDead(_4);                 // scope 0 at $DIR/inline-generator.rs:9:46: 9:47
