@@ -2072,7 +2072,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Encode the rustc version string in a predictable location.
     rustc_version().encode(&mut ecx).unwrap();
 
-
     // Encode all the entries and extra information in the crate,
     // culminating in the `CrateRoot` which points to all of it.
     let root = ecx.encode_crate_root();

@@ -595,12 +595,15 @@ impl MetadataBlob {
 
     crate fn get_rustc_version(&self) -> String {
         if self.is_compatible() {
-           Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4 + 1 + mem::size_of::<[u8;64]>() ).unwrap())
-               .decode(self)
+            Lazy::<String>::from_position(
+                NonZeroUsize::new(METADATA_HEADER.len() + 4 + 1 + mem::size_of::<[u8; 64]>())
+                    .unwrap(),
+            )
+            .decode(self)
         } else {
             // Assume older...
             Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
-            .decode(self)
+                .decode(self)
         }
     }
 
