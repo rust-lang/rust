@@ -81,7 +81,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             *rvalue = Rvalue::Use(Operand::Copy(place));
         }
 
-        self.super_rvalue(rvalue, location)
+        // We do not call super_rvalue as we are not interested in any other parts of the tree
     }
 }
 
@@ -285,7 +285,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
         self.find_unneeded_equality_comparison(rvalue, location);
 
-        self.super_rvalue(rvalue, location)
+        // We do not call super_rvalue as we are not interested in any other parts of the tree
     }
 }
 
