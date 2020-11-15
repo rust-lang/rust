@@ -1575,13 +1575,13 @@ impl Step for Miri {
         let miri = builder
             .ensure(tool::Miri { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
-                missing_tool("miri", builder.build.config.missing_tools);
+                missing_tool("miri", true);
                 None
             })?;
         let cargomiri = builder
             .ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
-                missing_tool("cargo miri", builder.build.config.missing_tools);
+                missing_tool("cargo miri", true);
                 None
             })?;
 
