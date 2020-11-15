@@ -62,8 +62,8 @@ pub enum MacroRulesScope<'a> {
 }
 
 /// `macro_rules!` scopes are always kept by reference and inside a cell.
-/// The reason is that we update all scopes with value `MacroRulesScope::Invocation(invoc_id)`
-/// in-place immediately after `invoc_id` gets expanded.
+/// The reason is that we update scopes with value `MacroRulesScope::Invocation(invoc_id)`
+/// in-place after `invoc_id` gets expanded.
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow lineraly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
@@ -172,22 +172,6 @@ impl<'a> ResolverExpand for Resolver<'a> {
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
         let output_macro_rules_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
-
-        // Update all `macro_rules` scopes referring to this invocation. This is an optimization
-        // used to avoid long scope chains, see the comments on `MacroRulesScopeRef`.
-        if let Some(invocation_scopes) = self.invocation_macro_rules_scopes.remove(&expansion) {
-            for invocation_scope in &invocation_scopes {
-                invocation_scope.set(output_macro_rules_scope.get());
-            }
-            // All `macro_rules` scopes that previously referred to `expansion`
-            // are now rerouted to its output scope, if it's also an invocation.
-            if let MacroRulesScope::Invocation(invoc_id) = output_macro_rules_scope.get() {
-                self.invocation_macro_rules_scopes
-                    .entry(invoc_id)
-                    .or_default()
-                    .extend(invocation_scopes);
-            }
-        }
 
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
     }
@@ -687,11 +671,7 @@ impl<'a> Resolver<'a> {
                         {
                             Ok((macro_rules_binding.binding, Flags::MACRO_RULES))
                         }
-                        MacroRulesScope::Invocation(invoc_id)
-                            if !this.output_macro_rules_scopes.contains_key(&invoc_id) =>
-                        {
-                            Err(Determinacy::Undetermined)
-                        }
+                        MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),
                         _ => Err(Determinacy::Determined),
                     },
                     Scope::CrateRoot => {
