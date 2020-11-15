@@ -21,7 +21,7 @@
 // references.
 //
 // Signatures do not include visibility info. I'm not sure if this is a feature
-// or an ommission (FIXME).
+// or an omission (FIXME).
 //
 // FIXME where clauses need implementing, defs/refs in generics are mostly missing.
 
@@ -677,7 +677,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
         let mut text = self.ident.to_string();
         match self.data {
             hir::VariantData::Struct(fields, r) => {
-                let id = parent_id.unwrap();
+                let id = parent_id.ok_or("Missing id for Variant's parent")?;
                 let name_def = SigElement {
                     id: id_from_hir_id(id, scx),
                     start: offset,
