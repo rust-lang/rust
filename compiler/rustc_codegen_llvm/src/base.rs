@@ -173,11 +173,6 @@ pub fn compile_codegen_unit(
             // If this codegen unit contains the main function, also create the
             // wrapper here
             if let Some(entry) = maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx) {
-                let svh = tcx.crate_hash(LOCAL_CRATE);
-
-                let llglobal = add_svh(tcx, &llvm_module, &svh); //&mut cx,
-                cx.add_used_global(llglobal);
-
                 attributes::sanitize(&cx, SanitizerSet::empty(), entry);
             }
 
