@@ -161,8 +161,8 @@ fn slugify(c: char) -> Option<char> {
 
 #[derive(Clone, Debug)]
 pub struct Playground {
-    crate crate_name: Option<String>,
-    crate url: String,
+    pub crate_name: Option<String>,
+    pub url: String,
 }
 
 /// Adds syntax highlighting and playground Run buttons to Rust code blocks.
