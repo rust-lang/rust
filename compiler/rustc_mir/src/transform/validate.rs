@@ -181,6 +181,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
+        if self.body.local_decls.get(*local).is_none() {
+            self.fail(
+                location,
+                format!("local {:?} has no corresponding declaration in `body.local_decls`", local),
+            );
+        }
+
         if self.reachable_blocks.contains(location.block) && context.is_use() {
             // Uses of locals must occur while the local's storage is allocated.
             self.storage_liveness.seek_after_primary_effect(location);
