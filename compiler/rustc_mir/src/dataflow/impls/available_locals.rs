@@ -159,13 +159,19 @@ impl LocalWithLocationMap {
             BuildHasherDefault::default(),
         );
 
+        let mut idx = LocalWithLocationIndex::from(0usize);
+
         // return pointer
         map.entry(body.local_decls.indices().next().unwrap())
-            .or_insert(SmallVec::with_capacity(2))
-            .push((0usize.into(), None));
+            .or_insert(SmallVec::with_capacity(LOCAL_WITH_LOCATION_SMALLVEC_CAP))
+            .push((idx, None));
+        idx.increment_by(1);
 
         for arg in body.args_iter() {
-            map.entry(arg).or_insert(SmallVec::with_capacity(2)).push((0usize.into(), None));
+            map.entry(arg)
+                .or_insert(SmallVec::with_capacity(LOCAL_WITH_LOCATION_SMALLVEC_CAP))
+                .push((idx, None));
+            idx.increment_by(1);
         }
 
         // visit all assignments which are all different "versions" of the locals
@@ -175,17 +181,9 @@ impl LocalWithLocationMap {
                     let location = Location { block: bb, statement_index: stmt_idx };
                     map.entry(lhs.local)
                         .or_insert(SmallVec::with_capacity(2))
-                        .push((0usize.into(), Some(location)));
+                        .push((idx, Some(location)));
+                    idx.increment_by(1);
                 }
-            }
-        }
-
-        // set indices
-        let mut idx = LocalWithLocationIndex::from(0usize);
-        for x in map.values_mut() {
-            for (idx_to_set, _) in x.iter_mut() {
-                *idx_to_set = idx;
-                idx.increment_by(1);
             }
         }
 
