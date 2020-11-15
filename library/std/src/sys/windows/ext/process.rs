@@ -139,17 +139,19 @@ impl CommandExt for process::Command {
 #[unstable(feature = "command_sized", issue = "74549")]
 pub trait CommandSized: core::marker::Sized {
     /// Possibly pass an argument.
+    /// Returns an error if the size of the arguments would overflow the command line. The error contains the reason the remaining arguments could not be added.
     fn maybe_arg(&mut self, arg: impl Arg) -> io::Result<&mut Self>;
-    /// Possibly pass many arguments.
-    // FIXME: I don't know how to return the half-eaten iterator!
+    /// Possibly pass many arguments. 
+    /// Returns an error if the size of the arguments would overflow the command line. The error contains the number of arguments added as well as the reason the remaining arguments could not be added.
     fn maybe_args(
         &mut self,
-        args: impl IntoIterator<Item = impl Arg>,
+        args: &mut impl Iterator<Item = impl Arg>,
     ) -> Result<&mut Self, (usize, io::Error)>;
-    /// Build many commands.
-    fn xargs<I, S, A>(program: S, args: I, before: Vec<A>, after: Vec<A>) -> io::Result<Vec<Self>>
+    /// Build multiple commands to consume all arguments.
+    /// Returns an error if the size of an argument would overflow the command line. The error contains the reason the remaining arguments could not be added.
+    fn xargs<I, S, A>(program: S, args: &mut I, before: Vec<A>, after: Vec<A>) -> io::Result<Vec<Self>>
     where
-        I: IntoIterator<Item = A>,
+        I: Iterator<Item = A>,
         S: AsRef<OsStr> + Copy,
         A: Arg;
 }
@@ -162,7 +164,7 @@ impl CommandSized for process::Command {
     }
     fn maybe_args(
         &mut self,
-        args: impl IntoIterator<Item = impl Arg>,
+        args: &mut impl Iterator<Item = impl Arg>,
     ) -> Result<&mut Self, (usize, io::Error)> {
         let mut count: usize = 0;
         for arg in args {
@@ -173,9 +175,9 @@ impl CommandSized for process::Command {
         }
         Ok(self)
     }
-    fn xargs<I, S, A>(program: S, args: I, before: Vec<A>, after: Vec<A>) -> io::Result<Vec<Self>>
+    fn xargs<I, S, A>(program: S, args: &mut I, before: Vec<A>, after: Vec<A>) -> io::Result<Vec<Self>>
     where
-        I: IntoIterator<Item = A>,
+        I: Iterator<Item = A>,
         S: AsRef<OsStr> + Copy,
         A: Arg,
     {
