@@ -440,7 +440,7 @@ crate struct ItemLink {
     pub(crate) fragment: Option<String>,
 }
 
-crate struct RenderedLink {
+pub struct RenderedLink {
     /// The text the link was original written as.
     ///
     /// This could potentially include disambiguators and backticks.

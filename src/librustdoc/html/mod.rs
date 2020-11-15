@@ -2,7 +2,7 @@ crate mod escape;
 crate mod format;
 crate mod highlight;
 crate mod layout;
-crate mod markdown;
+pub mod markdown;
 crate mod render;
 crate mod sources;
 crate mod static_files;

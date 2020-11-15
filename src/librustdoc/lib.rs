@@ -77,7 +77,7 @@ mod error;
 mod doctest;
 mod fold;
 crate mod formats;
-crate mod html;
+pub mod html;
 mod json;
 mod markdown;
 mod passes;

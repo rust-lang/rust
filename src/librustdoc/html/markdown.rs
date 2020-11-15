@@ -49,17 +49,17 @@ pub(crate) fn opts() -> Options {
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
 /// the rendered version of the contained markdown string.
-crate struct Markdown<'a>(
-    crate &'a str,
+pub struct Markdown<'a>(
+    pub &'a str,
     /// A list of link replacements.
-    crate &'a [RenderedLink],
+    pub &'a [RenderedLink],
     /// The current list of used header IDs.
-    crate &'a mut IdMap,
+    pub &'a mut IdMap,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
-    crate ErrorCodes,
+    pub ErrorCodes,
     /// Default edition to use when parsing doctests (to add a `fn main`).
-    crate Edition,
-    crate &'a Option<Playground>,
+    pub Edition,
+    pub &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
 crate struct MarkdownWithToc<'a>(
@@ -81,7 +81,7 @@ crate struct MarkdownHtml<'a>(
 crate struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-crate enum ErrorCodes {
+pub enum ErrorCodes {
     Yes,
     No,
 }
@@ -160,7 +160,7 @@ fn slugify(c: char) -> Option<char> {
 }
 
 #[derive(Clone, Debug)]
-crate struct Playground {
+pub struct Playground {
     crate crate_name: Option<String>,
     crate url: String,
 }
@@ -923,7 +923,7 @@ impl LangString {
 }
 
 impl Markdown<'_> {
-    crate fn into_string(self) -> String {
+    pub fn into_string(self) -> String {
         let Markdown(md, links, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
@@ -1210,7 +1210,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
 }
 
 #[derive(Clone, Default, Debug)]
-crate struct IdMap {
+pub struct IdMap {
     map: FxHashMap<String, usize>,
 }
 
@@ -1243,7 +1243,7 @@ fn init_id_map() -> FxHashMap<String, usize> {
 }
 
 impl IdMap {
-    crate fn new() -> Self {
+    pub fn new() -> Self {
         IdMap { map: init_id_map() }
     }
 
