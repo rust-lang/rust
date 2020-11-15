@@ -27,6 +27,16 @@
 //! from acquire/release operations. If weak memory orderings are explored then this
 //! may need to change or be updated accordingly.
 //!
+//! Per the C++ spec for the memory model a sequentially consistent operation:
+//!   "A load operation with this memory order performs an acquire operation,
+//!    a store performs a release operation, and read-modify-write performs
+//!    both an acquire operation and a release operation, plus a single total
+//!    order exists in which all threads observe all modifications in the same
+//!    order (see Sequentially-consistent ordering below) "
+//! So in the absence of weak memory effects a seq-cst load & a seq-cst store is identical
+//! to a acquire load and a release store given the global sequentially consistent order
+//! of the schedule.
+//!
 //! FIXME:
 //! currently we have our own local copy of the currently active thread index and names, this is due
 //! in part to the inability to access the current location of threads.active_thread inside the AllocExtra
@@ -196,6 +206,7 @@ struct MemoryCellClocks {
 
     /// The vector-clock of the timestamp of the last read operation
     /// performed by a thread since the last write operation occured.
+    /// It is reset to zero on each write operation.
     read: VClock,
 
     /// Atomic acquire & release sequence tracking clocks.
