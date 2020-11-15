@@ -53,7 +53,6 @@ use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_session::config::nightly_options;
 use rustc_session::lint::{builtin::BARE_TRAIT_OBJECTS, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
@@ -1398,8 +1397,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             "`impl Trait` not allowed outside of {}",
                             allowed_in,
                         );
-                        if pos == ImplTraitPosition::Binding && nightly_options::is_nightly_build()
-                        {
+                        if pos == ImplTraitPosition::Binding && self.sess.is_nightly_build() {
                             err.help(
                                 "add `#![feature(impl_trait_in_bindings)]` to the crate \
                                    attributes to enable",

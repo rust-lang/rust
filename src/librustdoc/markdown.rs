@@ -2,7 +2,6 @@ use std::fs::{create_dir_all, read_to_string, File};
 use std::io::prelude::*;
 use std::path::Path;
 
-use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::DUMMY_SP;
 
@@ -66,7 +65,7 @@ pub fn render<P: AsRef<Path>>(
     let title = metadata[0];
 
     let mut ids = IdMap::new();
-    let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+    let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
     let text = if !options.markdown_no_toc {
         MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).into_string()
     } else {
@@ -131,7 +130,7 @@ pub fn test(mut options: Options) -> Result<(), String> {
         options.enable_per_target_ignores,
     );
     collector.set_position(DUMMY_SP);
-    let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+    let codes = ErrorCodes::from(options.render_options.unstable_features.is_nightly_build());
 
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 

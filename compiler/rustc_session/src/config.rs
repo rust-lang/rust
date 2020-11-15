@@ -1250,7 +1250,7 @@ fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
         None => DEFAULT_EDITION,
     };
 
-    if !edition.is_stable() && !nightly_options::is_nightly_build() {
+    if !edition.is_stable() && !nightly_options::match_is_nightly_build(matches) {
         early_error(
             ErrorOutputType::default(),
             &format!(
@@ -1547,7 +1547,9 @@ fn parse_libs(
                     );
                 }
             };
-            if kind == NativeLibKind::StaticNoBundle && !nightly_options::is_nightly_build() {
+            if kind == NativeLibKind::StaticNoBundle
+                && !nightly_options::match_is_nightly_build(matches)
+            {
                 early_error(
                     error_format,
                     "the library kind 'static-nobundle' is only \
@@ -1836,10 +1838,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         cg,
         error_format,
         externs,
+        unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         crate_name,
         alt_std_name: None,
         libs,
-        unstable_features: UnstableFeatures::from_environment(),
         debug_assertions,
         actually_rustdoc: false,
         trimmed_def_paths: TrimmedDefPaths::default(),
@@ -1960,17 +1962,21 @@ pub mod nightly_options {
     use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
-        is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
+        match_is_nightly_build(matches)
+            && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
     }
 
-    pub fn is_nightly_build() -> bool {
-        UnstableFeatures::from_environment().is_nightly_build()
+    pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
+        is_nightly_build(matches.opt_str("crate-name").as_deref())
+    }
+
+    pub fn is_nightly_build(krate: Option<&str>) -> bool {
+        UnstableFeatures::from_environment(krate).is_nightly_build()
     }
 
     pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options =
-            UnstableFeatures::from_environment().is_nightly_build();
+        let really_allows_unstable_options = match_is_nightly_build(matches);
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {

@@ -53,8 +53,12 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
     }
 }
 
-fn load_data(report_incremental_info: bool, path: &Path) -> LoadResult<(Vec<u8>, usize)> {
-    match file_format::read_file(report_incremental_info, path) {
+fn load_data(
+    report_incremental_info: bool,
+    path: &Path,
+    nightly_build: bool,
+) -> LoadResult<(Vec<u8>, usize)> {
+    match file_format::read_file(report_incremental_info, path, nightly_build) {
         Ok(Some(data_and_pos)) => LoadResult::Ok { data: data_and_pos },
         Ok(None) => {
             // The file either didn't exist or was produced by an incompatible
@@ -111,13 +115,14 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     let expected_hash = sess.opts.dep_tracking_hash();
 
     let mut prev_work_products = FxHashMap::default();
+    let nightly_build = sess.is_nightly_build();
 
     // If we are only building with -Zquery-dep-graph but without an actual
     // incr. comp. session directory, we skip this. Otherwise we'd fail
     // when trying to load work products.
     if sess.incr_comp_session_dir_opt().is_some() {
         let work_products_path = work_products_path(sess);
-        let load_result = load_data(report_incremental_info, &work_products_path);
+        let load_result = load_data(report_incremental_info, &work_products_path, nightly_build);
 
         if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
             // Decode the list of work_products
@@ -163,7 +168,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     MaybeAsync::Async(std::thread::spawn(move || {
         let _prof_timer = prof.generic_activity("incr_comp_load_dep_graph");
 
-        match load_data(report_incremental_info, &path) {
+        match load_data(report_incremental_info, &path, nightly_build) {
             LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
             LoadResult::Error { message } => LoadResult::Error { message },
             LoadResult::Ok { data: (bytes, start_pos) } => {
@@ -201,7 +206,11 @@ pub fn load_query_result_cache(sess: &Session) -> OnDiskCache<'_> {
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
-    match load_data(sess.opts.debugging_opts.incremental_info, &query_cache_path(sess)) {
+    match load_data(
+        sess.opts.debugging_opts.incremental_info,
+        &query_cache_path(sess),
+        sess.is_nightly_build(),
+    ) {
         LoadResult::Ok { data: (bytes, start_pos) } => OnDiskCache::new(sess, bytes, start_pos),
         _ => OnDiskCache::new_empty(sess.source_map()),
     }

@@ -52,7 +52,6 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
@@ -397,6 +396,7 @@ impl FormatRenderer for Context {
             resource_suffix,
             static_root_path,
             generate_search_filter,
+            unstable_features,
             ..
         } = options;
 
@@ -466,7 +466,7 @@ impl FormatRenderer for Context {
             static_root_path,
             fs: DocFS::new(sender),
             edition,
-            codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
+            codes: ErrorCodes::from(unstable_features.is_nightly_build()),
             playground,
         };
 

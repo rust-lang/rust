@@ -150,7 +150,7 @@ impl ParseSess {
     pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
         Self {
             span_diagnostic: handler,
-            unstable_features: UnstableFeatures::from_environment(),
+            unstable_features: UnstableFeatures::from_environment(None),
             config: FxHashSet::default(),
             edition: ExpnId::root().expn_data().edition,
             raw_identifier_spans: Lock::new(Vec::new()),

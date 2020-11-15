@@ -3,7 +3,6 @@ use crate::llvm;
 use libc::c_int;
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_feature::UnstableFeatures;
 use rustc_middle::bug;
 use rustc_session::config::PrintRequest;
 use rustc_session::Session;
@@ -147,13 +146,11 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
     supported_target_features(sess)
         .iter()
-        .filter_map(|&(feature, gate)| {
-            if UnstableFeatures::from_environment().is_nightly_build() || gate.is_none() {
-                Some(feature)
-            } else {
-                None
-            }
-        })
+        .filter_map(
+            |&(feature, gate)| {
+                if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
+            },
+        )
         .filter(|feature| {
             let llvm_feature = to_llvm_feature(sess, feature);
             let cstr = CString::new(llvm_feature).unwrap();

@@ -119,7 +119,7 @@ where
 
     // generate the data in a memory buffer
     let mut encoder = Encoder::new(Vec::new());
-    file_format::write_file_header(&mut encoder);
+    file_format::write_file_header(&mut encoder, sess.is_nightly_build());
     encode(&mut encoder);
 
     // write the data out
