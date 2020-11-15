@@ -54,7 +54,7 @@ crate fn try_inline(
     debug!("attrs={:?}", attrs);
     let attrs_clone = attrs;
 
-    let inner = match res {
+    let kind = match res {
         Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Trait);
             ret.extend(build_impls(cx, Some(parent_module), did, attrs));
@@ -128,7 +128,7 @@ crate fn try_inline(
         source: cx.tcx.def_span(did).clean(cx),
         name: Some(name.clean(cx)),
         attrs,
-        inner,
+        kind,
         visibility: clean::Public,
         stability: cx.tcx.lookup_stability(did).cloned(),
         deprecation: cx.tcx.lookup_deprecation(did).clean(cx),
@@ -446,7 +446,7 @@ crate fn build_impl(
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
     ret.push(clean::Item {
-        inner: clean::ImplItem(clean::Impl {
+        kind: clean::ImplItem(clean::Impl {
             unsafety: hir::Unsafety::Normal,
             generics,
             provided_trait_methods: provided,
@@ -498,7 +498,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                         visibility: clean::Public,
                         stability: None,
                         deprecation: None,
-                        inner: clean::ImportItem(clean::Import::new_simple(
+                        kind: clean::ImportItem(clean::Import::new_simple(
                             item.ident.to_string(),
                             clean::ImportSource {
                                 path: clean::Path {
@@ -555,7 +555,7 @@ fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static
     }
 }
 
-fn build_macro(cx: &DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemEnum {
+fn build_macro(cx: &DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemKind {
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {

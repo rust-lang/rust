@@ -2,7 +2,7 @@ use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
-    GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemEnum, Lifetime,
+    GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemKind, Lifetime,
     MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Type, TypeBinding,
     TypeKind, Visibility, WherePredicate,
 };
@@ -44,8 +44,8 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     let mut module = module.clean(cx);
     let mut masked_crates = FxHashSet::default();
 
-    match module.inner {
-        ItemEnum::ModuleItem(ref module) => {
+    match module.kind {
+        ItemKind::ModuleItem(ref module) => {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
@@ -62,8 +62,8 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
     let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
     {
-        let m = match module.inner {
-            ItemEnum::ModuleItem(ref mut m) => m,
+        let m = match module.kind {
+            ItemKind::ModuleItem(ref mut m) => m,
             _ => unreachable!(),
         };
         m.items.extend(primitives.iter().map(|&(def_id, prim, ref attrs)| Item {
@@ -74,7 +74,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
             stability: get_stability(cx, def_id),
             deprecation: get_deprecation(cx, def_id),
             def_id,
-            inner: ItemEnum::PrimitiveItem(prim),
+            kind: ItemKind::PrimitiveItem(prim),
         }));
         m.items.extend(keywords.into_iter().map(|(def_id, kw, attrs)| Item {
             source: Span::empty(),
@@ -84,7 +84,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
             stability: get_stability(cx, def_id),
             deprecation: get_deprecation(cx, def_id),
             def_id,
-            inner: ItemEnum::KeywordItem(kw),
+            kind: ItemKind::KeywordItem(kw),
         }));
     }
 
@@ -355,8 +355,8 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut V
     let tcx = cx.tcx;
 
     for item in items {
-        let target = match item.inner {
-            ItemEnum::TypedefItem(ref t, true) => &t.type_,
+        let target = match item.kind {
+            ItemKind::TypedefItem(ref t, true) => &t.type_,
             _ => continue,
         };
         let primitive = match *target {

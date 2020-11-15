@@ -58,7 +58,7 @@ impl crate::doctest::Tester for Tests {
 }
 
 pub fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if matches!(item.inner,
+    if matches!(item.kind,
         clean::StructFieldItem(_)
         | clean::VariantItem(_)
         | clean::AssocConstItem(_, _)
