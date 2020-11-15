@@ -32,7 +32,10 @@ we'll talk about that later.
 - The token stream passes through a higher-level lexer located in
   [`rustc_parse`] to prepare for the next stage of the compile process. The
   [`StringReader`] struct is used at this stage to perform a set of validations
-  and turn strings into interned symbols (_interning_ is discussed later).
+  and turn strings into interned symbols (_interning_ is discussed later). 
+  [String interning] is a way of storing only one immutable 
+  copy of each distinct string value.
+  
 - The lexer has a small interface and doesn't depend directly on the
   diagnostic infrastructure in `rustc`. Instead it provides diagnostics as plain
   data which are emitted in `rustc_parse::lexer::mod` as real diagnostics.
@@ -97,6 +100,7 @@ we'll talk about that later.
   - The different libraries/binaries are linked together to produce the final
     binary.
 
+[String interning]: https://en.wikipedia.org/wiki/String_interning
 [`rustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
 [`rustc_driver`]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
 [`rustc_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html
