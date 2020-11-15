@@ -900,7 +900,7 @@ impl ThinLTOKeysMap {
         let file = File::open(path)?;
         for line in io::BufReader::new(file).lines() {
             let line = line?;
-            let mut split = line.split(" ");
+            let mut split = line.split(' ');
             let module = split.next().unwrap();
             let key = split.next().unwrap();
             assert_eq!(split.next(), None, "Expected two space-separated values, found {:?}", line);

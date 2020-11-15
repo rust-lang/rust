@@ -143,7 +143,7 @@ fn copy_third_party_objects(
         }
     }
 
-    if builder.config.sanitizers && compiler.stage != 0 {
+    if builder.config.sanitizers_enabled(target) && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
         // to avoid creating dependency on LLVM.
         target_deps.extend(
@@ -251,7 +251,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
             .arg("--features")
             .arg(features);
     } else {
-        let mut features = builder.std_features();
+        let mut features = builder.std_features(target);
         features.push_str(compiler_builtins_c_feature);
 
         cargo

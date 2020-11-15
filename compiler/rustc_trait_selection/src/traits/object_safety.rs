@@ -27,6 +27,7 @@ use smallvec::SmallVec;
 
 use std::array;
 use std::iter;
+use std::ops::ControlFlow;
 
 pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
 
@@ -461,10 +462,17 @@ fn virtual_call_violation_for_method<'tcx>(
 
             let param_env = tcx.param_env(method.def_id);
 
-            let abi_of_ty = |ty: Ty<'tcx>| -> &Abi {
+            let abi_of_ty = |ty: Ty<'tcx>| -> Option<&Abi> {
                 match tcx.layout_of(param_env.and(ty)) {
-                    Ok(layout) => &layout.abi,
-                    Err(err) => bug!("error: {}\n while computing layout for type {:?}", err, ty),
+                    Ok(layout) => Some(&layout.abi),
+                    Err(err) => {
+                        // #78372
+                        tcx.sess.delay_span_bug(
+                            tcx.def_span(method.def_id),
+                            &format!("error: {}\n while computing layout for type {:?}", err, ty),
+                        );
+                        None
+                    }
                 }
             };
 
@@ -473,7 +481,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 receiver_for_self_ty(tcx, receiver_ty, tcx.mk_unit(), method.def_id);
 
             match abi_of_ty(unit_receiver_ty) {
-                &Abi::Scalar(..) => (),
+                Some(Abi::Scalar(..)) => (),
                 abi => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(method.def_id),
@@ -493,13 +501,12 @@ fn virtual_call_violation_for_method<'tcx>(
                 receiver_for_self_ty(tcx, receiver_ty, trait_object_ty, method.def_id);
 
             match abi_of_ty(trait_object_receiver) {
-                &Abi::ScalarPair(..) => (),
+                Some(Abi::ScalarPair(..)) => (),
                 abi => {
                     tcx.sess.delay_span_bug(
                         tcx.def_span(method.def_id),
                         &format!(
-                            "receiver when `Self = {}` should have a ScalarPair ABI; \
-                                 found {:?}",
+                            "receiver when `Self = {}` should have a ScalarPair ABI; found {:?}",
                             trait_object_ty, abi
                         ),
                     );
@@ -614,7 +621,7 @@ fn object_ty_for_trait<'tcx>(
 ///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result
 /// in a new check that `Trait` is object safe, creating a cycle (until object_safe_for_dispatch
-/// is stabilized, see tracking issue https://github.com/rust-lang/rust/issues/43561).
+/// is stabilized, see tracking issue <https://github.com/rust-lang/rust/issues/43561>).
 /// Instead, we fudge a little by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
 /// Written as a chalk-style query:
@@ -764,9 +771,15 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
     }
 
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
             match t.kind() {
-                ty::Param(_) => t == self.tcx.types.self_param,
+                ty::Param(_) => {
+                    if t == self.tcx.types.self_param {
+                        ControlFlow::BREAK
+                    } else {
+                        ControlFlow::CONTINUE
+                    }
+                }
                 ty::Projection(ref data) => {
                     // This is a projected type `<Foo as SomeTrait>::X`.
 
@@ -790,7 +803,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                         self.supertraits.as_ref().unwrap().contains(&projection_trait_ref);
 
                     if is_supertrait_of_current_trait {
-                        false // do not walk contained types, do not report error, do collect $200
+                        ControlFlow::CONTINUE // do not walk contained types, do not report error, do collect $200
                     } else {
                         t.super_visit_with(self) // DO walk contained types, POSSIBLY reporting an error
                     }
@@ -799,11 +812,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             }
         }
 
-        fn visit_const(&mut self, ct: &ty::Const<'tcx>) -> bool {
+        fn visit_const(&mut self, ct: &ty::Const<'tcx>) -> ControlFlow<()> {
             // First check if the type of this constant references `Self`.
-            if self.visit_ty(ct.ty) {
-                return true;
-            }
+            self.visit_ty(ct.ty)?;
 
             // Constants can only influence object safety if they reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
@@ -824,14 +835,16 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                         let leaf = leaf.subst(self.tcx, ct.substs);
                         self.visit_const(leaf)
                     }
-                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => false,
+                    Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
+                        ControlFlow::CONTINUE
+                    }
                 })
             } else {
-                false
+                ControlFlow::CONTINUE
             }
         }
 
-        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> bool {
+        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<()> {
             if let ty::PredicateAtom::ConstEvaluatable(def, substs) = pred.skip_binders() {
                 // FIXME(const_evaluatable_checked): We should probably deduplicate the logic for
                 // `AbstractConst`s here, it might make sense to change `ConstEvaluatable` to
@@ -843,10 +856,12 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                             let leaf = leaf.subst(self.tcx, ct.substs);
                             self.visit_const(leaf)
                         }
-                        Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => false,
+                        Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
+                            ControlFlow::CONTINUE
+                        }
                     })
                 } else {
-                    false
+                    ControlFlow::CONTINUE
                 }
             } else {
                 pred.super_visit_with(self)
@@ -854,7 +869,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
         }
     }
 
-    value.visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
+    value
+        .visit_with(&mut IllegalSelfTypeVisitor { tcx, trait_def_id, supertraits: None })
+        .is_break()
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

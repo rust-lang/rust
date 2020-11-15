@@ -118,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_def_id: DefId,
     ) -> Vec<DeferredCallResolution<'tcx>> {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
-        deferred_call_resolutions.remove(&closure_def_id).unwrap_or(vec![])
+        deferred_call_resolutions.remove(&closure_def_id).unwrap_or_default()
     }
 
     pub fn tag(&self) -> String {

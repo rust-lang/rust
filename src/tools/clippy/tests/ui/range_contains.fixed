@@ -1,0 +1,41 @@
+// run-rustfix
+
+#[warn(clippy::manual_range_contains)]
+#[allow(unused)]
+#[allow(clippy::no_effect)]
+#[allow(clippy::short_circuit_statement)]
+#[allow(clippy::unnecessary_operation)]
+fn main() {
+    let x = 9_u32;
+
+    // order shouldn't matter
+    (8..12).contains(&x);
+    (21..42).contains(&x);
+    (1..100).contains(&x);
+
+    // also with inclusive ranges
+    (9..=99).contains(&x);
+    (1..=33).contains(&x);
+    (1..=999).contains(&x);
+
+    // and the outside
+    !(8..12).contains(&x);
+    !(21..42).contains(&x);
+    !(1..100).contains(&x);
+
+    // also with the outside of inclusive ranges
+    !(9..=99).contains(&x);
+    !(1..=33).contains(&x);
+    !(1..=999).contains(&x);
+
+    // not a range.contains
+    x > 8 && x < 12; // lower bound not inclusive
+    x < 8 && x <= 12; // same direction
+    x >= 12 && 12 >= x; // same bounds
+    x < 8 && x > 12; // wrong direction
+
+    x <= 8 || x >= 12;
+    x >= 8 || x >= 12;
+    x < 12 || 12 < x;
+    x >= 8 || x <= 12;
+}

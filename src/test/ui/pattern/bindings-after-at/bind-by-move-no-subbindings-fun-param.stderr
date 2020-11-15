@@ -1,12 +1,13 @@
-error[E0382]: use of moved value
-  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:9:12
+error[E0382]: use of partially moved value
+  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:9:6
    |
 LL | fn f(a @ A(u): A) -> Box<u8> {
-   |      ------^-
+   |      ^^^^^^-^
    |      |     |
-   |      |     value used here after move
-   |      value moved here
-   |      move occurs because value has type `A`, which does not implement the `Copy` trait
+   |      |     value partially moved here
+   |      value used here after partial move
+   |
+   = note: partial move occurs because value has type `Box<u8>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

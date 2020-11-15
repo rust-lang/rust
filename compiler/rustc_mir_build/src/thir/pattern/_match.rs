@@ -1,5 +1,11 @@
-//! Note: most of the tests relevant to this file can be found (at the time of writing) in
-//! src/tests/ui/pattern/usefulness.
+//! Note: tests specific to this file can be found in:
+//!     - ui/pattern/usefulness
+//!     - ui/or-patterns
+//!     - ui/consts/const_in_pattern
+//!     - ui/rfc-2008-non-exhaustive
+//!     - probably many others
+//! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
+//! reason not to, for example if they depend on a particular feature like or_patterns.
 //!
 //! This file includes the logic for exhaustiveness and usefulness checking for
 //! pattern-matching. Specifically, given a list of patterns for a type, we can
@@ -8,7 +14,7 @@
 //! (b) each pattern is necessary (usefulness)
 //!
 //! The algorithm implemented here is a modified version of the one described in:
-//! http://moscova.inria.fr/~maranget/papers/warn/index.html
+//! <http://moscova.inria.fr/~maranget/papers/warn/index.html>
 //! However, to save future implementors from reading the original paper, we
 //! summarise the algorithm here to hopefully save time and be a little clearer
 //! (without being so rigorous).
@@ -304,7 +310,7 @@ use rustc_arena::TypedArena;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
-use rustc_middle::mir::interpret::{truncate, ConstValue};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
@@ -327,9 +333,23 @@ struct LiteralExpander;
 impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
     fn fold_pattern(&mut self, pat: &Pat<'tcx>) -> Pat<'tcx> {
         debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind(), pat.kind);
-        match (pat.ty.kind(), &*pat.kind) {
-            (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => s.fold_with(self),
-            (_, &PatKind::AscribeUserType { subpattern: ref s, .. }) => s.fold_with(self),
+        match (pat.ty.kind(), pat.kind.as_ref()) {
+            (_, PatKind::Binding { subpattern: Some(s), .. }) => s.fold_with(self),
+            (_, PatKind::AscribeUserType { subpattern: s, .. }) => s.fold_with(self),
+            (ty::Ref(_, t, _), PatKind::Constant { .. }) if t.is_str() => {
+                // Treat string literal patterns as deref patterns to a `str` constant, i.e.
+                // `&CONST`. This expands them like other const patterns. This could have been done
+                // in `const_to_pat`, but that causes issues with the rest of the matching code.
+                let mut new_pat = pat.super_fold_with(self);
+                // Make a fake const pattern of type `str` (instead of `&str`). That the carried
+                // constant value still knows it is of type `&str`.
+                new_pat.ty = t;
+                Pat {
+                    kind: Box::new(PatKind::Deref { subpattern: new_pat }),
+                    span: pat.span,
+                    ty: pat.ty,
+                }
+            }
             _ => pat.super_fold_with(self),
         }
     }
@@ -337,10 +357,7 @@ impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
 
 impl<'tcx> Pat<'tcx> {
     pub(super) fn is_wildcard(&self) -> bool {
-        match *self.kind {
-            PatKind::Binding { subpattern: None, .. } | PatKind::Wild => true,
-            _ => false,
-        }
+        matches!(*self.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
     }
 }
 
@@ -785,11 +802,9 @@ enum Constructor<'tcx> {
     /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
     /// don't count towards making a match exhaustive.
     Opaque,
-    /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
+    /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
+    /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
-    /// Fake constructor for those types for which we can't list constructors explicitly, like
-    /// `f64` and `&str`.
-    Unlistable,
     /// Wildcard pattern.
     Wildcard,
 }
@@ -883,6 +898,7 @@ impl<'tcx> Constructor<'tcx> {
     /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
     fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
+        // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -925,18 +941,19 @@ impl<'tcx> Constructor<'tcx> {
             (Opaque, _) | (_, Opaque) => false,
             // Only a wildcard pattern can match the special extra constructor.
             (NonExhaustive, _) => false,
-            // If we encounter a `Single` here, this means there was only one constructor for this
-            // type after all.
-            (Unlistable, Single) => true,
-            // Otherwise, only a wildcard pattern can match the special extra constructor.
-            (Unlistable, _) => false,
 
-            _ => bug!("trying to compare incompatible constructors {:?} and {:?}", self, other),
+            _ => span_bug!(
+                pcx.span,
+                "trying to compare incompatible constructors {:?} and {:?}",
+                self,
+                other
+            ),
         }
     }
 
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
-    /// assumed to be built from `matrix.head_ctors()`, and `self` is assumed to have been split.
+    /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
+    /// assumed to have been split from a wildcard.
     fn is_covered_by_any<'p>(
         &self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
@@ -946,8 +963,9 @@ impl<'tcx> Constructor<'tcx> {
             return false;
         }
 
+        // This must be kept in sync with `is_covered_by`.
         match self {
-            // `used_ctors` cannot contain anything else than `Single`s.
+            // If `self` is `Single`, `used_ctors` cannot contain anything else than `Single`s.
             Single => !used_ctors.is_empty(),
             Variant(_) => used_ctors.iter().any(|c| c == self),
             IntRange(range) => used_ctors
@@ -960,8 +978,6 @@ impl<'tcx> Constructor<'tcx> {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            // This constructor is only covered by `Single`s
-            Unlistable => used_ctors.iter().any(|c| *c == Single),
             Str(..) | FloatRange(..) | Opaque | Wildcard => {
                 bug!("found unexpected ctor in all_ctors: {:?}", self)
             }
@@ -1009,6 +1025,10 @@ impl<'tcx> Constructor<'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
+                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+                // be careful to reconstruct the correct constant pattern here. However a string
+                // literal pattern will never be reported as a non-exhaustiveness witness, so we
+                // can ignore this issue.
                 ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, pcx.ty),
                 _ => PatKind::Wild,
@@ -1041,7 +1061,7 @@ impl<'tcx> Constructor<'tcx> {
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(pcx.cx.tcx),
-            NonExhaustive | Unlistable => PatKind::Wild,
+            NonExhaustive => PatKind::Wild,
             Opaque => bug!("we should not try to apply an opaque constructor"),
             Wildcard => bug!(
                 "trying to apply a wildcard constructor; this should have been done in `apply_constructors`"
@@ -1190,8 +1210,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Unlistable
-            | Wildcard => Fields::empty(),
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Wildcard => {
+                Fields::empty()
+            }
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -1303,9 +1324,13 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ///     [Some(0), ..] => {}
     /// }
     /// ```
+    /// This is guaranteed to preserve the number of patterns in `self`.
     fn replace_with_pattern_arguments(&self, pat: &'p Pat<'tcx>) -> Self {
         match pat.kind.as_ref() {
-            PatKind::Deref { subpattern } => Self::from_single_pattern(subpattern),
+            PatKind::Deref { subpattern } => {
+                assert_eq!(self.len(), 1);
+                Fields::from_single_pattern(subpattern)
+            }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 self.replace_with_fieldpats(subpatterns)
             }
@@ -1342,8 +1367,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
 #[derive(Clone, Debug)]
 crate enum Usefulness<'tcx> {
-    /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
-    Useful(Vec<Span>),
+    /// Carries, for each column in the matrix, a set of sub-branches that have been found to be
+    /// unreachable. Used only in the presence of or-patterns, otherwise it stays empty.
+    Useful(Vec<FxHashSet<Span>>),
     /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
@@ -1358,10 +1384,7 @@ impl<'tcx> Usefulness<'tcx> {
     }
 
     fn is_useful(&self) -> bool {
-        match *self {
-            NotUseful => false,
-            _ => true,
-        }
+        !matches!(*self, NotUseful)
     }
 
     fn apply_constructor<'p>(
@@ -1393,6 +1416,23 @@ impl<'tcx> Usefulness<'tcx> {
                         .collect()
                 };
                 UsefulWithWitness(new_witnesses)
+            }
+            Useful(mut unreachables) => {
+                if !unreachables.is_empty() {
+                    // When we apply a constructor, there are `arity` columns of the matrix that
+                    // corresponded to its arguments. All the unreachables found in these columns
+                    // will, after `apply`, come from the first column. So we take the union of all
+                    // the corresponding sets and put them in the first column.
+                    // Note that `arity` may be 0, in which case we just push a new empty set.
+                    let len = unreachables.len();
+                    let arity = ctor_wild_subpatterns.len();
+                    let mut unioned = FxHashSet::default();
+                    for set in unreachables.drain((len - arity)..) {
+                        unioned.extend(set)
+                    }
+                    unreachables.push(unioned);
+                }
+                Useful(unreachables)
             }
             x => x,
         }
@@ -1592,14 +1632,13 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
         }
         &ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
-            let max = truncate(u128::MAX, size);
+            let max = size.truncate(u128::MAX);
             vec![make_range(0, max)]
         }
         _ if cx.is_uninhabited(pcx.ty) => vec![],
-        ty::Adt(..) | ty::Tuple(..) => vec![Single],
-        ty::Ref(_, t, _) if !t.is_str() => vec![Single],
-        // This type is one for which we don't know how to list constructors, like `&str` or `f64`.
-        _ => vec![Unlistable],
+        ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => vec![Single],
+        // This type is one for which we cannot list constructors, like `str` or `f64`.
+        _ => vec![NonExhaustive],
     }
 }
 
@@ -1623,10 +1662,7 @@ struct IntRange<'tcx> {
 impl<'tcx> IntRange<'tcx> {
     #[inline]
     fn is_integral(ty: Ty<'_>) -> bool {
-        match ty.kind() {
-            ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool => true,
-            _ => false,
-        }
+        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
     }
 
     fn is_singleton(&self) -> bool {
@@ -2028,7 +2064,7 @@ impl<'tcx> MissingConstructors<'tcx> {
     }
 }
 
-/// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html.
+/// Algorithm from <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
 ///   (0) We don't exit early if the pattern matrix has zero rows. We just
@@ -2079,13 +2115,14 @@ crate fn is_useful<'p, 'tcx>(
 
     // If the first pattern is an or-pattern, expand it.
     if let Some(vs) = v.expand_or_pat() {
-        // We need to push the already-seen patterns into the matrix in order to detect redundant
-        // branches like `Some(_) | Some(0)`. We also keep track of the unreachable subpatterns.
-        let mut matrix = matrix.clone();
-        // `Vec` of all the unreachable branches of the current or-pattern.
-        let mut unreachable_branches = Vec::new();
-        // Subpatterns that are unreachable from all branches. E.g. in the following case, the last
-        // `true` is unreachable only from one branch, so it is overall reachable.
+        // We expand the or pattern, trying each of its branches in turn and keeping careful track
+        // of possible unreachable sub-branches.
+        //
+        // If two branches have detected some unreachable sub-branches, we need to be careful. If
+        // they were detected in columns that are not the current one, we want to keep only the
+        // sub-branches that were unreachable in _all_ branches. Eg. in the following, the last
+        // `true` is unreachable in the second branch of the first or-pattern, but not otherwise.
+        // Therefore we don't want to lint that it is unreachable.
         //
         // ```
         // match (true, true) {
@@ -2093,41 +2130,72 @@ crate fn is_useful<'p, 'tcx>(
         //     (false | true, false | true) => {}
         // }
         // ```
-        let mut unreachable_subpats = FxHashSet::default();
-        // Whether any branch at all is useful.
+        // If however the sub-branches come from the current column, they come from the inside of
+        // the current or-pattern, and we want to keep them all. Eg. in the following, we _do_ want
+        // to lint that the last `false` is unreachable.
+        // ```
+        // match None {
+        //     Some(false) => {}
+        //     None | Some(true | false) => {}
+        // }
+        // ```
+
+        let mut matrix = matrix.clone();
+        // We keep track of sub-branches separately depending on whether they come from this column
+        // or from others.
+        let mut unreachables_this_column: FxHashSet<Span> = FxHashSet::default();
+        let mut unreachables_other_columns: Vec<FxHashSet<Span>> = Vec::default();
+        // Whether at least one branch is reachable.
         let mut any_is_useful = false;
 
         for v in vs {
             let res = is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             match res {
-                Useful(pats) => {
-                    if !any_is_useful {
-                        any_is_useful = true;
-                        // Initialize with the first set of unreachable subpatterns encountered.
-                        unreachable_subpats = pats.into_iter().collect();
-                    } else {
-                        // Keep the patterns unreachable from both this and previous branches.
-                        unreachable_subpats =
-                            pats.into_iter().filter(|p| unreachable_subpats.contains(p)).collect();
+                Useful(unreachables) => {
+                    if let Some((this_column, other_columns)) = unreachables.split_last() {
+                        // We keep the union of unreachables found in the first column.
+                        unreachables_this_column.extend(this_column);
+                        // We keep the intersection of unreachables found in other columns.
+                        if unreachables_other_columns.is_empty() {
+                            unreachables_other_columns = other_columns.to_vec();
+                        } else {
+                            unreachables_other_columns = unreachables_other_columns
+                                .into_iter()
+                                .zip(other_columns)
+                                .map(|(x, y)| x.intersection(&y).copied().collect())
+                                .collect();
+                        }
                     }
+                    any_is_useful = true;
                 }
-                NotUseful => unreachable_branches.push(v.head().span),
-                UsefulWithWitness(_) => {
-                    bug!("Encountered or-pat in `v` during exhaustiveness checking")
+                NotUseful => {
+                    unreachables_this_column.insert(v.head().span);
                 }
+                UsefulWithWitness(_) => bug!(
+                    "encountered or-pat in the expansion of `_` during exhaustiveness checking"
+                ),
             }
-            // If pattern has a guard don't add it to the matrix
+
+            // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
+                // We push the already-seen patterns into the matrix in order to detect redundant
+                // branches like `Some(_) | Some(0)`.
                 matrix.push(v);
             }
         }
-        if any_is_useful {
-            // Collect all the unreachable patterns.
-            unreachable_branches.extend(unreachable_subpats);
-            return Useful(unreachable_branches);
+
+        return if any_is_useful {
+            let mut unreachables = if unreachables_other_columns.is_empty() {
+                let n_columns = v.len();
+                (0..n_columns - 1).map(|_| FxHashSet::default()).collect()
+            } else {
+                unreachables_other_columns
+            };
+            unreachables.push(unreachables_this_column);
+            Useful(unreachables)
         } else {
-            return NotUseful;
-        }
+            NotUseful
+        };
     }
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
@@ -2161,20 +2229,23 @@ fn pat_constructor<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     pat: &'p Pat<'tcx>,
 ) -> Constructor<'tcx> {
-    match *pat.kind {
+    match pat.kind.as_ref() {
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
         PatKind::Binding { .. } | PatKind::Wild => Wildcard,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
-        PatKind::Variant { adt_def, variant_index, .. } => {
+        &PatKind::Variant { adt_def, variant_index, .. } => {
             Variant(adt_def.variants[variant_index].def_id)
         }
         PatKind::Constant { value } => {
             if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value, pat.span) {
                 IntRange(int_range)
             } else {
-                match value.ty.kind() {
+                match pat.ty.kind() {
                     ty::Float(_) => FloatRange(value, value, RangeEnd::Included),
-                    ty::Ref(_, t, _) if t.is_str() => Str(value),
+                    // In `expand_pattern`, we convert string literals to `&CONST` patterns with
+                    // `CONST` a pattern of type `str`. In truth this contains a constant of type
+                    // `&str`.
+                    ty::Str => Str(value),
                     // All constants that can be structurally matched have already been expanded
                     // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
                     // opaque.
@@ -2182,7 +2253,7 @@ fn pat_constructor<'p, 'tcx>(
                 }
             }
         }
-        PatKind::Range(PatRange { lo, hi, end }) => {
+        &PatKind::Range(PatRange { lo, hi, end }) => {
             let ty = lo.ty;
             if let Some(int_range) = IntRange::from_range(
                 cx.tcx,
@@ -2197,8 +2268,7 @@ fn pat_constructor<'p, 'tcx>(
                 FloatRange(lo, hi, end)
             }
         }
-        PatKind::Array { ref prefix, ref slice, ref suffix }
-        | PatKind::Slice { ref prefix, ref slice, ref suffix } => {
+        PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
             let array_len = match pat.ty.kind() {
                 ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env)),
                 ty::Slice(_) => None,

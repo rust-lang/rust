@@ -1,0 +1,26 @@
+- // MIR for `clone` before Inline
++ // MIR for `clone` after Inline
+  
+  fn clone(_1: fn(A, B)) -> fn(A, B) {
+      debug f => _1;                       // in scope 0 at $DIR/inline-shims.rs:5:20: 5:21
+      let mut _0: fn(A, B);                // return place in scope 0 at $DIR/inline-shims.rs:5:36: 5:44
+      let mut _2: &fn(A, B);               // in scope 0 at $DIR/inline-shims.rs:6:5: 6:6
++     scope 1 (inlined <fn(A, B) as Clone>::clone - shim(fn(A, B))) { // at $DIR/inline-shims.rs:6:5: 6:14
++     }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/inline-shims.rs:6:5: 6:6
+          _2 = &_1;                        // scope 0 at $DIR/inline-shims.rs:6:5: 6:6
+-         _0 = <fn(A, B) as Clone>::clone(move _2) -> bb1; // scope 0 at $DIR/inline-shims.rs:6:5: 6:14
+-                                          // mir::Constant
+-                                          // + span: $DIR/inline-shims.rs:6:7: 6:12
+-                                          // + literal: Const { ty: for<'r> fn(&'r fn(A, B)) -> fn(A, B) {<fn(A, B) as std::clone::Clone>::clone}, val: Value(Scalar(<ZST>)) }
+-     }
+- 
+-     bb1: {
++         _0 = (*_2);                      // scope 1 at $DIR/inline-shims.rs:6:5: 6:14
+          StorageDead(_2);                 // scope 0 at $DIR/inline-shims.rs:6:13: 6:14
+          return;                          // scope 0 at $DIR/inline-shims.rs:7:2: 7:2
+      }
+  }
+  

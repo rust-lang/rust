@@ -1,0 +1,122 @@
+error: unneeded long form for URL
+  --> $DIR/url-improvements.rs:3:5
+   |
+LL | /// [http://aa.com](http://aa.com)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://aa.com>`
+   |
+note: the lint level is defined here
+  --> $DIR/url-improvements.rs:1:9
+   |
+LL | #![deny(non_autolinks)]
+   |         ^^^^^^^^^^^^^
+
+error: unneeded long form for URL
+  --> $DIR/url-improvements.rs:5:5
+   |
+LL | /// [http://bb.com]
+   |     ^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://bb.com>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:13:5
+   |
+LL | /// https://somewhere.com
+   |     ^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:15:5
+   |
+LL | /// https://somewhere.com/a
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com/a>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:17:5
+   |
+LL | /// https://www.somewhere.com
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://www.somewhere.com>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:19:5
+   |
+LL | /// https://www.somewhere.com/a
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://www.somewhere.com/a>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:21:5
+   |
+LL | /// https://subdomain.example.com
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://subdomain.example.com>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:23:5
+   |
+LL | /// https://somewhere.com?
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com?>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:25:5
+   |
+LL | /// https://somewhere.com/a?
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com/a?>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:27:5
+   |
+LL | /// https://somewhere.com?hello=12
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com?hello=12>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:29:5
+   |
+LL | /// https://somewhere.com/a?hello=12
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com/a?hello=12>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:31:5
+   |
+LL | /// https://example.com?hello=12#xyz
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://example.com?hello=12#xyz>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:33:5
+   |
+LL | /// https://example.com/a?hello=12#xyz
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://example.com/a?hello=12#xyz>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:35:5
+   |
+LL | /// https://example.com#xyz
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://example.com#xyz>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:37:5
+   |
+LL | /// https://example.com/a#xyz
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://example.com/a#xyz>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:39:5
+   |
+LL | /// https://somewhere.com?hello=12&bye=11
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com?hello=12&bye=11>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:41:5
+   |
+LL | /// https://somewhere.com/a?hello=12&bye=11
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com/a?hello=12&bye=11>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:43:5
+   |
+LL | /// https://somewhere.com?hello=12&bye=11#xyz
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com?hello=12&bye=11#xyz>`
+
+error: this URL is not a hyperlink
+  --> $DIR/url-improvements.rs:45:10
+   |
+LL | /// hey! https://somewhere.com/a?hello=12&bye=11#xyz
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<https://somewhere.com/a?hello=12&bye=11#xyz>`
+
+error: aborting due to 19 previous errors
+

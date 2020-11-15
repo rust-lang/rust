@@ -270,6 +270,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
     fn calc_adjust_mode(&self, pat: &'tcx Pat<'tcx>, opt_path_res: Option<Res>) -> AdjustMode {
+        // When we perform destructuring assignment, we disable default match bindings, which are
+        // unintuitive in this context.
+        if !pat.default_binding_modes {
+            return AdjustMode::Reset;
+        }
         match &pat.kind {
             // Type checking these product-like types successfully always require
             // that the expected type be of those types and not reference types.
@@ -1500,7 +1505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_suggestion(
             sp,
             &format!(
-                "if you don't care about {} missing field{}, you can explicitely ignore {}",
+                "if you don't care about {} missing field{}, you can explicitly ignore {}",
                 if len == 1 { "this" } else { "these" },
                 if len == 1 { "" } else { "s" },
                 if len == 1 { "it" } else { "them" },

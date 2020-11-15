@@ -26,18 +26,36 @@ fn main() {
         ||
             b < c
     ;
-    let
-        somebool
-        =
-            a < b
-        &&
-            b < c
-    ;
-    let
-        somebool
-        =
-            b < a
-        &&
-            b < c
-    ;
+    let somebool = a < b && b < c;
+    let somebool = b < a && b < c;
+
+    if
+        !
+        is_true
+    {
+        a = 2
+        ;
+    }
+
+    if
+        is_true
+    {
+        b = 30
+        ;
+    }
+    else
+    {
+        c = 400
+        ;
+    }
+
+    if !is_true {
+        a = 2;
+    }
+
+    if is_true {
+        b = 30;
+    } else {
+        c = 400;
+    }
 }

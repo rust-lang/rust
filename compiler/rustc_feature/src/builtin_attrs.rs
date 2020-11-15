@@ -33,6 +33,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     ),
     (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
     (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
+    (sym::panic, sym::cfg_panic, cfg_fn!(cfg_panic)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -83,10 +84,7 @@ impl std::fmt::Debug for AttributeGate {
 
 impl AttributeGate {
     fn is_deprecated(&self) -> bool {
-        match *self {
-            Self::Gated(Stability::Deprecated(_, _), ..) => true,
-            _ => false,
-        }
+        matches!(*self, Self::Gated(Stability::Deprecated(_, _), ..))
     }
 }
 

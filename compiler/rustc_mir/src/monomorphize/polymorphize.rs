@@ -20,6 +20,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::sym;
 use std::convert::TryInto;
+use std::ops::ControlFlow;
 
 /// Provide implementations of queries relating to polymorphization analysis.
 pub fn provide(providers: &mut Providers) {
@@ -138,7 +139,7 @@ fn mark_used_by_predicates<'tcx>(
             // predicate is used.
             let any_param_used = {
                 let mut vis = HasUsedGenericParams { unused_parameters };
-                predicate.visit_with(&mut vis)
+                predicate.visit_with(&mut vis).is_break()
             };
 
             if any_param_used {
@@ -249,17 +250,17 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
-    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> bool {
+    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<()> {
         debug!("visit_const: c={:?}", c);
         if !c.has_param_types_or_consts() {
-            return false;
+            return ControlFlow::CONTINUE;
         }
 
         match c.val {
             ty::ConstKind::Param(param) => {
                 debug!("visit_const: param={:?}", param);
                 self.unused_parameters.clear(param.index);
-                false
+                ControlFlow::CONTINUE
             }
             ty::ConstKind::Unevaluated(def, _, Some(p))
                 // Avoid considering `T` unused when constants are of the form:
@@ -270,22 +271,22 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 // the generic parameters, instead, traverse the promoted MIR.
                 let promoted = self.tcx.promoted_mir(def.did);
                 self.visit_body(&promoted[p]);
-                false
+                ControlFlow::CONTINUE
             }
             ty::ConstKind::Unevaluated(def, unevaluated_substs, None)
                 if self.tcx.def_kind(def.did) == DefKind::AnonConst =>
             {
                 self.visit_child_body(def.did, unevaluated_substs);
-                false
+                ControlFlow::CONTINUE
             }
             _ => c.super_visit_with(self),
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
         debug!("visit_ty: ty={:?}", ty);
         if !ty.has_param_types_or_consts() {
-            return false;
+            return ControlFlow::CONTINUE;
         }
 
         match *ty.kind() {
@@ -293,18 +294,18 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 debug!("visit_ty: def_id={:?}", def_id);
                 // Avoid cycle errors with generators.
                 if def_id == self.def_id {
-                    return false;
+                    return ControlFlow::CONTINUE;
                 }
 
                 // Consider any generic parameters used by any closures/generators as used in the
                 // parent.
                 self.visit_child_body(def_id, substs);
-                false
+                ControlFlow::CONTINUE
             }
             ty::Param(param) => {
                 debug!("visit_ty: param={:?}", param);
                 self.unused_parameters.clear(param.index);
-                false
+                ControlFlow::CONTINUE
             }
             _ => ty.super_visit_with(self),
         }
@@ -317,28 +318,38 @@ struct HasUsedGenericParams<'a> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
-    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> bool {
+    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<()> {
         debug!("visit_const: c={:?}", c);
         if !c.has_param_types_or_consts() {
-            return false;
+            return ControlFlow::CONTINUE;
         }
 
         match c.val {
             ty::ConstKind::Param(param) => {
-                !self.unused_parameters.contains(param.index).unwrap_or(false)
+                if self.unused_parameters.contains(param.index).unwrap_or(false) {
+                    ControlFlow::CONTINUE
+                } else {
+                    ControlFlow::BREAK
+                }
             }
             _ => c.super_visit_with(self),
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
         debug!("visit_ty: ty={:?}", ty);
         if !ty.has_param_types_or_consts() {
-            return false;
+            return ControlFlow::CONTINUE;
         }
 
         match ty.kind() {
-            ty::Param(param) => !self.unused_parameters.contains(param.index).unwrap_or(false),
+            ty::Param(param) => {
+                if self.unused_parameters.contains(param.index).unwrap_or(false) {
+                    ControlFlow::CONTINUE
+                } else {
+                    ControlFlow::BREAK
+                }
+            }
             _ => ty.super_visit_with(self),
         }
     }

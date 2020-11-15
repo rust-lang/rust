@@ -10,7 +10,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             if args.len() == 2;
             if method.ident.as_str() == "map";
             let ty = cx.typeck_results().expr_ty(&args[0]);
-            if is_type_diagnostic_item(cx, ty, sym!(option_type)) || match_trait_method(cx, e, &paths::ITERATOR);
+            if is_type_diagnostic_item(cx, ty, sym::option_type) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);

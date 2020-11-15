@@ -8,6 +8,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::Span;
+use std::ops::ControlFlow;
 
 #[derive(Debug)]
 pub enum NonStructuralMatchTy<'tcx> {
@@ -134,38 +135,38 @@ impl Search<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
         debug!("Search visiting ty: {:?}", ty);
 
         let (adt_def, substs) = match *ty.kind() {
             ty::Adt(adt_def, substs) => (adt_def, substs),
             ty::Param(_) => {
                 self.found = Some(NonStructuralMatchTy::Param);
-                return true; // Stop visiting.
+                return ControlFlow::BREAK;
             }
             ty::Dynamic(..) => {
                 self.found = Some(NonStructuralMatchTy::Dynamic);
-                return true; // Stop visiting.
+                return ControlFlow::BREAK;
             }
             ty::Foreign(_) => {
                 self.found = Some(NonStructuralMatchTy::Foreign);
-                return true; // Stop visiting.
+                return ControlFlow::BREAK;
             }
             ty::Opaque(..) => {
                 self.found = Some(NonStructuralMatchTy::Opaque);
-                return true; // Stop visiting.
+                return ControlFlow::BREAK;
             }
             ty::Projection(..) => {
                 self.found = Some(NonStructuralMatchTy::Projection);
-                return true; // Stop visiting.
+                return ControlFlow::BREAK;
             }
             ty::Generator(..) | ty::GeneratorWitness(..) => {
                 self.found = Some(NonStructuralMatchTy::Generator);
-                return true; // Stop visiting.
+                return ControlFlow::BREAK;
             }
             ty::Closure(..) => {
                 self.found = Some(NonStructuralMatchTy::Closure);
-                return true; // Stop visiting.
+                return ControlFlow::BREAK;
             }
             ty::RawPtr(..) => {
                 // structural-match ignores substructure of
@@ -182,39 +183,31 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 // Even though `NonStructural` does not implement `PartialEq`,
                 // structural equality on `T` does not recur into the raw
                 // pointer. Therefore, one can still use `C` in a pattern.
-
-                // (But still tell the caller to continue search.)
-                return false;
+                return ControlFlow::CONTINUE;
             }
             ty::FnDef(..) | ty::FnPtr(..) => {
                 // Types of formals and return in `fn(_) -> _` are also irrelevant;
                 // so we do not recur into them via `super_visit_with`
-                //
-                // (But still tell the caller to continue search.)
-                return false;
+                return ControlFlow::CONTINUE;
             }
             ty::Array(_, n)
                 if { n.try_eval_usize(self.tcx(), ty::ParamEnv::reveal_all()) == Some(0) } =>
             {
                 // rust-lang/rust#62336: ignore type of contents
                 // for empty array.
-                //
-                // (But still tell the caller to continue search.)
-                return false;
+                return ControlFlow::CONTINUE;
             }
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
                 // These primitive types are always structural match.
                 //
                 // `Never` is kind of special here, but as it is not inhabitable, this should be fine.
-                //
-                // (But still tell the caller to continue search.)
-                return false;
+                return ControlFlow::CONTINUE;
             }
 
             ty::Array(..) | ty::Slice(_) | ty::Ref(..) | ty::Tuple(..) => {
                 // First check all contained types and then tell the caller to continue searching.
                 ty.super_visit_with(self);
-                return false;
+                return ControlFlow::CONTINUE;
             }
             ty::Infer(_) | ty::Placeholder(_) | ty::Bound(..) => {
                 bug!("unexpected type during structural-match checking: {:?}", ty);
@@ -223,22 +216,19 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
                 self.tcx().sess.delay_span_bug(self.span, "ty::Error in structural-match check");
                 // We still want to check other types after encountering an error,
                 // as this may still emit relevant errors.
-                //
-                // So we continue searching here.
-                return false;
+                return ControlFlow::CONTINUE;
             }
         };
 
         if !self.seen.insert(adt_def.did) {
             debug!("Search already seen adt_def: {:?}", adt_def);
-            // Let caller continue its search.
-            return false;
+            return ControlFlow::CONTINUE;
         }
 
         if !self.type_marked_structural(ty) {
             debug!("Search found ty: {:?}", ty);
             self.found = Some(NonStructuralMatchTy::Adt(&adt_def));
-            return true; // Halt visiting!
+            return ControlFlow::BREAK;
         }
 
         // structural-match does not care about the
@@ -258,16 +248,16 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             let ty = self.tcx().normalize_erasing_regions(ty::ParamEnv::empty(), field_ty);
             debug!("structural-match ADT: field_ty={:?}, ty={:?}", field_ty, ty);
 
-            if ty.visit_with(self) {
+            if ty.visit_with(self).is_break() {
                 // found an ADT without structural-match; halt visiting!
                 assert!(self.found.is_some());
-                return true;
+                return ControlFlow::BREAK;
             }
         }
 
         // Even though we do not want to recur on substs, we do
         // want our caller to continue its own search.
-        false
+        ControlFlow::CONTINUE
     }
 }
 

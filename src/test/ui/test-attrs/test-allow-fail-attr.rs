@@ -1,11 +1,12 @@
 // run-pass
-// ignore-wasm32-bare compiled with panic=abort by default
 // compile-flags: --test
 #![feature(allow_fail)]
+#![feature(cfg_panic)]
 
 #[test]
 #[allow_fail]
 fn test1() {
+    #[cfg(not(panic = "abort"))]
     panic!();
 }
 

@@ -6,7 +6,23 @@
 
 -include ../coverage/coverage_tools.mk
 
+BASEDIR=../coverage-spanview-base
 SOURCEDIR=../coverage
+
+define SPANVIEW_HEADER
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.%s/%s
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+endef
+export SPANVIEW_HEADER
 
 all: $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
 
@@ -25,7 +41,16 @@ endif
 			-Zinstrument-coverage \
 			-Clink-dead-code=$(LINK_DEAD_CODE) \
 			-Zdump-mir=InstrumentCoverage \
+			-Zdump-mir-spanview \
 			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@
+
+	for path in "$(TMPDIR)"/mir_dump.$@/*; do \
+		file="$$(basename "$$path")"; \
+		urlescaped="$$("$(PYTHON)" $(BASEDIR)/escape_url.py $$file)" || exit $$?; \
+		printf "$$SPANVIEW_HEADER\n" "$@" "$$urlescaped" > "$$path".modified; \
+		tail -n +2 "$$path" >> "$$path".modified; \
+		mv "$$path".modified "$$path"; \
+	done && true # for/done ends in non-zero status
 
 ifdef RUSTC_BLESS_TEST
 	mkdir -p expected_mir_dump.$@

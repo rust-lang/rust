@@ -257,16 +257,12 @@ impl<'a> PathSource<'a> {
     }
 
     fn is_call(self) -> bool {
-        match self {
-            PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })) => true,
-            _ => false,
-        }
+        matches!(self, PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })))
     }
 
     crate fn is_expected(self, res: Res) -> bool {
         match self {
-            PathSource::Type => match res {
-                Res::Def(
+            PathSource::Type => matches!(res, Res::Def(
                     DefKind::Struct
                     | DefKind::Union
                     | DefKind::Enum
@@ -280,19 +276,12 @@ impl<'a> PathSource<'a> {
                     _,
                 )
                 | Res::PrimTy(..)
-                | Res::SelfTy(..) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::No) => match res {
-                Res::Def(DefKind::Trait, _) => true,
-                _ => false,
-            },
-            PathSource::Trait(AliasPossibility::Maybe) => match res {
-                Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => true,
-                _ => false,
-            },
-            PathSource::Expr(..) => match res {
-                Res::Def(
+                | Res::SelfTy(..)),
+            PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
+            PathSource::Trait(AliasPossibility::Maybe) => {
+                matches!(res, Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+            }
+            PathSource::Expr(..) => matches!(res, Res::Def(
                     DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
                     | DefKind::Const
                     | DefKind::Static
@@ -303,23 +292,14 @@ impl<'a> PathSource<'a> {
                     _,
                 )
                 | Res::Local(..)
-                | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::Pat => match res {
-                Res::Def(
+                | Res::SelfCtor(..)),
+            PathSource::Pat => matches!(res, Res::Def(
                     DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst,
                     _,
                 )
-                | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::TupleStruct(..) => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..) => true,
-                _ => false,
-            },
-            PathSource::Struct => match res {
-                Res::Def(
+                | Res::SelfCtor(..)),
+            PathSource::TupleStruct(..) => res.expected_in_tuple_struct_pat(),
+            PathSource::Struct => matches!(res, Res::Def(
                     DefKind::Struct
                     | DefKind::Union
                     | DefKind::Variant
@@ -327,9 +307,7 @@ impl<'a> PathSource<'a> {
                     | DefKind::AssocTy,
                     _,
                 )
-                | Res::SelfTy(..) => true,
-                _ => false,
-            },
+                | Res::SelfTy(..)),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
@@ -359,8 +337,8 @@ impl<'a> PathSource<'a> {
 
 #[derive(Default)]
 struct DiagnosticMetadata<'ast> {
-    /// The current trait's associated types' ident, used for diagnostic suggestions.
-    current_trait_assoc_types: Vec<Ident>,
+    /// The current trait's associated items' ident, used for diagnostic suggestions.
+    current_trait_assoc_items: Option<&'ast [P<AssocItem>]>,
 
     /// The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
@@ -697,7 +675,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
-        let parent_scope = ParentScope::module(graph_root);
+        let parent_scope = ParentScope::module(graph_root, resolver);
         let start_rib_kind = ModuleRibKind(graph_root);
         LateResolutionVisitor {
             r: resolver,
@@ -1177,26 +1155,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         result
     }
 
-    /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
+    /// When evaluating a `trait` use its associated types' idents for suggestions in E0412.
     fn with_trait_items<T>(
         &mut self,
-        trait_items: &Vec<P<AssocItem>>,
+        trait_items: &'ast Vec<P<AssocItem>>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
-        let trait_assoc_types = replace(
-            &mut self.diagnostic_metadata.current_trait_assoc_types,
-            trait_items
-                .iter()
-                .filter_map(|item| match &item.kind {
-                    AssocItemKind::TyAlias(_, _, bounds, _) if bounds.is_empty() => {
-                        Some(item.ident)
-                    }
-                    _ => None,
-                })
-                .collect(),
+        let trait_assoc_items = replace(
+            &mut self.diagnostic_metadata.current_trait_assoc_items,
+            Some(&trait_items[..]),
         );
         let result = f(self);
-        self.diagnostic_metadata.current_trait_assoc_types = trait_assoc_types;
+        self.diagnostic_metadata.current_trait_assoc_items = trait_assoc_items;
         result
     }
 
@@ -1450,10 +1420,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn is_base_res_local(&self, nid: NodeId) -> bool {
-        match self.r.partial_res_map.get(&nid).map(|res| res.base_res()) {
-            Some(Res::Local(..)) => true,
-            _ => false,
-        }
+        matches!(self.r.partial_res_map.get(&nid).map(|res| res.base_res()), Some(Res::Local(..)))
     }
 
     /// Checks that all of the arms in an or-pattern have exactly the

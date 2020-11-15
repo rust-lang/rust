@@ -5,7 +5,6 @@ fn main() {
     let _: [u8; 0] = [4; {
         match &1 as *const i32 as usize {
             //~^ ERROR casting pointers to integers in constants
-            //~| ERROR evaluation of constant value failed
             0 => 42,
             n => n,
         }

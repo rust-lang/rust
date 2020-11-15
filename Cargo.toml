@@ -29,11 +29,17 @@ members = [
   "src/tools/unicode-table-generator",
   "src/tools/expand-yaml-anchors",
 ]
+
 exclude = [
   "build",
   "compiler/rustc_codegen_cranelift",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
+  # The `x` binary is a thin wrapper that calls `x.py`, which initializes
+  # submodules, before which workspace members cannot be invoked because
+  # not all `Cargo.toml` files are available, so we exclude the `x` binary,
+  # so it can be invoked before the current checkout is set up.
+  "src/tools/x",
 ]
 
 [profile.release.package.compiler_builtins]

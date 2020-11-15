@@ -22,7 +22,7 @@ use rustc_ast as ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -33,9 +33,10 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
-use rustc_session::lint::{add_elided_lifetime_in_path_suggestion, BuiltinLintDiagnostics};
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
+use rustc_session::SessionLintStore;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
 
@@ -67,6 +68,20 @@ pub struct LintStore {
 
     /// Map of registered lint groups to what lints they expand to.
     lint_groups: FxHashMap<&'static str, LintGroup>,
+}
+
+impl SessionLintStore for LintStore {
+    fn name_to_lint(&self, lint_name: &str) -> LintId {
+        let lints = self
+            .find_lints(lint_name)
+            .unwrap_or_else(|_| panic!("Failed to find lint with name `{}`", lint_name));
+
+        if let &[lint] = lints.as_slice() {
+            return lint;
+        } else {
+            panic!("Found mutliple lints with name `{}`: {:?}", lint_name, lints);
+        }
+    }
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -543,7 +558,7 @@ pub trait LintContext: Sized {
                     anon_lts,
                 ) => {
                     add_elided_lifetime_in_path_suggestion(
-                        sess,
+                        sess.source_map(),
                         &mut db,
                         n,
                         path_span,

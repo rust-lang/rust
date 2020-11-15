@@ -9,14 +9,15 @@
 
 use Destination::*;
 
+use rustc_lint_defs::FutureBreakage;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{MultiSpan, SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
-use crate::{
-    pluralize, CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle,
-};
+use crate::{CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle};
+
+use rustc_lint_defs::pluralize;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -192,6 +193,8 @@ pub trait Emitter {
     /// other formats can, and will, simply ignore it.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
 
+    fn emit_future_breakage_report(&mut self, _diags: Vec<(FutureBreakage, Diagnostic)>) {}
+
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
         true
@@ -296,7 +299,7 @@ pub trait Emitter {
 
                     // Skip past non-macro entries, just in case there
                     // are some which do actually involve macros.
-                    ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+                    ExpnKind::Inlined | ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
                     ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
                 }
@@ -356,7 +359,10 @@ pub trait Emitter {
                     continue;
                 }
 
-                if always_backtrace {
+                if matches!(trace.kind, ExpnKind::Inlined) {
+                    new_labels
+                        .push((trace.call_site, "in the inlined copy of this code".to_string()));
+                } else if always_backtrace {
                     new_labels.push((
                         trace.def_site,
                         format!(
@@ -513,7 +519,7 @@ impl Emitter for SilentEmitter {
 /// Maximum number of lines we will print for a multiline suggestion; arbitrary.
 ///
 /// This should be replaced with a more involved mechanism to output multiline suggestions that
-/// more closely mimmics the regular diagnostic output, where irrelevant code lines are elided.
+/// more closely mimics the regular diagnostic output, where irrelevant code lines are elided.
 pub const MAX_SUGGESTION_HIGHLIGHT_LINES: usize = 6;
 /// Maximum number of suggestions to be shown
 ///
@@ -887,7 +893,7 @@ impl EmitterWriter {
                                                      // or the next are vertical line placeholders.
                         || (annotation.takes_space() // If either this or the next annotation is
                             && next.has_label())     // multiline start/end, move it to a new line
-                        || (annotation.has_label()   // so as not to overlap the orizontal lines.
+                        || (annotation.has_label()   // so as not to overlap the horizontal lines.
                             && next.takes_space())
                         || (annotation.takes_space() && next.takes_space())
                         || (overlaps(next, annotation, l)

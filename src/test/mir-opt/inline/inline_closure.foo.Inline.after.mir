@@ -14,8 +14,8 @@ fn foo(_1: T, _2: i32) -> i32 {
     scope 1 {
         debug x => _3;                   // in scope 1 at $DIR/inline-closure.rs:11:9: 11:10
         scope 2 (inlined foo::<T>::{closure#0}) { // at $DIR/inline-closure.rs:12:5: 12:12
-            debug _t => _8;              // in scope 2 at $DIR/inline-closure.rs:11:14: 11:16
-            debug _q => _9;              // in scope 2 at $DIR/inline-closure.rs:11:18: 11:20
+            debug _t => _8;              // in scope 2 at $DIR/inline-closure.rs:12:5: 12:12
+            debug _q => _9;              // in scope 2 at $DIR/inline-closure.rs:12:5: 12:12
         }
     }
 
@@ -34,7 +34,7 @@ fn foo(_1: T, _2: i32) -> i32 {
         _8 = move (_5.0: i32);           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         StorageLive(_9);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         _9 = move (_5.1: i32);           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
-        _0 = _8;                         // scope 2 at $DIR/inline-closure.rs:11:22: 11:24
+        _0 = _8;                         // scope 2 at $DIR/inline-closure.rs:12:5: 12:12
         StorageDead(_9);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         StorageDead(_8);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
         StorageDead(_7);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12

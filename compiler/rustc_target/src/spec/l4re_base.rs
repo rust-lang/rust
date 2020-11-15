@@ -17,12 +17,15 @@ pub fn opts() -> TargetOptions {
     args.insert(LinkerFlavor::Gcc, vec![]);
 
     TargetOptions {
+        os: "l4re".to_string(),
+        env: "uclibc".to_string(),
+        linker_flavor: LinkerFlavor::Ld,
         executables: true,
         has_elf_tls: false,
         panic_strategy: PanicStrategy::Abort,
         linker: Some("ld".to_string()),
         pre_link_args: args,
-        target_family: Some("unix".to_string()),
+        os_family: Some("unix".to_string()),
         ..Default::default()
     }
 }

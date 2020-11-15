@@ -174,10 +174,7 @@ fn compute_symbol_name(
             return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        match tcx.hir().get(hir_id) {
-            Node::ForeignItem(_) => true,
-            _ => false,
-        }
+        matches!(tcx.hir().get(hir_id), Node::ForeignItem(_))
     } else {
         tcx.is_foreign_item(def_id)
     };
@@ -200,15 +197,14 @@ fn compute_symbol_name(
     //   show up in the `wasm-import-name` custom attribute in LLVM IR.
     //
     // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
-    if is_foreign {
-        if tcx.sess.target.arch != "wasm32"
-            || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id)
-        {
-            if let Some(name) = attrs.link_name {
-                return name.to_string();
-            }
-            return tcx.item_name(def_id).to_string();
+    if is_foreign
+        && (tcx.sess.target.arch != "wasm32"
+            || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id))
+    {
+        if let Some(name) = attrs.link_name {
+            return name.to_string();
         }
+        return tcx.item_name(def_id).to_string();
     }
 
     if let Some(name) = attrs.export_name {
@@ -234,10 +230,7 @@ fn compute_symbol_name(
         // codegen units) then this symbol may become an exported (but hidden
         // visibility) symbol. This means that multiple crates may do the same
         // and we want to be sure to avoid any symbol conflicts here.
-        match MonoItem::Fn(instance).instantiation_mode(tcx) {
-            InstantiationMode::GloballyShared { may_conflict: true } => true,
-            _ => false,
-        };
+        matches!(MonoItem::Fn(instance).instantiation_mode(tcx), InstantiationMode::GloballyShared { may_conflict: true });
 
     let instantiating_crate =
         if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };

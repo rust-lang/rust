@@ -75,7 +75,7 @@ LL | fn arr_box_by_move(x: Box<[String; 3]>) {
 LL |     let f = || {
    |             -- value moved into closure here
 LL |         let [y, z @ ..] = *x;
-   |                            - variable moved due to use in closure
+   |                           -- variable moved due to use in closure
 LL |     };
 LL |     &x;
    |     ^^ value borrowed here after move

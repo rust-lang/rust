@@ -9,6 +9,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_session::parse::feature_err;
 use rustc_span::hygiene::ForLoopLoc;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -146,7 +147,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Block(self.lower_block(blk, opt_label.is_some()), opt_label)
                 }
                 ExprKind::Assign(ref el, ref er, span) => {
-                    hir::ExprKind::Assign(self.lower_expr(el), self.lower_expr(er), span)
+                    self.lower_expr_assign(el, er, span, e.span)
                 }
                 ExprKind::AssignOp(op, ref el, ref er) => hir::ExprKind::AssignOp(
                     self.lower_binop(op),
@@ -186,8 +187,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(e.span, asm),
                 ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_llvm_asm(asm),
-                ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                    let maybe_expr = maybe_expr.as_ref().map(|x| self.lower_expr(x));
+                ExprKind::Struct(ref path, ref fields, ref rest) => {
+                    let rest = match rest {
+                        StructRest::Base(e) => Some(self.lower_expr(e)),
+                        StructRest::Rest(sp) => {
+                            self.sess
+                                .struct_span_err(*sp, "base expression required after `..`")
+                                .span_label(*sp, "add a base expression here")
+                                .emit();
+                            Some(&*self.arena.alloc(self.expr_err(*sp)))
+                        }
+                        StructRest::None => None,
+                    };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
                             e.id,
@@ -197,7 +208,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ImplTraitContext::disallowed(),
                         )),
                         self.arena.alloc_from_iter(fields.iter().map(|x| self.lower_field(x))),
-                        maybe_expr,
+                        rest,
                     )
                 }
                 ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
@@ -840,6 +851,236 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
+    /// Destructure the LHS of complex assignments.
+    /// For instance, lower `(a, b) = t` to `{ let (lhs1, lhs2) = t; a = lhs1; b = lhs2; }`.
+    fn lower_expr_assign(
+        &mut self,
+        lhs: &Expr,
+        rhs: &Expr,
+        eq_sign_span: Span,
+        whole_span: Span,
+    ) -> hir::ExprKind<'hir> {
+        // Return early in case of an ordinary assignment.
+        fn is_ordinary(lower_ctx: &mut LoweringContext<'_, '_>, lhs: &Expr) -> bool {
+            match &lhs.kind {
+                ExprKind::Array(..) | ExprKind::Struct(..) | ExprKind::Tup(..) => false,
+                // Check for tuple struct constructor.
+                ExprKind::Call(callee, ..) => lower_ctx.extract_tuple_struct_path(callee).is_none(),
+                ExprKind::Paren(e) => {
+                    match e.kind {
+                        // We special-case `(..)` for consistency with patterns.
+                        ExprKind::Range(None, None, RangeLimits::HalfOpen) => false,
+                        _ => is_ordinary(lower_ctx, e),
+                    }
+                }
+                _ => true,
+            }
+        }
+        if is_ordinary(self, lhs) {
+            return hir::ExprKind::Assign(self.lower_expr(lhs), self.lower_expr(rhs), eq_sign_span);
+        }
+        if !self.sess.features_untracked().destructuring_assignment {
+            feature_err(
+                &self.sess.parse_sess,
+                sym::destructuring_assignment,
+                eq_sign_span,
+                "destructuring assignments are unstable",
+            )
+            .span_label(lhs.span, "cannot assign to this expression")
+            .emit();
+        }
+
+        let mut assignments = vec![];
+
+        // The LHS becomes a pattern: `(lhs1, lhs2)`.
+        let pat = self.destructure_assign(lhs, eq_sign_span, &mut assignments);
+        let rhs = self.lower_expr(rhs);
+
+        // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
+        let destructure_let = self.stmt_let_pat(
+            ThinVec::new(),
+            whole_span,
+            Some(rhs),
+            pat,
+            hir::LocalSource::AssignDesugar(eq_sign_span),
+        );
+
+        // `a = lhs1; b = lhs2;`.
+        let stmts = self
+            .arena
+            .alloc_from_iter(std::iter::once(destructure_let).chain(assignments.into_iter()));
+
+        // Wrap everything in a block.
+        hir::ExprKind::Block(&self.block_all(whole_span, stmts, None), None)
+    }
+
+    /// If the given expression is a path to a tuple struct, returns that path.
+    /// It is not a complete check, but just tries to reject most paths early
+    /// if they are not tuple structs.
+    /// Type checking will take care of the full validation later.
+    fn extract_tuple_struct_path<'a>(&mut self, expr: &'a Expr) -> Option<&'a Path> {
+        // For tuple struct destructuring, it must be a non-qualified path (like in patterns).
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Does the path resolves to something disallowed in a tuple struct/variant pattern?
+            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+                if partial_res.unresolved_segments() == 0
+                    && !partial_res.base_res().expected_in_tuple_struct_pat()
+                {
+                    return None;
+                }
+            }
+            return Some(path);
+        }
+        None
+    }
+
+    /// Convert the LHS of a destructuring assignment to a pattern.
+    /// Each sub-assignment is recorded in `assignments`.
+    fn destructure_assign(
+        &mut self,
+        lhs: &Expr,
+        eq_sign_span: Span,
+        assignments: &mut Vec<hir::Stmt<'hir>>,
+    ) -> &'hir hir::Pat<'hir> {
+        match &lhs.kind {
+            // Slice patterns.
+            ExprKind::Array(elements) => {
+                let (pats, rest) =
+                    self.destructure_sequence(elements, "slice", eq_sign_span, assignments);
+                let slice_pat = if let Some((i, span)) = rest {
+                    let (before, after) = pats.split_at(i);
+                    hir::PatKind::Slice(
+                        before,
+                        Some(self.pat_without_dbm(span, hir::PatKind::Wild)),
+                        after,
+                    )
+                } else {
+                    hir::PatKind::Slice(pats, None, &[])
+                };
+                return self.pat_without_dbm(lhs.span, slice_pat);
+            }
+            // Tuple structs.
+            ExprKind::Call(callee, args) => {
+                if let Some(path) = self.extract_tuple_struct_path(callee) {
+                    let (pats, rest) = self.destructure_sequence(
+                        args,
+                        "tuple struct or variant",
+                        eq_sign_span,
+                        assignments,
+                    );
+                    let qpath = self.lower_qpath(
+                        callee.id,
+                        &None,
+                        path,
+                        ParamMode::Optional,
+                        ImplTraitContext::disallowed(),
+                    );
+                    // Destructure like a tuple struct.
+                    let tuple_struct_pat =
+                        hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
+                    return self.pat_without_dbm(lhs.span, tuple_struct_pat);
+                }
+            }
+            // Structs.
+            ExprKind::Struct(path, fields, rest) => {
+                let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
+                    let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
+                    hir::FieldPat {
+                        hir_id: self.next_id(),
+                        ident: f.ident,
+                        pat,
+                        is_shorthand: f.is_shorthand,
+                        span: f.span,
+                    }
+                }));
+                let qpath = self.lower_qpath(
+                    lhs.id,
+                    &None,
+                    path,
+                    ParamMode::Optional,
+                    ImplTraitContext::disallowed(),
+                );
+                let fields_omitted = match rest {
+                    StructRest::Base(e) => {
+                        self.sess
+                            .struct_span_err(
+                                e.span,
+                                "functional record updates are not allowed in destructuring \
+                                    assignments",
+                            )
+                            .span_suggestion(
+                                e.span,
+                                "consider removing the trailing pattern",
+                                String::new(),
+                                rustc_errors::Applicability::MachineApplicable,
+                            )
+                            .emit();
+                        true
+                    }
+                    StructRest::Rest(_) => true,
+                    StructRest::None => false,
+                };
+                let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
+                return self.pat_without_dbm(lhs.span, struct_pat);
+            }
+            // Tuples.
+            ExprKind::Tup(elements) => {
+                let (pats, rest) =
+                    self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
+                let tuple_pat = hir::PatKind::Tuple(pats, rest.map(|r| r.0));
+                return self.pat_without_dbm(lhs.span, tuple_pat);
+            }
+            ExprKind::Paren(e) => {
+                // We special-case `(..)` for consistency with patterns.
+                if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
+                    let tuple_pat = hir::PatKind::Tuple(&[], Some(0));
+                    return self.pat_without_dbm(lhs.span, tuple_pat);
+                } else {
+                    return self.destructure_assign(e, eq_sign_span, assignments);
+                }
+            }
+            _ => {}
+        }
+        // Treat all other cases as normal lvalue.
+        let ident = Ident::new(sym::lhs, lhs.span);
+        let (pat, binding) = self.pat_ident(lhs.span, ident);
+        let ident = self.expr_ident(lhs.span, ident, binding);
+        let assign = hir::ExprKind::Assign(self.lower_expr(lhs), ident, eq_sign_span);
+        let expr = self.expr(lhs.span, assign, ThinVec::new());
+        assignments.push(self.stmt_expr(lhs.span, expr));
+        pat
+    }
+
+    /// Destructure a sequence of expressions occurring on the LHS of an assignment.
+    /// Such a sequence occurs in a tuple (struct)/slice.
+    /// Return a sequence of corresponding patterns, and the index and the span of `..` if it
+    /// exists.
+    /// Each sub-assignment is recorded in `assignments`.
+    fn destructure_sequence(
+        &mut self,
+        elements: &[AstP<Expr>],
+        ctx: &str,
+        eq_sign_span: Span,
+        assignments: &mut Vec<hir::Stmt<'hir>>,
+    ) -> (&'hir [&'hir hir::Pat<'hir>], Option<(usize, Span)>) {
+        let mut rest = None;
+        let elements =
+            self.arena.alloc_from_iter(elements.iter().enumerate().filter_map(|(i, e)| {
+                // Check for `..` pattern.
+                if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
+                    if let Some((_, prev_span)) = rest {
+                        self.ban_extra_rest_pat(e.span, prev_span, ctx);
+                    } else {
+                        rest = Some((i, e.span));
+                    }
+                    None
+                } else {
+                    Some(self.destructure_assign(e, eq_sign_span, assignments))
+                }
+            }));
+        (elements, rest)
+    }
+
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
     fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
         let e1 = self.lower_expr_mut(e1);
@@ -1126,14 +1367,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut used_input_regs = FxHashMap::default();
         let mut used_output_regs = FxHashMap::default();
+        let mut required_features: Vec<&str> = vec![];
         for (idx, op) in operands.iter().enumerate() {
             let op_sp = asm.operands[idx].1;
             if let Some(reg) = op.reg() {
+                // Make sure we don't accidentally carry features from the
+                // previous iteration.
+                required_features.clear();
+
                 // Validate register classes against currently enabled target
                 // features. We check that at least one type is available for
                 // the current target.
                 let reg_class = reg.reg_class();
-                let mut required_features: Vec<&str> = vec![];
                 for &(_, feature) in reg_class.supported_types(asm_arch) {
                     if let Some(feature) = feature {
                         if self.sess.target_features.contains(&Symbol::intern(feature)) {

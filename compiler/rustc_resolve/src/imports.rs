@@ -114,10 +114,7 @@ crate struct Import<'a> {
 
 impl<'a> Import<'a> {
     pub fn is_glob(&self) -> bool {
-        match self.kind {
-            ImportKind::Glob { .. } => true,
-            _ => false,
-        }
+        matches!(self.kind, ImportKind::Glob { .. })
     }
 
     pub fn is_nested(&self) -> bool {
@@ -875,6 +872,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
+        let orig_unusable_binding = match &import.kind {
+            ImportKind::Single { target_bindings, .. } => {
+                Some(mem::replace(&mut self.r.unusable_binding, target_bindings[TypeNS].get()))
+            }
+            _ => None,
+        };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
         let path_res = self.r.resolve_path(
             &import.module_path,
@@ -885,6 +888,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             import.crate_lint(),
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
+        if let Some(orig_unusable_binding) = orig_unusable_binding {
+            self.r.unusable_binding = orig_unusable_binding;
+        }
         import.vis.set(orig_vis);
         if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
             // Consider erroneous imports used to avoid duplicate diagnostics.
@@ -895,15 +901,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
                 if let Some(initial_module) = import.imported_module.get() {
                     if !ModuleOrUniformRoot::same_def(module, initial_module) && no_ambiguity {
-                        let msg = "inconsistent resolution for an import";
-                        self.r.session.span_err(import.span, msg);
+                        span_bug!(import.span, "inconsistent resolution for an import");
                     }
-                } else {
-                    if self.r.privacy_errors.is_empty() {
-                        let msg = "cannot determine resolution for the import";
-                        let msg_note = "import resolution is stuck, try simplifying other imports";
-                        self.r.session.struct_span_err(import.span, msg).note(msg_note).emit();
-                    }
+                } else if self.r.privacy_errors.is_empty() {
+                    let msg = "cannot determine resolution for the import";
+                    let msg_note = "import resolution is stuck, try simplifying other imports";
+                    self.r.session.struct_span_err(import.span, msg).note(msg_note).emit();
                 }
 
                 module
@@ -918,6 +921,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
             PathResult::Failed { is_error_from_last_segment: true, span, label, suggestion } => {
                 if no_ambiguity {
+                    assert!(import.imported_module.get().is_none());
                     let err = match self.make_path_suggestion(
                         span,
                         import.module_path.clone(),
@@ -1044,19 +1048,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             if res != initial_res && this.ambiguity_errors.is_empty() {
                                 span_bug!(import.span, "inconsistent resolution for an import");
                             }
-                        } else {
-                            if res != Res::Err
-                                && this.ambiguity_errors.is_empty()
-                                && this.privacy_errors.is_empty()
-                            {
-                                let msg = "cannot determine resolution for the import";
-                                let msg_note =
-                                    "import resolution is stuck, try simplifying other imports";
-                                this.session
-                                    .struct_span_err(import.span, msg)
-                                    .note(msg_note)
-                                    .emit();
-                            }
+                        } else if res != Res::Err
+                            && this.ambiguity_errors.is_empty()
+                            && this.privacy_errors.is_empty()
+                        {
+                            let msg = "cannot determine resolution for the import";
+                            let msg_note =
+                                "import resolution is stuck, try simplifying other imports";
+                            this.session.struct_span_err(import.span, msg).note(msg_note).emit();
                         }
                     }
                     Err(..) => {

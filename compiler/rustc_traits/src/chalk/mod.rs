@@ -69,15 +69,15 @@ crate fn evaluate_goal<'tcx>(
                     CanonicalVarKind::PlaceholderRegion(_ui) => unimplemented!(),
                     CanonicalVarKind::Ty(ty) => match ty {
                         CanonicalTyVarKind::General(ui) => chalk_ir::WithKind::new(
-                            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General),
+                            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
                             chalk_ir::UniverseIndex { counter: ui.index() },
                         ),
                         CanonicalTyVarKind::Int => chalk_ir::WithKind::new(
-                            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::Integer),
+                            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::Integer),
                             chalk_ir::UniverseIndex::root(),
                         ),
                         CanonicalTyVarKind::Float => chalk_ir::WithKind::new(
-                            chalk_ir::VariableKind::Ty(chalk_ir::TyKind::Float),
+                            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::Float),
                             chalk_ir::UniverseIndex::root(),
                         ),
                     },
@@ -97,7 +97,8 @@ crate fn evaluate_goal<'tcx>(
     use chalk_solve::Solver;
     let mut solver = chalk_engine::solve::SLGSolver::new(32, None);
     let db = ChalkRustIrDatabase { interner, reempty_placeholder };
-    let solution = chalk_solve::logging::with_tracing_logs(|| solver.solve(&db, &lowered_goal));
+    let solution = solver.solve(&db, &lowered_goal);
+    debug!(?obligation, ?solution, "evaluatate goal");
 
     // Ideally, the code to convert *back* to rustc types would live close to
     // the code to convert *from* rustc types. Right now though, we don't

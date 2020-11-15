@@ -16,6 +16,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 
@@ -473,7 +474,7 @@ fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span
         if !in_external_macro(cx.sess(), item_span);
         if let hir::FnRetTy::Return(ref ty) = decl.output;
         if let hir::TyKind::Path(ref qpath) = ty.kind;
-        if is_type_diagnostic_item(cx, hir_ty_to_ty(cx.tcx, ty), sym!(result_type));
+        if is_type_diagnostic_item(cx, hir_ty_to_ty(cx.tcx, ty), sym::result_type);
         if let Some(ref args) = last_path_segment(qpath).args;
         if let [_, hir::GenericArg::Type(ref err_ty)] = args.args;
         if let hir::TyKind::Tup(t) = err_ty.kind;
@@ -579,9 +580,8 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
-    let def_id = pat.hir_id.owner.to_def_id();
-    if cx.tcx.has_typeck_results(def_id) {
-        is_mutable_ty(cx, &cx.tcx.typeck(def_id.expect_local()).pat_ty(pat), pat.span, tys)
+    if cx.tcx.has_typeck_results(pat.hir_id.owner.to_def_id()) {
+        is_mutable_ty(cx, &cx.tcx.typeck(pat.hir_id.owner).pat_ty(pat), pat.span, tys)
     } else {
         false
     }
@@ -694,11 +694,10 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             Call(_, args) | MethodCall(_, _, args, _) => {
                 let mut tys = FxHashSet::default();
                 for arg in args {
-                    let def_id = arg.hir_id.owner.to_def_id();
-                    if self.cx.tcx.has_typeck_results(def_id)
+                    if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
                         && is_mutable_ty(
                             self.cx,
-                            self.cx.tcx.typeck(def_id.expect_local()).expr_ty(arg),
+                            self.cx.tcx.typeck(arg.hir_id.owner).expr_ty(arg),
                             arg.span,
                             &mut tys,
                         )

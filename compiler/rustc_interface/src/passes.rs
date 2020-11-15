@@ -2,9 +2,8 @@ use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
 
-use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, token, visit};
+use rustc_ast::mut_visit::MutVisitor;
+use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::svh::Svh;
@@ -38,7 +37,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{FileName, RealFileName, SourceFile};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
-use smallvec::SmallVec;
 use tracing::{info, warn};
 
 use rustc_serialize::json;
@@ -53,71 +51,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{env, fs, iter, mem};
 
-/// Remove alls `LazyTokenStreams` from an AST struct
-/// Normally, this is done during AST lowering. However,
-/// printing the AST JSON requires us to serialize
-/// the entire AST, and we don't want to serialize
-/// a `LazyTokenStream`.
-struct TokenStripper;
-impl mut_visit::MutVisitor for TokenStripper {
-    fn flat_map_item(&mut self, mut i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        i.tokens = None;
-        mut_visit::noop_flat_map_item(i, self)
-    }
-    fn flat_map_foreign_item(
-        &mut self,
-        mut i: P<ast::ForeignItem>,
-    ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
-        i.tokens = None;
-        mut_visit::noop_flat_map_foreign_item(i, self)
-    }
-    fn visit_block(&mut self, b: &mut P<ast::Block>) {
-        b.tokens = None;
-        mut_visit::noop_visit_block(b, self);
-    }
-    fn flat_map_stmt(&mut self, mut stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        stmt.tokens = None;
-        mut_visit::noop_flat_map_stmt(stmt, self)
-    }
-    fn visit_pat(&mut self, p: &mut P<ast::Pat>) {
-        p.tokens = None;
-        mut_visit::noop_visit_pat(p, self);
-    }
-    fn visit_ty(&mut self, ty: &mut P<ast::Ty>) {
-        ty.tokens = None;
-        mut_visit::noop_visit_ty(ty, self);
-    }
-    fn visit_attribute(&mut self, attr: &mut ast::Attribute) {
-        attr.tokens = None;
-        if let ast::AttrKind::Normal(ast::AttrItem { tokens, .. }) = &mut attr.kind {
-            *tokens = None;
-        }
-        mut_visit::noop_visit_attribute(attr, self);
-    }
-
-    fn visit_interpolated(&mut self, nt: &mut token::Nonterminal) {
-        if let token::Nonterminal::NtMeta(meta) = nt {
-            meta.tokens = None;
-        }
-        // Handles all of the other cases
-        mut_visit::noop_visit_interpolated(nt, self);
-    }
-
-    fn visit_path(&mut self, p: &mut ast::Path) {
-        p.tokens = None;
-        mut_visit::noop_visit_path(p, self);
-    }
-    fn visit_vis(&mut self, vis: &mut ast::Visibility) {
-        vis.tokens = None;
-        mut_visit::noop_visit_vis(vis, self);
-    }
-    fn visit_expr(&mut self, e: &mut P<ast::Expr>) {
-        e.tokens = None;
-        mut_visit::noop_visit_expr(e, self);
-    }
-    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {}
-}
-
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match input {
         Input::File(file) => parse_crate_from_file(file, &sess.parse_sess),
@@ -127,10 +60,6 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     })?;
 
     if sess.opts.debugging_opts.ast_json_noexpand {
-        // Set any `token` fields to `None` before
-        // we display the AST.
-        let mut krate = krate.clone();
-        TokenStripper.visit_crate(&mut krate);
         println!("{}", json::as_json(&krate));
     }
 
@@ -276,7 +205,10 @@ pub fn register_plugins<'a>(
         }
     });
 
-    Ok((krate, Lrc::new(lint_store)))
+    let lint_store = Lrc::new(lint_store);
+    sess.init_lint_store(lint_store.clone());
+
+    Ok((krate, lint_store))
 }
 
 fn pre_expansion_lint(sess: &Session, lint_store: &LintStore, krate: &ast::Crate) {
@@ -451,10 +383,6 @@ fn configure_and_expand_inner<'a>(
     }
 
     if sess.opts.debugging_opts.ast_json {
-        // Set any `token` fields to `None` before
-        // we display the AST.
-        let mut krate = krate.clone();
-        TokenStripper.visit_crate(&mut krate);
         println!("{}", json::as_json(&krate));
     }
 

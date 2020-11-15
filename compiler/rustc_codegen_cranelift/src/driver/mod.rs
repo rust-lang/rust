@@ -64,11 +64,11 @@ fn codegen_mono_items<'tcx>(
 
     for (mono_item, (linkage, visibility)) in mono_items {
         let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-        trans_mono_item(cx, mono_item, linkage);
+        codegen_mono_item(cx, mono_item, linkage);
     }
 }
 
-fn trans_mono_item<'tcx, M: Module>(
+fn codegen_mono_item<'tcx, M: Module>(
     cx: &mut crate::CodegenCx<'tcx, M>,
     mono_item: MonoItem<'tcx>,
     linkage: Linkage,
@@ -80,7 +80,7 @@ fn trans_mono_item<'tcx, M: Module>(
                 crate::PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).name));
             debug_assert!(!inst.substs.needs_infer());
             tcx.sess
-                .time("codegen fn", || crate::base::trans_fn(cx, inst, linkage));
+                .time("codegen fn", || crate::base::codegen_fn(cx, inst, linkage));
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(&mut cx.constants_cx, def_id);

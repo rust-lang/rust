@@ -19,7 +19,7 @@
 -                 debug z => _3;           // in scope 3 at $DIR/cycle.rs:11:9: 11:10
 +                 debug z => _4;           // in scope 3 at $DIR/cycle.rs:11:9: 11:10
                   scope 4 (inlined std::mem::drop::<i32>) { // at $DIR/cycle.rs:14:5: 14:12
-                      debug _x => _6;      // in scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+                      debug _x => _6;      // in scope 4 at $DIR/cycle.rs:14:5: 14:12
                   }
               }
           }
@@ -56,7 +56,7 @@
           StorageLive(_6);                 // scope 3 at $DIR/cycle.rs:14:10: 14:11
 -         _6 = _1;                         // scope 3 at $DIR/cycle.rs:14:10: 14:11
 +         _6 = _4;                         // scope 3 at $DIR/cycle.rs:14:10: 14:11
-          _5 = const ();                   // scope 4 at $SRC_DIR/core/src/mem/mod.rs:LL:COL
+          _5 = const ();                   // scope 4 at $DIR/cycle.rs:14:5: 14:12
           StorageDead(_6);                 // scope 3 at $DIR/cycle.rs:14:11: 14:12
           StorageDead(_5);                 // scope 3 at $DIR/cycle.rs:14:12: 14:13
           _0 = const ();                   // scope 0 at $DIR/cycle.rs:8:11: 15:2

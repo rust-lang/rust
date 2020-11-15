@@ -30,7 +30,21 @@ type Res = def::Res<ast::NodeId>;
 enum AssocSuggestion {
     Field,
     MethodWithSelf,
-    AssocItem,
+    AssocFn,
+    AssocType,
+    AssocConst,
+}
+
+impl AssocSuggestion {
+    fn action(&self) -> &'static str {
+        match self {
+            AssocSuggestion::Field => "use the available field",
+            AssocSuggestion::MethodWithSelf => "call the method with the fully-qualified path",
+            AssocSuggestion::AssocFn => "call the associated function",
+            AssocSuggestion::AssocConst => "use the associated `const`",
+            AssocSuggestion::AssocType => "use the associated type",
+        }
+    }
 }
 
 crate enum MissingLifetimeSpot<'tcx> {
@@ -386,15 +400,18 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     AssocSuggestion::MethodWithSelf if self_is_available => {
                         err.span_suggestion(
                             span,
-                            "try",
+                            "you might have meant to call the method",
                             format!("self.{}", path_str),
                             Applicability::MachineApplicable,
                         );
                     }
-                    AssocSuggestion::MethodWithSelf | AssocSuggestion::AssocItem => {
+                    AssocSuggestion::MethodWithSelf
+                    | AssocSuggestion::AssocFn
+                    | AssocSuggestion::AssocConst
+                    | AssocSuggestion::AssocType => {
                         err.span_suggestion(
                             span,
-                            "try",
+                            &format!("you might have meant to {}", candidate.action()),
                             format!("Self::{}", path_str),
                             Applicability::MachineApplicable,
                         );
@@ -702,10 +719,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 _ => break,
             }
         }
-        let followed_by_brace = match sm.span_to_snippet(sp) {
-            Ok(ref snippet) if snippet == "{" => true,
-            _ => false,
-        };
+        let followed_by_brace = matches!(sm.span_to_snippet(sp), Ok(ref snippet) if snippet == "{");
         // In case this could be a struct literal that needs to be surrounded
         // by parentheses, find the appropriate span.
         let mut i = 0;
@@ -851,7 +865,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     err.span_suggestion(
                         span,
                         &format!("use struct {} syntax instead", descr),
-                        format!("{} {{{pad}{}{pad}}}", path_str, fields, pad = pad),
+                        format!("{path_str} {{{pad}{fields}{pad}}}"),
                         applicability,
                     );
                 }
@@ -1065,9 +1079,19 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
 
-        for assoc_type_ident in &self.diagnostic_metadata.current_trait_assoc_types {
-            if *assoc_type_ident == ident {
-                return Some(AssocSuggestion::AssocItem);
+        if let Some(items) = self.diagnostic_metadata.current_trait_assoc_items {
+            for assoc_item in &items[..] {
+                if assoc_item.ident == ident {
+                    return Some(match &assoc_item.kind {
+                        ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
+                        ast::AssocItemKind::Fn(_, sig, ..) if sig.decl.has_self() => {
+                            AssocSuggestion::MethodWithSelf
+                        }
+                        ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn,
+                        ast::AssocItemKind::TyAlias(..) => AssocSuggestion::AssocType,
+                        ast::AssocItemKind::MacCall(_) => continue,
+                    });
+                }
             }
         }
 
@@ -1083,11 +1107,20 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
-                    return Some(if self.r.has_self.contains(&res.def_id()) {
-                        AssocSuggestion::MethodWithSelf
+                    if self.r.has_self.contains(&res.def_id()) {
+                        return Some(AssocSuggestion::MethodWithSelf);
                     } else {
-                        AssocSuggestion::AssocItem
-                    });
+                        match res {
+                            Res::Def(DefKind::AssocFn, _) => return Some(AssocSuggestion::AssocFn),
+                            Res::Def(DefKind::AssocConst, _) => {
+                                return Some(AssocSuggestion::AssocConst);
+                            }
+                            Res::Def(DefKind::AssocTy, _) => {
+                                return Some(AssocSuggestion::AssocType);
+                            }
+                            _ => {}
+                        }
+                    }
                 }
             }
         }
@@ -1788,12 +1821,11 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         }
                         msg = "consider introducing a named lifetime parameter".to_string();
                         should_break = true;
-                        if let Some(param) = generics.params.iter().find(|p| match p.kind {
-                            hir::GenericParamKind::Type {
+                        if let Some(param) = generics.params.iter().find(|p| {
+                            !matches!(p.kind, hir::GenericParamKind::Type {
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                 ..
-                            } => false,
-                            _ => true,
+                            })
                         }) {
                             (param.span.shrink_to_lo(), "'a, ".to_string())
                         } else {
@@ -1854,9 +1886,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         if snippet.starts_with('&') && !snippet.starts_with("&'") {
                             introduce_suggestion
                                 .push((param.span, format!("&'a {}", &snippet[1..])));
-                        } else if snippet.starts_with("&'_ ") {
-                            introduce_suggestion
-                                .push((param.span, format!("&'a {}", &snippet[4..])));
+                        } else if let Some(stripped) = snippet.strip_prefix("&'_ ") {
+                            introduce_suggestion.push((param.span, format!("&'a {}", &stripped)));
                         }
                     }
                 }

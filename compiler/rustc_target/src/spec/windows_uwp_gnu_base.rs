@@ -25,6 +25,7 @@ pub fn opts() -> TargetOptions {
     late_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), mingw_libs);
 
     TargetOptions {
+        vendor: "uwp".to_string(),
         executables: false,
         limit_rdylib_exports: false,
         late_link_args,

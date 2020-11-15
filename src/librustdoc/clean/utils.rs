@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::mir::interpret::{sign_extend, ConstValue, Scalar};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, Ty};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -499,13 +499,14 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.val, ct.ty.kind()) {
-        (ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, .. })), ty::Uint(ui)) => {
-            format!("{}{}", format_integer_with_underscore_sep(&data.to_string()), ui.name_str())
+        (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Uint(ui)) => {
+            format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
         }
-        (ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, .. })), ty::Int(i)) => {
+        (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
             let ty = cx.tcx.lift(ct.ty).unwrap();
             let size = cx.tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
-            let sign_extended_data = sign_extend(data, size) as i128;
+            let data = int.assert_bits(size);
+            let sign_extended_data = size.sign_extend(data) as i128;
 
             format!(
                 "{}{}",

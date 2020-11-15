@@ -850,8 +850,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 visit::walk_item(self, item);
             }
-
-            fn visit_mac(&mut self, _: &'ast ast::MacCall) {}
         }
 
         if !self.cx.ecfg.proc_macro_hygiene() {
@@ -1436,9 +1434,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 item.attrs = attrs;
                 self.check_attributes(&item.attrs);
                 item.and_then(|item| match item.kind {
-                    ItemKind::MacCall(mac) => self
-                        .collect(AstFragmentKind::Items, InvocationKind::Bang { mac, span })
-                        .make_items(),
+                    ItemKind::MacCall(mac) => {
+                        self.collect_bang(mac, span, AstFragmentKind::Items).make_items()
+                    }
                     _ => unreachable!(),
                 })
             }
@@ -1778,15 +1776,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = ast::Attribute {
-                kind: ast::AttrKind::Normal(AttrItem {
-                    path: meta.path,
-                    args: meta.kind.mac_args(meta.span),
-                    tokens: None,
-                }),
+                kind: ast::AttrKind::Normal(
+                    AttrItem { path: meta.path, args: meta.kind.mac_args(meta.span), tokens: None },
+                    None,
+                ),
                 span: at.span,
                 id: at.id,
                 style: at.style,
-                tokens: None,
             };
         } else {
             noop_visit_attribute(at, self)

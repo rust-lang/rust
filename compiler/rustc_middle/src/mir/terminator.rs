@@ -46,7 +46,7 @@ impl SwitchTargets {
     pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
         let (values, mut targets): (SmallVec<_>, SmallVec<_>) = targets.unzip();
         targets.push(otherwise);
-        Self { values: values.into(), targets }
+        Self { values, targets }
     }
 
     /// Builds a switch targets definition that jumps to `then` if the tested value equals `value`,

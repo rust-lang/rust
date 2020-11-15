@@ -1570,36 +1570,130 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             format!("does not implement `{}`", trait_ref.print_only_trait_path())
         };
 
-        let mut explain_yield = |interior_span: Span,
-                                 yield_span: Span,
-                                 scope_span: Option<Span>| {
-            let mut span = MultiSpan::from_span(yield_span);
-            if let Ok(snippet) = source_map.span_to_snippet(interior_span) {
-                span.push_span_label(
-                    yield_span,
-                    format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
-                );
-                // If available, use the scope span to annotate the drop location.
-                if let Some(scope_span) = scope_span {
-                    span.push_span_label(
-                        source_map.end_point(scope_span),
-                        format!("`{}` is later dropped here", snippet),
-                    );
+        let mut explain_yield =
+            |interior_span: Span, yield_span: Span, scope_span: Option<Span>| {
+                let mut span = MultiSpan::from_span(yield_span);
+                if let Ok(snippet) = source_map.span_to_snippet(interior_span) {
+                    // #70935: If snippet contains newlines, display "the value" instead
+                    // so that we do not emit complex diagnostics.
+                    let snippet = &format!("`{}`", snippet);
+                    let snippet = if snippet.contains('\n') { "the value" } else { snippet };
+                    // The multispan can be complex here, like:
+                    // note: future is not `Send` as this value is used across an await
+                    //   --> $DIR/issue-70935-complex-spans.rs:13:9
+                    //    |
+                    // LL |            baz(|| async{
+                    //    |  __________^___-
+                    //    | | _________|
+                    //    | ||
+                    // LL | ||             foo(tx.clone());
+                    // LL | ||         }).await;
+                    //    | ||         -      ^- value is later dropped here
+                    //    | ||_________|______|
+                    //    | |__________|      await occurs here, with value maybe used later
+                    //    |            has type `closure` which is not `Send`
+                    //
+                    // So, detect it and separate into some notes, like:
+                    //
+                    // note: future is not `Send` as this value is used across an await
+                    //   --> $DIR/issue-70935-complex-spans.rs:13:9
+                    //    |
+                    // LL | /         baz(|| async{
+                    // LL | |             foo(tx.clone());
+                    // LL | |         }).await;
+                    //    | |________________^ first, await occurs here, with the value maybe used later...
+                    // note: the value is later dropped here
+                    //   --> $DIR/issue-70935-complex-spans.rs:15:17
+                    //    |
+                    // LL |         }).await;
+                    //    |                 ^
+                    //
+                    // If available, use the scope span to annotate the drop location.
+                    if let Some(scope_span) = scope_span {
+                        let scope_span = source_map.end_point(scope_span);
+                        let is_overlapped =
+                            yield_span.overlaps(scope_span) || yield_span.overlaps(interior_span);
+                        if is_overlapped {
+                            span.push_span_label(
+                                yield_span,
+                                format!(
+                                    "first, {} occurs here, with {} maybe used later...",
+                                    await_or_yield, snippet
+                                ),
+                            );
+                            err.span_note(
+                                span,
+                                &format!(
+                                    "{} {} as this value is used across {}",
+                                    future_or_generator, trait_explanation, an_await_or_yield
+                                ),
+                            );
+                            if source_map.is_multiline(interior_span) {
+                                err.span_note(
+                                    scope_span,
+                                    &format!("{} is later dropped here", snippet),
+                                );
+                                err.span_note(
+                                    interior_span,
+                                    &format!(
+                                        "this has type `{}` which {}",
+                                        target_ty, trait_explanation
+                                    ),
+                                );
+                            } else {
+                                let mut span = MultiSpan::from_span(scope_span);
+                                span.push_span_label(
+                                    interior_span,
+                                    format!("has type `{}` which {}", target_ty, trait_explanation),
+                                );
+                                err.span_note(span, &format!("{} is later dropped here", snippet));
+                            }
+                        } else {
+                            span.push_span_label(
+                                yield_span,
+                                format!(
+                                    "{} occurs here, with {} maybe used later",
+                                    await_or_yield, snippet
+                                ),
+                            );
+                            span.push_span_label(
+                                scope_span,
+                                format!("{} is later dropped here", snippet),
+                            );
+                            span.push_span_label(
+                                interior_span,
+                                format!("has type `{}` which {}", target_ty, trait_explanation),
+                            );
+                            err.span_note(
+                                span,
+                                &format!(
+                                    "{} {} as this value is used across {}",
+                                    future_or_generator, trait_explanation, an_await_or_yield
+                                ),
+                            );
+                        }
+                    } else {
+                        span.push_span_label(
+                            yield_span,
+                            format!(
+                                "{} occurs here, with {} maybe used later",
+                                await_or_yield, snippet
+                            ),
+                        );
+                        span.push_span_label(
+                            interior_span,
+                            format!("has type `{}` which {}", target_ty, trait_explanation),
+                        );
+                        err.span_note(
+                            span,
+                            &format!(
+                                "{} {} as this value is used across {}",
+                                future_or_generator, trait_explanation, an_await_or_yield
+                            ),
+                        );
+                    }
                 }
-            }
-            span.push_span_label(
-                interior_span,
-                format!("has type `{}` which {}", target_ty, trait_explanation),
-            );
-
-            err.span_note(
-                span,
-                &format!(
-                    "{} {} as this value is used across {}",
-                    future_or_generator, trait_explanation, an_await_or_yield
-                ),
-            );
-        };
+            };
         match interior_or_upvar_span {
             GeneratorInteriorOrUpvar::Interior(interior_span) => {
                 if let Some((scope_span, yield_span, expr, from_awaited_ty)) = interior_extra_info {

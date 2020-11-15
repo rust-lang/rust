@@ -23,15 +23,9 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "thumbv7a-pc-windows-msvc".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 32,
-        target_c_int_width: "32".to_string(),
         data_layout: "e-m:w-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
-        target_os: "windows".to_string(),
-        target_env: "msvc".to_string(),
-        target_vendor: "pc".to_string(),
-        linker_flavor: LinkerFlavor::Msvc,
 
         options: TargetOptions {
             features: "+vfp3,+neon".to_string(),

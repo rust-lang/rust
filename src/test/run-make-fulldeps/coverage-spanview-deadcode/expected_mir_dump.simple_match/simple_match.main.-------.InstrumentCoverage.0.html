@@ -1,4 +1,14 @@
 <!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.simple_match/simple_match.main.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
 <html>
 <head>
 <title>simple_match.main - Coverage Spans</title>
@@ -86,51 +96,39 @@
 9:9-9:22: @3[3]: FakeRead(ForLet, _5)">    let mut countdown = 1<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="10:8-10:15: @3[6]: _7 = _1
 10:8-10:15: @3[7]: FakeRead(ForMatchedPlace, _7)"><span class="annotation">@0,1,2,3⦊</span>is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="11:9-11:22: @6[0]: _5 = const 0_i32
-10:16-12:6: @6[1]: _6 = const ()"><span class="annotation">@4,6⦊</span>{</span></span>
+10:16-12:6: @6[1]: _6 = const ()
+12:6-12:6: @6.Goto: goto -&gt; bb7"><span class="annotation">@4,6⦊</span>{</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:22: @6[0]: _5 = const 0_i32
-10:16-12:6: @6[1]: _6 = const ()">        countdown = 0;</span></span>
+10:16-12:6: @6[1]: _6 = const ()
+12:6-12:6: @6.Goto: goto -&gt; bb7">        countdown = 0;</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:22: @6[0]: _5 = const 0_i32
-10:16-12:6: @6[1]: _6 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span class="code" style="--layer: 0"></span></span>
+10:16-12:6: @6[1]: _6 = const ()
+12:6-12:6: @6.Goto: goto -&gt; bb7">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="12:6-12:6: @5.Goto: goto -&gt; bb7"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="15:9-15:10: @11[2]: _17 = discriminant(_14)"><span class="annotation">@9,10,11⦊</span>for</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="15:9-15:10: @11[2]: _17 = discriminant(_14)">        _<span class="annotation">⦉@9,10,11</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    for</span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="15:9-15:10: @15[1]: _18 = ((_14 as Some).0: i32)
+15:9-15:10: @15[3]: _19 = _18
+15:9-15:10: @15[4]: _12 = move _19
+15:9-15:10: @15[5]: _13 = const ()"><span class="annotation">@13,15,17⦊</span>_<span class="annotation">⦉@13,15,17</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    in</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="17:9-17:13: @7[4]: _9 = std::ops::Range::&lt;i32&gt; { start: const 0_i32, end: const 2_i32 }
-17:9-17:13: @7.Call: _8 = &lt;std::ops::Range&lt;i32&gt; as IntoIterator&gt;::into_iter(move _9) -&gt; [return: bb8, unwind: bb22]
-17:9-17:13: @8[1]: FakeRead(ForMatchedPlace, _8)
-17:9-17:13: @8[3]: _10 = move _8"><span class="annotation">@7,8⦊</span>0..2<span class="annotation">⦉@7,8</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="17:9-17:13: @10[5]: _16 = &amp;mut _10
+17:9-17:13: @10[6]: _15 = &amp;mut (*_16)
+17:9-17:13: @10.Call: _14 = &lt;std::ops::Range&lt;i32&gt; as Iterator&gt;::next(move _15) -&gt; [return: bb11, unwind: bb22]
+17:9-17:13: @11[1]: FakeRead(ForMatchedPlace, _14)"><span class="annotation">@9,10,11⦊</span>0..2<span class="annotation">⦉@9,10,11</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        let z</span></span>
 <span class="line"><span class="code" style="--layer: 0">        ;</span></span>
 <span class="line"><span class="code" style="--layer: 0">        match</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)
-24:13-24:14: @17[1]: _24 = &amp;_5
-26:17-26:18: @17[4]: _26 = (*_24)
-26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)"><span class="annotation">@13,15,17⦊</span>countdown</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)
-24:13-24:14: @17[1]: _24 = &amp;_5
-26:17-26:18: @17[4]: _26 = (*_24)
-26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)">        {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)
-24:13-24:14: @17[1]: _24 = &amp;_5
-26:17-26:18: @17[4]: _26 = (*_24)
-26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)">            x</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)
-24:13-24:14: @17[1]: _24 = &amp;_5
-26:17-26:18: @17[4]: _26 = (*_24)
-26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)">            if</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)
-24:13-24:14: @17[1]: _24 = &amp;_5
-26:17-26:18: @17[4]: _26 = (*_24)
-26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)">                x</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)
-24:13-24:14: @17[1]: _24 = &amp;_5
-26:17-26:18: @17[4]: _26 = (*_24)
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)"><span class="annotation">@13,15,17⦊</span>countdown<span class="annotation">⦉@13,15,17</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        {</span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="24:13-24:14: @18[3]: _23 = _5"><span class="annotation">@18⦊</span>x<span class="annotation">⦉@18</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            if</span></span>
+<span class="line"><span class="code" style="--layer: 0">                </span><span><span class="code odd" style="--layer: 1" title="26:17-26:18: @17[4]: _26 = (*_24)
+26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)"><span class="annotation">@13,15,17⦊</span>x</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="26:17-26:18: @17[4]: _26 = (*_24)
 26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)">                    &lt;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="22:13-22:22: @15[13]: FakeRead(ForMatchedPlace, _5)
-24:13-24:14: @17[1]: _24 = &amp;_5
-26:17-26:18: @17[4]: _26 = (*_24)
-26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)">                1<span class="annotation">⦉@13,15,17</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="26:17-26:18: @17[4]: _26 = (*_24)
+26:17-28:18: @17[5]: _25 = Lt(move _26, const 1_i32)">                1<span class="annotation">⦉@13,15,17</span></span></span><span><span class="code even" style="--layer: 1" title="28:18-28:18: @19.Goto: goto -&gt; bb16"><span class="annotation">@19⦊</span>‸<span class="annotation">⦉@19</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">            =&gt;</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="31:21-31:30: @18[5]: _27 = _5
 31:17-31:30: @18[6]: _22 = move _27
@@ -184,7 +182,7 @@
 <span class="line"><span class="code" style="--layer: 0">            =&gt;</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="40:13-40:15: @16[0]: _21 = const ()"><span class="annotation">@16⦊</span>{}<span class="annotation">⦉@16</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        }</span></span>
-<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code odd" style="--layer: 1" title="42:6-42:6: @8.Goto: goto -&gt; bb9"><span class="annotation">@7,8⦊</span>‸<span class="annotation">⦉@7,8</span></span></span><span><span class="code even" style="--layer: 1" title="42:6-42:6: @20.Goto: goto -&gt; bb9"><span class="annotation">@20⦊</span>‸<span class="annotation">⦉@20</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="43:2-43:2: @12.Return: return"><span class="annotation">@12⦊</span>‸<span class="annotation">⦉@12</span></span></span></span></div>
 </body>
 </html>

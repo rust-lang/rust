@@ -100,11 +100,6 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
-fn strip_function_ptr_alignment(data_layout: String) -> String {
-    // FIXME: Make this more general.
-    data_layout.replace("-Fi8-", "-")
-}
-
 fn strip_x86_address_spaces(data_layout: String) -> String {
     data_layout.replace("-p270:32:32-p271:32:32-p272:64:64-", "-")
 }
@@ -119,17 +114,14 @@ pub unsafe fn create_module(
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
     let mut target_data_layout = sess.target.data_layout.clone();
-    if llvm_util::get_major_version() < 9 {
-        target_data_layout = strip_function_ptr_alignment(target_data_layout);
-    }
-    if llvm_util::get_major_version() < 10 {
-        if sess.target.arch == "x86" || sess.target.arch == "x86_64" {
-            target_data_layout = strip_x86_address_spaces(target_data_layout);
-        }
+    if llvm_util::get_major_version() < 10
+        && (sess.target.arch == "x86" || sess.target.arch == "x86_64")
+    {
+        target_data_layout = strip_x86_address_spaces(target_data_layout);
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
-    if sess.target.options.is_builtin {
+    if sess.target.is_builtin {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
@@ -190,7 +182,7 @@ pub unsafe fn create_module(
     }
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
-    if sess.target.options.is_like_msvc {
+    if sess.target.is_like_msvc {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
@@ -265,7 +257,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // linker will take care of everything. Fixing this problem will likely
         // require adding a few attributes to Rust itself (feature gated at the
         // start) and then strongly recommending static linkage on Windows!
-        let use_dll_storage_attrs = tcx.sess.target.options.is_like_windows;
+        let use_dll_storage_attrs = tcx.sess.target.is_like_windows;
 
         let check_overflow = tcx.sess.overflow_checks();
 
@@ -839,7 +831,7 @@ impl CodegenCx<'b, 'tcx> {
             return eh_catch_typeinfo;
         }
         let tcx = self.tcx;
-        assert!(self.sess().target.options.is_like_emscripten);
+        assert!(self.sess().target.is_like_emscripten);
         let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
             Some(def_id) => self.get_static(def_id),
             _ => {
@@ -864,7 +856,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         // user defined names
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
-        name.push_str(".");
+        name.push('.');
         base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }

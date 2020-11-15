@@ -1,0 +1,10 @@
+error: called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(..)` instead.
+  --> $DIR/methods_fixable.rs:10:13
+   |
+LL |     let _ = v.iter().filter(|&x| *x < 0).next();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `v.iter().find(|&x| *x < 0)`
+   |
+   = note: `-D clippy::filter-next` implied by `-D warnings`
+
+error: aborting due to previous error
+

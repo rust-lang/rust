@@ -40,8 +40,8 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
         debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
 
-        let ast::Attribute { kind, id: _, style, span, tokens } = attr;
-        if let ast::AttrKind::Normal(item) = kind {
+        let ast::Attribute { kind, id: _, style, span } = attr;
+        if let ast::AttrKind::Normal(item, tokens) = kind {
             item.hash_stable(self, hasher);
             style.hash_stable(self, hasher);
             span.hash_stable(self, hasher);

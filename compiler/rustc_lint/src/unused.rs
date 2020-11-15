@@ -250,13 +250,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     has_emitted
                 }
                 ty::Array(ty, len) => match len.try_eval_usize(cx.tcx, cx.param_env) {
+                    // If the array is empty we don't lint, to avoid false positives
+                    Some(0) | None => false,
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.
-                    Some(n) if n != 0 => {
+                    Some(n) => {
                         let descr_pre = &format!("{}array{} of ", descr_pre, plural_suffix,);
                         check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, n as usize + 1)
                     }
-                    // Otherwise, we don't lint, to avoid false positives.
-                    _ => false,
                 },
                 ty::Closure(..) => {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
@@ -752,14 +752,11 @@ impl UnusedDelimLint for UnusedParens {
                     && value.attrs.is_empty()
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr
-                        || match inner.kind {
-                            ast::ExprKind::Binary(
+                        || !matches!(inner.kind, ast::ExprKind::Binary(
                                 rustc_span::source_map::Spanned { node, .. },
                                 _,
                                 _,
-                            ) if node.lazy() => false,
-                            _ => true,
-                        })
+                            ) if node.lazy()))
                 {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos)
                 }

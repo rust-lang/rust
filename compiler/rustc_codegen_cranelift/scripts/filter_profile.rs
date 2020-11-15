@@ -1,9 +1,8 @@
 #!/bin/bash
 #![forbid(unsafe_code)]/* This line is ignored by bash
 # This block is ignored by rustc
-CHANNEL="release"
 pushd $(dirname "$0")/../
-source scripts/config.sh
+source build/config.sh
 popd
 PROFILE=$1 OUTPUT=$2 exec $RUSTC $RUSTFLAGS --jit $0
 #*/

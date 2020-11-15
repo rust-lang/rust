@@ -15,6 +15,8 @@ use rustc_middle::ty::{self, AssocItemContainer, RegionKind, Ty, TypeFoldable, T
 use rustc_span::symbol::Ident;
 use rustc_span::{MultiSpan, Span};
 
+use std::ops::ControlFlow;
+
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static `impl Trait`,
     /// `dyn Trait` or if a method call on a trait object introduces a static requirement.
@@ -472,13 +474,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 struct TraitObjectVisitor(Vec<DefId>);
 
 impl TypeVisitor<'_> for TraitObjectVisitor {
-    fn visit_ty(&mut self, t: Ty<'_>) -> bool {
+    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<()> {
         match t.kind() {
             ty::Dynamic(preds, RegionKind::ReStatic) => {
                 if let Some(def_id) = preds.principal_def_id() {
                     self.0.push(def_id);
                 }
-                false
+                ControlFlow::CONTINUE
             }
             _ => t.super_visit_with(self),
         }

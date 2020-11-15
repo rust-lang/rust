@@ -30,52 +30,44 @@ impl<'a> Parser<'a> {
         let mut just_parsed_doc_comment = false;
         loop {
             debug!("parse_outer_attributes: self.token={:?}", self.token);
-            let (attr, tokens) = if self.check(&token::Pound) {
-                self.collect_tokens(|this| {
-                    let inner_error_reason = if just_parsed_doc_comment {
-                        "an inner attribute is not permitted following an outer doc comment"
-                    } else if !attrs.is_empty() {
-                        "an inner attribute is not permitted following an outer attribute"
-                    } else {
-                        DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
-                    };
-                    let inner_parse_policy = InnerAttrPolicy::Forbidden {
-                        reason: inner_error_reason,
-                        saw_doc_comment: just_parsed_doc_comment,
-                        prev_attr_sp: attrs.last().map(|a| a.span),
-                    };
-                    let attr = this.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
-                    just_parsed_doc_comment = false;
-                    Ok(Some(attr))
-                })?
+            let attr = if self.check(&token::Pound) {
+                let inner_error_reason = if just_parsed_doc_comment {
+                    "an inner attribute is not permitted following an outer doc comment"
+                } else if !attrs.is_empty() {
+                    "an inner attribute is not permitted following an outer attribute"
+                } else {
+                    DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
+                };
+                let inner_parse_policy = InnerAttrPolicy::Forbidden {
+                    reason: inner_error_reason,
+                    saw_doc_comment: just_parsed_doc_comment,
+                    prev_attr_sp: attrs.last().map(|a| a.span),
+                };
+                just_parsed_doc_comment = false;
+                Some(self.parse_attribute(inner_parse_policy)?)
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
-                self.collect_tokens(|this| {
-                    let attr =
-                        attr::mk_doc_comment(comment_kind, attr_style, data, this.token.span);
-                    if attr.style != ast::AttrStyle::Outer {
-                        this.sess
-                            .span_diagnostic
-                            .struct_span_err_with_code(
-                                this.token.span,
-                                "expected outer doc comment",
-                                error_code!(E0753),
-                            )
-                            .note(
-                                "inner doc comments like this (starting with \
-                                 `//!` or `/*!`) can only appear before items",
-                            )
-                            .emit();
-                    }
-                    this.bump();
-                    just_parsed_doc_comment = true;
-                    Ok(Some(attr))
-                })?
+                if attr_style != ast::AttrStyle::Outer {
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_err_with_code(
+                            self.token.span,
+                            "expected outer doc comment",
+                            error_code!(E0753),
+                        )
+                        .note(
+                            "inner doc comments like this (starting with \
+                         `//!` or `/*!`) can only appear before items",
+                        )
+                        .emit();
+                }
+                self.bump();
+                just_parsed_doc_comment = true;
+                Some(attr::mk_doc_comment(comment_kind, attr_style, data, self.prev_token.span))
             } else {
-                (None, None)
+                None
             };
 
-            if let Some(mut attr) = attr {
-                attr.tokens = tokens;
+            if let Some(attr) = attr {
                 attrs.push(attr);
             } else {
                 break;
@@ -85,49 +77,43 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.
-    ///
-    /// If `permit_inner` is `true`, then a leading `!` indicates an inner
-    /// attribute.
-    pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
-        debug!("parse_attribute: permit_inner={:?} self.token={:?}", permit_inner, self.token);
-        let inner_parse_policy =
-            if permit_inner { InnerAttrPolicy::Permitted } else { DEFAULT_INNER_ATTR_FORBIDDEN };
-        self.parse_attribute_with_inner_parse_policy(inner_parse_policy)
-    }
-
-    /// The same as `parse_attribute`, except it takes in an `InnerAttrPolicy`
-    /// that prescribes how to handle inner attributes.
-    fn parse_attribute_with_inner_parse_policy(
+    /// `inner_parse_policy` prescribes how to handle inner attributes.
+    fn parse_attribute(
         &mut self,
         inner_parse_policy: InnerAttrPolicy<'_>,
     ) -> PResult<'a, ast::Attribute> {
         debug!(
-            "parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
+            "parse_attribute: inner_parse_policy={:?} self.token={:?}",
             inner_parse_policy, self.token
         );
         let lo = self.token.span;
-        let (span, item, style) = if self.eat(&token::Pound) {
-            let style =
-                if self.eat(&token::Not) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
+        let ((item, style, span), tokens) = self.collect_tokens(|this| {
+            if this.eat(&token::Pound) {
+                let style = if this.eat(&token::Not) {
+                    ast::AttrStyle::Inner
+                } else {
+                    ast::AttrStyle::Outer
+                };
 
-            self.expect(&token::OpenDelim(token::Bracket))?;
-            let item = self.parse_attr_item(false)?;
-            self.expect(&token::CloseDelim(token::Bracket))?;
-            let attr_sp = lo.to(self.prev_token.span);
+                this.expect(&token::OpenDelim(token::Bracket))?;
+                let item = this.parse_attr_item(false)?;
+                this.expect(&token::CloseDelim(token::Bracket))?;
+                let attr_sp = lo.to(this.prev_token.span);
 
-            // Emit error if inner attribute is encountered and forbidden.
-            if style == ast::AttrStyle::Inner {
-                self.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
+                // Emit error if inner attribute is encountered and forbidden.
+                if style == ast::AttrStyle::Inner {
+                    this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
+                }
+
+                Ok((item, style, attr_sp))
+            } else {
+                let token_str = pprust::token_to_string(&this.token);
+                let msg = &format!("expected `#`, found `{}`", token_str);
+                Err(this.struct_span_err(this.token.span, msg))
             }
+        })?;
 
-            (attr_sp, item, style)
-        } else {
-            let token_str = pprust::token_to_string(&self.token);
-            let msg = &format!("expected `#`, found `{}`", token_str);
-            return Err(self.struct_span_err(self.token.span, msg));
-        };
-
-        Ok(attr::mk_attr_from_item(style, item, span))
+        Ok(attr::mk_attr_from_item(item, tokens, style, span))
     }
 
     pub(super) fn error_on_forbidden_inner_attr(&self, attr_sp: Span, policy: InnerAttrPolicy<'_>) {
@@ -196,30 +182,19 @@ impl<'a> Parser<'a> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
             // Only try to parse if it is an inner attribute (has `!`).
-            let (attr, tokens) =
-                if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
-                    self.collect_tokens(|this| {
-                        let attr = this.parse_attribute(true)?;
-                        assert_eq!(attr.style, ast::AttrStyle::Inner);
-                        Ok(Some(attr))
-                    })?
-                } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
-                    self.collect_tokens(|this| {
-                        // We need to get the position of this token before we bump.
-                        let attr =
-                            attr::mk_doc_comment(comment_kind, attr_style, data, this.token.span);
-                        if attr.style == ast::AttrStyle::Inner {
-                            this.bump();
-                            Ok(Some(attr))
-                        } else {
-                            Ok(None)
-                        }
-                    })?
+            let attr = if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
+                Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
+            } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
+                if attr_style == ast::AttrStyle::Inner {
+                    self.bump();
+                    Some(attr::mk_doc_comment(comment_kind, attr_style, data, self.prev_token.span))
                 } else {
-                    (None, None)
-                };
-            if let Some(mut attr) = attr {
-                attr.tokens = tokens;
+                    None
+                }
+            } else {
+                None
+            };
+            if let Some(attr) = attr {
                 attrs.push(attr);
             } else {
                 break;

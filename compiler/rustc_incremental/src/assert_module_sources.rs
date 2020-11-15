@@ -111,10 +111,12 @@ impl AssertModuleSource<'tcx> {
             (&user_path[..], None)
         };
 
-        let mut cgu_path_components = user_path.split('-').collect::<Vec<_>>();
+        let mut iter = user_path.split('-');
 
         // Remove the crate name
-        assert_eq!(cgu_path_components.remove(0), crate_name);
+        assert_eq!(iter.next().unwrap(), crate_name);
+
+        let cgu_path_components = iter.collect::<Vec<_>>();
 
         let cgu_name_builder = &mut CodegenUnitNameBuilder::new(self.tcx);
         let cgu_name =

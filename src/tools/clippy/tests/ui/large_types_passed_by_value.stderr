@@ -1,0 +1,52 @@
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:20:11
+   |
+LL | fn bad(a: LargeAndCopy) {}
+   |           ^^^^^^^^^^^^ help: consider passing by reference instead: `&LargeAndCopy`
+   |
+   = note: `-D clippy::large-types-passed-by-value` implied by `-D warnings`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:25:37
+   |
+LL |     fn other_is_not_ok(self, other: LargeAndCopy) {}
+   |                                     ^^^^^^^^^^^^ help: consider passing by reference instead: `&LargeAndCopy`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:31:36
+   |
+LL |     fn devoure_array(&self, array: [u8; 6666]);
+   |                                    ^^^^^^^^^^ help: consider passing by reference instead: `&[u8; 6666]`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:32:34
+   |
+LL |     fn devoure_tuple(&self, tup: (LargeAndCopy, LargeAndCopy));
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider passing by reference instead: `&(LargeAndCopy, LargeAndCopy)`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:33:50
+   |
+LL |     fn devoure_array_and_tuple_wow(&self, array: [u8; 6666], tup: (LargeAndCopy, LargeAndCopy));
+   |                                                  ^^^^^^^^^^ help: consider passing by reference instead: `&[u8; 6666]`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:33:67
+   |
+LL |     fn devoure_array_and_tuple_wow(&self, array: [u8; 6666], tup: (LargeAndCopy, LargeAndCopy));
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider passing by reference instead: `&(LargeAndCopy, LargeAndCopy)`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:58:17
+   |
+LL | fn foo_never(x: LargeAndCopy) {
+   |                 ^^^^^^^^^^^^ help: consider passing by reference instead: `&LargeAndCopy`
+
+error: this argument (N byte) is passed by value, but might be more efficient if passed by reference (limit: N byte)
+  --> $DIR/large_types_passed_by_value.rs:62:11
+   |
+LL | fn foo(x: LargeAndCopy) {
+   |           ^^^^^^^^^^^^ help: consider passing by reference instead: `&LargeAndCopy`
+
+error: aborting due to 8 previous errors
+

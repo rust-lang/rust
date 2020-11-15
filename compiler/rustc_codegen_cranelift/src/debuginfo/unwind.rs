@@ -55,6 +55,7 @@ impl<'tcx> UnwindContext<'tcx> {
             UnwindInfo::WindowsX64(_) => {
                 // FIXME implement this
             }
+            unwind_info => unimplemented!("{:?}", unwind_info),
         }
     }
 

@@ -612,10 +612,8 @@ where
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    if unlikely!(!diagnostics.is_empty()) {
-        if dep_node.kind != DepKind::NULL {
-            tcx.store_diagnostics(dep_node_index, diagnostics);
-        }
+    if unlikely!(!diagnostics.is_empty()) && dep_node.kind != DepKind::NULL {
+        tcx.store_diagnostics(dep_node_index, diagnostics);
     }
 
     let result = job.complete(result, dep_node_index);

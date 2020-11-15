@@ -62,6 +62,9 @@ pub fn opts() -> TargetOptions {
     late_link_args_static.insert(LinkerFlavor::Lld(LldFlavor::Ld), static_unwind_libs);
 
     TargetOptions {
+        os: "windows".to_string(),
+        env: "gnu".to_string(),
+        vendor: "pc".to_string(),
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,
         linker: Some("gcc".to_string()),
@@ -72,7 +75,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".to_string(),
         staticlib_prefix: "lib".to_string(),
         staticlib_suffix: ".a".to_string(),
-        target_family: Some("windows".to_string()),
+        os_family: Some("windows".to_string()),
         is_like_windows: true,
         allows_weak_linkage: false,
         pre_link_args,

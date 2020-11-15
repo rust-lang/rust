@@ -516,7 +516,7 @@ impl<'a> AstValidator<'a> {
         self.session.source_map().guess_head_span(self.extern_mod.unwrap().span)
     }
 
-    /// An `fn` in `extern { ... }` cannot have qualfiers, e.g. `async fn`.
+    /// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
     fn check_foreign_fn_headerless(&self, ident: Ident, span: Span, header: FnHeader) {
         if header.has_qualifiers() {
             self.err_handler()
@@ -796,7 +796,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
-            ExprKind::LlvmInlineAsm(..) if !self.session.target.options.allow_asm => {
+            ExprKind::LlvmInlineAsm(..) if !self.session.target.allow_asm => {
                 struct_span_err!(
                     self.session,
                     expr.span,

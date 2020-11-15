@@ -423,6 +423,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "specified the rustc-like binary to use as the test builder",
             )
         }),
+        unstable("check", |o| o.optflag("", "check", "Run rustdoc checks")),
     ]
 }
 
@@ -432,6 +433,7 @@ fn usage(argv0: &str) {
         (option.apply)(&mut options);
     }
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
+    println!("More information available at https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html")
 }
 
 /// A result type used by several functions under `main()`.
@@ -514,6 +516,7 @@ fn main_options(options: config::Options) -> MainResult {
     // but we can't crates the Handler ahead of time because it's not Send
     let diag_opts = (options.error_format, options.edition, options.debugging_opts.clone());
     let show_coverage = options.show_coverage;
+    let run_check = options.run_check;
 
     // First, parse the crate and extract all relevant information.
     info!("starting to run rustc");
@@ -538,6 +541,9 @@ fn main_options(options: config::Options) -> MainResult {
     if show_coverage {
         // if we ran coverage, bail early, we don't need to also generate docs at this point
         // (also we didn't load in any of the useful passes)
+        return Ok(());
+    } else if run_check {
+        // Since we're in "check" mode, no need to generate anything beyond this point.
         return Ok(());
     }
 

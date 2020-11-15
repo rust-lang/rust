@@ -63,7 +63,12 @@ pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, No
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
 
-#[unstable(feature = "int_error_matching", issue = "22639")]
+#[unstable(
+    feature = "int_error_matching",
+    reason = "it can be useful to match errors when making error messages \
+              for integer parsing",
+    issue = "22639"
+)]
 pub use error::IntErrorKind;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
@@ -130,7 +135,7 @@ impl i128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
+    int_impl! { isize, i16, usize, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
     "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
@@ -138,7 +143,7 @@ impl isize {
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
+    int_impl! { isize, i32, usize, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
@@ -147,7 +152,7 @@ impl isize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "",
+    int_impl! { isize, i64, usize, 64, -9223372036854775808, 9223372036854775807, "", "",
     12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
      "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
      "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
@@ -830,14 +835,13 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let src = src.as_bytes();
 
     let (is_positive, digits) = match src[0] {
+        b'+' | b'-' if src[1..].is_empty() => {
+            return Err(PIE { kind: InvalidDigit });
+        }
         b'+' => (true, &src[1..]),
         b'-' if is_signed_ty => (false, &src[1..]),
         _ => (true, src),
     };
-
-    if digits.is_empty() {
-        return Err(PIE { kind: Empty });
-    }
 
     let mut result = T::from_u32(0);
     if is_positive {
@@ -849,11 +853,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Overflow }),
+                None => return Err(PIE { kind: PosOverflow }),
             };
             result = match result.checked_add(x) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Overflow }),
+                None => return Err(PIE { kind: PosOverflow }),
             };
         }
     } else {
@@ -865,11 +869,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Underflow }),
+                None => return Err(PIE { kind: NegOverflow }),
             };
             result = match result.checked_sub(x) {
                 Some(result) => result,
-                None => return Err(PIE { kind: Underflow }),
+                None => return Err(PIE { kind: NegOverflow }),
             };
         }
     }

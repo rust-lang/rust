@@ -187,12 +187,14 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &Token| match token.kind {
-            token::Lt
-            | token::BinOp(token::Shl)
-            | token::OpenDelim(token::Paren)
-            | token::LArrow => true,
-            _ => false,
+        let is_args_start = |token: &Token| {
+            matches!(
+                token.kind,
+                token::Lt
+                    | token::BinOp(token::Shl)
+                    | token::OpenDelim(token::Paren)
+                    | token::LArrow
+            )
         };
         let check_args_start = |this: &mut Self| {
             this.expected_tokens.extend_from_slice(&[

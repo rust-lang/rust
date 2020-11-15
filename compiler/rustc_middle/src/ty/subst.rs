@@ -17,6 +17,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
+use std::ops::ControlFlow;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).
@@ -159,7 +160,7 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
@@ -391,8 +392,8 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.iter().any(|t| t.visit_with(visitor))
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
 

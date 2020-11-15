@@ -31,7 +31,7 @@ fn link_env_remove(arch: Arch) -> Vec<String> {
     }
 }
 
-pub fn opts(arch: Arch) -> TargetOptions {
+pub fn opts(os: &str, arch: Arch) -> TargetOptions {
     TargetOptions {
         cpu: target_cpu(arch),
         dynamic_linking: false,
@@ -39,6 +39,6 @@ pub fn opts(arch: Arch) -> TargetOptions {
         link_env_remove: link_env_remove(arch),
         has_elf_tls: false,
         eliminate_frame_pointer: false,
-        ..super::apple_base::opts()
+        ..super::apple_base::opts(os)
     }
 }

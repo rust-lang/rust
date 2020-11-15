@@ -17,7 +17,6 @@ use crate::build::Builder;
 use crate::thir::{self, *};
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
-use rustc_middle::mir::interpret::truncate;
 use rustc_middle::mir::Place;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::IntegerExt;
@@ -44,12 +43,36 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
+        debug!(?candidate, "simplify_candidate");
+
+        // existing_bindings and new_bindings exists to keep the semantics in order.
+        // Reversing the binding order for bindings after `@` changes the binding order in places
+        // it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`
+        //
+        // To avoid this, the binding occurs in the following manner:
+        // * the bindings for one iteration of the following loop occurs in order (i.e. left to
+        // right)
+        // * the bindings from the previous iteration of the loop is prepended to the bindings from
+        // the current iteration (in the implementation this is done by mem::swap and extend)
+        // * after all iterations, these new bindings are then appended to the bindings that were
+        // prexisting (i.e. `candidate.binding` when the function was called).
+        //
+        // example:
+        // candidate.bindings = [1, 2, 3]
+        // binding in iter 1: [4, 5]
+        // binding in iter 2: [6, 7]
+        //
+        // final binding: [1, 2, 3, 6, 7, 4, 5]
+        let mut existing_bindings = mem::take(&mut candidate.bindings);
+        let mut new_bindings = Vec::new();
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
             if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
                 *match_pairs
             {
+                existing_bindings.extend_from_slice(&new_bindings);
+                mem::swap(&mut candidate.bindings, &mut existing_bindings);
                 candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
                 return true;
             }
@@ -65,13 +88,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
+            // Avoid issue #69971: the binding order should be right to left if there are more
+            // bindings after `@` to please the borrow checker
+            // Ex
+            // struct NonCopyStruct {
+            //     copy_field: u32,
+            // }
+            //
+            // fn foo1(x: NonCopyStruct) {
+            //     let y @ NonCopyStruct { copy_field: z } = x;
+            //     // the above should turn into
+            //     let z = x.copy_field;
+            //     let y = x;
+            // }
+            candidate.bindings.extend_from_slice(&new_bindings);
+            mem::swap(&mut candidate.bindings, &mut new_bindings);
+            candidate.bindings.clear();
+
             if !changed {
+                existing_bindings.extend_from_slice(&new_bindings);
+                mem::swap(&mut candidate.bindings, &mut existing_bindings);
                 // Move or-patterns to the end, because they can result in us
                 // creating additional candidates, so we want to test them as
                 // late as possible.
                 candidate
                     .match_pairs
                     .sort_by_key(|pair| matches!(*pair.pattern.kind, PatKind::Or { .. }));
+                debug!(simplified = ?candidate, "simplify_candidate");
                 return false; // if we were not able to simplify any, done.
             }
         }
@@ -161,13 +204,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ty::Int(ity) => {
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
-                        let max = truncate(u128::MAX, size);
+                        let max = size.truncate(u128::MAX);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
-                        let max = truncate(u128::MAX, size);
+                        let max = size.truncate(u128::MAX);
                         (Some((0, max, size)), 0)
                     }
                     _ => (None, 0),

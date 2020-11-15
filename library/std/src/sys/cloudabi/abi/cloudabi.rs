@@ -143,7 +143,7 @@ pub enum advice {
     WILLNEED = 6,
 }
 
-/// Enumeration describing the kind of value stored in [`auxv`](struct.auxv.html).
+/// Enumeration describing the kind of value stored in [`auxv`].
 #[repr(u32)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[non_exhaustive]
@@ -246,7 +246,7 @@ pub struct condvar(pub u32);
 pub const CONDVAR_HAS_NO_WAITERS: condvar = condvar(0);
 
 /// Identifier for a device containing a file system. Can be used
-/// in combination with [`inode`](struct.inode.html) to uniquely identify a file on the
+/// in combination with [`inode`] to uniquely identify a file on the
 /// local system.
 #[repr(C)]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -808,7 +808,7 @@ bitflags! {
     const FILE_SYMLINK          = 0x0000000001000000;
     /// The right to invoke [`file_unlink()`](fn.file_unlink.html).
     const FILE_UNLINK           = 0x0000000002000000;
-    /// The right to invoke [`mem_map()`](fn.mem_map.html) with [`mprot`](struct.mprot.html) set to
+    /// The right to invoke [`mem_map()`](fn.mem_map.html) with [`mprot`] set to
     /// zero.
     const MEM_MAP               = 0x0000000004000000;
     /// If [`MEM_MAP`](struct.rights.html#associatedconstant.MEM_MAP) is set, the right to invoke
@@ -1020,7 +1020,7 @@ bitflags! {
 /// written it into locks when acquiring them for writing. It is
 /// not advised to use these identifiers for any other purpose.
 ///
-/// As the thread identifier is also stored in [`lock`](struct.lock.html) when
+/// As the thread identifier is also stored in [`lock`] when
 /// [`LOCK_WRLOCKED`](constant.LOCK_WRLOCKED.html) is set, the top two bits of the thread
 /// must always be set to zero.
 #[repr(C)]
@@ -1373,7 +1373,7 @@ fn lookup_layout_test() {
 /// Entry point for a process (`_start`).
 ///
 /// **auxv**:
-/// The auxiliary vector. See [`auxv`](struct.auxv.html).
+/// The auxiliary vector. See [`auxv`].
 pub type processentry = unsafe extern "C" fn(auxv: *const auxv) -> ();
 
 /// Arguments of [`sock_recv()`](fn.sock_recv.html).
@@ -2372,7 +2372,7 @@ pub unsafe fn file_open(
 ///
 /// When successful, the contents of the output buffer consist of
 /// a sequence of directory entries. Each directory entry consists
-/// of a [`dirent`](struct.dirent.html) object, followed by [`dirent.d_namlen`](struct.dirent.html#structfield.d_namlen) bytes
+/// of a [`dirent`] object, followed by [`dirent.d_namlen`](struct.dirent.html#structfield.d_namlen) bytes
 /// holding the name of the directory entry.
 ///
 /// This system call fills the output buffer as much as possible,

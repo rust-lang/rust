@@ -7,8 +7,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
@@ -500,21 +501,21 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 }
 
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
-    use rustc_middle::mir::interpret::{ConstValue, Scalar};
+    use rustc_middle::mir::interpret::ConstValue;
     match result.val {
-        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: d, .. })) => {
+        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) => {
             match result.ty.kind() {
-                ty::Bool => Some(Constant::Bool(d == 1)),
-                ty::Uint(_) | ty::Int(_) => Some(Constant::Int(d)),
+                ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
+                ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
                 ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                    d.try_into().expect("invalid f32 bit representation"),
+                    int.try_into().expect("invalid f32 bit representation"),
                 ))),
                 ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                    d.try_into().expect("invalid f64 bit representation"),
+                    int.try_into().expect("invalid f64 bit representation"),
                 ))),
                 ty::RawPtr(type_and_mut) => {
                     if let ty::Uint(_) = type_and_mut.ty.kind() {
-                        return Some(Constant::RawPtr(d));
+                        return Some(Constant::RawPtr(int.assert_bits(int.size())));
                     }
                     None
                 },

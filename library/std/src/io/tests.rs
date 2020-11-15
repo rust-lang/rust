@@ -1,7 +1,7 @@
 use super::{repeat, Cursor, SeekFrom};
 use crate::cmp::{self, min};
-use crate::io::prelude::*;
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{BufRead, Read, Seek, Write};
 use crate::ops::Deref;
 
 #[test]

@@ -367,7 +367,7 @@ fn try_intrinsic(
         bx.store(bx.const_i32(0), dest, ret_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, try_func, data, catch_func, dest);
-    } else if bx.sess().target.options.is_like_emscripten {
+    } else if bx.sess().target.is_like_emscripten {
         codegen_emcc_try(bx, try_func, data, catch_func, dest);
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func, dest);
@@ -979,12 +979,14 @@ fn generic_simd_intrinsic(
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind() {
-            ty::Int(i) => {
-                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
-            }
-            ty::Uint(i) => {
-                (args[0].immediate(), i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits()))
-            }
+            ty::Int(i) => (
+                args[0].immediate(),
+                i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
+            ),
+            ty::Uint(i) => (
+                args[0].immediate(),
+                i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
+            ),
             _ => return_error!(
                 "vector argument `{}`'s element type `{}`, expected integer element type",
                 in_ty,

@@ -3,7 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
-use rustc_session::lint::FutureIncompatibleInfo;
+use rustc_session::lint::FutureBreakage;
 use rustc_span::symbol::sym;
 
 declare_lint! {
@@ -38,6 +38,9 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #66145 <https://github.com/rust-lang/rust/issues/66145>",
         edition: None,
+        future_breakage: Some(FutureBreakage {
+            date: None
+        })
     };
 }
 

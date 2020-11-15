@@ -10,6 +10,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for address of operations (`&`) that are going to
@@ -112,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
     }
 
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if item.attrs.iter().any(|a| a.has_name(sym!(automatically_derived))) {
+        if item.attrs.iter().any(|a| a.has_name(sym::automatically_derived)) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.hir_id);
         }

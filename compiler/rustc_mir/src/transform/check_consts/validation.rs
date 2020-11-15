@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -123,7 +123,11 @@ impl Qualifs<'mir, 'tcx> {
         has_mut_interior.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
-    fn in_return_place(&mut self, ccx: &'mir ConstCx<'mir, 'tcx>) -> ConstQualifs {
+    fn in_return_place(
+        &mut self,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
+        error_occured: Option<ErrorReported>,
+    ) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
@@ -139,7 +143,7 @@ impl Qualifs<'mir, 'tcx> {
             .map(|(bb, _)| bb);
 
         let return_block = match return_block {
-            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty()),
+            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), error_occured),
             Some(bb) => bb,
         };
 
@@ -170,6 +174,7 @@ impl Qualifs<'mir, 'tcx> {
             needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
             custom_eq,
+            error_occured,
         }
     }
 }
@@ -181,7 +186,7 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
-    error_emitted: bool,
+    error_emitted: Option<ErrorReported>,
     secondary_errors: Vec<Diagnostic>,
 }
 
@@ -199,7 +204,7 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
-            error_emitted: false,
+            error_emitted: None,
             secondary_errors: Vec::new(),
         }
     }
@@ -266,7 +271,7 @@ impl Validator<'mir, 'tcx> {
         // If we got through const-checking without emitting any "primary" errors, emit any
         // "secondary" errors if they occurred.
         let secondary_errors = mem::take(&mut self.secondary_errors);
-        if !self.error_emitted {
+        if self.error_emitted.is_none() {
             for error in secondary_errors {
                 self.tcx.sess.diagnostic().emit_diagnostic(&error);
             }
@@ -276,7 +281,7 @@ impl Validator<'mir, 'tcx> {
     }
 
     pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
-        self.qualifs.in_return_place(self.ccx)
+        self.qualifs.in_return_place(self.ccx, self.error_emitted)
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
@@ -318,7 +323,7 @@ impl Validator<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagnosticImportance::Primary => {
-                self.error_emitted = true;
+                self.error_emitted = Some(ErrorReported);
                 err.emit();
             }
 

@@ -16,8 +16,8 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{self, DelimSpan, LazyTokenStream, LazyTokenStreamInner, Spacing};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::tokenstream::{self, DelimSpan, LazyTokenStream, Spacing};
+use rustc_ast::tokenstream::{CreateTokenStream, TokenStream, TokenTree};
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit};
@@ -1180,8 +1180,7 @@ impl<'a> Parser<'a> {
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
     /// into a `LazyTokenStream`, and returned along with the result
-    /// of the callback. The returned `LazyTokenStream` will be `None`
-    /// if not tokens were captured.
+    /// of the callback.
     ///
     /// Note: If your callback consumes an opening delimiter
     /// (including the case where you call `collect_tokens`
@@ -1199,48 +1198,56 @@ impl<'a> Parser<'a> {
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, (R, Option<LazyTokenStream>)> {
         let start_token = (self.token.clone(), self.token_spacing);
-        let mut cursor_snapshot = self.token_cursor.clone();
+        let cursor_snapshot = self.token_cursor.clone();
 
         let ret = f(self)?;
-
-        let new_calls = self.token_cursor.num_next_calls;
-        let num_calls = new_calls - cursor_snapshot.num_next_calls;
-        let desugar_doc_comments = self.desugar_doc_comments;
-
-        // We didn't capture any tokens
-        if num_calls == 0 {
-            return Ok((ret, None));
-        }
 
         // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
         // and `num_calls`, we can reconstruct the `TokenStream` seen
         // by the callback. This allows us to avoid producing a `TokenStream`
         // if it is never needed - for example, a captured `macro_rules!`
         // argument that is never passed to a proc macro.
+        // In practice token stream creation happens rarely compared to
+        // calls to `collect_tokens` (see some statistics in #78736),
+        // so we are doing as little up-front work as possible.
         //
         // This also makes `Parser` very cheap to clone, since
         // there is no intermediate collection buffer to clone.
-        let lazy_cb = move || {
-            // The token produced by the final call to `next` or `next_desugared`
-            // was not actually consumed by the callback. The combination
-            // of chaining the initial token and using `take` produces the desired
-            // result - we produce an empty `TokenStream` if no calls were made,
-            // and omit the final token otherwise.
-            let tokens = std::iter::once(start_token)
-                .chain((0..num_calls).map(|_| {
-                    if desugar_doc_comments {
-                        cursor_snapshot.next_desugared()
-                    } else {
-                        cursor_snapshot.next()
-                    }
-                }))
-                .take(num_calls);
+        struct LazyTokenStreamImpl {
+            start_token: (Token, Spacing),
+            cursor_snapshot: TokenCursor,
+            num_calls: usize,
+            desugar_doc_comments: bool,
+        }
+        impl CreateTokenStream for LazyTokenStreamImpl {
+            fn create_token_stream(&self) -> TokenStream {
+                // The token produced by the final call to `next` or `next_desugared`
+                // was not actually consumed by the callback. The combination
+                // of chaining the initial token and using `take` produces the desired
+                // result - we produce an empty `TokenStream` if no calls were made,
+                // and omit the final token otherwise.
+                let mut cursor_snapshot = self.cursor_snapshot.clone();
+                let tokens = std::iter::once(self.start_token.clone())
+                    .chain((0..self.num_calls).map(|_| {
+                        if self.desugar_doc_comments {
+                            cursor_snapshot.next_desugared()
+                        } else {
+                            cursor_snapshot.next()
+                        }
+                    }))
+                    .take(self.num_calls);
 
-            make_token_stream(tokens)
+                make_token_stream(tokens)
+            }
+        }
+
+        let lazy_impl = LazyTokenStreamImpl {
+            start_token,
+            num_calls: self.token_cursor.num_next_calls - cursor_snapshot.num_next_calls,
+            cursor_snapshot,
+            desugar_doc_comments: self.desugar_doc_comments,
         };
-        let stream = LazyTokenStream::new(LazyTokenStreamInner::Lazy(Box::new(lazy_cb)));
-
-        Ok((ret, Some(stream)))
+        Ok((ret, Some(LazyTokenStream::new(lazy_impl))))
     }
 
     /// `::{` or `::*`

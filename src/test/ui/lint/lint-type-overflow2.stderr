@@ -17,7 +17,7 @@ error: literal out of range for `f32`
 LL |     let x = -3.40282357e+38_f32;
    |              ^^^^^^^^^^^^^^^^^^
    |
-   = note: the literal `3.40282357e+38_f32` does not fit into the type `f32` and will be converted to `std::f32::INFINITY`
+   = note: the literal `3.40282357e+38_f32` does not fit into the type `f32` and will be converted to `f32::INFINITY`
 
 error: literal out of range for `f32`
   --> $DIR/lint-type-overflow2.rs:10:14
@@ -25,7 +25,7 @@ error: literal out of range for `f32`
 LL |     let x =  3.40282357e+38_f32;
    |              ^^^^^^^^^^^^^^^^^^
    |
-   = note: the literal `3.40282357e+38_f32` does not fit into the type `f32` and will be converted to `std::f32::INFINITY`
+   = note: the literal `3.40282357e+38_f32` does not fit into the type `f32` and will be converted to `f32::INFINITY`
 
 error: literal out of range for `f64`
   --> $DIR/lint-type-overflow2.rs:11:14
@@ -33,7 +33,7 @@ error: literal out of range for `f64`
 LL |     let x = -1.7976931348623159e+308_f64;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the literal `1.7976931348623159e+308_f64` does not fit into the type `f64` and will be converted to `std::f64::INFINITY`
+   = note: the literal `1.7976931348623159e+308_f64` does not fit into the type `f64` and will be converted to `f64::INFINITY`
 
 error: literal out of range for `f64`
   --> $DIR/lint-type-overflow2.rs:12:14
@@ -41,7 +41,7 @@ error: literal out of range for `f64`
 LL |     let x =  1.7976931348623159e+308_f64;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the literal `1.7976931348623159e+308_f64` does not fit into the type `f64` and will be converted to `std::f64::INFINITY`
+   = note: the literal `1.7976931348623159e+308_f64` does not fit into the type `f64` and will be converted to `f64::INFINITY`
 
 error: aborting due to 5 previous errors
 

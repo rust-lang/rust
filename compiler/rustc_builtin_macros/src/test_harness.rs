@@ -37,7 +37,7 @@ struct TestCtxt<'a> {
 pub fn inject(sess: &Session, resolver: &mut dyn ResolverExpand, krate: &mut ast::Crate) {
     let span_diagnostic = sess.diagnostic();
     let panic_strategy = sess.panic_strategy();
-    let platform_panic_strategy = sess.target.options.panic_strategy;
+    let platform_panic_strategy = sess.target.panic_strategy;
 
     // Check for #![reexport_test_harness_main = "some_name"] which gives the
     // main test function the name `some_name` without hygiene. This needs to be
@@ -130,10 +130,6 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         }
         smallvec![P(item)]
     }
-
-    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
-        // Do nothing.
-    }
 }
 
 // Beware, this is duplicated in librustc_passes/entry.rs (with
@@ -200,10 +196,6 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         };
 
         smallvec![item]
-    }
-
-    fn visit_mac(&mut self, _mac: &mut ast::MacCall) {
-        // Do nothing.
     }
 }
 
@@ -290,7 +282,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let mut test_runner = cx
         .test_runner
         .clone()
-        .unwrap_or(ecx.path(sp, vec![test_id, Ident::from_str_and_span(runner_name, sp)]));
+        .unwrap_or_else(|| ecx.path(sp, vec![test_id, Ident::from_str_and_span(runner_name, sp)]));
 
     test_runner.span = sp;
 

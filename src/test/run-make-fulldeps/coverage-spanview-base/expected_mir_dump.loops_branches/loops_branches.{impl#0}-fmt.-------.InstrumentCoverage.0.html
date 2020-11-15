@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.loops_branches/loops_branches.%7Bimpl%230%7D-fmt.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>loops_branches.{impl#0}-fmt - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 8"><span class="line">    <span class="code" style="--layer: 0">fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter) -&gt; std::fmt::Result {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code even" style="--layer: 1" title="10:12-10:16: @0[2]: _4 = const true
+10:12-10:16: @0[3]: FakeRead(ForMatchedPlace, _4)"><span class="annotation">@0⦊</span>true<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">            if </span><span><span class="code odd" style="--layer: 1" title="11:16-11:21: @3[2]: _6 = const false
+11:16-11:21: @3[3]: FakeRead(ForMatchedPlace, _6)"><span class="annotation">@1,3⦊</span>false<span class="annotation">⦉@1,3</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">                while </span><span><span class="code even" style="--layer: 1" title="12:23-12:27: @7[1]: _8 = const true
+12:23-12:27: @7[2]: FakeRead(ForMatchedPlace, _8)"><span class="annotation">@6,7⦊</span>true<span class="annotation">⦉@6,7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="12:28-13:18: @10[0]: _7 = const ()
+13:18-13:18: @10.Goto: goto -&gt; bb6"><span class="annotation">@8,10⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="12:28-13:18: @10[0]: _7 = const ()
+13:18-13:18: @10.Goto: goto -&gt; bb6">                }<span class="annotation">⦉@8,10</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            }</span><span><span class="code even" style="--layer: 1" title="14:14-14:14: @9.Goto: goto -&gt; bb11"><span class="annotation">@9⦊</span>‸<span class="annotation">⦉@9</span></span></span><span><span class="code odd" style="--layer: 1" title="14:14-14:14: @5.Goto: goto -&gt; bb11"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="15:20-15:21: @11[6]: _13 = &amp;mut (*_2)
+15:23-15:30: @11[11]: _32 = const &lt;DebugTest as Debug&gt;::fmt::promoted[1]
+15:23-15:30: @11[12]: _17 = &amp;(*_32)
+15:23-15:30: @11[13]: _16 = &amp;(*_17)
+15:23-15:30: @11[14]: _15 = move _16 as &amp;[&amp;str] (Pointer(Unsize))
+15:13-15:31: @11[20]: _23 = ()
+15:13-15:31: @11[21]: FakeRead(ForMatchedPlace, _23)
+15:13-15:31: @11[22]: _31 = const &lt;DebugTest as Debug&gt;::fmt::promoted[0]
+15:13-15:31: @11[23]: _21 = &amp;(*_31)
+15:13-15:31: @11[24]: _20 = &amp;(*_21)
+15:13-15:31: @11[25]: _19 = move _20 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+15:13-15:31: @11.Call: _14 = Arguments::new_v1(move _15, move _19) -&gt; [return: bb12, unwind: bb23]
+15:13-15:31: @12.Call: _12 = Formatter::write_fmt(move _13, move _14) -&gt; [return: bb13, unwind: bb23]"><span class="annotation">@11,12,13,14⦊</span>write!(f, "error")<span class="annotation">⦉@11,12,13,14</span></span></span><span><span class="code odd" style="--layer: 1" title="15:31-15:32: @18[1]: _25 = ((_11 as Err).0: std::fmt::Error)
+15:31-15:32: @18[4]: _28 = _25
+15:31-15:32: @18.Call: _27 = &lt;std::fmt::Error as From&lt;std::fmt::Error&gt;&gt;::from(move _28) -&gt; [return: bb19, unwind: bb23]"><span class="annotation">@16,18,19,20⦊</span>?<span class="annotation">⦉@16,18,19,20</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        } else </span><span><span class="code even" style="--layer: 1" title="16:16-17:10: @2[0]: _3 = const ()"><span class="annotation">@2⦊</span>{</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="16:16-17:10: @2[0]: _3 = const ()">        }<span class="annotation">⦉@2</span></span></span><span><span class="code odd" style="--layer: 1" title="17:10-17:10: @15.Goto: goto -&gt; bb21"><span class="annotation">@15⦊</span>‸<span class="annotation">⦉@15</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="18:12-18:14: @21[3]: _30 = ()
+18:9-18:15: @21[4]: _0 = std::result::Result::&lt;(), std::fmt::Error&gt;::Ok(move _30)"><span class="annotation">@21⦊</span>Ok(())<span class="annotation">⦉@21</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code odd" style="--layer: 1" title="19:6-19:6: @22.Return: return"><span class="annotation">@22⦊</span>‸<span class="annotation">⦉@22</span></span></span></span></div>
+</body>
+</html>

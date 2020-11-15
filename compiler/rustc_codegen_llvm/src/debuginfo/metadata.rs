@@ -29,7 +29,6 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ich::NodeIdHashingMode;
-use rustc_middle::mir::interpret::truncate;
 use rustc_middle::mir::{self, Field, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::subst::GenericArgKind;
@@ -801,6 +800,7 @@ fn file_metadata_raw(
                     let kind = match hash.kind {
                         rustc_span::SourceFileHashAlgorithm::Md5 => llvm::ChecksumKind::MD5,
                         rustc_span::SourceFileHashAlgorithm::Sha1 => llvm::ChecksumKind::SHA1,
+                        rustc_span::SourceFileHashAlgorithm::Sha256 => llvm::ChecksumKind::SHA256,
                     };
                     (kind, hex_encode(hash.hash_bytes()))
                 }
@@ -870,7 +870,7 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
 
     // When targeting MSVC, emit MSVC style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
-    let msvc_like_names = cx.tcx.sess.target.options.is_like_msvc;
+    let msvc_like_names = cx.tcx.sess.target.is_like_msvc;
 
     let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
@@ -981,7 +981,7 @@ pub fn compile_unit_metadata(
     // if multiple object files with the same `DW_AT_name` are linked together.
     // As a workaround we generate unique names for each object file. Those do
     // not correspond to an actual source file but that should be harmless.
-    if tcx.sess.target.options.is_like_osx {
+    if tcx.sess.target.is_like_osx {
         name_in_debuginfo.push("@");
         name_in_debuginfo.push(codegen_unit_name);
     }
@@ -1397,7 +1397,7 @@ fn prepare_union_metadata(
 /// on MSVC we have to use the fallback mode, because LLVM doesn't
 /// lower variant parts to PDB.
 fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
-    cx.sess().target.options.is_like_msvc
+    cx.sess().target.is_like_msvc
 }
 
 // FIXME(eddyb) maybe precompute this? Right now it's computed once
@@ -1692,7 +1692,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                 let value = (i.as_u32() as u128)
                                     .wrapping_sub(niche_variants.start().as_u32() as u128)
                                     .wrapping_add(niche_start);
-                                let value = truncate(value, tag.value.size(cx));
+                                let value = tag.value.size(cx).truncate(value);
                                 // NOTE(eddyb) do *NOT* remove this assert, until
                                 // we pass the full 128-bit value to LLVM, otherwise
                                 // truncation will be silent and remain undetected.

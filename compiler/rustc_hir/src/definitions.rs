@@ -409,7 +409,7 @@ impl Definitions {
     }
 
     pub fn expansion_that_defined(&self, id: LocalDefId) -> ExpnId {
-        self.expansions_that_defined.get(&id).copied().unwrap_or(ExpnId::root())
+        self.expansions_that_defined.get(&id).copied().unwrap_or_else(ExpnId::root)
     }
 
     pub fn parent_module_of_macro_def(&self, expn_id: ExpnId) -> DefId {

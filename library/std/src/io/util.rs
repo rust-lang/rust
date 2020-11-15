@@ -4,78 +4,7 @@
 mod tests;
 
 use crate::fmt;
-use crate::io::{self, BufRead, ErrorKind, Initializer, IoSlice, IoSliceMut, Read, Write};
-use crate::mem::MaybeUninit;
-
-/// Copies the entire contents of a reader into a writer.
-///
-/// This function will continuously read data from `reader` and then
-/// write it into `writer` in a streaming fashion until `reader`
-/// returns EOF.
-///
-/// On success, the total number of bytes that were copied from
-/// `reader` to `writer` is returned.
-///
-/// If you’re wanting to copy the contents of one file to another and you’re
-/// working with filesystem paths, see the [`fs::copy`] function.
-///
-/// [`fs::copy`]: crate::fs::copy
-///
-/// # Errors
-///
-/// This function will return an error immediately if any call to [`read`] or
-/// [`write`] returns an error. All instances of [`ErrorKind::Interrupted`] are
-/// handled by this function and the underlying operation is retried.
-///
-/// [`read`]: Read::read
-/// [`write`]: Write::write
-///
-/// # Examples
-///
-/// ```
-/// use std::io;
-///
-/// fn main() -> io::Result<()> {
-///     let mut reader: &[u8] = b"hello";
-///     let mut writer: Vec<u8> = vec![];
-///
-///     io::copy(&mut reader, &mut writer)?;
-///
-///     assert_eq!(&b"hello"[..], &writer[..]);
-///     Ok(())
-/// }
-/// ```
-#[stable(feature = "rust1", since = "1.0.0")]
-pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<u64>
-where
-    R: Read,
-    W: Write,
-{
-    let mut buf = MaybeUninit::<[u8; super::DEFAULT_BUF_SIZE]>::uninit();
-    // FIXME: #42788
-    //
-    //   - This creates a (mut) reference to a slice of
-    //     _uninitialized_ integers, which is **undefined behavior**
-    //
-    //   - Only the standard library gets to soundly "ignore" this,
-    //     based on its privileged knowledge of unstable rustc
-    //     internals;
-    unsafe {
-        reader.initializer().initialize(buf.assume_init_mut());
-    }
-
-    let mut written = 0;
-    loop {
-        let len = match reader.read(unsafe { buf.assume_init_mut() }) {
-            Ok(0) => return Ok(written),
-            Ok(len) => len,
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
-            Err(e) => return Err(e),
-        };
-        writer.write_all(unsafe { &buf.assume_init_ref()[..len] })?;
-        written += len as u64;
-    }
-}
+use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Write};
 
 /// A reader which is always at EOF.
 ///
@@ -102,7 +31,8 @@ pub struct Empty {
 /// assert!(buffer.is_empty());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn empty() -> Empty {
+#[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+pub const fn empty() -> Empty {
     Empty { _priv: () }
 }
 
@@ -159,7 +89,8 @@ pub struct Repeat {
 /// assert_eq!(buffer, [0b101, 0b101, 0b101]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn repeat(byte: u8) -> Repeat {
+#[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+pub const fn repeat(byte: u8) -> Repeat {
     Repeat { byte }
 }
 
@@ -226,7 +157,8 @@ pub struct Sink {
 /// assert_eq!(num_bytes, 5);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn sink() -> Sink {
+#[rustc_const_unstable(feature = "const_io_structs", issue = "78812")]
+pub const fn sink() -> Sink {
     Sink { _priv: () }
 }
 

@@ -260,10 +260,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ValueTypeAscription { .. } => {
                 // these do not have corresponding `Rvalue` variants,
                 // so make an operand and then return that
-                debug_assert!(match Category::of(&expr.kind) {
-                    Some(Category::Rvalue(RvalueFunc::AsRvalue)) => false,
-                    _ => true,
-                });
+                debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Rvalue(RvalueFunc::AsRvalue))));
                 let operand = unpack!(block = this.as_operand(block, scope, expr));
                 block.and(Rvalue::Use(operand))
             }

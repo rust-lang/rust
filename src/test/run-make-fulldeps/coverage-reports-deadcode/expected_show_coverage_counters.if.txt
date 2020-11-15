@@ -1,0 +1,21 @@
+Counter in file 0 8:5 -> 18:10, #1
+Counter in file 0 21:9 -> 21:16, (#1 + 0)
+Counter in file 0 22:5 -> 27:6, #2
+Counter in file 0 27:6 -> 27:7, (#1 - #2)
+Counter in file 0 28:1 -> 28:2, (#2 + (#1 - #2))
+Emitting segments for file: ../coverage/if.rs
+Combined regions:
+  8:5 -> 18:10 (count=1)
+  21:9 -> 21:16 (count=1)
+  22:5 -> 27:6 (count=1)
+  27:6 -> 27:7 (count=0)
+  28:1 -> 28:2 (count=1)
+Segment at 8:5 (count = 1), RegionEntry
+Segment at 18:10 (count = 0), Skipped
+Segment at 21:9 (count = 1), RegionEntry
+Segment at 21:16 (count = 0), Skipped
+Segment at 22:5 (count = 1), RegionEntry
+Segment at 27:6 (count = 0), RegionEntry
+Segment at 27:7 (count = 0), Skipped
+Segment at 28:1 (count = 1), RegionEntry
+Segment at 28:2 (count = 0), Skipped

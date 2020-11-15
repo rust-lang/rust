@@ -1,0 +1,19 @@
+error: for loop over a single element
+  --> $DIR/single_element_loop.rs:7:5
+   |
+LL | /     for item in &[item1] {
+LL | |         println!("{}", item);
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::single-element-loop` implied by `-D warnings`
+help: try
+   |
+LL |     {
+LL |         let item = &item1;
+LL |         println!("{}", item);
+LL |     }
+   |
+
+error: aborting due to previous error
+

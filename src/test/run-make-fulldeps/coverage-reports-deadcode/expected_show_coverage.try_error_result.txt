@@ -13,24 +13,26 @@
    13|      1|    let mut
    14|      1|        countdown = 10
    15|       |    ;
-   16|      6|    for
+   16|       |    for
    17|      6|        _
    18|       |    in
-   19|      1|        0..10
+   19|      6|        0..10
    20|       |    {
    21|      6|        countdown
    22|      6|            -= 1
-   23|       |        ;
-   24|       |        if
+   23|      6|        ;
+   24|      6|        if
    25|      6|            countdown < 5
    26|       |        {
    27|      1|            call(/*return_error=*/ true)?;
-   28|       |        }
-   29|       |        else
-   30|       |        {
-   31|      5|            call(/*return_error=*/ false)?;
-   32|       |        }
-   33|       |    }
-   34|      0|    Ok(())
-   35|      1|}
+   28|      0|            call(/*return_error=*/ false)?;
+   29|       |        }
+   30|       |        else
+   31|       |        {
+   32|      5|            call(/*return_error=*/ false)?;
+                                                       ^0
+   33|      5|        }
+   34|      5|    }
+   35|      0|    Ok(())
+   36|      1|}
 

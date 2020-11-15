@@ -732,10 +732,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let src_ty = self.cx.val_ty(val);
         let float_width = self.cx.float_width(src_ty);
         let int_width = self.cx.int_width(dest_ty);
-        match (int_width, float_width) {
-            (32, 32) | (32, 64) | (64, 32) | (64, 64) => true,
-            _ => false,
-        }
+        matches!((int_width, float_width), (32, 32) | (32, 64) | (64, 32) | (64, 64))
     }
 
     fn fptoui(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {

@@ -211,14 +211,8 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn to_const_int(self) -> ConstInt {
         assert!(self.layout.ty.is_integral());
-        ConstInt::new(
-            self.to_scalar()
-                .expect("to_const_int doesn't work on scalar pairs")
-                .assert_bits(self.layout.size),
-            self.layout.size,
-            self.layout.ty.is_signed(),
-            self.layout.ty.is_ptr_sized_integral(),
-        )
+        let int = self.to_scalar().expect("to_const_int doesn't work on scalar pairs").assert_int();
+        ConstInt::new(int, self.layout.ty.is_signed(), self.layout.ty.is_ptr_sized_integral())
     }
 }
 
@@ -262,7 +256,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
                 return Ok(Some(ImmTy {
                     // zero-sized type
-                    imm: Scalar::zst().into(),
+                    imm: Scalar::ZST.into(),
                     layout: mplace.layout,
                 }));
             }
@@ -361,7 +355,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let field_layout = op.layout.field(self, field)?;
         if field_layout.is_zst() {
-            let immediate = Scalar::zst().into();
+            let immediate = Scalar::ZST.into();
             return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });
         }
         let offset = op.layout.fields.offset(field);
@@ -446,7 +440,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = if layout.is_zst() {
             // Do not read from ZST, they might not be initialized
-            Operand::Immediate(Scalar::zst().into())
+            Operand::Immediate(Scalar::ZST.into())
         } else {
             M::access_local(&self, frame, local)?
         };
@@ -544,13 +538,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let tag_scalar = |scalar| -> InterpResult<'tcx, _> {
             Ok(match scalar {
                 Scalar::Ptr(ptr) => Scalar::Ptr(self.global_base_pointer(ptr)?),
-                Scalar::Raw { data, size } => Scalar::Raw { data, size },
+                Scalar::Int(int) => Scalar::Int(int),
             })
         };
         // Early-return cases.
         let val_val = match val.val {
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
-            ty::ConstKind::Error(_) => throw_inval!(TypeckError(ErrorReported)),
+            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
             ty::ConstKind::Unevaluated(def, substs, promoted) => {
                 let instance = self.resolve(def, substs)?;
                 return Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into());

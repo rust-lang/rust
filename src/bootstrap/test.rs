@@ -970,7 +970,8 @@ impl Step for Compiletest {
         if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
             eprintln!("\
 error: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
-help: use `--stage 1` instead
+help: to test the compiler, use `--stage 1` instead
+help: to test the standard library, use `--stage 0 library/std` instead
 note: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
             );
             std::process::exit(1);
@@ -1039,6 +1040,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--src-base").arg(builder.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
+        cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target.rustc_target_arg());
         cmd.arg("--host").arg(&*compiler.host.triple);
@@ -1203,17 +1205,6 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
             if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
-                cmd.arg("--cc")
-                    .arg(builder.cc(target))
-                    .arg("--cxx")
-                    .arg(builder.cxx(target).unwrap())
-                    .arg("--cflags")
-                    .arg(builder.cflags(target, GitRepo::Rustc).join(" "));
-                copts_passed = true;
-                if let Some(ar) = builder.ar(target) {
-                    cmd.arg("--ar").arg(ar);
-                }
-
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
                 let llvm_bin_path = llvm_config
@@ -1236,6 +1227,21 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                     .expect("Could not add LLD bin path to PATH");
                     cmd.env("PATH", new_path);
                 }
+            }
+        }
+
+        // Only pass correct values for these flags for the `run-make` suite as it
+        // requires that a C++ compiler was configured which isn't always the case.
+        if !builder.config.dry_run && matches!(suite, "run-make" | "run-make-fulldeps") {
+            cmd.arg("--cc")
+                .arg(builder.cc(target))
+                .arg("--cxx")
+                .arg(builder.cxx(target).unwrap())
+                .arg("--cflags")
+                .arg(builder.cflags(target, GitRepo::Rustc).join(" "));
+            copts_passed = true;
+            if let Some(ar) = builder.ar(target) {
+                cmd.arg("--ar").arg(ar);
             }
         }
 
@@ -1265,11 +1271,11 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         cmd.env("RUSTC_BOOTSTRAP", "1");
         builder.add_rust_test_threads(&mut cmd);
 
-        if builder.config.sanitizers {
+        if builder.config.sanitizers_enabled(target) {
             cmd.env("RUSTC_SANITIZER_SUPPORT", "1");
         }
 
-        if builder.config.profiler {
+        if builder.config.profiler_enabled(target) {
             cmd.env("RUSTC_PROFILER_SUPPORT", "1");
         }
 
@@ -1585,7 +1591,7 @@ impl Step for CrateLibrustc {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.build_triple());
 
-        for krate in builder.in_tree_crates("rustc-main") {
+        for krate in builder.in_tree_crates("rustc-main", Some(run.target)) {
             if krate.path.ends_with(&run.path) {
                 let test_kind = builder.kind.into();
 
@@ -1692,7 +1698,7 @@ impl Step for Crate {
             });
         };
 
-        for krate in builder.in_tree_crates("test") {
+        for krate in builder.in_tree_crates("test", Some(run.target)) {
             if krate.path.ends_with(&run.path) {
                 make(Mode::Std, krate);
             }

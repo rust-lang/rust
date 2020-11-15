@@ -50,6 +50,8 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 
+use std::ops::ControlFlow;
+
 mod item_bounds;
 mod type_of;
 
@@ -2060,14 +2062,14 @@ fn const_evaluatable_predicates_of<'tcx>(
             }
 
             impl<'a, 'tcx> TypeVisitor<'tcx> for TyAliasVisitor<'a, 'tcx> {
-                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> bool {
+                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> ControlFlow<()> {
                     if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
                         self.preds.insert((
                             ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),
                             self.span,
                         ));
                     }
-                    false
+                    ControlFlow::CONTINUE
                 }
             }
 
@@ -2651,7 +2653,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                             set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
                         match segments.as_slice() {
                             [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                                if !tcx.sess.target.options.has_thumb_interworking {
+                                if !tcx.sess.target.has_thumb_interworking {
                                     struct_span_err!(
                                         tcx.sess.diagnostic(),
                                         attr.span,

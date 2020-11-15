@@ -22,7 +22,9 @@ pub enum LintSource {
     Node(Symbol, Span, Option<Symbol> /* RFC 2383 reason */),
 
     /// Lint level was set by a command-line flag.
-    CommandLine(Symbol),
+    /// The provided `Level` is the level specified on the command line -
+    /// the actual level may be lower due to `--cap-lints`
+    CommandLine(Symbol, Level),
 }
 
 impl LintSource {
@@ -30,7 +32,7 @@ impl LintSource {
         match *self {
             LintSource::Default => symbol::kw::Default,
             LintSource::Node(name, _, _) => name,
-            LintSource::CommandLine(name) => name,
+            LintSource::CommandLine(name, _) => name,
         }
     }
 
@@ -38,7 +40,7 @@ impl LintSource {
         match *self {
             LintSource::Default => DUMMY_SP,
             LintSource::Node(_, span, _) => span,
-            LintSource::CommandLine(_) => DUMMY_SP,
+            LintSource::CommandLine(_, _) => DUMMY_SP,
         }
     }
 }
@@ -225,19 +227,30 @@ pub fn struct_lint_level<'s, 'd>(
         span: Option<MultiSpan>,
         decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>,
     ) {
+        // Check for future incompatibility lints and issue a stronger warning.
+        let lint_id = LintId::of(lint);
+        let future_incompatible = lint.future_incompatible;
+
+        let has_future_breakage =
+            future_incompatible.map_or(false, |incompat| incompat.future_breakage.is_some());
+
         let mut err = match (level, span) {
-            (Level::Allow, _) => {
-                return;
+            (Level::Allow, span) => {
+                if has_future_breakage {
+                    if let Some(span) = span {
+                        sess.struct_span_allow(span, "")
+                    } else {
+                        sess.struct_allow("")
+                    }
+                } else {
+                    return;
+                }
             }
             (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
             (Level::Warn, None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
             (Level::Deny | Level::Forbid, None) => sess.struct_err(""),
         };
-
-        // Check for future incompatibility lints and issue a stronger warning.
-        let lint_id = LintId::of(lint);
-        let future_incompatible = lint.future_incompatible;
 
         // If this code originates in a foreign macro, aka something that this crate
         // did not itself author, then it's likely that there's nothing this crate
@@ -268,12 +281,12 @@ pub fn struct_lint_level<'s, 'd>(
                     &format!("`#[{}({})]` on by default", level.as_str(), name),
                 );
             }
-            LintSource::CommandLine(lint_flag_val) => {
-                let flag = match level {
+            LintSource::CommandLine(lint_flag_val, orig_level) => {
+                let flag = match orig_level {
                     Level::Warn => "-W",
                     Level::Deny => "-D",
                     Level::Forbid => "-F",
-                    Level::Allow => panic!(),
+                    Level::Allow => "-A",
                 };
                 let hyphen_case_lint_name = name.replace("_", "-");
                 if lint_flag_val.as_str() == name {
@@ -321,7 +334,7 @@ pub fn struct_lint_level<'s, 'd>(
             }
         }
 
-        err.code(DiagnosticId::Lint(name));
+        err.code(DiagnosticId::Lint { name, has_future_breakage });
 
         if let Some(future_incompatible) = future_incompatible {
             const STANDARD_MESSAGE: &str = "this was previously accepted by the compiler but is being phased out; \
@@ -358,7 +371,9 @@ pub fn struct_lint_level<'s, 'd>(
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
-        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop(_)) => false,
+        ExpnKind::Inlined | ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop(_)) => {
+            false
+        }
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             // Dummy span for the `def_site` means it's an external macro.

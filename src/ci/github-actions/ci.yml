@@ -99,7 +99,7 @@ x--expand-yaml-anchors--remove:
         run: git config --global core.autocrlf false
 
       - name: checkout the source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2
 
@@ -280,7 +280,7 @@ jobs:
           - name: mingw-check
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-8
+          - name: x86_64-gnu-llvm-9
             <<: *job-linux-xl
 
           - name: x86_64-gnu-tools
@@ -300,6 +300,9 @@ jobs:
           #############################
           #   Linux/Docker builders   #
           #############################
+
+          - name: aarch64-gnu
+            <<: *job-aarch64-linux
 
           - name: arm-android
             <<: *job-linux-xl
@@ -323,9 +326,6 @@ jobs:
             <<: *job-linux-xl
 
           - name: dist-i586-gnu-i586-i686-musl
-            <<: *job-linux-xl
-
-          - name: dist-i686-freebsd
             <<: *job-linux-xl
 
           - name: dist-i686-linux
@@ -412,7 +412,7 @@ jobs:
           - name: x86_64-gnu-distcheck
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-8
+          - name: x86_64-gnu-llvm-9
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl
@@ -500,9 +500,6 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
               SCRIPT: make ci-subset-1
-              # FIXME(#59637)
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             <<: *job-windows-xl
 
           - name: x86_64-msvc-2
@@ -515,18 +512,12 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
               SCRIPT: make ci-subset-1
-              # FIXME(#59637)
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             <<: *job-windows-xl
 
           - name: i686-msvc-2
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
               SCRIPT: make ci-subset-2
-              # FIXME(#59637)
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             <<: *job-windows-xl
 
           - name: x86_64-msvc-cargo
@@ -534,9 +525,6 @@ jobs:
               SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
               VCVARS_BAT: vcvars64.bat
-              # FIXME(#59637)
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             <<: *job-windows-xl
 
           - name: x86_64-msvc-tools
@@ -566,9 +554,6 @@ jobs:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
               SCRIPT: make ci-mingw-subset-1
               CUSTOM_MINGW: 1
-              # FIXME(#59637)
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             <<: *job-windows-xl
 
           - name: i686-mingw-2
@@ -583,9 +568,6 @@ jobs:
               SCRIPT: make ci-mingw-subset-1
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-profiler
               CUSTOM_MINGW: 1
-              # FIXME(#59637)
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             <<: *job-windows-xl
 
           - name: x86_64-mingw-2
@@ -652,23 +634,6 @@ jobs:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
               SCRIPT: python x.py dist
             <<: *job-windows-xl
-
-  auto-fallible:
-    <<: *base-ci-job
-    name: auto-fallible
-    env:
-      <<: [*shared-ci-variables, *dummy-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          #############################
-          #   Linux/Docker builders   #
-          #############################
-
-          - name: aarch64-gnu
-            <<: *job-aarch64-linux
 
   try:
     <<: *base-ci-job

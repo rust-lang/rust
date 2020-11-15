@@ -257,6 +257,10 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
+        if let Some(true) = builder.config.llvm_polly {
+            enabled_llvm_projects.push("polly");
+        }
+
         // We want libxml to be disabled.
         // See https://github.com/rust-lang/rust/pull/50104
         cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
@@ -344,11 +348,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 8 {
+        if major >= 9 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=8.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=9.0\n\n", version)
 }
 
 fn configure_cmake(

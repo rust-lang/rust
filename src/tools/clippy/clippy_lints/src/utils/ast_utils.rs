@@ -107,6 +107,15 @@ pub fn eq_expr_opt(l: &Option<P<Expr>>, r: &Option<P<Expr>>) -> bool {
     both(l, r, |l, r| eq_expr(l, r))
 }
 
+pub fn eq_struct_rest(l: &StructRest, r: &StructRest) -> bool {
+    match (l, r) {
+        (StructRest::Base(lb), StructRest::Base(rb)) => eq_expr(lb, rb),
+        (StructRest::Rest(_), StructRest::Rest(_)) => true,
+        (StructRest::None, StructRest::None) => true,
+        _ => false,
+    }
+}
+
 pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
     use ExprKind::*;
     if !over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r)) {
@@ -150,7 +159,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, |l, r| eq_qself(l, r)) && eq_path(lp, rp),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         (Struct(lp, lfs, lb), Struct(rp, rfs, rb)) => {
-            eq_path(lp, rp) && eq_expr_opt(lb, rb) && unordered_over(lfs, rfs, |l, r| eq_field(l, r))
+            eq_path(lp, rp) && eq_struct_rest(lb, rb) && unordered_over(lfs, rfs, |l, r| eq_field(l, r))
         },
         _ => false,
     }
@@ -509,7 +518,7 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l), Normal(r)) => eq_path(&l.path, &r.path) && eq_mac_args(&l.args, &r.args),
+            (Normal(l, _), Normal(r, _)) => eq_path(&l.path, &r.path) && eq_mac_args(&l.args, &r.args),
             _ => false,
         }
 }

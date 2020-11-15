@@ -54,10 +54,6 @@ impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
         }
         visit::walk_ty(self, t);
     }
-
-    fn visit_mac(&mut self, mac: &'a ast::MacCall) {
-        visit::walk_mac(self, mac);
-    }
 }
 
 pub fn run(span_diagnostic: &rustc_errors::Handler, mode: &str, krate: &ast::Crate) {

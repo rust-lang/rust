@@ -7,8 +7,8 @@ fn a(_1: &mut [T]) -> &mut [T] {
     let mut _3: &mut [T];                // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
     let mut _4: &mut [T];                // in scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:6
     scope 1 (inlined <[T] as AsMut<[T]>>::as_mut) { // at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
-        debug self => _4;                // in scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-        let mut _5: &mut [T];            // in scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+        debug self => _4;                // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
+        let mut _5: &mut [T];            // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
     }
 
     bb0: {
@@ -16,10 +16,10 @@ fn a(_1: &mut [T]) -> &mut [T] {
         StorageLive(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
         StorageLive(_4);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:6
         _4 = &mut (*_1);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:6
-        StorageLive(_5);                 // scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-        _5 = &mut (*_4);                 // scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-        _3 = &mut (*_5);                 // scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
-        StorageDead(_5);                 // scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
+        StorageLive(_5);                 // scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
+        _5 = &mut (*_4);                 // scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
+        _3 = &mut (*_5);                 // scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
+        StorageDead(_5);                 // scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
         _2 = &mut (*_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15
         StorageDead(_4);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:14: 3:15
         _0 = &mut (*_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:3:5: 3:15

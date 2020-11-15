@@ -11,6 +11,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(format_args_capture)]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
@@ -64,7 +65,7 @@ use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_ne
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};
 use late::{HasGenericParams, PathSource, Rib, RibKind::*};
-use macros::{MacroRulesBinding, MacroRulesScope};
+use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
 type Res = def::Res<NodeId>;
 
@@ -100,7 +101,7 @@ impl Determinacy {
 enum Scope<'a> {
     DeriveHelpers(ExpnId),
     DeriveHelpersCompat,
-    MacroRules(MacroRulesScope<'a>),
+    MacroRules(MacroRulesScopeRef<'a>),
     CrateRoot,
     Module(Module<'a>),
     RegisteredAttrs,
@@ -133,18 +134,18 @@ enum ScopeSet {
 pub struct ParentScope<'a> {
     module: Module<'a>,
     expansion: ExpnId,
-    macro_rules: MacroRulesScope<'a>,
+    macro_rules: MacroRulesScopeRef<'a>,
     derives: &'a [ast::Path],
 }
 
 impl<'a> ParentScope<'a> {
     /// Creates a parent scope with the passed argument used as the module scope component,
     /// and other scope components set to default empty values.
-    pub fn module(module: Module<'a>) -> ParentScope<'a> {
+    pub fn module(module: Module<'a>, resolver: &Resolver<'a>) -> ParentScope<'a> {
         ParentScope {
             module,
             expansion: ExpnId::root(),
-            macro_rules: MacroRulesScope::Empty,
+            macro_rules: resolver.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty),
             derives: &[],
         }
     }
@@ -313,17 +314,17 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => {
-                    if self.span.map_or(true, |span| item.span < span) {
-                        if !item.span.from_expansion() {
-                            // don't insert between attributes and an item
-                            if item.attrs.is_empty() {
-                                self.span = Some(item.span.shrink_to_lo());
-                            } else {
-                                // find the first attribute on the item
-                                for attr in &item.attrs {
-                                    if self.span.map_or(true, |span| attr.span < span) {
-                                        self.span = Some(attr.span.shrink_to_lo());
-                                    }
+                    if self.span.map_or(true, |span| item.span < span)
+                        && !item.span.from_expansion()
+                    {
+                        // don't insert between attributes and an item
+                        if item.attrs.is_empty() {
+                            self.span = Some(item.span.shrink_to_lo());
+                        } else {
+                            // find the first attribute on the item
+                            for attr in &item.attrs {
+                                if self.span.map_or(true, |span| attr.span < span) {
+                                    self.span = Some(attr.span.shrink_to_lo());
                                 }
                             }
                         }
@@ -558,17 +559,11 @@ impl<'a> ModuleData<'a> {
 
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(&self) -> bool {
-        match self.kind {
-            ModuleKind::Def(DefKind::Mod, _, _) => true,
-            _ => false,
-        }
+        matches!(self.kind, ModuleKind::Def(DefKind::Mod, _, _))
     }
 
     fn is_trait(&self) -> bool {
-        match self.kind {
-            ModuleKind::Def(DefKind::Trait, _, _) => true,
-            _ => false,
-        }
+        matches!(self.kind, ModuleKind::Def(DefKind::Trait, _, _))
     }
 
     fn nearest_item_scope(&'a self) -> Module<'a> {
@@ -628,10 +623,7 @@ enum NameBindingKind<'a> {
 impl<'a> NameBindingKind<'a> {
     /// Is this a name binding of a import?
     fn is_import(&self) -> bool {
-        match *self {
-            NameBindingKind::Import { .. } => true,
-            _ => false,
-        }
+        matches!(*self, NameBindingKind::Import { .. })
     }
 }
 
@@ -750,13 +742,10 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_variant(&self) -> bool {
-        match self.kind {
-            NameBindingKind::Res(
+        matches!(self.kind, NameBindingKind::Res(
                 Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _),
                 _,
-            ) => true,
-            _ => false,
-        }
+            ))
     }
 
     fn is_extern_crate(&self) -> bool {
@@ -774,10 +763,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_import(&self) -> bool {
-        match self.kind {
-            NameBindingKind::Import { .. } => true,
-            _ => false,
-        }
+        matches!(self.kind, NameBindingKind::Import { .. })
     }
 
     fn is_glob_import(&self) -> bool {
@@ -788,17 +774,14 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_importable(&self) -> bool {
-        match self.res() {
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => false,
-            _ => true,
-        }
+        !matches!(
+            self.res(),
+            Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _)
+        )
     }
 
     fn is_macro_def(&self) -> bool {
-        match self.kind {
-            NameBindingKind::Res(Res::Def(DefKind::Macro(..), _), _) => true,
-            _ => false,
-        }
+        matches!(self.kind, NameBindingKind::Res(Res::Def(DefKind::Macro(..), _), _))
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
@@ -992,7 +975,10 @@ pub struct Resolver<'a> {
     invocation_parent_scopes: FxHashMap<ExpnId, ParentScope<'a>>,
     /// `macro_rules` scopes *produced* by expanding the macro invocations,
     /// include all the `macro_rules` items and other invocations generated by them.
-    output_macro_rules_scopes: FxHashMap<ExpnId, MacroRulesScope<'a>>,
+    output_macro_rules_scopes: FxHashMap<ExpnId, MacroRulesScopeRef<'a>>,
+    /// References to all `MacroRulesScope::Invocation(invoc_id)`s, used to update such scopes
+    /// when their corresponding `invoc_id`s get expanded.
+    invocation_macro_rules_scopes: FxHashMap<ExpnId, FxHashSet<MacroRulesScopeRef<'a>>>,
     /// Helper attributes that are in scope for the given expansion.
     helper_attrs: FxHashMap<ExpnId, Vec<Ident>>,
 
@@ -1060,6 +1046,9 @@ impl<'a> ResolverArenas<'a> {
     }
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
         self.name_resolutions.alloc(Default::default())
+    }
+    fn alloc_macro_rules_scope(&'a self, scope: MacroRulesScope<'a>) -> MacroRulesScopeRef<'a> {
+        PtrKey(self.dropless.alloc(Cell::new(scope)))
     }
     fn alloc_macro_rules_binding(
         &'a self,
@@ -1248,14 +1237,11 @@ impl<'a> Resolver<'a> {
         let (registered_attrs, registered_tools) =
             macros::registered_attrs_and_tools(session, &krate.attrs);
 
-        let mut invocation_parent_scopes = FxHashMap::default();
-        invocation_parent_scopes.insert(ExpnId::root(), ParentScope::module(graph_root));
-
         let features = session.features_untracked();
         let non_macro_attr =
             |mark_used| Lrc::new(SyntaxExtension::non_macro_attr(mark_used, session.edition()));
 
-        Resolver {
+        let mut resolver = Resolver {
             session,
 
             definitions,
@@ -1322,8 +1308,9 @@ impl<'a> Resolver<'a> {
             dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(session.edition())),
             dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(session.edition())),
             non_macro_attrs: [non_macro_attr(false), non_macro_attr(true)],
-            invocation_parent_scopes,
+            invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
+            invocation_macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
@@ -1350,7 +1337,12 @@ impl<'a> Resolver<'a> {
             invocation_parents,
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
-        }
+        };
+
+        let root_parent_scope = ParentScope::module(graph_root, &resolver);
+        resolver.invocation_parent_scopes.insert(ExpnId::root(), root_parent_scope);
+
+        resolver
     }
 
     pub fn next_node_id(&mut self) -> NodeId {
@@ -1380,7 +1372,7 @@ impl<'a> Resolver<'a> {
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
         ResolverOutputs {
-            definitions: definitions,
+            definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
             visibilities,
             extern_crate_map,
@@ -1720,15 +1712,14 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::DeriveHelpers(..) => Scope::DeriveHelpersCompat,
                 Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
-                Scope::MacroRules(macro_rules_scope) => match macro_rules_scope {
+                Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
                     MacroRulesScope::Binding(binding) => {
                         Scope::MacroRules(binding.parent_macro_rules_scope)
                     }
                     MacroRulesScope::Invocation(invoc_id) => Scope::MacroRules(
-                        self.output_macro_rules_scopes
-                            .get(&invoc_id)
-                            .cloned()
-                            .unwrap_or(self.invocation_parent_scopes[&invoc_id].macro_rules),
+                        self.output_macro_rules_scopes.get(&invoc_id).cloned().unwrap_or_else(
+                            || self.invocation_parent_scopes[&invoc_id].macro_rules,
+                        ),
                     ),
                     MacroRulesScope::Empty => Scope::Module(module),
                 },
@@ -1993,11 +1984,12 @@ impl<'a> Resolver<'a> {
                 // The macro is a proc macro derive
                 if let Some(def_id) = module.expansion.expn_data().macro_def_id {
                     if let Some(ext) = self.get_macro_by_def_id(def_id) {
-                        if !ext.is_builtin && ext.macro_kind() == MacroKind::Derive {
-                            if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
-                                *poisoned = Some(node_id);
-                                return module.parent;
-                            }
+                        if !ext.is_builtin
+                            && ext.macro_kind() == MacroKind::Derive
+                            && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
+                        {
+                            *poisoned = Some(node_id);
+                            return module.parent;
                         }
                     }
                 }
@@ -2391,10 +2383,7 @@ impl<'a> Resolver<'a> {
                         _ => None,
                     };
                     let (label, suggestion) = if module_res == self.graph_root.res() {
-                        let is_mod = |res| match res {
-                            Res::Def(DefKind::Mod, _) => true,
-                            _ => false,
-                        };
+                        let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
                         // Don't look up import candidates if this is a speculative resolve
                         let mut candidates = if record_used {
                             self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod)
@@ -3220,7 +3209,7 @@ impl<'a> Resolver<'a> {
             }
         };
         let module = self.get_module(module_id);
-        let parent_scope = &ParentScope::module(module);
+        let parent_scope = &ParentScope::module(module, self);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))
     }

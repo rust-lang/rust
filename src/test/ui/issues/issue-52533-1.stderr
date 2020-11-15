@@ -6,12 +6,12 @@ LL |     gimme(|x, y| y)
    |
    = note: expected reference `&Foo<'_, '_, u32>`
               found reference `&Foo<'_, '_, u32>`
-note: the anonymous lifetime #4 defined on the body at 9:11...
+note: the anonymous lifetime #3 defined on the body at 9:11...
   --> $DIR/issue-52533-1.rs:9:11
    |
 LL |     gimme(|x, y| y)
    |           ^^^^^^^^
-note: ...does not necessarily outlive the anonymous lifetime #3 defined on the body at 9:11
+note: ...does not necessarily outlive the anonymous lifetime #2 defined on the body at 9:11
   --> $DIR/issue-52533-1.rs:9:11
    |
 LL |     gimme(|x, y| y)

@@ -23,6 +23,7 @@ pub trait Receiver { }
 pub struct Result<T, E> { _a: T, _b: E }
 
 impl Copy for usize {}
+impl Copy for &usize {}
 
 #[lang = "drop_in_place"]
 pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}

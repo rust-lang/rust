@@ -28,11 +28,10 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{Index, IndexMut};
+use std::ops::{ControlFlow, Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
@@ -1586,21 +1585,10 @@ impl Debug for Statement<'_> {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
             Coverage(box ref coverage) => {
-                let rgn = &coverage.code_region;
-                match coverage.kind {
-                    CoverageKind::Counter { id, .. } => {
-                        write!(fmt, "Coverage::Counter({:?}) for {:?}", id.index(), rgn)
-                    }
-                    CoverageKind::Expression { id, lhs, op, rhs } => write!(
-                        fmt,
-                        "Coverage::Expression({:?}) = {} {} {} for {:?}",
-                        id.index(),
-                        lhs.index(),
-                        if op == coverage::Op::Add { "+" } else { "-" },
-                        rhs.index(),
-                        rgn
-                    ),
-                    CoverageKind::Unreachable => write!(fmt, "Coverage::Unreachable for {:?}", rgn),
+                if let Some(rgn) = &coverage.code_region {
+                    write!(fmt, "Coverage::{:?} for {:?}", coverage.kind, rgn)
+                } else {
+                    write!(fmt, "Coverage::{:?}", coverage.kind)
                 }
             }
             Nop => write!(fmt, "nop"),
@@ -1611,7 +1599,7 @@ impl Debug for Statement<'_> {
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct Coverage {
     pub kind: CoverageKind,
-    pub code_region: CodeRegion,
+    pub code_region: Option<CodeRegion>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1952,10 +1940,10 @@ impl<'tcx> Operand<'tcx> {
                 .layout_of(param_env_and_ty)
                 .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
                 .size;
-            let scalar_size = abi::Size::from_bytes(match val {
-                Scalar::Raw { size, .. } => size,
+            let scalar_size = match val {
+                Scalar::Int(int) => int.size(),
                 _ => panic!("Invalid scalar type {:?}", val),
-            });
+            };
             scalar_size == type_size
         });
         Operand::Constant(box Constant {
@@ -2489,7 +2477,7 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
         UserTypeProjection { base, projs }
     }
 
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<()> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }

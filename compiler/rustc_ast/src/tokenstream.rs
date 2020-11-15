@@ -22,7 +22,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use std::{iter, mem};
+use std::{fmt, iter, mem};
 
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
@@ -120,72 +120,52 @@ where
     }
 }
 
-// A cloneable callback which produces a `TokenStream`. Each clone
-// of this should produce the same `TokenStream`
-pub trait CreateTokenStream: sync::Send + sync::Sync + FnOnce() -> TokenStream {
-    // Workaround for the fact that `Clone` is not object-safe
-    fn clone_it(&self) -> Box<dyn CreateTokenStream>;
+pub trait CreateTokenStream: sync::Send + sync::Sync {
+    fn create_token_stream(&self) -> TokenStream;
 }
 
-impl<F: 'static + Clone + sync::Send + sync::Sync + FnOnce() -> TokenStream> CreateTokenStream
-    for F
-{
-    fn clone_it(&self) -> Box<dyn CreateTokenStream> {
-        Box::new(self.clone())
+impl CreateTokenStream for TokenStream {
+    fn create_token_stream(&self) -> TokenStream {
+        self.clone()
     }
 }
 
-impl Clone for Box<dyn CreateTokenStream> {
-    fn clone(&self) -> Self {
-        let val: &(dyn CreateTokenStream) = &**self;
-        val.clone_it()
-    }
-}
-
-/// A lazy version of `TokenStream`, which may defer creation
+/// A lazy version of `TokenStream`, which defers creation
 /// of an actual `TokenStream` until it is needed.
-pub type LazyTokenStream = Lrc<LazyTokenStreamInner>;
-
+/// `Box` is here only to reduce the structure size.
 #[derive(Clone)]
-pub enum LazyTokenStreamInner {
-    Lazy(Box<dyn CreateTokenStream>),
-    Ready(TokenStream),
-}
+pub struct LazyTokenStream(Lrc<Box<dyn CreateTokenStream>>);
 
-impl std::fmt::Debug for LazyTokenStreamInner {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LazyTokenStreamInner::Lazy(..) => f.debug_struct("LazyTokenStream::Lazy").finish(),
-            LazyTokenStreamInner::Ready(..) => f.debug_struct("LazyTokenStream::Ready").finish(),
-        }
+impl LazyTokenStream {
+    pub fn new(inner: impl CreateTokenStream + 'static) -> LazyTokenStream {
+        LazyTokenStream(Lrc::new(Box::new(inner)))
+    }
+
+    pub fn create_token_stream(&self) -> TokenStream {
+        self.0.create_token_stream()
     }
 }
 
-impl LazyTokenStreamInner {
-    pub fn into_token_stream(&self) -> TokenStream {
-        match self {
-            // Note that we do not cache this. If this ever becomes a performance
-            // problem, we should investigate wrapping `LazyTokenStreamInner`
-            // in a lock
-            LazyTokenStreamInner::Lazy(cb) => (cb.clone())(),
-            LazyTokenStreamInner::Ready(stream) => stream.clone(),
-        }
+impl fmt::Debug for LazyTokenStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt("LazyTokenStream", f)
     }
 }
 
-impl<S: Encoder> Encodable<S> for LazyTokenStreamInner {
-    fn encode(&self, _s: &mut S) -> Result<(), S::Error> {
-        panic!("Attempted to encode LazyTokenStream");
+impl<S: Encoder> Encodable<S> for LazyTokenStream {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        // Used by AST json printing.
+        Encodable::encode(&self.create_token_stream(), s)
     }
 }
 
-impl<D: Decoder> Decodable<D> for LazyTokenStreamInner {
+impl<D: Decoder> Decodable<D> for LazyTokenStream {
     fn decode(_d: &mut D) -> Result<Self, D::Error> {
         panic!("Attempted to decode LazyTokenStream");
     }
 }
 
-impl<CTX> HashStable<CTX> for LazyTokenStreamInner {
+impl<CTX> HashStable<CTX> for LazyTokenStream {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
         panic!("Attempted to compute stable hash for LazyTokenStream");
     }
@@ -241,7 +221,7 @@ impl TokenStream {
             }
         }
         if let Some((pos, comma, sp)) = suggestion {
-            let mut new_stream = vec![];
+            let mut new_stream = Vec::with_capacity(self.0.len() + 1);
             let parts = self.0.split_at(pos + 1);
             new_stream.extend_from_slice(parts.0);
             new_stream.push(comma);
@@ -338,6 +318,10 @@ impl TokenStream {
         }
     }
 
+    pub fn trees_ref(&self) -> CursorRef<'_> {
+        CursorRef::new(self)
+    }
+
     pub fn trees(&self) -> Cursor {
         self.clone().into_trees()
     }
@@ -428,6 +412,36 @@ impl TokenStreamBuilder {
     }
 }
 
+/// By-reference iterator over a `TokenStream`.
+#[derive(Clone)]
+pub struct CursorRef<'t> {
+    stream: &'t TokenStream,
+    index: usize,
+}
+
+impl<'t> CursorRef<'t> {
+    fn new(stream: &TokenStream) -> CursorRef<'_> {
+        CursorRef { stream, index: 0 }
+    }
+
+    fn next_with_spacing(&mut self) -> Option<&'t TreeAndSpacing> {
+        self.stream.0.get(self.index).map(|tree| {
+            self.index += 1;
+            tree
+        })
+    }
+}
+
+impl<'t> Iterator for CursorRef<'t> {
+    type Item = &'t TokenTree;
+
+    fn next(&mut self) -> Option<&'t TokenTree> {
+        self.next_with_spacing().map(|(tree, _)| tree)
+    }
+}
+
+/// Owning by-value iterator over a `TokenStream`.
+/// FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
 #[derive(Clone)]
 pub struct Cursor {
     pub stream: TokenStream,

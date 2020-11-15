@@ -262,10 +262,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode, itctx)
         };
 
-        let has_lifetimes = generic_args.args.iter().any(|arg| match arg {
-            GenericArg::Lifetime(_) => true,
-            _ => false,
-        });
+        let has_lifetimes =
+            generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
         let first_generic_span = generic_args
             .args
             .iter()
@@ -310,8 +308,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             E0726,
                             "implicit elided lifetime not allowed here"
                         );
-                        rustc_session::lint::add_elided_lifetime_in_path_suggestion(
-                            &self.sess,
+                        rustc_errors::add_elided_lifetime_in_path_suggestion(
+                            &self.sess.source_map(),
                             &mut err,
                             expected_lifetimes,
                             path_span,

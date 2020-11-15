@@ -643,6 +643,7 @@ where
     }
     if options.contains(&RenderOption::DarkTheme) {
         graph_attrs.push(r#"bgcolor="black""#);
+        graph_attrs.push(r#"fontcolor="white""#);
         content_attrs.push(r#"color="white""#);
         content_attrs.push(r#"fontcolor="white""#);
     }
@@ -653,13 +654,13 @@ where
         writeln!(w, r#"    edge[{}];"#, content_attrs_str)?;
     }
 
+    let mut text = Vec::new();
     for n in g.nodes().iter() {
         write!(w, "    ")?;
         let id = g.node_id(n);
 
         let escaped = &g.node_label(n).to_dot_string();
 
-        let mut text = Vec::new();
         write!(text, "{}", id.as_slice()).unwrap();
 
         if !options.contains(&RenderOption::NoNodeLabels) {
@@ -677,6 +678,8 @@ where
 
         writeln!(text, ";").unwrap();
         w.write_all(&text[..])?;
+
+        text.clear();
     }
 
     for e in g.edges().iter() {
@@ -687,7 +690,6 @@ where
         let source_id = g.node_id(&source);
         let target_id = g.node_id(&target);
 
-        let mut text = Vec::new();
         write!(text, "{} -> {}", source_id.as_slice(), target_id.as_slice()).unwrap();
 
         if !options.contains(&RenderOption::NoEdgeLabels) {
@@ -701,6 +703,8 @@ where
 
         writeln!(text, ";").unwrap();
         w.write_all(&text[..])?;
+
+        text.clear();
     }
 
     writeln!(w, "}}")

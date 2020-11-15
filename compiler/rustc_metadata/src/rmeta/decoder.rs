@@ -805,6 +805,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         };
 
+        let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
         SyntaxExtension::new(
             sess,
             kind,
@@ -812,7 +813,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             helper_attrs,
             self.root.edition,
             Symbol::intern(name),
-            &self.get_item_attrs(id, sess),
+            &attrs,
         )
     }
 
@@ -877,7 +878,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, index)
-                .unwrap_or(Lazy::empty())
+                .unwrap_or_else(Lazy::empty)
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
@@ -909,7 +910,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, item_id)
-                .unwrap_or(Lazy::empty())
+                .unwrap_or_else(Lazy::empty)
                 .decode(self)
                 .map(|index| self.get_variant(&self.kind(index), index, did, tcx.sess))
                 .collect()
@@ -1096,7 +1097,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         // Iterate over all children.
         let macros_only = self.dep_kind.lock().macros_only();
-        let children = self.root.tables.children.get(self, id).unwrap_or(Lazy::empty());
+        let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
         for child_index in children.decode((self, sess)) {
             if macros_only {
                 continue;
@@ -1119,7 +1120,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                             .tables
                             .children
                             .get(self, child_index)
-                            .unwrap_or(Lazy::empty());
+                            .unwrap_or_else(Lazy::empty);
                         for child_index in child_children.decode((self, sess)) {
                             let kind = self.def_kind(child_index);
                             callback(Export {
@@ -1178,7 +1179,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
-                                let attrs = self.get_item_attrs(def_id.index, sess);
+                                let attrs: Vec<_> =
+                                    self.get_item_attrs(def_id.index, sess).collect();
                                 if sess.contains_name(&attrs, sym::non_exhaustive) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
@@ -1304,8 +1306,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_variances(&self, id: DefIndex) -> Vec<ty::Variance> {
-        self.root.tables.variances.get(self, id).unwrap_or(Lazy::empty()).decode(self).collect()
+    fn get_item_variances(&'a self, id: DefIndex) -> impl Iterator<Item = ty::Variance> + 'a {
+        self.root.tables.variances.get(self, id).unwrap_or_else(Lazy::empty).decode(self)
     }
 
     fn get_ctor_kind(&self, node_id: DefIndex) -> CtorKind {
@@ -1329,7 +1331,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Vec<ast::Attribute> {
+    fn get_item_attrs(
+        &'a self,
+        node_id: DefIndex,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = ast::Attribute> + 'a {
         // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
@@ -1344,9 +1350,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .attributes
             .get(self, item_id)
-            .unwrap_or(Lazy::empty())
+            .unwrap_or_else(Lazy::empty)
             .decode((self, sess))
-            .collect::<Vec<_>>()
     }
 
     fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<Symbol>> {
@@ -1354,7 +1359,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or(Lazy::empty())
+            .unwrap_or_else(Lazy::empty)
             .decode(self)
             .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
             .collect()
@@ -1370,7 +1375,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, id)
-                .unwrap_or(Lazy::empty())
+                .unwrap_or_else(Lazy::empty)
                 .decode(self)
                 .map(|index| self.local_def_id(index)),
         )
@@ -1435,12 +1440,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_foreign_modules(&self, tcx: TyCtxt<'tcx>) -> &'tcx [ForeignModule] {
+    fn get_foreign_modules(&self, tcx: TyCtxt<'tcx>) -> Lrc<FxHashMap<DefId, ForeignModule>> {
         if self.root.is_proc_macro_crate() {
             // Proc macro crates do not have any *target* foreign modules.
-            &[]
+            Lrc::new(FxHashMap::default())
         } else {
-            tcx.arena.alloc_from_iter(self.root.foreign_modules.decode((self, tcx.sess)))
+            let modules: FxHashMap<DefId, ForeignModule> =
+                self.root.foreign_modules.decode((self, tcx.sess)).map(|m| (m.def_id, m)).collect();
+            Lrc::new(modules)
         }
     }
 

@@ -51,10 +51,11 @@ impl<'a, 'tcx> Visitor<'tcx> for FunctionItemRefChecker<'a, 'tcx> {
                         let arg_ty = args[0].ty(self.body, self.tcx);
                         for generic_inner_ty in arg_ty.walk() {
                             if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
-                                if let Some(fn_id) = FunctionItemRefChecker::is_fn_ref(inner_ty) {
-                                    let ident = self.tcx.item_name(fn_id).to_ident_string();
+                                if let Some((fn_id, fn_substs)) =
+                                    FunctionItemRefChecker::is_fn_ref(inner_ty)
+                                {
                                     let span = self.nth_arg_span(&args, 0);
-                                    self.emit_lint(ident, fn_id, source_info, span);
+                                    self.emit_lint(fn_id, fn_substs, source_info, span);
                                 }
                             }
                         }
@@ -66,6 +67,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FunctionItemRefChecker<'a, 'tcx> {
         }
         self.super_terminator(terminator, location);
     }
+
     /// Emits a lint for function references formatted with `fmt::Pointer::fmt` by macros. These
     /// cases are handled as operands instead of call terminators to avoid any dependence on
     /// unstable, internal formatting details like whether `fmt` is called directly or not.
@@ -76,13 +78,12 @@ impl<'a, 'tcx> Visitor<'tcx> for FunctionItemRefChecker<'a, 'tcx> {
             if let ty::FnDef(def_id, substs_ref) = *op_ty.kind() {
                 if self.tcx.is_diagnostic_item(sym::pointer_trait_fmt, def_id) {
                     let param_ty = substs_ref.type_at(0);
-                    if let Some(fn_id) = FunctionItemRefChecker::is_fn_ref(param_ty) {
+                    if let Some((fn_id, fn_substs)) = FunctionItemRefChecker::is_fn_ref(param_ty) {
                         // The operand's ctxt wouldn't display the lint since it's inside a macro so
                         // we have to use the callsite's ctxt.
                         let callsite_ctxt = source_info.span.source_callsite().ctxt();
                         let span = source_info.span.with_ctxt(callsite_ctxt);
-                        let ident = self.tcx.item_name(fn_id).to_ident_string();
-                        self.emit_lint(ident, fn_id, source_info, span);
+                        self.emit_lint(fn_id, fn_substs, source_info, span);
                     }
                 }
             }
@@ -115,10 +116,11 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
                             if TyS::same_type(inner_ty, bound_ty) {
                                 // Do a substitution using the parameters from the callsite
                                 let subst_ty = inner_ty.subst(self.tcx, substs_ref);
-                                if let Some(fn_id) = FunctionItemRefChecker::is_fn_ref(subst_ty) {
-                                    let ident = self.tcx.item_name(fn_id).to_ident_string();
+                                if let Some((fn_id, fn_substs)) =
+                                    FunctionItemRefChecker::is_fn_ref(subst_ty)
+                                {
                                     let span = self.nth_arg_span(args, arg_num);
-                                    self.emit_lint(ident, fn_id, source_info, span);
+                                    self.emit_lint(fn_id, fn_substs, source_info, span);
                                 }
                             }
                         }
@@ -127,6 +129,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
             }
         }
     }
+
     /// If the given predicate is the trait `fmt::Pointer`, returns the bound parameter type.
     fn is_pointer_trait(&self, bound: &PredicateAtom<'tcx>) -> Option<Ty<'tcx>> {
         if let ty::PredicateAtom::Trait(predicate, _) = bound {
@@ -139,22 +142,26 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
             None
         }
     }
+
     /// If a type is a reference or raw pointer to the anonymous type of a function definition,
-    /// returns that function's `DefId`.
-    fn is_fn_ref(ty: Ty<'tcx>) -> Option<DefId> {
+    /// returns that function's `DefId` and `SubstsRef`.
+    fn is_fn_ref(ty: Ty<'tcx>) -> Option<(DefId, SubstsRef<'tcx>)> {
         let referent_ty = match ty.kind() {
             ty::Ref(_, referent_ty, _) => Some(referent_ty),
             ty::RawPtr(ty_and_mut) => Some(&ty_and_mut.ty),
             _ => None,
         };
         referent_ty
-            .map(
-                |ref_ty| {
-                    if let ty::FnDef(def_id, _) = *ref_ty.kind() { Some(def_id) } else { None }
-                },
-            )
+            .map(|ref_ty| {
+                if let ty::FnDef(def_id, substs_ref) = *ref_ty.kind() {
+                    Some((def_id, substs_ref))
+                } else {
+                    None
+                }
+            })
             .unwrap_or(None)
     }
+
     fn nth_arg_span(&self, args: &Vec<Operand<'tcx>>, n: usize) -> Span {
         match &args[n] {
             Operand::Copy(place) | Operand::Move(place) => {
@@ -163,7 +170,14 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
             Operand::Constant(constant) => constant.span,
         }
     }
-    fn emit_lint(&self, ident: String, fn_id: DefId, source_info: SourceInfo, span: Span) {
+
+    fn emit_lint(
+        &self,
+        fn_id: DefId,
+        fn_substs: SubstsRef<'tcx>,
+        source_info: SourceInfo,
+        span: Span,
+    ) {
         let lint_root = self.body.source_scopes[source_info.scope]
             .local_data
             .as_ref()
@@ -180,6 +194,10 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
                 s
             }
         };
+        let ident = self.tcx.item_name(fn_id).to_ident_string();
+        let ty_params = fn_substs.types().map(|ty| format!("{}", ty));
+        let const_params = fn_substs.consts().map(|c| format!("{}", c));
+        let params = ty_params.chain(const_params).collect::<Vec<String>>().join(", ");
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };
@@ -190,7 +208,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
                     &format!("cast `{}` to obtain a function pointer", ident),
                     format!(
                         "{} as {}{}fn({}{}){}",
-                        ident,
+                        if params.is_empty() { ident } else { format!("{}::<{}>", ident, params) },
                         unsafety,
                         abi,
                         vec!["_"; num_args].join(", "),

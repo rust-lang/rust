@@ -57,7 +57,7 @@ pub(crate) unsafe fn codegen(
         let name = format!("__rust_{}", method.name);
         let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
 
-        if tcx.sess.target.options.default_hidden_visibility {
+        if tcx.sess.target.default_hidden_visibility {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
         if tcx.sess.must_emit_unwind_tables() {
@@ -93,12 +93,12 @@ pub(crate) unsafe fn codegen(
     let args = [usize, usize]; // size, align
 
     let ty = llvm::LLVMFunctionType(void, args.as_ptr(), args.len() as c_uint, False);
-    let name = format!("__rust_alloc_error_handler");
+    let name = "__rust_alloc_error_handler".to_string();
     let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
     // -> ! DIFlagNoReturn
     llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
 
-    if tcx.sess.target.options.default_hidden_visibility {
+    if tcx.sess.target.default_hidden_visibility {
         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
     }
     if tcx.sess.must_emit_unwind_tables() {

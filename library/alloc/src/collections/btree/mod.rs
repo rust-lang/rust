@@ -1,3 +1,4 @@
+mod append;
 mod borrow;
 pub mod map;
 mod mem;
@@ -49,6 +50,7 @@ impl DeterministicRng {
         DeterministicRng { x: 0x193a6754, y: 0xa8a7d469, z: 0x97830e05, w: 0x113ba7bb }
     }
 
+    /// Guarantees that the first 70029 results are unique.
     fn next(&mut self) -> u32 {
         let x = self.x;
         let t = x ^ (x << 11);

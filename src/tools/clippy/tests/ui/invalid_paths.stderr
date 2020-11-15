@@ -1,0 +1,16 @@
+error: invalid path
+  --> $DIR/invalid_paths.rs:17:5
+   |
+LL |     pub const BAD_CRATE_PATH: [&str; 2] = ["bad", "path"];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::clippy-lints-internal` implied by `-D warnings`
+
+error: invalid path
+  --> $DIR/invalid_paths.rs:20:5
+   |
+LL |     pub const BAD_MOD_PATH: [&str; 2] = ["std", "xxx"];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

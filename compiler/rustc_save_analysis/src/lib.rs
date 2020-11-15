@@ -799,7 +799,9 @@ impl<'tcx> SaveContext<'tcx> {
 
             // These are not macros.
             // FIXME(eddyb) maybe there is a way to handle them usefully?
-            ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return None,
+            ExpnKind::Inlined | ExpnKind::Root | ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => {
+                return None;
+            }
         };
 
         let callee_span = self.span_from_span(callee.def_site);

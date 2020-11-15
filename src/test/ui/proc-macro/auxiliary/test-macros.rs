@@ -112,6 +112,12 @@ pub fn print_attr(_: TokenStream, input: TokenStream) -> TokenStream {
     print_helper(input, "ATTR")
 }
 
+#[proc_macro_attribute]
+pub fn print_attr_args(args: TokenStream, input: TokenStream) -> TokenStream {
+    print_helper(args, "ATTR_ARGS");
+    input
+}
+
 #[proc_macro_derive(Print, attributes(print_helper))]
 pub fn print_derive(input: TokenStream) -> TokenStream {
     print_helper(input, "DERIVE");

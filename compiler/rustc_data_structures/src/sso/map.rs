@@ -395,7 +395,7 @@ where
     V: Copy,
 {
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
-        self.extend(iter.into_iter().map(|(k, v)| (k.clone(), v.clone())))
+        self.extend(iter.into_iter().map(|(k, v)| (*k, *v)))
     }
 
     #[inline]
@@ -451,7 +451,7 @@ impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
     fn into_iter(self) -> Self::IntoIter {
         match self {
             SsoHashMap::Array(array) => EitherIter::Left(array.into_iter().map(adapt_array_ref_it)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.into_iter()),
+            SsoHashMap::Map(map) => EitherIter::Right(map.iter()),
         }
     }
 }
@@ -469,7 +469,7 @@ impl<'a, K, V> IntoIterator for &'a mut SsoHashMap<K, V> {
     fn into_iter(self) -> Self::IntoIter {
         match self {
             SsoHashMap::Array(array) => EitherIter::Left(array.into_iter().map(adapt_array_mut_it)),
-            SsoHashMap::Map(map) => EitherIter::Right(map.into_iter()),
+            SsoHashMap::Map(map) => EitherIter::Right(map.iter_mut()),
         }
     }
 }

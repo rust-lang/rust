@@ -1359,11 +1359,7 @@ impl<'a> Parser<'a> {
         (self.token == token::Lt && // `foo:<bar`, likely a typoed turbofish.
             self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident()))
             || self.token.is_ident() &&
-            match node {
-                // `foo::` → `foo:` or `foo.bar::` → `foo.bar:`
-                ast::ExprKind::Path(..) | ast::ExprKind::Field(..) => true,
-                _ => false,
-            } &&
+            matches!(node, ast::ExprKind::Path(..) | ast::ExprKind::Field(..)) &&
             !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
             self.look_ahead(1, |t| t == &token::OpenDelim(token::Paren))
             || self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace)) // `foo:bar {`

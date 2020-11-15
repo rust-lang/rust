@@ -14,10 +14,10 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
     scope 1 {
         debug x => _3;                   // in scope 1 at $DIR/inline-closure-captures.rs:11:9: 11:10
         scope 2 (inlined foo::<T>::{closure#0}) { // at $DIR/inline-closure-captures.rs:12:5: 12:9
-            debug _q => _9;              // in scope 2 at $DIR/inline-closure-captures.rs:11:14: 11:16
-            debug q => (*((*_6).0: &i32)); // in scope 2 at $DIR/inline-closure-captures.rs:10:23: 10:24
-            debug t => (*((*_6).1: &T)); // in scope 2 at $DIR/inline-closure-captures.rs:10:17: 10:18
-            let mut _10: T;              // in scope 2 at $DIR/inline-closure-captures.rs:11:22: 11:23
+            debug _q => _9;              // in scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
+            debug q => (*((*_6).0: &i32)); // in scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
+            debug t => (*((*_6).1: &T)); // in scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
+            let mut _10: T;              // in scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
         }
     }
 
@@ -39,11 +39,11 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         (_7.0: i32) = move _8;           // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         StorageLive(_9);                 // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         _9 = move (_7.0: i32);           // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
-        (_0.0: i32) = (*((*_6).0: &i32)); // scope 2 at $DIR/inline-closure-captures.rs:11:19: 11:20
-        StorageLive(_10);                // scope 2 at $DIR/inline-closure-captures.rs:11:22: 11:23
-        _10 = (*((*_6).1: &T));          // scope 2 at $DIR/inline-closure-captures.rs:11:22: 11:23
-        (_0.1: T) = move _10;            // scope 2 at $DIR/inline-closure-captures.rs:11:18: 11:24
-        StorageDead(_10);                // scope 2 at $DIR/inline-closure-captures.rs:11:23: 11:24
+        (_0.0: i32) = (*((*_6).0: &i32)); // scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
+        StorageLive(_10);                // scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
+        _10 = (*((*_6).1: &T));          // scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
+        (_0.1: T) = move _10;            // scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
+        StorageDead(_10);                // scope 2 at $DIR/inline-closure-captures.rs:12:5: 12:9
         StorageDead(_9);                 // scope 1 at $DIR/inline-closure-captures.rs:12:5: 12:9
         StorageDead(_8);                 // scope 1 at $DIR/inline-closure-captures.rs:12:8: 12:9
         StorageDead(_7);                 // scope 1 at $DIR/inline-closure-captures.rs:12:8: 12:9

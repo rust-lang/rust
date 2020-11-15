@@ -51,4 +51,13 @@ jobs:
         export COMPILE_RUNS=2
         export RUN_RUNS=2
 
-        ./test.sh --release
+        ./test.sh
+
+    - name: Package prebuilt cg_clif
+      run: tar cvfJ cg_clif.tar.xz build
+
+    - name: Upload prebuilt cg_clif
+      uses: actions/upload-artifact@v2
+      with:
+        name: cg_clif-${{ runner.os }}
+        path: cg_clif.tar.xz

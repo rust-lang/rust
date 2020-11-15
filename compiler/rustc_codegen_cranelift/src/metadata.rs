@@ -32,7 +32,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
                         .expect("Rlib metadata file too big to load into memory."),
                 );
                 ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
-                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
                 return Ok(rustc_erase_owner!(buf.map_owner_box()));
             }
         }
@@ -50,7 +50,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
             .data()
             .map_err(|e| format!("failed to read .rustc section: {:?}", e))?
             .to_owned();
-        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
         Ok(rustc_erase_owner!(buf.map_owner_box()))
     }
 }
@@ -102,7 +102,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(
     product.add_rustc_section(
         rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),
         compressed,
-        tcx.sess.target.options.is_like_osx,
+        tcx.sess.target.is_like_osx,
     );
 
     metadata

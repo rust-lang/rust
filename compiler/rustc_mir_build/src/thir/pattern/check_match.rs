@@ -69,6 +69,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
             hir::LocalSource::ForLoopDesugar => ("`for` loop binding", None),
             hir::LocalSource::AsyncFn => ("async fn binding", None),
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
+            hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
         self.check_irrefutable(&loc.pat, msg, sp);
         self.check_patterns(&loc.pat);
@@ -389,8 +390,11 @@ fn check_arms<'p, 'tcx>(
                     hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                 }
             }
-            Useful(unreachable_subpatterns) => {
-                for span in unreachable_subpatterns {
+            Useful(unreachables) => {
+                let mut unreachables: Vec<_> = unreachables.into_iter().flatten().collect();
+                // Emit lints in the order in which they occur in the file.
+                unreachables.sort_unstable();
+                for span in unreachables {
                     unreachable_pattern(cx.tcx, span, id, None);
                 }
             }

@@ -158,10 +158,7 @@ impl Annotation {
 
     pub fn takes_space(&self) -> bool {
         // Multiline annotations always have to keep vertical space.
-        match self.annotation_type {
-            AnnotationType::MultilineStart(_) | AnnotationType::MultilineEnd(_) => true,
-            _ => false,
-        }
+        matches!(self.annotation_type, AnnotationType::MultilineStart(_) | AnnotationType::MultilineEnd(_))
     }
 }
 

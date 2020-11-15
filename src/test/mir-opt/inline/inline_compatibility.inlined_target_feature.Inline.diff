@@ -2,24 +2,24 @@
 + // MIR for `inlined_target_feature` after Inline
   
   fn inlined_target_feature() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:13:40: 13:40
-      let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:14:5: 14:21
-+     scope 1 (inlined target_feature) {   // at $DIR/inline-compatibility.rs:14:5: 14:21
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-compatibility.rs:12:40: 12:40
+      let _1: ();                          // in scope 0 at $DIR/inline-compatibility.rs:13:5: 13:21
++     scope 1 (inlined target_feature) {   // at $DIR/inline-compatibility.rs:13:5: 13:21
 +     }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:14:5: 14:21
--         _1 = target_feature() -> bb1;    // scope 0 at $DIR/inline-compatibility.rs:14:5: 14:21
+          StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:13:5: 13:21
+-         _1 = target_feature() -> bb1;    // scope 0 at $DIR/inline-compatibility.rs:13:5: 13:21
 -                                          // mir::Constant
--                                          // + span: $DIR/inline-compatibility.rs:14:5: 14:19
+-                                          // + span: $DIR/inline-compatibility.rs:13:5: 13:19
 -                                          // + literal: Const { ty: unsafe fn() {target_feature}, val: Value(Scalar(<ZST>)) }
 -     }
 - 
 -     bb1: {
-+         _1 = const ();                   // scope 1 at $DIR/inline-compatibility.rs:35:32: 35:34
-          StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:14:21: 14:22
-          _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:13:40: 15:2
-          return;                          // scope 0 at $DIR/inline-compatibility.rs:15:2: 15:2
++         _1 = const ();                   // scope 1 at $DIR/inline-compatibility.rs:13:5: 13:21
+          StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:13:21: 13:22
+          _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:12:40: 14:2
+          return;                          // scope 0 at $DIR/inline-compatibility.rs:14:2: 14:2
       }
   }
   

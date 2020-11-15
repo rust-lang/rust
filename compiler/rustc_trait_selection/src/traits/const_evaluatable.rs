@@ -24,6 +24,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 use std::cmp;
+use std::ops::ControlFlow;
 
 /// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
@@ -86,9 +87,11 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
 
-                        false
+                        ControlFlow::CONTINUE
                     }
-                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => false,
+                    Node::Binop(_, _, _) | Node::UnaryOp(_, _) | Node::FunctionCall(_, _) => {
+                        ControlFlow::CONTINUE
+                    }
                 });
 
                 match failure_kind {
@@ -509,6 +512,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 block = &self.body.basic_blocks()[next];
             } else {
                 assert_eq!(self.locals[mir::RETURN_PLACE], self.nodes.last().unwrap());
+                // `AbstractConst`s should not contain any promoteds as they require references which
+                // are not allowed.
+                assert!(!self.nodes.iter().any(|n| matches!(
+                    n.node,
+                    Node::Leaf(ty::Const { val: ty::ConstKind::Unevaluated(_, _, Some(_)), ty: _ })
+                )));
+
                 self.nodes[self.locals[mir::RETURN_PLACE]].used = true;
                 if let Some(&unused) = self.nodes.iter().find(|n| !n.used) {
                     self.error(Some(unused.span), "dead code")?;
@@ -564,29 +574,33 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // on `ErrorReported`.
 }
 
-// FIXME: Use `std::ops::ControlFlow` instead of `bool` here.
-pub fn walk_abstract_const<'tcx, F>(tcx: TyCtxt<'tcx>, ct: AbstractConst<'tcx>, mut f: F) -> bool
+pub fn walk_abstract_const<'tcx, F>(
+    tcx: TyCtxt<'tcx>,
+    ct: AbstractConst<'tcx>,
+    mut f: F,
+) -> ControlFlow<()>
 where
-    F: FnMut(Node<'tcx>) -> bool,
+    F: FnMut(Node<'tcx>) -> ControlFlow<()>,
 {
     fn recurse<'tcx>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
-        f: &mut dyn FnMut(Node<'tcx>) -> bool,
-    ) -> bool {
+        f: &mut dyn FnMut(Node<'tcx>) -> ControlFlow<()>,
+    ) -> ControlFlow<()> {
         let root = ct.root();
-        f(root)
-            || match root {
-                Node::Leaf(_) => false,
-                Node::Binop(_, l, r) => {
-                    recurse(tcx, ct.subtree(l), f) || recurse(tcx, ct.subtree(r), f)
-                }
-                Node::UnaryOp(_, v) => recurse(tcx, ct.subtree(v), f),
-                Node::FunctionCall(func, args) => {
-                    recurse(tcx, ct.subtree(func), f)
-                        || args.iter().any(|&arg| recurse(tcx, ct.subtree(arg), f))
-                }
+        f(root)?;
+        match root {
+            Node::Leaf(_) => ControlFlow::CONTINUE,
+            Node::Binop(_, l, r) => {
+                recurse(tcx, ct.subtree(l), f)?;
+                recurse(tcx, ct.subtree(r), f)
             }
+            Node::UnaryOp(_, v) => recurse(tcx, ct.subtree(v), f),
+            Node::FunctionCall(func, args) => {
+                recurse(tcx, ct.subtree(func), f)?;
+                args.iter().try_for_each(|&arg| recurse(tcx, ct.subtree(arg), f))
+            }
+        }
     }
 
     recurse(tcx, ct, &mut f)
@@ -602,6 +616,10 @@ pub(super) fn try_unify<'tcx>(
         (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
             let a_ct = a_ct.subst(tcx, a.substs);
             let b_ct = b_ct.subst(tcx, b.substs);
+            if a_ct.ty != b_ct.ty {
+                return false;
+            }
+
             match (a_ct.val, b_ct.val) {
                 // We can just unify errors with everything to reduce the amount of
                 // emitted errors here.
@@ -614,6 +632,12 @@ pub(super) fn try_unify<'tcx>(
                 // we do not want to use `assert_eq!(a(), b())` to infer that `N` and `M` have to be `1`. This
                 // means that we only allow inference variables if they are equal.
                 (ty::ConstKind::Infer(a_val), ty::ConstKind::Infer(b_val)) => a_val == b_val,
+                // We may want to instead recurse into unevaluated constants here. That may require some
+                // care to prevent infinite recursion, so let's just ignore this for now.
+                (
+                    ty::ConstKind::Unevaluated(a_def, a_substs, None),
+                    ty::ConstKind::Unevaluated(b_def, b_substs, None),
+                ) => a_def == b_def && a_substs == b_substs,
                 // FIXME(const_evaluatable_checked): We may want to either actually try
                 // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
                 // this, for now we just return false here.

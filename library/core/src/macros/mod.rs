@@ -318,7 +318,7 @@ macro_rules! r#try {
 
 /// Writes formatted data into a buffer.
 ///
-/// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
+/// This macro accepts a 'writer', a format string, and a list of arguments. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.
 /// The writer may be any value with a `write_fmt` method; generally this comes from an
 /// implementation of either the [`fmt::Write`] or the [`io::Write`] trait. The macro
@@ -327,7 +327,7 @@ macro_rules! r#try {
 ///
 /// See [`std::fmt`] for more information on the format string syntax.
 ///
-/// [`std::fmt`]: crate::fmt
+/// [`std::fmt`]: ../std/fmt/index.html
 /// [`fmt::Write`]: crate::fmt::Write
 /// [`io::Write`]: ../std/io/trait.Write.html
 /// [`fmt::Result`]: crate::fmt::Result

@@ -156,24 +156,13 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
-        TokenTree::Token(token) => match token.kind {
-            token::Comma => false,
-            _ => true,
-        },
-        TokenTree::Delimited(_, DelimToken::Paren, _) => match prev {
-            TokenTree::Token(token) => match token.kind {
-                token::Ident(_, _) => false,
-                _ => true,
-            },
-            _ => true,
-        },
-        TokenTree::Delimited(_, DelimToken::Bracket, _) => match prev {
-            TokenTree::Token(token) => match token.kind {
-                token::Pound => false,
-                _ => true,
-            },
-            _ => true,
-        },
+        TokenTree::Token(token) => token.kind != token::Comma,
+        TokenTree::Delimited(_, DelimToken::Paren, _) => {
+            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
+        }
+        TokenTree::Delimited(_, DelimToken::Bracket, _) => {
+            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }))
+        }
         TokenTree::Delimited(..) => true,
     }
 }
@@ -437,7 +426,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
         self.maybe_print_comment(attr.span.lo());
         match attr.kind {
-            ast::AttrKind::Normal(ref item) => {
+            ast::AttrKind::Normal(ref item, _) => {
                 match attr.style {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
@@ -650,13 +639,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
         if !self.is_beginning_of_line() {
             self.break_offset(n, off)
-        } else {
-            if off != 0 && self.last_token().is_hardbreak_tok() {
-                // We do something pretty sketchy here: tuck the nonzero
-                // offset-adjustment we were going to deposit along with the
-                // break into the previous hardbreak.
-                self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
-            }
+        } else if off != 0 && self.last_token().is_hardbreak_tok() {
+            // We do something pretty sketchy here: tuck the nonzero
+            // offset-adjustment we were going to deposit along with the
+            // break into the previous hardbreak.
+            self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
         }
     }
 
@@ -1742,7 +1729,7 @@ impl<'a> State<'a> {
         &mut self,
         path: &ast::Path,
         fields: &[ast::Field],
-        wth: &Option<P<ast::Expr>>,
+        rest: &ast::StructRest,
         attrs: &[ast::Attribute],
     ) {
         self.print_path(path, true, 0);
@@ -1763,22 +1750,21 @@ impl<'a> State<'a> {
             },
             |f| f.span,
         );
-        match *wth {
-            Some(ref expr) => {
+        match rest {
+            ast::StructRest::Base(_) | ast::StructRest::Rest(_) => {
                 self.ibox(INDENT_UNIT);
                 if !fields.is_empty() {
                     self.s.word(",");
                     self.s.space();
                 }
                 self.s.word("..");
-                self.print_expr(expr);
+                if let ast::StructRest::Base(ref expr) = *rest {
+                    self.print_expr(expr);
+                }
                 self.end();
             }
-            _ => {
-                if !fields.is_empty() {
-                    self.s.word(",")
-                }
-            }
+            ast::StructRest::None if !fields.is_empty() => self.s.word(","),
+            _ => {}
         }
         self.s.word("}");
     }
@@ -1904,8 +1890,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(element, count, attrs);
             }
-            ast::ExprKind::Struct(ref path, ref fields, ref wth) => {
-                self.print_expr_struct(path, &fields[..], wth, attrs);
+            ast::ExprKind::Struct(ref path, ref fields, ref rest) => {
+                self.print_expr_struct(path, &fields[..], rest, attrs);
             }
             ast::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(&exprs[..], attrs);
@@ -2341,11 +2327,12 @@ impl<'a> State<'a> {
             self.print_path(path, false, depth);
         }
         self.s.word(">");
-        self.s.word("::");
-        let item_segment = path.segments.last().unwrap();
-        self.print_ident(item_segment.ident);
-        if let Some(ref args) = item_segment.args {
-            self.print_generic_args(args, colons_before_params)
+        for item_segment in &path.segments[qself.position..] {
+            self.s.word("::");
+            self.print_ident(item_segment.ident);
+            if let Some(ref args) = item_segment.args {
+                self.print_generic_args(args, colons_before_params)
+            }
         }
     }
 

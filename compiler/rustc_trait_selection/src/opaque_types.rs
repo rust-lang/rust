@@ -15,6 +15,8 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::config::nightly_options;
 use rustc_span::Span;
 
+use std::ops::ControlFlow;
+
 pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 
 /// Information about the opaque types whose values we
@@ -691,26 +693,26 @@ impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ControlFlow<()> {
         t.as_ref().skip_binder().visit_with(self);
-        false // keep visiting
+        ControlFlow::CONTINUE
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<()> {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => false,
+            ty::ReLateBound(_, _) => ControlFlow::CONTINUE,
             _ => {
                 (self.op)(r);
-                false
+                ControlFlow::CONTINUE
             }
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
         // We're only interested in types involving regions
         if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
-            return false; // keep visiting
+            return ControlFlow::CONTINUE;
         }
 
         match ty.kind() {
@@ -745,7 +747,7 @@ where
             }
         }
 
-        false
+        ControlFlow::CONTINUE
     }
 }
 

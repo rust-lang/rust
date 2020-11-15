@@ -148,7 +148,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     is_collecting_in_band_lifetimes: bool,
 
     /// Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
-    /// When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
+    /// When `is_collecting_in_band_lifetimes` is true, each lifetime is checked
     /// against this list to see if it is already in-scope, or if a definition
     /// needs to be created for it.
     ///
@@ -257,7 +257,7 @@ enum ImplTraitPosition {
     /// Disallowed in `let` / `const` / `static` bindings.
     Binding,
 
-    /// All other posiitons.
+    /// All other positions.
     Other,
 }
 
@@ -363,7 +363,7 @@ enum ParenthesizedGenericArgs {
 ///   elided bounds follow special rules. Note that this only covers
 ///   cases where *nothing* is written; the `'_` in `Box<dyn Foo +
 ///   '_>` is a case of "modern" elision.
-/// - **Deprecated** -- this coverse cases like `Ref<T>`, where the lifetime
+/// - **Deprecated** -- this covers cases like `Ref<T>`, where the lifetime
 ///   parameter to ref is completely elided. `Ref<'_, T>` would be the modern,
 ///   non-deprecated equivalent.
 ///
@@ -490,10 +490,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let count = generics
                             .params
                             .iter()
-                            .filter(|param| match param.kind {
-                                ast::GenericParamKind::Lifetime { .. } => true,
-                                _ => false,
-                            })
+                            .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
                             .count();
                         self.lctx.type_def_lifetime_params.insert(def_id.to_def_id(), count);
                     }
@@ -969,17 +966,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
+        // Tokens are also not needed after macro expansion and parsing.
         let kind = match attr.kind {
-            AttrKind::Normal(ref item) => AttrKind::Normal(AttrItem {
-                path: item.path.clone(),
-                args: self.lower_mac_args(&item.args),
-                tokens: None,
-            }),
+            AttrKind::Normal(ref item, _) => AttrKind::Normal(
+                AttrItem {
+                    path: item.path.clone(),
+                    args: self.lower_mac_args(&item.args),
+                    tokens: None,
+                },
+                None,
+            ),
             AttrKind::DocComment(comment_kind, data) => AttrKind::DocComment(comment_kind, data),
         };
 
-        // Tokens aren't needed after macro expansion and parsing
-        Attribute { kind, id: attr.id, style: attr.style, span: attr.span, tokens: None }
+        Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
     }
 
     fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {
@@ -2011,17 +2011,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
-        let mut generic_args: Vec<_> = lifetime_params[..input_lifetimes_count]
-            .iter()
-            .map(|&(span, hir_name)| {
+        let mut generic_args = Vec::with_capacity(lifetime_params.len());
+        generic_args.extend(lifetime_params[..input_lifetimes_count].iter().map(
+            |&(span, hir_name)| {
                 // Input lifetime like `'a` or `'1`:
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
                     span,
                     name: hir::LifetimeName::Param(hir_name),
                 })
-            })
-            .collect();
+            },
+        ));
         generic_args.extend(lifetime_params[input_lifetimes_count..].iter().map(|&(span, _)|
             // Output lifetime like `'_`.
             GenericArg::Lifetime(hir::Lifetime {
@@ -2312,29 +2312,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_block_noalloc(&mut self, b: &Block, targeted_by_break: bool) -> hir::Block<'hir> {
-        let mut stmts = vec![];
         let mut expr: Option<&'hir _> = None;
 
-        for (index, stmt) in b.stmts.iter().enumerate() {
-            if index == b.stmts.len() - 1 {
-                if let StmtKind::Expr(ref e) = stmt.kind {
-                    expr = Some(self.lower_expr(e));
-                } else {
-                    stmts.extend(self.lower_stmt(stmt));
-                }
-            } else {
-                stmts.extend(self.lower_stmt(stmt));
-            }
-        }
+        let stmts = self.arena.alloc_from_iter(
+            b.stmts
+                .iter()
+                .enumerate()
+                .filter_map(|(index, stmt)| {
+                    if index == b.stmts.len() - 1 {
+                        if let StmtKind::Expr(ref e) = stmt.kind {
+                            expr = Some(self.lower_expr(e));
+                            None
+                        } else {
+                            Some(self.lower_stmt(stmt))
+                        }
+                    } else {
+                        Some(self.lower_stmt(stmt))
+                    }
+                })
+                .flatten(),
+        );
+        let rules = self.lower_block_check_mode(&b.rules);
+        let hir_id = self.lower_node_id(b.id);
 
-        hir::Block {
-            hir_id: self.lower_node_id(b.id),
-            stmts: self.arena.alloc_from_iter(stmts),
-            expr,
-            rules: self.lower_block_check_mode(&b.rules),
-            span: b.span,
-            targeted_by_break,
-        }
+        hir::Block { hir_id, stmts, expr, rules, span: b.span, targeted_by_break }
     }
 
     /// Lowers a block directly to an expression, presuming that it
@@ -2534,6 +2535,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir_id,
                 kind: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
+                default_binding_modes: true,
             }),
             hir_id,
         )
@@ -2544,7 +2546,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn pat(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat { hir_id: self.next_id(), kind, span })
+        self.arena.alloc(hir::Pat {
+            hir_id: self.next_id(),
+            kind,
+            span,
+            default_binding_modes: true,
+        })
+    }
+
+    fn pat_without_dbm(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
+        self.arena.alloc(hir::Pat {
+            hir_id: self.next_id(),
+            kind,
+            span,
+            default_binding_modes: false,
+        })
     }
 
     fn ty_path(

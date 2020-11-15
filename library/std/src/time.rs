@@ -322,7 +322,7 @@ impl Instant {
     /// ```
     #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
-        self.checked_duration_since(earlier).unwrap_or(Duration::new(0, 0))
+        self.checked_duration_since(earlier).unwrap_or_default()
     }
 
     /// Returns the amount of time elapsed since this instant was created.

@@ -23,23 +23,24 @@ fn main() {
     fn f4_also_moved(ref mut a @ ref mut b @ c: U) {}
     //~^ ERROR cannot borrow value as mutable more than once at a time
     //~| ERROR cannot move out of value because it is borrowed
+    //~| ERROR borrow of moved value
 
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
-    //~| ERROR cannot borrow value as mutable more than once at a time
     drop(a);
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
+    //~| ERROR cannot borrow value as mutable more than once at a time
     drop(b);
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
 
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
-    //~| ERROR cannot borrow value as mutable more than once at a time
     *a = U;
     let ref mut a @ ref mut b = U;
     //~^ ERROR cannot borrow value as mutable more than once at a time
+    //~| ERROR cannot borrow value as mutable more than once at a time
     *b = U;
 
     let ref mut a @ (
@@ -64,18 +65,14 @@ fn main() {
 
     let a @ (ref mut b, ref mut c) = (U, U);
     //~^ ERROR borrow of moved value
-    //~| ERROR borrow of moved value
     let mut val = (U, [U, U]);
     let a @ (b, [c, d]) = &mut val; // Same as ^--
     //~^ ERROR borrow of moved value
-    //~| ERROR borrow of moved value
 
     let a @ &mut ref mut b = &mut U;
     //~^ ERROR borrow of moved value
-    //~| ERROR borrow of moved value
     let a @ &mut (ref mut b, ref mut c) = &mut (U, U);
     //~^ ERROR borrow of moved value
-    //~| ERROR borrow of moved value
 
     match Ok(U) {
         ref mut a @ Ok(ref mut b) | ref mut a @ Err(ref mut b) => {

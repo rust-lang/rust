@@ -111,7 +111,7 @@ macro_rules! load_int_le {
         debug_assert!($i + mem::size_of::<$int_ty>() <= $buf.len());
         let mut data = 0 as $int_ty;
         ptr::copy_nonoverlapping(
-            $buf.get_unchecked($i),
+            $buf.as_ptr().add($i),
             &mut data as *mut _ as *mut u8,
             mem::size_of::<$int_ty>(),
         );

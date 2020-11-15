@@ -4,9 +4,10 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
+    indent_of, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment,
+    match_trait_method, match_type, match_var, multispan_sugg, qpath_res, single_segment_path, snippet,
+    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
+    span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -293,9 +294,24 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for empty `loop` expressions.
     ///
-    /// **Why is this bad?** Those busy loops burn CPU cycles without doing
-    /// anything. Think of the environment and either block on something or at least
-    /// make the thread sleep for some microseconds.
+    /// **Why is this bad?** These busy loops burn CPU cycles without doing
+    /// anything. It is _almost always_ a better idea to `panic!` than to have
+    /// a busy loop.
+    ///
+    /// If panicking isn't possible, think of the environment and either:
+    ///   - block on something
+    ///   - sleep the thread for some microseconds
+    ///   - yield or pause the thread
+    ///
+    /// For `std` targets, this can be done with
+    /// [`std::thread::sleep`](https://doc.rust-lang.org/std/thread/fn.sleep.html)
+    /// or [`std::thread::yield_now`](https://doc.rust-lang.org/std/thread/fn.yield_now.html).
+    ///
+    /// For `no_std` targets, doing this is more complicated, especially because
+    /// `#[panic_handler]`s can't panic. To stop/pause the thread, you will
+    /// probably need to invoke some target-specific intrinsic. Examples include:
+    ///   - [`x86_64::instructions::hlt`](https://docs.rs/x86_64/0.12.2/x86_64/instructions/fn.hlt.html)
+    ///   - [`cortex_m::asm::wfi`](https://docs.rs/cortex-m/0.6.3/cortex_m/asm/fn.wfi.html)
     ///
     /// **Known problems:** None.
     ///
@@ -452,6 +468,31 @@ declare_clippy_lint! {
     "the same item is pushed inside of a for loop"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks whether a for loop has a single element.
+    ///
+    /// **Why is this bad?** There is no reason to have a loop of a
+    /// single element.
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let item1 = 2;
+    /// for item in &[item1] {
+    ///     println!("{}", item);
+    /// }
+    /// ```
+    /// could be written as
+    /// ```rust
+    /// let item1 = 2;
+    /// let item = &item1;
+    /// println!("{}", item);
+    /// ```
+    pub SINGLE_ELEMENT_LOOP,
+    complexity,
+    "there is no reason to have a single element loop"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     NEEDLESS_RANGE_LOOP,
@@ -469,6 +510,7 @@ declare_lint_pass!(Loops => [
     MUT_RANGE_BOUND,
     WHILE_IMMUTABLE_CONDITION,
     SAME_ITEM_PUSH,
+    SINGLE_ELEMENT_LOOP,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -502,13 +544,15 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // (even if the "match" or "if let" is used for declaration)
         if let ExprKind::Loop(ref block, _, LoopSource::Loop) = expr.kind {
             // also check for empty `loop {}` statements
+            // TODO(issue #6161): Enable for no_std crates (outside of #[panic_handler])
             if block.stmts.is_empty() && block.expr.is_none() && !is_no_std_crate(cx.tcx.hir().krate()) {
-                span_lint(
+                span_lint_and_help(
                     cx,
                     EMPTY_LOOP,
                     expr.span,
-                    "empty `loop {}` detected. You may want to either use `panic!()` or add \
-                     `std::thread::sleep(..);` to the loop body.",
+                    "empty `loop {}` wastes CPU cycles",
+                    None,
+                    "You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.",
                 );
             }
 
@@ -575,9 +619,9 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
                 }
 
                 let lhs_constructor = last_path_segment(qpath);
-                if method_path.ident.name == sym!(next)
+                if method_path.ident.name == sym::next
                     && match_trait_method(cx, match_expr, &paths::ITERATOR)
-                    && lhs_constructor.ident.name == sym!(Some)
+                    && lhs_constructor.ident.name == sym::Some
                     && (pat_args.is_empty()
                         || !is_refutable(cx, &pat_args[0])
                             && !is_used_inside(cx, iter_expr, &arms[0].body)
@@ -777,6 +821,7 @@ fn check_for_loop<'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
+    check_for_single_element_loop(cx, pat, arg, body, expr);
     detect_same_item_push(cx, pat, arg, body, expr);
 }
 
@@ -940,13 +985,13 @@ fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || is_type_diagnostic_item(cx, ty, sym!(vec_type)) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
+    is_slice || is_type_diagnostic_item(cx, ty, sym::vec_type) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if_chain! {
         if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
-        if method.ident.name == sym!(clone);
+        if method.ident.name == sym::clone;
         if args.len() == 1;
         if let Some(arg) = args.get(0);
         then { arg } else { expr }
@@ -1310,7 +1355,7 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
             if let Some(self_expr) = args.get(0);
             if let Some(pushed_item) = args.get(1);
             // Check that the method being called is push() on a Vec
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym!(vec_type));
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::vec_type);
             if path.ident.name.as_str() == "push";
             then {
                 return Some((self_expr, pushed_item))
@@ -1691,7 +1736,7 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr:
 /// Checks for `for` loops over `Option`s and `Result`s.
 fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(arg);
-    if is_type_diagnostic_item(cx, ty, sym!(option_type)) {
+    if is_type_diagnostic_item(cx, ty, sym::option_type) {
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,
@@ -1708,7 +1753,7 @@ fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
                 snippet(cx, arg.span, "_")
             ),
         );
-    } else if is_type_diagnostic_item(cx, ty, sym!(result_type)) {
+    } else if is_type_diagnostic_item(cx, ty, sym::result_type) {
         span_lint_and_help(
             cx,
             FOR_LOOPS_OVER_FALLIBLES,
@@ -1866,6 +1911,43 @@ fn check_for_loop_over_map_kv<'tcx>(
     }
 }
 
+fn check_for_single_element_loop<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    arg: &'tcx Expr<'_>,
+    body: &'tcx Expr<'_>,
+    expr: &'tcx Expr<'_>,
+) {
+    if_chain! {
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg_expr) = arg.kind;
+        if let PatKind::Binding(.., target, _) = pat.kind;
+        if let ExprKind::Array(ref arg_expr_list) = arg_expr.kind;
+        if let [arg_expression] = arg_expr_list;
+        if let ExprKind::Path(ref list_item) = arg_expression.kind;
+        if let Some(list_item_name) = single_segment_path(list_item).map(|ps| ps.ident.name);
+        if let ExprKind::Block(ref block, _) = body.kind;
+        if !block.stmts.is_empty();
+
+        then {
+            let for_span = get_span_of_entire_for_loop(expr);
+            let mut block_str = snippet(cx, block.span, "..").into_owned();
+            block_str.remove(0);
+            block_str.pop();
+
+
+            span_lint_and_sugg(
+                cx,
+                SINGLE_ELEMENT_LOOP,
+                for_span,
+                "for loop over a single element",
+                "try",
+                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
+                Applicability::MachineApplicable
+            )
+        }
+    }
+}
+
 struct MutatePairDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     hir_id_low: Option<HirId>,
@@ -1875,28 +1957,28 @@ struct MutatePairDelegate<'a, 'tcx> {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
-    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let PlaceBase::Local(id) = cmt.place.base {
                 if Some(id) == self.hir_id_low {
-                    self.span_low = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                    self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
                 }
                 if Some(id) == self.hir_id_high {
-                    self.span_high = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                    self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
                 }
             }
         }
     }
 
-    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         if let PlaceBase::Local(id) = cmt.place.base {
             if Some(id) == self.hir_id_low {
-                self.span_low = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
             }
             if Some(id) == self.hir_id_high {
-                self.span_high = Some(self.cx.tcx.hir().span(cmt.hir_id))
+                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
             }
         }
     }
@@ -1969,12 +2051,11 @@ fn check_for_mutation<'tcx>(
         span_low: None,
         span_high: None,
     };
-    let def_id = body.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            def_id.expect_local(),
+            body.hir_id.owner,
             cx.param_env,
             cx.typeck_results(),
         )
@@ -2105,8 +2186,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_chain! {
             // a range index op
             if let ExprKind::MethodCall(ref meth, _, ref args, _) = expr.kind;
-            if (meth.ident.name == sym!(index) && match_trait_method(self.cx, expr, &paths::INDEX))
-                || (meth.ident.name == sym!(index_mut) && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
+            if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
+                || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(&args[1], &args[0], expr);
             then { return }
         }
@@ -2252,7 +2333,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     // will allow further borrows afterwards
     let ty = cx.typeck_results().expr_ty(e);
     is_iterable_array(ty, cx) ||
-    is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
+    is_type_diagnostic_item(cx, ty, sym::vec_type) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
     is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) ||
     is_type_diagnostic_item(cx, ty, sym!(hashset_type)) ||
@@ -2809,7 +2890,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         then {
             let ty = cx.typeck_results().node_type(ty.hir_id);
-            if is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
+            if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                 is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
                 match_type(cx, ty, &paths::BTREEMAP) ||
                 is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
@@ -2920,7 +3001,14 @@ impl IterFunction {
             IterFunctionKind::IntoIter => String::new(),
             IterFunctionKind::Len => String::from(".count()"),
             IterFunctionKind::IsEmpty => String::from(".next().is_none()"),
-            IterFunctionKind::Contains(span) => format!(".any(|x| x == {})", snippet(cx, *span, "..")),
+            IterFunctionKind::Contains(span) => {
+                let s = snippet(cx, *span, "..");
+                if let Some(stripped) = s.strip_prefix('&') {
+                    format!(".any(|x| x == {})", stripped)
+                } else {
+                    format!(".any(|x| x == *{})", s)
+                }
+            },
         }
     }
     fn get_suggestion_text(&self) -> &'static str {
@@ -3001,7 +3089,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     }
 }
 
-/// Detect the occurences of calls to `iter` or `into_iter` for the
+/// Detect the occurrences of calls to `iter` or `into_iter` for the
 /// given identifier
 fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {

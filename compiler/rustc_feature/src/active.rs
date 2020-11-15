@@ -610,6 +610,12 @@ declare_features! (
     /// Allows unsized fn parameters.
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
 
+    /// Allows the use of destructuring assignments.
+    (active, destructuring_assignment, "1.49.0", Some(71126), None),
+
+    /// Enables `#[cfg(panic = "...")]` config key.
+    (active, cfg_panic, "1.49.0", Some(77443), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

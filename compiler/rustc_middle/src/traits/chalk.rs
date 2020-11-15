@@ -102,48 +102,6 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         Some(write())
     }
 
-    fn debug_application_ty(
-        application_ty: &chalk_ir::ApplicationTy<Self>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Option<fmt::Result> {
-        match application_ty.name {
-            chalk_ir::TypeName::Ref(mutbl) => {
-                let data = application_ty.substitution.interned();
-                match (&**data[0].interned(), &**data[1].interned()) {
-                    (
-                        chalk_ir::GenericArgData::Lifetime(lifetime),
-                        chalk_ir::GenericArgData::Ty(ty),
-                    ) => Some(match mutbl {
-                        chalk_ir::Mutability::Not => write!(fmt, "(&{:?} {:?})", lifetime, ty),
-                        chalk_ir::Mutability::Mut => write!(fmt, "(&{:?} mut {:?})", lifetime, ty),
-                    }),
-                    _ => unreachable!(),
-                }
-            }
-            chalk_ir::TypeName::Array => {
-                let data = application_ty.substitution.interned();
-                match (&**data[0].interned(), &**data[1].interned()) {
-                    (chalk_ir::GenericArgData::Ty(ty), chalk_ir::GenericArgData::Const(len)) => {
-                        Some(write!(fmt, "[{:?}; {:?}]", ty, len))
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            chalk_ir::TypeName::Slice => {
-                let data = application_ty.substitution.interned();
-                let ty = match &**data[0].interned() {
-                    chalk_ir::GenericArgData::Ty(t) => t,
-                    _ => unreachable!(),
-                };
-                Some(write!(fmt, "[{:?}]", ty))
-            }
-            _ => {
-                let chalk_ir::ApplicationTy { name, substitution } = application_ty;
-                Some(write!(fmt, "{:?}{:?}", name, chalk_ir::debug::Angle(substitution.interned())))
-            }
-        }
-    }
-
     fn debug_substitution(
         substitution: &chalk_ir::Substitution<Self>,
         fmt: &mut fmt::Formatter<'_>,
@@ -172,6 +130,32 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
         Some(write!(fmt, "{:?}", clauses.interned()))
+    }
+
+    fn debug_ty(ty: &chalk_ir::Ty<Self>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+        match &ty.interned().kind {
+            chalk_ir::TyKind::Ref(chalk_ir::Mutability::Not, lifetime, ty) => {
+                Some(write!(fmt, "(&{:?} {:?})", lifetime, ty))
+            }
+            chalk_ir::TyKind::Ref(chalk_ir::Mutability::Mut, lifetime, ty) => {
+                Some(write!(fmt, "(&{:?} mut {:?})", lifetime, ty))
+            }
+            chalk_ir::TyKind::Array(ty, len) => Some(write!(fmt, "[{:?}; {:?}]", ty, len)),
+            chalk_ir::TyKind::Slice(ty) => Some(write!(fmt, "[{:?}]", ty)),
+            chalk_ir::TyKind::Tuple(len, substs) => Some((|| {
+                write!(fmt, "(")?;
+                for (idx, substitution) in substs.interned().iter().enumerate() {
+                    if idx == *len && *len != 1 {
+                        // Don't add a trailing comma if the tuple has more than one element
+                        write!(fmt, "{:?}", substitution)?;
+                    } else {
+                        write!(fmt, "{:?},", substitution)?;
+                    }
+                }
+                write!(fmt, ")")
+            })()),
+            _ => None,
+        }
     }
 
     fn debug_alias(

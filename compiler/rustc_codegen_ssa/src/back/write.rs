@@ -140,7 +140,7 @@ impl ModuleConfig {
 
         let emit_obj = if !should_emit_obj {
             EmitObj::None
-        } else if sess.target.options.obj_is_bitcode
+        } else if sess.target.obj_is_bitcode
             || (sess.opts.cg.linker_plugin_lto.enabled() && !no_builtins)
         {
             // This case is selected if the target uses objects as bitcode, or
@@ -222,11 +222,11 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
-            bc_cmdline: sess.target.options.bitcode_llvm_cmdline.clone(),
+            bc_cmdline: sess.target.bitcode_llvm_cmdline.clone(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
-            no_builtins: no_builtins || sess.target.options.no_builtins,
+            no_builtins: no_builtins || sess.target.no_builtins,
 
             // Exclude metadata and allocator modules from time_passes output,
             // since they throw off the "LLVM passes" measurement.
@@ -253,7 +253,7 @@ impl ModuleConfig {
                 .opts
                 .debugging_opts
                 .merge_functions
-                .unwrap_or(sess.target.options.merge_functions)
+                .unwrap_or(sess.target.merge_functions)
             {
                 MergeFunctions::Disabled => false,
                 MergeFunctions::Trampolines | MergeFunctions::Aliases => {
@@ -308,6 +308,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub allocator_module_config: Arc<ModuleConfig>,
     pub tm_factory: TargetMachineFactory<B>,
     pub msvc_imps_needed: bool,
+    pub is_pe_coff: bool,
     pub target_pointer_width: u32,
     pub target_arch: String,
     pub debuginfo: config::DebugInfo,
@@ -389,7 +390,7 @@ fn need_bitcode_in_object(sess: &Session) -> bool {
     let requested_for_rlib = sess.opts.cg.embed_bitcode
         && sess.crate_types().contains(&CrateType::Rlib)
         && sess.opts.output_types.contains_key(&OutputType::Exe);
-    let forced_by_target = sess.target.options.forces_embed_bitcode;
+    let forced_by_target = sess.target.forces_embed_bitcode;
     requested_for_rlib || forced_by_target
 }
 
@@ -1025,6 +1026,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         tm_factory: TargetMachineFactory(backend.target_machine_factory(tcx.sess, ol)),
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
+        is_pe_coff: tcx.sess.target.is_like_windows,
         target_pointer_width: tcx.sess.target.pointer_width,
         target_arch: tcx.sess.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
@@ -1870,11 +1872,11 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     // something is wrong with commandline arg validation.
     assert!(
         !(tcx.sess.opts.cg.linker_plugin_lto.enabled()
-            && tcx.sess.target.options.is_like_windows
+            && tcx.sess.target.is_like_windows
             && tcx.sess.opts.cg.prefer_dynamic)
     );
 
-    tcx.sess.target.options.is_like_windows &&
+    tcx.sess.target.is_like_windows &&
         tcx.sess.crate_types().iter().any(|ct| *ct == CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing

@@ -8,7 +8,7 @@ use crate::ast::{Path, PathSegment};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Token};
-use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree, TreeAndSpacing};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::{BytePos, Spanned};
@@ -66,7 +66,7 @@ impl NestedMetaItem {
         self.meta_item().and_then(|meta_item| meta_item.ident())
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(Ident::invalid()).name
+        self.ident().unwrap_or_else(Ident::invalid).name
     }
 
     /// Gets the string value if `self` is a `MetaItem` and the `MetaItem` is a
@@ -120,7 +120,7 @@ impl NestedMetaItem {
 impl Attribute {
     pub fn has_name(&self, name: Symbol) -> bool {
         match self.kind {
-            AttrKind::Normal(ref item) => item.path == name,
+            AttrKind::Normal(ref item, _) => item.path == name,
             AttrKind::DocComment(..) => false,
         }
     }
@@ -128,7 +128,7 @@ impl Attribute {
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
         match self.kind {
-            AttrKind::Normal(ref item) => {
+            AttrKind::Normal(ref item, _) => {
                 if item.path.segments.len() == 1 {
                     Some(item.path.segments[0].ident)
                 } else {
@@ -139,19 +139,19 @@ impl Attribute {
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(Ident::invalid()).name
+        self.ident().unwrap_or_else(Ident::invalid).name
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
         match self.kind {
-            AttrKind::Normal(ref item) => item.meta(self.span).and_then(|meta| meta.value_str()),
+            AttrKind::Normal(ref item, _) => item.meta(self.span).and_then(|meta| meta.value_str()),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
         match self.kind {
-            AttrKind::Normal(ref item) => match item.meta(self.span) {
+            AttrKind::Normal(ref item, _) => match item.meta(self.span) {
                 Some(MetaItem { kind: MetaItemKind::List(list), .. }) => Some(list),
                 _ => None,
             },
@@ -160,7 +160,7 @@ impl Attribute {
     }
 
     pub fn is_word(&self) -> bool {
-        if let AttrKind::Normal(item) = &self.kind {
+        if let AttrKind::Normal(item, _) = &self.kind {
             matches!(item.args, MacArgs::Empty)
         } else {
             false
@@ -183,7 +183,7 @@ impl MetaItem {
         if self.path.segments.len() == 1 { Some(self.path.segments[0].ident) } else { None }
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(Ident::invalid()).name
+        self.ident().unwrap_or_else(Ident::invalid).name
     }
 
     // Example:
@@ -246,7 +246,7 @@ impl AttrItem {
 impl Attribute {
     pub fn is_doc_comment(&self) -> bool {
         match self.kind {
-            AttrKind::Normal(_) => false,
+            AttrKind::Normal(..) => false,
             AttrKind::DocComment(..) => true,
         }
     }
@@ -254,7 +254,7 @@ impl Attribute {
     pub fn doc_str(&self) -> Option<Symbol> {
         match self.kind {
             AttrKind::DocComment(.., data) => Some(data),
-            AttrKind::Normal(ref item) if item.path == sym::doc => {
+            AttrKind::Normal(ref item, _) if item.path == sym::doc => {
                 item.meta(self.span).and_then(|meta| meta.value_str())
             }
             _ => None,
@@ -263,14 +263,14 @@ impl Attribute {
 
     pub fn get_normal_item(&self) -> &AttrItem {
         match self.kind {
-            AttrKind::Normal(ref item) => item,
+            AttrKind::Normal(ref item, _) => item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
-            AttrKind::Normal(item) => item,
+            AttrKind::Normal(item, _) => item,
             AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
@@ -278,8 +278,20 @@ impl Attribute {
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
         match self.kind {
-            AttrKind::Normal(ref item) => item.meta(self.span),
+            AttrKind::Normal(ref item, _) => item.meta(self.span),
             AttrKind::DocComment(..) => None,
+        }
+    }
+
+    pub fn tokens(&self) -> TokenStream {
+        match self.kind {
+            AttrKind::Normal(_, ref tokens) => tokens
+                .as_ref()
+                .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
+                .create_token_stream(),
+            AttrKind::DocComment(comment_kind, data) => TokenStream::from(TokenTree::Token(
+                Token::new(token::DocComment(comment_kind, self.style, data), self.span),
+            )),
         }
     }
 }
@@ -321,11 +333,16 @@ crate fn mk_attr_id() -> AttrId {
 }
 
 pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attribute {
-    mk_attr_from_item(style, AttrItem { path, args, tokens: None }, span)
+    mk_attr_from_item(AttrItem { path, args, tokens: None }, None, style, span)
 }
 
-pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attribute {
-    Attribute { kind: AttrKind::Normal(item), id: mk_attr_id(), style, span, tokens: None }
+pub fn mk_attr_from_item(
+    item: AttrItem,
+    tokens: Option<LazyTokenStream>,
+    style: AttrStyle,
+    span: Span,
+) -> Attribute {
+    Attribute { kind: AttrKind::Normal(item, tokens), id: mk_attr_id(), style, span }
 }
 
 /// Returns an inner attribute with the given value and span.
@@ -344,13 +361,7 @@ pub fn mk_doc_comment(
     data: Symbol,
     span: Span,
 ) -> Attribute {
-    Attribute {
-        kind: AttrKind::DocComment(comment_kind, data),
-        id: mk_attr_id(),
-        style,
-        span,
-        tokens: None,
-    }
+    Attribute { kind: AttrKind::DocComment(comment_kind, data), id: mk_attr_id(), style, span }
 }
 
 pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
@@ -360,7 +371,7 @@ pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
 impl MetaItem {
     fn token_trees_and_spacings(&self) -> Vec<TreeAndSpacing> {
         let mut idents = vec![];
-        let mut last_pos = BytePos(0 as u32);
+        let mut last_pos = BytePos(0_u32);
         for (i, segment) in self.path.segments.iter().enumerate() {
             let is_first = i == 0;
             if !is_first {

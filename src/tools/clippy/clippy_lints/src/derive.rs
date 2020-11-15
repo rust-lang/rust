@@ -1,6 +1,6 @@
 use crate::utils::paths;
 use crate::utils::{
-    get_trait_def_id, is_allowed, is_automatically_derived, is_copy, match_path, span_lint_and_help,
+    get_trait_def_id, is_allowed, is_automatically_derived, is_copy, match_def_path, match_path, span_lint_and_help,
     span_lint_and_note, span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -193,10 +193,9 @@ fn check_hash_peq<'tcx>(
     hash_is_automatically_derived: bool,
 ) {
     if_chain! {
-        if match_path(&trait_ref.path, &paths::HASH);
         if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
-        if let Some(def_id) = &trait_ref.trait_def_id();
-        if !def_id.is_local();
+        if let Some(def_id) = trait_ref.trait_def_id();
+        if match_def_path(cx, def_id, &paths::HASH);
         then {
             // Look for the PartialEq implementations for `ty`
             cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
@@ -352,7 +351,8 @@ fn check_unsafe_derive_deserialize<'tcx>(
     }
 
     if_chain! {
-        if match_path(&trait_ref.path, &paths::SERDE_DESERIALIZE);
+        if let Some(trait_def_id) = trait_ref.trait_def_id();
+        if match_def_path(cx, trait_def_id, &paths::SERDE_DESERIALIZE);
         if let ty::Adt(def, _) = ty.kind();
         if let Some(local_def_id) = def.did.as_local();
         let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);

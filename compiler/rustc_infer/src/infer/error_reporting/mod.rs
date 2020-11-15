@@ -71,6 +71,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
+use std::ops::ControlFlow;
 use std::{cmp, fmt};
 
 mod note;
@@ -1497,7 +1498,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
                 if let Some((kind, def_id)) = TyCategory::from_ty(t) {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:

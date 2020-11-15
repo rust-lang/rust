@@ -22,6 +22,7 @@ pub mod check_packed_ref;
 pub mod check_unsafety;
 pub mod cleanup_post_borrowck;
 pub mod const_prop;
+pub mod coverage;
 pub mod deaggregator;
 pub mod dest_prop;
 pub mod dump_mir;
@@ -31,7 +32,7 @@ pub mod function_item_references;
 pub mod generator;
 pub mod inline;
 pub mod instcombine;
-pub mod instrument_coverage;
+pub mod lower_intrinsics;
 pub mod match_branches;
 pub mod multiple_return_terminators;
 pub mod no_landing_pads;
@@ -85,7 +86,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         },
         ..*providers
     };
-    instrument_coverage::provide(providers);
+    coverage::query::provide(providers);
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
@@ -306,7 +307,7 @@ fn mir_promoted(
     ];
 
     let opt_coverage: &[&dyn MirPass<'tcx>] = if tcx.sess.opts.debugging_opts.instrument_coverage {
-        &[&instrument_coverage::InstrumentCoverage]
+        &[&coverage::InstrumentCoverage]
     } else {
         &[]
     };
@@ -390,6 +391,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
+        &lower_intrinsics::LowerIntrinsics,
         &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)

@@ -6,6 +6,7 @@ use crate::interpret::{
     ScalarMaybeUninit, StackPopCleanup,
 };
 
+use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -14,7 +15,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{Abi, LayoutOf};
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
     "The rules on what exactly is undefined behavior aren't clear, \
@@ -67,7 +68,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    intern_const_alloc_recursive(ecx, intern_kind, ret);
+    intern_const_alloc_recursive(ecx, intern_kind, ret)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -137,15 +138,16 @@ pub(super) fn op_to_const<'tcx>(
             let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
-        Scalar::Raw { data, .. } => {
+        Scalar::Int(int) => {
             assert!(mplace.layout.is_zst());
             assert_eq!(
-                u64::try_from(data).unwrap() % mplace.layout.align.abi.bytes(),
+                int.assert_bits(ecx.tcx.data_layout.pointer_size)
+                    % u128::from(mplace.layout.align.abi.bytes()),
                 0,
                 "this MPlaceTy must come from a validated constant, thus we can assume the \
                 alignment is correct",
             );
-            ConstValue::Scalar(Scalar::zst())
+            ConstValue::Scalar(Scalar::ZST)
         }
     };
     match immediate {
@@ -161,7 +163,7 @@ pub(super) fn op_to_const<'tcx>(
                     Scalar::Ptr(ptr) => {
                         (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
                     }
-                    Scalar::Raw { .. } => (
+                    Scalar::Int { .. } => (
                         ecx.tcx
                             .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
                         0,
@@ -272,6 +274,16 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             if let Some(error_reported) = tcx.typeck_opt_const_arg(def).tainted_by_errors {
                 return Err(ErrorHandled::Reported(error_reported));
             }
+        }
+        if !tcx.is_mir_available(def.did) {
+            tcx.sess.delay_span_bug(
+                tcx.def_span(def.did),
+                &format!("no MIR body is available for {:?}", def.did),
+            );
+            return Err(ErrorHandled::Reported(ErrorReported {}));
+        }
+        if let Some(error_reported) = tcx.mir_const_qualif_opt_const_arg(def).error_occured {
+            return Err(ErrorHandled::Reported(error_reported));
         }
     }
 

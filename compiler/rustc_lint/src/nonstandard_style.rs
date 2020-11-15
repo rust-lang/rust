@@ -320,7 +320,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                                             .with_hi(lit.span.hi() - BytePos(right as u32)),
                                     )
                                 })
-                                .unwrap_or_else(|| lit.span);
+                                .unwrap_or(lit.span);
 
                             Some(Ident::new(name, sp))
                         } else {

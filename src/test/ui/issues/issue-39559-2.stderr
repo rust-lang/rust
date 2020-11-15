@@ -4,25 +4,12 @@ error[E0015]: calls in constants are limited to constant functions, tuple struct
 LL |     let array: [usize; Dim3::dim()]
    |                        ^^^^^^^^^^^
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-39559-2.rs:14:24
-   |
-LL |     let array: [usize; Dim3::dim()]
-   |                        ^^^^^^^^^^^ calling non-const function `<Dim3 as Dim>::dim`
-
 error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-39559-2.rs:17:15
+  --> $DIR/issue-39559-2.rs:16:15
    |
 LL |         = [0; Dim3::dim()];
    |               ^^^^^^^^^^^
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-39559-2.rs:17:15
-   |
-LL |         = [0; Dim3::dim()];
-   |               ^^^^^^^^^^^ calling non-const function `<Dim3 as Dim>::dim`
+error: aborting due to 2 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0015, E0080.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

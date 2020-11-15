@@ -9,9 +9,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{
-    sign_extend, truncate, GlobalId, InterpResult, Pointer, Scalar,
-};
+use rustc_middle::mir::interpret::{GlobalId, InterpResult, Pointer, Scalar};
 use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
@@ -443,12 +441,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn sign_extend(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         assert!(ty.abi.is_signed());
-        sign_extend(value, ty.size)
+        ty.size.sign_extend(value)
     }
 
     #[inline(always)]
     pub fn truncate(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
-        truncate(value, ty.size)
+        ty.size.truncate(value)
     }
 
     #[inline]
@@ -471,7 +469,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(def) = def.as_local() {
             if self.tcx.has_typeck_results(def.did) {
                 if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
-                    throw_inval!(TypeckError(error_reported))
+                    throw_inval!(AlreadyReported(error_reported))
                 }
             }
         }
@@ -507,11 +505,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         value: T,
     ) -> T {
-        if let Some(substs) = frame.instance.substs_for_mir_body() {
-            self.tcx.subst_and_normalize_erasing_regions(substs, self.param_env, &value)
-        } else {
-            self.tcx.normalize_erasing_regions(self.param_env, value)
-        }
+        frame.instance.subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, &value)
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
@@ -527,8 +521,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 
-            // FIXME(eddyb) this could be a bit more specific than `TypeckError`.
-            Err(error_reported) => throw_inval!(TypeckError(error_reported)),
+            // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
+            Err(error_reported) => throw_inval!(AlreadyReported(error_reported)),
         }
     }
 

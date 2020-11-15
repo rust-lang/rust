@@ -62,10 +62,17 @@ vec![
     },
     Lint {
         name: "await_holding_lock",
-        group: "pedantic",
+        group: "correctness",
         desc: "Inside an async function, holding a MutexGuard while calling await",
         deprecation: None,
-        module: "await_holding_lock",
+        module: "await_holding_invalid",
+    },
+    Lint {
+        name: "await_holding_refcell_ref",
+        group: "correctness",
+        desc: "Inside an async function, holding a RefCell ref while calling await",
+        deprecation: None,
+        module: "await_holding_invalid",
     },
     Lint {
         name: "bad_bit_mask",
@@ -292,6 +299,13 @@ vec![
         module: "comparison_chain",
     },
     Lint {
+        name: "comparison_to_empty",
+        group: "style",
+        desc: "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead",
+        deprecation: None,
+        module: "len_zero",
+    },
+    Lint {
         name: "copy_iterator",
         group: "pedantic",
         desc: "implementing `Iterator` on a `Copy` type",
@@ -345,7 +359,7 @@ vec![
         group: "pedantic",
         desc: "checks for literal calls to `Default::default()`",
         deprecation: None,
-        module: "default_trait_access",
+        module: "default",
     },
     Lint {
         name: "deprecated_cfg_attr",
@@ -614,6 +628,13 @@ vec![
         module: "fallible_impl_from",
     },
     Lint {
+        name: "field_reassign_with_default",
+        group: "style",
+        desc: "binding initialized with Default should have its fields set in the initializer",
+        deprecation: None,
+        module: "default",
+    },
+    Lint {
         name: "filetype_is_file",
         group: "restriction",
         desc: "`FileType::is_file` is not recommended to test for readable file type",
@@ -738,6 +759,13 @@ vec![
         desc: "calls to `std::mem::forget` with a reference instead of an owned value",
         deprecation: None,
         module: "drop_forget_ref",
+    },
+    Lint {
+        name: "from_iter_instead_of_collect",
+        group: "style",
+        desc: "use `.collect()` instead of `::from_iter()`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "future_not_send",
@@ -1062,6 +1090,13 @@ vec![
         module: "large_stack_arrays",
     },
     Lint {
+        name: "large_types_passed_by_value",
+        group: "pedantic",
+        desc: "functions taking large arguments by value",
+        deprecation: None,
+        module: "pass_by_ref_or_value",
+    },
+    Lint {
         name: "len_without_is_empty",
         group: "style",
         desc: "traits or impls with a public `len` method but no corresponding `is_empty` method",
@@ -1160,6 +1195,20 @@ vec![
         module: "manual_non_exhaustive",
     },
     Lint {
+        name: "manual_ok_or",
+        group: "pedantic",
+        desc: "finds patterns that can be encoded more concisely with `Option::ok_or`",
+        deprecation: None,
+        module: "manual_ok_or",
+    },
+    Lint {
+        name: "manual_range_contains",
+        group: "style",
+        desc: "manually reimplementing {`Range`, `RangeInclusive`}`::contains`",
+        deprecation: None,
+        module: "ranges",
+    },
+    Lint {
         name: "manual_saturating_arithmetic",
         group: "style",
         desc: "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`",
@@ -1183,7 +1232,7 @@ vec![
     Lint {
         name: "manual_unwrap_or",
         group: "complexity",
-        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or`",
+        desc: "finds patterns that can be encoded more concisely with `Option::unwrap_or` or `Result::unwrap_or`",
         deprecation: None,
         module: "manual_unwrap_or",
     },
@@ -1200,6 +1249,13 @@ vec![
         desc: "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types",
         deprecation: None,
         module: "map_clone",
+    },
+    Lint {
+        name: "map_collect_result_unit",
+        group: "style",
+        desc: "using `.map(_).collect::<Result<(),_>()`, which can be replaced with `try_for_each`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "map_entry",
@@ -1283,7 +1339,7 @@ vec![
         group: "pedantic",
         desc: "`match` with identical arm bodies",
         deprecation: None,
-        module: "copies",
+        module: "matches",
     },
     Lint {
         name: "match_single_binding",
@@ -1487,6 +1543,13 @@ vec![
         desc: "usage of double-mut refs, e.g., `&mut &mut ...`",
         deprecation: None,
         module: "mut_mut",
+    },
+    Lint {
+        name: "mut_mutex_lock",
+        group: "style",
+        desc: "`&mut Mutex::lock` does unnecessary locking",
+        deprecation: None,
+        module: "mut_mutex_lock",
     },
     Lint {
         name: "mut_range_bound",
@@ -1986,6 +2049,13 @@ vec![
         module: "reference",
     },
     Lint {
+        name: "ref_option_ref",
+        group: "pedantic",
+        desc: "use `Option<&T>` instead of `&Option<&T>`",
+        deprecation: None,
+        module: "ref_option_ref",
+    },
+    Lint {
         name: "repeat_once",
         group: "complexity",
         desc: "using `.repeat(1)` instead of `String.clone()`, `str.to_string()` or `slice.to_vec()` ",
@@ -2105,16 +2175,16 @@ vec![
         module: "non_expressive_names",
     },
     Lint {
-        name: "single_char_pattern",
-        group: "perf",
-        desc: "using a single-character str where a char could be used, e.g., `_.split(\"x\")`",
+        name: "single_char_add_str",
+        group: "style",
+        desc: "`push_str()` or `insert_str()` used with a single-character string literal as parameter",
         deprecation: None,
         module: "methods",
     },
     Lint {
-        name: "single_char_push_str",
-        group: "style",
-        desc: "`push_str()` used with a single-character string literal as parameter",
+        name: "single_char_pattern",
+        group: "perf",
+        desc: "using a single-character str where a char could be used, e.g., `_.split(\"x\")`",
         deprecation: None,
         module: "methods",
     },
@@ -2124,6 +2194,13 @@ vec![
         desc: "imports with single component path are redundant",
         deprecation: None,
         module: "single_component_path_imports",
+    },
+    Lint {
+        name: "single_element_loop",
+        group: "complexity",
+        desc: "there is no reason to have a single element loop",
+        deprecation: None,
+        module: "loops",
     },
     Lint {
         name: "single_match",
@@ -2382,7 +2459,7 @@ vec![
         group: "pedantic",
         desc: "functions taking small copyable arguments by reference",
         deprecation: None,
-        module: "trivially_copy_pass_by_ref",
+        module: "pass_by_ref_or_value",
     },
     Lint {
         name: "try_err",
@@ -2404,6 +2481,13 @@ vec![
         desc: "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`",
         deprecation: None,
         module: "trait_bounds",
+    },
+    Lint {
+        name: "undropped_manually_drops",
+        group: "correctness",
+        desc: "use of safe `std::mem::drop` function to drop a std::mem::ManuallyDrop, which will not drop the inner value",
+        deprecation: None,
+        module: "undropped_manually_drops",
     },
     Lint {
         name: "unicode_not_nfc",
@@ -2593,6 +2677,13 @@ vec![
         desc: "needless unit expression",
         deprecation: None,
         module: "unused_unit",
+    },
+    Lint {
+        name: "unusual_byte_groupings",
+        group: "style",
+        desc: "binary or hex literals that aren\'t grouped by four",
+        deprecation: None,
+        module: "literal_representation",
     },
     Lint {
         name: "unwrap_in_result",

@@ -3,6 +3,8 @@ use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::ty::fold::{TypeFolder, TypeVisitor};
 use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
+use std::ops::ControlFlow;
+
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC VAR RESOLVER
 
@@ -121,7 +123,7 @@ impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
             if let ty::Infer(infer_ty) = *t.kind() {
@@ -143,7 +145,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
                     None
                 };
                 self.first_unresolved = Some((t, ty_var_span));
-                true // Halt visiting.
+                ControlFlow::BREAK
             } else {
                 // Otherwise, visit its contents.
                 t.super_visit_with(self)
@@ -151,7 +153,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
         } else {
             // All type variables in inference types must already be resolved,
             // - no need to visit the contents, continue visiting.
-            false
+            ControlFlow::CONTINUE
         }
     }
 }

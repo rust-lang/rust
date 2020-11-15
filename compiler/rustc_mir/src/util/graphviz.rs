@@ -62,6 +62,7 @@ where
     let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
     if dark_mode {
         graph_attrs.push(r#"bgcolor="black""#);
+        graph_attrs.push(r#"fontcolor="white""#);
         content_attrs.push(r#"color="white""#);
         content_attrs.push(r#"fontcolor="white""#);
     }
@@ -112,7 +113,8 @@ where
 
     // Basic block number at the top.
     let (blk, bgcolor) = if data.is_cleanup {
-        (format!("{} (cleanup)", block.index()), "lightblue")
+        let color = if dark_mode { "royalblue" } else { "lightblue" };
+        (format!("{} (cleanup)", block.index()), color)
     } else {
         let color = if dark_mode { "dimgray" } else { "gray" };
         (format!("{}", block.index()), color)

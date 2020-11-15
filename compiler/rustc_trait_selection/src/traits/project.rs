@@ -338,7 +338,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
 
         let ty = ty.super_fold_with(self);
         match *ty.kind() {
-            ty::Opaque(def_id, substs) => {
+            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty,

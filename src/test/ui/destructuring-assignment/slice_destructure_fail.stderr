@@ -1,0 +1,17 @@
+error: `..` can only be used once per slice pattern
+  --> $DIR/slice_destructure_fail.rs:5:14
+   |
+LL |   [a, .., b, ..] = [0, 1];
+   |       --     ^^ can only be used once per slice pattern
+   |       |
+   |       previously used here
+
+error[E0527]: pattern requires 3 elements but array has 2
+  --> $DIR/slice_destructure_fail.rs:6:3
+   |
+LL |   [a, a, b] = [1, 2];
+   |   ^^^^^^^^^ expected 2 elements
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0527`.

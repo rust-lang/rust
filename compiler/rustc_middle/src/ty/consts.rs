@@ -132,7 +132,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Creates an interned zst constant.
     pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_scalar(tcx, Scalar::zst(), ty)
+        Self::from_scalar(tcx, Scalar::ZST, ty)
     }
 
     #[inline]

@@ -38,16 +38,13 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Block => match token.kind {
                 token::OpenDelim(token::Brace) => true,
-                token::Interpolated(ref nt) => match **nt {
-                    token::NtItem(_)
+                token::Interpolated(ref nt) => !matches!(**nt, token::NtItem(_)
                     | token::NtPat(_)
                     | token::NtTy(_)
                     | token::NtIdent(..)
                     | token::NtMeta(_)
                     | token::NtPath(_)
-                    | token::NtVis(_) => false, // none of these may start with '{'.
-                    _ => true,
-                },
+                    | token::NtVis(_)),
                 _ => false,
             },
             NonterminalKind::Path | NonterminalKind::Meta => match token.kind {
@@ -76,17 +73,14 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Lifetime => match token.kind {
                 token::Lifetime(_) => true,
-                token::Interpolated(ref nt) => match **nt {
-                    token::NtLifetime(_) | token::NtTT(_) => true,
-                    _ => false,
-                },
+                token::Interpolated(ref nt) => {
+                    matches!(**nt, token::NtLifetime(_) | token::NtTT(_))
+                }
                 _ => false,
             },
-            NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => match token.kind
-            {
-                token::CloseDelim(_) => false,
-                _ => true,
-            },
+            NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
+                !matches!(token.kind, token::CloseDelim(_))
+            }
         }
     }
 

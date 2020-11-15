@@ -1,0 +1,14 @@
+error: unconstrained generic constant
+  --> $DIR/different-fn.rs:10:9
+   |
+LL |     [0; size_of::<Foo<T>>()]
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+help: consider adding a `where` bound for this expression
+  --> $DIR/different-fn.rs:10:9
+   |
+LL |     [0; size_of::<Foo<T>>()]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

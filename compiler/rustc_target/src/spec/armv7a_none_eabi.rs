@@ -10,9 +10,6 @@
 // bare-metal binaries (the `gcc` linker has the advantage that it knows where C
 // libraries and crt*.o are but it's not much of an advantage here); LLD is also
 // faster
-// - `target_os` set to `none`. rationale: matches `thumb` targets
-// - `target_{env,vendor}` set to an empty string. rationale: matches `thumb`
-// targets
 // - `panic_strategy` set to `abort`. rationale: matches `thumb` targets
 // - `relocation-model` set to `static`; also no PIE, no relro and no dynamic
 // linking. rationale: matches `thumb` targets
@@ -21,6 +18,7 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOp
 
 pub fn target() -> Target {
     let opts = TargetOptions {
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         features: "+v7,+thumb2,+soft-float,-neon,+strict-align".to_string(),
         executables: true,
@@ -34,15 +32,9 @@ pub fn target() -> Target {
     };
     Target {
         llvm_target: "armv7a-none-eabi".to_string(),
-        target_endian: "little".to_string(),
         pointer_width: 32,
-        target_c_int_width: "32".to_string(),
-        target_os: "none".to_string(),
-        target_env: String::new(),
-        target_vendor: String::new(),
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: opts,
     }
 }

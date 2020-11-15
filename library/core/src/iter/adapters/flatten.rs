@@ -121,7 +121,7 @@ where
 /// This `struct` is created by the [`flatten`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`flatten`]: trait.Iterator.html#method.flatten
+/// [`flatten`]: Iterator::flatten
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
