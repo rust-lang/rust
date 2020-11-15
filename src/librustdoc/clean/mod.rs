@@ -352,7 +352,7 @@ impl Clean<Lifetime> for hir::Lifetime {
         match def {
             Some(
                 rl::Region::EarlyBound(_, node_id, _)
-                | rl::Region::LateBound(_, node_id, _)
+                | rl::Region::LateBound(_, _, node_id, _)
                 | rl::Region::Free(_, node_id),
             ) => {
                 if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {

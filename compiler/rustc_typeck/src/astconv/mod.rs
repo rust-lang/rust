@@ -210,14 +210,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let r = match tcx.named_region(lifetime.hir_id) {
             Some(rl::Region::Static) => tcx.lifetimes.re_static,
 
-            Some(rl::Region::LateBound(debruijn, id, _)) => {
+            Some(rl::Region::LateBound(debruijn, _, id, _)) => {
                 let name = lifetime_name(id.expect_local());
                 let br = ty::BoundRegion { kind: ty::BrNamed(id, name) };
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
-            Some(rl::Region::LateBoundAnon(debruijn, index)) => {
-                let br = ty::BoundRegion { kind: ty::BrAnon(index) };
+            Some(rl::Region::LateBoundAnon(debruijn, _index, anon_index)) => {
+                let br = ty::BoundRegion { kind: ty::BrAnon(anon_index) };
                 tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 

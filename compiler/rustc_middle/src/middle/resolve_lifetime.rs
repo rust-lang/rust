@@ -39,8 +39,13 @@ impl LifetimeDefOrigin {
 pub enum Region {
     Static,
     EarlyBound(/* index */ u32, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBound(ty::DebruijnIndex, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
+    LateBound(
+        ty::DebruijnIndex,
+        /* late-bound index */ u32,
+        /* lifetime decl */ DefId,
+        LifetimeDefOrigin,
+    ),
+    LateBoundAnon(ty::DebruijnIndex, /* late-bound index */ u32, /* anon index */ u32),
     Free(DefId, /* lifetime decl */ DefId),
 }
 
