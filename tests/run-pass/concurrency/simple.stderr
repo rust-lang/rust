@@ -1,4 +1,4 @@
-warning: thread support is experimental.
+warning: thread support is experimental, no weak memory effects are currently emulated.
 
 thread '<unnamed>' panicked at 'Hello!', $DIR/simple.rs:54:9
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -55,7 +55,7 @@ pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 
 pub use crate::data_race::{
-    AtomicReadOp, AtomicWriteOp, AtomicRWOp, AtomicFenceOp, DataRaceLockHandle,
+    AtomicReadOp, AtomicWriteOp, AtomicRwOp, AtomicFenceOp,
     EvalContextExt as DataRaceEvalContextExt
 };
 pub use crate::diagnostics::{
@@ -81,7 +81,7 @@ pub use crate::sync::{
     EvalContextExt as SyncEvalContextExt, CondvarId, MutexId, RwLockId
 };
 pub use crate::vector_clock::{
-    VClock, VSmallClockSet, VectorIdx, VTimestamp
+    VClock, VSmallClockMap, VectorIdx, VTimestamp
 };
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be

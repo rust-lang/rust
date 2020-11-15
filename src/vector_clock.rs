@@ -1,121 +1,132 @@
 use std::{
     fmt::{self, Debug}, cmp::Ordering, ops::Index,
-    num::TryFromIntError, convert::TryFrom, mem
+    convert::TryFrom, mem
 };
 use smallvec::SmallVec;
 use rustc_index::vec::Idx;
 use rustc_data_structures::fx::FxHashMap;
 
 /// A vector clock index, this is associated with a thread id
-///  but in some cases one vector index may be shared with
-///  multiple thread ids.
+/// but in some cases one vector index may be shared with
+/// multiple thread ids id it safe to do so.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct VectorIdx(u32);
 
-impl VectorIdx{
+impl VectorIdx {
+
+    #[inline(always)]
     pub fn to_u32(self) -> u32 {
         self.0
     }
+
     pub const MAX_INDEX: VectorIdx = VectorIdx(u32::MAX);
+
 }
 
 impl Idx for VectorIdx {
+
+    #[inline]
     fn new(idx: usize) -> Self {
         VectorIdx(u32::try_from(idx).unwrap())
     }
 
+    #[inline]
     fn index(self) -> usize {
         usize::try_from(self.0).unwrap()
     }
-}
 
-impl TryFrom<u64> for VectorIdx {
-    type Error = TryFromIntError;
-    fn try_from(id: u64) -> Result<Self, Self::Error> {
-        u32::try_from(id).map(|id_u32| Self(id_u32))
-    }
 }
 
 impl From<u32> for VectorIdx {
+
+    #[inline]
     fn from(id: u32) -> Self {
         Self(id)
     }
+
 }
 
-
-/// A sparse set of vector clocks, where each vector index
-///  is associated with a vector clock.
-/// This treats all vector clocks that have not been assigned
-///  as equal to the all zero vector clocks
-/// Is optimized for the common case where only 1 element is stored
-///  in the set and the rest can be ignored, falling-back to
-///  using an internal hash-map once more than 1 element is assigned
-///  at any one time
+/// A sparse mapping of vector index values to vector clocks, this
+/// is optimized for the common case with only one element stored
+/// inside the map.
+/// This is used to store the set of currently active release
+/// sequences at a given memory location, since RMW operations
+/// allow for multiple release sequences to be active at once
+/// and to be collapsed back to one active release sequence 
+/// once a non RMW atomic store operation occurs.
+/// An all zero vector is considered to be equal to no
+/// element stored internally since it will never be
+/// stored and has no meaning as a release sequence
+/// vector clock.
 #[derive(Clone)]
-pub struct VSmallClockSet(VSmallClockSetInner);
+pub struct VSmallClockMap(VSmallClockMapInner);
 
 #[derive(Clone)]
-enum VSmallClockSetInner {
+enum VSmallClockMapInner {
+
     /// Zero or 1 vector elements, common
-    ///  case for the sparse set.
+    /// case for the sparse set.
     /// The all zero vector clock is treated
-    ///  as equal to the empty element
+    /// as equal to the empty element.
     Small(VectorIdx, VClock),
 
-    /// Hash-map of vector clocks
+    /// Hash-map of vector clocks.
     Large(FxHashMap<VectorIdx, VClock>)
 }
 
-impl VSmallClockSet {
+impl VSmallClockMap {
 
     /// Remove all clock vectors from the map, setting them
-    ///  to the zero vector
+    /// to the zero vector.
     pub fn clear(&mut self) {
         match &mut self.0 {
-            VSmallClockSetInner::Small(_, clock) => {
+            VSmallClockMapInner::Small(_, clock) => {
                 clock.set_zero_vector()
             }
-            VSmallClockSetInner::Large(hash_map) => {
+            VSmallClockMapInner::Large(hash_map) => {
                 hash_map.clear();
             }
         }
     }
 
     /// Remove all clock vectors except for the clock vector
-    ///  stored at the given index, which is retained
+    /// stored at the given index, which is retained.
     pub fn retain_index(&mut self, index: VectorIdx) {
         match &mut self.0 {
-            VSmallClockSetInner::Small(small_idx, clock) => {
+            VSmallClockMapInner::Small(small_idx, clock) => {
                 if index != *small_idx {
+
                     // The zero-vector is considered to equal
-                    //  the empty element
+                    // the empty element.
                     clock.set_zero_vector()
                 }
             },
-            VSmallClockSetInner::Large(hash_map) => {
-                hash_map.retain(|idx,_| {
-                    *idx == index
-                });
+            VSmallClockMapInner::Large(hash_map) => {
+                let value = hash_map.remove(&index).unwrap_or_default();
+                self.0 = VSmallClockMapInner::Small(index, value);
             }
         }
     }
 
     /// Insert the vector clock into the associated vector
-    ///  index
+    /// index.
     pub fn insert(&mut self, index: VectorIdx, clock: &VClock) {
         match &mut self.0 {
-            VSmallClockSetInner::Small(small_idx, small_clock) => {
+            VSmallClockMapInner::Small(small_idx, small_clock) => {
                 if small_clock.is_zero_vector() {
+
                     *small_idx = index;
                     small_clock.clone_from(clock);
-                }else if !clock.is_zero_vector() {
+                } else if !clock.is_zero_vector() {
+
+                    // Convert to using the hash-map representation.
                     let mut hash_map = FxHashMap::default();
                     hash_map.insert(*small_idx, mem::take(small_clock));
                     hash_map.insert(index, clock.clone());
-                    self.0 = VSmallClockSetInner::Large(hash_map);
+                    self.0 = VSmallClockMapInner::Large(hash_map);
                 }
             },
-            VSmallClockSetInner::Large(hash_map) => {
+            VSmallClockMapInner::Large(hash_map) => {
                 if !clock.is_zero_vector() {
                     hash_map.insert(index, clock.clone());
                 }
@@ -127,41 +138,44 @@ impl VSmallClockSet {
     ///  vector index.
     pub fn get(&self, index: VectorIdx) -> Option<&VClock> {
         match &self.0 {
-            VSmallClockSetInner::Small(small_idx, small_clock) => {
+            VSmallClockMapInner::Small(small_idx, small_clock) => {
                 if *small_idx == index && !small_clock.is_zero_vector() {
                     Some(small_clock)
-                }else{
+                } else {
                     None
                 }
             },
-            VSmallClockSetInner::Large(hash_map) => {
+            VSmallClockMapInner::Large(hash_map) => {
                 hash_map.get(&index)
             }
         }
     }
 }
 
-impl Default for VSmallClockSet {
+impl Default for VSmallClockMap {
+
     #[inline]
     fn default() -> Self {
-        VSmallClockSet(
-            VSmallClockSetInner::Small(VectorIdx::new(0), VClock::default())
+        VSmallClockMap(
+            VSmallClockMapInner::Small(VectorIdx::new(0), VClock::default())
         )
     }
+
 }
 
-impl Debug for VSmallClockSet {
+impl Debug for VSmallClockMap {
+
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Print the contents of the small vector clock set as the map
-        //  of vector index to vector clock that they represent
+        // of vector index to vector clock that they represent.
         let mut map = f.debug_map();
         match &self.0 {
-            VSmallClockSetInner::Small(small_idx, small_clock) => {
+            VSmallClockMapInner::Small(small_idx, small_clock) => {
                 if !small_clock.is_zero_vector() {
                     map.entry(&small_idx, &small_clock);
                 }
             },
-            VSmallClockSetInner::Large(hash_map) => {
+            VSmallClockMapInner::Large(hash_map) => {
                 for (idx, elem) in hash_map.iter() {
                     map.entry(idx, elem);
                 }
@@ -169,30 +183,35 @@ impl Debug for VSmallClockSet {
         }
         map.finish()
     }
+
 }
-impl PartialEq for VSmallClockSet {
+
+
+impl PartialEq for VSmallClockMap {
+
     fn eq(&self, other: &Self) -> bool {
-        use VSmallClockSetInner::*;
+        use VSmallClockMapInner::*;
         match (&self.0, &other.0) {
             (Small(i1, c1), Small(i2, c2)) => {
                 if c1.is_zero_vector() {
                     // Either they are both zero or they are non-equal
                     c2.is_zero_vector()
-                }else{
+                } else {
                     // At least one is non-zero, so the full comparison is correct
                     i1 == i2 && c1 == c2
                 }
             }
-            (VSmallClockSetInner::Small(idx, clock), VSmallClockSetInner::Large(hash_map)) |
-            (VSmallClockSetInner::Large(hash_map), VSmallClockSetInner::Small(idx, clock)) => {
+            (Small(idx, clock), Large(hash_map)) |
+            (Large(hash_map), Small(idx, clock)) => {
+
                 if hash_map.len() == 0 {
                     // Equal to the empty hash-map
                     clock.is_zero_vector()
-                }else if hash_map.len() == 1 {
+                } else if hash_map.len() == 1 {
                     // Equal to the hash-map with one element
                     let (hash_idx, hash_clock) = hash_map.iter().next().unwrap();
                     hash_idx == idx && hash_clock == clock
-                }else{
+                } else {
                     false
                 }
             }
@@ -201,32 +220,38 @@ impl PartialEq for VSmallClockSet {
             }
         }
     }
+
 }
-impl Eq for VSmallClockSet {}
+
+impl Eq for VSmallClockMap {}
 
 
 
 /// The size of the vector-clock to store inline
-///  clock vectors larger than this will be stored on the heap
+/// clock vectors larger than this will be stored on the heap
 const SMALL_VECTOR: usize = 4;
 
 /// The type of the time-stamps recorded in the data-race detector
-///  set to a type of unsigned integer
+/// set to a type of unsigned integer
 pub type VTimestamp = u32;
 
-/// A vector clock for detecting data-races
-///  invariants:
-///   - the last element in a VClock must not be 0
-///     -- this means that derive(PartialEq & Eq) is correct
-///     --  as there is no implicit zero tail that might be equal
-///     --  also simplifies the implementation of PartialOrd
+/// A vector clock for detecting data-races, this is conceptually
+/// a map from a vector index (and thus a thread id) to a timestamp.
+/// The compare operations require that the invariant that the last
+/// element in the internal timestamp slice must not be a 0, hence
+/// all zero vector clocks are always represented by the empty slice;
+/// and allows for the implementation of compare operations to short
+/// circuit the calculation and return the correct result faster,
+/// also this means that there is only one unique valid length
+/// for each set of vector clock values and hence the PartialEq
+//  and Eq derivations are correct.
 #[derive(PartialEq, Eq, Default, Debug)]
 pub struct VClock(SmallVec<[VTimestamp; SMALL_VECTOR]>);
 
 impl VClock {
 
     /// Create a new vector-clock containing all zeros except
-    ///  for a value at the given index
+    /// for a value at the given index
     pub fn new_with_index(index: VectorIdx, timestamp: VTimestamp) -> VClock {
         let len = index.index() + 1;
         let mut vec = smallvec::smallvec![0; len];
@@ -241,8 +266,8 @@ impl VClock {
     }
 
     /// Get a mutable slice to the internal vector with minimum `min_len`
-    ///  elements, to preserve invariants this vector must modify
-    ///  the `min_len`-1 nth element to a non-zero value
+    /// elements, to preserve invariants this vector must modify
+    /// the `min_len`-1 nth element to a non-zero value
     #[inline]
     fn get_mut_with_min_len(&mut self, min_len: usize) -> &mut [VTimestamp] {
         if self.0.len() < min_len {
@@ -253,7 +278,7 @@ impl VClock {
     }
 
     /// Increment the vector clock at a known index
-    ///  this will panic if the vector index overflows
+    /// this will panic if the vector index overflows
     #[inline]
     pub fn increment_index(&mut self, idx: VectorIdx) {
         let idx = idx.index();
@@ -263,8 +288,8 @@ impl VClock {
     }
 
     // Join the two vector-clocks together, this
-    //  sets each vector-element to the maximum value
-    //  of that element in either of the two source elements.
+    // sets each vector-element to the maximum value
+    // of that element in either of the two source elements.
     pub fn join(&mut self, other: &Self) {
         let rhs_slice = other.as_slice();
         let lhs_slice = self.get_mut_with_min_len(rhs_slice.len());
@@ -291,30 +316,43 @@ impl VClock {
     pub fn is_zero_vector(&self) -> bool {
         self.0.is_empty()
     }
+
 }
 
 impl Clone for VClock {
+
     fn clone(&self) -> Self {
         VClock(self.0.clone())
     }
+
+    // Optimized clone-from, can be removed
+    // and replaced with a derive once a similar
+    // optimization is inserted into SmallVec's
+    // clone implementation.
     fn clone_from(&mut self, source: &Self) {
         let source_slice = source.as_slice();
         self.0.clear();
         self.0.extend_from_slice(source_slice);
     }
+
 }
 
 impl PartialOrd for VClock {
+
     fn partial_cmp(&self, other: &VClock) -> Option<Ordering> {
 
         // Load the values as slices
         let lhs_slice = self.as_slice();
         let rhs_slice = other.as_slice();
 
-        // Iterate through the combined vector slice
-        //  keeping track of the order that is currently possible to satisfy.
-        // If an ordering relation is detected to be impossible, then bail and
-        //  directly return None
+        // Iterate through the combined vector slice continuously updating
+        // the value of `order` to the current comparison of the vector from
+        // index 0 to the currently checked index.
+        // An Equal ordering can be converted into Less or Greater ordering
+        // on finding an element that is less than or greater than the other
+        // but if one Greater and one Less element-wise comparison is found
+        // then no ordering is possible and so directly return an ordering
+        // of None.
         let mut iter = lhs_slice.iter().zip(rhs_slice.iter());
         let mut order = match iter.next() {
             Some((lhs, rhs)) => lhs.cmp(rhs),
@@ -332,23 +370,23 @@ impl PartialOrd for VClock {
             }
         }
 
-        //Now test if either left or right have trailing elements
+        // Now test if either left or right have trailing elements,
         // by the invariant the trailing elements have at least 1
         // non zero value, so no additional calculation is required
-        // to determine the result of the PartialOrder
+        // to determine the result of the PartialOrder.
         let l_len = lhs_slice.len();
         let r_len = rhs_slice.len();
         match l_len.cmp(&r_len) {
-            // Equal has no additional elements: return current order
+            // Equal means no additional elements: return current order
             Ordering::Equal => Some(order),
             // Right has at least 1 element > than the implicit 0,
-            //  so the only valid values are Ordering::Less or None
+            // so the only valid values are Ordering::Less or None.
             Ordering::Less => match order {
                 Ordering::Less | Ordering::Equal => Some(Ordering::Less),
                 Ordering::Greater => None
             }
             // Left has at least 1 element > than the implicit 0,
-            //  so the only valid values are Ordering::Greater or None
+            // so the only valid values are Ordering::Greater or None.
             Ordering::Greater => match order {
                 Ordering::Greater | Ordering::Equal => Some(Ordering::Greater),
                 Ordering::Less => None
@@ -362,28 +400,28 @@ impl PartialOrd for VClock {
         let rhs_slice = other.as_slice();
 
         // If l_len > r_len then at least one element
-        //  in l_len is > than r_len, therefore the result
-        //  is either Some(Greater) or None, so return false
-        //  early.
+        // in l_len is > than r_len, therefore the result
+        // is either Some(Greater) or None, so return false
+        // early.
         let l_len = lhs_slice.len();
         let r_len = rhs_slice.len();
         if l_len <= r_len {
             // If any elements on the left are greater than the right
-            //  then the result is None or Some(Greater), both of which
-            //  return false, the earlier test asserts that no elements in the
-            //  extended tail violate this assumption. Otherwise l <= r, finally
-            //  the case where the values are potentially equal needs to be considered
-            //  and false returned as well
+            // then the result is None or Some(Greater), both of which
+            // return false, the earlier test asserts that no elements in the
+            // extended tail violate this assumption. Otherwise l <= r, finally
+            // the case where the values are potentially equal needs to be considered
+            // and false returned as well
             let mut equal = l_len == r_len;
             for (&l, &r) in lhs_slice.iter().zip(rhs_slice.iter()) {
                 if l > r {
                     return false
-                }else if l < r {
+                } else if l < r {
                     equal = false;
                 }
             }
             !equal
-        }else{
+         } else {
             false
         }
     }
@@ -394,18 +432,18 @@ impl PartialOrd for VClock {
         let rhs_slice = other.as_slice();
 
         // If l_len > r_len then at least one element
-        //  in l_len is > than r_len, therefore the result
-        //  is either Some(Greater) or None, so return false
-        //  early.
+        // in l_len is > than r_len, therefore the result
+        // is either Some(Greater) or None, so return false
+        // early.
         let l_len = lhs_slice.len();
         let r_len = rhs_slice.len();
         if l_len <= r_len {
             // If any elements on the left are greater than the right
-            //  then the result is None or Some(Greater), both of which
-            //  return false, the earlier test asserts that no elements in the
-            //  extended tail violate this assumption. Otherwise l <= r
+            // then the result is None or Some(Greater), both of which
+            // return false, the earlier test asserts that no elements in the
+            // extended tail violate this assumption. Otherwise l <= r
             !lhs_slice.iter().zip(rhs_slice.iter()).any(|(&l, &r)| l > r)
-        }else{
+        } else {
             false
         }
     }
@@ -416,28 +454,28 @@ impl PartialOrd for VClock {
         let rhs_slice = other.as_slice();
 
         // If r_len > l_len then at least one element
-        //  in r_len is > than l_len, therefore the result
-        //  is either Some(Less) or None, so return false
-        //  early.
+        // in r_len is > than l_len, therefore the result
+        // is either Some(Less) or None, so return false
+        // early.
         let l_len = lhs_slice.len();
         let r_len = rhs_slice.len();
         if l_len >= r_len {
             // If any elements on the left are less than the right
-            //  then the result is None or Some(Less), both of which
-            //  return false, the earlier test asserts that no elements in the
-            //  extended tail violate this assumption. Otherwise l >=, finally
-            //  the case where the values are potentially equal needs to be considered
-            //  and false returned as well
+            // then the result is None or Some(Less), both of which
+            // return false, the earlier test asserts that no elements in the
+            // extended tail violate this assumption. Otherwise l >=, finally
+            // the case where the values are potentially equal needs to be considered
+            // and false returned as well
             let mut equal = l_len == r_len;
             for (&l, &r) in lhs_slice.iter().zip(rhs_slice.iter()) {
                 if l < r {
                     return false
-                }else if l > r {
+                } else if l > r {
                     equal = false;
                 }
             }
             !equal
-        }else{
+        } else {
             false
         }
     }
@@ -448,30 +486,33 @@ impl PartialOrd for VClock {
         let rhs_slice = other.as_slice();
 
         // If r_len > l_len then at least one element
-        //  in r_len is > than l_len, therefore the result
-        //  is either Some(Less) or None, so return false
-        //  early.
+        // in r_len is > than l_len, therefore the result
+        // is either Some(Less) or None, so return false
+        // early.
         let l_len = lhs_slice.len();
         let r_len = rhs_slice.len();
         if l_len >= r_len {
             // If any elements on the left are less than the right
-            //  then the result is None or Some(Less), both of which
-            //  return false, the earlier test asserts that no elements in the
-            //  extended tail violate this assumption. Otherwise l >= r
+            // then the result is None or Some(Less), both of which
+            // return false, the earlier test asserts that no elements in the
+            // extended tail violate this assumption. Otherwise l >= r
             !lhs_slice.iter().zip(rhs_slice.iter()).any(|(&l, &r)| l < r)
-        }else{
+        } else {
             false
         }
     }
+
 }
 
 impl Index<VectorIdx> for VClock {
+
     type Output = VTimestamp;
 
     #[inline]
     fn index(&self, index: VectorIdx) -> &VTimestamp {
        self.as_slice().get(index.to_u32() as usize).unwrap_or(&0)
     }
+
 }
 
 
@@ -480,7 +521,8 @@ impl Index<VectorIdx> for VClock {
 ///  test suite
 #[cfg(test)]
 mod tests {
-    use super::{VClock, VTimestamp, VectorIdx, VSmallClockSet};
+
+    use super::{VClock, VTimestamp, VectorIdx, VSmallClockMap};
     use std::cmp::Ordering;
 
     #[test]
@@ -536,7 +578,7 @@ mod tests {
         let alt_compare = r.partial_cmp(&l);
         assert_eq!(alt_compare, o.map(Ordering::reverse), "Invalid alt comparison\n l: {:?}\n r: {:?}",l,r);
 
-        //Test operatorsm with faster implementations
+        //Test operators with faster implementations
         assert_eq!(
             matches!(compare,Some(Ordering::Less)), l < r,
             "Invalid (<):\n l: {:?}\n r: {:?}",l,r
@@ -573,30 +615,31 @@ mod tests {
 
     #[test]
     pub fn test_vclock_set() {
-        let mut set = VSmallClockSet::default();
+        let mut map = VSmallClockMap::default();
         let v1 = from_slice(&[3,0,1]);
         let v2 = from_slice(&[4,2,3]);
         let v3 = from_slice(&[4,8,3]);
-        set.insert(VectorIdx(0), &v1);
-        assert_eq!(set.get(VectorIdx(0)), Some(&v1));
-        set.insert(VectorIdx(5), &v2);
-        assert_eq!(set.get(VectorIdx(0)), Some(&v1));
-        assert_eq!(set.get(VectorIdx(5)), Some(&v2));
-        set.insert(VectorIdx(53), &v3);
-        assert_eq!(set.get(VectorIdx(0)), Some(&v1));
-        assert_eq!(set.get(VectorIdx(5)), Some(&v2));
-        assert_eq!(set.get(VectorIdx(53)), Some(&v3));
-        set.retain_index(VectorIdx(53));
-        assert_eq!(set.get(VectorIdx(0)), None);
-        assert_eq!(set.get(VectorIdx(5)), None);
-        assert_eq!(set.get(VectorIdx(53)), Some(&v3));
-        set.clear();
-        assert_eq!(set.get(VectorIdx(0)), None);
-        assert_eq!(set.get(VectorIdx(5)), None);
-        assert_eq!(set.get(VectorIdx(53)), None);
-        set.insert(VectorIdx(53), &v3);
-        assert_eq!(set.get(VectorIdx(0)), None);
-        assert_eq!(set.get(VectorIdx(5)), None);
-        assert_eq!(set.get(VectorIdx(53)), Some(&v3));
+        map.insert(VectorIdx(0), &v1);
+        assert_eq!(map.get(VectorIdx(0)), Some(&v1));
+        map.insert(VectorIdx(5), &v2);
+        assert_eq!(map.get(VectorIdx(0)), Some(&v1));
+        assert_eq!(map.get(VectorIdx(5)), Some(&v2));
+        map.insert(VectorIdx(53), &v3);
+        assert_eq!(map.get(VectorIdx(0)), Some(&v1));
+        assert_eq!(map.get(VectorIdx(5)), Some(&v2));
+        assert_eq!(map.get(VectorIdx(53)), Some(&v3));
+        map.retain_index(VectorIdx(53));
+        assert_eq!(map.get(VectorIdx(0)), None);
+        assert_eq!(map.get(VectorIdx(5)), None);
+        assert_eq!(map.get(VectorIdx(53)), Some(&v3));
+        map.clear();
+        assert_eq!(map.get(VectorIdx(0)), None);
+        assert_eq!(map.get(VectorIdx(5)), None);
+        assert_eq!(map.get(VectorIdx(53)), None);
+        map.insert(VectorIdx(53), &v3);
+        assert_eq!(map.get(VectorIdx(0)), None);
+        assert_eq!(map.get(VectorIdx(5)), None);
+        assert_eq!(map.get(VectorIdx(53)), Some(&v3));
     }
+    
 }

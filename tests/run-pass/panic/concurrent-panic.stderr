@@ -1,4 +1,4 @@
-warning: thread support is experimental.
+warning: thread support is experimental, no weak memory effects are currently emulated.
 
 Thread 1 starting, will block on mutex
 Thread 1 reported it has started

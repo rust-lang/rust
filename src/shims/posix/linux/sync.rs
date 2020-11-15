@@ -78,7 +78,17 @@ pub fn futex<'tcx>(
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             // FIXME: this fails if `addr` is not a pointer type.
-            // FIXME: what form of atomic operation should the `futex` use to load the value?
+            // The atomic ordering for futex(https://man7.org/linux/man-pages/man2/futex.2.html):
+            //  "The load of the value of the futex word is an
+            //   atomic memory access (i.e., using atomic machine instructions
+            //   of the respective architecture).  This load, the comparison
+            //   with the expected value, and starting to sleep are performed
+            //   atomically and totally ordered with respect to other futex
+            //   operations on the same futex word."
+            // SeqCst is total order over all operations, so uses acquire,
+            // either are equal under the current implementation.
+            // FIXME: is Acquire correct or should some additional ordering constraints be observed?
+            // FIXME: use RMW or similar?
             let futex_val = this.read_scalar_at_offset_atomic(
                 addr.into(), 0, this.machine.layouts.i32, AtomicReadOp::Acquire
             )?.to_i32()?;

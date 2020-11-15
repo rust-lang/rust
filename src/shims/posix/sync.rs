@@ -64,7 +64,7 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     ecx.read_scalar_at_offset_atomic(
         mutex_op, offset, ecx.machine.layouts.i32,
-        AtomicReadOp::SeqCst
+        AtomicReadOp::Acquire
     )
 }
 
@@ -76,7 +76,7 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
     ecx.write_scalar_at_offset_atomic(
         mutex_op, offset, kind, ecx.machine.layouts.i32, 
-        AtomicWriteOp::SeqCst
+        AtomicWriteOp::Release
     )
 }
 
@@ -85,7 +85,7 @@ fn mutex_get_id<'mir, 'tcx: 'mir>(
     mutex_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     ecx.read_scalar_at_offset_atomic(
-        mutex_op, 4, ecx.machine.layouts.u32, AtomicReadOp::SeqCst
+        mutex_op, 4, ecx.machine.layouts.u32, AtomicReadOp::Acquire
     )
 }
 
@@ -96,7 +96,7 @@ fn mutex_set_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset_atomic(
         mutex_op, 4, id, ecx.machine.layouts.u32,
-        AtomicWriteOp::SeqCst
+        AtomicWriteOp::Release
     )
 }
 
@@ -129,7 +129,7 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     ecx.read_scalar_at_offset_atomic(
         rwlock_op, 4, ecx.machine.layouts.u32,
-        AtomicReadOp::SeqCst
+        AtomicReadOp::Acquire
     )
 }
 
@@ -140,7 +140,7 @@ fn rwlock_set_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset_atomic(
         rwlock_op, 4, id, ecx.machine.layouts.u32,
-        AtomicWriteOp::SeqCst
+        AtomicWriteOp::Release
     )
 }
 
@@ -196,7 +196,7 @@ fn cond_get_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     ecx.read_scalar_at_offset_atomic(
         cond_op, 4, ecx.machine.layouts.u32,
-        AtomicReadOp::SeqCst
+        AtomicReadOp::Acquire
     )
 }
 
@@ -207,7 +207,7 @@ fn cond_set_id<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, ()> {
     ecx.write_scalar_at_offset_atomic(
         cond_op, 4, id, ecx.machine.layouts.u32,
-        AtomicWriteOp::SeqCst
+        AtomicWriteOp::Release
     )
 }
 
