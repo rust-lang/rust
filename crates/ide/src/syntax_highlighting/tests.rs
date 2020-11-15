@@ -340,6 +340,8 @@ fn main() {
 
     println!("{\x41}", A = 92);
     println!("{ничоси}", ничоси = 92);
+
+    println!("{:x?} {} ", thingy, n2);
 }"#
         .trim(),
         expect_file!["./test_data/highlight_strings.html"],

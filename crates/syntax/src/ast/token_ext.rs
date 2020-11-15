@@ -331,10 +331,22 @@ pub trait HasFormatSpecifier: AstToken {
                             }
                             c if c == '_' || c.is_alphabetic() => {
                                 read_identifier(&mut chars, &mut callback);
+
+                                if chars.peek().and_then(|next| next.1.as_ref().ok()).copied()
+                                    == Some('?')
+                                {
+                                    skip_char_and_emit(
+                                        &mut chars,
+                                        FormatSpecifier::QuestionMark,
+                                        &mut callback,
+                                    );
+                                }
+
                                 // can be either width (indicated by dollar sign, or type in which case
                                 // the next sign has to be `}`)
                                 let next =
                                     chars.peek().and_then(|next| next.1.as_ref().ok()).copied();
+
                                 match next {
                                     Some('$') => skip_char_and_emit(
                                         &mut chars,
@@ -417,6 +429,16 @@ pub trait HasFormatSpecifier: AstToken {
                             }
                             c if c == '_' || c.is_alphabetic() => {
                                 read_identifier(&mut chars, &mut callback);
+
+                                if chars.peek().and_then(|next| next.1.as_ref().ok()).copied()
+                                    == Some('?')
+                                {
+                                    skip_char_and_emit(
+                                        &mut chars,
+                                        FormatSpecifier::QuestionMark,
+                                        &mut callback,
+                                    );
+                                }
                             }
                             _ => {}
                         }
