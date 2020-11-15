@@ -22,7 +22,7 @@ export class Ctx {
         config: Config,
         extCtx: vscode.ExtensionContext,
         serverPath: string,
-        cwd: string,
+        cwd?: string,
     ): Promise<Ctx> {
         const client = createClient(serverPath, cwd, config.serverExtraEnv);
 

@@ -7,7 +7,7 @@ import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
 import { Ctx } from './ctx';
 import { Config } from './config';
-import { log, assert, isValidExecutable } from './util';
+import { log, assert, isValidExecutable, isRustDocument } from './util';
 import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
 import { activateTaskProvider } from './tasks';
@@ -28,26 +28,6 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 async function tryActivate(context: vscode.ExtensionContext) {
-    // Register a "dumb" onEnter command for the case where server fails to
-    // start.
-    //
-    // FIXME: refactor command registration code such that commands are
-    // **always** registered, even if the server does not start. Use API like
-    // this perhaps?
-    //
-    // ```TypeScript
-    // registerCommand(
-    //    factory: (Ctx) => ((Ctx) => any),
-    //    fallback: () => any = () => vscode.window.showErrorMessage(
-    //        "rust-analyzer is not available"
-    //    ),
-    // )
-    const defaultOnEnter = vscode.commands.registerCommand(
-        'rust-analyzer.onEnter',
-        () => vscode.commands.executeCommand('default:type', { text: '\n' }),
-    );
-    context.subscriptions.push(defaultOnEnter);
-
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
     const serverPath = await bootstrap(config, state).catch(err => {
@@ -67,14 +47,52 @@ async function tryActivate(context: vscode.ExtensionContext) {
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder === undefined) {
-        throw new Error("no folder is opened");
+        let rustDocuments = vscode.workspace.textDocuments.filter(document => isRustDocument(document));
+        if (rustDocuments.length > 0) {
+            ctx = await Ctx.create(config, context, serverPath);
+        } else {
+            throw new Error("no rust files are opened");
+        }
+    } else {
+        // Note: we try to start the server before we activate type hints so that it
+        // registers its `onDidChangeDocument` handler before us.
+        //
+        // This a horribly, horribly wrong way to deal with this problem.
+        ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
+        ctx.pushCleanup(activateTaskProvider(workspaceFolder, ctx.config));
     }
+    await initCommonContext(context, ctx);
 
-    // Note: we try to start the server before we activate type hints so that it
-    // registers its `onDidChangeDocument` handler before us.
+    activateInlayHints(ctx);
+    warnAboutExtensionConflicts();
+
+    vscode.workspace.onDidChangeConfiguration(
+        _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }),
+        null,
+        ctx.subscriptions,
+    );
+}
+
+async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
+    // Register a "dumb" onEnter command for the case where server fails to
+    // start.
     //
-    // This a horribly, horribly wrong way to deal with this problem.
-    ctx = await Ctx.create(config, context, serverPath, workspaceFolder.uri.fsPath);
+    // FIXME: refactor command registration code such that commands are
+    // **always** registered, even if the server does not start. Use API like
+    // this perhaps?
+    //
+    // ```TypeScript
+    // registerCommand(
+    //    factory: (Ctx) => ((Ctx) => any),
+    //    fallback: () => any = () => vscode.window.showErrorMessage(
+    //        "rust-analyzer is not available"
+    //    ),
+    // )
+    const defaultOnEnter = vscode.commands.registerCommand(
+        'rust-analyzer.onEnter',
+        () => vscode.commands.executeCommand('default:type', { text: '\n' }),
+    );
+    context.subscriptions.push(defaultOnEnter);
 
     await setContextValue(RUST_PROJECT_CONTEXT_NAME, true);
 
@@ -134,17 +152,6 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.registerCommand('resolveCodeAction', commands.resolveCodeAction);
     ctx.registerCommand('applyActionGroup', commands.applyActionGroup);
     ctx.registerCommand('gotoLocation', commands.gotoLocation);
-
-    ctx.pushCleanup(activateTaskProvider(workspaceFolder, ctx.config));
-
-    activateInlayHints(ctx);
-    warnAboutExtensionConflicts();
-
-    vscode.workspace.onDidChangeConfiguration(
-        _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }),
-        null,
-        ctx.subscriptions,
-    );
 }
 
 export async function deactivate() {

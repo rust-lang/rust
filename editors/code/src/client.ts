@@ -23,7 +23,7 @@ function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownStri
     return result;
 }
 
-export function createClient(serverPath: string, cwd: string, extraEnv: Env): lc.LanguageClient {
+export function createClient(serverPath: string, cwd: string | undefined, extraEnv: Env): lc.LanguageClient {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
