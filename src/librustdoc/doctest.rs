@@ -1,7 +1,6 @@
 use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ColorConfig, ErrorReported};
-use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, CRATE_HIR_ID};
