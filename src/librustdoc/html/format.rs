@@ -1094,7 +1094,6 @@ impl clean::Visibility {
         display_fn(move |f| match *self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
-            clean::Visibility::Crate => write!(f, "pub(crate) "),
             // If this is `pub(crate)`, `path` will be empty.
             clean::Visibility::Restricted(did, _) if did.index == CRATE_DEF_INDEX => {
                 write!(f, "pub(crate) ")
