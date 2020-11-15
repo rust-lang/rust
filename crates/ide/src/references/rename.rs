@@ -126,6 +126,7 @@ fn source_edit_from_reference(
             TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())
         }
         ReferenceKind::RecordFieldExprOrPat => {
+            mark::hit!(test_rename_field_expr_pat);
             replacement_text.push_str(new_name);
             edit_text_range_for_record_field_expr_or_pat(sema, reference.file_range, new_name)
         }
@@ -145,29 +146,27 @@ fn edit_text_range_for_record_field_expr_or_pat(
     file_range: FileRange,
     new_name: &str,
 ) -> TextRange {
-    let mut range = file_range.range;
     let source_file = sema.parse(file_range.file_id);
     let file_syntax = source_file.syntax();
-    if let Some(field_expr) =
-        syntax::algo::find_node_at_range::<ast::RecordExprField>(file_syntax, range)
-    {
-        match field_expr.expr().and_then(|e| e.name_ref()) {
-            Some(name) if &name.to_string() == new_name => range = field_expr.syntax().text_range(),
-            _ => (),
-        }
-    } else if let Some(field_pat) =
-        syntax::algo::find_node_at_range::<ast::RecordPatField>(file_syntax, range)
-    {
-        match field_pat.pat() {
-            Some(ast::Pat::IdentPat(pat))
-                if pat.name().map(|n| n.to_string()).as_deref() == Some(new_name) =>
-            {
-                range = field_pat.syntax().text_range()
-            }
-            _ => (),
-        }
-    }
-    range
+    let original_range = file_range.range;
+
+    syntax::algo::find_node_at_range::<ast::RecordExprField>(file_syntax, original_range)
+        .and_then(|field_expr| match field_expr.expr().and_then(|e| e.name_ref()) {
+            Some(name) if &name.to_string() == new_name => Some(field_expr.syntax().text_range()),
+            _ => None,
+        })
+        .or_else(|| {
+            syntax::algo::find_node_at_range::<ast::RecordPatField>(file_syntax, original_range)
+                .and_then(|field_pat| match field_pat.pat() {
+                    Some(ast::Pat::IdentPat(pat))
+                        if pat.name().map(|n| n.to_string()).as_deref() == Some(new_name) =>
+                    {
+                        Some(field_pat.syntax().text_range())
+                    }
+                    _ => None,
+                })
+        })
+        .unwrap_or(original_range)
 }
 
 fn rename_mod(
@@ -1140,6 +1139,7 @@ impl Foo {
 
     #[test]
     fn test_initializer_use_field_init_shorthand() {
+        mark::check!(test_rename_field_expr_pat);
         check(
             "bar",
             r#"
@@ -1154,60 +1154,6 @@ struct Foo { bar: i32 }
 
 fn foo(bar: i32) -> Foo {
     Foo { bar }
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_binding_in_destructure_pat_shorthand() {
-        check(
-            "bar",
-            r#"
-struct Foo {
-    i: i32,
-}
-
-fn foo(foo: Foo) {
-    let Foo { i } = foo;
-    let _ = i<|>;
-}
-"#,
-            r#"
-struct Foo {
-    i: i32,
-}
-
-fn foo(foo: Foo) {
-    let Foo { i: bar } = foo;
-    let _ = bar;
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn test_rename_binding_in_destructure_pat() {
-        check(
-            "bar",
-            r#"
-struct Foo {
-    i: i32,
-}
-
-fn foo(foo: Foo) {
-    let Foo { i: b } = foo;
-    let _ = b<|>;
-}
-"#,
-            r#"
-struct Foo {
-    i: i32,
-}
-
-fn foo(foo: Foo) {
-    let Foo { i: bar } = foo;
-    let _ = bar;
 }
 "#,
         );
@@ -1234,5 +1180,72 @@ fn foo(foo: Foo) {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn test_rename_binding_in_destructure_pat() {
+        let expected_fixture = r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i: bar } = foo;
+    let _ = bar;
+}
+"#;
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i: b } = foo;
+    let _ = b<|>;
+}
+"#,
+            expected_fixture,
+        );
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i } = foo;
+    let _ = i<|>;
+}
+"#,
+            expected_fixture,
+        );
+    }
+
+    #[test]
+    fn test_rename_binding_in_destructure_param_pat() {
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32
+}
+
+fn foo(Foo { i }: foo) -> i32 {
+    i<|>
+}
+"#,
+            r#"
+struct Foo {
+    i: i32
+}
+
+fn foo(Foo { i: bar }: foo) -> i32 {
+    bar
+}
+"#,
+        )
     }
 }
