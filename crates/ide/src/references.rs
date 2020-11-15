@@ -110,13 +110,22 @@ pub(crate) fn find_all_refs(
         .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
         .collect();
 
-    let decl_range = def.try_to_nav(sema.db)?.focus_or_full_range();
+    let nav = def.try_to_nav(sema.db)?;
+    let decl_range = nav.focus_or_full_range();
 
-    let declaration = Declaration {
-        nav: def.try_to_nav(sema.db)?,
-        kind: ReferenceKind::Other,
-        access: decl_access(&def, &syntax, decl_range),
+    let mut kind = ReferenceKind::Other;
+    if let Definition::Local(local) = def {
+        if let either::Either::Left(pat) = local.source(sema.db).value {
+            if matches!(
+                pat.syntax().parent().and_then(ast::RecordPatField::cast),
+                Some(pat_field) if pat_field.name_ref().is_none()
+            ) {
+                kind = ReferenceKind::FieldShorthandForLocal;
+            }
+        }
     };
+
+    let declaration = Declaration { nav, kind, access: decl_access(&def, &syntax, decl_range) };
 
     Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }))
 }
@@ -613,7 +622,7 @@ fn foo() {
             expect![[r#"
                 f RECORD_FIELD FileId(0) 15..21 15..16 Other
 
-                FileId(0) 55..56 Other Read
+                FileId(0) 55..56 RecordFieldExprOrPat Read
                 FileId(0) 68..69 Other Write
             "#]],
         );
@@ -748,7 +757,7 @@ fn f() -> m::En {
             expect![[r#"
                 field RECORD_FIELD FileId(0) 56..65 56..61 Other
 
-                FileId(0) 125..130 Other Read
+                FileId(0) 125..130 RecordFieldExprOrPat Read
             "#]],
         );
     }

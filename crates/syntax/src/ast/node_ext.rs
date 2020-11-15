@@ -203,15 +203,7 @@ impl ast::RecordExprField {
         if let Some(name_ref) = self.name_ref() {
             return Some(name_ref);
         }
-        if let Some(ast::Expr::PathExpr(expr)) = self.expr() {
-            let path = expr.path()?;
-            let segment = path.segment()?;
-            let name_ref = segment.name_ref()?;
-            if path.qualifier().is_none() {
-                return Some(name_ref);
-            }
-        }
-        None
+        self.expr()?.name_ref()
     }
 }
 

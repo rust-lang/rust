@@ -22,6 +22,18 @@ impl ast::Expr {
             _ => false,
         }
     }
+
+    pub fn name_ref(&self) -> Option<ast::NameRef> {
+        if let ast::Expr::PathExpr(expr) = self {
+            let path = expr.path()?;
+            let segment = path.segment()?;
+            let name_ref = segment.name_ref()?;
+            if path.qualifier().is_none() {
+                return Some(name_ref);
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

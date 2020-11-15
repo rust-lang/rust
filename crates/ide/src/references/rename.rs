@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
-use ide_db::base_db::SourceDatabaseExt;
+use ide_db::base_db::{FileRange, SourceDatabaseExt};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -106,9 +106,12 @@ fn find_module_at_offset(
     Some(module)
 }
 
-fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFileEdit {
+fn source_edit_from_reference(
+    sema: &Semantics<RootDatabase>,
+    reference: Reference,
+    new_name: &str,
+) -> SourceFileEdit {
     let mut replacement_text = String::new();
-    let file_id = reference.file_range.file_id;
     let range = match reference.kind {
         ReferenceKind::FieldShorthandForField => {
             mark::hit!(test_rename_struct_field_for_shorthand);
@@ -122,12 +125,48 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
             replacement_text.push_str(new_name);
             TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())
         }
+        ReferenceKind::RecordFieldExprOrPat => {
+            mark::hit!(test_rename_field_expr_pat);
+            replacement_text.push_str(new_name);
+            edit_text_range_for_record_field_expr_or_pat(sema, reference.file_range, new_name)
+        }
         _ => {
             replacement_text.push_str(new_name);
             reference.file_range.range
         }
     };
-    SourceFileEdit { file_id, edit: TextEdit::replace(range, replacement_text) }
+    SourceFileEdit {
+        file_id: reference.file_range.file_id,
+        edit: TextEdit::replace(range, replacement_text),
+    }
+}
+
+fn edit_text_range_for_record_field_expr_or_pat(
+    sema: &Semantics<RootDatabase>,
+    file_range: FileRange,
+    new_name: &str,
+) -> TextRange {
+    let source_file = sema.parse(file_range.file_id);
+    let file_syntax = source_file.syntax();
+    let original_range = file_range.range;
+
+    syntax::algo::find_node_at_range::<ast::RecordExprField>(file_syntax, original_range)
+        .and_then(|field_expr| match field_expr.expr().and_then(|e| e.name_ref()) {
+            Some(name) if &name.to_string() == new_name => Some(field_expr.syntax().text_range()),
+            _ => None,
+        })
+        .or_else(|| {
+            syntax::algo::find_node_at_range::<ast::RecordPatField>(file_syntax, original_range)
+                .and_then(|field_pat| match field_pat.pat() {
+                    Some(ast::Pat::IdentPat(pat))
+                        if pat.name().map(|n| n.to_string()).as_deref() == Some(new_name) =>
+                    {
+                        Some(field_pat.syntax().text_range())
+                    }
+                    _ => None,
+                })
+        })
+        .unwrap_or(original_range)
 }
 
 fn rename_mod(
@@ -170,7 +209,7 @@ fn rename_mod(
     let ref_edits = refs
         .references
         .into_iter()
-        .map(|reference| source_edit_from_reference(reference, new_name));
+        .map(|reference| source_edit_from_reference(sema, reference, new_name));
     source_file_edits.extend(ref_edits);
 
     Ok(RangeInfo::new(range, SourceChange::from_edits(source_file_edits, file_system_edits)))
@@ -211,7 +250,7 @@ fn rename_to_self(
 
     let mut edits = usages
         .into_iter()
-        .map(|reference| source_edit_from_reference(reference, "self"))
+        .map(|reference| source_edit_from_reference(sema, reference, "self"))
         .collect::<Vec<_>>();
 
     edits.push(SourceFileEdit {
@@ -300,7 +339,7 @@ fn rename_reference(
 
     let edit = refs
         .into_iter()
-        .map(|reference| source_edit_from_reference(reference, new_name))
+        .map(|reference| source_edit_from_reference(sema, reference, new_name))
         .collect::<Vec<_>>();
 
     if edit.is_empty() {
@@ -1096,5 +1135,117 @@ impl Foo {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn test_initializer_use_field_init_shorthand() {
+        mark::check!(test_rename_field_expr_pat);
+        check(
+            "bar",
+            r#"
+struct Foo { i<|>: i32 }
+
+fn foo(bar: i32) -> Foo {
+    Foo { i: bar }
+}
+"#,
+            r#"
+struct Foo { bar: i32 }
+
+fn foo(bar: i32) -> Foo {
+    Foo { bar }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_struct_field_destructure_into_shorthand() {
+        check(
+            "baz",
+            r#"
+struct Foo { i<|>: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { i: baz } = foo;
+    let _ = baz;
+}
+"#,
+            r#"
+struct Foo { baz: i32 }
+
+fn foo(foo: Foo) {
+    let Foo { baz } = foo;
+    let _ = baz;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_binding_in_destructure_pat() {
+        let expected_fixture = r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i: bar } = foo;
+    let _ = bar;
+}
+"#;
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i: b } = foo;
+    let _ = b<|>;
+}
+"#,
+            expected_fixture,
+        );
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32,
+}
+
+fn foo(foo: Foo) {
+    let Foo { i } = foo;
+    let _ = i<|>;
+}
+"#,
+            expected_fixture,
+        );
+    }
+
+    #[test]
+    fn test_rename_binding_in_destructure_param_pat() {
+        check(
+            "bar",
+            r#"
+struct Foo {
+    i: i32
+}
+
+fn foo(Foo { i }: foo) -> i32 {
+    i<|>
+}
+"#,
+            r#"
+struct Foo {
+    i: i32
+}
+
+fn foo(Foo { i: bar }: foo) -> i32 {
+    bar
+}
+"#,
+        )
     }
 }
