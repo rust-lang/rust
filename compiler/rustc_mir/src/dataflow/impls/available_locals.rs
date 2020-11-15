@@ -64,7 +64,7 @@ impl<'a, 'tcx> AvailableLocals {
         &self,
         local: Local,
         location: Location,
-    ) -> LocalWithLocationIndex {
+    ) -> Option<LocalWithLocationIndex> {
         self.local_with_location_map.local_with_specific_location(local, Some(location))
     }
 
@@ -103,7 +103,9 @@ impl AnalysisDomain<'tcx> for AvailableLocals {
 
         // only the function parameters are available
         for arg in body.args_iter() {
-            state.0.insert(self.local_with_location_map.local_with_specific_location(arg, None));
+            if let Some(l) = self.local_with_location_map.local_with_specific_location(arg, None) {
+                state.0.insert(l);
+            }
         }
     }
 }
@@ -197,14 +199,10 @@ impl LocalWithLocationMap {
         &self,
         local: Local,
         location: Option<Location>,
-    ) -> LocalWithLocationIndex {
+    ) -> Option<LocalWithLocationIndex> {
         debug!("Looking for {:?} in {:?}", (local, location), self.0);
-        let locations = self.0.get(&local).unwrap();
-        *locations
-            .iter()
-            .find(|(_, l)| *l == location)
-            .map(|(location_idx, _)| location_idx)
-            .unwrap()
+        let locations = self.0.get(&local)?;
+        locations.iter().find(|(_, l)| *l == location).map(|(location_idx, _)| *location_idx)
     }
 
     fn local_with_locations(
@@ -281,10 +279,12 @@ where
             _ => {}
         }
 
-        let index =
-            self.local_with_location_map.local_with_specific_location(local, Some(location));
-        debug!("Inserting {:?} which corresponds to {:?}", index, (local, Some(location)));
-        self.available.gen(index);
+        if let Some(index) =
+            self.local_with_location_map.local_with_specific_location(local, Some(location))
+        {
+            debug!("Inserting {:?} which corresponds to {:?}", index, (local, Some(location)));
+            self.available.gen(index);
+        };
     }
 }
 

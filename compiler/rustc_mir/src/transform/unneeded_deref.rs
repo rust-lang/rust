@@ -142,11 +142,14 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx> for UnneededDerefVisitor<'a, 'tcx> {
                     if let Some(place_taken_ref_of_idx) =
                         analysis.is_available(place_taken_ref_of.local, state)
                     {
-                        let lhs_idx = analysis.get_local_with_location_index(lhs.local, location);
-                        self.refs.insert(
-                            lhs.local,
-                            (place_taken_ref_of.clone(), (lhs_idx, place_taken_ref_of_idx)),
-                        );
+                        if let Some(lhs_idx) =
+                            analysis.get_local_with_location_index(lhs.local, location)
+                        {
+                            self.refs.insert(
+                                lhs.local,
+                                (place_taken_ref_of.clone(), (lhs_idx, place_taken_ref_of_idx)),
+                            );
+                        };
                     }
                 }
                 StatementKind::Assign(box (_, rvalue)) => match rvalue {
