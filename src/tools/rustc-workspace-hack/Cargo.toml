@@ -61,6 +61,7 @@ features = [
 ]
 
 [dependencies]
+byteorder = { version = "1", features = ['default', 'std'] }
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 crossbeam-utils = { version = "0.7.2", features = ["nightly"] }
 proc-macro2 = { version = "1", features = ["default"] }

@@ -1280,7 +1280,7 @@ where
         #[inline]
         fn find<T, B>(
             f: &mut impl FnMut(T) -> Option<B>,
-        ) -> impl FnMut((), T) -> ControlFlow<(), B> + '_ {
+        ) -> impl FnMut((), T) -> ControlFlow<B> + '_ {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
                 None => ControlFlow::CONTINUE,
@@ -2059,7 +2059,7 @@ where
             flag: &'a mut bool,
             p: &'a mut impl FnMut(&T) -> bool,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
             move |acc, x| {
                 if p(&x) {
                     ControlFlow::from_try(fold(acc, x))
@@ -2372,7 +2372,7 @@ where
         fn check<T, Acc, R: Try<Ok = Acc>>(
             mut n: usize,
             mut fold: impl FnMut(Acc, T) -> R,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> {
             move |acc, x| {
                 n -= 1;
                 let r = fold(acc, x);
@@ -2500,7 +2500,7 @@ where
         fn check<'a, T, Acc, R: Try<Ok = Acc>>(
             n: &'a mut usize,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
             move |acc, x| {
                 *n -= 1;
                 let r = fold(acc, x);
@@ -2685,7 +2685,7 @@ where
             state: &'a mut St,
             f: &'a mut impl FnMut(&mut St, T) -> Option<B>,
             mut fold: impl FnMut(Acc, B) -> R + 'a,
-        ) -> impl FnMut(Acc, T) -> ControlFlow<Acc, R> + 'a {
+        ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
             move |acc, x| match f(state, x) {
                 None => ControlFlow::Break(Try::from_ok(acc)),
                 Some(x) => ControlFlow::from_try(fold(acc, x)),
