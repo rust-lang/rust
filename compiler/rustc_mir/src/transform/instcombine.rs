@@ -29,8 +29,10 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
             optimization_finder.optimizations
         };
 
-        // Then carry out those optimizations.
-        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        if !optimizations.is_empty() {
+            // Then carry out those optimizations.
+            MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        }
     }
 }
 
@@ -295,4 +297,13 @@ struct OptimizationList<'tcx> {
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
     unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
     unneeded_deref: FxHashMap<Location, Place<'tcx>>,
+}
+
+impl<'tcx> OptimizationList<'tcx> {
+    fn is_empty(&self) -> bool {
+        self.and_stars.is_empty()
+            && self.arrays_lengths.is_empty()
+            && self.unneeded_equality_comparison.is_empty()
+            && self.unneeded_deref.is_empty()
+    }
 }
