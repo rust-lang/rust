@@ -2358,7 +2358,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     }
 
     if let Some(config) = builder.config.target_config.get(&target) {
-        if config.llvm_config.is_some() {
+        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
             // If the LLVM was externally provided, then we don't currently copy
             // artifacts into the sysroot. This is not necessarily the right
             // choice (in particular, it will require the LLVM dylib to be in
@@ -2369,6 +2369,9 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             // with the wrong files and isn't what distributions want.
             //
             // This behavior may be revisited in the future though.
+            //
+            // If the LLVM is coming from ourselves (just from CI) though, we
+            // still want to install it, as it otherwise won't be available.
             return;
         }
     }
