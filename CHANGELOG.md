@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [1.4.27] 2020-11-16
+
+### Fixed
+
+- Leading comments in an extern block are no longer dropped (a bug that exists in v1.4.26). ([#4528](https://github.com/rust-lang/rustfmt/issues/4528))
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.27](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.27)
+- **Build from source** - [Tag v1.4.27](https://github.com/rust-lang/rustfmt/tree/v1.4.27), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.26] 2020-11-14
 
 ### Changed
@@ -47,7 +59,7 @@ if toks.eat_token(Token::Word("modify"))? && toks.eat_token(Token::Word("labels"
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - Starting in `2020-11-16`
 - **GitHub Release Binaries** - [Release v1.4.26](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.26)
 - **Build from source** - [Tag v1.4.26](https://github.com/rust-lang/rustfmt/tree/v1.4.26), see instructions for how to [install rustfmt from source][install-from-source]
 
