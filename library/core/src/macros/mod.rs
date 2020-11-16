@@ -1,3 +1,7 @@
+#[unstable(feature = "macros_internals", reason = "macros implementation detail", issue = "none")]
+#[doc(hidden)]
+pub mod internals;
+
 #[cfg(bootstrap)]
 #[doc(include = "panic.md")]
 #[macro_export]
@@ -53,6 +57,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(macros_internals)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
@@ -61,24 +66,19 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left == right)`
-  left: `{:?}`,
- right: `{:?}`"#, &*left_val, &*right_val)
+                    $crate::macros_internals::assert_eq_failed(&*left_val, &*right_val);
                 }
             }
         }
     });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
-        match (&($left), &($right)) {
+        match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left == right)`
-  left: `{:?}`,
- right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           $crate::format_args!($($arg)+))
+                    $crate::macros_internals::assert_eq_failed_args(&*left_val, &*right_val, $crate::format_args!($($arg)+));
                 }
             }
         }
@@ -104,6 +104,7 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
+#[allow_internal_unstable(macros_internals)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
@@ -112,9 +113,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left != right)`
-  left: `{:?}`,
- right: `{:?}`"#, &*left_val, &*right_val)
+                    $crate::macros_internals::assert_eq_failed(&*left_val, &*right_val);
                 }
             }
         }
@@ -126,10 +125,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left != right)`
-  left: `{:?}`,
- right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           $crate::format_args!($($arg)+))
+                    $crate::macros_internals::assert_ne_failed_args(&*left_val, &*right_val, $crate::format_args!($($arg)+));
                 }
             }
         }

@@ -173,6 +173,13 @@ mod macros;
 
 #[macro_use]
 mod internal_macros;
+#[doc(hidden)]
+#[unstable(
+    feature = "macros_internals",
+    reason = "macros implementation detail",
+    issue = "none"
+)]
+pub use macros::internals as macros_internals;
 
 #[path = "num/shells/int_macros.rs"]
 #[macro_use]
