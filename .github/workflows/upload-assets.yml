@@ -57,11 +57,11 @@ jobs:
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             cp target/release/{rustfmt.exe,cargo-fmt.exe,rustfmt-format-diff.exe,git-rustfmt.exe} "$staging/"
             7z a "$staging.zip" "$staging"
-            echo "::set-env name=ASSET::$staging.zip"
+            echo "ASSET=$staging.zip" >> $GITHUB_ENV
           else
             cp target/release/{rustfmt,cargo-fmt,rustfmt-format-diff,git-rustfmt} "$staging/"
             tar czf "$staging.tar.gz" "$staging"
-            echo "::set-env name=ASSET::$staging.tar.gz"
+            echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
           fi
 
       - name: Upload Release Asset

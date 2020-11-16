@@ -27,7 +27,6 @@ jobs:
         include:
           - channel: nightly
             target: i686-pc-windows-gnu
-            mingw-7z-path: mingw
 
     env:
       CFG_RELEASE_CHANNEL: nightly
@@ -40,42 +39,6 @@ jobs:
       run: git config --global core.autocrlf false
     - name: checkout
       uses: actions/checkout@v2
-
-    # The Windows runners do not (yet) have a proper msys/mingw environment
-    # pre-configured like AppVeyor does, though they will likely be added in the future.
-    # https://github.com/actions/virtual-environments/issues/30
-    #
-    # In the interim, this ensures mingw32 is installed and available on the PATH
-    # for the i686-pc-windows-gnu target. This approach is used because it's common in
-    # other rust projects and there are issues/limitations with the msys2 chocolatey nuget
-    # package and numworks/setup-msys2 action.
-    # https://github.com/rust-lang/rust/blob/master/src/ci/scripts/install-mingw.sh#L59
-    # https://github.com/rust-lang/rustup/blob/master/appveyor.yml
-    #
-    # Use GitHub Actions cache support to avoid downloading the .7z file every time
-    # to be cognizant of the AWS egress cost impacts
-    # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/caching-dependencies-to-speed-up-workflows#usage-limits-and-eviction-policy
-    - name: cache mingw.7z
-      id: cache-mingw
-      with:
-        path: ${{ matrix.mingw-7z-path }}
-        key: ${{ matrix.channel }}-${{ matrix.target }}-mingw
-      uses: actions/cache@v1
-      if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
-    - name: download mingw.7z
-      run: |
-        # Disable the download progress bar which can cause perf issues
-        $ProgressPreference = "SilentlyContinue"
-        md -Force ${{ matrix.mingw-7z-path }}
-        Invoke-WebRequest https://ci-mirrors.rust-lang.org/rustc/i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z -OutFile ${{ matrix.mingw-7z-path }}/mingw.7z
-      if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly' && steps.cache-mingw.outputs.cache-hit != 'true'
-      shell: powershell
-    - name: install mingw32
-      run: |
-        7z x -y ${{ matrix.mingw-7z-path }}/mingw.7z -oC:\msys64 | Out-Null
-        echo ::add-path::C:\msys64\mingw32\bin
-      if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
-      shell: powershell
 
       # Run build
     - name: setup
