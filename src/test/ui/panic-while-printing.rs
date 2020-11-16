@@ -1,11 +1,12 @@
 // run-pass
 // ignore-emscripten no subprocess support
 
-#![feature(set_stdio)]
+#![feature(internal_output_capture)]
 
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::io::{self, set_panic, LocalOutput, Write};
+use std::io::set_output_capture;
+use std::sync::{Arc, Mutex};
 
 pub struct A;
 
@@ -15,23 +16,8 @@ impl Display for A {
     }
 }
 
-struct Sink;
-impl Write for Sink {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        Ok(buf.len())
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-impl LocalOutput for Sink {
-    fn clone_box(&self) -> Box<dyn LocalOutput> {
-        Box::new(Sink)
-    }
-}
-
 fn main() {
-    set_panic(Some(Box::new(Sink)));
+    set_output_capture(Some(Arc::new(Mutex::new(Vec::new()))));
     assert!(std::panic::catch_unwind(|| {
         eprintln!("{}", A);
     })

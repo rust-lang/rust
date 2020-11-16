@@ -12,6 +12,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
+use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -208,6 +209,30 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
     }
 }
 
+#[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
+impl<T, I, const N: usize> Index<I> for [T; N]
+where
+    [T]: Index<I>,
+{
+    type Output = <[T] as Index<I>>::Output;
+
+    #[inline]
+    fn index(&self, index: I) -> &Self::Output {
+        Index::index(self as &[T], index)
+    }
+}
+
+#[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
+impl<T, I, const N: usize> IndexMut<I> for [T; N]
+where
+    [T]: IndexMut<I>,
+{
+    #[inline]
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        IndexMut::index_mut(self as &mut [T], index)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, const N: usize> PartialEq<[B; N]> for [A; N]
 where
@@ -254,22 +279,22 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<&'b [B]> for [A; N]
+impl<A, B, const N: usize> PartialEq<&[B]> for [A; N]
 where
     A: PartialEq<B>,
 {
     #[inline]
-    fn eq(&self, other: &&'b [B]) -> bool {
+    fn eq(&self, other: &&[B]) -> bool {
         self[..] == other[..]
     }
     #[inline]
-    fn ne(&self, other: &&'b [B]) -> bool {
+    fn ne(&self, other: &&[B]) -> bool {
         self[..] != other[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b [B]
+impl<A, B, const N: usize> PartialEq<[A; N]> for &[B]
 where
     B: PartialEq<A>,
 {
@@ -284,22 +309,22 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<&'b mut [B]> for [A; N]
+impl<A, B, const N: usize> PartialEq<&mut [B]> for [A; N]
 where
     A: PartialEq<B>,
 {
     #[inline]
-    fn eq(&self, other: &&'b mut [B]) -> bool {
+    fn eq(&self, other: &&mut [B]) -> bool {
         self[..] == other[..]
     }
     #[inline]
-    fn ne(&self, other: &&'b mut [B]) -> bool {
+    fn ne(&self, other: &&mut [B]) -> bool {
         self[..] != other[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b mut [B]
+impl<A, B, const N: usize> PartialEq<[A; N]> for &mut [B]
 where
     B: PartialEq<A>,
 {

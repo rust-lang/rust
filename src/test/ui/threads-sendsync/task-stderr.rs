@@ -1,33 +1,21 @@
 // run-pass
 // ignore-emscripten no threads support
 
-#![feature(box_syntax, set_stdio)]
+#![feature(internal_output_capture)]
 
-use std::io::prelude::*;
 use std::io;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-struct Sink(Arc<Mutex<Vec<u8>>>);
-impl Write for Sink {
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        Write::write(&mut *self.0.lock().unwrap(), data)
-    }
-    fn flush(&mut self) -> io::Result<()> { Ok(()) }
-}
-impl io::LocalOutput for Sink {
-    fn clone_box(&self) -> Box<dyn io::LocalOutput> {
-        Box::new(Sink(self.0.clone()))
-    }
-}
-
 fn main() {
     let data = Arc::new(Mutex::new(Vec::new()));
-    let sink = Sink(data.clone());
-    let res = thread::Builder::new().spawn(move|| -> () {
-        io::set_panic(Some(Box::new(sink)));
-        panic!("Hello, world!")
+    let res = thread::Builder::new().spawn({
+        let data = data.clone();
+        move || {
+            io::set_output_capture(Some(data));
+            panic!("Hello, world!")
+        }
     }).unwrap().join();
     assert!(res.is_err());
 

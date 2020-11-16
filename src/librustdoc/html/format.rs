@@ -21,7 +21,7 @@ use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::CURRENT_DEPTH;
 
-pub trait Print {
+crate trait Print {
     fn print(self, buffer: &mut Buffer);
 }
 
@@ -47,7 +47,7 @@ impl Print for &'_ str {
 }
 
 #[derive(Debug, Clone)]
-pub struct Buffer {
+crate struct Buffer {
     for_html: bool,
     buffer: String,
 }
@@ -115,28 +115,28 @@ impl Buffer {
 }
 
 /// Wrapper struct for properly emitting a function or method declaration.
-pub struct Function<'a> {
+crate struct Function<'a> {
     /// The declaration to emit.
-    pub decl: &'a clean::FnDecl,
+    crate decl: &'a clean::FnDecl,
     /// The length of the function header and name. In other words, the number of characters in the
     /// function declaration up to but not including the parentheses.
     ///
     /// Used to determine line-wrapping.
-    pub header_len: usize,
+    crate header_len: usize,
     /// The number of spaces to indent each successive line with, if line-wrapping is necessary.
-    pub indent: usize,
+    crate indent: usize,
     /// Whether the function is async or not.
-    pub asyncness: hir::IsAsync,
+    crate asyncness: hir::IsAsync,
 }
 
 /// Wrapper struct for emitting a where-clause from Generics.
-pub struct WhereClause<'a> {
+crate struct WhereClause<'a> {
     /// The Generics from which to emit a where-clause.
-    pub gens: &'a clean::Generics,
+    crate gens: &'a clean::Generics,
     /// The number of spaces to indent each line with.
-    pub indent: usize,
+    crate indent: usize,
     /// Whether the where-clause needs to add a comma and newline after the last bound.
-    pub end_newline: bool,
+    crate end_newline: bool,
 }
 
 fn comma_sep<T: fmt::Display>(items: impl Iterator<Item = T>) -> impl fmt::Display {
@@ -480,7 +480,7 @@ impl clean::Path {
     }
 }
 
-pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
+crate fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return None;
@@ -618,7 +618,7 @@ fn tybounds(param_names: &Option<Vec<clean::GenericBound>>) -> impl fmt::Display
     })
 }
 
-pub fn anchor(did: DefId, text: &str) -> impl fmt::Display + '_ {
+crate fn anchor(did: DefId, text: &str) -> impl fmt::Display + '_ {
     display_fn(move |f| {
         if let Some((url, short_ty, fqp)) = href(did) {
             write!(
@@ -910,7 +910,7 @@ impl clean::Impl {
 }
 
 // The difference from above is that trait is not hyperlinked.
-pub fn fmt_impl_for_trait_page(i: &clean::Impl, f: &mut Buffer, use_absolute: bool) {
+crate fn fmt_impl_for_trait_page(i: &clean::Impl, f: &mut Buffer, use_absolute: bool) {
     f.from_display(i.print_inner(false, use_absolute))
 }
 

@@ -7,7 +7,7 @@ use crate::formats::FormatRenderer;
 use rustc_span::edition::Edition;
 
 #[derive(Clone)]
-pub struct JsonRenderer {}
+crate struct JsonRenderer {}
 
 impl FormatRenderer for JsonRenderer {
     fn init(

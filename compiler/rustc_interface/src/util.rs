@@ -25,7 +25,7 @@ use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::io::{self, Write};
+use std::io;
 use std::lazy::SyncOnceCell;
 use std::mem;
 use std::ops::DerefMut;
@@ -106,21 +106,6 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-struct Sink(Arc<Mutex<Vec<u8>>>);
-impl Write for Sink {
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        Write::write(&mut *self.0.lock().unwrap(), data)
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-impl io::LocalOutput for Sink {
-    fn clone_box(&self) -> Box<dyn io::LocalOutput> {
-        Box::new(Self(self.0.clone()))
-    }
-}
-
 /// Like a `thread::Builder::spawn` followed by a `join()`, but avoids the need
 /// for `'static` bounds.
 #[cfg(not(parallel_compiler))]
@@ -163,9 +148,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
 
     let main_handler = move || {
         rustc_span::with_session_globals(edition, || {
-            if let Some(stderr) = stderr {
-                io::set_panic(Some(box Sink(stderr.clone())));
-            }
+            io::set_output_capture(stderr.clone());
             f()
         })
     };
@@ -203,9 +186,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
             // on the new threads.
             let main_handler = move |thread: rayon::ThreadBuilder| {
                 rustc_span::SESSION_GLOBALS.set(session_globals, || {
-                    if let Some(stderr) = stderr {
-                        io::set_panic(Some(box Sink(stderr.clone())));
-                    }
+                    io::set_output_capture(stderr.clone());
                     thread.run()
                 })
             };

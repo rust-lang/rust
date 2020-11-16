@@ -2439,12 +2439,13 @@ function defocusSearchBar() {
 
         var func = function(e) {
             var next = e.nextElementSibling;
+            if (next && hasClass(next, "stability")) {
+              next = next.nextElementSibling;
+            }
             if (!next) {
                 return;
             }
-            if (hasClass(next, "docblock") === true ||
-                (hasClass(next, "stability") === true &&
-                 hasClass(next.nextElementSibling, "docblock") === true)) {
+            if (hasClass(next, "docblock")) {
                 var newToggle = toggle.cloneNode(true);
                 insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
                 if (hideMethodDocs === true && hasClass(e, "method") === true) {
@@ -2455,6 +2456,9 @@ function defocusSearchBar() {
 
         var funcImpl = function(e) {
             var next = e.nextElementSibling;
+            if (next && hasClass(next, "stability")) {
+                next = next.nextElementSibling;
+            }
             if (next && hasClass(next, "docblock")) {
                 next = next.nextElementSibling;
             }

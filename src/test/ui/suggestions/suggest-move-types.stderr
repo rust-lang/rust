@@ -107,16 +107,12 @@ error[E0747]: type provided when a lifetime was expected
    |
 LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
    |                                           ^
-   |
-   = note: lifetime arguments must be provided before type arguments
 
 error[E0747]: type provided when a lifetime was expected
   --> $DIR/suggest-move-types.rs:48:71
    |
 LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
    |                                                                       ^
-   |
-   = note: lifetime arguments must be provided before type arguments
 
 error[E0747]: lifetime provided when a type was expected
   --> $DIR/suggest-move-types.rs:65:56

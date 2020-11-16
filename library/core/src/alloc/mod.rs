@@ -8,7 +8,18 @@ mod layout;
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub use self::global::GlobalAlloc;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
-pub use self::layout::{Layout, LayoutErr};
+pub use self::layout::Layout;
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[rustc_deprecated(
+    since = "1.51.0",
+    reason = "Name does not follow std convention, use LayoutError",
+    suggestion = "LayoutError"
+)]
+#[allow(deprecated, deprecated_in_future)]
+pub use self::layout::LayoutErr;
+
+#[stable(feature = "alloc_layout_error", since = "1.49.0")]
+pub use self::layout::LayoutError;
 
 use crate::fmt;
 use crate::ptr::{self, NonNull};

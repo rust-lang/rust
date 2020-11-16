@@ -282,6 +282,14 @@ impl GenericArg<'_> {
             GenericArg::Const(_) => "constant",
         }
     }
+
+    pub fn short_descr(&self) -> &'static str {
+        match self {
+            GenericArg::Lifetime(_) => "lifetime",
+            GenericArg::Type(_) => "type",
+            GenericArg::Const(_) => "const",
+        }
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]

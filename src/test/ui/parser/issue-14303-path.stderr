@@ -3,8 +3,6 @@ error[E0747]: type provided when a lifetime was expected
    |
 LL | fn bar<'a, 'b, 'c, T>(x: foo::X<'a, T, 'b, 'c>) {}
    |                                     ^
-   |
-   = note: lifetime arguments must be provided before type arguments
 
 error: aborting due to previous error
 

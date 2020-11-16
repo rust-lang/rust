@@ -5,10 +5,10 @@ use std::mem;
 use crate::clean::{self, GetDefId, Item};
 use crate::fold::{DocFolder, StripItem};
 
-pub struct Stripper<'a> {
-    pub retained: &'a mut DefIdSet,
-    pub access_levels: &'a AccessLevels<DefId>,
-    pub update_retained: bool,
+crate struct Stripper<'a> {
+    crate retained: &'a mut DefIdSet,
+    crate access_levels: &'a AccessLevels<DefId>,
+    crate update_retained: bool,
 }
 
 impl<'a> DocFolder for Stripper<'a> {
@@ -117,8 +117,8 @@ impl<'a> DocFolder for Stripper<'a> {
 }
 
 /// This stripper discards all impls which reference stripped items
-pub struct ImplStripper<'a> {
-    pub retained: &'a DefIdSet,
+crate struct ImplStripper<'a> {
+    crate retained: &'a DefIdSet,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {
@@ -158,7 +158,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
 }
 
 /// This stripper discards all private import statements (`use`, `extern crate`)
-pub struct ImportStripper;
+crate struct ImportStripper;
 
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {

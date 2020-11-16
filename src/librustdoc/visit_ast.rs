@@ -34,7 +34,7 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
-pub struct RustdocVisitor<'a, 'tcx> {
+crate struct RustdocVisitor<'a, 'tcx> {
     cx: &'a mut core::DocContext<'tcx>,
     view_item_stack: FxHashSet<hir::HirId>,
     inlining: bool,
@@ -44,7 +44,7 @@ pub struct RustdocVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    pub fn new(cx: &'a mut core::DocContext<'tcx>) -> RustdocVisitor<'a, 'tcx> {
+    crate fn new(cx: &'a mut core::DocContext<'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet::default();
         stack.insert(hir::CRATE_HIR_ID);
@@ -62,7 +62,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.exact_paths.entry(did).or_insert_with(|| def_id_to_path(tcx, did));
     }
 
-    pub fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
+    crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(
             krate.item.span,
             krate.item.attrs,
@@ -251,7 +251,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om
     }
 
-    /// Tries to resolve the target of a `pub use` statement and inlines the
+    /// Tries to resolve the target of a `crate use` statement and inlines the
     /// target if it is defined locally and would not be documented otherwise,
     /// or when it is specifically requested with `please_inline`.
     /// (the latter is the case when the import is marked `doc(inline)`)

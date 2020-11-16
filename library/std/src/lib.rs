@@ -207,7 +207,7 @@
 // std may use features in a platform-specific way
 #![allow(unused_features)]
 #![cfg_attr(not(bootstrap), feature(rustc_allow_const_fn_unstable))]
-#![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
+#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
@@ -298,6 +298,7 @@
 #![feature(raw)]
 #![feature(raw_ref_macros)]
 #![feature(ready_macro)]
+#![feature(refcell_take)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(shrink_to)]

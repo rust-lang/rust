@@ -1,9 +1,9 @@
 use crate::clean::*;
 
-pub struct StripItem(pub Item);
+crate struct StripItem(pub Item);
 
 impl StripItem {
-    pub fn strip(self) -> Option<Item> {
+    crate fn strip(self) -> Option<Item> {
         match self.0 {
             Item { kind: StrippedItem(..), .. } => Some(self.0),
             mut i => {
@@ -14,7 +14,7 @@ impl StripItem {
     }
 }
 
-pub trait DocFolder: Sized {
+crate trait DocFolder: Sized {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         self.fold_item_recur(item)
     }

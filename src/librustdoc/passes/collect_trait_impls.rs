@@ -7,13 +7,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 
-pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
+crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
     run: collect_trait_impls,
     description: "retrieves trait impls for items in the crate",
 };
 
-pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
+crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     let mut synth = SyntheticImplCollector::new(cx);
     let mut krate = synth.fold_crate(krate);
 
