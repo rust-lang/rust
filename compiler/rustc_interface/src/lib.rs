@@ -1,6 +1,6 @@
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
-#![feature(set_stdio)]
+#![feature(internal_output_capture)]
 #![feature(nll)]
 #![feature(generator_trait)]
 #![feature(generators)]
