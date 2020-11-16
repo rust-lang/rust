@@ -160,13 +160,11 @@ pub fn gen_register_lint_list<'a>(
                 l.module,
                 l.name.to_uppercase()
             )
-        })
-        .collect::<Vec<String>>();
+        });
     let other_lints = usable_lints
         .sorted_by_key(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
         .map(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
-        .sorted()
-        .collect::<Vec<String>>();
+        .sorted();
     let mut lint_list = vec![header];
     lint_list.extend(internal_lints);
     lint_list.extend(other_lints);

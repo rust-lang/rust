@@ -18,39 +18,26 @@ fn dogfood_clippy() {
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let output = if cfg!(feature = "internal-lints") {
-        // with internal lints and internal warnings
-        Command::new(&*CLIPPY_PATH)
-            .current_dir(root_dir)
-            .env("CLIPPY_DOGFOOD", "1")
-            .env("CARGO_INCREMENTAL", "0")
-            .arg("clippy-preview")
-            .arg("--all-targets")
-            .arg("--all-features")
-            .args(&["--features", "internal-lints"])
-            .arg("--")
-            .args(&["-D", "clippy::all"])
-            .args(&["-D", "clippy::pedantic"])
-            .args(&["-D", "clippy::internal"])
-            .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
-            .output()
-            .unwrap()
-    } else {
-        // without internal lints or warnings
-        Command::new(&*CLIPPY_PATH)
-            .current_dir(root_dir)
-            .env("CLIPPY_DOGFOOD", "1")
-            .env("CARGO_INCREMENTAL", "0")
-            .arg("clippy-preview")
-            .arg("--all-targets")
-            .arg("--all-features")
-            .arg("--")
-            .args(&["-D", "clippy::all"])
-            .args(&["-D", "clippy::pedantic"])
-            .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
-            .output()
-            .unwrap()
-    };
+    let mut command = Command::new(&*CLIPPY_PATH);
+    command
+        .current_dir(root_dir)
+        .env("CLIPPY_DOGFOOD", "1")
+        .env("CARGO_INCREMENTAL", "0")
+        .arg("clippy-preview")
+        .arg("--all-targets")
+        .arg("--all-features")
+        .arg("--")
+        .args(&["-D", "clippy::all"])
+        .args(&["-D", "clippy::pedantic"])
+        .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
+
+    // internal lints only exist if we build with the internal-lints feature
+    if cfg!(feature = "internal-lints") {
+        command.args(&["-D", "clippy::internal"]);
+    }
+
+    let output = command.output().unwrap();
+
     println!("status: {}", output.status);
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     println!("stderr: {}", String::from_utf8_lossy(&output.stderr));

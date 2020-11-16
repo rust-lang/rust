@@ -128,13 +128,6 @@ jobs:
         SYSROOT=$(rustc --print sysroot)
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
-    - name: Build
-      run: cargo build --features deny-warnings
-
-    # compiletest would panic due to "Found multiple rlibs for crate `clippy_lints`"
-    - name: clean rlibs
-      run: rm -f ./target/debug/deps/libclippy_lints*
-
     - name: Build with internal lints
       run: cargo build --features deny-warnings,internal-lints
 

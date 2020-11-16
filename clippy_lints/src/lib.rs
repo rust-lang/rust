@@ -939,17 +939,23 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
     // end register lints, do not remove this comment, it’s used in `update_lints`
-    store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
-    store.register_late_pass(|| box serde_api::SerdeAPI);
+
+    // all the internal lints
     #[cfg(feature = "internal-lints")]
     {
-        store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
-        store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
-        store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
-        store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
+        store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
+        store.register_early_pass(|| box utils::internal_lints::ProduceIce);
         store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
+        store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
+        store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
+        store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
+        store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
+        store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
+        store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
     }
     store.register_late_pass(|| box utils::author::Author);
+    store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
+    store.register_late_pass(|| box serde_api::SerdeAPI);
     let vec_box_size_threshold = conf.vec_box_size_threshold;
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
@@ -1134,8 +1140,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box literal_representation::LiteralDigitGrouping);
     let literal_representation_threshold = conf.literal_representation_threshold;
     store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
-    #[cfg(feature = "internal-lints")]
-    store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
     store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
@@ -1149,8 +1153,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box large_const_arrays::LargeConstArrays::new(array_size_threshold));
     store.register_late_pass(|| box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
-    #[cfg(feature = "internal-lints")]
-    store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
     store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
     store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
@@ -1166,8 +1168,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box dereference::Dereferencing);
     store.register_late_pass(|| box option_if_let_else::OptionIfLetElse);
     store.register_late_pass(|| box future_not_send::FutureNotSend);
-    #[cfg(feature = "internal-lints")]
-    store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
     store.register_late_pass(|| box if_let_mutex::IfLetMutex);
     store.register_late_pass(|| box mut_mutex_lock::MutMutexLock);
     store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
@@ -1175,7 +1175,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box redundant_field_names::RedundantFieldNames);
     store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
     store.register_late_pass(|| box panic_in_result_fn::PanicInResultFn);
-
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold,
@@ -1192,8 +1191,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_ok_or::ManualOkOr);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
-    #[cfg(feature = "internal-lints")]
-    store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
     let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
     store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
@@ -1201,7 +1198,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
     store.register_late_pass(|| box strings::StrToString);
     store.register_late_pass(|| box strings::StringToString);
-
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1333,6 +1329,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&wildcard_imports::ENUM_GLOB_USE),
         LintId::of(&wildcard_imports::WILDCARD_IMPORTS),
     ]);
+
     #[cfg(feature = "internal-lints")]
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
         LintId::of(&utils::internal_lints::CLIPPY_LINTS_INTERNAL),
