@@ -11,8 +11,8 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -26,8 +26,8 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -44,8 +44,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 3));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 3));
 }
 
 #[test]
@@ -61,8 +61,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -79,8 +79,8 @@ use std::*;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("std"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, Some("std"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -98,8 +98,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -115,8 +115,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -134,8 +134,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 3));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 3));
 
     // Adding more will also bump the returned line offset.
     opts.attrs.push("feature(hella_dope)".to_string());
@@ -147,8 +147,8 @@ use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 4));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 4));
 }
 
 #[test]
@@ -164,8 +164,8 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -180,8 +180,8 @@ fn main() {
     assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 1));
+    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 1));
 }
 
 #[test]
@@ -196,8 +196,8 @@ fn main() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 }
 
 #[test]
@@ -210,8 +210,8 @@ assert_eq!(2+2, 4);";
 //Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);"
         .to_string();
-    let output = make_test(input, None, true, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 1));
+    let (output, len, _) = make_test(input, None, true, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 1));
 }
 
 #[test]
@@ -224,8 +224,8 @@ fn make_test_display_warnings() {
 assert_eq!(2+2, 4);
 }"
     .to_string();
-    let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 1));
+    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 1));
 }
 
 #[test]
@@ -242,8 +242,8 @@ assert_eq!(2+2, 4);
 }"
     .to_string();
 
-    let output = make_test(input, None, false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 2));
+    let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 2));
 
     let input = "extern crate hella_qwop;
 assert_eq!(asdf::foo, 4);";
@@ -256,8 +256,8 @@ assert_eq!(asdf::foo, 4);
 }"
     .to_string();
 
-    let output = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 3));
+    let (output, len, _) = make_test(input, Some("asdf"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 3));
 }
 
 #[test]
@@ -274,6 +274,6 @@ test_wrapper! {
 }"
     .to_string();
 
-    let output = make_test(input, Some("my_crate"), false, &opts, DEFAULT_EDITION);
-    assert_eq!(output, (expected, 1));
+    let (output, len, _) = make_test(input, Some("my_crate"), false, &opts, DEFAULT_EDITION);
+    assert_eq!((output, len), (expected, 1));
 }
