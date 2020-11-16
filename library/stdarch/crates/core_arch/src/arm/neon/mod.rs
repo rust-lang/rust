@@ -4134,6 +4134,326 @@ pub unsafe fn vsriq_n_p16(a: poly16x8_t, b: poly16x8_t, n: i32) -> poly16x8_t {
     ))
 }
 
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+pub unsafe fn vrev16_s8(a: int8x8_t) -> int8x8_t {
+    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+pub unsafe fn vrev16q_s8(a: int8x16_t) -> int8x16_t {
+    simd_shuffle16(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+pub unsafe fn vrev16_u8(a: uint8x8_t) -> uint8x8_t {
+    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+pub unsafe fn vrev16q_u8(a: uint8x16_t) -> uint8x16_t {
+    simd_shuffle16(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+pub unsafe fn vrev16_p8(a: poly8x8_t) -> poly8x8_t {
+    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
+pub unsafe fn vrev16q_p8(a: poly8x16_t) -> poly8x16_t {
+    simd_shuffle16(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32_s8(a: int8x8_t) -> int8x8_t {
+    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32q_s8(a: int8x16_t) -> int8x16_t {
+    simd_shuffle16(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32_u8(a: uint8x8_t) -> uint8x8_t {
+    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32q_u8(a: uint8x16_t) -> uint8x16_t {
+    simd_shuffle16(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32_u16(a: uint16x4_t) -> uint16x4_t {
+    simd_shuffle4(a, a, [1, 0, 3, 2])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32q_u16(a: uint16x8_t) -> uint16x8_t {
+    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32_p8(a: poly8x8_t) -> poly8x8_t {
+    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
+pub unsafe fn vrev32q_p8(a: poly8x16_t) -> poly8x16_t {
+    simd_shuffle16(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_s8(a: int8x8_t) -> int8x8_t {
+    simd_shuffle8(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_s8(a: int8x16_t) -> int8x16_t {
+    simd_shuffle16(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_s16(a: int16x4_t) -> int16x4_t {
+    simd_shuffle4(a, a, [3, 2, 1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_s16(a: int16x8_t) -> int16x8_t {
+    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_s32(a: int32x2_t) -> int32x2_t {
+    simd_shuffle2(a, a, [1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_s32(a: int32x4_t) -> int32x4_t {
+    simd_shuffle4(a, a, [1, 0, 3, 2])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_u8(a: uint8x8_t) -> uint8x8_t {
+    simd_shuffle8(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_u8(a: uint8x16_t) -> uint8x16_t {
+    simd_shuffle16(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_u16(a: uint16x4_t) -> uint16x4_t {
+    simd_shuffle4(a, a, [3, 2, 1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_u16(a: uint16x8_t) -> uint16x8_t {
+    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_u32(a: uint32x2_t) -> uint32x2_t {
+    simd_shuffle2(a, a, [1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_u32(a: uint32x4_t) -> uint32x4_t {
+    simd_shuffle4(a, a, [1, 0, 3, 2])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_f32(a: float32x2_t) -> float32x2_t {
+    simd_shuffle2(a, a, [1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_f32(a: float32x4_t) -> float32x4_t {
+    simd_shuffle4(a, a, [1, 0, 3, 2])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_p8(a: poly8x8_t) -> poly8x8_t {
+    simd_shuffle8(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_p8(a: poly8x16_t) -> poly8x16_t {
+    simd_shuffle16(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64_p16(a: poly16x4_t) -> poly16x4_t {
+    simd_shuffle4(a, a, [3, 2, 1, 0])
+}
+
+/// Reversing vector elements (swap endianness)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
+pub unsafe fn vrev64q_p16(a: poly16x8_t) -> poly16x8_t {
+    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -7782,6 +8102,229 @@ mod tests {
         );
         let e = u8x16::new(3, 8, 0, 7, 2, 4, 1, 6, 6, 0, 8, 2, 8, 5, 3, 1);
         let r: u8x16 = transmute(vcntq_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    unsafe fn test_vrev16_s8() {
+        let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = i8x8::new(1, 0, 3, 2, 5, 4, 7, 6);
+        let e: i8x8 = transmute(vrev16_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev16q_s8() {
+        let a = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = i8x16::new(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
+        let e: i8x16 = transmute(vrev16q_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev16_u8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u8x8::new(1, 0, 3, 2, 5, 4, 7, 6);
+        let e: u8x8 = transmute(vrev16_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev16q_u8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = u8x16::new(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
+        let e: u8x16 = transmute(vrev16q_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev16_p8() {
+        let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = i8x8::new(1, 0, 3, 2, 5, 4, 7, 6);
+        let e: i8x8 = transmute(vrev16_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev16q_p8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = u8x16::new(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
+        let e: u8x16 = transmute(vrev16q_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32_s8() {
+        let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = i8x8::new(3, 2, 1, 0, 7, 6, 5, 4);
+        let e: i8x8 = transmute(vrev32_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32q_s8() {
+        let a = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = i8x16::new(3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12);
+        let e: i8x16 = transmute(vrev32q_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32_u8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u8x8::new(3, 2, 1, 0, 7, 6, 5, 4);
+        let e: u8x8 = transmute(vrev32_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32q_u8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = u8x16::new(3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12);
+        let e: u8x16 = transmute(vrev32q_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32_u16() {
+        let a = u16x4::new(0, 1, 2, 3);
+        let r = u16x4::new(1, 0, 3, 2);
+        let e: u16x4 = transmute(vrev32_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32q_u16() {
+        let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u16x8::new(1, 0, 3, 2, 5, 4, 7, 6);
+        let e: u16x8 = transmute(vrev32q_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32_p8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u8x8::new(3, 2, 1, 0, 7, 6, 5, 4);
+        let e: u8x8 = transmute(vrev32_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev32q_p8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = u8x16::new(3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12);
+        let e: u8x16 = transmute(vrev32q_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_s8() {
+        let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = i8x8::new(7, 6, 5, 4, 3, 2, 1, 0);
+        let e: i8x8 = transmute(vrev64_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_s8() {
+        let a = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = i8x16::new(7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8);
+        let e: i8x16 = transmute(vrev64q_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_s16() {
+        let a = i16x4::new(0, 1, 2, 3);
+        let r = i16x4::new(3, 2, 1, 0);
+        let e: i16x4 = transmute(vrev64_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_s16() {
+        let a = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = i16x8::new(3, 2, 1, 0, 7, 6, 5, 4);
+        let e: i16x8 = transmute(vrev64q_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_s32() {
+        let a = i32x2::new(0, 1);
+        let r = i32x2::new(1, 0);
+        let e: i32x2 = transmute(vrev64_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_s32() {
+        let a = i32x4::new(0, 1, 2, 3);
+        let r = i32x4::new(1, 0, 3, 2);
+        let e: i32x4 = transmute(vrev64q_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_u8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u8x8::new(7, 6, 5, 4, 3, 2, 1, 0);
+        let e: u8x8 = transmute(vrev64_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_u8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = u8x16::new(7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8);
+        let e: u8x16 = transmute(vrev64q_u8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_u16() {
+        let a = u16x4::new(0, 1, 2, 3);
+        let r = u16x4::new(3, 2, 1, 0);
+        let e: u16x4 = transmute(vrev64_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_u16() {
+        let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u16x8::new(3, 2, 1, 0, 7, 6, 5, 4);
+        let e: u16x8 = transmute(vrev64q_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_u32() {
+        let a = u32x2::new(0, 1);
+        let r = u32x2::new(1, 0);
+        let e: u32x2 = transmute(vrev64_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_u32() {
+        let a = u32x4::new(0, 1, 2, 3);
+        let r = u32x4::new(1, 0, 3, 2);
+        let e: u32x4 = transmute(vrev64q_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_f32() {
+        let a = f32x2::new(1.0, 2.0);
+        let r = f32x2::new(2.0, 1.0);
+        let e: f32x2 = transmute(vrev64_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_f32() {
+        let a = f32x4::new(1.0, 2.0, -2.0, -1.0);
+        let r = f32x4::new(2.0, 1.0, -1.0, -2.0);
+        let e: f32x4 = transmute(vrev64q_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_p8() {
+        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u8x8::new(7, 6, 5, 4, 3, 2, 1, 0);
+        let e: u8x8 = transmute(vrev64_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_p8() {
+        let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r = u8x16::new(7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8);
+        let e: u8x16 = transmute(vrev64q_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64_p16() {
+        let a = u16x4::new(0, 1, 2, 3);
+        let r = u16x4::new(3, 2, 1, 0);
+        let e: u16x4 = transmute(vrev64_p16(transmute(a)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrev64q_p16() {
+        let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
+        let r = u16x8::new(3, 2, 1, 0, 7, 6, 5, 4);
+        let e: u16x8 = transmute(vrev64q_p16(transmute(a)));
         assert_eq!(r, e);
     }
 }
