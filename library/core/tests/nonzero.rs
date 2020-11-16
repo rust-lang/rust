@@ -312,3 +312,11 @@ fn nonzero_trailing_zeros() {
     const TRAILING_ZEROS: u32 = NonZeroU16::new(1 << 2).unwrap().trailing_zeros();
     assert_eq!(TRAILING_ZEROS, 2);
 }
+
+#[test]
+fn test_nonzero_uint_div() {
+    let nz = NonZeroU32::new(1).unwrap();
+
+    let x: u32 = 42u32 / nz;
+    assert_eq!(x, 42u32);
+}
