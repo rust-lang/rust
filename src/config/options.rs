@@ -100,6 +100,18 @@ impl Density {
 }
 
 #[config_type]
+/// Configuration for import groups, i.e. sets of imports separated by newlines.
+pub enum GroupImportsTactic {
+    /// Keep groups as they are.
+    Preserve,
+    /// Discard existing groups, and create new groups for
+    ///  1. `std` / `core` / `alloc` imports
+    ///  2. other imports
+    ///  3. `self` / `crate` / `super` imports
+    StdExternalCrate,
+}
+
+#[config_type]
 pub enum ReportTactic {
     Always,
     Unnumbered,
