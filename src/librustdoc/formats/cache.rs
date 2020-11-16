@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -128,7 +129,7 @@ impl Cache {
     pub fn from_krate(
         render_info: RenderInfo,
         document_private: bool,
-        extern_html_root_urls: &BTreeMap<PathBuf, String>,
+        extern_html_root_urls: &BTreeMap<OsString, String>,
         dst: &Path,
         mut krate: clean::Crate,
     ) -> (clean::Crate, Cache) {
@@ -174,9 +175,9 @@ impl Cache {
                 _ => PathBuf::new(),
             };
             let extern_url = e
-                .extern_paths
+                .extern_files
                 .iter()
-                .filter_map(|path| extern_html_root_urls.get(&*path))
+                .filter_map(|file_name| extern_html_root_urls.get(file_name))
                 .next()
                 .map(|u| &**u);
             cache

@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 use std::default::Default;
+use std::ffi::OsString;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::lazy::SyncOnceCell as OnceCell;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
@@ -67,7 +67,7 @@ pub struct Crate {
 pub struct ExternalCrate {
     pub name: String,
     pub src: FileName,
-    pub extern_paths: Vec<PathBuf>,
+    pub extern_files: Vec<OsString>,
     pub attrs: Attributes,
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
     pub keywords: Vec<(DefId, String, Attributes)>,

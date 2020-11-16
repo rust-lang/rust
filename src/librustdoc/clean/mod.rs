@@ -30,6 +30,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use std::collections::hash_map::Entry;
 use std::default::Default;
+use std::ffi::OsStr;
 use std::hash::Hash;
 use std::rc::Rc;
 use std::{mem, vec};
@@ -211,13 +212,20 @@ impl Clean<ExternalCrate> for CrateNum {
             cx.tcx.item_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
         };
 
-        let extern_paths =
-            if *self == LOCAL_CRATE { vec![] } else { cx.tcx.crate_extern_paths(*self) };
+        let extern_files = if *self == LOCAL_CRATE {
+            vec![]
+        } else {
+            cx.tcx
+                .crate_extern_paths(*self)
+                .into_iter()
+                .filter_map(|path| path.file_name().map(OsStr::to_owned))
+                .collect()
+        };
 
         ExternalCrate {
             name: cx.tcx.crate_name(*self).to_string(),
             src: krate_src,
-            extern_paths,
+            extern_files,
             attrs: cx.tcx.get_attrs(root).clean(cx),
             primitives,
             keywords,
