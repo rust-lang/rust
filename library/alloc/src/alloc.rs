@@ -23,6 +23,8 @@ extern "Rust" {
     // (the code expanding that attribute macro generates those functions), or to call
     // the default implementations in libstd (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
     // otherwise.
+    // The rustc fork of LLVM also special-cases these function names to be able to optimize them
+    // like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
