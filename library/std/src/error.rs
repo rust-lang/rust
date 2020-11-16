@@ -19,7 +19,7 @@ mod tests;
 use core::array;
 use core::convert::Infallible;
 
-use crate::alloc::{AllocError, LayoutErr};
+use crate::alloc::{AllocError, LayoutError};
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
@@ -390,7 +390,7 @@ impl Error for ! {}
 impl Error for AllocError {}
 
 #[stable(feature = "alloc_layout", since = "1.28.0")]
-impl Error for LayoutErr {}
+impl Error for LayoutError {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
