@@ -128,6 +128,7 @@
     - [Two-phase-borrows](./borrow_check/two_phase_borrows.md)
 - [Parameter Environments](./param_env.md)
 - [Errors and Lints](diagnostics.md)
+    - [Creating Errors With SessionDiagnostic](./diagnostics/sessiondiagnostic.md)
     - [`LintStore`](./diagnostics/lintstore.md)
     - [Diagnostic Codes](./diagnostics/diagnostic-codes.md)
 

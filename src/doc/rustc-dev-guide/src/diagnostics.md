@@ -347,6 +347,10 @@ if let Ok(snippet) = sess.source_map().span_to_snippet(sp) {
 err.emit();
 ```
 
+Alternatively, for less-complex diagnostics, the `SessionDiagnostic` derive
+macro can be used -- see [Creating Errors With SessionDiagnostic](./diagnostics/sessiondiagnostic.md).
+
+
 ## Suggestions
 
 In addition to telling the user exactly _why_ their code is wrong, it's
