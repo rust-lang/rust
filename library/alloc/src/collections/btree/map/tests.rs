@@ -14,6 +14,9 @@ use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+mod ord_chaos;
+use ord_chaos::{Cyclic3, Governed, Governor};
+
 // Capacity of a tree with a single level,
 // i.e., a tree who's root is a leaf node at height 0.
 const NODE_CAPACITY: usize = node::CAPACITY;
@@ -28,7 +31,7 @@ const MIN_INSERTS_HEIGHT_1: usize = NODE_CAPACITY + 1;
 // It's not the minimum size: removing an element from such a tree does not always reduce height.
 const MIN_INSERTS_HEIGHT_2: usize = 89;
 
-// Gather all references from a mutable iterator and make sure Miri notices if
+// Gathers all references from a mutable iterator and makes sure Miri notices if
 // using them is dangerous.
 fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {
     // Gather all those references.
@@ -43,28 +46,43 @@ fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>
 }
 
 impl<K, V> BTreeMap<K, V> {
-    /// Panics if the map (or the code navigating it) is corrupted.
-    fn check(&self)
-    where
-        K: Copy + Debug + Ord,
-    {
+    // Panics if the map (or the code navigating it) is corrupted.
+    fn check_invariants(&self) {
         if let Some(root) = &self.root {
             let root_node = root.node_as_ref();
 
+            // Check the back pointers top-down, before we attempt to rely on
+            // more serious navigation code.
             assert!(root_node.ascend().is_err());
             root_node.assert_back_pointers();
 
+            // Check consistenty of `length` and some of the navigation.
             assert_eq!(self.length, root_node.calc_length());
+            assert_eq!(self.length, self.keys().count());
 
+            // Lastly, check the invariant causing the least harm.
             root_node.assert_min_len(if root_node.height() > 0 { 1 } else { 0 });
         } else {
+            // Check consistenty of `length` and some of the navigation.
             assert_eq!(self.length, 0);
+            assert_eq!(self.length, self.keys().count());
         }
-
-        self.assert_ascending();
     }
 
-    /// Returns the height of the root, if any.
+    // Panics if the map is corrupted or if the keys are not in strictly
+    // ascending order, in the current opinion of the `Ord` implementation.
+    // If the `Ord` implementation does not honor transitivity, this method
+    // does not guarantee that all the keys are unique, just that adjacent
+    // keys are unique.
+    fn check(&self)
+    where
+        K: Debug + Ord,
+    {
+        self.check_invariants();
+        self.assert_strictly_ascending();
+    }
+
+    // Returns the height of the root, if any.
     fn height(&self) -> Option<usize> {
         self.root.as_ref().map(node::Root::height)
     }
@@ -80,22 +98,18 @@ impl<K, V> BTreeMap<K, V> {
         }
     }
 
-    /// Asserts that the keys are in strictly ascending order.
-    fn assert_ascending(&self)
+    // Panics if the keys are not in strictly ascending order.
+    fn assert_strictly_ascending(&self)
     where
-        K: Copy + Debug + Ord,
+        K: Debug + Ord,
     {
-        let mut num_seen = 0;
         let mut keys = self.keys();
         if let Some(mut previous) = keys.next() {
-            num_seen = 1;
             for next in keys {
                 assert!(previous < next, "{:?} >= {:?}", previous, next);
                 previous = next;
-                num_seen += 1;
             }
         }
-        assert_eq!(num_seen, self.len());
     }
 }
 
@@ -111,7 +125,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     }
 }
 
-// Test our value of MIN_INSERTS_HEIGHT_2. It may change according to the
+// Tests our value of MIN_INSERTS_HEIGHT_2. It may change according to the
 // implementation of insertion, but it's best to be aware of when it does.
 #[test]
 fn test_levels() {
@@ -147,6 +161,25 @@ fn test_levels() {
     // - 5 elements in right child's last grandchild
     assert_eq!(map.height(), Some(2));
     assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2, "{}", map.dump_keys());
+}
+
+// Ensures the testing infrastructure usually notices order violations.
+#[test]
+#[should_panic]
+fn test_check_ord_chaos() {
+    let gov = Governor::new();
+    let map: BTreeMap<_, _> = (0..2).map(|i| (Governed(i, &gov), ())).collect();
+    gov.flip();
+    map.check();
+}
+
+// Ensures the testing infrastructure doesn't always mind order violations.
+#[test]
+fn test_check_invariants_ord_chaos() {
+    let gov = Governor::new();
+    let map: BTreeMap<_, _> = (0..2).map(|i| (Governed(i, &gov), ())).collect();
+    gov.flip();
+    map.check_invariants();
 }
 
 #[test]
@@ -334,7 +367,7 @@ fn test_iter_rev() {
     test(size, map.into_iter().rev());
 }
 
-/// Specifically tests iter_mut's ability to mutate the value of pairs in-line
+// Specifically tests iter_mut's ability to mutate the value of pairs in-line.
 fn do_test_iter_mut_mutation<T>(size: usize)
 where
     T: Copy + Debug + Ord + TryFrom<usize>,
@@ -439,6 +472,8 @@ fn test_iter_entering_root_twice() {
     *back.1 = 42;
     assert_eq!(front, (&0, &mut 24));
     assert_eq!(back, (&1, &mut 42));
+    assert_eq!(it.next(), None);
+    assert_eq!(it.next_back(), None);
     map.check();
 }
 
@@ -591,11 +626,12 @@ fn test_range_small() {
 
 #[test]
 fn test_range_height_1() {
-    // Tests tree with a root and 2 leaves. Depending on details we don't want or need
-    // to rely upon, the single key at the root will be 6 or 7.
+    // Tests tree with a root and 2 leaves. The single key in the root node is
+    // close to the middle among the keys.
 
-    let map: BTreeMap<_, _> = (1..=MIN_INSERTS_HEIGHT_1 as i32).map(|i| (i, i)).collect();
-    for &root in &[6, 7] {
+    let map: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_1 as i32).map(|i| (i, i)).collect();
+    let middle = MIN_INSERTS_HEIGHT_1 as i32 / 2;
+    for root in middle - 2..=middle + 2 {
         assert_eq!(range_keys(&map, (Excluded(root), Excluded(root + 1))), vec![]);
         assert_eq!(range_keys(&map, (Excluded(root), Included(root + 1))), vec![root + 1]);
         assert_eq!(range_keys(&map, (Included(root), Excluded(root + 1))), vec![root]);
@@ -728,6 +764,19 @@ fn test_range_backwards_4() {
 }
 
 #[test]
+#[should_panic]
+fn test_range_backwards_5() {
+    let mut map = BTreeMap::new();
+    map.insert(Cyclic3::B, ());
+    // Lacking static_assert, call `range` conditionally, to emphasise that
+    // we cause a different panic than `test_range_backwards_1` does.
+    // A more refined `should_panic` would be welcome.
+    if Cyclic3::C < Cyclic3::A {
+        map.range(Cyclic3::C..=Cyclic3::A);
+    }
+}
+
+#[test]
 fn test_range_1000() {
     // Miri is too slow
     let size = if cfg!(miri) { MIN_INSERTS_HEIGHT_2 as u32 } else { 1000 };
@@ -831,7 +880,7 @@ mod test_drain_filter {
     }
 
     #[test]
-    fn consuming_nothing() {
+    fn consumed_keeping_all() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map: BTreeMap<_, _> = pairs.collect();
         assert!(map.drain_filter(|_, _| false).eq(iter::empty()));
@@ -839,10 +888,20 @@ mod test_drain_filter {
     }
 
     #[test]
-    fn consuming_all() {
+    fn consumed_removing_all() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map: BTreeMap<_, _> = pairs.clone().collect();
         assert!(map.drain_filter(|_, _| true).eq(pairs));
+        assert!(map.is_empty());
+        map.check();
+    }
+
+    #[test]
+    fn dropped_removing_all() {
+        let pairs = (0..3).map(|i| (i, i));
+        let mut map: BTreeMap<_, _> = pairs.collect();
+        map.drain_filter(|_, _| true);
+        assert!(map.is_empty());
         map.check();
     }
 
@@ -1723,6 +1782,27 @@ fn test_append_drop_leak() {
     assert_eq!(DROPS.load(Ordering::SeqCst), 4); // Rust issue #47949 ate one little piggy
 }
 
+#[test]
+fn test_append_ord_chaos() {
+    let mut map1 = BTreeMap::new();
+    map1.insert(Cyclic3::A, ());
+    map1.insert(Cyclic3::B, ());
+    let mut map2 = BTreeMap::new();
+    map2.insert(Cyclic3::A, ());
+    map2.insert(Cyclic3::B, ());
+    map2.insert(Cyclic3::C, ()); // lands first, before A
+    map2.insert(Cyclic3::B, ()); // lands first, before C
+    map1.check();
+    map2.check(); // keys are not unique but still strictly ascending
+    assert_eq!(map1.len(), 2);
+    assert_eq!(map2.len(), 4);
+    map1.append(&mut map2);
+    assert_eq!(map1.len(), 5);
+    assert_eq!(map2.len(), 0);
+    map1.check();
+    map2.check();
+}
+
 fn rand_data(len: usize) -> Vec<(u32, u32)> {
     assert!(len * 2 <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
@@ -1885,11 +1965,27 @@ fn test_insert_remove_intertwined() {
     let loops = if cfg!(miri) { 100 } else { 1_000_000 };
     let mut map = BTreeMap::new();
     let mut i = 1;
+    let offset = 165; // somewhat arbitrarily chosen to cover some code paths
     for _ in 0..loops {
-        i = (i + 421) & 0xFF;
+        i = (i + offset) & 0xFF;
         map.insert(i, i);
         map.remove(&(0xFF - i));
     }
-
     map.check();
+}
+
+#[test]
+fn test_insert_remove_intertwined_ord_chaos() {
+    let loops = if cfg!(miri) { 100 } else { 1_000_000 };
+    let gov = Governor::new();
+    let mut map = BTreeMap::new();
+    let mut i = 1;
+    let offset = 165; // more arbitrarily copied from above
+    for _ in 0..loops {
+        i = (i + offset) & 0xFF;
+        map.insert(Governed(i, &gov), ());
+        map.remove(&Governed(0xFF - i, &gov));
+        gov.flip();
+    }
+    map.check_invariants();
 }

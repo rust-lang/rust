@@ -5,7 +5,7 @@ use crate::string::String;
 use core::cmp::Ordering::*;
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
-    /// Asserts that the back pointer in each reachable node points to its parent.
+    // Asserts that the back pointer in each reachable node points to its parent.
     pub fn assert_back_pointers(self) {
         if let ForceResult::Internal(node) = self.force() {
             for idx in 0..=node.len() {
@@ -17,6 +17,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         }
     }
 
+    // Renders a multi-line display of the keys in order and in tree hierarchy,
+    // picturing the tree growing sideways from its root on the left to its
+    // leaves on the right.
     pub fn dump_keys(self) -> String
     where
         K: Debug,
