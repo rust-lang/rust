@@ -2055,13 +2055,37 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
             ObligationCauseCode::ImplDerivedObligation(ref data) => {
-                let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
+                let mut parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
                 err.note(&format!(
                     "required because of the requirements on the impl of `{}` for `{}`",
                     parent_trait_ref.print_only_trait_path(),
                     parent_trait_ref.skip_binder().self_ty()
                 ));
-                let parent_predicate = parent_trait_ref.without_const().to_predicate(tcx);
+
+                let mut parent_predicate = parent_trait_ref.without_const().to_predicate(tcx);
+                let mut data = data;
+                let mut redundant = false;
+                let mut count = 0;
+                while let ObligationCauseCode::ImplDerivedObligation(child) = &*data.parent_code {
+                    // Skip redundant recursive obligation notes. See `ui/issue-20413.rs`.
+                    let child_trait_ref = self.resolve_vars_if_possible(child.parent_trait_ref);
+                    if parent_trait_ref.def_id() != child_trait_ref.def_id() {
+                        break;
+                    }
+                    count += 1;
+                    redundant = true;
+                    data = child;
+                    parent_predicate = child_trait_ref.without_const().to_predicate(tcx);
+                    parent_trait_ref = child_trait_ref;
+                }
+                if redundant {
+                    err.note(&format!("{} redundant requirements hidden", count));
+                    err.note(&format!(
+                        "required because of the requirements on the impl of `{}` for `{}`",
+                        parent_trait_ref.print_only_trait_path(),
+                        parent_trait_ref.skip_binder().self_ty()
+                    ));
+                }
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {
                     self.note_obligation_cause_code(
@@ -2087,15 +2111,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::CompareImplMethodObligation { .. } => {
                 err.note(&format!(
-                    "the requirement `{}` appears on the impl method \
-                     but not on the corresponding trait method",
+                    "the requirement `{}` appears on the impl method but not on the corresponding \
+                     trait method",
                     predicate
                 ));
             }
             ObligationCauseCode::CompareImplTypeObligation { .. } => {
                 err.note(&format!(
-                    "the requirement `{}` appears on the associated impl type \
-                     but not on the corresponding associated trait type",
+                    "the requirement `{}` appears on the associated impl type but not on the \
+                     corresponding associated trait type",
                     predicate
                 ));
             }
