@@ -54,11 +54,11 @@ fn test_splitpoint() {
         let mut left_len = middle_kv_idx;
         let mut right_len = CAPACITY - middle_kv_idx - 1;
         match insertion {
-            InsertionPlace::Left(edge_idx) => {
+            LeftOrRight::Left(edge_idx) => {
                 assert!(edge_idx <= left_len);
                 left_len += 1;
             }
-            InsertionPlace::Right(edge_idx) => {
+            LeftOrRight::Right(edge_idx) => {
                 assert!(edge_idx <= right_len);
                 right_len += 1;
             }

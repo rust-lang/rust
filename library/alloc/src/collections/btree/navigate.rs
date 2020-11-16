@@ -362,20 +362,6 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     }
 }
 
-impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge> {
-    /// Moves the leaf edge handle to the next leaf edge.
-    ///
-    /// # Safety
-    /// There must be another KV in the direction travelled.
-    pub unsafe fn move_next_unchecked(&mut self) {
-        super::mem::take_mut(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv();
-            let kv = unsafe { unwrap_unchecked(kv.ok()) };
-            kv.next_leaf_edge()
-        })
-    }
-}
-
 impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     /// Moves the leaf edge handle to the next leaf edge and returns the key and value
     /// in between, deallocating any node left behind while leaving the corresponding

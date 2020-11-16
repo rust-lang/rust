@@ -60,17 +60,17 @@ impl<K, V> Root<K, V> {
             let mut cur_node = self.node_as_mut();
 
             while let Internal(node) = cur_node.force() {
-                let mut last_kv = node.last_kv();
+                let mut last_kv = node.last_kv().consider_for_balancing();
 
                 if last_kv.can_merge() {
-                    cur_node = last_kv.merge().descend();
+                    cur_node = last_kv.merge(None).into_node();
                 } else {
-                    let right_len = last_kv.reborrow().right_edge().descend().len();
+                    let right_len = last_kv.right_child_len();
                     // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
                     if right_len < MIN_LEN + 1 {
                         last_kv.bulk_steal_left(MIN_LEN + 1 - right_len);
                     }
-                    cur_node = last_kv.right_edge().descend();
+                    cur_node = last_kv.into_right_child();
                 }
             }
         }
@@ -86,17 +86,17 @@ impl<K, V> Root<K, V> {
             let mut cur_node = self.node_as_mut();
 
             while let Internal(node) = cur_node.force() {
-                let mut first_kv = node.first_kv();
+                let mut first_kv = node.first_kv().consider_for_balancing();
 
                 if first_kv.can_merge() {
-                    cur_node = first_kv.merge().descend();
+                    cur_node = first_kv.merge(None).into_node();
                 } else {
-                    let left_len = first_kv.reborrow().left_edge().descend().len();
+                    let left_len = first_kv.left_child_len();
                     // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
                     if left_len < MIN_LEN + 1 {
                         first_kv.bulk_steal_right(MIN_LEN + 1 - left_len);
                     }
-                    cur_node = first_kv.left_edge().descend();
+                    cur_node = first_kv.into_left_child();
                 }
             }
         }
