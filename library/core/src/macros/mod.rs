@@ -66,7 +66,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros_internals::assert_eq_failed(&*left_val, &*right_val);
+                    $crate::macros_internals::assert_failed("==", &*left_val, &*right_val);
                 }
             }
         }
@@ -78,7 +78,7 @@ macro_rules! assert_eq {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros_internals::assert_eq_failed_args(&*left_val, &*right_val, $crate::format_args!($($arg)+));
+                    $crate::macros_internals::assert_failed_args("==", &*left_val, &*right_val, $crate::format_args!($($arg)+));
                 }
             }
         }
@@ -113,7 +113,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros_internals::assert_eq_failed(&*left_val, &*right_val);
+                    $crate::macros_internals::assert_failed("!=", &*left_val, &*right_val);
                 }
             }
         }
@@ -125,7 +125,7 @@ macro_rules! assert_ne {
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::macros_internals::assert_ne_failed_args(&*left_val, &*right_val, $crate::format_args!($($arg)+));
+                    $crate::macros_internals::assert_failed_args("!=", &*left_val, &*right_val, $crate::format_args!($($arg)+));
                 }
             }
         }
