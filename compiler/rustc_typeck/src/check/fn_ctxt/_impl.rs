@@ -1,5 +1,6 @@
 use crate::astconv::{
-    AstConv, ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, PathSeg,
+    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
+    GenericArgCountResult, PathSeg,
 };
 use crate::check::callee::{self, DeferredCallResolution};
 use crate::check::method::{self, MethodCallee, SelfSource};
@@ -1298,6 +1299,94 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
 
+        struct CreateCtorSubstsContext<'a, 'tcx> {
+            fcx: &'a FnCtxt<'a, 'tcx>,
+            span: Span,
+            path_segs: &'a [PathSeg],
+            infer_args_for_err: &'a FxHashSet<usize>,
+            segments: &'a [hir::PathSegment<'a>],
+        }
+        impl<'tcx, 'a> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for CreateCtorSubstsContext<'a, 'tcx> {
+            fn args_for_def_id(
+                &mut self,
+                def_id: DefId,
+            ) -> (Option<&'a hir::GenericArgs<'a>>, bool) {
+                if let Some(&PathSeg(_, index)) =
+                    self.path_segs.iter().find(|&PathSeg(did, _)| *did == def_id)
+                {
+                    // If we've encountered an `impl Trait`-related error, we're just
+                    // going to infer the arguments for better error messages.
+                    if !self.infer_args_for_err.contains(&index) {
+                        // Check whether the user has provided generic arguments.
+                        if let Some(ref data) = self.segments[index].args {
+                            return (Some(data), self.segments[index].infer_args);
+                        }
+                    }
+                    return (None, self.segments[index].infer_args);
+                }
+
+                (None, true)
+            }
+
+            fn provided_kind(
+                &mut self,
+                param: &ty::GenericParamDef,
+                arg: &GenericArg<'_>,
+            ) -> subst::GenericArg<'tcx> {
+                match (&param.kind, arg) {
+                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
+                        AstConv::ast_region_to_region(self.fcx, lt, Some(param)).into()
+                    }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
+                        self.fcx.to_ty(ty).into()
+                    }
+                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                        self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            fn inferred_kind(
+                &mut self,
+                substs: Option<&[subst::GenericArg<'tcx>]>,
+                param: &ty::GenericParamDef,
+                infer_args: bool,
+            ) -> subst::GenericArg<'tcx> {
+                let tcx = self.fcx.tcx();
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        self.fcx.re_infer(Some(param), self.span).unwrap().into()
+                    }
+                    GenericParamDefKind::Type { has_default, .. } => {
+                        if !infer_args && has_default {
+                            // If we have a default, then we it doesn't matter that we're not
+                            // inferring the type arguments: we provide the default where any
+                            // is missing.
+                            let default = tcx.type_of(param.def_id);
+                            self.fcx
+                                .normalize_ty(
+                                    self.span,
+                                    default.subst_spanned(tcx, substs.unwrap(), Some(self.span)),
+                                )
+                                .into()
+                        } else {
+                            // If no type arguments were provided, we have to infer them.
+                            // This case also occurs as a result of some malformed input, e.g.
+                            // a lifetime argument being given instead of a type parameter.
+                            // Using inference instead of `Error` gives better error messages.
+                            self.fcx.var_for_def(self.span, param)
+                        }
+                    }
+                    GenericParamDefKind::Const => {
+                        // FIXME(const_generics:defaults)
+                        // No const parameters were provided, we have to infer them.
+                        self.fcx.var_for_def(self.span, param)
+                    }
+                }
+            }
+        }
+
         let substs = self_ctor_substs.unwrap_or_else(|| {
             AstConv::create_substs_for_generic_args(
                 tcx,
@@ -1306,68 +1395,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 has_self,
                 self_ty,
                 arg_count,
-                // Provide the generic args, and whether types should be inferred.
-                |def_id| {
-                    if let Some(&PathSeg(_, index)) =
-                        path_segs.iter().find(|&PathSeg(did, _)| *did == def_id)
-                    {
-                        // If we've encountered an `impl Trait`-related error, we're just
-                        // going to infer the arguments for better error messages.
-                        if !infer_args_for_err.contains(&index) {
-                            // Check whether the user has provided generic arguments.
-                            if let Some(ref data) = segments[index].args {
-                                return (Some(data), segments[index].infer_args);
-                            }
-                        }
-                        return (None, segments[index].infer_args);
-                    }
-
-                    (None, true)
-                },
-                // Provide substitutions for parameters for which (valid) arguments have been provided.
-                |param, arg| match (&param.kind, arg) {
-                    (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        AstConv::ast_region_to_region(self, lt, Some(param)).into()
-                    }
-                    (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        self.to_ty(ty).into()
-                    }
-                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                        self.const_arg_to_const(&ct.value, param.def_id).into()
-                    }
-                    _ => unreachable!(),
-                },
-                // Provide substitutions for parameters for which arguments are inferred.
-                |substs, param, infer_args| {
-                    match param.kind {
-                        GenericParamDefKind::Lifetime => {
-                            self.re_infer(Some(param), span).unwrap().into()
-                        }
-                        GenericParamDefKind::Type { has_default, .. } => {
-                            if !infer_args && has_default {
-                                // If we have a default, then we it doesn't matter that we're not
-                                // inferring the type arguments: we provide the default where any
-                                // is missing.
-                                let default = tcx.type_of(param.def_id);
-                                self.normalize_ty(
-                                    span,
-                                    default.subst_spanned(tcx, substs.unwrap(), Some(span)),
-                                )
-                                .into()
-                            } else {
-                                // If no type arguments were provided, we have to infer them.
-                                // This case also occurs as a result of some malformed input, e.g.
-                                // a lifetime argument being given instead of a type parameter.
-                                // Using inference instead of `Error` gives better error messages.
-                                self.var_for_def(span, param)
-                            }
-                        }
-                        GenericParamDefKind::Const => {
-                            // FIXME(const_generics:defaults)
-                            // No const parameters were provided, we have to infer them.
-                            self.var_for_def(span, param)
-                        }
-                    }
+                &mut CreateCtorSubstsContext {
+                    fcx: self,
+                    span,
+                    path_segs: &path_segs,
+                    infer_args_for_err: &infer_args_for_err,
+                    segments,
                 },
             )
         });

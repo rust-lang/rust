@@ -47,9 +47,9 @@ pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
 #[macro_export]
 macro_rules! likely {
     ($e:expr) => {
-        #[allow(unused_unsafe)]
-        {
-            unsafe { std::intrinsics::likely($e) }
+        match $e {
+            #[allow(unused_unsafe)]
+            e => unsafe { std::intrinsics::likely(e) },
         }
     };
 }
@@ -57,9 +57,9 @@ macro_rules! likely {
 #[macro_export]
 macro_rules! unlikely {
     ($e:expr) => {
-        #[allow(unused_unsafe)]
-        {
-            unsafe { std::intrinsics::unlikely($e) }
+        match $e {
+            #[allow(unused_unsafe)]
+            e => unsafe { std::intrinsics::unlikely(e) },
         }
     };
 }
@@ -102,6 +102,7 @@ pub mod work_queue;
 pub use atomic_ref::AtomicRef;
 pub mod frozen;
 pub mod sso;
+pub mod steal;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod unhash;

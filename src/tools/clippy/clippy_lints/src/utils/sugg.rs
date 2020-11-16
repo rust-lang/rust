@@ -170,6 +170,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)
             | ast::ExprKind::Paren(..)
+            | ast::ExprKind::Underscore
             | ast::ExprKind::Path(..)
             | ast::ExprKind::Repeat(..)
             | ast::ExprKind::Ret(..)

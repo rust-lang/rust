@@ -1,6 +1,5 @@
 use crate::html::markdown::{ErrorCodes, IdMap, Markdown, Playground};
 use crate::rustc_span::edition::Edition;
-use rustc_feature::UnstableFeatures;
 use std::fs;
 use std::path::Path;
 use std::str;
@@ -25,12 +24,13 @@ impl ExternalHtml {
         after_content: &[String],
         md_before_content: &[String],
         md_after_content: &[String],
+        nightly_build: bool,
         diag: &rustc_errors::Handler,
         id_map: &mut IdMap,
         edition: Edition,
         playground: &Option<Playground>,
     ) -> Option<ExternalHtml> {
-        let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
+        let codes = ErrorCodes::from(nightly_build);
         let ih = load_external_files(in_header, diag)?;
         let bc = load_external_files(before_content, diag)?;
         let m_bc = load_external_files(md_before_content, diag)?;

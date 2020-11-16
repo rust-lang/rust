@@ -5,9 +5,9 @@ pub struct StripItem(pub Item);
 impl StripItem {
     pub fn strip(self) -> Option<Item> {
         match self.0 {
-            Item { inner: StrippedItem(..), .. } => Some(self.0),
+            Item { kind: StrippedItem(..), .. } => Some(self.0),
             mut i => {
-                i.inner = StrippedItem(box i.inner);
+                i.kind = StrippedItem(box i.kind);
                 Some(i)
             }
         }
@@ -20,8 +20,8 @@ pub trait DocFolder: Sized {
     }
 
     /// don't override!
-    fn fold_inner_recur(&mut self, inner: ItemEnum) -> ItemEnum {
-        match inner {
+    fn fold_inner_recur(&mut self, kind: ItemKind) -> ItemKind {
+        match kind {
             StrippedItem(..) => unreachable!(),
             ModuleItem(i) => ModuleItem(self.fold_mod(i)),
             StructItem(mut i) => {
@@ -72,14 +72,14 @@ pub trait DocFolder: Sized {
 
     /// don't override!
     fn fold_item_recur(&mut self, item: Item) -> Option<Item> {
-        let Item { attrs, name, source, visibility, def_id, inner, stability, deprecation } = item;
+        let Item { attrs, name, source, visibility, def_id, kind, stability, deprecation } = item;
 
-        let inner = match inner {
+        let kind = match kind {
             StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
-            _ => self.fold_inner_recur(inner),
+            _ => self.fold_inner_recur(kind),
         };
 
-        Some(Item { attrs, name, source, inner, visibility, stability, deprecation, def_id })
+        Some(Item { attrs, name, source, kind, visibility, stability, deprecation, def_id })
     }
 
     fn fold_mod(&mut self, m: Module) -> Module {

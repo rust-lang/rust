@@ -745,6 +745,9 @@ impl Session {
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
     }
+    pub fn is_nightly_build(&self) -> bool {
+        self.opts.unstable_features.is_nightly_build()
+    }
     pub fn overflow_checks(&self) -> bool {
         self.opts
             .cg
