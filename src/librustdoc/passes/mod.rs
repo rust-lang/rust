@@ -9,67 +9,67 @@ use crate::clean::{self, DocFragmentKind};
 use crate::core::DocContext;
 
 mod stripper;
-pub use stripper::*;
+crate use stripper::*;
 
 mod non_autolinks;
-pub use self::non_autolinks::CHECK_NON_AUTOLINKS;
+crate use self::non_autolinks::CHECK_NON_AUTOLINKS;
 
 mod collapse_docs;
-pub use self::collapse_docs::COLLAPSE_DOCS;
+crate use self::collapse_docs::COLLAPSE_DOCS;
 
 mod strip_hidden;
-pub use self::strip_hidden::STRIP_HIDDEN;
+crate use self::strip_hidden::STRIP_HIDDEN;
 
 mod strip_private;
-pub use self::strip_private::STRIP_PRIVATE;
+crate use self::strip_private::STRIP_PRIVATE;
 
 mod strip_priv_imports;
-pub use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
+crate use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 
 mod unindent_comments;
-pub use self::unindent_comments::UNINDENT_COMMENTS;
+crate use self::unindent_comments::UNINDENT_COMMENTS;
 
 mod propagate_doc_cfg;
-pub use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
+crate use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
 mod collect_intra_doc_links;
-pub use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
+crate use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
 mod doc_test_lints;
-pub use self::doc_test_lints::CHECK_PRIVATE_ITEMS_DOC_TESTS;
+crate use self::doc_test_lints::CHECK_PRIVATE_ITEMS_DOC_TESTS;
 
 mod collect_trait_impls;
-pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
+crate use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
 
 mod check_code_block_syntax;
-pub use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
+crate use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
 
 mod calculate_doc_coverage;
-pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
+crate use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 
 mod html_tags;
-pub use self::html_tags::CHECK_INVALID_HTML_TAGS;
+crate use self::html_tags::CHECK_INVALID_HTML_TAGS;
 
 /// A single pass over the cleaned documentation.
 ///
 /// Runs in the compiler context, so it has access to types and traits and the like.
 #[derive(Copy, Clone)]
-pub struct Pass {
-    pub name: &'static str,
-    pub run: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
-    pub description: &'static str,
+crate struct Pass {
+    crate name: &'static str,
+    crate run: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
+    crate description: &'static str,
 }
 
 /// In a list of passes, a pass that may or may not need to be run depending on options.
 #[derive(Copy, Clone)]
-pub struct ConditionalPass {
-    pub pass: Pass,
-    pub condition: Condition,
+crate struct ConditionalPass {
+    crate pass: Pass,
+    crate condition: Condition,
 }
 
 /// How to decide whether to run a conditional pass.
 #[derive(Copy, Clone)]
-pub enum Condition {
+crate enum Condition {
     Always,
     /// When `--document-private-items` is passed.
     WhenDocumentPrivate,
@@ -80,7 +80,7 @@ pub enum Condition {
 }
 
 /// The full list of passes.
-pub const PASSES: &[Pass] = &[
+crate const PASSES: &[Pass] = &[
     CHECK_PRIVATE_ITEMS_DOC_TESTS,
     STRIP_HIDDEN,
     UNINDENT_COMMENTS,
@@ -97,7 +97,7 @@ pub const PASSES: &[Pass] = &[
 ];
 
 /// The list of passes run by default.
-pub const DEFAULT_PASSES: &[ConditionalPass] = &[
+crate const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::always(COLLAPSE_DOCS),
     ConditionalPass::always(UNINDENT_COMMENTS),
@@ -113,7 +113,7 @@ pub const DEFAULT_PASSES: &[ConditionalPass] = &[
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-pub const COVERAGE_PASSES: &[ConditionalPass] = &[
+crate const COVERAGE_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
@@ -121,11 +121,11 @@ pub const COVERAGE_PASSES: &[ConditionalPass] = &[
 ];
 
 impl ConditionalPass {
-    pub const fn always(pass: Pass) -> Self {
+    crate const fn always(pass: Pass) -> Self {
         Self::new(pass, Always)
     }
 
-    pub const fn new(pass: Pass, condition: Condition) -> Self {
+    crate const fn new(pass: Pass, condition: Condition) -> Self {
         ConditionalPass { pass, condition }
     }
 }
@@ -133,14 +133,14 @@ impl ConditionalPass {
 /// A shorthand way to refer to which set of passes to use, based on the presence of
 /// `--no-defaults` and `--show-coverage`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum DefaultPassOption {
+crate enum DefaultPassOption {
     Default,
     Coverage,
     None,
 }
 
 /// Returns the given default set of passes.
-pub fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
+crate fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
         DefaultPassOption::Coverage => COVERAGE_PASSES,
@@ -149,7 +149,7 @@ pub fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
 }
 
 /// If the given name matches a known pass, returns its information.
-pub fn find_pass(pass_name: &str) -> Option<Pass> {
+crate fn find_pass(pass_name: &str) -> Option<Pass> {
     PASSES.iter().find(|p| p.name == pass_name).copied()
 }
 

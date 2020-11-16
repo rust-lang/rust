@@ -62,23 +62,23 @@ pub struct Markdown<'a>(
     pub &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
-pub struct MarkdownWithToc<'a>(
-    pub &'a str,
-    pub &'a mut IdMap,
-    pub ErrorCodes,
-    pub Edition,
-    pub &'a Option<Playground>,
+crate struct MarkdownWithToc<'a>(
+    crate &'a str,
+    crate &'a mut IdMap,
+    crate ErrorCodes,
+    crate Edition,
+    crate &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
-pub struct MarkdownHtml<'a>(
-    pub &'a str,
-    pub &'a mut IdMap,
-    pub ErrorCodes,
-    pub Edition,
-    pub &'a Option<Playground>,
+crate struct MarkdownHtml<'a>(
+    crate &'a str,
+    crate &'a mut IdMap,
+    crate ErrorCodes,
+    crate Edition,
+    crate &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders only the first paragraph.
-pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
+crate struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ErrorCodes {
@@ -87,14 +87,14 @@ pub enum ErrorCodes {
 }
 
 impl ErrorCodes {
-    pub fn from(b: bool) -> Self {
+    crate fn from(b: bool) -> Self {
         match b {
             true => ErrorCodes::Yes,
             false => ErrorCodes::No,
         }
     }
 
-    pub fn as_bool(self) -> bool {
+    crate fn as_bool(self) -> bool {
         match self {
             ErrorCodes::Yes => true,
             ErrorCodes::No => false,
@@ -643,7 +643,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub fn find_testable_code<T: doctest::Tester>(
+crate fn find_testable_code<T: doctest::Tester>(
     doc: &str,
     tests: &mut T,
     error_codes: ErrorCodes,
@@ -709,7 +709,7 @@ pub fn find_testable_code<T: doctest::Tester>(
     }
 }
 
-pub struct ExtraInfo<'a, 'b> {
+crate struct ExtraInfo<'a, 'b> {
     hir_id: Option<HirId>,
     item_did: Option<DefId>,
     sp: Span,
@@ -717,11 +717,11 @@ pub struct ExtraInfo<'a, 'b> {
 }
 
 impl<'a, 'b> ExtraInfo<'a, 'b> {
-    pub fn new(tcx: &'a TyCtxt<'b>, hir_id: HirId, sp: Span) -> ExtraInfo<'a, 'b> {
+    crate fn new(tcx: &'a TyCtxt<'b>, hir_id: HirId, sp: Span) -> ExtraInfo<'a, 'b> {
         ExtraInfo { hir_id: Some(hir_id), item_did: None, sp, tcx }
     }
 
-    pub fn new_did(tcx: &'a TyCtxt<'b>, did: DefId, sp: Span) -> ExtraInfo<'a, 'b> {
+    crate fn new_did(tcx: &'a TyCtxt<'b>, did: DefId, sp: Span) -> ExtraInfo<'a, 'b> {
         ExtraInfo { hir_id: None, item_did: Some(did), sp, tcx }
     }
 
@@ -753,21 +753,21 @@ impl<'a, 'b> ExtraInfo<'a, 'b> {
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct LangString {
+crate struct LangString {
     original: String,
-    pub should_panic: bool,
-    pub no_run: bool,
-    pub ignore: Ignore,
-    pub rust: bool,
-    pub test_harness: bool,
-    pub compile_fail: bool,
-    pub error_codes: Vec<String>,
-    pub allow_fail: bool,
-    pub edition: Option<Edition>,
+    crate should_panic: bool,
+    crate no_run: bool,
+    crate ignore: Ignore,
+    crate rust: bool,
+    crate test_harness: bool,
+    crate compile_fail: bool,
+    crate error_codes: Vec<String>,
+    crate allow_fail: bool,
+    crate edition: Option<Edition>,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub enum Ignore {
+crate enum Ignore {
     All,
     None,
     Some(Vec<String>),
@@ -955,7 +955,7 @@ impl Markdown<'_> {
 }
 
 impl MarkdownWithToc<'_> {
-    pub fn into_string(self) -> String {
+    crate fn into_string(self) -> String {
         let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
 
         let p = Parser::new_ext(md, opts());
@@ -976,7 +976,7 @@ impl MarkdownWithToc<'_> {
 }
 
 impl MarkdownHtml<'_> {
-    pub fn into_string(self) -> String {
+    crate fn into_string(self) -> String {
         let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
@@ -1003,7 +1003,7 @@ impl MarkdownHtml<'_> {
 }
 
 impl MarkdownSummaryLine<'_> {
-    pub fn into_string(self) -> String {
+    crate fn into_string(self) -> String {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1039,7 +1039,7 @@ impl MarkdownSummaryLine<'_> {
 /// - Headings, links, and formatting are stripped.
 /// - Inline code is rendered as-is, surrounded by backticks.
 /// - HTML and code blocks are ignored.
-pub fn plain_text_summary(md: &str) -> String {
+crate fn plain_text_summary(md: &str) -> String {
     if md.is_empty() {
         return String::new();
     }
@@ -1064,7 +1064,7 @@ pub fn plain_text_summary(md: &str) -> String {
     s
 }
 
-pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
+crate fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     if md.is_empty() {
         return vec![];
     }
@@ -1120,11 +1120,11 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
 crate struct RustCodeBlock {
     /// The range in the markdown that the code block occupies. Note that this includes the fences
     /// for fenced code blocks.
-    pub range: Range<usize>,
+    crate range: Range<usize>,
     /// The range in the markdown that the code within the code block occupies.
-    pub code: Range<usize>,
-    pub is_fenced: bool,
-    pub syntax: Option<String>,
+    crate code: Range<usize>,
+    crate is_fenced: bool,
+    crate syntax: Option<String>,
 }
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
@@ -1247,17 +1247,17 @@ impl IdMap {
         IdMap { map: init_id_map() }
     }
 
-    pub fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
+    crate fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
         for id in ids {
             let _ = self.derive(id);
         }
     }
 
-    pub fn reset(&mut self) {
+    crate fn reset(&mut self) {
         self.map = init_id_map();
     }
 
-    pub fn derive(&mut self, candidate: String) -> String {
+    crate fn derive(&mut self, candidate: String) -> String {
         let id = match self.map.get_mut(&candidate) {
             None => candidate,
             Some(a) => {

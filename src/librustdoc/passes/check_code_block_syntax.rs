@@ -11,13 +11,13 @@ use crate::fold::DocFolder;
 use crate::html::markdown::{self, RustCodeBlock};
 use crate::passes::{span_of_attrs, Pass};
 
-pub const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
+crate const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
     name: "check-code-block-syntax",
     run: check_code_block_syntax,
     description: "validates syntax inside Rust code blocks",
 };
 
-pub fn check_code_block_syntax(krate: clean::Crate, cx: &DocContext<'_>) -> clean::Crate {
+crate fn check_code_block_syntax(krate: clean::Crate, cx: &DocContext<'_>) -> clean::Crate {
     SyntaxChecker { cx }.fold_crate(krate)
 }
 

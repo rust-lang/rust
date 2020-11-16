@@ -20,13 +20,13 @@ struct RegionDeps<'tcx> {
     smaller: FxHashSet<RegionTarget<'tcx>>,
 }
 
-pub struct AutoTraitFinder<'a, 'tcx> {
-    pub cx: &'a core::DocContext<'tcx>,
-    pub f: auto_trait::AutoTraitFinder<'tcx>,
+crate struct AutoTraitFinder<'a, 'tcx> {
+    crate cx: &'a core::DocContext<'tcx>,
+    crate f: auto_trait::AutoTraitFinder<'tcx>,
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'tcx>) -> Self {
+    crate fn new(cx: &'a core::DocContext<'tcx>) -> Self {
         let f = auto_trait::AutoTraitFinder::new(cx.tcx);
 
         AutoTraitFinder { cx, f }
@@ -34,7 +34,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     // FIXME(eddyb) figure out a better way to pass information about
     // parametrization of `ty` than `param_env_def_id`.
-    pub fn get_auto_trait_impls(&self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
+    crate fn get_auto_trait_impls(&self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
         let param_env = self.cx.tcx.param_env(param_env_def_id);
 
         debug!("get_auto_trait_impls({:?})", ty);

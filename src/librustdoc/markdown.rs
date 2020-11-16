@@ -32,7 +32,7 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
-pub fn render<P: AsRef<Path>>(
+crate fn render<P: AsRef<Path>>(
     input: P,
     options: RenderOptions,
     edition: Edition,
@@ -114,7 +114,7 @@ pub fn render<P: AsRef<Path>>(
 }
 
 /// Runs any tests/code examples in the markdown file `input`.
-pub fn test(mut options: Options) -> Result<(), String> {
+crate fn test(mut options: Options) -> Result<(), String> {
     let input_str = read_to_string(&options.input)
         .map_err(|err| format!("{}: {}", options.input.display(), err))?;
     let mut opts = TestOptions::default();

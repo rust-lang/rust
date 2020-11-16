@@ -9,7 +9,7 @@ use rustc_session::lint;
 use std::iter::Peekable;
 use std::str::CharIndices;
 
-pub const CHECK_INVALID_HTML_TAGS: Pass = Pass {
+crate const CHECK_INVALID_HTML_TAGS: Pass = Pass {
     name: "check-invalid-html-tags",
     run: check_invalid_html_tags,
     description: "detects invalid HTML tags in doc comments",
@@ -25,7 +25,7 @@ impl<'a, 'tcx> InvalidHtmlTagsLinter<'a, 'tcx> {
     }
 }
 
-pub fn check_invalid_html_tags(krate: Crate, cx: &DocContext<'_>) -> Crate {
+crate fn check_invalid_html_tags(krate: Crate, cx: &DocContext<'_>) -> Crate {
     if !cx.tcx.sess.is_nightly_build() {
         krate
     } else {

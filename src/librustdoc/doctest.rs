@@ -31,17 +31,17 @@ use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
-pub struct TestOptions {
+crate struct TestOptions {
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
-    pub no_crate_inject: bool,
+    crate no_crate_inject: bool,
     /// Whether to emit compilation warnings when compiling doctests. Setting this will suppress
     /// the default `#![allow(unused)]`.
-    pub display_warnings: bool,
+    crate display_warnings: bool,
     /// Additional crate-level attributes to add to doctests.
-    pub attrs: Vec<String>,
+    crate attrs: Vec<String>,
 }
 
-pub fn run(options: Options) -> Result<(), ErrorReported> {
+crate fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -363,7 +363,7 @@ fn run_test(
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
 /// lines before the test code begins.
-pub fn make_test(
+crate fn make_test(
     s: &str,
     cratename: Option<&str>,
     dont_insert_main: bool,
@@ -605,7 +605,7 @@ fn partition_source(s: &str) -> (String, String, String) {
     (before, after, crates)
 }
 
-pub trait Tester {
+crate trait Tester {
     fn add_test(&mut self, test: String, config: LangString, line: usize);
     fn get_line(&self) -> usize {
         0
@@ -613,8 +613,8 @@ pub trait Tester {
     fn register_header(&mut self, _name: &str, _level: u32) {}
 }
 
-pub struct Collector {
-    pub tests: Vec<testing::TestDescAndFn>,
+crate struct Collector {
+    crate tests: Vec<testing::TestDescAndFn>,
 
     // The name of the test displayed to the user, separated by `::`.
     //
@@ -650,7 +650,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(
+    crate fn new(
         cratename: String,
         options: Options,
         use_headers: bool,
@@ -682,7 +682,7 @@ impl Collector {
         format!("{} - {}(line {})", filename, item_path, line)
     }
 
-    pub fn set_position(&mut self, position: Span) {
+    crate fn set_position(&mut self, position: Span) {
         self.position = position;
     }
 
