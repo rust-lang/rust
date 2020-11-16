@@ -263,9 +263,9 @@ impl GlobalStateSnapshot {
         self.vfs.read().1[&id]
     }
 
-    pub(crate) fn url_file_version(&self, url: &Url) -> Option<i64> {
+    pub(crate) fn url_file_version(&self, url: &Url) -> Option<i32> {
         let path = from_proto::vfs_path(&url).ok()?;
-        self.mem_docs.get(&path)?.version
+        Some(self.mem_docs.get(&path)?.version)
     }
 
     pub(crate) fn anchored_path(&self, file_id: FileId, path: &str) -> Url {

@@ -302,7 +302,7 @@ pub enum SnippetDocumentChangeOperation {
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SnippetTextDocumentEdit {
-    pub text_document: lsp_types::VersionedTextDocumentIdentifier,
+    pub text_document: lsp_types::OptionalVersionedTextDocumentIdentifier,
     pub edits: Vec<SnippetTextEdit>,
 }
 

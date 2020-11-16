@@ -51,7 +51,7 @@ impl GlobalState {
         }
         let percentage = fraction.map(|f| {
             assert!(0.0 <= f && f <= 1.0);
-            f * 100.0
+            (f * 100.0) as u32
         });
         let token = lsp_types::ProgressToken::String(format!("rustAnalyzer/{}", title));
         let work_done_progress = match state {
@@ -98,11 +98,11 @@ pub(crate) fn apply_document_changes(
     // The VFS will normalize the end of lines to `\n`.
     enum IndexValid {
         All,
-        UpToLineExclusive(u64),
+        UpToLineExclusive(u32),
     }
 
     impl IndexValid {
-        fn covers(&self, line: u64) -> bool {
+        fn covers(&self, line: u32) -> bool {
             match *self {
                 IndexValid::UpToLineExclusive(to) => to > line,
                 _ => true,

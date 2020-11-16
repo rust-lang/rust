@@ -108,7 +108,7 @@ pub(crate) fn project(fixture: &str) -> Server {
 }
 
 pub(crate) struct Server {
-    req_id: Cell<u64>,
+    req_id: Cell<i32>,
     messages: RefCell<Vec<Message>>,
     _thread: jod_thread::JoinHandle<()>,
     client: Connection,
@@ -165,7 +165,7 @@ impl Server {
         R::Params: Serialize,
     {
         let id = self.req_id.get();
-        self.req_id.set(id + 1);
+        self.req_id.set(id.wrapping_add(1));
 
         let r = Request::new(id.into(), R::METHOD.to_string(), params);
         self.send_request_(r)

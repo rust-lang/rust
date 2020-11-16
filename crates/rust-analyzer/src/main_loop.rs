@@ -368,7 +368,7 @@ impl GlobalState {
                 let url = file_id_to_url(&self.vfs.read().0, file_id);
                 let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
                 let version = from_proto::vfs_path(&url)
-                    .map(|path| self.mem_docs.get(&path)?.version)
+                    .map(|path| self.mem_docs.get(&path).map(|it| it.version))
                     .unwrap_or_default();
 
                 self.send_notification::<lsp_types::notification::PublishDiagnostics>(
@@ -521,7 +521,7 @@ impl GlobalState {
                 let mut version = None;
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
                     match this.mem_docs.remove(&path) {
-                        Some(doc) => version = doc.version,
+                        Some(doc) => version = Some(doc.version),
                         None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
 
