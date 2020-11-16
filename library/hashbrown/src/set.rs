@@ -72,7 +72,7 @@ use crate::raw::{AllocRef, Global};
 /// ```
 ///
 /// The easiest way to use `HashSet` with a custom type is to derive
-/// [`Eq`] and [`Hash`]. We must also derive [`PartialEq`], this will in the
+/// [`Eq`] and [`Hash`]. We must also derive [`PartialEq`]. This will in the
 /// future be implied by [`Eq`].
 ///
 /// ```
