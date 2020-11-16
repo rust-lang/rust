@@ -1,6 +1,7 @@
 //! Renderer for function calls.
 
-use hir::{HasSource, Type};
+use assists::utils::{ImportScope, MergeBehaviour};
+use hir::{HasSource, ModPath, Type};
 use syntax::{ast::Fn, display::function_declaration};
 
 use crate::{
@@ -10,10 +11,11 @@ use crate::{
 
 pub(crate) fn render_fn<'a>(
     ctx: RenderContext<'a>,
+    import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
     local_name: Option<String>,
     fn_: hir::Function,
 ) -> CompletionItem {
-    FunctionRender::new(ctx, local_name, fn_).render()
+    FunctionRender::new(ctx, local_name, fn_).render(import_data)
 }
 
 #[derive(Debug)]
@@ -36,7 +38,10 @@ impl<'a> FunctionRender<'a> {
         FunctionRender { ctx, name, fn_, ast_node }
     }
 
-    fn render(self) -> CompletionItem {
+    fn render(
+        self,
+        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
+    ) -> CompletionItem {
         let params = self.params();
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), self.name.clone())
             .kind(self.kind())
@@ -44,6 +49,7 @@ impl<'a> FunctionRender<'a> {
             .set_deprecated(self.ctx.is_deprecated(self.fn_))
             .detail(self.detail())
             .add_call_parens(self.ctx.completion, self.name, params)
+            .import_data(import_data)
             .build()
     }
 

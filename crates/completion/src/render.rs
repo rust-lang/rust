@@ -9,7 +9,8 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
-use hir::{Documentation, HasAttrs, HirDisplay, Mutability, ScopeDef, Type};
+use assists::utils::{ImportScope, MergeBehaviour};
+use hir::{Documentation, HasAttrs, HirDisplay, ModPath, Mutability, ScopeDef, Type};
 use ide_db::RootDatabase;
 use syntax::TextRange;
 use test_utils::mark;
@@ -42,7 +43,22 @@ pub(crate) fn render_resolution<'a>(
     local_name: String,
     resolution: &ScopeDef,
 ) -> Option<CompletionItem> {
-    Render::new(ctx).render_resolution(local_name, resolution)
+    Render::new(ctx).render_resolution(local_name, None, resolution)
+}
+
+pub(crate) fn render_resolution_with_import<'a>(
+    ctx: RenderContext<'a>,
+    import: ModPath,
+    import_scope: ImportScope,
+    merge_behaviour: Option<MergeBehaviour>,
+    resolution: &ScopeDef,
+) -> Option<CompletionItem> {
+    let local_name = import.segments.last()?.to_string();
+    Render::new(ctx).render_resolution(
+        local_name,
+        Some((import, import_scope, merge_behaviour)),
+        resolution,
+    )
 }
 
 /// Interface for data and methods required for items rendering.
@@ -131,6 +147,7 @@ impl<'a> Render<'a> {
     fn render_resolution(
         self,
         local_name: String,
+        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
         resolution: &ScopeDef,
     ) -> Option<CompletionItem> {
         use hir::ModuleDef::*;
@@ -142,15 +159,15 @@ impl<'a> Render<'a> {
 
         let kind = match resolution {
             ScopeDef::ModuleDef(Function(func)) => {
-                let item = render_fn(self.ctx, Some(local_name), *func);
+                let item = render_fn(self.ctx, import_data, Some(local_name), *func);
                 return Some(item);
             }
             ScopeDef::ModuleDef(EnumVariant(var)) => {
-                let item = render_enum_variant(self.ctx, Some(local_name), *var, None);
+                let item = render_enum_variant(self.ctx, import_data, Some(local_name), *var, None);
                 return Some(item);
             }
             ScopeDef::MacroDef(mac) => {
-                let item = render_macro(self.ctx, local_name, *mac);
+                let item = render_macro(self.ctx, import_data, local_name, *mac);
                 return item;
             }
 
@@ -175,6 +192,7 @@ impl<'a> Render<'a> {
                     local_name,
                 )
                 .kind(CompletionItemKind::UnresolvedReference)
+                .import_data(import_data)
                 .build();
                 return Some(item);
             }
@@ -227,7 +245,12 @@ impl<'a> Render<'a> {
             }
         }
 
-        let item = item.kind(kind).set_documentation(docs).set_ref_match(ref_match).build();
+        let item = item
+            .kind(kind)
+            .import_data(import_data)
+            .set_documentation(docs)
+            .set_ref_match(ref_match)
+            .build();
         Some(item)
     }
 

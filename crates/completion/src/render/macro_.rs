@@ -1,6 +1,7 @@
 //! Renderer for macro invocations.
 
-use hir::{Documentation, HasSource};
+use assists::utils::{ImportScope, MergeBehaviour};
+use hir::{Documentation, HasSource, ModPath};
 use syntax::display::macro_label;
 use test_utils::mark;
 
@@ -11,10 +12,11 @@ use crate::{
 
 pub(crate) fn render_macro<'a>(
     ctx: RenderContext<'a>,
+    import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
     name: String,
     macro_: hir::MacroDef,
 ) -> Option<CompletionItem> {
-    MacroRender::new(ctx, name, macro_).render()
+    MacroRender::new(ctx, name, macro_).render(import_data)
 }
 
 #[derive(Debug)]
@@ -36,7 +38,10 @@ impl<'a> MacroRender<'a> {
         MacroRender { ctx, name, macro_, docs, bra, ket }
     }
 
-    fn render(&self) -> Option<CompletionItem> {
+    fn render(
+        &self,
+        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
+    ) -> Option<CompletionItem> {
         // FIXME: Currently proc-macro do not have ast-node,
         // such that it does not have source
         if self.macro_.is_proc_macro() {
@@ -48,6 +53,7 @@ impl<'a> MacroRender<'a> {
                 .kind(CompletionItemKind::Macro)
                 .set_documentation(self.docs.clone())
                 .set_deprecated(self.ctx.is_deprecated(self.macro_))
+                .import_data(import_data)
                 .detail(self.detail());
 
         let needs_bang = self.needs_bang();

@@ -1,14 +1,14 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
-use assists::utils::{insert_use, mod_path_to_ast, ImportScope};
+use assists::utils::ImportScope;
 use either::Either;
 use hir::{Adt, ModuleDef, ScopeDef, Type};
 use ide_db::imports_locator;
-use syntax::{algo, AstNode};
+use syntax::AstNode;
 use test_utils::mark;
 
 use crate::{
-    render::{render_resolution, RenderContext},
+    render::{render_resolution_with_import, RenderContext},
     CompletionContext, Completions,
 };
 
@@ -95,35 +95,13 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
                 )),
             })
             .filter(|(mod_path, _)| mod_path.len() > 1)
-            .filter_map(|(mod_path, definition)| {
-                let use_to_insert = mod_path_to_ast(&mod_path);
-                let mut mod_path_without_last_segment = mod_path;
-                let name_after_import = mod_path_without_last_segment.segments.pop()?.to_string();
-
-                let resolution_with_missing_import =
-                    render_resolution(RenderContext::new(ctx), name_after_import, &definition)?;
-                let lookup_string = resolution_with_missing_import.lookup().to_owned();
-
-                let mut text_edits =
-                    resolution_with_missing_import.text_edit().to_owned().into_builder();
-                let rewriter = insert_use(&import_scope, use_to_insert, ctx.config.merge);
-                let old_ast = rewriter.rewrite_root()?;
-                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
-
-                let qualifier_string = mod_path_without_last_segment.to_string();
-                let qualified_label = if qualifier_string.is_empty() {
-                    resolution_with_missing_import.label().to_owned()
-                } else {
-                    format!("{}::{}", qualifier_string, resolution_with_missing_import.label())
-                };
-
-                Some(
-                    resolution_with_missing_import
-                        .into_builder()
-                        .text_edit(text_edits.finish())
-                        .label(qualified_label)
-                        .lookup_by(lookup_string)
-                        .build(),
+            .filter_map(|(import_path, definition)| {
+                render_resolution_with_import(
+                    RenderContext::new(ctx),
+                    import_path.clone(),
+                    import_scope.clone(),
+                    ctx.config.merge,
+                    &definition,
                 )
             })
             .take(20);

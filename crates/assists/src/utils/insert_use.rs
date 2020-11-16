@@ -15,7 +15,7 @@ use syntax::{
 };
 use test_utils::mark;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ImportScope {
     File(ast::SourceFile),
     Module(ast::ItemList),

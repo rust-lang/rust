@@ -90,7 +90,7 @@ impl Completions {
             Some(it) => it,
             None => return,
         };
-        if let Some(item) = render_macro(RenderContext::new(ctx), name, macro_) {
+        if let Some(item) = render_macro(RenderContext::new(ctx), None, name, macro_) {
             self.add(item);
         }
     }
@@ -101,7 +101,7 @@ impl Completions {
         func: hir::Function,
         local_name: Option<String>,
     ) {
-        let item = render_fn(RenderContext::new(ctx), local_name, func);
+        let item = render_fn(RenderContext::new(ctx), None, local_name, func);
         self.add(item)
     }
 
@@ -123,7 +123,7 @@ impl Completions {
         variant: hir::EnumVariant,
         path: ModPath,
     ) {
-        let item = render_enum_variant(RenderContext::new(ctx), None, variant, Some(path));
+        let item = render_enum_variant(RenderContext::new(ctx), None, None, variant, Some(path));
         self.add(item);
     }
 
@@ -133,7 +133,7 @@ impl Completions {
         variant: hir::EnumVariant,
         local_name: Option<String>,
     ) {
-        let item = render_enum_variant(RenderContext::new(ctx), local_name, variant, None);
+        let item = render_enum_variant(RenderContext::new(ctx), None, local_name, variant, None);
         self.add(item);
     }
 }

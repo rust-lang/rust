@@ -1,5 +1,6 @@
 //! Renderer for `enum` variants.
 
+use assists::utils::{ImportScope, MergeBehaviour};
 use hir::{HasAttrs, HirDisplay, ModPath, StructKind};
 use itertools::Itertools;
 use test_utils::mark;
@@ -11,11 +12,12 @@ use crate::{
 
 pub(crate) fn render_enum_variant<'a>(
     ctx: RenderContext<'a>,
+    import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
     local_name: Option<String>,
     variant: hir::EnumVariant,
     path: Option<ModPath>,
 ) -> CompletionItem {
-    EnumVariantRender::new(ctx, local_name, variant, path).render()
+    EnumVariantRender::new(ctx, local_name, variant, path).render(import_data)
 }
 
 #[derive(Debug)]
@@ -60,7 +62,10 @@ impl<'a> EnumVariantRender<'a> {
         }
     }
 
-    fn render(self) -> CompletionItem {
+    fn render(
+        self,
+        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
+    ) -> CompletionItem {
         let mut builder = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
@@ -69,6 +74,7 @@ impl<'a> EnumVariantRender<'a> {
         .kind(CompletionItemKind::EnumVariant)
         .set_documentation(self.variant.docs(self.ctx.db()))
         .set_deprecated(self.ctx.is_deprecated(self.variant))
+        .import_data(import_data)
         .detail(self.detail());
 
         if self.variant_kind == StructKind::Tuple {

@@ -2,8 +2,9 @@
 
 use std::fmt;
 
-use hir::{Documentation, Mutability};
-use syntax::TextRange;
+use assists::utils::{insert_use, mod_path_to_ast, ImportScope, MergeBehaviour};
+use hir::{Documentation, ModPath, Mutability};
+use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
 use crate::config::SnippetCap;
@@ -200,25 +201,7 @@ impl CompletionItem {
             trigger_call_info: None,
             score: None,
             ref_match: None,
-        }
-    }
-
-    pub(crate) fn into_builder(self) -> Builder {
-        Builder {
-            source_range: self.source_range,
-            completion_kind: self.completion_kind,
-            label: self.label,
-            insert_text: None,
-            insert_text_format: self.insert_text_format,
-            detail: self.detail,
-            documentation: self.documentation,
-            lookup: self.lookup,
-            kind: self.kind,
-            text_edit: Some(self.text_edit),
-            deprecated: Some(self.deprecated),
-            trigger_call_info: Some(self.trigger_call_info),
-            score: self.score,
-            ref_match: self.ref_match,
+            import_data: None,
         }
     }
 
@@ -278,6 +261,7 @@ impl CompletionItem {
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
+    import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
     label: String,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -294,23 +278,50 @@ pub(crate) struct Builder {
 
 impl Builder {
     pub(crate) fn build(self) -> CompletionItem {
-        let label = self.label;
-        let text_edit = match self.text_edit {
+        let mut label = self.label;
+        let mut lookup = self.lookup;
+        let mut insert_text = self.insert_text;
+        let mut text_edits = TextEdit::builder();
+
+        if let Some((import_path, import_scope, merge_behaviour)) = self.import_data {
+            let import = mod_path_to_ast(&import_path);
+            let mut import_path_without_last_segment = import_path;
+            let _ = import_path_without_last_segment.segments.pop();
+
+            if !import_path_without_last_segment.segments.is_empty() {
+                if lookup.is_none() {
+                    lookup = Some(label.clone());
+                }
+                if insert_text.is_none() {
+                    insert_text = Some(label.clone());
+                }
+                label = format!("{}::{}", import_path_without_last_segment, label);
+            }
+
+            let rewriter = insert_use(&import_scope, import, merge_behaviour);
+            if let Some(old_ast) = rewriter.rewrite_root() {
+                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
+            }
+        }
+
+        let original_edit = match self.text_edit {
             Some(it) => it,
-            None => TextEdit::replace(
-                self.source_range,
-                self.insert_text.unwrap_or_else(|| label.clone()),
-            ),
+            None => {
+                TextEdit::replace(self.source_range, insert_text.unwrap_or_else(|| label.clone()))
+            }
         };
+
+        let mut resulting_edit = text_edits.finish();
+        resulting_edit.union(original_edit).expect("Failed to unite text edits");
 
         CompletionItem {
             source_range: self.source_range,
             label,
             insert_text_format: self.insert_text_format,
-            text_edit,
+            text_edit: resulting_edit,
             detail: self.detail,
             documentation: self.documentation,
-            lookup: self.lookup,
+            lookup,
             kind: self.kind,
             completion_kind: self.completion_kind,
             deprecated: self.deprecated.unwrap_or(false),
@@ -377,6 +388,13 @@ impl Builder {
     }
     pub(crate) fn trigger_call_info(mut self) -> Builder {
         self.trigger_call_info = Some(true);
+        self
+    }
+    pub(crate) fn import_data(
+        mut self,
+        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
+    ) -> Builder {
+        self.import_data = import_data;
         self
     }
     pub(crate) fn set_ref_match(
