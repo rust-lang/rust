@@ -13,8 +13,7 @@ fn b() {
     foo::<BAR + BAR>();
     //~^ ERROR expected trait, found constant `BAR`
     //~| ERROR expected trait, found constant `BAR`
-    //~| ERROR wrong number of const arguments: expected 1, found 0
-    //~| ERROR wrong number of type arguments: expected 0, found 1
+    //~| ERROR type provided when a constant was expected
     //~| WARN trait objects without an explicit `dyn` are deprecated
 }
 fn c() {

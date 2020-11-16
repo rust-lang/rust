@@ -20,20 +20,16 @@ impl<const CF: CompileFlag, T> Example<CF, T> {
 pub fn main() {
   test_1::<CompileFlag::A>();
   //~^ ERROR: expected type, found variant
-  //~| ERROR: wrong number of const arguments
-  //~| ERROR: wrong number of type arguments
+  //~| ERROR: type provided when a constant was expected
 
   test_2::<_, CompileFlag::A>(0);
   //~^ ERROR: expected type, found variant
-  //~| ERROR: wrong number of const arguments
-  //~| ERROR: wrong number of type arguments
+  //~| ERROR: type provided when a constant was expected
 
   let _: Example<CompileFlag::A, _> = Example { x: 0 };
   //~^ ERROR: expected type, found variant
-  //~| ERROR: wrong number of const arguments
-  //~| ERROR: wrong number of type arguments
+  //~| ERROR: type provided when a constant was expected
 
   let _: Example<Example::ASSOC_FLAG, _> = Example { x: 0 };
-  //~^ ERROR: wrong number of const arguments
-  //~| ERROR: wrong number of type arguments
+  //~^ ERROR: type provided when a constant was expected
 }
