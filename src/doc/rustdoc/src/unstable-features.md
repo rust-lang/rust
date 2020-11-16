@@ -250,14 +250,14 @@ details.
 Using this flag looks like this:
 
 ```bash
-$ rustdoc src/lib.rs -Z unstable-options --extern-html-root-url some-crate=https://example.com/some-crate/1.0.1
+$ rustdoc src/lib.rs -Z unstable-options --extern-html-root-url libsome_crate.rlib=https://example.com/some-crate/1.0.1
 ```
 
 Ordinarily, when rustdoc wants to link to a type from a different crate, it looks in two places:
 docs that already exist in the output directory, or the `#![doc(doc_html_root)]` set in the other
 crate. However, if you want to link to docs that exist in neither of those places, you can use these
-flags to control that behavior. When the `--extern-html-root-url` flag is given with a name matching
-one of your dependencies, rustdoc use that URL for those docs. Keep in mind that if those docs exist
+flags to control that behavior. When the `--extern-html-root-url` flag is given with a filename matching
+one of your dependencies, rustdoc will use that URL for those docs. Keep in mind that if those docs exist
 in the output directory, those local docs will still override this flag.
 
 ### `-Z force-unstable-if-unmarked`
