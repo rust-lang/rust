@@ -1,72 +1,91 @@
 Counter in file 0 4:9 -> 4:26, #1
 Counter in file 0 5:8 -> 5:12, (#1 + 0)
 Counter in file 0 5:13 -> 7:6, #2
-Counter in file 0 10:9 -> 10:10, (#4 + #11)
+Counter in file 0 10:9 -> 10:10, (#3 + (#12 + #13))
 Counter in file 0 10:16 -> 10:29, (#2 + 0)
-Counter in file 0 11:9 -> 12:10, #4
+Counter in file 0 11:9 -> 12:10, #3
 Counter in file 0 13:15 -> 13:28, ((#2 + 0) - #3)
-Counter in file 0 14:12 -> 14:25, #5
-Counter in file 0 14:29 -> 14:42, (#5 - #13)
-Counter in file 0 14:42 -> 14:43, (#13 + #14)
-Counter in file 0 14:42 -> 14:43, ((#5 - #13) - #14)
-Counter in file 0 14:46 -> 14:60, #21
-Counter in file 0 14:60 -> 14:61, (#17 + #18)
-Counter in file 0 14:60 -> 14:61, (#21 - #18)
-Counter in file 0 14:61 -> 16:10, #22
-Counter in file 0 16:10 -> 16:11, #23
-Counter in file 0 17:9 -> 18:18, #11
-Counter in file 0 20:9 -> 20:15, (((#2 + 0) - #3) - #5)
-Counter in file 0 23:9 -> 23:26, ((#4 + #11) + 0)
-Counter in file 0 24:8 -> 24:12, ((#4 + #11) + 0)
-Counter in file 0 24:13 -> 26:6, #12
-Counter in file 0 28:8 -> 28:21, (#12 + 0)
-Counter in file 0 29:9 -> 29:23, #16
-Counter in file 0 30:15 -> 30:28, ((#12 + 0) - #15)
-Counter in file 0 31:12 -> 31:25, (((#12 + 0) - #15) - #8)
-Counter in file 0 31:29 -> 31:42, ((((#12 + 0) - #15) - #8) - #24)
-Counter in file 0 31:42 -> 31:43, (((((#12 + 0) - #15) - #8) - #24) - #25)
+Counter in file 0 14:12 -> 14:25, #4
+Counter in file 0 14:29 -> 14:42, (#4 - #15)
+Counter in file 0 14:42 -> 14:43, ((#4 - #15) - #16)
+Counter in file 0 14:42 -> 14:43, (#15 + #16)
+Counter in file 0 14:46 -> 14:60, #23
+Counter in file 0 14:60 -> 14:61, (#18 + #19)
+Counter in file 0 14:60 -> 14:61, (#23 - #19)
+Counter in file 0 14:61 -> 16:10, #12
+Counter in file 0 16:10 -> 16:11, #13
+Counter in file 0 17:9 -> 18:18, (#12 + #13)
+Counter in file 0 20:9 -> 20:15, (((#2 + 0) - #3) - #4)
+Counter in file 0 23:9 -> 23:26, ((#3 + (#12 + #13)) + 0)
+Counter in file 0 24:8 -> 24:12, ((#3 + (#12 + #13)) + 0)
+Counter in file 0 24:13 -> 26:6, #14
+Counter in file 0 28:8 -> 28:21, (#14 + 0)
+Counter in file 0 28:22 -> 30:6, #17
+Counter in file 0 30:15 -> 30:28, ((#14 + 0) - #17)
+Counter in file 0 31:12 -> 31:25, (((#14 + 0) - #17) - #8)
+Counter in file 0 31:29 -> 31:42, ((((#14 + 0) - #17) - #8) - #24)
+Counter in file 0 31:42 -> 31:43, (((((#14 + 0) - #17) - #8) - #24) - #25)
 Counter in file 0 31:42 -> 31:43, (#24 + #25)
-Counter in file 0 31:46 -> 31:60, #32
-Counter in file 0 31:60 -> 31:61, (#28 + #29)
-Counter in file 0 31:60 -> 31:61, (#32 - #29)
-Counter in file 0 31:61 -> 33:10, #33
-Counter in file 0 33:10 -> 33:11, #34
-Counter in file 0 34:9 -> 34:23, #19
+Counter in file 0 31:46 -> 31:60, #34
+Counter in file 0 31:60 -> 31:61, (#34 - #32)
+Counter in file 0 31:60 -> 31:61, (#31 + #32)
+Counter in file 0 31:61 -> 33:10, #20
+Counter in file 0 33:10 -> 33:11, #21
+Counter in file 0 34:9 -> 34:23, (#20 + #21)
 Counter in file 0 36:9 -> 36:15, #8
-Counter in file 0 39:9 -> 39:26, (#16 + #19)
-Counter in file 0 40:8 -> 40:12, ((#16 + #19) + 0)
-Counter in file 0 40:13 -> 42:6, #20
-Counter in file 0 44:9 -> 44:10, (#27 + #30)
-Counter in file 0 44:16 -> 44:29, (#20 + 0)
-Counter in file 0 45:9 -> 45:23, #27
-Counter in file 0 46:15 -> 46:28, ((#20 + 0) - #26)
-Counter in file 0 47:12 -> 47:25, (((#20 + 0) - #26) - #7)
-Counter in file 0 47:29 -> 47:42, ((((#20 + 0) - #26) - #7) - #35)
-Counter in file 0 47:42 -> 47:43, (#35 + #36)
-Counter in file 0 47:42 -> 47:43, (((((#20 + 0) - #26) - #7) - #35) - #36)
-Counter in file 0 47:46 -> 47:60, #41
-Counter in file 0 47:60 -> 47:61, (#37 + #38)
-Counter in file 0 47:60 -> 47:61, (#41 - #38)
-Counter in file 0 47:61 -> 49:10, #42
-Counter in file 0 49:10 -> 49:11, #43
-Counter in file 0 50:9 -> 50:23, #30
-Counter in file 0 52:13 -> 54:15, #7
-Counter in file 0 57:9 -> 57:10, (#9 + #10)
-Counter in file 0 57:16 -> 57:29, ((#27 + #30) + 0)
-Counter in file 0 58:9 -> 58:23, #9
-Counter in file 0 59:15 -> 59:28, ((#27 + #30) - #31)
-Counter in file 0 60:12 -> 60:25, (((#27 + #30) - #31) - #6)
-Counter in file 0 60:29 -> 60:42, ((((#27 + #30) - #31) - #6) - #39)
-Counter in file 0 60:42 -> 60:43, (#39 + #40)
-Counter in file 0 60:42 -> 60:43, (((((#27 + #30) - #31) - #6) - #39) - #40)
-Counter in file 0 60:46 -> 60:60, #46
-Counter in file 0 60:60 -> 60:61, (#46 - #45)
-Counter in file 0 60:60 -> 60:61, (#44 + #45)
-Counter in file 0 60:61 -> 62:10, #47
-Counter in file 0 62:10 -> 62:11, #48
-Counter in file 0 63:9 -> 63:23, #10
-Counter in file 0 65:9 -> 65:15, #6
-Counter in file 0 67:1 -> 67:2, ((#9 + #10) + (((#6 + #7) + #8) + (((#2 + 0) - #3) - #5)))
+Counter in file 0 39:8 -> 39:12, (#17 + (#20 + #21))
+Counter in file 0 52:13 -> 52:30, #22
+Counter in file 0 53:12 -> 53:16, (#22 + 0)
+Counter in file 0 53:17 -> 55:10, #26
+Counter in file 0 57:12 -> 57:25, (#26 + 0)
+Counter in file 0 57:26 -> 59:10, #27
+Counter in file 0 65:17 -> 65:30, ((#26 + 0) - #27)
+Counter in file 0 66:16 -> 66:29, (((#26 + 0) - #27) - #7)
+Counter in file 0 66:33 -> 66:46, ((((#26 + 0) - #27) - #7) - #37)
+Counter in file 0 66:46 -> 66:47, (#37 + #38)
+Counter in file 0 66:46 -> 66:47, (((((#26 + 0) - #27) - #7) - #37) - #38)
+Counter in file 0 66:50 -> 66:64, #47
+Counter in file 0 66:64 -> 66:65, (#47 - #42)
+Counter in file 0 66:64 -> 66:65, (#41 + #42)
+Counter in file 0 66:65 -> 68:14, #28
+Counter in file 0 68:14 -> 68:15, #29
+Counter in file 0 69:13 -> 69:27, (#28 + #29)
+Counter in file 0 71:13 -> 71:19, #7
+Counter in file 0 73:6 -> 73:7, (#27 + (#28 + #29))
+Counter in file 0 75:9 -> 75:26, ((#27 + (#28 + #29)) + 0)
+Counter in file 0 76:8 -> 76:12, (((#27 + (#28 + #29)) + 0) + 0)
+Counter in file 0 76:13 -> 78:6, #30
+Counter in file 0 80:9 -> 80:10, (#33 + (#35 + #36))
+Counter in file 0 80:16 -> 80:29, (#30 + 0)
+Counter in file 0 80:30 -> 82:6, #33
+Counter in file 0 82:15 -> 82:28, ((#30 + 0) - #33)
+Counter in file 0 83:12 -> 83:25, (((#30 + 0) - #33) - #6)
+Counter in file 0 83:29 -> 83:42, ((((#30 + 0) - #33) - #6) - #39)
+Counter in file 0 83:42 -> 83:43, (#39 + #40)
+Counter in file 0 83:42 -> 83:43, (((((#30 + 0) - #33) - #6) - #39) - #40)
+Counter in file 0 83:46 -> 83:60, #48
+Counter in file 0 83:60 -> 83:61, (#43 + #44)
+Counter in file 0 83:60 -> 83:61, (#48 - #44)
+Counter in file 0 83:61 -> 85:10, #35
+Counter in file 0 85:10 -> 85:11, #36
+Counter in file 0 86:9 -> 86:23, (#35 + #36)
+Counter in file 0 88:13 -> 90:15, #6
+Counter in file 0 93:9 -> 93:10, (#9 + (#10 + #11))
+Counter in file 0 93:16 -> 93:29, ((#33 + (#35 + #36)) + 0)
+Counter in file 0 93:30 -> 95:6, #9
+Counter in file 0 95:15 -> 95:28, ((#33 + (#35 + #36)) - #9)
+Counter in file 0 96:12 -> 96:25, (((#33 + (#35 + #36)) - #9) - #5)
+Counter in file 0 96:29 -> 96:42, ((((#33 + (#35 + #36)) - #9) - #5) - #45)
+Counter in file 0 96:42 -> 96:43, (#45 + #46)
+Counter in file 0 96:42 -> 96:43, (((((#33 + (#35 + #36)) - #9) - #5) - #45) - #46)
+Counter in file 0 96:46 -> 96:60, #51
+Counter in file 0 96:60 -> 96:61, (#49 + #50)
+Counter in file 0 96:60 -> 96:61, (#51 - #50)
+Counter in file 0 96:61 -> 98:10, #10
+Counter in file 0 98:10 -> 98:11, #11
+Counter in file 0 99:9 -> 99:23, (#10 + #11)
+Counter in file 0 101:9 -> 101:15, #5
+Counter in file 0 103:1 -> 103:2, ((#9 + (#10 + #11)) + (((#5 + #6) + (#7 + #8)) + (((#2 + 0) - #3) - #4)))
 Emitting segments for file: ../coverage/conditions.rs
 Combined regions:
   4:9 -> 4:26 (count=1)
@@ -89,7 +108,7 @@ Combined regions:
   24:8 -> 24:12 (count=1)
   24:13 -> 26:6 (count=1)
   28:8 -> 28:21 (count=1)
-  29:9 -> 29:23 (count=1)
+  28:22 -> 30:6 (count=1)
   30:15 -> 30:28 (count=0)
   31:12 -> 31:25 (count=0)
   31:29 -> 31:42 (count=0)
@@ -100,36 +119,53 @@ Combined regions:
   33:10 -> 33:11 (count=0)
   34:9 -> 34:23 (count=0)
   36:9 -> 36:15 (count=0)
-  39:9 -> 39:26 (count=1)
-  40:8 -> 40:12 (count=1)
-  40:13 -> 42:6 (count=1)
-  44:9 -> 44:10 (count=0)
-  44:16 -> 44:29 (count=1)
-  45:9 -> 45:23 (count=0)
-  46:15 -> 46:28 (count=1)
-  47:12 -> 47:25 (count=0)
-  47:29 -> 47:42 (count=0)
-  47:42 -> 47:43 (count=0)
-  47:46 -> 47:60 (count=0)
-  47:60 -> 47:61 (count=0)
-  47:61 -> 49:10 (count=0)
-  49:10 -> 49:11 (count=0)
-  50:9 -> 50:23 (count=0)
-  52:13 -> 54:15 (count=1)
-  57:9 -> 57:10 (count=0)
-  57:16 -> 57:29 (count=0)
-  58:9 -> 58:23 (count=0)
-  59:15 -> 59:28 (count=0)
-  60:12 -> 60:25 (count=0)
-  60:29 -> 60:42 (count=0)
-  60:42 -> 60:43 (count=0)
-  60:46 -> 60:60 (count=0)
-  60:60 -> 60:61 (count=0)
-  60:61 -> 62:10 (count=0)
-  62:10 -> 62:11 (count=0)
-  63:9 -> 63:23 (count=0)
-  65:9 -> 65:15 (count=0)
-  67:1 -> 67:2 (count=1)
+  39:8 -> 39:12 (count=1)
+  52:13 -> 52:30 (count=1)
+  53:12 -> 53:16 (count=1)
+  53:17 -> 55:10 (count=1)
+  57:12 -> 57:25 (count=1)
+  57:26 -> 59:10 (count=1)
+  65:17 -> 65:30 (count=0)
+  66:16 -> 66:29 (count=0)
+  66:33 -> 66:46 (count=0)
+  66:46 -> 66:47 (count=0)
+  66:50 -> 66:64 (count=0)
+  66:64 -> 66:65 (count=0)
+  66:65 -> 68:14 (count=0)
+  68:14 -> 68:15 (count=0)
+  69:13 -> 69:27 (count=0)
+  71:13 -> 71:19 (count=0)
+  73:6 -> 73:7 (count=1)
+  75:9 -> 75:26 (count=1)
+  76:8 -> 76:12 (count=1)
+  76:13 -> 78:6 (count=1)
+  80:9 -> 80:10 (count=0)
+  80:16 -> 80:29 (count=1)
+  80:30 -> 82:6 (count=0)
+  82:15 -> 82:28 (count=1)
+  83:12 -> 83:25 (count=0)
+  83:29 -> 83:42 (count=0)
+  83:42 -> 83:43 (count=0)
+  83:46 -> 83:60 (count=0)
+  83:60 -> 83:61 (count=0)
+  83:61 -> 85:10 (count=0)
+  85:10 -> 85:11 (count=0)
+  86:9 -> 86:23 (count=0)
+  88:13 -> 90:15 (count=1)
+  93:9 -> 93:10 (count=0)
+  93:16 -> 93:29 (count=0)
+  93:30 -> 95:6 (count=0)
+  95:15 -> 95:28 (count=0)
+  96:12 -> 96:25 (count=0)
+  96:29 -> 96:42 (count=0)
+  96:42 -> 96:43 (count=0)
+  96:46 -> 96:60 (count=0)
+  96:60 -> 96:61 (count=0)
+  96:61 -> 98:10 (count=0)
+  98:10 -> 98:11 (count=0)
+  99:9 -> 99:23 (count=0)
+  101:9 -> 101:15 (count=0)
+  103:1 -> 103:2 (count=1)
 Segment at 4:9 (count = 1), RegionEntry
 Segment at 4:26 (count = 0), Skipped
 Segment at 5:8 (count = 1), RegionEntry
@@ -166,8 +202,8 @@ Segment at 24:13 (count = 1), RegionEntry
 Segment at 26:6 (count = 0), Skipped
 Segment at 28:8 (count = 1), RegionEntry
 Segment at 28:21 (count = 0), Skipped
-Segment at 29:9 (count = 1), RegionEntry
-Segment at 29:23 (count = 0), Skipped
+Segment at 28:22 (count = 1), RegionEntry
+Segment at 30:6 (count = 0), Skipped
 Segment at 30:15 (count = 0), RegionEntry
 Segment at 30:28 (count = 0), Skipped
 Segment at 31:12 (count = 0), RegionEntry
@@ -184,55 +220,85 @@ Segment at 34:9 (count = 0), RegionEntry
 Segment at 34:23 (count = 0), Skipped
 Segment at 36:9 (count = 0), RegionEntry
 Segment at 36:15 (count = 0), Skipped
-Segment at 39:9 (count = 1), RegionEntry
-Segment at 39:26 (count = 0), Skipped
-Segment at 40:8 (count = 1), RegionEntry
-Segment at 40:12 (count = 0), Skipped
-Segment at 40:13 (count = 1), RegionEntry
-Segment at 42:6 (count = 0), Skipped
-Segment at 44:9 (count = 0), RegionEntry
-Segment at 44:10 (count = 0), Skipped
-Segment at 44:16 (count = 1), RegionEntry
-Segment at 44:29 (count = 0), Skipped
-Segment at 45:9 (count = 0), RegionEntry
-Segment at 45:23 (count = 0), Skipped
-Segment at 46:15 (count = 1), RegionEntry
-Segment at 46:28 (count = 0), Skipped
-Segment at 47:12 (count = 0), RegionEntry
-Segment at 47:25 (count = 0), Skipped
-Segment at 47:29 (count = 0), RegionEntry
-Segment at 47:42 (count = 0), RegionEntry
-Segment at 47:43 (count = 0), Skipped
-Segment at 47:46 (count = 0), RegionEntry
-Segment at 47:60 (count = 0), RegionEntry
-Segment at 47:61 (count = 0), RegionEntry
-Segment at 49:10 (count = 0), RegionEntry
-Segment at 49:11 (count = 0), Skipped
-Segment at 50:9 (count = 0), RegionEntry
-Segment at 50:23 (count = 0), Skipped
+Segment at 39:8 (count = 1), RegionEntry
+Segment at 39:12 (count = 0), Skipped
 Segment at 52:13 (count = 1), RegionEntry
-Segment at 54:15 (count = 0), Skipped
-Segment at 57:9 (count = 0), RegionEntry
-Segment at 57:10 (count = 0), Skipped
-Segment at 57:16 (count = 0), RegionEntry
-Segment at 57:29 (count = 0), Skipped
-Segment at 58:9 (count = 0), RegionEntry
-Segment at 58:23 (count = 0), Skipped
-Segment at 59:15 (count = 0), RegionEntry
-Segment at 59:28 (count = 0), Skipped
-Segment at 60:12 (count = 0), RegionEntry
-Segment at 60:25 (count = 0), Skipped
-Segment at 60:29 (count = 0), RegionEntry
-Segment at 60:42 (count = 0), RegionEntry
-Segment at 60:43 (count = 0), Skipped
-Segment at 60:46 (count = 0), RegionEntry
-Segment at 60:60 (count = 0), RegionEntry
-Segment at 60:61 (count = 0), RegionEntry
-Segment at 62:10 (count = 0), RegionEntry
-Segment at 62:11 (count = 0), Skipped
-Segment at 63:9 (count = 0), RegionEntry
-Segment at 63:23 (count = 0), Skipped
-Segment at 65:9 (count = 0), RegionEntry
-Segment at 65:15 (count = 0), Skipped
-Segment at 67:1 (count = 1), RegionEntry
-Segment at 67:2 (count = 0), Skipped
+Segment at 52:30 (count = 0), Skipped
+Segment at 53:12 (count = 1), RegionEntry
+Segment at 53:16 (count = 0), Skipped
+Segment at 53:17 (count = 1), RegionEntry
+Segment at 55:10 (count = 0), Skipped
+Segment at 57:12 (count = 1), RegionEntry
+Segment at 57:25 (count = 0), Skipped
+Segment at 57:26 (count = 1), RegionEntry
+Segment at 59:10 (count = 0), Skipped
+Segment at 65:17 (count = 0), RegionEntry
+Segment at 65:30 (count = 0), Skipped
+Segment at 66:16 (count = 0), RegionEntry
+Segment at 66:29 (count = 0), Skipped
+Segment at 66:33 (count = 0), RegionEntry
+Segment at 66:46 (count = 0), RegionEntry
+Segment at 66:47 (count = 0), Skipped
+Segment at 66:50 (count = 0), RegionEntry
+Segment at 66:64 (count = 0), RegionEntry
+Segment at 66:65 (count = 0), RegionEntry
+Segment at 68:14 (count = 0), RegionEntry
+Segment at 68:15 (count = 0), Skipped
+Segment at 69:13 (count = 0), RegionEntry
+Segment at 69:27 (count = 0), Skipped
+Segment at 71:13 (count = 0), RegionEntry
+Segment at 71:19 (count = 0), Skipped
+Segment at 73:6 (count = 1), RegionEntry
+Segment at 73:7 (count = 0), Skipped
+Segment at 75:9 (count = 1), RegionEntry
+Segment at 75:26 (count = 0), Skipped
+Segment at 76:8 (count = 1), RegionEntry
+Segment at 76:12 (count = 0), Skipped
+Segment at 76:13 (count = 1), RegionEntry
+Segment at 78:6 (count = 0), Skipped
+Segment at 80:9 (count = 0), RegionEntry
+Segment at 80:10 (count = 0), Skipped
+Segment at 80:16 (count = 1), RegionEntry
+Segment at 80:29 (count = 0), Skipped
+Segment at 80:30 (count = 0), RegionEntry
+Segment at 82:6 (count = 0), Skipped
+Segment at 82:15 (count = 1), RegionEntry
+Segment at 82:28 (count = 0), Skipped
+Segment at 83:12 (count = 0), RegionEntry
+Segment at 83:25 (count = 0), Skipped
+Segment at 83:29 (count = 0), RegionEntry
+Segment at 83:42 (count = 0), RegionEntry
+Segment at 83:43 (count = 0), Skipped
+Segment at 83:46 (count = 0), RegionEntry
+Segment at 83:60 (count = 0), RegionEntry
+Segment at 83:61 (count = 0), RegionEntry
+Segment at 85:10 (count = 0), RegionEntry
+Segment at 85:11 (count = 0), Skipped
+Segment at 86:9 (count = 0), RegionEntry
+Segment at 86:23 (count = 0), Skipped
+Segment at 88:13 (count = 1), RegionEntry
+Segment at 90:15 (count = 0), Skipped
+Segment at 93:9 (count = 0), RegionEntry
+Segment at 93:10 (count = 0), Skipped
+Segment at 93:16 (count = 0), RegionEntry
+Segment at 93:29 (count = 0), Skipped
+Segment at 93:30 (count = 0), RegionEntry
+Segment at 95:6 (count = 0), Skipped
+Segment at 95:15 (count = 0), RegionEntry
+Segment at 95:28 (count = 0), Skipped
+Segment at 96:12 (count = 0), RegionEntry
+Segment at 96:25 (count = 0), Skipped
+Segment at 96:29 (count = 0), RegionEntry
+Segment at 96:42 (count = 0), RegionEntry
+Segment at 96:43 (count = 0), Skipped
+Segment at 96:46 (count = 0), RegionEntry
+Segment at 96:60 (count = 0), RegionEntry
+Segment at 96:61 (count = 0), RegionEntry
+Segment at 98:10 (count = 0), RegionEntry
+Segment at 98:11 (count = 0), Skipped
+Segment at 99:9 (count = 0), RegionEntry
+Segment at 99:23 (count = 0), Skipped
+Segment at 101:9 (count = 0), RegionEntry
+Segment at 101:15 (count = 0), Skipped
+Segment at 103:1 (count = 1), RegionEntry
+Segment at 103:2 (count = 0), Skipped

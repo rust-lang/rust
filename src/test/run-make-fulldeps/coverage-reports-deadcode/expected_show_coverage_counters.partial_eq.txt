@@ -1,28 +1,28 @@
-Counter in file 0 4:32 -> 4:33, (#3 + (#1 + #2))
 Counter in file 0 4:48 -> 4:49, ((#1 + #2) + ((#3 + #4) + ((#5 + #6) + #7)))
+Counter in file 0 7:5 -> 7:6, #1
 Counter in file 0 21:11 -> 26:2, #1
-Counter in file 0 8:5 -> 8:17, #1
-Counter in file 0 8:5 -> 8:17, #1
 Counter in file 0 4:39 -> 4:40, #1
 Counter in file 0 4:48 -> 4:49, (#1 + 0)
+Counter in file 0 7:5 -> 7:6, #1
 Counter in file 0 4:39 -> 4:40, #1
 Counter in file 0 4:48 -> 4:49, (#1 + 0)
-Counter in file 0 8:5 -> 8:17, #1
 Counter in file 0 4:32 -> 4:33, ((#4 + #5) + #6)
+Counter in file 0 7:5 -> 7:6, #1
 Counter in file 0 4:53 -> 4:54, (#1 + (#2 + (#3 + #4)))
-Counter in file 0 13:9 -> 18:6, #1
-Counter in file 0 4:39 -> 4:40, #1
-Counter in file 0 4:48 -> 4:49, (#1 + 0)
-Counter in file 0 7:5 -> 7:6, #1
-Counter in file 0 4:10 -> 4:15, #1
-Counter in file 0 4:35 -> 4:37, #1
-Counter in file 0 7:5 -> 7:6, #1
-Counter in file 0 7:5 -> 7:6, #1
-Counter in file 0 4:17 -> 4:22, #1
 Counter in file 0 8:5 -> 8:17, #1
+Counter in file 0 13:9 -> 18:6, #1
+Counter in file 0 7:5 -> 7:6, #1
 Counter in file 0 4:39 -> 4:40, #1
 Counter in file 0 4:48 -> 4:49, (#1 + 0)
-Counter in file 0 7:5 -> 7:6, #1
+Counter in file 0 4:10 -> 4:15, #1
+Counter in file 0 8:5 -> 8:17, #1
+Counter in file 0 4:35 -> 4:37, #1
+Counter in file 0 8:5 -> 8:17, #1
+Counter in file 0 8:5 -> 8:17, #1
+Counter in file 0 4:17 -> 4:22, #1
+Counter in file 0 4:39 -> 4:40, #1
+Counter in file 0 4:48 -> 4:49, (#1 + 0)
+Counter in file 0 4:32 -> 4:33, (#3 + (#1 + #2))
 Emitting segments for file: ../coverage/partial_eq.rs
 Combined regions:
   4:17 -> 4:22 (count=2)

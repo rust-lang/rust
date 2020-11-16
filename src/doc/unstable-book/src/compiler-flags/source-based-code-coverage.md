@@ -1,8 +1,6 @@
 # `source-based-code-coverage`
 
-The feature request for this feature is: [#34701]
-
-The Major Change Proposal (MCP) for this feature is: [#278](https://github.com/rust-lang/compiler-team/issues/278)
+The tracking issue for this feature is: [#79121](https://github.com/rust-lang/rust/issues/79121).
 
 ------------------------
 

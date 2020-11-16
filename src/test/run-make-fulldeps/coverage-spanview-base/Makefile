@@ -43,6 +43,9 @@ endif
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation and generate relevant MIR.
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
+			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && \
+				echo "--edition=2018" \
+			) \
 			-Zinstrument-coverage \
 			-Clink-dead-code=$(LINK_DEAD_CODE) \
 			-Zdump-mir=InstrumentCoverage \

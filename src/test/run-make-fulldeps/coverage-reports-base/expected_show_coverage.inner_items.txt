@@ -38,7 +38,7 @@
    37|       |    }
    38|       |
    39|       |    impl InTrait for InStruct {
-   40|       |        fn trait_func(&mut self, incr: u32) {
+   40|      1|        fn trait_func(&mut self, incr: u32) {
    41|      1|            self.in_struct_field += incr;
    42|      1|            in_func(self.in_struct_field);
    43|      1|        }

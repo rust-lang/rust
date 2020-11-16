@@ -1,12 +1,12 @@
 Counter in file 0 13:9 -> 14:23, #1
 Counter in file 0 17:9 -> 17:10, ((#1 + (#2 + #3)) - #4)
 Counter in file 0 19:9 -> 19:14, (#1 + (#2 + #3))
-Counter in file 0 21:9 -> 25:26, #8
-Counter in file 0 27:13 -> 27:41, #9
+Counter in file 0 21:9 -> 25:26, (((#1 + (#2 + #3)) - #4) + 0)
+Counter in file 0 27:13 -> 27:41, #8
 Counter in file 0 27:41 -> 27:42, #5
-Counter in file 0 28:13 -> 28:42, (#9 - #5)
+Counter in file 0 28:13 -> 28:42, (#8 - #5)
 Counter in file 0 28:42 -> 28:43, #6
-Counter in file 0 32:13 -> 32:42, (#8 - #9)
+Counter in file 0 32:13 -> 32:42, (((#1 + (#2 + #3)) - #4) - #8)
 Counter in file 0 32:42 -> 32:43, #7
 Counter in file 0 33:10 -> 33:11, #2
 Counter in file 0 33:10 -> 33:11, #3

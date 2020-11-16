@@ -1,7 +1,7 @@
 Counter in file 0 5:9 -> 5:27, #1
 Counter in file 0 7:9 -> 9:10, (#1 + #2)
 Counter in file 0 12:13 -> 14:14, ((#1 + #2) - #3)
-Counter in file 0 18:21 -> 20:22, #6
+Counter in file 0 18:21 -> 20:22, (((#1 + #2) - #3) - #2)
 Counter in file 0 22:21 -> 22:27, #4
 Counter in file 0 26:21 -> 26:27, #5
 Counter in file 0 30:9 -> 32:10, #2

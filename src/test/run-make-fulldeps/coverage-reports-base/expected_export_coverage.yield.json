@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/yield.rs",
+          "summary": {
+            "functions": {
+              "count": 3,
+              "covered": 3,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 3,
+              "covered": 3,
+              "percent": 100
+            },
+            "lines": {
+              "count": 23,
+              "covered": 16,
+              "percent": 69.56521739130434
+            },
+            "regions": {
+              "count": 22,
+              "covered": 16,
+              "notcovered": 6,
+              "percent": 72.72727272727273
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 3,
+          "covered": 3,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 3,
+          "covered": 3,
+          "percent": 100
+        },
+        "lines": {
+          "count": 23,
+          "covered": 16,
+          "percent": 69.56521739130434
+        },
+        "regions": {
+          "count": 22,
+          "covered": 16,
+          "notcovered": 6,
+          "percent": 72.72727272727273
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

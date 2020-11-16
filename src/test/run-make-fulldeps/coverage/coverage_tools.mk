@@ -44,8 +44,3 @@ LLVM_VERSION_11_PLUS := $(shell \
 		LLVM_VERSION=$$("$(LLVM_BIN_DIR)"/llvm-config --version) && \
 		LLVM_VERSION_MAJOR=$${LLVM_VERSION/.*/} && \
 		[ $$LLVM_VERSION_MAJOR -ge 11 ] && echo true || echo false)
-
-# FIXME(richkadel): Can any of the features tested by `run-make-fulldeps/coverage-*` tests be tested
-# just as completely by more focused unit tests of the code logic itself, to reduce the number of
-# test result files generated and maintained, and to help identify specific test failures and root
-# causes more easily?

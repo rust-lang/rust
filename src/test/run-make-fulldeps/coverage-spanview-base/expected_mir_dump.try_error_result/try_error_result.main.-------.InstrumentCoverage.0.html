@@ -79,33 +79,38 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="17:9-17:10: @8[1]: _13 = ((_9 as Some).0: i32)
 17:9-17:10: @8[3]: _14 = _13
 17:9-17:10: @8[4]: _7 = move _14
-17:9-17:10: @8[5]: _8 = const ()"><span class="annotation">@6,8⦊</span>_<span class="annotation">⦉@6,8</span></span></span><span class="code" style="--layer: 0"></span></span>
+17:9-17:10: @8[5]: _8 = const ()"><span class="annotation">@6,8,9⦊</span>_<span class="annotation">⦉@6,8,9</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    in</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="19:9-19:14: @3[5]: _11 = &amp;mut _5
 19:9-19:14: @3[6]: _10 = &amp;mut (*_11)
 19:9-19:14: @3.Call: _9 = &lt;std::ops::Range&lt;i32&gt; as Iterator&gt;::next(move _10) -&gt; [return: bb4, unwind: bb40]
 19:9-19:14: @4[1]: FakeRead(ForMatchedPlace, _9)"><span class="annotation">@2,3,4⦊</span>0..10<span class="annotation">⦉@2,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    {</span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="21:9-22:17: @9[0]: _1 = move (_17.0: i32)
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="21:9-22:17: @8[12]: _17 = CheckedSub(_1, const 1_i32)
+21:9-22:17: @9[0]: _1 = move (_17.0: i32)
 25:13-25:22: @9[3]: _19 = _1
 25:13-25:26: @9[4]: _18 = Lt(move _19, const 5_i32)
-25:13-25:26: @9[6]: FakeRead(ForMatchedPlace, _18)"><span class="annotation">@9⦊</span>countdown</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @9[0]: _1 = move (_17.0: i32)
+25:13-25:26: @9[6]: FakeRead(ForMatchedPlace, _18)"><span class="annotation">@6,8,9⦊</span>countdown</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @8[12]: _17 = CheckedSub(_1, const 1_i32)
+21:9-22:17: @9[0]: _1 = move (_17.0: i32)
 25:13-25:22: @9[3]: _19 = _1
 25:13-25:26: @9[4]: _18 = Lt(move _19, const 5_i32)
 25:13-25:26: @9[6]: FakeRead(ForMatchedPlace, _18)">            -= 1</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @9[0]: _1 = move (_17.0: i32)
+<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @8[12]: _17 = CheckedSub(_1, const 1_i32)
+21:9-22:17: @9[0]: _1 = move (_17.0: i32)
 25:13-25:22: @9[3]: _19 = _1
 25:13-25:26: @9[4]: _18 = Lt(move _19, const 5_i32)
 25:13-25:26: @9[6]: FakeRead(ForMatchedPlace, _18)">        ;</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @9[0]: _1 = move (_17.0: i32)
+<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @8[12]: _17 = CheckedSub(_1, const 1_i32)
+21:9-22:17: @9[0]: _1 = move (_17.0: i32)
 25:13-25:22: @9[3]: _19 = _1
 25:13-25:26: @9[4]: _18 = Lt(move _19, const 5_i32)
 25:13-25:26: @9[6]: FakeRead(ForMatchedPlace, _18)">        if</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @9[0]: _1 = move (_17.0: i32)
+<span class="line"><span class="code odd" style="--layer: 1" title="21:9-22:17: @8[12]: _17 = CheckedSub(_1, const 1_i32)
+21:9-22:17: @9[0]: _1 = move (_17.0: i32)
 25:13-25:22: @9[3]: _19 = _1
 25:13-25:26: @9[4]: _18 = Lt(move _19, const 5_i32)
-25:13-25:26: @9[6]: FakeRead(ForMatchedPlace, _18)">            countdown &lt; 5<span class="annotation">⦉@9</span></span></span><span class="code" style="--layer: 0"></span></span>
+25:13-25:26: @9[6]: FakeRead(ForMatchedPlace, _18)">            countdown &lt; 5<span class="annotation">⦉@6,8,9</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        {</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="27:13-27:41: @12.Call: _22 = call(const true) -&gt; [return: bb13, unwind: bb40]"><span class="annotation">@10,12,13,14⦊</span>call(/*return_error=*/ true)<span class="annotation">⦉@10,12,13,14</span></span></span><span><span class="code odd" style="--layer: 1" title="27:41-27:42: @18[1]: _24 = ((_21 as Err).0: ())
 27:41-27:42: @18[4]: _27 = _24
