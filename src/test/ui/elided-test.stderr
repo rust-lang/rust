@@ -1,10 +1,13 @@
 error[E0601]: `main` function not found in crate `elided_test`
   --> $DIR/elided-test.rs:5:1
    |
-LL | / #[test]
-LL | | fn main() {
-LL | | }
-   | |_^ consider adding a `main` function to `$DIR/elided-test.rs`
+LL | #[test]
+   | ^
+   |
+help: define a function named `main` at the crate root
+   |
+LL | fn main() {}
+   |
 
 error: aborting due to previous error
 

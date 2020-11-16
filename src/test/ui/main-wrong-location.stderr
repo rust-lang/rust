@@ -1,21 +1,14 @@
 error[E0601]: `main` function not found in crate `main_wrong_location`
-  --> $DIR/main-wrong-location.rs:1:1
    |
-LL | / mod m {
-LL | |
-LL | |     // An inferred main entry point (that doesn't use #[main])
-LL | |     // must appear at the top of the crate
-LL | |     fn main() { }
-LL | | }
-   | |_^ the main function must be defined at the crate level (in `$DIR/main-wrong-location.rs`)
-   |
-note: here is a function named `main`
+help: consider moving one of these function definitions to the crate root
   --> $DIR/main-wrong-location.rs:5:5
    |
 LL |     fn main() { }
    |     ^^^^^^^^^^^^^
-   = note: you have one or more functions named `main` not defined at the crate level
-   = help: either move the `main` function definitions or attach the `#[main]` attribute to one of them
+help: define a function named `main` at the crate root
+   |
+LL | fn main() {}
+   |
 
 error: aborting due to previous error
 

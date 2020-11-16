@@ -1,14 +1,9 @@
 error[E0601]: `main` function not found in crate `continue_after_missing_main`
-  --> $DIR/continue-after-missing-main.rs:1:1
    |
-LL | / #![allow(dead_code)]
-LL | |
-LL | | struct Tableau<'a, MP> {
-LL | |     provider: &'a MP,
-...  |
-LL | |
-LL | | }
-   | |_^ consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
+help: define a function named `main` at the crate root
+   |
+LL | fn main() {}
+   |
 
 error[E0623]: lifetime mismatch
   --> $DIR/continue-after-missing-main.rs:28:56

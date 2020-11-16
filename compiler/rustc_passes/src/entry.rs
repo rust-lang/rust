@@ -1,5 +1,5 @@
 use rustc_ast::entry::EntryPointType;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{CrateType, EntryFnType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{MultiSpan, Span};
 
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
@@ -174,49 +174,33 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
         return;
     }
 
-    // There is no main function.
     let mut err = struct_span_err!(
         tcx.sess,
-        DUMMY_SP,
+        sp.shrink_to_lo(),
         E0601,
         "`main` function not found in crate `{}`",
         tcx.crate_name(LOCAL_CRATE)
     );
-    let filename = &tcx.sess.local_crate_source_file;
-    let note = if !visitor.non_main_fns.is_empty() {
-        for &(_, span) in &visitor.non_main_fns {
-            err.span_note(span, "here is a function named `main`");
-        }
-        err.note("you have one or more functions named `main` not defined at the crate level");
-        err.help(
-            "either move the `main` function definitions or attach the `#[main]` attribute \
-                  to one of them",
-        );
-        // There were some functions named `main` though. Try to give the user a hint.
-        format!(
-            "the main function must be defined at the crate level{}",
-            filename.as_ref().map(|f| format!(" (in `{}`)", f.display())).unwrap_or_default()
-        )
-    } else if let Some(filename) = filename {
-        format!("consider adding a `main` function to `{}`", filename.display())
-    } else {
-        String::from("consider adding a `main` function at the crate level")
-    };
-    // The file may be empty, which leads to the diagnostic machinery not emitting this
-    // note. This is a relatively simple way to detect that case and emit a span-less
-    // note instead.
-    if tcx.sess.source_map().lookup_line(sp.lo()).is_ok() {
-        err.set_span(sp);
-        err.span_label(sp, &note);
-    } else {
-        err.note(&note);
+
+    if !visitor.non_main_fns.is_empty() {
+        let span = MultiSpan::from_spans(visitor.non_main_fns.iter().map(|(_, sp)| *sp).collect());
+        err.span_help(span, "consider moving one of these function definitions to the crate root");
     }
+
+    err.span_suggestion(
+        sp.shrink_to_lo(),
+        "define a function named `main` at the crate root",
+        String::from("fn main() {}\n"),
+        Applicability::MaybeIncorrect,
+    );
+
     if tcx.sess.teach(&err.get_code().unwrap()) {
         err.note(
             "If you don't know the basics of Rust, you can go look to the Rust Book \
                   to get started: https://doc.rust-lang.org/book/",
         );
     }
+
     err.emit();
 }
 

@@ -9,10 +9,13 @@ LL | #![issue_59191::no_main]
 error[E0601]: `main` function not found in crate `issue_59191_replace_root_with_fn`
   --> $DIR/issue-59191-replace-root-with-fn.rs:5:1
    |
-LL | / #![feature(custom_inner_attributes)]
-LL | |
-LL | | #![issue_59191::no_main]
-   | |________________________^ consider adding a `main` function to `$DIR/issue-59191-replace-root-with-fn.rs`
+LL | #![feature(custom_inner_attributes)]
+   | ^
+   |
+help: define a function named `main` at the crate root
+   |
+LL | fn main() {}
+   |
 
 error: aborting due to 2 previous errors
 
