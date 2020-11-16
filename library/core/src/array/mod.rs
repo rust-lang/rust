@@ -279,22 +279,22 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<&'b [B]> for [A; N]
+impl<A, B, const N: usize> PartialEq<&[B]> for [A; N]
 where
     A: PartialEq<B>,
 {
     #[inline]
-    fn eq(&self, other: &&'b [B]) -> bool {
+    fn eq(&self, other: &&[B]) -> bool {
         self[..] == other[..]
     }
     #[inline]
-    fn ne(&self, other: &&'b [B]) -> bool {
+    fn ne(&self, other: &&[B]) -> bool {
         self[..] != other[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b [B]
+impl<A, B, const N: usize> PartialEq<[A; N]> for &[B]
 where
     B: PartialEq<A>,
 {
@@ -309,22 +309,22 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<&'b mut [B]> for [A; N]
+impl<A, B, const N: usize> PartialEq<&mut [B]> for [A; N]
 where
     A: PartialEq<B>,
 {
     #[inline]
-    fn eq(&self, other: &&'b mut [B]) -> bool {
+    fn eq(&self, other: &&mut [B]) -> bool {
         self[..] == other[..]
     }
     #[inline]
-    fn ne(&self, other: &&'b mut [B]) -> bool {
+    fn ne(&self, other: &&mut [B]) -> bool {
         self[..] != other[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b mut [B]
+impl<A, B, const N: usize> PartialEq<[A; N]> for &mut [B]
 where
     B: PartialEq<A>,
 {
