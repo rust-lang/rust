@@ -1,8 +1,12 @@
+// aux-build:empty.rs
 #![feature(never_type)]
 #![feature(never_type_fallback)]
 #![feature(exhaustive_patterns)]
 #![deny(unreachable_patterns)]
-enum Foo {}
+
+extern crate empty;
+
+enum EmptyEnum {}
 
 struct NonEmptyStruct(bool); //~ `NonEmptyStruct` defined here
 union NonEmptyUnion1 { //~ `NonEmptyUnion1` defined here
@@ -42,7 +46,17 @@ macro_rules! match_false {
     };
 }
 
-fn foo(x: Foo) {
+fn empty_enum(x: EmptyEnum) {
+    match x {} // ok
+    match x {
+        _ => {}, //~ ERROR unreachable pattern
+    }
+    match x {
+        _ if false => {}, //~ ERROR unreachable pattern
+    }
+}
+
+fn empty_foreign_enum(x: empty::EmptyForeignEnum) {
     match x {} // ok
     match x {
         _ => {}, //~ ERROR unreachable pattern
@@ -67,7 +81,7 @@ fn main() {
         None => {}
         Some(_) => {} //~ ERROR unreachable pattern
     }
-    match None::<Foo> {
+    match None::<EmptyEnum> {
         None => {}
         Some(_) => {} //~ ERROR unreachable pattern
     }
