@@ -573,7 +573,8 @@ pub(crate) fn handle_completion(
         .flat_map(|item| to_proto::completion_item(&line_index, line_endings, item))
         .collect();
 
-    Ok(Some(items.into()))
+    let completion_list = lsp_types::CompletionList { is_incomplete: false, items };
+    Ok(Some(completion_list.into()))
 }
 
 pub(crate) fn handle_folding_range(
