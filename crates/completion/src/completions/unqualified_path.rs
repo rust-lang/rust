@@ -72,7 +72,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 }
 
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let _p = profile::span("fuzzy_completion®");
+    let _p = profile::span("fuzzy_completion");
     let current_module = ctx.scope.module()?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;

@@ -1,12 +1,12 @@
 //! This module contains an import search funcionality that is provided to the assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
-use hir::{Crate, ExternalImportablesQuery, MacroDef, ModuleDef, Semantics};
+use hir::{import_map, Crate, MacroDef, ModuleDef, Semantics};
 use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
     defs::{Definition, NameClass},
-    symbol_index::{self, FileSymbol, Query as LocalImportablesQuery},
+    symbol_index::{self, FileSymbol},
     RootDatabase,
 };
 use either::Either;
@@ -22,12 +22,12 @@ pub fn find_exact_imports<'a>(
         sema,
         krate,
         {
-            let mut local_query = LocalImportablesQuery::new(name_to_import.to_string());
+            let mut local_query = symbol_index::Query::new(name_to_import.to_string());
             local_query.exact();
             local_query.limit(40);
             local_query
         },
-        ExternalImportablesQuery::new(name_to_import).anchor_end().case_sensitive().limit(40),
+        import_map::Query::new(name_to_import).anchor_end().case_sensitive().limit(40),
     )
 }
 
@@ -42,19 +42,19 @@ pub fn find_similar_imports<'a>(
         sema,
         krate,
         {
-            let mut local_query = LocalImportablesQuery::new(name_to_import.to_string());
+            let mut local_query = symbol_index::Query::new(name_to_import.to_string());
             local_query.limit(limit);
             local_query
         },
-        ExternalImportablesQuery::new(name_to_import).limit(limit),
+        import_map::Query::new(name_to_import).limit(limit),
     )
 }
 
 fn find_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
-    local_query: LocalImportablesQuery,
-    external_query: ExternalImportablesQuery,
+    local_query: symbol_index::Query,
+    external_query: import_map::Query,
 ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
     let _p = profile::span("find_similar_imports");
     let db = sema.db;
