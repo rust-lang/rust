@@ -97,6 +97,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    #[instrument(skip(self))]
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if !ty.has_projections() {
             return ty;
