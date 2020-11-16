@@ -152,6 +152,7 @@ pub struct Config {
     // misc
     pub low_priority: bool,
     pub channel: String,
+    pub description: Option<String>,
     pub verbose_tests: bool,
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
@@ -470,6 +471,7 @@ struct Rust {
     parallel_compiler: Option<bool>,
     default_linker: Option<String>,
     channel: Option<String>,
+    description: Option<String>,
     musl_root: Option<String>,
     rpath: Option<bool>,
     verbose_tests: Option<bool>,
@@ -841,6 +843,7 @@ impl Config {
                 .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel);
+            config.description = rust.description;
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.verbose_tests, rust.verbose_tests);
             // in the case "false" is set explicitly, do not overwrite the command line args
