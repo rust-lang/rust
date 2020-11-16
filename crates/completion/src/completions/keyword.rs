@@ -44,6 +44,10 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         mark::hit!(no_keyword_completion_in_comments);
         return;
     }
+    if ctx.record_lit_syntax.is_some() {
+        mark::hit!(no_keyword_completion_in_record_lit);
+        return;
+    }
 
     let has_trait_or_impl_parent = ctx.has_impl_parent || ctx.has_trait_parent;
     if ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling {
@@ -562,5 +566,47 @@ struct Foo {
                 kw pub(crate)
             "#]],
         )
+    }
+
+    #[test]
+    fn skip_struct_initializer() {
+        mark::check!(no_keyword_completion_in_record_lit);
+        check(
+            r#"
+struct Foo {
+    pub f: i32,
+}
+fn foo() {
+    Foo {
+        <|>
+    }
+}
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn struct_initializer_field_expr() {
+        check(
+            r#"
+struct Foo {
+    pub f: i32,
+}
+fn foo() {
+    Foo {
+        f: <|>
+    }
+}
+"#,
+            expect![[r#"
+                kw if
+                kw if let
+                kw loop
+                kw match
+                kw return
+                kw while
+            "#]],
+        );
     }
 }
