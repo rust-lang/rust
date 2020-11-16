@@ -2251,6 +2251,22 @@ fn stability_tags(item: &clean::Item, parent: &clean::Item) -> String {
     tags
 }
 
+fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<String> {
+    let cfg = match (&item.attrs.cfg, parent.and_then(|p| p.attrs.cfg.as_ref())) {
+        (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
+        (cfg, _) => cfg.as_deref().cloned(),
+    };
+
+    debug!(
+        "Portability {:?} - {:?} = {:?}",
+        item.attrs.cfg,
+        parent.and_then(|p| p.attrs.cfg.as_ref()),
+        cfg
+    );
+
+    Some(format!("<div class=\"stab portability\">{}</div>", cfg?.render_long_html()))
+}
+
 /// Render the stability and/or deprecation warning that is displayed at the top of the item's
 /// documentation.
 fn short_stability(item: &clean::Item, cx: &Context, parent: Option<&clean::Item>) -> Vec<String> {
@@ -2328,19 +2344,8 @@ fn short_stability(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
         stability.push(format!("<div class=\"stab unstable\">{}</div>", message));
     }
 
-    let cfg = match (&item.attrs.cfg, parent.and_then(|p| p.attrs.cfg.as_ref())) {
-        (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
-        (cfg, _) => cfg.as_deref().cloned(),
-    };
-
-    debug!(
-        "Portability {:?} - {:?} = {:?}",
-        item.attrs.cfg,
-        parent.and_then(|p| p.attrs.cfg.as_ref()),
-        cfg
-    );
-    if let Some(cfg) = cfg {
-        stability.push(format!("<div class=\"stab portability\">{}</div>", cfg.render_long_html()));
+    if let Some(portability) = portability(item, parent) {
+        stability.push(portability);
     }
 
     stability
@@ -2431,6 +2436,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
 fn render_implementor(
     cx: &Context,
     implementor: &Impl,
+    parent: &clean::Item,
     w: &mut Buffer,
     implementor_dups: &FxHashMap<&str, (DefId, bool)>,
     aliases: &[String],
@@ -2450,7 +2456,7 @@ fn render_implementor(
         w,
         cx,
         implementor,
-        None,
+        parent,
         AssocItemLink::Anchor(None),
         RenderMode::Normal,
         implementor.impl_item.stable_since().as_deref(),
@@ -2480,7 +2486,7 @@ fn render_impls(
                 &mut buffer,
                 cx,
                 i,
-                Some(containing_item),
+                containing_item,
                 assoc_link,
                 RenderMode::Normal,
                 containing_item.stable_since().as_deref(),
@@ -2727,7 +2733,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                     w,
                     cx,
                     &implementor,
-                    None,
+                    it,
                     assoc_link,
                     RenderMode::Normal,
                     implementor.impl_item.stable_since().as_deref(),
@@ -2749,7 +2755,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "<div class=\"item-list\" id=\"implementors-list\">",
         );
         for implementor in concrete {
-            render_implementor(cx, implementor, w, &implementor_dups, &[], cache);
+            render_implementor(cx, implementor, it, w, &implementor_dups, &[], cache);
         }
         write_loading_content(w, "</div>");
 
@@ -2764,6 +2770,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                 render_implementor(
                     cx,
                     implementor,
+                    it,
                     w,
                     &implementor_dups,
                     &collect_paths_for_type(implementor.inner_impl().for_.clone()),
@@ -3430,7 +3437,7 @@ fn render_assoc_items(
                 w,
                 cx,
                 i,
-                Some(containing_item),
+                containing_item,
                 AssocItemLink::Anchor(None),
                 render_mode,
                 containing_item.stable_since().as_deref(),
@@ -3622,7 +3629,7 @@ fn render_impl(
     w: &mut Buffer,
     cx: &Context,
     i: &Impl,
-    parent: Option<&clean::Item>,
+    parent: &clean::Item,
     link: AssocItemLink<'_>,
     render_mode: RenderMode,
     outer_version: Option<&str>,
@@ -3635,6 +3642,9 @@ fn render_impl(
     aliases: &[String],
     cache: &Cache,
 ) {
+    let traits = &cache.traits;
+    let trait_ = i.trait_did().map(|did| &traits[&did]);
+
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
             Some(ref t) => {
@@ -3687,6 +3697,13 @@ fn render_impl(
             );
         }
         write!(w, "</h3>");
+
+        if trait_.is_some() {
+            if let Some(portability) = portability(&i.impl_item, Some(parent)) {
+                write!(w, "<div class=\"stability\">{}</div>", portability);
+            }
+        }
+
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(
@@ -3709,7 +3726,7 @@ fn render_impl(
         w: &mut Buffer,
         cx: &Context,
         item: &clean::Item,
-        parent: Option<&clean::Item>,
+        parent: &clean::Item,
         link: AssocItemLink<'_>,
         render_mode: RenderMode,
         is_default_item: bool,
@@ -3794,7 +3811,7 @@ fn render_impl(
                     if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
-                        document_stability(w, cx, it, is_hidden, parent);
+                        document_stability(w, cx, it, is_hidden, Some(parent));
                         if item.doc_value().is_some() {
                             document_full(w, item, cx, "", is_hidden);
                         } else if show_def_docs {
@@ -3804,13 +3821,13 @@ fn render_impl(
                         }
                     }
                 } else {
-                    document_stability(w, cx, item, is_hidden, parent);
+                    document_stability(w, cx, item, is_hidden, Some(parent));
                     if show_def_docs {
                         document_full(w, item, cx, "", is_hidden);
                     }
                 }
             } else {
-                document_stability(w, cx, item, is_hidden, parent);
+                document_stability(w, cx, item, is_hidden, Some(parent));
                 if show_def_docs {
                     document_short(w, item, link, "", is_hidden);
                 }
@@ -3818,16 +3835,13 @@ fn render_impl(
         }
     }
 
-    let traits = &cache.traits;
-    let trait_ = i.trait_did().map(|did| &traits[&did]);
-
     write!(w, "<div class=\"impl-items\">");
     for trait_item in &i.inner_impl().items {
         doc_impl_item(
             w,
             cx,
             trait_item,
-            parent,
+            if trait_.is_some() { &i.impl_item } else { parent },
             link,
             render_mode,
             false,
@@ -3843,7 +3857,7 @@ fn render_impl(
         cx: &Context,
         t: &clean::Trait,
         i: &clean::Impl,
-        parent: Option<&clean::Item>,
+        parent: &clean::Item,
         render_mode: RenderMode,
         outer_version: Option<&str>,
         show_def_docs: bool,
@@ -3884,7 +3898,7 @@ fn render_impl(
                 cx,
                 t,
                 &i.inner_impl(),
-                parent,
+                &i.impl_item,
                 render_mode,
                 outer_version,
                 show_def_docs,
