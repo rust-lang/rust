@@ -60,6 +60,10 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
+        if !tcx.consider_optimizing(|| format!("PromoteTemps {:?} ", body.source.def_id())) {
+            return;
+        }
+
         let mut rpo = traversal::reverse_postorder(body);
         let ccx = ConstCx::new(tcx, body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);

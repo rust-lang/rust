@@ -14,6 +14,12 @@ impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
             return;
         }
 
+        if !tcx.consider_optimizing(|| {
+            format!("MultipleReturnTerminators {:?} ", body.source.def_id())
+        }) {
+            return;
+        }
+
         // find basic blocks with no statement and a return terminator
         let mut bbs_simple_returns = BitSet::new_empty(body.basic_blocks().len());
         let bbs = body.basic_blocks_mut();

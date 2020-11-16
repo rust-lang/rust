@@ -89,6 +89,10 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return;
         }
 
+        if !tcx.consider_optimizing(|| format!("ConstantPropagation {:?} {:?}", def_id, hir_id)) {
+            return;
+        }
+
         // Check if it's even possible to satisfy the 'where' clauses
         // for this item.
         // This branch will never be taken for any normal function.

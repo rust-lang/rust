@@ -11,6 +11,10 @@ pub struct RemoveUnneededDrops;
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        if !tcx.consider_optimizing(|| format!("RemoveUnneededDrops {:?} ", body.source.def_id())) {
+            return;
+        }
+
         trace!("Running RemoveUnneededDrops on {:?}", body.source);
         let mut opt_finder = RemoveUnneededDropsOptimizationFinder {
             tcx,

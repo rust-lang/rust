@@ -18,6 +18,12 @@ impl MirPass<'_> for UnreachablePropagation {
             return;
         }
 
+        if !tcx
+            .consider_optimizing(|| format!("UnreachablePropagation {:?} ", body.source.def_id()))
+        {
+            return;
+        }
+
         let mut unreachable_blocks = FxHashSet::default();
         let mut replacements = FxHashMap::default();
 
