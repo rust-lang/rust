@@ -2,6 +2,10 @@
 #![allow(clippy::no_effect)]
 
 extern "C" {
+    #[rustfmt::skip]
+    // TODO: This `rustfmt::skip` is a work around of #6336 because
+    // the following comments are checked by rustfmt for some reason.
+    //
     // N.B., mutability can be easily incorrect in FFI calls -- as
     // in C, the default is mutable pointers.
     fn ffi(c: *mut u8);
