@@ -515,11 +515,11 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for an iterator search (such as `find()`,
+    /// **What it does:** Checks for an iterator or string search (such as `find()`,
     /// `position()`, or `rposition()`) followed by a call to `is_some()`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.any(_)`.
+    /// `_.any(_)` or `_.contains(_)`.
     ///
     /// **Known problems:** None.
     ///
@@ -535,7 +535,7 @@ declare_clippy_lint! {
     /// ```
     pub SEARCH_IS_SOME,
     complexity,
-    "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`"
+    "using an iterator or string search followed by `is_some()`, which is more succinctly expressed as a call to `any()` or `contains()`"
 }
 
 declare_clippy_lint! {
@@ -3041,6 +3041,7 @@ fn lint_flat_map_identity<'tcx>(
 }
 
 /// lint searching an Iterator followed by `is_some()`
+/// or calling `find()` on a string followed by `is_some()`
 fn lint_search_is_some<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
@@ -3052,10 +3053,10 @@ fn lint_search_is_some<'tcx>(
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!(
-            "called `is_some()` after searching an `Iterator` with {}. This is more succinctly \
-             expressed by calling `any()`.",
+            "called `is_some()` after searching an `Iterator` with `{}`",
             search_method
         );
+        let hint = "this is more succinctly expressed by calling `any()`";
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
@@ -3083,7 +3084,7 @@ fn lint_search_is_some<'tcx>(
                 SEARCH_IS_SOME,
                 method_span.with_hi(expr.span.hi()),
                 &msg,
-                "try this",
+                "use `any()` instead",
                 format!(
                     "any({})",
                     any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
@@ -3091,7 +3092,36 @@ fn lint_search_is_some<'tcx>(
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
+            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, &msg, None, hint);
+        }
+    }
+    // lint if `find()` is called by `String` or `&str`
+    else if search_method == "find" {
+        let is_string_or_str_slice = |e| {
+            let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
+            if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
+                true
+            } else {
+                *self_ty.kind() == ty::Str
+            }
+        };
+        if_chain! {
+            if is_string_or_str_slice(&search_args[0]);
+            if is_string_or_str_slice(&search_args[1]);
+            then {
+                let msg = "called `is_some()` after calling `find()` on a string";
+                let mut applicability = Applicability::MachineApplicable;
+                let find_arg = snippet_with_applicability(cx, search_args[1].span, "..", &mut applicability);
+                span_lint_and_sugg(
+                    cx,
+                    SEARCH_IS_SOME,
+                    method_span.with_hi(expr.span.hi()),
+                    msg,
+                    "use `contains()` instead",
+                    format!("contains({})", find_arg),
+                    applicability,
+                );
+            }
         }
     }
 }
