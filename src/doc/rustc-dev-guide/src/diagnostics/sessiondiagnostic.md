@@ -30,8 +30,8 @@ tcx.sess.emit_err(FieldAlreadyDeclared {
 ```
 
 We see that using `SessionDiagnostic` is relatively straight forward.  The `#[error = "..."]`
-attribute is used to supply the error code for the diagnostic.  We are then annotate fields in the
-struct with various information of how to convert an instance of the struct into a proper
+attribute is used to supply the error code for the diagnostic.  We then annotate fields in the
+struct with various information on how to convert an instance of the struct into a rendered
 diagnostic.  The attributes above produce code which is roughly equivalent to the following (in
 pseudo-Rust):
 
@@ -49,7 +49,7 @@ impl SessionDiagnostic for FieldAlreadyDeclared {
 ```
 
 The generated code draws attention to a number of features.  First, we see that within the strings
-passed to each attribute, we see that field names can be referenced without needing to be passed
+passed to each attribute, field names can be referenced without needing to be passed
 explicitly into the format string -- in this example here, `#[message = "field {field_name} is
 already declared"]` produces a call to `format!` with the appropriate arguments to format
 `self.field_name` into the string.  This applies to strings passed to all attributes.
