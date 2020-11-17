@@ -174,6 +174,8 @@ class ExperimentalFeatures implements lc.StaticFeature {
     }
     initialize(_capabilities: lc.ServerCapabilities<any>, _documentSelector: lc.DocumentSelector | undefined): void {
     }
+    dispose(): void {
+    }
 }
 
 function isCodeActionWithoutEditsAndCommands(value: any): boolean {
