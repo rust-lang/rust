@@ -212,6 +212,13 @@ impl ast::Attr {
     }
 }
 
+impl ast::Stmt {
+    /// Returns `text`, parsed as statement, but only if it has no errors.
+    pub fn parse(text: &str) -> Result<Self, ()> {
+        parsing::parse_text_fragment(text, parser::FragmentKind::Statement)
+    }
+}
+
 /// Matches a `SyntaxNode` against an `ast` type.
 ///
 /// # Example:

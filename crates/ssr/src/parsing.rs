@@ -78,6 +78,7 @@ impl ParsedRule {
         builder.try_add(ast::Item::parse(&raw_pattern), raw_template.map(ast::Item::parse));
         builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
         builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
+        builder.try_add(ast::Stmt::parse(&raw_pattern), raw_template.map(ast::Stmt::parse));
         builder.build()
     }
 }

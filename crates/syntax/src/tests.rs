@@ -103,6 +103,15 @@ fn type_parser_tests() {
 }
 
 #[test]
+fn stmt_parser_tests() {
+    fragment_parser_dir_test(
+        &["parser/fragments/stmt/ok"],
+        &["parser/fragments/stmt/err"],
+        crate::ast::Stmt::parse,
+    );
+}
+
+#[test]
 fn parser_fuzz_tests() {
     for (_, text) in collect_rust_files(&test_data_dir(), &["parser/fuzz-failures"]) {
         fuzz::check_parser(&text)
