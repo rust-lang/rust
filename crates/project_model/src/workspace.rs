@@ -304,14 +304,14 @@ fn cargo_to_crate_graph(
     for pkg in cargo.packages() {
         let mut lib_tgt = None;
         for &tgt in cargo[pkg].targets.iter() {
-            if let Some(crate_id) = add_target_crate_root(
-                &mut crate_graph,
-                &cargo[pkg],
-                &cargo[tgt],
-                &cfg_options,
-                proc_macro_client,
-                load,
-            ) {
+            if let Some(file_id) = load(&cargo[tgt].root) {
+                let crate_id = add_target_crate_root(
+                    &mut crate_graph,
+                    &cargo[pkg],
+                    &cfg_options,
+                    proc_macro_client,
+                    file_id,
+                );
                 if cargo[tgt].kind == TargetKind::Lib {
                     lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
                     pkg_to_lib_crate.insert(pkg, crate_id);
@@ -380,14 +380,14 @@ fn cargo_to_crate_graph(
                     continue;
                 }
 
-                if let Some(crate_id) = add_target_crate_root(
-                    &mut crate_graph,
-                    &rustc_workspace[pkg],
-                    &rustc_workspace[tgt],
-                    &cfg_options,
-                    proc_macro_client,
-                    load,
-                ) {
+                if let Some(file_id) = load(&rustc_workspace[tgt].root) {
+                    let crate_id = add_target_crate_root(
+                        &mut crate_graph,
+                        &rustc_workspace[pkg],
+                        &cfg_options,
+                        proc_macro_client,
+                        file_id,
+                    );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on the core / std / alloc for rustc
                     for (name, krate) in public_deps.iter() {
@@ -432,49 +432,45 @@ fn cargo_to_crate_graph(
 fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
     pkg: &cargo_workspace::PackageData,
-    tgt: &cargo_workspace::TargetData,
     cfg_options: &CfgOptions,
     proc_macro_client: &ProcMacroClient,
-    load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
-) -> Option<CrateId> {
-    let root = tgt.root.as_path();
-    if let Some(file_id) = load(root) {
-        let edition = pkg.edition;
-        let cfg_options = {
-            let mut opts = cfg_options.clone();
-            for feature in pkg.features.iter() {
-                opts.insert_key_value("feature".into(), feature.into());
-            }
-            opts.extend(pkg.cfgs.iter().cloned());
-            opts
-        };
-        let mut env = Env::default();
-        if let Some(out_dir) = &pkg.out_dir {
-            // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-            if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
-                env.set("OUT_DIR", out_dir);
-            }
+    file_id: FileId,
+) -> CrateId {
+    let edition = pkg.edition;
+    let cfg_options = {
+        let mut opts = cfg_options.clone();
+        for feature in pkg.features.iter() {
+            opts.insert_key_value("feature".into(), feature.into());
         }
-        let proc_macro = pkg
-            .proc_macro_dylib_path
-            .as_ref()
-            .map(|it| proc_macro_client.by_dylib_path(&it))
-            .unwrap_or_default();
-
-        let display_name = CrateDisplayName::from_canonical_name(pkg.name.clone());
-        let crate_id = crate_graph.add_crate_root(
-            file_id,
-            edition,
-            Some(display_name),
-            cfg_options,
-            env,
-            proc_macro.clone(),
-        );
-
-        return Some(crate_id);
+        opts.extend(pkg.cfgs.iter().cloned());
+        opts
+    };
+    let mut env = Env::default();
+    if let Some(out_dir) = &pkg.out_dir {
+        // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
+        if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
+            env.set("OUT_DIR", out_dir);
+        }
     }
-    None
+    let proc_macro = pkg
+        .proc_macro_dylib_path
+        .as_ref()
+        .map(|it| proc_macro_client.by_dylib_path(&it))
+        .unwrap_or_default();
+
+    let display_name = CrateDisplayName::from_canonical_name(pkg.name.clone());
+    let crate_id = crate_graph.add_crate_root(
+        file_id,
+        edition,
+        Some(display_name),
+        cfg_options,
+        env,
+        proc_macro.clone(),
+    );
+
+    crate_id
 }
+
 fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,
