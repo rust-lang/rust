@@ -1,5 +1,6 @@
 use std::fmt;
 
+use assists::utils::test_related_attribute;
 use cfg::CfgExpr;
 use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use ide_db::RootDatabase;
@@ -156,7 +157,7 @@ fn runnable_fn(
             None => TestId::Name(name_string),
         };
 
-        if has_test_related_attribute(&fn_def) {
+        if test_related_attribute(&fn_def).is_some() {
             let attr = TestAttr::from_fn(&fn_def);
             RunnableKind::Test { test_id, attr }
         } else if fn_def.has_atom_attr("bench") {
@@ -235,20 +236,6 @@ impl TestAttr {
     }
 }
 
-/// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
-/// `#[test_case(...)]`, `#[tokio::test]` and similar.
-/// Also a regular `#[test]` annotation is supported.
-///
-/// It may produce false positives, for example, `#[wasm_bindgen_test]` requires a different command to run the test,
-/// but it's better than not to have the runnables for the tests at all.
-pub(crate) fn has_test_related_attribute(fn_def: &ast::Fn) -> bool {
-    fn_def
-        .attrs()
-        .filter_map(|attr| attr.path())
-        .map(|path| path.syntax().to_string().to_lowercase())
-        .any(|attribute_text| attribute_text.contains("test"))
-}
-
 const RUSTDOC_FENCE: &str = "```";
 const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
     &["", "rust", "should_panic", "edition2015", "edition2018"];
@@ -307,7 +294,7 @@ fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
         for item in item_list.items() {
             match item {
                 ast::Item::Fn(f) => {
-                    if has_test_related_attribute(&f) {
+                    if test_related_attribute(&f).is_some() {
                         return true;
                     }
                 }

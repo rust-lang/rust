@@ -1,11 +1,12 @@
 //! This module implements a methods and free functions search in the specified file.
 //! We have to skip tests, so cannot reuse file_structure module.
 
+use assists::utils::test_related_attribute;
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{ast, ast::NameOwner, AstNode, SyntaxNode};
 
-use crate::{runnables::has_test_related_attribute, FileId, FileRange};
+use crate::{FileId, FileRange};
 
 pub(crate) fn find_all_methods(db: &RootDatabase, file_id: FileId) -> Vec<FileRange> {
     let sema = Semantics::new(db);
@@ -15,7 +16,7 @@ pub(crate) fn find_all_methods(db: &RootDatabase, file_id: FileId) -> Vec<FileRa
 
 fn method_range(item: SyntaxNode, file_id: FileId) -> Option<FileRange> {
     ast::Fn::cast(item).and_then(|fn_def| {
-        if has_test_related_attribute(&fn_def) {
+        if test_related_attribute(&fn_def).is_some() {
             None
         } else {
             fn_def.name().map(|name| FileRange { file_id, range: name.syntax().text_range() })

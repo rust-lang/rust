@@ -474,6 +474,26 @@ impl<T: Clone> Ctx<T> {
 }
 
 #[test]
+fn doctest_ignore_test() {
+    check_doc_test(
+        "ignore_test",
+        r#####"
+<|>#[test]
+fn arithmetics {
+    assert_eq!(2 + 2, 5);
+}
+"#####,
+        r#####"
+#[test]
+#[ignore]
+fn arithmetics {
+    assert_eq!(2 + 2, 5);
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_infer_function_return_type() {
     check_doc_test(
         "infer_function_return_type",
