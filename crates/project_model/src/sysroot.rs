@@ -37,7 +37,7 @@ impl Sysroot {
     pub fn public_deps(&self) -> impl Iterator<Item = (&'static str, SysrootCrate)> + '_ {
         // core is added as a dependency before std in order to
         // mimic rustcs dependency order
-        vec!["core", "alloc", "std"].into_iter().filter_map(move |it| Some((it, self.by_name(it)?)))
+        ["core", "alloc", "std"].iter().filter_map(move |&it| Some((it, self.by_name(it)?)))
     }
 
     pub fn proc_macro(&self) -> Option<SysrootCrate> {
