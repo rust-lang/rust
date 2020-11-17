@@ -411,8 +411,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Lint for redundant pattern matching over `Result` or
-    /// `Option`
+    /// **What it does:** Lint for redundant pattern matching over `Result`, `Option` or
+    /// `std::task::Poll`
     ///
     /// **Why is this bad?** It's more concise and clear to just use the proper
     /// utility function
@@ -422,10 +422,13 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// # use std::task::Poll;
     /// if let Ok(_) = Ok::<i32, i32>(42) {}
     /// if let Err(_) = Err::<i32, i32>(42) {}
     /// if let None = None::<()> {}
     /// if let Some(_) = Some(42) {}
+    /// if let Poll::Pending = Poll::Pending::<()> {}
+    /// if let Poll::Ready(_) = Poll::Ready(42) {}
     /// match Ok::<i32, i32>(42) {
     ///     Ok(_) => true,
     ///     Err(_) => false,
@@ -435,10 +438,13 @@ declare_clippy_lint! {
     /// The more idiomatic use would be:
     ///
     /// ```rust
+    /// # use std::task::Poll;
     /// if Ok::<i32, i32>(42).is_ok() {}
     /// if Err::<i32, i32>(42).is_err() {}
     /// if None::<()>.is_none() {}
     /// if Some(42).is_some() {}
+    /// if Poll::Pending::<()>.is_pending() {}
+    /// if Poll::Ready(42).is_ready() {}
     /// Ok::<i32, i32>(42).is_ok();
     /// ```
     pub REDUNDANT_PATTERN_MATCHING,
@@ -1538,6 +1544,8 @@ mod redundant_pattern_match {
                         "is_err()"
                     } else if match_qpath(path, &paths::OPTION_SOME) {
                         "is_some()"
+                    } else if match_qpath(path, &paths::POLL_READY) {
+                        "is_ready()"
                     } else {
                         return;
                     }
@@ -1545,7 +1553,15 @@ mod redundant_pattern_match {
                     return;
                 }
             },
-            PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
+            PatKind::Path(ref path) => {
+                if match_qpath(path, &paths::OPTION_NONE) {
+                    "is_none()"
+                } else if match_qpath(path, &paths::POLL_PENDING) {
+                    "is_pending()"
+                } else {
+                    return;
+                }
+            },
             _ => return,
         };
 
@@ -1628,6 +1644,17 @@ mod redundant_pattern_match {
                             "is_some()",
                             "is_none()",
                         )
+                        .or_else(|| {
+                            find_good_method_for_match(
+                                arms,
+                                path_left,
+                                path_right,
+                                &paths::POLL_READY,
+                                &paths::POLL_PENDING,
+                                "is_ready()",
+                                "is_pending()",
+                            )
+                        })
                     } else {
                         None
                     }
