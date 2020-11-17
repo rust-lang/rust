@@ -191,6 +191,8 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);
+        // To handle the possibility that the act of iterating itself causes allocations on
+        // the arena, we must collect into a local buffer first, then copy it into the arena.
         let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
         if vec.is_empty() {
             return &mut [];
@@ -432,65 +434,25 @@ impl DroplessArena {
     }
 
     #[inline]
-    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
-        &self,
-        mut iter: I,
-        len: usize,
-        mem: *mut T,
-    ) -> &mut [T] {
-        let mut i = 0;
-        // Use a manual loop since LLVM manages to optimize it better for
-        // slice iterators
-        loop {
-            let value = iter.next();
-            if i >= len || value.is_none() {
-                // We only return as many items as the iterator gave us, even
-                // though it was supposed to give us `len`
-                return slice::from_raw_parts_mut(mem, i);
-            }
-            ptr::write(mem.add(i), value.unwrap());
-            i += 1;
-        }
-    }
-
-    #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         let iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
         assert!(!mem::needs_drop::<T>());
 
-        let size_hint = iter.size_hint();
-
-        match size_hint {
-            (min, Some(max)) if min == max => {
-                // We know the exact number of elements the iterator will produce here
-                let len = min;
-
-                if len == 0 {
-                    return &mut [];
-                }
-
-                let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
-                unsafe { self.write_from_iter(iter, len, mem) }
-            }
-            (_, _) => {
-                cold_path(move || -> &mut [T] {
-                    let mut vec: SmallVec<[_; 8]> = iter.collect();
-                    if vec.is_empty() {
-                        return &mut [];
-                    }
-                    // Move the content to the arena by copying it and then forgetting
-                    // the content of the SmallVec
-                    unsafe {
-                        let len = vec.len();
-                        let start_ptr =
-                            self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
-                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vec.set_len(0);
-                        slice::from_raw_parts_mut(start_ptr, len)
-                    }
-                })
-            }
+        // To handle the possibility that the act of iterating itself causes allocations on
+        // the arena, we must collect into a local buffer first, then copy it into the arena.
+        let mut vec: SmallVec<[_; 8]> = iter.collect();
+        if vec.is_empty() {
+            return &mut [];
+        }
+        // Move the content to the arena by copying it and then forgetting
+        // the content of the SmallVec
+        unsafe {
+            let len = vec.len();
+            let start_ptr = self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
+            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            vec.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
         }
     }
 }
@@ -542,6 +504,8 @@ impl DropArena {
 
     #[inline]
     pub unsafe fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        // To handle the possibility that the act of iterating itself causes allocations on
+        // the arena, we must collect into a local buffer first, then copy it into the arena.
         let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
         if vec.is_empty() {
             return &mut [];
