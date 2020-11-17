@@ -97,14 +97,12 @@ pub fn compile_codegen_unit(
     tcx: TyCtxt<'tcx>,
     cgu_name: Symbol,
 ) -> (ModuleCodegen<ModuleLlvm>, u64) {
-    let prof_timer = tcx.prof.generic_activity_with_arg("codegen_module", cgu_name.to_string());
     let start_time = Instant::now();
 
     let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
     let (module, _) =
         tcx.dep_graph.with_task(dep_node, tcx, cgu_name, module_codegen, dep_graph::hash_result);
     let time_to_codegen = start_time.elapsed();
-    drop(prof_timer);
 
     // We assume that the cost to run LLVM on a CGU is proportional to
     // the time we needed for codegenning it.
@@ -112,6 +110,10 @@ pub fn compile_codegen_unit(
 
     fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
         let cgu = tcx.codegen_unit(cgu_name);
+        let _prof_timer = tcx.prof.generic_activity_with_args(
+            "codegen_module",
+            &[cgu_name.to_string(), cgu.size_estimate().to_string()],
+        );
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
         {
