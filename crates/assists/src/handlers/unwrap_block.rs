@@ -181,27 +181,27 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                bar();
-                if true {<|>
-                    foo();
+fn main() {
+    bar();
+    if true {<|>
+        foo();
 
-                    //comment
-                    bar();
-                } else {
-                    println!("bar");
-                }
-            }
-            "#,
+        //comment
+        bar();
+    } else {
+        println!("bar");
+    }
+}
+"#,
             r#"
-            fn main() {
-                bar();
-                foo();
+fn main() {
+    bar();
+    foo();
 
-                //comment
-                bar();
-            }
-            "#,
+    //comment
+    bar();
+}
+"#,
         );
     }
 
@@ -210,30 +210,30 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                bar();
-                if true {
-                    foo();
+fn main() {
+    bar();
+    if true {
+        foo();
 
-                    //comment
-                    bar();
-                } else {<|>
-                    println!("bar");
-                }
-            }
-            "#,
+        //comment
+        bar();
+    } else {<|>
+        println!("bar");
+    }
+}
+"#,
             r#"
-            fn main() {
-                bar();
-                if true {
-                    foo();
+fn main() {
+    bar();
+    if true {
+        foo();
 
-                    //comment
-                    bar();
-                }
-                println!("bar");
-            }
-            "#,
+        //comment
+        bar();
+    }
+    println!("bar");
+}
+"#,
         );
     }
 
@@ -242,32 +242,32 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                } else if false {<|>
-                    println!("bar");
-                } else {
-                    println!("foo");
-                }
-            }
-            "#,
+        //comment
+        //bar();
+    } else if false {<|>
+        println!("bar");
+    } else {
+        println!("foo");
+    }
+}
+"#,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                }
-                println!("bar");
-            }
-            "#,
+        //comment
+        //bar();
+    }
+    println!("bar");
+}
+"#,
         );
     }
 
@@ -276,34 +276,34 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                } else if false {
-                    println!("bar");
-                } else if true {<|>
-                    println!("foo");
-                }
-            }
-            "#,
+        //comment
+        //bar();
+    } else if false {
+        println!("bar");
+    } else if true {<|>
+        println!("foo");
+    }
+}
+"#,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                } else if false {
-                    println!("bar");
-                }
-                println!("foo");
-            }
-            "#,
+        //comment
+        //bar();
+    } else if false {
+        println!("bar");
+    }
+    println!("foo");
+}
+"#,
         );
     }
 
@@ -312,38 +312,38 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                } else if false {
-                    println!("bar");
-                } else if true {
-                    println!("foo");
-                } else {<|>
-                    println!("else");
-                }
-            }
-            "#,
+        //comment
+        //bar();
+    } else if false {
+        println!("bar");
+    } else if true {
+        println!("foo");
+    } else {<|>
+        println!("else");
+    }
+}
+"#,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                } else if false {
-                    println!("bar");
-                } else if true {
-                    println!("foo");
-                }
-                println!("else");
-            }
-            "#,
+        //comment
+        //bar();
+    } else if false {
+        println!("bar");
+    } else if true {
+        println!("foo");
+    }
+    println!("else");
+}
+"#,
         );
     }
 
@@ -352,36 +352,36 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                } else if false {
-                    println!("bar");
-                } else if true {<|>
-                    println!("foo");
-                } else {
-                    println!("else");
-                }
-            }
-            "#,
+        //comment
+        //bar();
+    } else if false {
+        println!("bar");
+    } else if true {<|>
+        println!("foo");
+    } else {
+        println!("else");
+    }
+}
+"#,
             r#"
-            fn main() {
-                //bar();
-                if true {
-                    println!("true");
+fn main() {
+    //bar();
+    if true {
+        println!("true");
 
-                    //comment
-                    //bar();
-                } else if false {
-                    println!("bar");
-                }
-                println!("foo");
-            }
-            "#,
+        //comment
+        //bar();
+    } else if false {
+        println!("bar");
+    }
+    println!("foo");
+}
+"#,
         );
     }
 
@@ -390,18 +390,18 @@ fn main() {
         check_assist_not_applicable(
             unwrap_block,
             r#"
-            fn main() {
-                bar();<|>
-                if true {
-                    foo();
+fn main() {
+    bar();<|>
+    if true {
+        foo();
 
-                    //comment
-                    bar();
-                } else {
-                    println!("bar");
-                }
-            }
-            "#,
+        //comment
+        bar();
+    } else {
+        println!("bar");
+    }
+}
+"#,
         );
     }
 
@@ -410,31 +410,31 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                for i in 0..5 {<|>
-                    if true {
-                        foo();
+fn main() {
+    for i in 0..5 {<|>
+        if true {
+            foo();
 
-                        //comment
-                        bar();
-                    } else {
-                        println!("bar");
-                    }
-                }
-            }
-            "#,
+            //comment
+            bar();
+        } else {
+            println!("bar");
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                if true {
-                    foo();
+fn main() {
+    if true {
+        foo();
 
-                    //comment
-                    bar();
-                } else {
-                    println!("bar");
-                }
-            }
-            "#,
+        //comment
+        bar();
+    } else {
+        println!("bar");
+    }
+}
+"#,
         );
     }
 
@@ -443,29 +443,29 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                for i in 0..5 {
-                    if true {<|>
-                        foo();
+fn main() {
+    for i in 0..5 {
+        if true {<|>
+            foo();
 
-                        //comment
-                        bar();
-                    } else {
-                        println!("bar");
-                    }
-                }
-            }
-            "#,
+            //comment
+            bar();
+        } else {
+            println!("bar");
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                for i in 0..5 {
-                    foo();
+fn main() {
+    for i in 0..5 {
+        foo();
 
-                    //comment
-                    bar();
-                }
-            }
-            "#,
+        //comment
+        bar();
+    }
+}
+"#,
         );
     }
 
@@ -474,31 +474,31 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                loop {<|>
-                    if true {
-                        foo();
+fn main() {
+    loop {<|>
+        if true {
+            foo();
 
-                        //comment
-                        bar();
-                    } else {
-                        println!("bar");
-                    }
-                }
-            }
-            "#,
+            //comment
+            bar();
+        } else {
+            println!("bar");
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                if true {
-                    foo();
+fn main() {
+    if true {
+        foo();
 
-                    //comment
-                    bar();
-                } else {
-                    println!("bar");
-                }
-            }
-            "#,
+        //comment
+        bar();
+    } else {
+        println!("bar");
+    }
+}
+"#,
         );
     }
 
@@ -507,31 +507,31 @@ fn main() {
         check_assist(
             unwrap_block,
             r#"
-            fn main() {
-                while true {<|>
-                    if true {
-                        foo();
+fn main() {
+    while true {<|>
+        if true {
+            foo();
 
-                        //comment
-                        bar();
-                    } else {
-                        println!("bar");
-                    }
-                }
-            }
-            "#,
+            //comment
+            bar();
+        } else {
+            println!("bar");
+        }
+    }
+}
+"#,
             r#"
-            fn main() {
-                if true {
-                    foo();
+fn main() {
+    if true {
+        foo();
 
-                    //comment
-                    bar();
-                } else {
-                    println!("bar");
-                }
-            }
-            "#,
+        //comment
+        bar();
+    } else {
+        println!("bar");
+    }
+}
+"#,
         );
     }
 
@@ -564,19 +564,19 @@ fn main() {
         check_assist_not_applicable(
             unwrap_block,
             r#"
-            fn main() {
-                while true {
-                    if true {
-                        foo();<|>
+fn main() {
+    while true {
+        if true {
+            foo();<|>
 
-                        //comment
-                        bar();
-                    } else {
-                        println!("bar");
-                    }
-                }
-            }
-            "#,
+            //comment
+            bar();
+        } else {
+            println!("bar");
+        }
+    }
+}
+"#,
         );
     }
 }
