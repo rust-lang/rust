@@ -240,7 +240,7 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
         use MaybeInlined::NotInlined;
 
         let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
-        let name = cx.tcx.item_name(def_id).clean(cx);
+        let name = cx.tcx.hir().name(self.hir_id);
         let maybe_inlined = match self.kind {
             ItemKind::ExternCrate(renamed) => clean_extern_crate(self, renamed, cx),
             ItemKind::Use(path, kind) => clean_import(self, path, kind, cx),
@@ -318,7 +318,7 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
         let build_item = |kind| Item {
             def_id,
             kind,
-            name: Some(name),
+            name: Some(name.to_string()),
             source: cx.tcx.def_span(def_id).clean(cx),
             attrs: self.attrs.clean(cx), // TODO: should this use tcx.attrs instead?
             visibility: self.vis.clean(cx), // TODO: should this use tcx.visibility instead?
@@ -2193,8 +2193,7 @@ fn clean_import(
         }
         Import::new_glob(resolve_use_source(cx, path), true)
     } else {
-        let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
-        let name = cx.tcx.item_name(def_id);
+        let name = cx.tcx.hir().name(item.hir_id);
         if !please_inline {
             if let Res::Def(DefKind::Mod, did) = path.res {
                 if !did.is_local() && did.index == CRATE_DEF_INDEX {
