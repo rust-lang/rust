@@ -2761,7 +2761,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         }
         write_loading_content(w, "</div>");
 
-        if t.auto {
+        if t.is_auto {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -2792,7 +2792,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         );
         write_loading_content(w, "</div>");
 
-        if t.auto {
+        if t.is_auto {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
@@ -4457,7 +4457,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     sidebar.push_str(&sidebar_assoc_items(it));
 
     sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
-    if t.auto {
+    if t.is_auto {
         sidebar.push_str(
             "<a class=\"sidebar-title\" \
                 href=\"#synthetic-implementors\">Auto Implementors</a>",

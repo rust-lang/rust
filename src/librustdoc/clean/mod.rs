@@ -1022,7 +1022,6 @@ impl Clean<Item> for doctree::Trait<'_> {
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
             kind: TraitItem(Trait {
-                auto: self.is_auto.clean(cx),
                 unsafety: self.unsafety,
                 items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
