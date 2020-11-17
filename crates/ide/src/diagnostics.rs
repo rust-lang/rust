@@ -10,7 +10,7 @@ mod field_shorthand;
 use std::cell::RefCell;
 
 use hir::{
-    diagnostics::{Diagnostic as _, DiagnosticSinkBuilder},
+    diagnostics::{Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
     Semantics,
 };
 use ide_db::base_db::SourceDatabase;
@@ -35,15 +35,23 @@ pub struct Diagnostic {
     pub severity: Severity,
     pub fix: Option<Fix>,
     pub unused: bool,
+    pub code: Option<DiagnosticCode>,
 }
 
 impl Diagnostic {
     fn error(range: TextRange, message: String) -> Self {
-        Self { message, range, severity: Severity::Error, fix: None, unused: false }
+        Self { message, range, severity: Severity::Error, fix: None, unused: false, code: None }
     }
 
     fn hint(range: TextRange, message: String) -> Self {
-        Self { message, range, severity: Severity::WeakWarning, fix: None, unused: false }
+        Self {
+            message,
+            range,
+            severity: Severity::WeakWarning,
+            fix: None,
+            unused: false,
+            code: None,
+        }
     }
 
     fn with_fix(self, fix: Option<Fix>) -> Self {
@@ -52,6 +60,10 @@ impl Diagnostic {
 
     fn with_unused(self, unused: bool) -> Self {
         Self { unused, ..self }
+    }
+
+    fn with_code(self, code: Option<DiagnosticCode>) -> Self {
+        Self { code, ..self }
     }
 }
 
@@ -126,7 +138,8 @@ pub(crate) fn diagnostics(
             // Override severity and mark as unused.
             res.borrow_mut().push(
                 Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
-                    .with_unused(true),
+                    .with_unused(true)
+                    .with_code(Some(d.code())),
             );
         })
         // Only collect experimental diagnostics when they're enabled.
@@ -137,8 +150,10 @@ pub(crate) fn diagnostics(
     let mut sink = sink_builder
         // Diagnostics not handled above get no fix and default treatment.
         .build(|d| {
-            res.borrow_mut()
-                .push(Diagnostic::error(sema.diagnostics_display_range(d).range, d.message()));
+            res.borrow_mut().push(
+                Diagnostic::error(sema.diagnostics_display_range(d).range, d.message())
+                    .with_code(Some(d.code())),
+            );
         });
 
     if let Some(m) = sema.to_module_def(file_id) {
@@ -149,11 +164,15 @@ pub(crate) fn diagnostics(
 }
 
 fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
-    Diagnostic::error(sema.diagnostics_display_range(d).range, d.message()).with_fix(d.fix(&sema))
+    Diagnostic::error(sema.diagnostics_display_range(d).range, d.message())
+        .with_fix(d.fix(&sema))
+        .with_code(Some(d.code()))
 }
 
 fn warning_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
-    Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message()).with_fix(d.fix(&sema))
+    Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
+        .with_fix(d.fix(&sema))
+        .with_code(Some(d.code()))
 }
 
 fn check_unnecessary_braces_in_use_statement(
@@ -589,6 +608,11 @@ fn test_fn() {
                             },
                         ),
                         unused: false,
+                        code: Some(
+                            DiagnosticCode(
+                                "unresolved-module",
+                            ),
+                        ),
                     },
                 ]
             "#]],

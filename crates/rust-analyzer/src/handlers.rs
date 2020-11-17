@@ -18,7 +18,7 @@ use lsp_types::{
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DiagnosticTag,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
-    HoverContents, Location, Position, PrepareRenameResponse, Range, RenameParams,
+    HoverContents, Location, NumberOrString, Position, PrepareRenameResponse, Range, RenameParams,
     SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
     SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
     SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
@@ -1128,7 +1128,7 @@ pub(crate) fn publish_diagnostics(
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),
             severity: Some(to_proto::diagnostic_severity(d.severity)),
-            code: None,
+            code: d.code.map(|d| d.as_str().to_owned()).map(NumberOrString::String),
             code_description: None,
             source: Some("rust-analyzer".to_string()),
             message: d.message,

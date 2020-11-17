@@ -20,7 +20,7 @@ use syntax::SyntaxNodePtr;
 
 use crate::InFile;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);
 
 impl DiagnosticCode {
