@@ -9,6 +9,17 @@ help: enclose the `const` expression in braces
 LL |     let _: baz!({ N });
    |                 ^   ^
 
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/macro_rules-braces.rs:54:17
+   |
+LL |     let _: baz!(10 + 7);
+   |                 ^^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     let _: baz!({ 10 + 7 });
+   |                 ^        ^
+
 error: constant expression depends on a generic parameter
   --> $DIR/macro_rules-braces.rs:10:13
    |
@@ -57,5 +68,5 @@ LL |     let _: biz!({ N });
    = note: this may fail depending on what value the parameter takes
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
