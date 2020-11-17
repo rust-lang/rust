@@ -4,6 +4,7 @@
 #![feature(or_patterns)]
 #![feature(control_flow_enum)]
 #![feature(try_blocks)]
+#![feature(associated_type_defaults)]
 #![recursion_limit = "256"]
 
 use rustc_attr as attr;
@@ -44,6 +45,8 @@ use std::{cmp, fmt, mem};
 /// manually. Second, it doesn't visit some type components like signatures of fn types, or traits
 /// in `impl Trait`, see individual comments in `DefIdVisitorSkeleton::visit_ty`.
 trait DefIdVisitor<'tcx> {
+    type BreakTy = ();
+
     fn tcx(&self) -> TyCtxt<'tcx>;
     fn shallow(&self) -> bool {
         false
@@ -56,7 +59,7 @@ trait DefIdVisitor<'tcx> {
         def_id: DefId,
         kind: &str,
         descr: &dyn fmt::Display,
-    ) -> ControlFlow<()>;
+    ) -> ControlFlow<Self::BreakTy>;
 
     /// Not overridden, but used to actually visit types and traits.
     fn skeleton(&mut self) -> DefIdVisitorSkeleton<'_, 'tcx, Self> {
@@ -66,13 +69,16 @@ trait DefIdVisitor<'tcx> {
             dummy: Default::default(),
         }
     }
-    fn visit(&mut self, ty_fragment: impl TypeFoldable<'tcx>) -> ControlFlow<()> {
+    fn visit(&mut self, ty_fragment: impl TypeFoldable<'tcx>) -> ControlFlow<Self::BreakTy> {
         ty_fragment.visit_with(&mut self.skeleton())
     }
-    fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<()> {
+    fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> ControlFlow<()> {
+    fn visit_predicates(
+        &mut self,
+        predicates: ty::GenericPredicates<'tcx>,
+    ) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_predicates(predicates)
     }
 }
@@ -87,13 +93,13 @@ impl<'tcx, V> DefIdVisitorSkeleton<'_, 'tcx, V>
 where
     V: DefIdVisitor<'tcx> + ?Sized,
 {
-    fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<()> {
+    fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<V::BreakTy> {
         let TraitRef { def_id, substs } = trait_ref;
         self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref.print_only_trait_path())?;
         if self.def_id_visitor.shallow() { ControlFlow::CONTINUE } else { substs.visit_with(self) }
     }
 
-    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<()> {
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<V::BreakTy> {
         match predicate.skip_binders() {
             ty::PredicateAtom::Trait(ty::TraitPredicate { trait_ref }, _) => {
                 self.visit_trait(trait_ref)
@@ -119,7 +125,10 @@ where
         }
     }
 
-    fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> ControlFlow<()> {
+    fn visit_predicates(
+        &mut self,
+        predicates: ty::GenericPredicates<'tcx>,
+    ) -> ControlFlow<V::BreakTy> {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
         predicates.iter().try_for_each(|&(predicate, _span)| self.visit_predicate(predicate))
     }
@@ -129,7 +138,9 @@ impl<'tcx, V> TypeVisitor<'tcx> for DefIdVisitorSkeleton<'_, 'tcx, V>
 where
     V: DefIdVisitor<'tcx> + ?Sized,
 {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+    type BreakTy = V::BreakTy;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
         // InternalSubsts are not visited here because they are visited below in `super_visit_with`.
         match *ty.kind() {
@@ -283,7 +294,7 @@ impl<'a, 'tcx, VL: VisibilityLike> DefIdVisitor<'tcx> for FindMin<'a, 'tcx, VL> 
         def_id: DefId,
         _kind: &str,
         _descr: &dyn fmt::Display,
-    ) -> ControlFlow<()> {
+    ) -> ControlFlow<Self::BreakTy> {
         self.min = VL::new_min(self, def_id);
         ControlFlow::CONTINUE
     }
@@ -902,7 +913,7 @@ impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
         def_id: DefId,
         _kind: &str,
         _descr: &dyn fmt::Display,
-    ) -> ControlFlow<()> {
+    ) -> ControlFlow<Self::BreakTy> {
         if let Some(def_id) = def_id.as_local() {
             if let (ty::Visibility::Public, _) | (_, Some(AccessLevel::ReachableFromImplTrait)) =
                 (self.tcx().visibility(def_id.to_def_id()), self.access_level)
@@ -1299,7 +1310,7 @@ impl DefIdVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
         def_id: DefId,
         kind: &str,
         descr: &dyn fmt::Display,
-    ) -> ControlFlow<()> {
+    ) -> ControlFlow<Self::BreakTy> {
         if self.check_def_id(def_id, kind, descr) {
             ControlFlow::BREAK
         } else {
@@ -1799,7 +1810,7 @@ impl DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
         def_id: DefId,
         kind: &str,
         descr: &dyn fmt::Display,
-    ) -> ControlFlow<()> {
+    ) -> ControlFlow<Self::BreakTy> {
         if self.check_def_id(def_id, kind, descr) {
             ControlFlow::BREAK
         } else {

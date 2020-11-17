@@ -859,14 +859,14 @@ impl<'tcx> BoundVarsCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<()> {
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.binder_index.shift_out(1);
         result
     }
 
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 match self.parameters.entry(bound_ty.var.as_u32()) {
@@ -886,7 +886,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<()> {
+    fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match r {
             ty::ReLateBound(index, br) if *index == self.binder_index => match br {
                 ty::BoundRegion::BrNamed(def_id, _name) => {
@@ -1076,7 +1076,7 @@ impl PlaceholdersCollector {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {
                 self.next_ty_placeholder = self.next_ty_placeholder.max(p.name.as_usize() + 1);
@@ -1088,7 +1088,7 @@ impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
         t.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<()> {
+    fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match r {
             ty::RePlaceholder(p) if p.universe == self.universe_index => {
                 if let ty::BoundRegion::BrAnon(anon) = p.name {

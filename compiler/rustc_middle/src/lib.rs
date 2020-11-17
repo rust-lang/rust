@@ -51,6 +51,7 @@
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
 #![feature(control_flow_enum)]
+#![feature(associated_type_defaults)]
 #![recursion_limit = "512"]
 
 #[macro_use]

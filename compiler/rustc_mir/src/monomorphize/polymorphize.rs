@@ -250,7 +250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
-    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<()> {
+    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("visit_const: c={:?}", c);
         if !c.has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
@@ -283,7 +283,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("visit_ty: ty={:?}", ty);
         if !ty.has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
@@ -318,7 +318,9 @@ struct HasUsedGenericParams<'a> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
-    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<()> {
+    type BreakTy = ();
+
+    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("visit_const: c={:?}", c);
         if !c.has_param_types_or_consts() {
             return ControlFlow::CONTINUE;
@@ -336,7 +338,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("visit_ty: ty={:?}", ty);
         if !ty.has_param_types_or_consts() {
             return ControlFlow::CONTINUE;

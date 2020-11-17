@@ -771,7 +771,9 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
     }
 
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+        type BreakTy = ();
+
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
                 ty::Param(_) => {
                     if t == self.tcx.types.self_param {
@@ -812,7 +814,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             }
         }
 
-        fn visit_const(&mut self, ct: &ty::Const<'tcx>) -> ControlFlow<()> {
+        fn visit_const(&mut self, ct: &ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             // First check if the type of this constant references `Self`.
             self.visit_ty(ct.ty)?;
 
@@ -844,7 +846,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             }
         }
 
-        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<()> {
+        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::PredicateAtom::ConstEvaluatable(def, substs) = pred.skip_binders() {
                 // FIXME(const_evaluatable_checked): We should probably deduplicate the logic for
                 // `AbstractConst`s here, it might make sense to change `ConstEvaluatable` to
