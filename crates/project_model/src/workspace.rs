@@ -70,12 +70,8 @@ impl ProjectWorkspace {
                     format!("Failed to deserialize json file {}", project_json.display())
                 })?;
                 let project_location = project_json.parent().unwrap().to_path_buf();
-                let project = ProjectJson::new(&project_location, data);
-                let sysroot = match &project.sysroot_src {
-                    Some(path) => Some(Sysroot::load(path)?),
-                    None => None,
-                };
-                ProjectWorkspace::Json { project, sysroot }
+                let project_json = ProjectJson::new(&project_location, data);
+                ProjectWorkspace::load_inline(project_json)?
             }
             ProjectManifest::CargoToml(cargo_toml) => {
                 let cargo_version = utf8_stdout({
@@ -150,43 +146,38 @@ impl ProjectWorkspace {
                     })
                 }))
                 .collect::<Vec<_>>(),
-            ProjectWorkspace::Cargo { cargo, sysroot, rustc } => {
-                let roots = cargo
-                    .packages()
-                    .map(|pkg| {
-                        let is_member = cargo[pkg].is_member;
-                        let pkg_root = cargo[pkg].root().to_path_buf();
+            ProjectWorkspace::Cargo { cargo, sysroot, rustc } => cargo
+                .packages()
+                .map(|pkg| {
+                    let is_member = cargo[pkg].is_member;
+                    let pkg_root = cargo[pkg].root().to_path_buf();
 
-                        let mut include = vec![pkg_root.clone()];
-                        include.extend(cargo[pkg].out_dir.clone());
+                    let mut include = vec![pkg_root.clone()];
+                    include.extend(cargo[pkg].out_dir.clone());
 
-                        let mut exclude = vec![pkg_root.join(".git")];
-                        if is_member {
-                            exclude.push(pkg_root.join("target"));
-                        } else {
-                            exclude.push(pkg_root.join("tests"));
-                            exclude.push(pkg_root.join("examples"));
-                            exclude.push(pkg_root.join("benches"));
-                        }
-                        PackageRoot { is_member, include, exclude }
-                    })
-                    .chain(sysroot.crates().map(|krate| PackageRoot {
+                    let mut exclude = vec![pkg_root.join(".git")];
+                    if is_member {
+                        exclude.push(pkg_root.join("target"));
+                    } else {
+                        exclude.push(pkg_root.join("tests"));
+                        exclude.push(pkg_root.join("examples"));
+                        exclude.push(pkg_root.join("benches"));
+                    }
+                    PackageRoot { is_member, include, exclude }
+                })
+                .chain(sysroot.crates().map(|krate| PackageRoot {
+                    is_member: false,
+                    include: vec![sysroot[krate].root_dir().to_path_buf()],
+                    exclude: Vec::new(),
+                }))
+                .chain(rustc.into_iter().flat_map(|rustc| {
+                    rustc.packages().map(move |krate| PackageRoot {
                         is_member: false,
-                        include: vec![sysroot[krate].root_dir().to_path_buf()],
+                        include: vec![rustc[krate].root().to_path_buf()],
                         exclude: Vec::new(),
-                    }));
-                if let Some(rustc_packages) = rustc {
-                    roots
-                        .chain(rustc_packages.packages().map(|krate| PackageRoot {
-                            is_member: false,
-                            include: vec![rustc_packages[krate].root().to_path_buf()],
-                            exclude: Vec::new(),
-                        }))
-                        .collect()
-                } else {
-                    roots.collect()
-                }
-            }
+                    })
+                }))
+                .collect(),
         }
     }
 
