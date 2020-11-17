@@ -225,7 +225,10 @@ impl CrateGraph {
         to: CrateId,
     ) -> Result<(), CyclicDependenciesError> {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
-            return Err(CyclicDependenciesError);
+            return Err(CyclicDependenciesError {
+                from: (from, self[from].display_name.clone()),
+                to: (to, self[to].display_name.clone()),
+            });
         }
         self.arena.get_mut(&from).unwrap().add_dep(name, to);
         Ok(())
@@ -421,7 +424,20 @@ impl fmt::Display for ParseEditionError {
 impl std::error::Error for ParseEditionError {}
 
 #[derive(Debug)]
-pub struct CyclicDependenciesError;
+pub struct CyclicDependenciesError {
+    from: (CrateId, Option<CrateDisplayName>),
+    to: (CrateId, Option<CrateDisplayName>),
+}
+
+impl fmt::Display for CyclicDependenciesError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let render = |(id, name): &(CrateId, Option<CrateDisplayName>)| match name {
+            Some(it) => format!("{}({:?})", it, id),
+            None => format!("{:?}", id),
+        };
+        write!(f, "cyclic deps: {} -> {}", render(&self.from), render(&self.to))
+    }
+}
 
 #[cfg(test)]
 mod tests {
