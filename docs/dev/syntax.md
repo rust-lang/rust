@@ -195,7 +195,7 @@ Modeling this with immutable trees is possible, but annoying.
 A function green tree is not super-convenient to use.
 The biggest problem is accessing parents (there are no parent pointers!).
 But there are also "identify" issues.
-Let's say you want to write a code which builds a list of expressions in a file: `fn collect_exrepssions(file: GreenNode) -> HashSet<GreenNode>`.
+Let's say you want to write a code which builds a list of expressions in a file: `fn collect_expressions(file: GreenNode) -> HashSet<GreenNode>`.
 For the input like
 
 ```rust
@@ -236,7 +236,7 @@ impl SyntaxNode {
         self.parent.clone()
     }
     fn children(&self) -> impl Iterator<Item = SyntaxNode> {
-        let mut offset = self.offset
+        let mut offset = self.offset;
         self.green.children().map(|green_child| {
             let child_offset = offset;
             offset += green_child.text_len;
