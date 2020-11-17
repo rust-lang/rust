@@ -55,8 +55,8 @@ fn location_naive(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Lo
 
     // FIXME: this doesn't handle UTF16 offsets correctly
     let range = lsp_types::Range::new(
-        lsp_types::Position::new(span.line_start as u64 - 1, span.column_start as u64 - 1),
-        lsp_types::Position::new(span.line_end as u64 - 1, span.column_end as u64 - 1),
+        lsp_types::Position::new(span.line_start as u32 - 1, span.column_start as u32 - 1),
+        lsp_types::Position::new(span.line_end as u32 - 1, span.column_end as u32 - 1),
     );
 
     lsp_types::Location { uri, range }

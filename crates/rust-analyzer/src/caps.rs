@@ -62,6 +62,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             prepare_provider: Some(true),
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         })),
+        on_type_rename_provider: None,
         document_link_provider: None,
         color_provider: None,
         execute_command_provider: None,

@@ -6,11 +6,11 @@
 /// client notifications.
 #[derive(Debug, Clone)]
 pub(crate) struct DocumentData {
-    pub(crate) version: Option<i64>,
+    pub(crate) version: i32,
 }
 
 impl DocumentData {
-    pub(crate) fn new(version: i64) -> Self {
-        DocumentData { version: Some(version) }
+    pub(crate) fn new(version: i32) -> Self {
+        DocumentData { version }
     }
 }

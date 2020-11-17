@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 9d5daed5b25dc4f6
+lsp_ext.rs hash: 203fdf79b21b5987
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -45,7 +45,7 @@ interface SnippetTextEdit extends TextEdit {
 
 ```typescript
 export interface TextDocumentEdit {
-	textDocument: VersionedTextDocumentIdentifier;
+	textDocument: OptionalVersionedTextDocumentIdentifier;
 	edits: (TextEdit | SnippetTextEdit)[];
 }
 ```

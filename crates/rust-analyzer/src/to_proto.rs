@@ -21,9 +21,7 @@ use crate::{
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.line_col(offset);
-    let line = u64::from(line_col.line);
-    let character = u64::from(line_col.col_utf16);
-    lsp_types::Position::new(line, character)
+    lsp_types::Position::new(line_col.line, line_col.col_utf16)
 }
 
 pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Range {
@@ -278,9 +276,9 @@ pub(crate) fn signature_help(
                     label.push_str(", ");
                 }
                 first = false;
-                let start = label.len() as u64;
+                let start = label.len() as u32;
                 label.push_str(param);
-                let end = label.len() as u64;
+                let end = label.len() as u32;
                 params.push(lsp_types::ParameterInformation {
                     label: lsp_types::ParameterLabel::LabelOffsets([start, end]),
                     documentation: None,
@@ -302,7 +300,7 @@ pub(crate) fn signature_help(
         })
     };
 
-    let active_parameter = call_info.active_parameter.map(|it| it as i64);
+    let active_parameter = call_info.active_parameter.map(|it| it as u32);
 
     let signature = lsp_types::SignatureInformation {
         label,
@@ -518,13 +516,13 @@ pub(crate) fn url_from_abs_path(path: &Path) -> lsp_types::Url {
     lsp_types::Url::parse(&url).unwrap()
 }
 
-pub(crate) fn versioned_text_document_identifier(
+pub(crate) fn optional_versioned_text_document_identifier(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
-) -> lsp_types::VersionedTextDocumentIdentifier {
+) -> lsp_types::OptionalVersionedTextDocumentIdentifier {
     let url = url(snap, file_id);
     let version = snap.url_file_version(&url);
-    lsp_types::VersionedTextDocumentIdentifier { uri: url, version }
+    lsp_types::OptionalVersionedTextDocumentIdentifier { uri: url, version }
 }
 
 pub(crate) fn location(
@@ -613,7 +611,7 @@ pub(crate) fn snippet_text_document_edit(
     is_snippet: bool,
     source_file_edit: SourceFileEdit,
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
-    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id);
+    let text_document = optional_versioned_text_document_identifier(snap, source_file_edit.file_id);
     let line_index = snap.analysis.file_line_index(source_file_edit.file_id)?;
     let line_endings = snap.file_line_endings(source_file_edit.file_id);
     let edits = source_file_edit
