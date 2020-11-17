@@ -305,11 +305,11 @@ impl ProjectWorkspace {
                     // Set deps to the core, std and to the lib target of the current package
                     for &from in pkg_crates.get(&pkg).into_iter().flatten() {
                         if let Some((to, name)) = lib_tgt.clone() {
-                            // For root projects with dashes in their name,
-                            // cargo metadata does not do any normalization,
-                            // so we do it ourselves currently
-                            let name = CrateName::normalize_dashes(&name);
                             if to != from {
+                                // For root projects with dashes in their name,
+                                // cargo metadata does not do any normalization,
+                                // so we do it ourselves currently
+                                let name = CrateName::normalize_dashes(&name);
                                 add_dep(&mut crate_graph, from, name, to);
                             }
                         }
