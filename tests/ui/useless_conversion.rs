@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![deny(clippy::useless_conversion)]
-#![allow(clippy::unnecessary_wrap)]
+#![allow(clippy::unnecessary_wraps)]
 
 fn test_generic<T: Copy>(val: T) -> T {
     let _ = T::from(val);

@@ -1,4 +1,4 @@
-#![warn(clippy::unnecessary_wrap)]
+#![warn(clippy::unnecessary_wraps)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::needless_return)]
 #![allow(clippy::if_same_then_else)]

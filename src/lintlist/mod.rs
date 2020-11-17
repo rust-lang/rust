@@ -2609,11 +2609,11 @@ vec![
         module: "unwrap",
     },
     Lint {
-        name: "unnecessary_wrap",
+        name: "unnecessary_wraps",
         group: "complexity",
         desc: "functions that only return `Ok` or `Some`",
         deprecation: None,
-        module: "unnecessary_wrap",
+        module: "unnecessary_wraps",
     },
     Lint {
         name: "unneeded_field_pattern",

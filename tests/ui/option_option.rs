@@ -1,5 +1,5 @@
 #![deny(clippy::option_option)]
-#![allow(clippy::unnecessary_wrap)]
+#![allow(clippy::unnecessary_wraps)]
 
 fn input(_: Option<Option<u8>>) {}
 

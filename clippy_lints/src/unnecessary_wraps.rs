@@ -46,14 +46,14 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    pub UNNECESSARY_WRAP,
+    pub UNNECESSARY_WRAPS,
     complexity,
     "functions that only return `Ok` or `Some`"
 }
 
-declare_lint_pass!(UnnecessaryWrap => [UNNECESSARY_WRAP]);
+declare_lint_pass!(UnnecessaryWraps => [UNNECESSARY_WRAPS]);
 
-impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
+impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWrap {
         if can_sugg && !suggs.is_empty() {
             span_lint_and_then(
                 cx,
-                UNNECESSARY_WRAP,
+                UNNECESSARY_WRAPS,
                 span,
                 format!(
                     "this function's return value is unnecessarily wrapped by `{}`",

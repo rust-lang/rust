@@ -1,5 +1,5 @@
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wrap.rs:8:1
+  --> $DIR/unnecessary_wraps.rs:8:1
    |
 LL | / fn func1(a: bool, b: bool) -> Option<i32> {
 LL | |     if a && b {
@@ -10,7 +10,7 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = note: `-D clippy::unnecessary-wrap` implied by `-D warnings`
+   = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
 help: remove `Option` from the return type...
    |
 LL | fn func1(a: bool, b: bool) -> i32 {
@@ -26,7 +26,7 @@ LL |     } else {
  ...
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wrap.rs:21:1
+  --> $DIR/unnecessary_wraps.rs:21:1
    |
 LL | / fn func2(a: bool, b: bool) -> Option<i32> {
 LL | |     if a && b {
@@ -52,7 +52,7 @@ LL |         30
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wrap.rs:51:1
+  --> $DIR/unnecessary_wraps.rs:51:1
    |
 LL | / fn func5() -> Option<i32> {
 LL | |     Some(1)
@@ -69,7 +69,7 @@ LL |     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Result`
-  --> $DIR/unnecessary_wrap.rs:61:1
+  --> $DIR/unnecessary_wraps.rs:61:1
    |
 LL | / fn func7() -> Result<i32, ()> {
 LL | |     Ok(1)
@@ -86,7 +86,7 @@ LL |     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wrap.rs:93:5
+  --> $DIR/unnecessary_wraps.rs:93:5
    |
 LL | /     fn func12() -> Option<i32> {
 LL | |         Some(1)
