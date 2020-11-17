@@ -2,7 +2,7 @@
 //! `cargo check` json format to the LSP diagnostic format.
 use std::{collections::HashMap, path::Path};
 
-use flycheck::{Applicability, DiagnosticCode, DiagnosticLevel, DiagnosticSpan};
+use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
 use stdx::format_to;
 
 use crate::{lsp_ext, to_proto::url_from_abs_path};
@@ -211,7 +211,11 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         }
     }
 
-    let code_description = rustc_code_description(rd.code.as_ref());
+    let code_description = match source.as_str() {
+        "rustc" => rustc_code_description(code.as_deref()),
+        "clippy" => clippy_code_description(code.as_deref()),
+        _ => None,
+    };
 
     primary_spans
         .iter()
@@ -294,17 +298,28 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         .collect()
 }
 
-fn rustc_code_description(code: Option<&DiagnosticCode>) -> Option<lsp_types::CodeDescription> {
-    code.filter(|c| {
-        let mut chars = c.code.chars();
+fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
+    code.filter(|code| {
+        let mut chars = code.chars();
         chars.next().map_or(false, |c| c == 'E')
             && chars.by_ref().take(4).all(|c| c.is_ascii_digit())
             && chars.next().is_none()
     })
-    .and_then(|c| {
-        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{}", c.code))
+    .and_then(|code| {
+        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{}", code))
             .ok()
             .map(|href| lsp_types::CodeDescription { href })
+    })
+}
+
+fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
+    code.and_then(|code| {
+        lsp_types::Url::parse(&format!(
+            "https://rust-lang.github.io/rust-clippy/master/index.html#{}",
+            code
+        ))
+        .ok()
+        .map(|href| lsp_types::CodeDescription { href })
     })
 }
 
