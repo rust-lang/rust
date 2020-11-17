@@ -9,6 +9,7 @@ use ide_db::RootDatabase;
 use itertools::Itertools;
 use syntax::{
     ast::edit::AstNodeEdit,
+    ast::AttrsOwner,
     ast::NameOwner,
     ast::{self, edit, make, ArgListOwner},
     AstNode, Direction,
@@ -80,6 +81,23 @@ pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
         }
     }
     None
+}
+
+/// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
+/// `#[test_case(...)]`, `#[tokio::test]` and similar.
+/// Also a regular `#[test]` annotation is supported.
+///
+/// It may produce false positives, for example, `#[wasm_bindgen_test]` requires a different command to run the test,
+/// but it's better than not to have the runnables for the tests at all.
+pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
+    fn_def.attrs().find_map(|attr| {
+        let path = attr.path()?;
+        if path.syntax().text().to_string().contains("test") {
+            Some(attr)
+        } else {
+            None
+        }
+    })
 }
 
 #[derive(Copy, Clone, PartialEq)]
