@@ -15,10 +15,10 @@ use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
+use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 
 use crate::mem_categorization as mc;
-use rustc_span::Span;
 
 ///////////////////////////////////////////////////////////////////////////
 // The Delegate trait
@@ -73,6 +73,7 @@ pub enum MutateMode {
 // This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'a, 'tcx> {
     mc: mc::MemCategorizationContext<'a, 'tcx>,
+    body_owner: LocalDefId,
     delegate: &'a mut dyn Delegate<'tcx>,
 }
 
@@ -110,6 +111,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     ) -> Self {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(infcx, param_env, body_owner, typeck_results),
+            body_owner,
             delegate,
         }
     }
@@ -329,8 +331,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_expr(base);
             }
 
-            hir::ExprKind::Closure(_, _, _, fn_decl_span, _) => {
-                self.walk_captures(expr, fn_decl_span);
+            hir::ExprKind::Closure(..) => {
+                self.walk_captures(expr);
             }
 
             hir::ExprKind::Box(ref base) => {
@@ -529,7 +531,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
 
         let tcx = self.tcx();
-        let ExprUseVisitor { ref mc, ref mut delegate } = *self;
+        let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
@@ -569,36 +571,112 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }));
     }
 
-    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>, fn_decl_span: Span) {
+    /// Walk closure captures but using `closure_caputes` instead
+    /// of `closure_min_captures`.
+    ///
+    /// This is needed because clippy uses `ExprUseVisitor` after TypeckResults
+    /// are written back. We don't currently writeback min_captures to
+    /// TypeckResults.
+    fn walk_captures_closure_captures(&mut self, closure_expr: &hir::Expr<'_>) {
+        // FIXME(arora-aman): Remove this function once rust-lang/project-rfc-2229#18
+        // is completed.
+        debug!("walk_captures_closure_captures({:?}), ", closure_expr);
+
+        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
+        let cl_span = self.tcx().hir().span(closure_expr.hir_id);
+
+        let captures = &self.mc.typeck_results.closure_captures[&closure_def_id];
+
+        for (&var_id, &upvar_id) in captures {
+            let upvar_capture = self.mc.typeck_results.upvar_capture(upvar_id);
+            let captured_place =
+                return_if_err!(self.cat_captured_var(closure_expr.hir_id, cl_span, var_id));
+            match upvar_capture {
+                ty::UpvarCapture::ByValue(_) => {
+                    let mode = copy_or_move(&self.mc, &captured_place);
+                    self.delegate.consume(&captured_place, captured_place.hir_id, mode);
+                }
+                ty::UpvarCapture::ByRef(upvar_borrow) => {
+                    self.delegate.borrow(&captured_place, captured_place.hir_id, upvar_borrow.kind);
+                }
+            }
+        }
+    }
+
+    /// Handle the case where the current body contains a closure.
+    ///
+    /// When the current body being handled is a closure, then we must make sure that
+    /// - The parent closure only captures Places from the nested closure that are not local to it.
+    ///
+    /// In the following example the closures `c` only captures `p.x`` even though `incr`
+    /// is a capture of the nested closure
+    ///
+    /// ```rust,ignore(cannot-test-this-because-pseduo-code)
+    /// let p = ..;
+    /// let c = || {
+    ///    let incr = 10;
+    ///    let nested = || p.x += incr;
+    /// }
+    /// ```
+    ///
+    /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
+    /// closure as the DefId.
+    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
         debug!("walk_captures({:?})", closure_expr);
 
-        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id);
-        if let Some(upvars) = self.tcx().upvars_mentioned(closure_def_id) {
-            for &var_id in upvars.keys() {
-                let upvar_id = ty::UpvarId {
-                    var_path: ty::UpvarPath { hir_id: var_id },
-                    closure_expr_id: closure_def_id,
-                };
-                let upvar_capture = self.mc.typeck_results.upvar_capture(upvar_id);
-                let captured_place = return_if_err!(self.cat_captured_var(
-                    closure_expr.hir_id,
-                    fn_decl_span,
-                    var_id,
-                ));
-                match upvar_capture {
-                    ty::UpvarCapture::ByValue(_) => {
-                        let mode = copy_or_move(&self.mc, &captured_place);
-                        self.delegate.consume(&captured_place, captured_place.hir_id, mode);
-                    }
-                    ty::UpvarCapture::ByRef(upvar_borrow) => {
-                        self.delegate.borrow(
-                            &captured_place,
-                            captured_place.hir_id,
-                            upvar_borrow.kind,
-                        );
+        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
+        let upvars = self.tcx().upvars_mentioned(self.body_owner);
+
+        // For purposes of this function, generator and closures are equivalent.
+        let body_owner_is_closure = match self.tcx().type_of(self.body_owner.to_def_id()).kind() {
+            ty::Closure(..) | ty::Generator(..) => true,
+            _ => false,
+        };
+
+        if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
+        {
+            for (var_hir_id, min_list) in min_captures.iter() {
+                if upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
+                    // The nested closure might be capturing the current (enclosing) closure's local variables.
+                    // We check if the root variable is ever mentioned within the enclosing closure, if not
+                    // then for the current body (if it's a closure) these aren't captures, we will ignore them.
+                    continue;
+                }
+                for captured_place in min_list {
+                    let place = &captured_place.place;
+                    let capture_info = captured_place.info;
+
+                    let upvar_id = if body_owner_is_closure {
+                        // Mark the place to be captured by the enclosing closure
+                        ty::UpvarId::new(*var_hir_id, self.body_owner)
+                    } else {
+                        ty::UpvarId::new(*var_hir_id, closure_def_id.expect_local())
+                    };
+                    let place_with_id = PlaceWithHirId::new(
+                        capture_info.expr_id.unwrap_or(closure_expr.hir_id),
+                        place.base_ty,
+                        PlaceBase::Upvar(upvar_id),
+                        place.projections.clone(),
+                    );
+
+                    match capture_info.capture_kind {
+                        ty::UpvarCapture::ByValue(_) => {
+                            let mode = copy_or_move(&self.mc, &place_with_id);
+                            self.delegate.consume(&place_with_id, place_with_id.hir_id, mode);
+                        }
+                        ty::UpvarCapture::ByRef(upvar_borrow) => {
+                            self.delegate.borrow(
+                                &place_with_id,
+                                place_with_id.hir_id,
+                                upvar_borrow.kind,
+                            );
+                        }
                     }
                 }
             }
+        } else if self.mc.typeck_results.closure_captures.contains_key(&closure_def_id) {
+            // Handle the case where clippy calls ExprUseVisitor after
+            self.walk_captures_closure_captures(closure_expr)
         }
     }
 

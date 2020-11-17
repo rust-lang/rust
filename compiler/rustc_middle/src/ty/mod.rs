@@ -6,6 +6,7 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
+use crate::hir::place::Place as HirPlace;
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -685,6 +686,12 @@ pub struct UpvarId {
     pub closure_expr_id: LocalDefId,
 }
 
+impl UpvarId {
+    pub fn new(var_hir_id: hir::HirId, closure_def_id: LocalDefId) -> UpvarId {
+        UpvarId { var_path: UpvarPath { hir_id: var_hir_id }, closure_expr_id: closure_def_id }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, Copy, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -765,6 +772,56 @@ pub struct UpvarBorrow<'tcx> {
 
     /// Region of the resulting reference.
     pub region: ty::Region<'tcx>,
+}
+
+/// Given the closure DefId this map provides a map of root variables to minimum
+/// set of `CapturedPlace`s that need to be tracked to support all captures of that closure.
+pub type MinCaptureInformationMap<'tcx> = FxHashMap<DefId, RootVariableMinCaptureList<'tcx>>;
+
+/// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
+/// Used to track the minimum set of `Place`s that need to be captured to support all
+/// Places captured by the closure starting at a given root variable.
+///
+/// This provides a convenient and quick way of checking if a variable being used within
+/// a closure is a capture of a local variable.
+pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureList<'tcx>>;
+
+/// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
+pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
+
+/// A `Place` and the corresponding `CaptureInfo`.
+#[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct CapturedPlace<'tcx> {
+    pub place: HirPlace<'tcx>,
+    pub info: CaptureInfo<'tcx>,
+}
+
+/// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)
+/// for a particular capture as well as identifying the part of the source code
+/// that triggered this capture to occur.
+#[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
+pub struct CaptureInfo<'tcx> {
+    /// Expr Id pointing to use that resulted in selecting the current capture kind
+    ///
+    /// If the user doesn't enable feature `capture_disjoint_fields` (RFC 2229) then, it is
+    /// possible that we don't see the use of a particular place resulting in expr_id being
+    /// None. In such case we fallback on uvpars_mentioned for span.
+    ///
+    /// Eg:
+    /// ```rust,no_run
+    /// let x = 5;
+    ///
+    /// let c = || {
+    ///     let _ = x
+    /// };
+    /// ```
+    ///
+    /// In this example, if `capture_disjoint_fields` is **not** set, then x will be captured,
+    /// but we won't see it being used during capture analysis, since it's essentially a discard.
+    pub expr_id: Option<hir::HirId>,
+
+    /// Capture mode that was selected
+    pub capture_kind: UpvarCapture<'tcx>,
 }
 
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;

@@ -1,0 +1,147 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/wild_patterns.rs:24:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/wild_patterns.rs:42:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/wild_patterns.rs:60:13
+   |
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/wild_patterns.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: First Pass analysis includes:
+  --> $DIR/wild_patterns.rs:27:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         // FIXME(arora-aman): Change `_x` to `_`
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[(0, 0)] -> ImmBorrow
+  --> $DIR/wild_patterns.rs:31:37
+   |
+LL |         let Point { x: _x, y: _ } = p;
+   |                                     ^
+
+error: Min Capture analysis includes:
+  --> $DIR/wild_patterns.rs:27:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         // FIXME(arora-aman): Change `_x` to `_`
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[(0, 0)] -> ImmBorrow
+  --> $DIR/wild_patterns.rs:31:37
+   |
+LL |         let Point { x: _x, y: _ } = p;
+   |                                     ^
+
+error: First Pass analysis includes:
+  --> $DIR/wild_patterns.rs:45:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         // FIXME(arora-aman): Change `_x` to `_`
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0)] -> ByValue
+  --> $DIR/wild_patterns.rs:49:23
+   |
+LL |         let (_x, _) = t;
+   |                       ^
+
+error: Min Capture analysis includes:
+  --> $DIR/wild_patterns.rs:45:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         // FIXME(arora-aman): Change `_x` to `_`
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[(0, 0)] -> ByValue
+  --> $DIR/wild_patterns.rs:49:23
+   |
+LL |         let (_x, _) = t;
+   |                       ^
+
+error: First Pass analysis includes:
+  --> $DIR/wild_patterns.rs:63:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         // FIXME(arora-aman): Change `_x` to `_`
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Capturing arr[Index] -> ByValue
+  --> $DIR/wild_patterns.rs:67:23
+   |
+LL |         let [_x, _] = arr;
+   |                       ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/wild_patterns.rs:63:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         // FIXME(arora-aman): Change `_x` to `_`
+...  |
+LL | |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture arr[] -> ByValue
+  --> $DIR/wild_patterns.rs:67:23
+   |
+LL |         let [_x, _] = arr;
+   |                       ^^^
+
+error: aborting due to 9 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.
