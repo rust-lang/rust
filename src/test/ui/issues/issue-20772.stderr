@@ -7,7 +7,7 @@ LL | | {}
    | |__^
    |
    = note: ...which again requires computing the supertraits of `T`, completing the cycle
-note: cycle used when collecting item types in top-level module
+note: cycle used when computing the supertraits of `T`
   --> $DIR/issue-20772.rs:1:1
    |
 LL | / trait T : Iterator<Item=Self::Item>

@@ -5,7 +5,7 @@ LL | pub trait Processor: Subscriber<Input = Self::Input> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: ...which again requires computing the supertraits of `Processor`, completing the cycle
-note: cycle used when collecting item types in top-level module
+note: cycle used when computing the supertraits of `Processor`
   --> $DIR/issue-20825.rs:5:1
    |
 LL | pub trait Processor: Subscriber<Input = Self::Input> {
