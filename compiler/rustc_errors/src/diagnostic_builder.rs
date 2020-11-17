@@ -184,16 +184,18 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
-    /// Adds a span/label to be included in the resulting snippet.
+    /// Appends a labeled span to the diagnostic.
     ///
-    /// This is pushed onto the [`MultiSpan`] that was created when the diagnostic
-    /// was first built. That means it will be shown together with the original
-    /// span/label, *not* a span added by one of the `span_{note,warn,help,suggestions}` methods.
+    /// Labels are used to convey additional context for the diagnostic's primary span. They will
+    /// be shown together with the original diagnostic's span, *not* with spans added by
+    /// `span_note`, `span_help`, etc. Therefore, if the primary span is not displayable (because
+    /// the span is `DUMMY_SP` or the source code isn't found), labels will not be displayed
+    /// either.
     ///
-    /// This span is *not* considered a ["primary span"][`MultiSpan`]; only
-    /// the `Span` supplied when creating the diagnostic is primary.
-    ///
-    /// [`MultiSpan`]: ../rustc_span/struct.MultiSpan.html
+    /// Implementation-wise, the label span is pushed onto the [`MultiSpan`] that was created when
+    /// the diagnostic was constructed. However, the label span is *not* considered a
+    /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
+    /// primary.
     pub fn span_label(&mut self, span: Span, label: impl Into<String>) -> &mut Self {
         self.0.diagnostic.span_label(span, label);
         self
