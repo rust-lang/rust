@@ -160,6 +160,50 @@ fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expecte
 }
 
 #[test]
+fn ssr_let_stmt_in_macro_match() {
+    assert_matches(
+        "let a = 0",
+        r#"
+            macro_rules! m1 { ($a:stmt) => {$a}; }
+            fn f() {m1!{ let a = 0 };}"#,
+        // FIXME: Whitespace is not part of the matched block
+        &["leta=0"],
+    );
+}
+
+#[test]
+fn ssr_let_stmt_in_fn_match() {
+    assert_matches("let $a = 10;", "fn main() { let x = 10; x }", &["let x = 10;"]);
+    assert_matches("let $a = $b;", "fn main() { let x = 10; x }", &["let x = 10;"]);
+}
+
+#[test]
+fn ssr_block_expr_match() {
+    assert_matches("{ let $a = $b; }", "fn main() { let x = 10; }", &["{ let x = 10; }"]);
+    assert_matches("{ let $a = $b; $c }", "fn main() { let x = 10; x }", &["{ let x = 10; x }"]);
+}
+
+#[test]
+fn ssr_let_stmt_replace() {
+    // Pattern and template with trailing semicolon
+    assert_ssr_transform(
+        "let $a = $b; ==>> let $a = 11;",
+        "fn main() { let x = 10; x }",
+        expect![["fn main() { let x = 11; x }"]],
+    );
+}
+
+#[test]
+fn ssr_let_stmt_replace_expr() {
+    // Trailing semicolon should be dropped from the new expression
+    assert_ssr_transform(
+        "let $a = $b; ==>> $b",
+        "fn main() { let x = 10; }",
+        expect![["fn main() { 10 }"]],
+    );
+}
+
+#[test]
 fn ssr_function_to_method() {
     assert_ssr_transform(
         "my_function($a, $b) ==>> ($a).my_method($b)",
