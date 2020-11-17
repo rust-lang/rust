@@ -227,12 +227,8 @@ impl Item {
 
     crate fn is_default(&self) -> bool {
         match self.kind {
-            ItemKind::MethodItem(ref meth) => {
-                if let Some(defaultness) = meth.defaultness {
-                    defaultness.has_value() && !defaultness.is_final()
-                } else {
-                    false
-                }
+            ItemKind::MethodItem(_, Some(defaultness)) => {
+                defaultness.has_value() && !defaultness.is_final()
             }
             _ => false,
         }
@@ -266,7 +262,7 @@ crate enum ItemKind {
     /// non-default-methods).
     TyMethodItem(Function),
     /// A method with a body.
-    MethodItem(Method),
+    MethodItem(Function, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
@@ -908,16 +904,6 @@ impl GenericParamDef {
 crate struct Generics {
     crate params: Vec<GenericParamDef>,
     crate where_predicates: Vec<WherePredicate>,
-}
-
-#[derive(Clone, Debug)]
-crate struct Method {
-    crate generics: Generics,
-    crate decl: FnDecl,
-    crate header: hir::FnHeader,
-    crate defaultness: Option<hir::Defaultness>,
-    crate all_types: Vec<(Type, TypeKind)>,
-    crate ret_types: Vec<(Type, TypeKind)>,
 }
 
 #[derive(Clone, Debug)]

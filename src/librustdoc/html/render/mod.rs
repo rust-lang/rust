@@ -2589,7 +2589,9 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             for (pos, m) in provided.iter().enumerate() {
                 render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait);
                 match m.kind {
-                    clean::MethodItem(ref inner) if !inner.generics.where_predicates.is_empty() => {
+                    clean::MethodItem(ref inner, _)
+                        if !inner.generics.where_predicates.is_empty() =>
+                    {
                         write!(w, ",\n    {{ ... }}\n");
                     }
                     _ => {
@@ -2968,7 +2970,9 @@ fn render_assoc_item(
     match item.kind {
         clean::StrippedItem(..) => {}
         clean::TyMethodItem(ref m) => method(w, item, m.header, &m.generics, &m.decl, link, parent),
-        clean::MethodItem(ref m) => method(w, item, m.header, &m.generics, &m.decl, link, parent),
+        clean::MethodItem(ref m, _) => {
+            method(w, item, m.header, &m.generics, &m.decl, link, parent)
+        }
         clean::AssocConstItem(ref ty, ref default) => assoc_const(
             w,
             item,
@@ -3545,7 +3549,7 @@ fn render_deref_methods(
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
     let self_type_opt = match item.kind {
-        clean::MethodItem(ref method) => method.decl.self_type(),
+        clean::MethodItem(ref method, _) => method.decl.self_type(),
         clean::TyMethodItem(ref method) => method.decl.self_type(),
         _ => None,
     };
@@ -3752,7 +3756,7 @@ fn render_impl(
                 (true, " hidden")
             };
         match item.kind {
-            clean::MethodItem(_) | clean::TyMethodItem(_) => {
+            clean::MethodItem(..) | clean::TyMethodItem(_) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
