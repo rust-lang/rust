@@ -15,9 +15,9 @@ pub fn shrink_to_fit(vec: &mut Vec<u32>) {
 
 // CHECK-LABEL: @issue71861
 #[no_mangle]
-pub fn issue71861(n: usize) -> Box<[u32]> {
+pub fn issue71861(vec: Vec<u32>) -> Box<[u32]> {
     // CHECK-NOT: panic
-    vec![0; n].into_boxed_slice()
+    vec.into_boxed_slice()
 }
 
 // CHECK-LABEL: @issue75636
