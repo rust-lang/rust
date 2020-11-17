@@ -36,6 +36,26 @@ fn test<const N: usize>() {
     let _: baz!({{ N }}); //[min]~ ERROR generic parameters may not
     let _: biz!(N);
     let _: biz!({ N }); //[min]~ ERROR generic parameters may not
+    let _: foo!(3);
+    let _: foo!({ 3 });
+    let _: foo!({{ 3 }});
+    let _: bar!(3);
+    let _: bar!({ 3 });
+    let _: baz!(3);
+    let _: baz!({ 3 });
+    let _: baz!({{ 3 }});
+    let _: biz!(3);
+    let _: biz!({ 3 });
+    let _: foo!(10 + 7);
+    let _: foo!({ 10 + 7 });
+    let _: foo!({{ 10 + 7 }});
+    let _: bar!(10 + 7);
+    let _: bar!({ 10 + 7 });
+    let _: baz!(10 + 7); //~ ERROR expressions must be enclosed in braces
+    let _: baz!({ 10 + 7 });
+    let _: baz!({{ 10 + 7 }});
+    let _: biz!(10 + 7);
+    let _: biz!({ 10 + 7 });
 }
 
 fn main() {
