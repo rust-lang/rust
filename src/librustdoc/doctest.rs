@@ -1,13 +1,13 @@
 use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::ErrorReported;
+use rustc_errors::{ColorConfig, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType};
+use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::{lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -248,7 +248,8 @@ fn run_test(
     outdir: DirState,
     path: PathBuf,
 ) -> Result<(), TestFailure> {
-    let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts, edition);
+    let (test, line_offset, supports_color) =
+        make_test(test, Some(cratename), as_test_harness, opts, edition);
 
     let output_file = outdir.path().join("rust_out");
 
@@ -293,6 +294,20 @@ fn run_test(
             path.to_str().expect("target path must be valid unicode").to_string()
         }
     });
+    if let ErrorOutputType::HumanReadable(kind) = options.error_format {
+        let (_, color_config) = kind.unzip();
+        match color_config {
+            ColorConfig::Never => {
+                compiler.arg("--color").arg("never");
+            }
+            ColorConfig::Always => {
+                compiler.arg("--color").arg("always");
+            }
+            ColorConfig::Auto => {
+                compiler.arg("--color").arg(if supports_color { "always" } else { "never" });
+            }
+        }
+    }
 
     compiler.arg("-");
     compiler.stdin(Stdio::piped());
@@ -320,7 +335,10 @@ fn run_test(
         (true, false) => {}
         (false, true) => {
             if !error_codes.is_empty() {
-                error_codes.retain(|err| !out.contains(&format!("error[{}]: ", err)));
+                // We used to check if the output contained "error[{}]: " but since we added the
+                // colored output, we can't anymore because of the color escape characters before
+                // the ":".
+                error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
 
                 if !error_codes.is_empty() {
                     return Err(TestFailure::MissingErrorCodes(error_codes));
@@ -362,18 +380,19 @@ fn run_test(
 }
 
 /// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
-/// lines before the test code begins.
+/// lines before the test code begins as well as if the output stream supports colors or not.
 crate fn make_test(
     s: &str,
     cratename: Option<&str>,
     dont_insert_main: bool,
     opts: &TestOptions,
     edition: Edition,
-) -> (String, usize) {
+) -> (String, usize, bool) {
     let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
+    let mut supports_color = false;
 
     if opts.attrs.is_empty() && !opts.display_warnings {
         // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
@@ -399,7 +418,7 @@ crate fn make_test(
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::with_session_globals(edition, || {
-            use rustc_errors::emitter::EmitterWriter;
+            use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
             use rustc_session::parse::ParseSess;
@@ -411,8 +430,13 @@ crate fn make_test(
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
             // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            supports_color =
+                EmitterWriter::stderr(ColorConfig::Auto, None, false, false, Some(80), false)
+                    .supports_color();
+
             let emitter =
                 EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = Handler::with_emitter(false, None, box emitter);
             let sess = ParseSess::with_span_handler(handler, sm);
@@ -482,7 +506,7 @@ crate fn make_test(
         Err(ErrorReported) => {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
-            return (s.to_owned(), 0);
+            return (s.to_owned(), 0, false);
         }
     };
 
@@ -532,7 +556,7 @@ crate fn make_test(
 
     debug!("final doctest:\n{}", prog);
 
-    (prog, line_offset)
+    (prog, line_offset, supports_color)
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
