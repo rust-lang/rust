@@ -3,7 +3,7 @@ use syntax::{
         self,
         edit::{AstNodeEdit, IndentLevel},
     },
-    AstNode, TextRange, T,
+    AstNode, SyntaxKind, TextRange, T,
 };
 
 use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, Assists};
@@ -31,9 +31,19 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let l_curly_token = ctx.find_token_syntax_at_offset(T!['{'])?;
     let mut block = ast::BlockExpr::cast(l_curly_token.parent())?;
+    let target = block.syntax().text_range();
     let mut parent = block.syntax().parent()?;
     if ast::MatchArm::can_cast(parent.kind()) {
         parent = parent.ancestors().find(|it| ast::MatchExpr::can_cast(it.kind()))?
+    }
+
+    if matches!(parent.kind(), SyntaxKind::BLOCK_EXPR | SyntaxKind::EXPR_STMT) {
+        return acc.add(assist_id, assist_label, target, |builder| {
+            builder.replace(
+                block.syntax().text_range(),
+                update_expr_string(block.to_string(), &[' ', '{', '\n']),
+            );
+        });
     }
 
     let parent = ast::Expr::cast(parent)?;
@@ -48,7 +58,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                     // For `else if` blocks
                     let ancestor_then_branch = ancestor.then_branch()?;
 
-                    let target = then_branch.syntax().text_range();
                     return acc.add(assist_id, assist_label, target, |edit| {
                         let range_to_del_else_if = TextRange::new(
                             ancestor_then_branch.syntax().text_range().end(),
@@ -68,7 +77,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                     });
                 }
             } else {
-                let target = block.syntax().text_range();
                 return acc.add(assist_id, assist_label, target, |edit| {
                     let range_to_del = TextRange::new(
                         then_branch.syntax().text_range().end(),
@@ -84,7 +92,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     };
 
     let unwrapped = unwrap_trivial_block(block);
-    let target = unwrapped.syntax().text_range();
     acc.add(assist_id, assist_label, target, |builder| {
         builder.replace(
             parent.syntax().text_range(),
@@ -110,6 +117,64 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
+
+    #[test]
+    fn unwrap_tail_expr_block() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    <|>{
+        92
+    }
+}
+"#,
+            r#"
+fn main() {
+    92
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn unwrap_stmt_expr_block() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    <|>{
+        92;
+    }
+    ()
+}
+"#,
+            r#"
+fn main() {
+    92;
+    ()
+}
+"#,
+        );
+        // Pedantically, we should add an `;` here...
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    <|>{
+        92
+    }
+    ()
+}
+"#,
+            r#"
+fn main() {
+    92
+    ()
+}
+"#,
+        );
+    }
 
     #[test]
     fn simple_if() {
