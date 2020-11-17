@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/const-argument-if-length.rs:8:28
+  --> $DIR/const-argument-if-length.rs:7:28
    |
 LL | pub const fn is_zst<T: ?Sized>() -> usize {
    |                     - this type parameter needs to be `Sized`
@@ -12,7 +12,7 @@ LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/const-argument-if-length.rs:17:12
+  --> $DIR/const-argument-if-length.rs:16:12
    |
 LL | pub struct AtLeastByte<T: ?Sized> {
    |                        - this type parameter needs to be `Sized`

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch.rs:12:27
+  --> $DIR/type-mismatch.rs:11:27
    |
 LL |     assert_eq!(R.method::<1u16>(), 1);
    |                           ^^^^ expected `u8`, found `u16`

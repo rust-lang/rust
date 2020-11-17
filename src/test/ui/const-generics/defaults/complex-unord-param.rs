@@ -3,7 +3,6 @@
 // Checks a complicated usage of unordered params
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 #![allow(dead_code)]
 
 struct NestedArrays<'a, const N: usize, A: 'a, const M: usize, T:'a =u32> {

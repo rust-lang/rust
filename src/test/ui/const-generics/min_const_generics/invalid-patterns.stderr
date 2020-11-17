@@ -1,29 +1,29 @@
 error[E0308]: mismatched types
-  --> $DIR/invalid-patterns.rs:29:21
+  --> $DIR/invalid-patterns.rs:28:21
    |
 LL |   get_flag::<false, 0xFF>();
    |                     ^^^^ expected `char`, found `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/invalid-patterns.rs:31:14
+  --> $DIR/invalid-patterns.rs:30:14
    |
 LL |   get_flag::<7, 'c'>();
    |              ^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/invalid-patterns.rs:33:14
+  --> $DIR/invalid-patterns.rs:32:14
    |
 LL |   get_flag::<42, 0x5ad>();
    |              ^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/invalid-patterns.rs:33:18
+  --> $DIR/invalid-patterns.rs:32:18
    |
 LL |   get_flag::<42, 0x5ad>();
    |                  ^^^^^ expected `char`, found `u8`
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:38:21
+  --> $DIR/invalid-patterns.rs:37:21
    |
 LL |   get_flag::<false, { unsafe { char_raw.character } }>();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
@@ -31,7 +31,7 @@ LL |   get_flag::<false, { unsafe { char_raw.character } }>();
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:40:14
+  --> $DIR/invalid-patterns.rs:39:14
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x42, but expected a boolean
@@ -39,7 +39,7 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:42:14
+  --> $DIR/invalid-patterns.rs:41:14
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x42, but expected a boolean
@@ -47,7 +47,7 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:42:47
+  --> $DIR/invalid-patterns.rs:41:47
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)

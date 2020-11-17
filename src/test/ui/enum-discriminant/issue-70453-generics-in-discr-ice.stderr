@@ -1,10 +1,11 @@
-error: constant expression depends on a generic parameter
-  --> $DIR/issue-70453-generics-in-discr-ice.rs:10:12
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-70453-generics-in-discr-ice.rs:10:32
    |
 LL |     Some = std::mem::size_of::<T>(),
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                ^ cannot perform const operation using `T`
    |
-   = note: this may fail depending on what value the parameter takes
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0392]: parameter `T` is never used
   --> $DIR/issue-70453-generics-in-discr-ice.rs:7:20

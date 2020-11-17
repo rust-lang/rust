@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/issue-61336-2.rs:10:5
+  --> $DIR/issue-61336-2.rs:9:5
    |
 LL |     [x; { N }]
    |     ^^^^^^^^^^ the trait `Copy` is not implemented for `T`

@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-62220.rs:8:59
+  --> $DIR/issue-62220.rs:7:59
    |
 LL | pub type TruncatedVector<T, const N: usize> = Vector<T, { N - 1 }>;
    |                                                           ^ cannot perform const operation using `N`

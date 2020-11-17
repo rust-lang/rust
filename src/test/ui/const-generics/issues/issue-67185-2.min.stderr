@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:17:1
+  --> $DIR/issue-67185-2.rs:16:1
    |
 LL | / trait Foo
 LL | |
@@ -17,7 +17,7 @@ LL | | }
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:17:1
+  --> $DIR/issue-67185-2.rs:16:1
    |
 LL | / trait Foo
 LL | |
@@ -35,7 +35,7 @@ LL | | }
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:27:6
+  --> $DIR/issue-67185-2.rs:26:6
    |
 LL | trait Foo
    |       --- required by a bound in this
@@ -51,7 +51,7 @@ LL | impl Foo for FooImpl {}
              <[u16; 4] as Bar>
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:27:6
+  --> $DIR/issue-67185-2.rs:26:6
    |
 LL | trait Foo
    |       --- required by a bound in this
@@ -67,7 +67,7 @@ LL | impl Foo for FooImpl {}
              <[u16; 4] as Bar>
 
 error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:31:14
+  --> $DIR/issue-67185-2.rs:30:14
    |
 LL | trait Foo
    |       --- required by a bound in this
@@ -83,7 +83,7 @@ LL | fn f(_: impl Foo) {}
              <[u16; 4] as Bar>
 
 error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
-  --> $DIR/issue-67185-2.rs:31:14
+  --> $DIR/issue-67185-2.rs:30:14
    |
 LL | trait Foo
    |       --- required by a bound in this

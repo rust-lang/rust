@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-66205.rs:8:14
+  --> $DIR/issue-66205.rs:7:14
    |
 LL |     fact::<{ N - 1 }>();
    |              ^ cannot perform const operation using `N`

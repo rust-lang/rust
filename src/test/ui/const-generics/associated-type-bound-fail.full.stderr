@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `u16: Bar<N>` is not satisfied
-  --> $DIR/associated-type-bound-fail.rs:14:5
+  --> $DIR/associated-type-bound-fail.rs:13:5
    |
 LL |     type Assoc: Bar<N>;
    |                 ------ required by this bound in `Foo::Assoc`
