@@ -39,6 +39,7 @@ impl Category {
             | ExprKind::Deref { .. }
             | ExprKind::Index { .. }
             | ExprKind::SelfRef
+            | ExprKind::UpvarRef { .. }
             | ExprKind::VarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => Some(Category::Place),
