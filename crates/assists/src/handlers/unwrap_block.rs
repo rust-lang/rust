@@ -83,8 +83,8 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         _ => return None,
     };
 
+    let target = block.syntax().text_range();
     let unwrapped = unwrap_trivial_block(block);
-    let target = unwrapped.syntax().text_range();
     acc.add(assist_id, assist_label, target, |builder| {
         builder.replace(
             parent.syntax().text_range(),
