@@ -97,7 +97,10 @@ crate fn run_format<T: FormatRenderer>(
 
             cx.mod_item_out(&name)?;
         } else if item.name.is_some() {
-            cx.item(item, &cache)?;
+            match item.kind {
+                clean::ItemKind::ImportItem(..) => {}
+                _ => cx.item(item, &cache)?,
+            }
         }
     }
 

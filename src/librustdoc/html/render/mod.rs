@@ -1725,7 +1725,10 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
                 "Module "
             }
         }
-        clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => "Function ",
+        clean::FunctionItem(..)
+        | clean::ForeignFunctionItem(..)
+        | clean::TyMethodItem(..)
+        | clean::MethodItem(..) => "Function ",
         clean::TraitItem(..) => "Trait ",
         clean::StructItem(..) => "Struct ",
         clean::UnionItem(..) => "Union ",
@@ -1746,7 +1749,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
         clean::TraitAliasItem(..) => "Trait Alias ",
         _ => {
             // We don't generate pages for any other type.
-            unreachable!();
+            unreachable!("unknown kind {:?}", item.kind);
         }
     };
     buf.write_str(name);
@@ -1768,9 +1771,10 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
 
     match item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
-        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) => {
-            item_function(buf, cx, item, f)
-        }
+        clean::FunctionItem(ref f)
+        | clean::ForeignFunctionItem(ref f)
+        | clean::TyMethodItem(ref f)
+        | clean::MethodItem(ref f, _) => item_function(buf, cx, item, f),
         clean::TraitItem(ref t) => item_trait(buf, cx, item, t, cache),
         clean::StructItem(ref s) => item_struct(buf, cx, item, s, cache),
         clean::UnionItem(ref s) => item_union(buf, cx, item, s, cache),
@@ -1787,7 +1791,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
         clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta, cache),
         _ => {
             // We don't generate pages for any other type.
-            unreachable!();
+            unreachable!("unknown kind {:?}", item.kind);
         }
     }
 }
