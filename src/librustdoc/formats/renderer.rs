@@ -82,7 +82,7 @@ crate fn run_format<T: FormatRenderer>(
             // recurse into the items of the module as well.
             let name = item.name.as_ref().unwrap().to_string();
             if name.is_empty() {
-                panic!("Unexpected module with empty name");
+                panic!("Unexpected module with empty name: {:?}", item);
             }
 
             cx.mod_item_in(&item, &name, &cache)?;

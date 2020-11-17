@@ -260,7 +260,8 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
             }
             // TODO: this should also take the span into account (inner or outer)
             ItemKind::Mod(ref mod_) => NotInlined(mod_.clean(cx)),
-            ItemKind::ForeignMod(ref mod_) => NotInlined(mod_.clean(cx)),
+            // `extern "C" { ... }`
+            ItemKind::ForeignMod(ref mod_) => MaybeInlined::InlinedWithoutOriginal(mod_.clean(cx)),
             ItemKind::GlobalAsm(..) => MaybeInlined::InlinedWithoutOriginal(vec![]), // not handled
             ItemKind::TyAlias(ty, ref generics) => {
                 let rustdoc_ty = ty.clean(cx);
@@ -403,9 +404,9 @@ impl Clean<ItemKind> for hir::Mod<'_> {
     }
 }
 
-impl Clean<ItemKind> for hir::ForeignMod<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> ItemKind {
-        ModuleItem(Module { is_crate: false, items: self.items.clean(cx) })
+impl Clean<Vec<Item>> for hir::ForeignMod<'_> {
+    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
+        self.items.iter().map(|x| x.clean(cx)).collect()
     }
 }
 
