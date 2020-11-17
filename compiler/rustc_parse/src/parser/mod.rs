@@ -1213,14 +1213,20 @@ impl<'a> Parser<'a> {
         //
         // This also makes `Parser` very cheap to clone, since
         // there is no intermediate collection buffer to clone.
+        #[derive(Clone)]
         struct LazyTokenStreamImpl {
             start_token: (Token, Spacing),
             cursor_snapshot: TokenCursor,
             num_calls: usize,
             desugar_doc_comments: bool,
+            trailing_semi: bool,
         }
         impl CreateTokenStream for LazyTokenStreamImpl {
             fn create_token_stream(&self) -> TokenStream {
+                let mut num_calls = self.num_calls;
+                if self.trailing_semi {
+                    num_calls += 1;
+                }
                 // The token produced by the final call to `next` or `next_desugared`
                 // was not actually consumed by the callback. The combination
                 // of chaining the initial token and using `take` produces the desired
@@ -1228,16 +1234,24 @@ impl<'a> Parser<'a> {
                 // and omit the final token otherwise.
                 let mut cursor_snapshot = self.cursor_snapshot.clone();
                 let tokens = std::iter::once(self.start_token.clone())
-                    .chain((0..self.num_calls).map(|_| {
+                    .chain((0..num_calls).map(|_| {
                         if self.desugar_doc_comments {
                             cursor_snapshot.next_desugared()
                         } else {
                             cursor_snapshot.next()
                         }
                     }))
-                    .take(self.num_calls);
+                    .take(num_calls);
 
                 make_token_stream(tokens)
+            }
+            fn add_trailing_semi(&self) -> Box<dyn CreateTokenStream> {
+                if self.trailing_semi {
+                    panic!("Called `add_trailing_semi` twice!");
+                }
+                let mut new = self.clone();
+                new.trailing_semi = true;
+                Box::new(new)
             }
         }
 
@@ -1246,6 +1260,7 @@ impl<'a> Parser<'a> {
             num_calls: self.token_cursor.num_next_calls - cursor_snapshot.num_next_calls,
             cursor_snapshot,
             desugar_doc_comments: self.desugar_doc_comments,
+            trailing_semi: false,
         };
         Ok((ret, Some(LazyTokenStream::new(lazy_impl))))
     }

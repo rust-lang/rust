@@ -117,8 +117,8 @@ impl<'a> Parser<'a> {
                 let (stmt, tokens) = self.collect_tokens(|this| this.parse_stmt())?;
                 match stmt {
                     Some(mut s) => {
-                        if s.tokens.is_none() {
-                            s.tokens = tokens;
+                        if s.tokens().is_none() {
+                            s.set_tokens(tokens);
                         }
                         token::NtStmt(s)
                     }

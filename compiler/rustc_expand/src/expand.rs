@@ -1274,12 +1274,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
             let attr = if stmt.is_item() {
-                // FIXME: Implement proper token collection for statements
-                if let StmtKind::Item(item) = &mut stmt.kind {
-                    stmt.tokens = item.tokens.take()
-                } else {
-                    unreachable!()
-                };
                 self.take_first_attr(&mut stmt)
             } else {
                 // Ignore derives on non-item statements for backwards compatibility.
@@ -1295,7 +1289,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         if let StmtKind::MacCall(mac) = stmt.kind {
-            let MacCallStmt { mac, style, attrs } = mac.into_inner();
+            let MacCallStmt { mac, style, attrs, tokens: _ } = mac.into_inner();
             self.check_attributes(&attrs);
             let mut placeholder =
                 self.collect_bang(mac, stmt.span, AstFragmentKind::Stmts).make_stmts();
@@ -1312,10 +1306,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         // The placeholder expander gives ids to statements, so we avoid folding the id here.
-        let ast::Stmt { id, kind, span, tokens } = stmt;
+        let ast::Stmt { id, kind, span } = stmt;
         noop_flat_map_stmt_kind(kind, self)
             .into_iter()
-            .map(|kind| ast::Stmt { id, kind, span, tokens: tokens.clone() })
+            .map(|kind| ast::Stmt { id, kind, span })
             .collect()
     }
 

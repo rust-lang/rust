@@ -121,10 +121,14 @@ where
 }
 
 pub trait CreateTokenStream: sync::Send + sync::Sync {
+    fn add_trailing_semi(&self) -> Box<dyn CreateTokenStream>;
     fn create_token_stream(&self) -> TokenStream;
 }
 
 impl CreateTokenStream for TokenStream {
+    fn add_trailing_semi(&self) -> Box<dyn CreateTokenStream> {
+        panic!("Cannot call `add_trailing_semi` on a `TokenStream`!");
+    }
     fn create_token_stream(&self) -> TokenStream {
         self.clone()
     }
@@ -139,6 +143,13 @@ pub struct LazyTokenStream(Lrc<Box<dyn CreateTokenStream>>);
 impl LazyTokenStream {
     pub fn new(inner: impl CreateTokenStream + 'static) -> LazyTokenStream {
         LazyTokenStream(Lrc::new(Box::new(inner)))
+    }
+
+    /// Extends the captured stream by one token,
+    /// which must be a trailing semicolon. This
+    /// affects the `TokenStream` created by `make_tokenstream`.
+    pub fn add_trailing_semi(&self) -> LazyTokenStream {
+        LazyTokenStream(Lrc::new(self.0.add_trailing_semi()))
     }
 
     pub fn create_token_stream(&self) -> TokenStream {
