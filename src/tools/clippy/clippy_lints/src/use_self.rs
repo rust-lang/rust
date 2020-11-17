@@ -123,7 +123,7 @@ fn check_trait_method_impl_decl<'tcx>(
         .expect("impl method matches a trait method");
 
     let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);
-    let trait_method_sig = cx.tcx.erase_late_bound_regions(&trait_method_sig);
+    let trait_method_sig = cx.tcx.erase_late_bound_regions(trait_method_sig);
 
     let output_hir_ty = if let FnRetTy::Return(ty) = &impl_decl.output {
         Some(&**ty)

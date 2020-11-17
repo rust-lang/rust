@@ -16,7 +16,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
         let val = self.eval_mir_constant(constant)?;
-        let ty = self.monomorphize(&constant.literal.ty);
+        let ty = self.monomorphize(constant.literal.ty);
         Ok(OperandRef::from_const(bx, val, ty))
     }
 
@@ -24,7 +24,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
-        match self.monomorphize(&constant.literal).val {
+        match self.monomorphize(constant.literal).val {
             ty::ConstKind::Unevaluated(def, substs, promoted) => self
                 .cx
                 .tcx()
@@ -83,7 +83,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .unwrap_or_else(|_| {
                 bx.tcx().sess.span_err(span, "could not evaluate shuffle_indices at compile time");
                 // We've errored, so we don't have to produce working code.
-                let ty = self.monomorphize(&ty);
+                let ty = self.monomorphize(ty);
                 let llty = bx.backend_type(bx.layout_of(ty));
                 (bx.const_undef(llty), ty)
             })

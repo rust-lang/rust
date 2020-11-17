@@ -1615,7 +1615,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
             let method_sig = cx.tcx.fn_sig(method_def_id);
-            let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
+            let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
 
             let first_arg_ty = &method_sig.inputs().iter().next();
 
@@ -2681,7 +2681,7 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
                     ty::Closure(_, substs) => substs.as_closure().sig(),
                     _ => map_closure_ty.fn_sig(cx.tcx),
                 };
-                let map_closure_return_ty = cx.tcx.erase_late_bound_regions(&map_closure_sig.output());
+                let map_closure_return_ty = cx.tcx.erase_late_bound_regions(map_closure_sig.output());
                 is_type_diagnostic_item(cx, map_closure_return_ty, sym::option_type)
             },
             _ => false,

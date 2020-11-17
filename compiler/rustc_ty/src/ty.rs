@@ -363,7 +363,7 @@ fn well_formed_types_in_env<'tcx>(
         // well-formed.
         NodeKind::Fn => {
             let fn_sig = tcx.fn_sig(def_id);
-            let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
+            let fn_sig = tcx.liberate_late_bound_regions(def_id, fn_sig);
 
             inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
         }

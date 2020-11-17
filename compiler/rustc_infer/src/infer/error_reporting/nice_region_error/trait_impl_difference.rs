@@ -86,7 +86,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         if let Some((expected, found)) =
-            self.infcx.expected_found_str_ty(&ExpectedFound { expected, found })
+            self.infcx.expected_found_str_ty(ExpectedFound { expected, found })
         {
             // Highlighted the differences when showing the "expected/found" note.
             err.note_expected_found(&"", expected, &"", found);

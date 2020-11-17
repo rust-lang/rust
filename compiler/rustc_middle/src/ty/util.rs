@@ -160,7 +160,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound
         // regions, which is desirable too.
-        let ty = self.erase_regions(&ty);
+        let ty = self.erase_regions(ty);
 
         hcx.while_hashing_spans(false, |hcx| {
             hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -1127,6 +1127,37 @@ pub fn needs_drop_components(
         | ty::Infer(_)
         | ty::Closure(..)
         | ty::Generator(..) => Ok(smallvec![ty]),
+    }
+}
+
+// Does the equivalent of
+// ```
+// let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();
+// folder.tcx().intern_*(&v)
+// ```
+pub fn fold_list<'tcx, F, T>(
+    list: &'tcx ty::List<T>,
+    folder: &mut F,
+    intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
+) -> &'tcx ty::List<T>
+where
+    F: TypeFolder<'tcx>,
+    T: TypeFoldable<'tcx> + PartialEq + Copy,
+{
+    let mut iter = list.iter();
+    // Look for the first element that changed
+    if let Some((i, new_t)) = iter.by_ref().enumerate().find_map(|(i, t)| {
+        let new_t = t.fold_with(folder);
+        if new_t == t { None } else { Some((i, new_t)) }
+    }) {
+        // An element changed, prepare to intern the resulting list
+        let mut new_list = SmallVec::<[_; 8]>::with_capacity(list.len());
+        new_list.extend_from_slice(&list[..i]);
+        new_list.push(new_t);
+        new_list.extend(iter.map(|t| t.fold_with(folder)));
+        intern(folder.tcx(), &new_list)
+    } else {
+        list
     }
 }
 

@@ -784,7 +784,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         };
 
         if let Some(field) = variant.fields.get(field.index()) {
-            Ok(self.cx.normalize(&field.ty(tcx, substs), location))
+            Ok(self.cx.normalize(field.ty(tcx, substs), location))
         } else {
             Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
@@ -1245,7 +1245,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             anon_owner_def_id,
                             dummy_body_id,
                             param_env,
-                            &anon_ty,
+                            anon_ty,
                             locations.span(body),
                         ));
                     debug!(
@@ -1271,7 +1271,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
 
                     for (&opaque_def_id, opaque_decl) in &opaque_type_map {
-                        let resolved_ty = infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty);
+                        let resolved_ty = infcx.resolve_vars_if_possible(opaque_decl.concrete_ty);
                         let concrete_is_opaque = if let ty::Opaque(def_id, _) = resolved_ty.kind() {
                             *def_id == opaque_def_id
                         } else {
@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let subst_opaque_defn_ty =
                             opaque_defn_ty.concrete_type.subst(tcx, opaque_decl.substs);
                         let renumbered_opaque_defn_ty =
-                            renumber::renumber_regions(infcx, &subst_opaque_defn_ty);
+                            renumber::renumber_regions(infcx, subst_opaque_defn_ty);
 
                         debug!(
                             "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
@@ -1601,7 +1601,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let (sig, map) = self.infcx.replace_bound_vars_with_fresh_vars(
                     term.source_info.span,
                     LateBoundRegionConversionTime::FnCall,
-                    &sig,
+                    sig,
                 );
                 let sig = self.normalize(sig, term_location);
                 self.check_call_dest(body, term, &sig, destination, term_location);
@@ -1900,7 +1900,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Erase the regions from `ty` to get a global type.  The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
-        let erased_ty = tcx.erase_regions(&ty);
+        let erased_ty = tcx.erase_regions(ty);
         if !erased_ty.is_sized(tcx.at(span), self.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return

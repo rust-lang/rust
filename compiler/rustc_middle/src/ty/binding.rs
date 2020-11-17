@@ -8,7 +8,7 @@ pub enum BindingMode {
     BindByValue(Mutability),
 }
 
-CloneTypeFoldableAndLiftImpls! { BindingMode, }
+TrivialTypeFoldableAndLiftImpls! { BindingMode, }
 
 impl BindingMode {
     pub fn convert(ba: BindingAnnotation) -> BindingMode {

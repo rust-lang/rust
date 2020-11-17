@@ -80,7 +80,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             });
 
         if let Some(yield_data) = live_across_yield {
-            let ty = self.fcx.resolve_vars_if_possible(&ty);
+            let ty = self.fcx.resolve_vars_if_possible(ty);
             debug!(
                 "type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
                 expr, scope, ty, self.expr_count, yield_data.span
@@ -120,7 +120,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 self.expr_count,
                 expr.map(|e| e.span)
             );
-            let ty = self.fcx.resolve_vars_if_possible(&ty);
+            let ty = self.fcx.resolve_vars_if_possible(ty);
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
@@ -179,13 +179,13 @@ pub fn resolve_interior<'a, 'tcx>(
         .filter_map(|mut cause| {
             // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
             // can.
-            let erased = fcx.tcx.erase_regions(&cause.ty);
+            let erased = fcx.tcx.erase_regions(cause.ty);
             if captured_tys.insert(erased) {
                 // Replace all regions inside the generator interior with late bound regions.
                 // Note that each region slot in the types gets a new fresh late bound region,
                 // which means that none of the regions inside relate to any other, even if
                 // typeck had previously found constraints that would cause them to be related.
-                let folded = fcx.tcx.fold_regions(&erased, &mut false, |_, current_depth| {
+                let folded = fcx.tcx.fold_regions(erased, &mut false, |_, current_depth| {
                     let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)));
                     counter += 1;
                     r

@@ -1001,7 +1001,7 @@ impl<T> Binder<T> {
         T: TypeFoldable<'tcx>,
     {
         if value.has_escaping_bound_vars() {
-            Binder::bind(super::fold::shift_vars(tcx, &value, 1))
+            Binder::bind(super::fold::shift_vars(tcx, value, 1))
         } else {
             Binder::dummy(value)
         }

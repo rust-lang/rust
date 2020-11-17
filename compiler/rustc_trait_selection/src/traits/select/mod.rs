@@ -1019,7 +1019,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let obligation = &stack.obligation;
-        let predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
+        let predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
 
         // Okay to skip binder because of the nature of the
         // trait-ref-is-knowable check, which does not care about
@@ -1138,9 +1138,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> smallvec::SmallVec<[usize; 2]> {
-        let poly_trait_predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
+        let poly_trait_predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
-            self.infcx().replace_bound_vars_with_placeholders(&poly_trait_predicate);
+            self.infcx().replace_bound_vars_with_placeholders(poly_trait_predicate);
         debug!(
             ?placeholder_trait_predicate,
             "match_projection_obligation_against_definition_bounds"
@@ -1220,7 +1220,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                &trait_bound,
+                trait_bound,
             )
         });
         self.infcx
@@ -1266,12 +1266,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    &data.map_bound_ref(|data| data.projection_ty),
+                    data.map_bound(|data| data.projection_ty),
                     &mut nested_obligations,
                 )
             })
         } else {
-            data.map_bound_ref(|data| data.projection_ty)
+            data.map_bound(|data| data.projection_ty)
         };
 
         // FIXME(generic_associated_types): Compare the whole projections
@@ -1737,7 +1737,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
 
                 self.infcx.commit_unconditionally(|_| {
-                    let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(&ty);
+                    let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);
                     let Normalized { value: normalized_ty, mut obligations } =
                         ensure_sufficient_stack(|| {
                             project::normalize_with_depth(
@@ -1745,7 +1745,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 param_env,
                                 cause.clone(),
                                 recursion_depth,
-                                &placeholder_ty,
+                                placeholder_ty,
                             )
                         });
                     let placeholder_obligation = predicate_for_trait_def(
@@ -1807,7 +1807,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let placeholder_obligation =
-            self.infcx().replace_bound_vars_with_placeholders(&obligation.predicate);
+            self.infcx().replace_bound_vars_with_placeholders(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
         let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
@@ -1821,7 +1821,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    &impl_trait_ref,
+                    impl_trait_ref,
                 )
             });
 
@@ -2028,7 +2028,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                &predicate.subst(tcx, substs),
+                predicate.subst(tcx, substs),
                 &mut obligations,
             );
             obligations.push(Obligation {

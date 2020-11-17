@@ -257,7 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let input_tys = if is_fn {
             let arg_param_ty = trait_ref.skip_binder().substs.type_at(1);
-            let arg_param_ty = self.resolve_vars_if_possible(&arg_param_ty);
+            let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
             debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
 
             match arg_param_ty.kind() {
@@ -271,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let ret_param_ty = projection.skip_binder().ty;
-        let ret_param_ty = self.resolve_vars_if_possible(&ret_param_ty);
+        let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
         debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
 
         let sig = self.tcx.mk_fn_sig(
@@ -400,7 +400,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `deduce_expectations_from_expected_type` introduces
         // late-bound lifetimes defined elsewhere, which we now
         // anonymize away, so as not to confuse the user.
-        let bound_sig = self.tcx.anonymize_late_bound_regions(&bound_sig);
+        let bound_sig = self.tcx.anonymize_late_bound_regions(bound_sig);
 
         let closure_sigs = self.closure_sigs(expr_def_id, body, bound_sig);
 
@@ -500,7 +500,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (supplied_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
-                    &ty::Binder::bind(supplied_ty),
+                    ty::Binder::bind(supplied_ty),
                 ); // recreated from (*) above
 
                 // Check that E' = S'.
@@ -513,7 +513,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (supplied_output_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
                 decl.output.span(),
                 LateBoundRegionConversionTime::FnCall,
-                &supplied_sig.output(),
+                supplied_sig.output(),
             );
             let cause = &self.misc(decl.output.span());
             let InferOk { value: (), obligations } = self
@@ -578,7 +578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("supplied_sig_of_closure: result={:?}", result);
 
-        let c_result = self.inh.infcx.canonicalize_response(&result);
+        let c_result = self.inh.infcx.canonicalize_response(result);
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         result
@@ -683,7 +683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type from the projection. Note that there can
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
-        let output_ty = self.resolve_vars_if_possible(&predicate.ty);
+        let output_ty = self.resolve_vars_if_possible(predicate.ty);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         Some(output_ty)
     }
@@ -723,12 +723,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         body: &hir::Body<'_>,
         bound_sig: ty::PolyFnSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
-        let liberated_sig = self.tcx().liberate_late_bound_regions(expr_def_id, &bound_sig);
+        let liberated_sig = self.tcx().liberate_late_bound_regions(expr_def_id, bound_sig);
         let liberated_sig = self.inh.normalize_associated_types_in(
             body.value.span,
             body.value.hir_id,
             self.param_env,
-            &liberated_sig,
+            liberated_sig,
         );
         ClosureSignatures { bound_sig, liberated_sig }
     }

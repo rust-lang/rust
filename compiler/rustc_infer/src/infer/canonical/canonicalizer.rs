@@ -38,7 +38,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
         &self,
-        value: &V,
+        value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'tcx, V>
     where
@@ -80,7 +80,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// out the [chapter in the rustc dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query-result
-    pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'tcx, V>
+    pub fn canonicalize_response<V>(&self, value: V) -> Canonicalized<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -94,7 +94,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         )
     }
 
-    pub fn canonicalize_user_type_annotation<V>(&self, value: &V) -> Canonicalized<'tcx, V>
+    pub fn canonicalize_user_type_annotation<V>(&self, value: V) -> Canonicalized<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -123,7 +123,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     // and just use `canonicalize_query`.
     pub fn canonicalize_hr_query_hack<V>(
         &self,
-        value: &V,
+        value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
     ) -> Canonicalized<'tcx, V>
     where
@@ -293,7 +293,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+    fn fold_binder<T>(&mut self, t: ty::Binder<T>) -> ty::Binder<T>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -479,7 +479,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     /// The main `canonicalize` method, shared impl of
     /// `canonicalize_query` and `canonicalize_response`.
     fn canonicalize<V>(
-        value: &V,
+        value: V,
         infcx: Option<&InferCtxt<'_, 'tcx>>,
         tcx: TyCtxt<'tcx>,
         canonicalize_region_mode: &dyn CanonicalizeRegionMode,

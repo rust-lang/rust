@@ -363,7 +363,7 @@ pub fn implements_trait<'tcx>(
     if ty.has_infer_types() {
         return false;
     }
-    let ty = cx.tcx.erase_regions(&ty);
+    let ty = cx.tcx.erase_regions(ty);
     let ty_params = cx.tcx.mk_substs(ty_params.iter());
     cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
 }
@@ -887,7 +887,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
 pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> {
     let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
     let ret_ty = cx.tcx.fn_sig(fn_def_id).output();
-    cx.tcx.erase_late_bound_regions(&ret_ty)
+    cx.tcx.erase_late_bound_regions(ret_ty)
 }
 
 /// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
@@ -1220,7 +1220,7 @@ pub fn match_function_call<'tcx>(
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
     cx.tcx.infer_ctxt().enter(|infcx| {
         let cause = rustc_middle::traits::ObligationCause::dummy();
-        infcx.at(&cause, param_env).normalize(&ty).is_ok()
+        infcx.at(&cause, param_env).normalize(ty).is_ok()
     })
 }
 

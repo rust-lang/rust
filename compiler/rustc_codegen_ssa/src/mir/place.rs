@@ -485,7 +485,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             cg_base.project_index(bx, bx.cx().const_usize(from as u64));
                         let projected_ty =
                             PlaceTy::from_ty(cg_base.layout.ty).projection_ty(tcx, elem).ty;
-                        subslice.layout = bx.cx().layout_of(self.monomorphize(&projected_ty));
+                        subslice.layout = bx.cx().layout_of(self.monomorphize(projected_ty));
 
                         if subslice.layout.is_unsized() {
                             assert!(from_end, "slice subslices should be `from_end`");
@@ -515,6 +515,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphized_place_ty(&self, place_ref: mir::PlaceRef<'tcx>) -> Ty<'tcx> {
         let tcx = self.cx.tcx();
         let place_ty = mir::Place::ty_from(place_ref.local, place_ref.projection, self.mir, tcx);
-        self.monomorphize(&place_ty.ty)
+        self.monomorphize(place_ty.ty)
     }
 }

@@ -248,7 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }) => {
                 let tcx = self.tcx;
 
-                let actual = self.resolve_vars_if_possible(&rcvr_ty);
+                let actual = self.resolve_vars_if_possible(rcvr_ty);
                 let ty_str = self.ty_to_string(actual);
                 let is_method = mode == Mode::MethodCall;
                 let item_kind = if is_method {
@@ -870,7 +870,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
     ) {
         let output_ty = match self.infcx.get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(&output_ty),
+            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };
         let method_exists = self.method_exists(item_name, output_ty, call.hir_id, true);

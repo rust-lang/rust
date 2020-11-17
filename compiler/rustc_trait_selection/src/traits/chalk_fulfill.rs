@@ -37,7 +37,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         obligation: PredicateObligation<'tcx>,
     ) {
         assert!(!infcx.is_in_snapshot());
-        let obligation = infcx.resolve_vars_if_possible(&obligation);
+        let obligation = infcx.resolve_vars_if_possible(obligation);
 
         self.obligations.insert(obligation);
     }
@@ -80,11 +80,11 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             // We iterate over all obligations, and record if we are able
             // to unambiguously prove at least one obligation.
             for obligation in self.obligations.drain(..) {
-                let obligation = infcx.resolve_vars_if_possible(&obligation);
+                let obligation = infcx.resolve_vars_if_possible(obligation);
                 let environment = obligation.param_env.caller_bounds();
                 let goal = ChalkEnvironmentAndGoal { environment, goal: obligation.predicate };
                 let mut orig_values = OriginalQueryValues::default();
-                let canonical_goal = infcx.canonicalize_query(&goal, &mut orig_values);
+                let canonical_goal = infcx.canonicalize_query(goal, &mut orig_values);
 
                 match infcx.tcx.evaluate_goal(canonical_goal) {
                     Ok(response) => {
@@ -100,7 +100,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                 Ok(infer_ok) => next_round.extend(
                                     infer_ok.obligations.into_iter().map(|obligation| {
                                         assert!(!infcx.is_in_snapshot());
-                                        infcx.resolve_vars_if_possible(&obligation)
+                                        infcx.resolve_vars_if_possible(obligation)
                                     }),
                                 ),
 

@@ -240,7 +240,7 @@ fn liberated_closure_env_ty(
     };
 
     let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs).unwrap();
-    tcx.erase_late_bound_regions(&closure_env_ty)
+    tcx.erase_late_bound_regions(closure_env_ty)
 }
 
 #[derive(Debug, PartialEq, Eq)]

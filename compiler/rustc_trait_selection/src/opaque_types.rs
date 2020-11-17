@@ -112,7 +112,7 @@ pub trait InferCtxtExt<'tcx> {
         parent_def_id: LocalDefId,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: T,
         value_span: Span,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)>;
 
@@ -188,7 +188,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         parent_def_id: LocalDefId,
         body_id: hir::HirId,
         param_env: ty::ParamEnv<'tcx>,
-        value: &T,
+        value: T,
         value_span: Span,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
         debug!(
@@ -402,7 +402,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
 
-        let concrete_ty = self.resolve_vars_if_possible(&opaque_defn.concrete_ty);
+        let concrete_ty = self.resolve_vars_if_possible(opaque_defn.concrete_ty);
 
         debug!("constrain_opaque_type: concrete_ty={:?}", concrete_ty);
 
@@ -1001,7 +1001,7 @@ struct Instantiator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
-    fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
+    fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         debug!("instantiate_opaque_types_in_map(value={:?})", value);
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
         let param_env = tcx.param_env(def_id);
         let InferOk { value: bounds, obligations } =
-            infcx.partially_normalize_associated_types_in(span, self.body_id, param_env, &bounds);
+            infcx.partially_normalize_associated_types_in(span, self.body_id, param_env, bounds);
         self.obligations.extend(obligations);
 
         debug!("instantiate_opaque_types: bounds={:?}", bounds);
@@ -1173,7 +1173,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             // Change the predicate to refer to the type variable,
             // which will be the concrete type instead of the opaque type.
             // This also instantiates nested instances of `impl Trait`.
-            let predicate = self.instantiate_opaque_types_in_map(&predicate);
+            let predicate = self.instantiate_opaque_types_in_map(predicate);
 
             let cause = traits::ObligationCause::new(span, self.body_id, traits::MiscObligation);
 

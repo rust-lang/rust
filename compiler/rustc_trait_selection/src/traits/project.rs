@@ -168,7 +168,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|_snapshot| {
         let placeholder_predicate =
-            infcx.replace_bound_vars_with_placeholders(&obligation.predicate);
+            infcx.replace_bound_vars_with_placeholders(obligation.predicate);
 
         let placeholder_obligation = obligation.with(placeholder_predicate);
         let result = project_and_unify_type(selcx, &placeholder_obligation)?;
@@ -232,7 +232,7 @@ pub fn normalize<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
-    value: &T,
+    value: T,
 ) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<'tcx>,
@@ -246,7 +246,7 @@ pub fn normalize_to<'a, 'b, 'tcx, T>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
-    value: &T,
+    value: T,
     obligations: &mut Vec<PredicateObligation<'tcx>>,
 ) -> T
 where
@@ -261,7 +261,7 @@ pub fn normalize_with_depth<'a, 'b, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
-    value: &T,
+    value: T,
 ) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<'tcx>,
@@ -277,7 +277,7 @@ pub fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
-    value: &T,
+    value: T,
     obligations: &mut Vec<PredicateObligation<'tcx>>,
 ) -> T
 where
@@ -309,7 +309,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         AssocTypeNormalizer { selcx, param_env, cause, obligations, depth }
     }
 
-    fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
+    fn fold<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         let value = self.selcx.infcx().resolve_vars_if_possible(value);
 
         if !value.has_projections() { value } else { value.fold_with(self) }
@@ -365,7 +365,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Projection(ref data) if !data.has_escaping_bound_vars() => {
+            ty::Projection(data) if !data.has_escaping_bound_vars() => {
                 // This is kind of hacky -- we need to be able to
                 // handle normalization within binders because
                 // otherwise we wind up a need to normalize when doing
@@ -381,7 +381,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 let normalized_ty = normalize_projection_type(
                     self.selcx,
                     self.param_env,
-                    *data,
+                    data,
                     self.cause.clone(),
                     self.depth,
                     &mut self.obligations,
@@ -474,7 +474,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 ) -> Result<Option<Ty<'tcx>>, InProgress> {
     let infcx = selcx.infcx();
 
-    let projection_ty = infcx.resolve_vars_if_possible(&projection_ty);
+    let projection_ty = infcx.resolve_vars_if_possible(projection_ty);
     let cache_key = ProjectionCacheKey::new(projection_ty);
 
     // FIXME(#20304) For now, I am caching here, which is good, but it
@@ -567,7 +567,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                     depth + 1,
                     &mut projected_obligations,
                 );
-                let normalized_ty = normalizer.fold(&projected_ty);
+                let normalized_ty = normalizer.fold(projected_ty);
 
                 debug!(?normalized_ty, ?depth);
 
@@ -1013,8 +1013,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     if obligation.param_env.reveal() == Reveal::All {
                         // NOTE(eddyb) inference variables can resolve to parameters, so
                         // assume `poly_trait_ref` isn't monomorphic, if it contains any.
-                        let poly_trait_ref =
-                            selcx.infcx().resolve_vars_if_possible(&poly_trait_ref);
+                        let poly_trait_ref = selcx.infcx().resolve_vars_if_possible(poly_trait_ref);
                         !poly_trait_ref.still_further_specializable()
                     } else {
                         debug!(
@@ -1192,7 +1191,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         obligation.param_env,
         obligation.cause.clone(),
         obligation.recursion_depth + 1,
-        &gen_sig,
+        gen_sig,
     );
 
     debug!(?obligation, ?gen_sig, ?obligations, "confirm_generator_candidate");
@@ -1263,7 +1262,7 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
         obligation.param_env,
         obligation.cause.clone(),
         obligation.recursion_depth + 1,
-        &sig,
+        sig,
     );
 
     confirm_callable_candidate(selcx, obligation, sig, util::TupleArgumentsFlag::Yes)
@@ -1282,7 +1281,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
         obligation.param_env,
         obligation.cause.clone(),
         obligation.recursion_depth + 1,
-        &closure_sig,
+        closure_sig,
     );
 
     debug!(?obligation, ?closure_sig, ?obligations, "confirm_closure_candidate");
@@ -1336,7 +1335,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     let (cache_entry, _) = infcx.replace_bound_vars_with_fresh_vars(
         cause.span,
         LateBoundRegionConversionTime::HigherRankedType,
-        &poly_cache_entry,
+        poly_cache_entry,
     );
 
     let cache_trait_ref = cache_entry.projection_ty.trait_ref(infcx.tcx);
@@ -1349,7 +1348,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                &cache_trait_ref,
+                cache_trait_ref,
                 &mut nested_obligations,
             )
         })
@@ -1445,7 +1444,7 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            &predicate,
+            predicate,
             nested,
         );
         nested.push(Obligation::with_depth(
@@ -1526,7 +1525,7 @@ impl<'tcx> ProjectionCacheKeyExt<'tcx> for ProjectionCacheKey<'tcx> {
                 // from a specific call to `opt_normalize_projection_type` - if
                 // there's no precise match, the original cache entry is "stranded"
                 // anyway.
-                infcx.resolve_vars_if_possible(&predicate.projection_ty),
+                infcx.resolve_vars_if_possible(predicate.projection_ty),
             )
         })
     }

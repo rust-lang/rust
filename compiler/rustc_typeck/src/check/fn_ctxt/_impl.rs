@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
-        ty = self.resolve_vars_if_possible(&ty);
+        ty = self.resolve_vars_if_possible(ty);
         if !ty.has_infer_types_or_consts() {
             debug!("resolve_vars_with_obligations: ty={:?}", ty);
             return ty;
@@ -99,7 +99,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(false, |_| {});
-        ty = self.resolve_vars_if_possible(&ty);
+        ty = self.resolve_vars_if_possible(ty);
 
         debug!("resolve_vars_with_obligations: ty={:?}", ty);
         ty
@@ -134,12 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[inline]
     pub fn write_ty(&self, id: hir::HirId, ty: Ty<'tcx>) {
-        debug!(
-            "write_ty({:?}, {:?}) in fcx {}",
-            id,
-            self.resolve_vars_if_possible(&ty),
-            self.tag()
-        );
+        debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
         self.typeck_results.borrow_mut().node_types_mut().insert(id, ty);
 
         if ty.references_error() {
@@ -195,7 +190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         user_self_ty: None, // not relevant here
                     };
 
-                    self.infcx.canonicalize_user_type_annotation(&UserType::TypeOf(
+                    self.infcx.canonicalize_user_type_annotation(UserType::TypeOf(
                         method.def_id,
                         user_substs,
                     ))
@@ -240,7 +235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if Self::can_contain_user_lifetime_bounds((substs, user_self_ty)) {
-            let canonicalized = self.infcx.canonicalize_user_type_annotation(&UserType::TypeOf(
+            let canonicalized = self.infcx.canonicalize_user_type_annotation(UserType::TypeOf(
                 def_id,
                 UserSubsts { substs, user_self_ty },
             ));
@@ -326,13 +321,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Basically whenever we are converting from a type scheme into
     /// the fn body space, we always want to normalize associated
     /// types as well. This function combines the two.
-    fn instantiate_type_scheme<T>(&self, span: Span, substs: SubstsRef<'tcx>, value: &T) -> T
+    fn instantiate_type_scheme<T>(&self, span: Span, substs: SubstsRef<'tcx>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!("instantiate_type_scheme(value={:?}, substs={:?})", value, substs);
         let value = value.subst(self.tcx, substs);
-        let result = self.normalize_associated_types_in(span, &value);
-        debug!("instantiate_type_scheme(value={:?}, substs={:?}) = {:?}", value, substs, result);
+        let result = self.normalize_associated_types_in(span, value);
+        debug!("instantiate_type_scheme = {:?}", result);
         result
     }
 
@@ -347,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bounds = self.tcx.predicates_of(def_id);
         let spans: Vec<Span> = bounds.predicates.iter().map(|(_, span)| *span).collect();
         let result = bounds.instantiate(self.tcx, substs);
-        let result = self.normalize_associated_types_in(span, &result);
+        let result = self.normalize_associated_types_in(span, result);
         debug!(
             "instantiate_bounds(bounds={:?}, substs={:?}) = {:?}, {:?}",
             bounds, substs, result, spans,
@@ -361,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
         &self,
         parent_id: hir::HirId,
-        value: &T,
+        value: T,
         value_span: Span,
     ) -> T {
         let parent_def_id = self.tcx.hir().local_def_id(parent_id);
@@ -389,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         value
     }
 
-    pub(in super::super) fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
+    pub(in super::super) fn normalize_associated_types_in<T>(&self, span: Span, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -399,7 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn normalize_associated_types_in_as_infer_ok<T>(
         &self,
         span: Span,
-        value: &T,
+        value: T,
     ) -> InferOk<'tcx, T>
     where
         T: TypeFoldable<'tcx>,
@@ -468,7 +464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
         if Self::can_contain_user_lifetime_bounds(ty) {
-            let c_ty = self.infcx.canonicalize_response(&UserType::Ty(ty));
+            let c_ty = self.infcx.canonicalize_response(UserType::Ty(ty));
             debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.typeck_results.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
@@ -851,7 +847,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Record all the argument types, with the substitutions
                 // produced from the above subtyping unification.
-                Ok(formal_args.iter().map(|ty| self.resolve_vars_if_possible(ty)).collect())
+                Ok(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect())
             })
             .unwrap_or_default();
         debug!(
@@ -1204,7 +1200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid).decl_ty;
-            let ty = self.normalize_associated_types_in(span, &ty);
+            let ty = self.normalize_associated_types_in(span, ty);
             self.write_ty(hir_id, ty);
             return (ty, res);
         }
@@ -1414,7 +1410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
-        let ty_substituted = self.instantiate_type_scheme(span, &substs, &ty);
+        let ty_substituted = self.instantiate_type_scheme(span, &substs, ty);
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
@@ -1424,7 +1420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let ty = tcx.type_of(impl_def_id);
 
-            let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
+            let impl_ty = self.instantiate_type_scheme(span, &substs, ty);
             match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {

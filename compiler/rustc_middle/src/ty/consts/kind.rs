@@ -103,9 +103,9 @@ impl<'tcx> ConstKind<'tcx> {
             // so that we don't try to invoke this query with
             // any region variables.
             let param_env_and_substs = tcx
-                .erase_regions(&param_env)
+                .erase_regions(param_env)
                 .with_reveal_all_normalized(tcx)
-                .and(tcx.erase_regions(&substs));
+                .and(tcx.erase_regions(substs));
 
             // HACK(eddyb) when the query key would contain inference variables,
             // attempt using identity substs and `ParamEnv` instead, that will succeed

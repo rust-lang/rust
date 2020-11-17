@@ -49,7 +49,7 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
             .and_then(|typeck_results| typeck_results.borrow().node_type_opt(hir_id));
         match ty_opt {
             Some(ty) => {
-                let ty = self.infcx.resolve_vars_if_possible(&ty);
+                let ty = self.infcx.resolve_vars_if_possible(ty);
                 if ty.walk().any(|inner| {
                     inner == self.target
                         || match (inner.unpack(), self.target.unpack()) {
@@ -343,7 +343,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
     ) -> DiagnosticBuilder<'tcx> {
-        let arg = self.resolve_vars_if_possible(&arg);
+        let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
         let kind_str = match arg.unpack() {
             GenericArgKind::Type(_) => "type",
@@ -686,7 +686,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Span,
         ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
-        let ty = self.resolve_vars_if_possible(&ty);
+        let ty = self.resolve_vars_if_possible(ty);
         let data = self.extract_inference_diagnostics_data(ty.into(), None);
 
         let mut err = struct_span_err!(

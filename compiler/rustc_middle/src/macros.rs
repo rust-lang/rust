@@ -48,15 +48,15 @@ macro_rules! CloneLiftImpls {
 /// Used for types that are `Copy` and which **do not care arena
 /// allocated data** (i.e., don't need to be folded).
 #[macro_export]
-macro_rules! CloneTypeFoldableImpls {
+macro_rules! TrivialTypeFoldableImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
                 fn super_fold_with<F: $crate::ty::fold::TypeFolder<$tcx>>(
-                    &self,
+                    self,
                     _: &mut F
                 ) -> $ty {
-                    Clone::clone(self)
+                    self
                 }
 
                 fn super_visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
@@ -71,7 +71,7 @@ macro_rules! CloneTypeFoldableImpls {
     };
 
     ($($ty:ty,)+) => {
-        CloneTypeFoldableImpls! {
+        TrivialTypeFoldableImpls! {
             for <'tcx> {
                 $($ty,)+
             }
@@ -80,9 +80,9 @@ macro_rules! CloneTypeFoldableImpls {
 }
 
 #[macro_export]
-macro_rules! CloneTypeFoldableAndLiftImpls {
+macro_rules! TrivialTypeFoldableAndLiftImpls {
     ($($t:tt)*) => {
-        CloneTypeFoldableImpls! { $($t)* }
+        TrivialTypeFoldableImpls! { $($t)* }
         CloneLiftImpls! { $($t)* }
     }
 }
@@ -96,7 +96,7 @@ macro_rules! EnumTypeFoldableImpl {
             $(where $($wc)*)*
         {
             fn super_fold_with<V: $crate::ty::fold::TypeFolder<$tcx>>(
-                &self,
+                self,
                 folder: &mut V,
             ) -> Self {
                 EnumTypeFoldableImpl!(@FoldVariants(self, folder) input($($variants)*) output())

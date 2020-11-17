@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .replace_bound_vars_with_fresh_vars(
                             expr.span,
                             infer::LateBoundRegionConversionTime::FnCall,
-                            &fn_sig.input(i),
+                            fn_sig.input(i),
                         )
                         .0;
                     self.require_type_is_sized_deferred(
@@ -514,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .replace_bound_vars_with_fresh_vars(
                     expr.span,
                     infer::LateBoundRegionConversionTime::FnCall,
-                    &fn_sig.output(),
+                    fn_sig.output(),
                 )
                 .0;
             self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
@@ -963,9 +963,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Find the type of `e`. Supply hints based on the type we are casting to,
         // if appropriate.
         let t_cast = self.to_ty_saving_user_provided_ty(t);
-        let t_cast = self.resolve_vars_if_possible(&t_cast);
+        let t_cast = self.resolve_vars_if_possible(t_cast);
         let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-        let t_cast = self.resolve_vars_if_possible(&t_cast);
+        let t_cast = self.resolve_vars_if_possible(t_cast);
 
         // Eagerly check for some obvious errors.
         if t_expr.references_error() || t_cast.references_error() {
@@ -1139,7 +1139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .map(|f| {
                                 self.normalize_associated_types_in(
                                     expr.span,
-                                    &f.ty(self.tcx, substs),
+                                    f.ty(self.tcx, substs),
                                 )
                             })
                             .collect();
@@ -1571,7 +1571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) {
         let output_ty = match self.infcx.get_impl_future_output_ty(ty) {
-            Some(output_ty) => self.resolve_vars_if_possible(&output_ty),
+            Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };
         let mut add_label = true;

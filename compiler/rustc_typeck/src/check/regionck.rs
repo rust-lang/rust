@@ -229,7 +229,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// of b will be `&<R0>.i32` and then `*b` will require that `<R0>` be bigger than the let and
     /// the `*b` expression, so we will effectively resolve `<R0>` to be the block B.
     pub fn resolve_type(&self, unresolved_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.resolve_vars_if_possible(&unresolved_ty)
+        self.resolve_vars_if_possible(unresolved_ty)
     }
 
     /// Try to resolve the type for the given node.

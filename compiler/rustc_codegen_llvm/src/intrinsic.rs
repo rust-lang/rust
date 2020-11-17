@@ -91,7 +91,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         };
 
         let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
@@ -777,8 +777,8 @@ fn generic_simd_intrinsic(
     }
 
     let tcx = bx.tcx();
-    let sig = tcx
-        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &callee_ty.fn_sig(tcx));
+    let sig =
+        tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
     let name_str = &*name.as_str();
 

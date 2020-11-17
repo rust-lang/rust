@@ -92,7 +92,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
     check_ty(
         cx,
         decl.output.span(),
-        cx.tcx.erase_late_bound_regions(&fn_sig.output()),
+        cx.tcx.erase_late_bound_regions(fn_sig.output()),
     );
 }
 

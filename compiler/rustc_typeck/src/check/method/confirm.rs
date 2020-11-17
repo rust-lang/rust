@@ -90,8 +90,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr =
-            self.normalize_associated_types_in(self.span, &method_sig.inputs()[0]);
+        let method_sig_rcvr = self.normalize_associated_types_in(self.span, method_sig.inputs()[0]);
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
@@ -99,7 +98,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
 
         let (method_sig, method_predicates) =
-            self.normalize_associated_types_in(self.span, &(method_sig, method_predicates));
+            self.normalize_associated_types_in(self.span, (method_sig, method_predicates));
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(&pick);
@@ -229,7 +228,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     let original_poly_trait_ref = principal.with_self_ty(this.tcx, object_ty);
                     let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =
-                        this.replace_bound_vars_with_fresh_vars(&upcast_poly_trait_ref);
+                        this.replace_bound_vars_with_fresh_vars(upcast_poly_trait_ref);
                     debug!(
                         "original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
                         original_poly_trait_ref, upcast_trait_ref, trait_def_id
@@ -249,10 +248,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.fresh_substs_for_item(self.span, trait_def_id)
             }
 
-            probe::WhereClausePick(ref poly_trait_ref) => {
+            probe::WhereClausePick(poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                self.replace_bound_vars_with_fresh_vars(&poly_trait_ref).substs
+                self.replace_bound_vars_with_fresh_vars(poly_trait_ref).substs
             }
         }
     }
@@ -424,7 +423,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // N.B., instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let method_sig = self.replace_bound_vars_with_fresh_vars(&sig);
+        let method_sig = self.replace_bound_vars_with_fresh_vars(sig);
         debug!("late-bound lifetimes from method instantiated, method_sig={:?}", method_sig);
 
         let method_sig = method_sig.subst(self.tcx, all_substs);
@@ -530,7 +529,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         upcast_trait_refs.into_iter().next().unwrap()
     }
 
-    fn replace_bound_vars_with_fresh_vars<T>(&self, value: &ty::Binder<T>) -> T
+    fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

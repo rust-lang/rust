@@ -189,7 +189,7 @@ impl TypeMap<'ll, 'tcx> {
         // something that provides more than the 64 bits of the DefaultHasher.
         let mut hasher = StableHasher::new();
         let mut hcx = cx.tcx.create_stable_hashing_context();
-        let type_ = cx.tcx.erase_regions(&type_);
+        let type_ = cx.tcx.erase_regions(type_);
         hcx.while_hashing_spans(false, |hcx| {
             hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                 type_.hash_stable(hcx, &mut hasher);
@@ -427,7 +427,7 @@ fn subroutine_type_metadata(
     span: Span,
 ) -> MetadataCreationResult<'ll> {
     let signature =
-        cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &signature);
+        cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), signature);
 
     let signature_metadata: Vec<_> = iter::once(
         // return type

@@ -109,7 +109,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             param_env,
             state: AutoderefSnapshot {
                 steps: vec![],
-                cur_ty: infcx.resolve_vars_if_possible(&base_ty),
+                cur_ty: infcx.resolve_vars_if_possible(base_ty),
                 obligations: vec![],
                 at_start: true,
                 reached_recursion_limit: false,
@@ -164,14 +164,14 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
-        Some(self.infcx.resolve_vars_if_possible(&normalized_ty))
+        Some(self.infcx.resolve_vars_if_possible(normalized_ty))
     }
 
     /// Returns the final type we ended up with, which may be an inference
     /// variable (we will resolve it first, if we want).
     pub fn final_ty(&self, resolve: bool) -> Ty<'tcx> {
         if resolve {
-            self.infcx.resolve_vars_if_possible(&self.state.cur_ty)
+            self.infcx.resolve_vars_if_possible(self.state.cur_ty)
         } else {
             self.state.cur_ty
         }

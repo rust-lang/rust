@@ -308,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let mut orig_values = OriginalQueryValues::default();
         let param_env_and_self_ty = self.infcx.canonicalize_query(
-            &ParamEnvAnd { param_env: self.param_env, value: self_ty },
+            ParamEnvAnd { param_env: self.param_env, value: self_ty },
             &mut orig_values,
         );
 
@@ -730,7 +730,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
             let selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: (xform_self_ty, xform_ret_ty), obligations } =
-                traits::normalize(selcx, self.param_env, cause, &xform_tys);
+                traits::normalize(selcx, self.param_env, cause, xform_tys);
             debug!(
                 "assemble_inherent_impl_probe: xform_self_ty = {:?}/{:?}",
                 xform_self_ty, xform_ret_ty
@@ -774,7 +774,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // argument type like `&Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
-            let new_trait_ref = this.erase_late_bound_regions(&new_trait_ref);
+            let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
 
             let (xform_self_ty, xform_ret_ty) =
                 this.xform_self_ty(&item, new_trait_ref.self_ty(), new_trait_ref.substs);
@@ -820,7 +820,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         });
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
-            let trait_ref = this.erase_late_bound_regions(&poly_trait_ref);
+            let trait_ref = this.erase_late_bound_regions(poly_trait_ref);
 
             let (xform_self_ty, xform_ret_ty) =
                 this.xform_self_ty(&item, trait_ref.self_ty(), trait_ref.substs);
@@ -911,7 +911,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let fty = fty.subst(self.tcx, substs);
                     let (fty, _) =
-                        self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, &fty);
+                        self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
 
                     if let Some(self_ty) = self_ty {
                         if self
@@ -942,7 +942,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // For trait aliases, assume all super-traits are relevant.
             let bounds = iter::once(trait_ref.to_poly_trait_ref());
             self.elaborate_bounds(bounds, |this, new_trait_ref, item| {
-                let new_trait_ref = this.erase_late_bound_regions(&new_trait_ref);
+                let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
 
                 let (xform_self_ty, xform_ret_ty) =
                     this.xform_self_ty(&item, new_trait_ref.self_ty(), new_trait_ref.substs);
@@ -1355,7 +1355,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let impl_bounds = self.tcx.predicates_of(impl_def_id);
                     let impl_bounds = impl_bounds.instantiate(self.tcx, substs);
                     let traits::Normalized { value: impl_bounds, obligations: norm_obligations } =
-                        traits::normalize(selcx, self.param_env, cause.clone(), &impl_bounds);
+                        traits::normalize(selcx, self.param_env, cause.clone(), impl_bounds);
 
                     // Convert the bounds into obligations.
                     let impl_obligations =
@@ -1366,7 +1366,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         .chain(ref_obligations.iter().cloned());
                     // Evaluate those obligations to see if they might possibly hold.
                     for o in candidate_obligations {
-                        let o = self.resolve_vars_if_possible(&o);
+                        let o = self.resolve_vars_if_possible(o);
                         if !self.predicate_may_hold(&o) {
                             result = ProbeResult::NoMatch;
                             possibly_unsatisfied_predicates.push((o.predicate, None));
@@ -1392,25 +1392,27 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                     for obligation in impl_source.borrow_nested_obligations() {
                                         // Determine exactly which obligation wasn't met, so
                                         // that we can give more context in the error.
-                                        if !self.predicate_may_hold(&obligation) {
-                                            let o = self.resolve_vars_if_possible(obligation);
+                                        if !self.predicate_may_hold(obligation) {
+                                            let nested_predicate =
+                                                self.resolve_vars_if_possible(obligation.predicate);
                                             let predicate =
-                                                self.resolve_vars_if_possible(&predicate);
-                                            let p = if predicate == o.predicate {
+                                                self.resolve_vars_if_possible(predicate);
+                                            let p = if predicate == nested_predicate {
                                                 // Avoid "`MyStruct: Foo` which is required by
                                                 // `MyStruct: Foo`" in E0599.
                                                 None
                                             } else {
                                                 Some(predicate)
                                             };
-                                            possibly_unsatisfied_predicates.push((o.predicate, p));
+                                            possibly_unsatisfied_predicates
+                                                .push((nested_predicate, p));
                                         }
                                     }
                                 }
                                 _ => {
                                     // Some nested subobligation of this predicate
                                     // failed.
-                                    let predicate = self.resolve_vars_if_possible(&predicate);
+                                    let predicate = self.resolve_vars_if_possible(predicate);
                                     possibly_unsatisfied_predicates.push((predicate, None));
                                 }
                             }
@@ -1427,7 +1429,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             // Evaluate those obligations to see if they might possibly hold.
             for o in sub_obligations {
-                let o = self.resolve_vars_if_possible(&o);
+                let o = self.resolve_vars_if_possible(o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
                     possibly_unsatisfied_predicates.push((o.predicate, None));
@@ -1438,7 +1440,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let (Some(return_ty), Some(xform_ret_ty)) =
                     (self.return_type, probe.xform_ret_ty)
                 {
-                    let xform_ret_ty = self.resolve_vars_if_possible(&xform_ret_ty);
+                    let xform_ret_ty = self.resolve_vars_if_possible(xform_ret_ty);
                     debug!(
                         "comparing return_ty {:?} with xform ret ty {:?}",
                         return_ty, probe.xform_ret_ty
@@ -1604,7 +1606,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         // Erase any late-bound regions from the method and substitute
         // in the values from the substitution.
-        let xform_fn_sig = self.erase_late_bound_regions(&fn_sig);
+        let xform_fn_sig = self.erase_late_bound_regions(fn_sig);
 
         if generics.params.is_empty() {
             xform_fn_sig.subst(self.tcx, substs)
@@ -1672,7 +1674,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///    region got replaced with the same variable, which requires a bit more coordination
     ///    and/or tracking the substitution and
     ///    so forth.
-    fn erase_late_bound_regions<T>(&self, value: &ty::Binder<T>) -> T
+    fn erase_late_bound_regions<T>(&self, value: ty::Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

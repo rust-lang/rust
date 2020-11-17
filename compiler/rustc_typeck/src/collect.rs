@@ -386,7 +386,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                                         "{}::{}",
                                         // Replace the existing lifetimes with a new named lifetime.
                                         self.tcx
-                                            .replace_late_bound_regions(&poly_trait_ref, |_| {
+                                            .replace_late_bound_regions(poly_trait_ref, |_| {
                                                 self.tcx.mk_region(ty::ReEarlyBound(
                                                     ty::EarlyBoundRegion {
                                                         def_id: item_def_id,
@@ -424,7 +424,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                         format!(
                             "{}::{}",
                             // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
-                            self.tcx.anonymize_late_bound_regions(&poly_trait_ref).skip_binder(),
+                            self.tcx.anonymize_late_bound_regions(poly_trait_ref).skip_binder(),
                             item_segment.ident
                         ),
                         Applicability::MaybeIncorrect,

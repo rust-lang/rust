@@ -33,14 +33,14 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
-            let b_prime = self.infcx.replace_bound_vars_with_placeholders(&b);
+            let b_prime = self.infcx.replace_bound_vars_with_placeholders(b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
             // but no other pre-existing region variables -- can name
             // the placeholders.
             let (a_prime, _) =
-                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, &a);
+                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
@@ -66,7 +66,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    pub fn replace_bound_vars_with_placeholders<T>(&self, binder: &ty::Binder<T>) -> T
+    pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -113,10 +113,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!(
             "replace_bound_vars_with_placeholders(\
              next_universe={:?}, \
-             binder={:?}, \
              result={:?}, \
              map={:?})",
-            next_universe, binder, result, map,
+            next_universe, result, map,
         );
 
         result
