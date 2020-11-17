@@ -60,30 +60,38 @@ impl EarlyLintPass for DerefAddrOf {
                             }).map_or(span, |start_no_whitespace| e.span.with_lo(start_no_whitespace))
                         };
 
-                        let rpos = if *mutability == Mutability::Mut {
-                            macro_source.rfind("mut").expect("already checked this is a mutable reference") + "mut".len()
-                        } else {
-                            macro_source.rfind('&').expect("already checked this is a reference") + "&".len()
+                        let mut generate_snippet = |pattern: &str| {
+                            #[allow(clippy::cast_possible_truncation)]
+                            macro_source.rfind(pattern).map(|pattern_pos| {
+                                let rpos = pattern_pos + pattern.len();
+                                let span_after_ref = e.span.with_lo(BytePos(e.span.lo().0 + rpos as u32));
+                                let span = trim_leading_whitespaces(span_after_ref);
+                                snippet_with_applicability(cx, span, "_", &mut applicability)
+                            })
                         };
-                        #[allow(clippy::cast_possible_truncation)]
-                        let span_after_ref = e.span.with_lo(BytePos(e.span.lo().0 + rpos as u32));
-                        let span = trim_leading_whitespaces(span_after_ref);
-                        snippet_with_applicability(cx, span, "_", &mut applicability)
+
+                        if *mutability == Mutability::Mut {
+                            generate_snippet("mut")
+                        } else {
+                            generate_snippet("&")
+                        }
                     } else {
-                        snippet_with_applicability(cx, e.span, "_", &mut applicability)
+                        Some(snippet_with_applicability(cx, e.span, "_", &mut applicability))
                     }
                 } else {
-                    snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability)
-                }.to_string();
-                span_lint_and_sugg(
-                    cx,
-                    DEREF_ADDROF,
-                    e.span,
-                    "immediately dereferencing a reference",
-                    "try this",
-                    sugg,
-                    applicability,
-                );
+                    Some(snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability))
+                };
+                if let Some(sugg) = sugg {
+                    span_lint_and_sugg(
+                        cx,
+                        DEREF_ADDROF,
+                        e.span,
+                        "immediately dereferencing a reference",
+                        "try this",
+                        sugg.to_string(),
+                        applicability,
+                    );
+                }
             }
         }
     }
