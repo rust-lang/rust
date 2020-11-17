@@ -1341,6 +1341,9 @@ fn metadata_access_times() {
 #[test]
 fn symlink_hard_link() {
     let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
 
     // Create "file", a file.
     check!(fs::File::create(tmpdir.join("file")));
