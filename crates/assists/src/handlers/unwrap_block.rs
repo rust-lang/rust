@@ -31,6 +31,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let l_curly_token = ctx.find_token_syntax_at_offset(T!['{'])?;
     let mut block = ast::BlockExpr::cast(l_curly_token.parent())?;
+    let target = block.syntax().text_range();
     let mut parent = block.syntax().parent()?;
     if ast::MatchArm::can_cast(parent.kind()) {
         parent = parent.ancestors().find(|it| ast::MatchExpr::can_cast(it.kind()))?
@@ -48,7 +49,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                     // For `else if` blocks
                     let ancestor_then_branch = ancestor.then_branch()?;
 
-                    let target = then_branch.syntax().text_range();
                     return acc.add(assist_id, assist_label, target, |edit| {
                         let range_to_del_else_if = TextRange::new(
                             ancestor_then_branch.syntax().text_range().end(),
@@ -68,7 +68,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
                     });
                 }
             } else {
-                let target = block.syntax().text_range();
                 return acc.add(assist_id, assist_label, target, |edit| {
                     let range_to_del = TextRange::new(
                         then_branch.syntax().text_range().end(),
@@ -83,7 +82,6 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         _ => return None,
     };
 
-    let target = block.syntax().text_range();
     let unwrapped = unwrap_trivial_block(block);
     acc.add(assist_id, assist_label, target, |builder| {
         builder.replace(
