@@ -184,7 +184,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.lower_closure_capture(block, capture_index, *upvar_id)
             }
 
-            ExprKind::SelfRef => block.and(PlaceBuilder::from(Local::new(1))),
             ExprKind::VarRef { id } => {
                 let place_builder = if this.is_bound_var_in_guard(id) {
                     let index = this.var_local_id(id, RefWithinGuard);

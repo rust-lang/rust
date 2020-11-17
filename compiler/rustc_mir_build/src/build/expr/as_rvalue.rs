@@ -250,7 +250,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Deref { .. }
             | ExprKind::Index { .. }
             | ExprKind::VarRef { .. }
-            | ExprKind::SelfRef
             | ExprKind::UpvarRef { .. }
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }

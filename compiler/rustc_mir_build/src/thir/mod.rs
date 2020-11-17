@@ -219,8 +219,6 @@ crate enum ExprKind<'tcx> {
         /// HirId of the root variable
         var_hir_id: hir::HirId,
     },
-    /// first argument, used for self in a closure
-    SelfRef,
     Borrow {
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,

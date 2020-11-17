@@ -400,7 +400,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Avoid creating a temporary
             ExprKind::VarRef { .. }
-            | ExprKind::SelfRef
             | ExprKind::UpvarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
