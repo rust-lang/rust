@@ -1,7 +1,7 @@
 //! checks for attributes
 
 use crate::utils::{
-    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_help,
+    first_line_of_span, is_present_in_source, match_panic_def_id, snippet_opt, span_lint, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
@@ -513,7 +513,7 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
                 typeck_results
                     .qpath_res(qpath, path_expr.hir_id)
                     .opt_def_id()
-                    .map_or(true, |fun_id| !match_def_path(cx, fun_id, &paths::BEGIN_PANIC))
+                    .map_or(true, |fun_id| !match_panic_def_id(cx, fun_id))
             } else {
                 true
             }

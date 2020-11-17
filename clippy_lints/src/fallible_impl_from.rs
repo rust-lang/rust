@@ -1,5 +1,7 @@
-use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT};
-use crate::utils::{is_expn_of, is_type_diagnostic_item, match_def_path, method_chain_args, span_lint_and_then};
+use crate::utils::paths::FROM_TRAIT;
+use crate::utils::{
+    is_expn_of, is_type_diagnostic_item, match_def_path, match_panic_def_id, method_chain_args, span_lint_and_then,
+};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -84,8 +86,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
                 if let ExprKind::Call(ref func_expr, _) = expr.kind;
                 if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
                 if let Some(path_def_id) = path.res.opt_def_id();
-                if match_def_path(self.lcx, path_def_id, &BEGIN_PANIC) ||
-                    match_def_path(self.lcx, path_def_id, &BEGIN_PANIC_FMT);
+                if match_panic_def_id(self.lcx, path_def_id);
                 if is_expn_of(expr.span, "unreachable").is_none();
                 then {
                     self.result.push(expr.span);

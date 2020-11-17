@@ -1196,7 +1196,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 /// Usage:
 ///
 /// ```rust,ignore
-/// if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
+/// if let Some(args) = match_function_call(cx, cmp_max_call, &paths::CMP_MAX);
 /// ```
 pub fn match_function_call<'tcx>(
     cx: &LateContext<'tcx>,
@@ -1229,6 +1229,24 @@ pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -
     // accepts only that. We should probably move to Symbols in Clippy as well.
     let syms = syms.iter().map(|p| Symbol::intern(p)).collect::<Vec<Symbol>>();
     cx.match_def_path(did, &syms)
+}
+
+pub fn match_panic_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx [Expr<'tcx>]> {
+    match_function_call(cx, expr, &paths::BEGIN_PANIC)
+        .or_else(|| match_function_call(cx, expr, &paths::BEGIN_PANIC_FMT))
+        .or_else(|| match_function_call(cx, expr, &paths::PANIC_ANY))
+        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC))
+        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_FMT))
+        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_STR))
+}
+
+pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
+    match_def_path(cx, did, &paths::BEGIN_PANIC)
+        || match_def_path(cx, did, &paths::BEGIN_PANIC_FMT)
+        || match_def_path(cx, did, &paths::PANIC_ANY)
+        || match_def_path(cx, did, &paths::PANICKING_PANIC)
+        || match_def_path(cx, did, &paths::PANICKING_PANIC_FMT)
+        || match_def_path(cx, did, &paths::PANICKING_PANIC_STR)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a

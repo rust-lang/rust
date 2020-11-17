@@ -1,4 +1,4 @@
-use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, paths, span_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_panic_call, span_lint};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -93,27 +93,27 @@ declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED, UNREACHAB
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Block(ref block, _) = expr.kind;
-            if let Some(ref ex) = block.expr;
-            if let Some(params) = match_function_call(cx, ex, &paths::BEGIN_PANIC)
-                .or_else(|| match_function_call(cx, ex, &paths::BEGIN_PANIC_FMT));
-            then {
-                let span = get_outer_span(expr);
-                if is_expn_of(expr.span, "unimplemented").is_some() {
-                    span_lint(cx, UNIMPLEMENTED, span,
-                              "`unimplemented` should not be present in production code");
-                } else if is_expn_of(expr.span, "todo").is_some() {
-                    span_lint(cx, TODO, span,
-                              "`todo` should not be present in production code");
-                } else if is_expn_of(expr.span, "unreachable").is_some() {
-                    span_lint(cx, UNREACHABLE, span,
-                              "`unreachable` should not be present in production code");
-                } else if is_expn_of(expr.span, "panic").is_some() {
-                    span_lint(cx, PANIC, span,
-                              "`panic` should not be present in production code");
-                    match_panic(params, expr, cx);
-                }
+        if let Some(params) = match_panic_call(cx, expr) {
+            let span = get_outer_span(expr);
+            if is_expn_of(expr.span, "unimplemented").is_some() {
+                span_lint(
+                    cx,
+                    UNIMPLEMENTED,
+                    span,
+                    "`unimplemented` should not be present in production code",
+                );
+            } else if is_expn_of(expr.span, "todo").is_some() {
+                span_lint(cx, TODO, span, "`todo` should not be present in production code");
+            } else if is_expn_of(expr.span, "unreachable").is_some() {
+                span_lint(
+                    cx,
+                    UNREACHABLE,
+                    span,
+                    "`unreachable` should not be present in production code",
+                );
+            } else if is_expn_of(expr.span, "panic").is_some() {
+                span_lint(cx, PANIC, span, "`panic` should not be present in production code");
+                match_panic(params, expr, cx);
             }
         }
     }

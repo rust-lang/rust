@@ -1,8 +1,4 @@
-use crate::utils::{
-    fn_has_unsatisfiable_preds, match_def_path,
-    paths::{BEGIN_PANIC, BEGIN_PANIC_FMT},
-    snippet_opt, span_lint_and_then,
-};
+use crate::utils::{fn_has_unsatisfiable_preds, match_panic_def_id, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -109,8 +105,7 @@ fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if_chain! {
                 if let ExprKind::Path(qpath) = &expr.kind;
                 if let Some(path_def_id) = cx.qpath_res(qpath, expr.hir_id).opt_def_id();
-                if match_def_path(cx, path_def_id, &BEGIN_PANIC) ||
-                    match_def_path(cx, path_def_id, &BEGIN_PANIC_FMT);
+                if match_panic_def_id(cx, path_def_id);
                 then { }
                 else {
                     lint(cx, expr.span, expr.span, LINT_RETURN)
