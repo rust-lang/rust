@@ -197,208 +197,14 @@ impl ProjectWorkspace {
         proc_macro_client: &ProcMacroClient,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
-        let mut crate_graph = CrateGraph::default();
-        match self {
+        let mut crate_graph = match self {
             ProjectWorkspace::Json { project, sysroot } => {
-                let sysroot_deps = sysroot
-                    .as_ref()
-                    .map(|sysroot| sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load));
-
-                let mut cfg_cache: FxHashMap<Option<&str>, Vec<CfgFlag>> = FxHashMap::default();
-                let crates: FxHashMap<CrateId, CrateId> = project
-                    .crates()
-                    .filter_map(|(crate_id, krate)| {
-                        let file_path = &krate.root_module;
-                        let file_id = load(&file_path)?;
-                        Some((crate_id, krate, file_id))
-                    })
-                    .map(|(crate_id, krate, file_id)| {
-                        let env = krate.env.clone().into_iter().collect();
-                        let proc_macro = krate
-                            .proc_macro_dylib_path
-                            .clone()
-                            .map(|it| proc_macro_client.by_dylib_path(&it));
-
-                        let target = krate.target.as_deref().or(target);
-                        let target_cfgs = cfg_cache
-                            .entry(target)
-                            .or_insert_with(|| get_rustc_cfg_options(target));
-
-                        let mut cfg_options = CfgOptions::default();
-                        cfg_options.extend(target_cfgs.iter().chain(krate.cfg.iter()).cloned());
-                        (
-                            crate_id,
-                            crate_graph.add_crate_root(
-                                file_id,
-                                krate.edition,
-                                krate.display_name.clone(),
-                                cfg_options,
-                                env,
-                                proc_macro.unwrap_or_default(),
-                            ),
-                        )
-                    })
-                    .collect();
-
-                for (from, krate) in project.crates() {
-                    if let Some(&from) = crates.get(&from) {
-                        if let Some((public_deps, _proc_macro)) = &sysroot_deps {
-                            for (name, to) in public_deps.iter() {
-                                add_dep(&mut crate_graph, from, name.clone(), *to)
-                            }
-                        }
-
-                        for dep in &krate.deps {
-                            if let Some(&to) = crates.get(&dep.crate_id) {
-                                add_dep(&mut crate_graph, from, dep.name.clone(), to)
-                            }
-                        }
-                    }
-                }
+                project_json_to_crate_graph(target, proc_macro_client, load, project, sysroot)
             }
             ProjectWorkspace::Cargo { cargo, sysroot, rustc } => {
-                let (public_deps, libproc_macro) =
-                    sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load);
-
-                let mut cfg_options = CfgOptions::default();
-                cfg_options.extend(get_rustc_cfg_options(target));
-
-                let mut pkg_to_lib_crate = FxHashMap::default();
-
-                // Add test cfg for non-sysroot crates
-                cfg_options.insert_atom("test".into());
-                cfg_options.insert_atom("debug_assertions".into());
-
-                let mut pkg_crates = FxHashMap::default();
-
-                // Next, create crates for each package, target pair
-                for pkg in cargo.packages() {
-                    let mut lib_tgt = None;
-                    for &tgt in cargo[pkg].targets.iter() {
-                        if let Some(crate_id) = add_target_crate_root(
-                            &mut crate_graph,
-                            &cargo[pkg],
-                            &cargo[tgt],
-                            &cfg_options,
-                            proc_macro_client,
-                            load,
-                        ) {
-                            if cargo[tgt].kind == TargetKind::Lib {
-                                lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
-                                pkg_to_lib_crate.insert(pkg, crate_id);
-                            }
-                            if cargo[tgt].is_proc_macro {
-                                if let Some(proc_macro) = libproc_macro {
-                                    add_dep(
-                                        &mut crate_graph,
-                                        crate_id,
-                                        CrateName::new("proc_macro").unwrap(),
-                                        proc_macro,
-                                    );
-                                }
-                            }
-
-                            pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
-                        }
-                    }
-
-                    // Set deps to the core, std and to the lib target of the current package
-                    for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                        if let Some((to, name)) = lib_tgt.clone() {
-                            if to != from {
-                                // For root projects with dashes in their name,
-                                // cargo metadata does not do any normalization,
-                                // so we do it ourselves currently
-                                let name = CrateName::normalize_dashes(&name);
-                                add_dep(&mut crate_graph, from, name, to);
-                            }
-                        }
-                        for (name, krate) in public_deps.iter() {
-                            add_dep(&mut crate_graph, from, name.clone(), *krate);
-                        }
-                    }
-                }
-
-                // Now add a dep edge from all targets of upstream to the lib
-                // target of downstream.
-                for pkg in cargo.packages() {
-                    for dep in cargo[pkg].dependencies.iter() {
-                        let name = CrateName::new(&dep.name).unwrap();
-                        if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
-                            for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                                add_dep(&mut crate_graph, from, name.clone(), to)
-                            }
-                        }
-                    }
-                }
-
-                let mut rustc_pkg_crates = FxHashMap::default();
-
-                // If the user provided a path to rustc sources, we add all the rustc_private crates
-                // and create dependencies on them for the crates in the current workspace
-                if let Some(rustc_workspace) = rustc {
-                    for pkg in rustc_workspace.packages() {
-                        for &tgt in rustc_workspace[pkg].targets.iter() {
-                            if rustc_workspace[tgt].kind != TargetKind::Lib {
-                                continue;
-                            }
-                            // Exclude alloc / core / std
-                            if rustc_workspace[tgt]
-                                .root
-                                .components()
-                                .any(|c| c == Component::Normal("library".as_ref()))
-                            {
-                                continue;
-                            }
-
-                            if let Some(crate_id) = add_target_crate_root(
-                                &mut crate_graph,
-                                &rustc_workspace[pkg],
-                                &rustc_workspace[tgt],
-                                &cfg_options,
-                                proc_macro_client,
-                                load,
-                            ) {
-                                pkg_to_lib_crate.insert(pkg, crate_id);
-                                // Add dependencies on the core / std / alloc for rustc
-                                for (name, krate) in public_deps.iter() {
-                                    add_dep(&mut crate_graph, crate_id, name.clone(), *krate);
-                                }
-                                rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
-                            }
-                        }
-                    }
-                    // Now add a dep edge from all targets of upstream to the lib
-                    // target of downstream.
-                    for pkg in rustc_workspace.packages() {
-                        for dep in rustc_workspace[pkg].dependencies.iter() {
-                            let name = CrateName::new(&dep.name).unwrap();
-                            if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
-                                for &from in rustc_pkg_crates.get(&pkg).into_iter().flatten() {
-                                    add_dep(&mut crate_graph, from, name.clone(), to);
-                                }
-                            }
-                        }
-                    }
-
-                    // Add dependencies for all the crates of the current workspace to rustc_private libraries
-                    for dep in rustc_workspace.packages() {
-                        let name = CrateName::normalize_dashes(&rustc_workspace[dep].name);
-
-                        if let Some(&to) = pkg_to_lib_crate.get(&dep) {
-                            for pkg in cargo.packages() {
-                                if !cargo[pkg].is_member {
-                                    continue;
-                                }
-                                for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                                    add_dep(&mut crate_graph, from, name.clone(), to);
-                                }
-                            }
-                        }
-                    }
-                }
+                cargo_to_crate_graph(target, proc_macro_client, load, cargo, sysroot, rustc)
             }
-        }
+        };
         if crate_graph.patch_cfg_if() {
             log::debug!("Patched std to depend on cfg-if")
         } else {
@@ -406,6 +212,221 @@ impl ProjectWorkspace {
         }
         crate_graph
     }
+}
+
+fn project_json_to_crate_graph(
+    target: Option<&str>,
+    proc_macro_client: &ProcMacroClient,
+    load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
+    project: &ProjectJson,
+    sysroot: &Option<Sysroot>,
+) -> CrateGraph {
+    let mut crate_graph = CrateGraph::default();
+    let sysroot_deps = sysroot
+        .as_ref()
+        .map(|sysroot| sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load));
+
+    let mut cfg_cache: FxHashMap<Option<&str>, Vec<CfgFlag>> = FxHashMap::default();
+    let crates: FxHashMap<CrateId, CrateId> = project
+        .crates()
+        .filter_map(|(crate_id, krate)| {
+            let file_path = &krate.root_module;
+            let file_id = load(&file_path)?;
+            Some((crate_id, krate, file_id))
+        })
+        .map(|(crate_id, krate, file_id)| {
+            let env = krate.env.clone().into_iter().collect();
+            let proc_macro =
+                krate.proc_macro_dylib_path.clone().map(|it| proc_macro_client.by_dylib_path(&it));
+
+            let target = krate.target.as_deref().or(target);
+            let target_cfgs =
+                cfg_cache.entry(target).or_insert_with(|| get_rustc_cfg_options(target));
+
+            let mut cfg_options = CfgOptions::default();
+            cfg_options.extend(target_cfgs.iter().chain(krate.cfg.iter()).cloned());
+            (
+                crate_id,
+                crate_graph.add_crate_root(
+                    file_id,
+                    krate.edition,
+                    krate.display_name.clone(),
+                    cfg_options,
+                    env,
+                    proc_macro.unwrap_or_default(),
+                ),
+            )
+        })
+        .collect();
+
+    for (from, krate) in project.crates() {
+        if let Some(&from) = crates.get(&from) {
+            if let Some((public_deps, _proc_macro)) = &sysroot_deps {
+                for (name, to) in public_deps.iter() {
+                    add_dep(&mut crate_graph, from, name.clone(), *to)
+                }
+            }
+
+            for dep in &krate.deps {
+                if let Some(&to) = crates.get(&dep.crate_id) {
+                    add_dep(&mut crate_graph, from, dep.name.clone(), to)
+                }
+            }
+        }
+    }
+    crate_graph
+}
+
+fn cargo_to_crate_graph(
+    target: Option<&str>,
+    proc_macro_client: &ProcMacroClient,
+    load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
+    cargo: &CargoWorkspace,
+    sysroot: &Sysroot,
+    rustc: &Option<CargoWorkspace>,
+) -> CrateGraph {
+    let mut crate_graph = CrateGraph::default();
+    let (public_deps, libproc_macro) =
+        sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load);
+
+    let mut cfg_options = CfgOptions::default();
+    cfg_options.extend(get_rustc_cfg_options(target));
+
+    let mut pkg_to_lib_crate = FxHashMap::default();
+
+    // Add test cfg for non-sysroot crates
+    cfg_options.insert_atom("test".into());
+    cfg_options.insert_atom("debug_assertions".into());
+
+    let mut pkg_crates = FxHashMap::default();
+
+    // Next, create crates for each package, target pair
+    for pkg in cargo.packages() {
+        let mut lib_tgt = None;
+        for &tgt in cargo[pkg].targets.iter() {
+            if let Some(crate_id) = add_target_crate_root(
+                &mut crate_graph,
+                &cargo[pkg],
+                &cargo[tgt],
+                &cfg_options,
+                proc_macro_client,
+                load,
+            ) {
+                if cargo[tgt].kind == TargetKind::Lib {
+                    lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
+                    pkg_to_lib_crate.insert(pkg, crate_id);
+                }
+                if cargo[tgt].is_proc_macro {
+                    if let Some(proc_macro) = libproc_macro {
+                        add_dep(
+                            &mut crate_graph,
+                            crate_id,
+                            CrateName::new("proc_macro").unwrap(),
+                            proc_macro,
+                        );
+                    }
+                }
+
+                pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
+            }
+        }
+
+        // Set deps to the core, std and to the lib target of the current package
+        for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+            if let Some((to, name)) = lib_tgt.clone() {
+                if to != from {
+                    // For root projects with dashes in their name,
+                    // cargo metadata does not do any normalization,
+                    // so we do it ourselves currently
+                    let name = CrateName::normalize_dashes(&name);
+                    add_dep(&mut crate_graph, from, name, to);
+                }
+            }
+            for (name, krate) in public_deps.iter() {
+                add_dep(&mut crate_graph, from, name.clone(), *krate);
+            }
+        }
+    }
+
+    // Now add a dep edge from all targets of upstream to the lib
+    // target of downstream.
+    for pkg in cargo.packages() {
+        for dep in cargo[pkg].dependencies.iter() {
+            let name = CrateName::new(&dep.name).unwrap();
+            if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
+                for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+                    add_dep(&mut crate_graph, from, name.clone(), to)
+                }
+            }
+        }
+    }
+
+    let mut rustc_pkg_crates = FxHashMap::default();
+
+    // If the user provided a path to rustc sources, we add all the rustc_private crates
+    // and create dependencies on them for the crates in the current workspace
+    if let Some(rustc_workspace) = rustc {
+        for pkg in rustc_workspace.packages() {
+            for &tgt in rustc_workspace[pkg].targets.iter() {
+                if rustc_workspace[tgt].kind != TargetKind::Lib {
+                    continue;
+                }
+                // Exclude alloc / core / std
+                if rustc_workspace[tgt]
+                    .root
+                    .components()
+                    .any(|c| c == Component::Normal("library".as_ref()))
+                {
+                    continue;
+                }
+
+                if let Some(crate_id) = add_target_crate_root(
+                    &mut crate_graph,
+                    &rustc_workspace[pkg],
+                    &rustc_workspace[tgt],
+                    &cfg_options,
+                    proc_macro_client,
+                    load,
+                ) {
+                    pkg_to_lib_crate.insert(pkg, crate_id);
+                    // Add dependencies on the core / std / alloc for rustc
+                    for (name, krate) in public_deps.iter() {
+                        add_dep(&mut crate_graph, crate_id, name.clone(), *krate);
+                    }
+                    rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
+                }
+            }
+        }
+        // Now add a dep edge from all targets of upstream to the lib
+        // target of downstream.
+        for pkg in rustc_workspace.packages() {
+            for dep in rustc_workspace[pkg].dependencies.iter() {
+                let name = CrateName::new(&dep.name).unwrap();
+                if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
+                    for &from in rustc_pkg_crates.get(&pkg).into_iter().flatten() {
+                        add_dep(&mut crate_graph, from, name.clone(), to);
+                    }
+                }
+            }
+        }
+
+        // Add dependencies for all the crates of the current workspace to rustc_private libraries
+        for dep in rustc_workspace.packages() {
+            let name = CrateName::normalize_dashes(&rustc_workspace[dep].name);
+
+            if let Some(&to) = pkg_to_lib_crate.get(&dep) {
+                for pkg in cargo.packages() {
+                    if !cargo[pkg].is_member {
+                        continue;
+                    }
+                    for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+                        add_dep(&mut crate_graph, from, name.clone(), to);
+                    }
+                }
+            }
+        }
+    }
+    crate_graph
 }
 
 fn add_target_crate_root(
