@@ -360,7 +360,6 @@ def output(filepath):
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
-        self.cargo_channel = ''
         self.date = ''
         self._download_url = ''
         self.rustc_channel = ''
@@ -387,7 +386,6 @@ class RustBuild(object):
         will move all the content to the right place.
         """
         rustc_channel = self.rustc_channel
-        cargo_channel = self.cargo_channel
         rustfmt_channel = self.rustfmt_channel
 
         if self.rustc().startswith(self.bin_root()) and \
@@ -400,29 +398,21 @@ class RustBuild(object):
                 rustc_channel, self.build, tarball_suffix)
             pattern = "rust-std-{}".format(self.build)
             self._download_stage0_helper(filename, pattern, tarball_suffix)
-
             filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
             self._download_stage0_helper(filename, "rustc", tarball_suffix)
+            filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
+                                              tarball_suffix)
+            self._download_stage0_helper(filename, "cargo", tarball_suffix)
             self.fix_bin_or_dylib("{}/bin/rustc".format(self.bin_root()))
             self.fix_bin_or_dylib("{}/bin/rustdoc".format(self.bin_root()))
+            self.fix_bin_or_dylib("{}/bin/cargo".format(self.bin_root()))
             lib_dir = "{}/lib".format(self.bin_root())
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
                     self.fix_bin_or_dylib("{}/{}".format(lib_dir, lib))
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
-
-        if self.cargo().startswith(self.bin_root()) and \
-                (not os.path.exists(self.cargo()) or
-                 self.program_out_of_date(self.cargo_stamp())):
-            tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
-            filename = "cargo-{}-{}{}".format(cargo_channel, self.build,
-                                              tarball_suffix)
-            self._download_stage0_helper(filename, "cargo", tarball_suffix)
-            self.fix_bin_or_dylib("{}/bin/cargo".format(self.bin_root()))
-            with output(self.cargo_stamp()) as cargo_stamp:
-                cargo_stamp.write(self.date)
 
         if self.rustfmt() and self.rustfmt().startswith(self.bin_root()) and (
             not os.path.exists(self.rustfmt())
@@ -600,16 +590,6 @@ class RustBuild(object):
         True
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
-
-    def cargo_stamp(self):
-        """Return the path for .cargo-stamp
-
-        >>> rb = RustBuild()
-        >>> rb.build_dir = "build"
-        >>> rb.cargo_stamp() == os.path.join("build", "stage0", ".cargo-stamp")
-        True
-        """
-        return os.path.join(self.bin_root(), '.cargo-stamp')
 
     def rustfmt_stamp(self):
         """Return the path for .rustfmt-stamp
@@ -1056,7 +1036,6 @@ def bootstrap(help_triggered):
     data = stage0_data(build.rust_root)
     build.date = data['date']
     build.rustc_channel = data['rustc']
-    build.cargo_channel = data['cargo']
 
     if "rustfmt" in data:
         build.rustfmt_channel = data['rustfmt']
