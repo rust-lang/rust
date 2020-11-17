@@ -1120,7 +1120,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-                let mut t = TyMethod { header: sig.header, decl, generics, all_types, ret_types };
+                let mut t = Function { header: sig.header, decl, generics, all_types, ret_types };
                 if t.header.constness == hir::Constness::Const
                     && is_unstable_const_fn(cx.tcx, local_did.to_def_id()).is_some()
                 {
@@ -1249,7 +1249,7 @@ impl Clean<Item> for ty::AssocItem {
                         ret_types,
                     })
                 } else {
-                    TyMethodItem(TyMethod {
+                    TyMethodItem(Function {
                         generics,
                         decl,
                         header: hir::FnHeader {

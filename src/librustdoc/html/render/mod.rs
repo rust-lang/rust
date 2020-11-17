@@ -3752,8 +3752,7 @@ fn render_impl(
                 (true, " hidden")
             };
         match item.kind {
-            clean::MethodItem(clean::Method { .. })
-            | clean::TyMethodItem(clean::TyMethod { .. }) => {
+            clean::MethodItem(_) | clean::TyMethodItem(_) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));

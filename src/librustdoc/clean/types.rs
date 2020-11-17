@@ -264,7 +264,7 @@ crate enum ItemKind {
     ImplItem(Impl),
     /// A method signature only. Used for required methods in traits (ie,
     /// non-default-methods).
-    TyMethodItem(TyMethod),
+    TyMethodItem(Function),
     /// A method with a body.
     MethodItem(Method),
     StructFieldItem(Type),
@@ -916,15 +916,6 @@ crate struct Method {
     crate decl: FnDecl,
     crate header: hir::FnHeader,
     crate defaultness: Option<hir::Defaultness>,
-    crate all_types: Vec<(Type, TypeKind)>,
-    crate ret_types: Vec<(Type, TypeKind)>,
-}
-
-#[derive(Clone, Debug)]
-crate struct TyMethod {
-    crate header: hir::FnHeader,
-    crate decl: FnDecl,
-    crate generics: Generics,
     crate all_types: Vec<(Type, TypeKind)>,
     crate ret_types: Vec<(Type, TypeKind)>,
 }
