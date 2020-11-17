@@ -1,0 +1,21 @@
+error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+  --> $DIR/type_polymorphic_byte_str_literals.rs:11:11
+   |
+LL |     match data {
+   |           ^^^^ pattern `&[_, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&[u8]`
+
+error[E0004]: non-exhaustive patterns: `&[]`, `&[_]`, `&[_, _]` and 1 more not covered
+  --> $DIR/type_polymorphic_byte_str_literals.rs:23:11
+   |
+LL |     match data {
+   |           ^^^^ patterns `&[]`, `&[_]`, `&[_, _]` and 1 more not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&[u8]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.
