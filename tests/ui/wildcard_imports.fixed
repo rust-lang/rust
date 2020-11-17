@@ -4,6 +4,7 @@
 #![warn(clippy::wildcard_imports)]
 //#![allow(clippy::redundant_pub_crate)]
 #![allow(unused)]
+#![allow(clippy::unnecessary_wraps)]
 #![warn(unused_imports)]
 
 extern crate wildcard_imports_helper;

@@ -2609,6 +2609,13 @@ vec![
         module: "unwrap",
     },
     Lint {
+        name: "unnecessary_wraps",
+        group: "complexity",
+        desc: "functions that only return `Ok` or `Some`",
+        deprecation: None,
+        module: "unnecessary_wraps",
+    },
+    Lint {
         name: "unneeded_field_pattern",
         group: "restriction",
         desc: "struct fields bound to a wildcard instead of using `..`",

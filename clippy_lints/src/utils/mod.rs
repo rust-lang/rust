@@ -21,6 +21,7 @@ pub mod ptr;
 pub mod qualify_min_const_fn;
 pub mod sugg;
 pub mod usage;
+pub mod visitors;
 
 pub use self::attrs::*;
 pub use self::diagnostics::*;
