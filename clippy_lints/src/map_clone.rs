@@ -14,8 +14,9 @@ use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
-    /// `iterator.cloned()` instead
+    /// **What it does:** Checks for usage of `map(|x| x.clone())` or
+    /// dereferencing closures for `Copy` types, on `Iterator` or `Option`,
+    /// and suggests `cloned()` or `copied()` instead
     ///
     /// **Why is this bad?** Readability, this can be written more concisely
     ///
