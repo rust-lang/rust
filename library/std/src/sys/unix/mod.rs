@@ -236,3 +236,55 @@ pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
 pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
+
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "android")] {
+        #[link(name = "dl")]
+        #[link(name = "log")]
+        #[link(name = "gcc")]
+        extern "C" {}
+    } else if #[cfg(target_os = "freebsd")] {
+        #[link(name = "execinfo")]
+        #[link(name = "pthread")]
+        extern "C" {}
+    } else if #[cfg(target_os = "netbsd")] {
+        #[link(name = "pthread")]
+        #[link(name = "rt")]
+        extern "C" {}
+    } else if #[cfg(any(target_os = "dragonfly", target_os = "openbsd"))] {
+        #[link(name = "pthread")]
+        extern "C" {}
+    } else if #[cfg(target_os = "solaris")] {
+        #[link(name = "socket")]
+        #[link(name = "posix4")]
+        #[link(name = "pthread")]
+        #[link(name = "resolv")]
+        extern "C" {}
+    } else if #[cfg(target_os = "illumos")] {
+        #[link(name = "socket")]
+        #[link(name = "posix4")]
+        #[link(name = "pthread")]
+        #[link(name = "resolv")]
+        #[link(name = "nsl")]
+        // Use libumem for the (malloc-compatible) allocator
+        #[link(name = "umem")]
+        extern "C" {}
+    } else if #[cfg(target_os = "macos")] {
+        #[link(name = "System")]
+        // res_init and friends require -lresolv on macOS/iOS.
+        // See #41582 and http://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
+        #[link(name = "resolv")]
+        extern "C" {}
+    } else if #[cfg(target_os = "ios")] {
+        #[link(name = "System")]
+        #[link(name = "objc")]
+        #[link(name = "Security", kind = "framework")]
+        #[link(name = "Foundation", kind = "framework")]
+        #[link(name = "resolv")]
+        extern "C" {}
+    } else if #[cfg(target_os = "fuchsia")] {
+        #[link(name = "zircon")]
+        #[link(name = "fdio")]
+        extern "C" {}
+    }
+}

@@ -566,5 +566,5 @@ include!("keyword_docs.rs");
 // This is required to avoid an unstable error when `restricted-std` is not
 // enabled. The use of #![feature(restricted_std)] in rustc-std-workspace-std
 // is unconditional, so the unstable feature needs to be defined somewhere.
-#[cfg_attr(not(feature = "restricted-std"), unstable(feature = "restricted_std", issue = "none"))]
+#[unstable(feature = "restricted_std", issue = "none")]
 mod __restricted_std_workaround {}
