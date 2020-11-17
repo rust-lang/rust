@@ -143,8 +143,7 @@ fn insert_import(
     if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();
         mod_path.segments.push(variant_hir_name.clone());
-        let scope = ImportScope::find_insert_use_container(scope_node, ctx)?;
-
+        let scope = ImportScope::find_insert_use_container(scope_node, &ctx.sema)?;
         *rewriter += insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use.merge);
     }
     Some(())

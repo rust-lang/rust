@@ -255,6 +255,7 @@ version = "0.0.0"
 dependencies = [
  "assists",
  "base_db",
+ "either",
  "expect-test",
  "hir",
  "ide_db",

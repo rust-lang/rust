@@ -22,8 +22,7 @@ use crate::{
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
 };
 
-pub use insert_use::MergeBehaviour;
-pub(crate) use insert_use::{insert_use, ImportScope};
+pub use insert_use::{insert_use, ImportScope, MergeBehaviour};
 
 pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
     let mut segments = Vec::new();

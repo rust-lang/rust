@@ -98,7 +98,8 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
     let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
     let group = import_group_message(import_assets.import_candidate());
-    let scope = ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), ctx)?;
+    let scope =
+        ImportScope::find_insert_use_container(import_assets.syntax_under_caret(), &ctx.sema)?;
     for (import, _) in proposed_imports {
         acc.add_group(
             &group,

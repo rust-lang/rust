@@ -110,15 +110,9 @@ impl Crate {
     pub fn query_external_importables(
         self,
         db: &dyn DefDatabase,
-        query: &str,
+        query: import_map::Query,
     ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
-        import_map::search_dependencies(
-            db,
-            self.into(),
-            import_map::Query::new(query).anchor_end().case_sensitive().limit(40),
-        )
-        .into_iter()
-        .map(|item| match item {
+        import_map::search_dependencies(db, self.into(), query).into_iter().map(|item| match item {
             ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id.into()),
             ItemInNs::Macros(mac_id) => Either::Right(mac_id.into()),
         })

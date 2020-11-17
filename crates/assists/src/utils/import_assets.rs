@@ -179,21 +179,25 @@ impl ImportAssets {
             }
         };
 
-        let mut res = imports_locator::find_imports(sema, current_crate, &self.get_search_query())
-            .into_iter()
-            .filter_map(filter)
-            .filter_map(|candidate| {
-                let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
-                if let Some(prefix_kind) = prefixed {
-                    self.module_with_name_to_import.find_use_path_prefixed(db, item, prefix_kind)
-                } else {
-                    self.module_with_name_to_import.find_use_path(db, item)
-                }
-                .map(|path| (path, item))
-            })
-            .filter(|(use_path, _)| !use_path.segments.is_empty())
-            .take(20)
-            .collect::<Vec<_>>();
+        let mut res =
+            imports_locator::find_exact_imports(sema, current_crate, &self.get_search_query())
+                .filter_map(filter)
+                .filter_map(|candidate| {
+                    let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
+                    if let Some(prefix_kind) = prefixed {
+                        self.module_with_name_to_import.find_use_path_prefixed(
+                            db,
+                            item,
+                            prefix_kind,
+                        )
+                    } else {
+                        self.module_with_name_to_import.find_use_path(db, item)
+                    }
+                    .map(|path| (path, item))
+                })
+                .filter(|(use_path, _)| use_path.len() > 1)
+                .take(20)
+                .collect::<Vec<_>>();
         res.sort_by_key(|(path, _)| path.clone());
         res
     }

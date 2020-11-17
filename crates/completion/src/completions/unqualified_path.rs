@@ -1,10 +1,16 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
+use assists::utils::ImportScope;
+use either::Either;
 use hir::{Adt, ModuleDef, ScopeDef, Type};
+use ide_db::imports_locator;
 use syntax::AstNode;
 use test_utils::mark;
 
-use crate::{CompletionContext, Completions};
+use crate::{
+    render::{render_resolution_with_import, RenderContext},
+    CompletionContext, Completions,
+};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
@@ -37,6 +43,8 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         }
         acc.add_resolution(ctx, name.to_string(), &res)
     });
+
+    fuzzy_completion(acc, ctx).unwrap_or_default()
 }
 
 fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
@@ -61,6 +69,45 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
             }
         }
     }
+}
+
+fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+    let _p = profile::span("fuzzy_completion");
+    let current_module = ctx.scope.module()?;
+    let anchor = ctx.name_ref_syntax.as_ref()?;
+    let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
+
+    let potential_import_name = ctx.token.to_string();
+
+    let possible_imports =
+        imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name, 400)
+            .filter_map(|import_candidate| match import_candidate {
+                // when completing outside the use declaration, modules are pretty useless
+                // and tend to bloat the completion suggestions a lot
+                Either::Left(ModuleDef::Module(_)) => None,
+                Either::Left(module_def) => Some((
+                    current_module.find_use_path(ctx.db, module_def)?,
+                    ScopeDef::ModuleDef(module_def),
+                )),
+                Either::Right(macro_def) => Some((
+                    current_module.find_use_path(ctx.db, macro_def)?,
+                    ScopeDef::MacroDef(macro_def),
+                )),
+            })
+            .filter(|(mod_path, _)| mod_path.len() > 1)
+            .filter_map(|(import_path, definition)| {
+                render_resolution_with_import(
+                    RenderContext::new(ctx),
+                    import_path.clone(),
+                    import_scope.clone(),
+                    ctx.config.merge,
+                    &definition,
+                )
+            })
+            .take(20);
+
+    acc.add_all(possible_imports);
+    Some(())
 }
 
 #[cfg(test)]
@@ -675,5 +722,86 @@ impl My<|>
                 tp Self
             "#]],
         )
+    }
+
+    #[test]
+    fn function_fuzzy_completion() {
+        check_edit(
+            "stdin",
+            r#"
+//- /lib.rs crate:dep
+pub mod io {
+    pub fn stdin() {}
+};
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    stdi<|>
+}
+"#,
+            r#"
+use dep::io::stdin;
+
+fn main() {
+    stdin()$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn macro_fuzzy_completion() {
+        check_edit(
+            "macro_with_curlies!",
+            r#"
+//- /lib.rs crate:dep
+/// Please call me as macro_with_curlies! {}
+#[macro_export]
+macro_rules! macro_with_curlies {
+    () => {}
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    curli<|>
+}
+"#,
+            r#"
+use dep::macro_with_curlies;
+
+fn main() {
+    macro_with_curlies! {$0}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn struct_fuzzy_completion() {
+        check_edit(
+            "ThirdStruct",
+            r#"
+//- /lib.rs crate:dep
+pub struct FirstStruct;
+pub mod some_module {
+    pub struct SecondStruct;
+    pub struct ThirdStruct;
+}
+
+//- /main.rs crate:main deps:dep
+use dep::{FirstStruct, some_module::SecondStruct};
+
+fn main() {
+    this<|>
+}
+"#,
+            r#"
+use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
+
+fn main() {
+    ThirdStruct
+}
+"#,
+        );
     }
 }
