@@ -883,14 +883,12 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
     }
 }
 
-impl<'a> Clean<Method>
-    for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId, Option<hir::Defaultness>)
-{
-    fn clean(&self, cx: &DocContext<'_>) -> Method {
+impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
+    fn clean(&self, cx: &DocContext<'_>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, || (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
         let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-        Method { decl, generics, header: self.0.header, defaultness: self.3, all_types, ret_types }
+        Function { decl, generics, header: self.0.header, all_types, ret_types }
     }
 }
 
@@ -1024,7 +1022,6 @@ impl Clean<Item> for doctree::Trait<'_> {
             stability: cx.stability(self.id),
             deprecation: cx.deprecation(self.id).clean(cx),
             kind: TraitItem(Trait {
-                auto: self.is_auto.clean(cx),
                 unsafety: self.unsafety,
                 items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
@@ -1107,20 +1104,20 @@ impl Clean<Item> for hir::TraitItem<'_> {
                 AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx, e)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                let mut m = (sig, &self.generics, body, None).clean(cx);
+                let mut m = (sig, &self.generics, body).clean(cx);
                 if m.header.constness == hir::Constness::Const
                     && is_unstable_const_fn(cx.tcx, local_did.to_def_id()).is_some()
                 {
                     m.header.constness = hir::Constness::NotConst;
                 }
-                MethodItem(m)
+                MethodItem(m, None)
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref names)) => {
                 let (generics, decl) = enter_impl_trait(cx, || {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-                let mut t = TyMethod { header: sig.header, decl, generics, all_types, ret_types };
+                let mut t = Function { header: sig.header, decl, generics, all_types, ret_types };
                 if t.header.constness == hir::Constness::Const
                     && is_unstable_const_fn(cx.tcx, local_did.to_def_id()).is_some()
                 {
@@ -1153,13 +1150,13 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 AssocConstItem(ty.clean(cx), Some(print_const_expr(cx, expr)))
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
-                let mut m = (sig, &self.generics, body, Some(self.defaultness)).clean(cx);
+                let mut m = (sig, &self.generics, body).clean(cx);
                 if m.header.constness == hir::Constness::Const
                     && is_unstable_const_fn(cx.tcx, local_did.to_def_id()).is_some()
                 {
                     m.header.constness = hir::Constness::NotConst;
                 }
-                MethodItem(m)
+                MethodItem(m, Some(self.defaultness))
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
                 let type_ = ty.clean(cx);
@@ -1235,21 +1232,23 @@ impl Clean<Item> for ty::AssocItem {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
                     };
-                    MethodItem(Method {
-                        generics,
-                        decl,
-                        header: hir::FnHeader {
-                            unsafety: sig.unsafety(),
-                            abi: sig.abi(),
-                            constness,
-                            asyncness,
+                    MethodItem(
+                        Function {
+                            generics,
+                            decl,
+                            header: hir::FnHeader {
+                                unsafety: sig.unsafety(),
+                                abi: sig.abi(),
+                                constness,
+                                asyncness,
+                            },
+                            all_types,
+                            ret_types,
                         },
                         defaultness,
-                        all_types,
-                        ret_types,
-                    })
+                    )
                 } else {
-                    TyMethodItem(TyMethod {
+                    TyMethodItem(Function {
                         generics,
                         decl,
                         header: hir::FnHeader {

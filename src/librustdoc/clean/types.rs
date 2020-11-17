@@ -227,12 +227,8 @@ impl Item {
 
     crate fn is_default(&self) -> bool {
         match self.kind {
-            ItemKind::MethodItem(ref meth) => {
-                if let Some(defaultness) = meth.defaultness {
-                    defaultness.has_value() && !defaultness.is_final()
-                } else {
-                    false
-                }
+            ItemKind::MethodItem(_, Some(defaultness)) => {
+                defaultness.has_value() && !defaultness.is_final()
             }
             _ => false,
         }
@@ -264,9 +260,9 @@ crate enum ItemKind {
     ImplItem(Impl),
     /// A method signature only. Used for required methods in traits (ie,
     /// non-default-methods).
-    TyMethodItem(TyMethod),
+    TyMethodItem(Function),
     /// A method with a body.
-    MethodItem(Method),
+    MethodItem(Function, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
@@ -911,25 +907,6 @@ crate struct Generics {
 }
 
 #[derive(Clone, Debug)]
-crate struct Method {
-    crate generics: Generics,
-    crate decl: FnDecl,
-    crate header: hir::FnHeader,
-    crate defaultness: Option<hir::Defaultness>,
-    crate all_types: Vec<(Type, TypeKind)>,
-    crate ret_types: Vec<(Type, TypeKind)>,
-}
-
-#[derive(Clone, Debug)]
-crate struct TyMethod {
-    crate header: hir::FnHeader,
-    crate decl: FnDecl,
-    crate generics: Generics,
-    crate all_types: Vec<(Type, TypeKind)>,
-    crate ret_types: Vec<(Type, TypeKind)>,
-}
-
-#[derive(Clone, Debug)]
 crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
@@ -1026,7 +1003,6 @@ impl GetDefId for FnRetTy {
 
 #[derive(Clone, Debug)]
 crate struct Trait {
-    crate auto: bool,
     crate unsafety: hir::Unsafety,
     crate items: Vec<Item>,
     crate generics: Generics,
