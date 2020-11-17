@@ -3,7 +3,7 @@ use syntax::{
         self,
         edit::{AstNodeEdit, IndentLevel},
     },
-    AstNode, TextRange, T,
+    AstNode, SyntaxKind, TextRange, T,
 };
 
 use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, Assists};
@@ -35,6 +35,15 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let mut parent = block.syntax().parent()?;
     if ast::MatchArm::can_cast(parent.kind()) {
         parent = parent.ancestors().find(|it| ast::MatchExpr::can_cast(it.kind()))?
+    }
+
+    if matches!(parent.kind(), SyntaxKind::BLOCK_EXPR | SyntaxKind::EXPR_STMT) {
+        return acc.add(assist_id, assist_label, target, |builder| {
+            builder.replace(
+                block.syntax().text_range(),
+                update_expr_string(block.to_string(), &[' ', '{', '\n']),
+            );
+        });
     }
 
     let parent = ast::Expr::cast(parent)?;
@@ -108,6 +117,64 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
+
+    #[test]
+    fn unwrap_tail_expr_block() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    <|>{
+        92
+    }
+}
+"#,
+            r#"
+fn main() {
+    92
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn unwrap_stmt_expr_block() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    <|>{
+        92;
+    }
+    ()
+}
+"#,
+            r#"
+fn main() {
+    92;
+    ()
+}
+"#,
+        );
+        // Pedantically, we should add an `;` here...
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    <|>{
+        92
+    }
+    ()
+}
+"#,
+            r#"
+fn main() {
+    92
+    ()
+}
+"#,
+        );
+    }
 
     #[test]
     fn simple_if() {
