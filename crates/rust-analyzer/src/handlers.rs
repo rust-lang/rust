@@ -573,7 +573,7 @@ pub(crate) fn handle_completion(
         .flat_map(|item| to_proto::completion_item(&line_index, line_endings, item))
         .collect();
 
-    let completion_list = lsp_types::CompletionList { is_incomplete: false, items };
+    let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
 }
 
