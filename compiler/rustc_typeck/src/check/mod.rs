@@ -137,7 +137,6 @@ use crate::util::common::indenter;
 
 use self::coercion::DynamicCoerceMany;
 pub use self::Expectation::*;
-use rustc_target::spec::abi;
 
 #[macro_export]
 macro_rules! type_error_struct {

@@ -94,7 +94,7 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fn_maybe_err(tcx, span, fn_sig.abi);
 
-    if fn_sig.abi == abi::Abi::RustCall {
+    if fn_sig.abi == Abi::RustCall {
         let expected_args = if let ImplicitSelfKind::None = decl.implicit_self { 1 } else { 2 };
 
         let err = || {
