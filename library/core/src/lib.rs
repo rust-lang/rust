@@ -80,6 +80,7 @@
 #![feature(const_mut_refs)]
 #![feature(const_int_pow)]
 #![feature(constctlz)]
+#![feature(const_cttz)]
 #![feature(const_panic)]
 #![feature(const_pin)]
 #![feature(const_fn)]
