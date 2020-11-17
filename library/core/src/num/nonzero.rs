@@ -8,13 +8,6 @@ use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
 use crate::intrinsics;
 
-macro_rules! doc_comment {
-    ($x:expr, $($tt:tt)*) => {
-        #[doc = $x]
-        $($tt)*
-    };
-}
-
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
@@ -32,24 +25,21 @@ macro_rules! impl_nonzero_fmt {
 macro_rules! nonzero_integers {
     ( $( #[$stability: meta] $Ty: ident($Int: ty); )+ ) => {
         $(
-            doc_comment! {
-                concat!("An integer that is known not to equal zero.
-
-This enables some memory layout optimization.
-For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:
-
-```rust
-use std::mem::size_of;
-assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int),
-">());
-```"),
-                #[$stability]
-                #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-                #[repr(transparent)]
-                #[rustc_layout_scalar_valid_range_start(1)]
-                #[rustc_nonnull_optimization_guaranteed]
-                pub struct $Ty($Int);
-            }
+            /// An integer that is known not to equal zero.
+            ///
+            /// This enables some memory layout optimization.
+            #[doc = concat!("For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:")]
+            ///
+            /// ```rust
+            /// use std::mem::size_of;
+            #[doc = concat!("assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int), ">());")]
+            /// ```
+            #[$stability]
+            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+            #[repr(transparent)]
+            #[rustc_layout_scalar_valid_range_start(1)]
+            #[rustc_nonnull_optimization_guaranteed]
+            pub struct $Ty($Int);
 
             impl $Ty {
                 /// Creates a non-zero without checking the value.
@@ -90,13 +80,10 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
 
             #[stable(feature = "from_nonzero", since = "1.31.0")]
             impl From<$Ty> for $Int {
-                doc_comment! {
-                    concat!(
-"Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`"),
-                    #[inline]
-                    fn from(nonzero: $Ty) -> Self {
-                        nonzero.0
-                    }
+                #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
+                #[inline]
+                fn from(nonzero: $Ty) -> Self {
+                    nonzero.0
                 }
             }
 
