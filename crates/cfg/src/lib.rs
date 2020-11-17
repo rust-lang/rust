@@ -41,12 +41,6 @@ impl CfgOptions {
         self.enabled.insert(CfgAtom::KeyValue { key, value });
     }
 
-    pub fn append(&mut self, other: &CfgOptions) {
-        for atom in &other.enabled {
-            self.enabled.insert(atom.clone());
-        }
-    }
-
     pub fn apply_diff(&mut self, diff: CfgDiff) {
         for atom in diff.enable {
             self.enabled.insert(atom);
