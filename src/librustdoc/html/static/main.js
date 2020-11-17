@@ -2040,11 +2040,9 @@ function defocusSearchBar() {
      * @return {[string]}      [The resulting plaintext]
      */
     function convertHTMLToPlaintext(html) {
-        var dom = new DOMParser().parseFromString(
-            html.replace('<code>', '`').replace('</code>', '`'),
-            'text/html',
-        );
-        return dom.body.innerText;
+        var x = document.createElement("div");
+        x.innerHTML = html.replace('<code>', '`').replace('</code>', '`');
+        return x.innerText;
     }
 
 
