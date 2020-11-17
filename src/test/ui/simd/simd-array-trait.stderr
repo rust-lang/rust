@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/simd-array-trait.rs:23:23
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   |                       ^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+
