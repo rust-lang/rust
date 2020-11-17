@@ -66,6 +66,10 @@ pub(crate) mod fragments {
         expressions::stmt(p, expressions::StmtWithSemi::No)
     }
 
+    pub(crate) fn stmt_optional_semi(p: &mut Parser) {
+        expressions::stmt(p, expressions::StmtWithSemi::Optional)
+    }
+
     pub(crate) fn opt_visibility(p: &mut Parser) {
         let _ = super::opt_visibility(p);
     }
