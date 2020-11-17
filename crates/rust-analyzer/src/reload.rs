@@ -203,7 +203,11 @@ impl GlobalState {
                     let contents = loader.handle.load_sync(path);
                     vfs.set_file_contents(vfs_path.clone(), contents);
                 }
-                vfs.file_id(&vfs_path)
+                let res = vfs.file_id(&vfs_path);
+                if res.is_none() {
+                    log::error!("failed to load {}", path.display())
+                }
+                res
             };
             for ws in workspaces.iter() {
                 crate_graph.extend(ws.to_crate_graph(

@@ -200,23 +200,19 @@ impl ProjectWorkspace {
         let mut crate_graph = CrateGraph::default();
         match self {
             ProjectWorkspace::Json { project, sysroot } => {
-                let sysroot_dps = sysroot
+                let sysroot_deps = sysroot
                     .as_ref()
                     .map(|sysroot| sysroot_to_crate_graph(&mut crate_graph, sysroot, target, load));
 
                 let mut cfg_cache: FxHashMap<Option<&str>, Vec<CfgFlag>> = FxHashMap::default();
-                let crates: FxHashMap<_, _> = project
+                let crates: FxHashMap<CrateId, CrateId> = project
                     .crates()
                     .filter_map(|(crate_id, krate)| {
                         let file_path = &krate.root_module;
-                        let file_id = match load(&file_path) {
-                            Some(id) => id,
-                            None => {
-                                log::error!("failed to load crate root {}", file_path.display());
-                                return None;
-                            }
-                        };
-
+                        let file_id = load(&file_path)?;
+                        Some((crate_id, krate, file_id))
+                    })
+                    .map(|(crate_id, krate, file_id)| {
                         let env = krate.env.clone().into_iter().collect();
                         let proc_macro = krate
                             .proc_macro_dylib_path
@@ -230,8 +226,7 @@ impl ProjectWorkspace {
 
                         let mut cfg_options = CfgOptions::default();
                         cfg_options.extend(target_cfgs.iter().chain(krate.cfg.iter()).cloned());
-
-                        Some((
+                        (
                             crate_id,
                             crate_graph.add_crate_root(
                                 file_id,
@@ -241,21 +236,20 @@ impl ProjectWorkspace {
                                 env,
                                 proc_macro.unwrap_or_default(),
                             ),
-                        ))
+                        )
                     })
                     .collect();
 
                 for (from, krate) in project.crates() {
                     if let Some(&from) = crates.get(&from) {
-                        if let Some((public_deps, _proc_macro)) = &sysroot_dps {
+                        if let Some((public_deps, _proc_macro)) = &sysroot_deps {
                             for (name, to) in public_deps.iter() {
                                 add_dep(&mut crate_graph, from, name.clone(), *to)
                             }
                         }
 
                         for dep in &krate.deps {
-                            let to_crate_id = dep.crate_id;
-                            if let Some(&to) = crates.get(&to_crate_id) {
+                            if let Some(&to) = crates.get(&dep.crate_id) {
                                 add_dep(&mut crate_graph, from, dep.name.clone(), to)
                             }
                         }
