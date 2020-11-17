@@ -459,6 +459,7 @@ impl Inliner<'tcx> {
                     tcx: self.tcx,
                     callsite_span: callsite.source_info.span,
                     body_span: callee_body.span,
+                    always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
                 };
 
                 // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -488,6 +489,34 @@ impl Inliner<'tcx> {
                         scope.inlined_parent_scope =
                             Some(integrator.map_scope(OUTERMOST_SOURCE_SCOPE));
                     }
+                }
+
+                // If there are any locals without storage markers, give them storage only for the
+                // duration of the call.
+                for local in callee_body.vars_and_temps_iter() {
+                    if integrator.always_live_locals.contains(local) {
+                        let new_local = integrator.map_local(local);
+                        caller_body[callsite.block].statements.push(Statement {
+                            source_info: callsite.source_info,
+                            kind: StatementKind::StorageLive(new_local),
+                        });
+                    }
+                }
+                if let Some(block) = callsite.target {
+                    // To avoid repeated O(n) insert, push any new statements to the end and rotate
+                    // the slice once.
+                    let mut n = 0;
+                    for local in callee_body.vars_and_temps_iter().rev() {
+                        if integrator.always_live_locals.contains(local) {
+                            let new_local = integrator.map_local(local);
+                            caller_body[block].statements.push(Statement {
+                                source_info: callsite.source_info,
+                                kind: StatementKind::StorageDead(new_local),
+                            });
+                            n += 1;
+                        }
+                    }
+                    caller_body[block].statements.rotate_right(n);
                 }
 
                 // Insert all of the (mapped) parts of the callee body into the caller.
@@ -670,6 +699,7 @@ struct Integrator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     callsite_span: Span,
     body_span: Span,
+    always_live_locals: BitSet<Local>,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
@@ -757,6 +787,15 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         if *kind == RetagKind::FnEntry {
             *kind = RetagKind::Default;
         }
+    }
+
+    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
+        if let StatementKind::StorageLive(local) | StatementKind::StorageDead(local) =
+            statement.kind
+        {
+            self.always_live_locals.remove(local);
+        }
+        self.super_statement(statement, location);
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, loc: Location) {

@@ -40,6 +40,7 @@
 -                                          // mir::Constant
                                            // + span: $DIR/inline-diverging.rs:22:16: 22:21
                                            // + literal: Const { ty: fn() -> ! {sleep}, val: Value(Scalar(<ZST>)) }
++         StorageLive(_6);                 // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
 +         StorageLive(_3);                 // scope 1 at $DIR/inline-diverging.rs:22:5: 22:22
 +         StorageLive(_4);                 // scope 1 at $DIR/inline-diverging.rs:22:5: 22:22
 +         _4 = &_2;                        // scope 1 at $DIR/inline-diverging.rs:22:5: 22:22
