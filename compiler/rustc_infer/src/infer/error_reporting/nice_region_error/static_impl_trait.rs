@@ -474,7 +474,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 struct TraitObjectVisitor(Vec<DefId>);
 
 impl TypeVisitor<'_> for TraitObjectVisitor {
-    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<()> {
+    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Dynamic(preds, RegionKind::ReStatic) => {
                 if let Some(def_id) = preds.principal_def_id() {

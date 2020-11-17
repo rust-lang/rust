@@ -2062,7 +2062,7 @@ fn const_evaluatable_predicates_of<'tcx>(
             }
 
             impl<'a, 'tcx> TypeVisitor<'tcx> for TyAliasVisitor<'a, 'tcx> {
-                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> ControlFlow<()> {
+                fn visit_const(&mut self, ct: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {
                         self.preds.insert((
                             ty::PredicateAtom::ConstEvaluatable(def, substs).to_predicate(self.tcx),

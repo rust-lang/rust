@@ -1498,7 +1498,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
-            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let Some((kind, def_id)) = TyCategory::from_ty(t) {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:

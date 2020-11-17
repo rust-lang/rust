@@ -62,7 +62,7 @@ macro_rules! TrivialTypeFoldableImpls {
                 fn super_visit_with<F: $crate::ty::fold::TypeVisitor<$tcx>>(
                     &self,
                     _: &mut F)
-                    -> ::std::ops::ControlFlow<()>
+                    -> ::std::ops::ControlFlow<F::BreakTy>
                 {
                     ::std::ops::ControlFlow::CONTINUE
                 }
@@ -105,7 +105,7 @@ macro_rules! EnumTypeFoldableImpl {
             fn super_visit_with<V: $crate::ty::fold::TypeVisitor<$tcx>>(
                 &self,
                 visitor: &mut V,
-            ) -> ::std::ops::ControlFlow<()> {
+            ) -> ::std::ops::ControlFlow<V::BreakTy> {
                 EnumTypeFoldableImpl!(@VisitVariants(self, visitor) input($($variants)*) output())
             }
         }

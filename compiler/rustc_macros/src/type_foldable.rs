@@ -35,7 +35,7 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
             fn super_visit_with<__F: ::rustc_middle::ty::fold::TypeVisitor<'tcx>>(
                 &self,
                 __folder: &mut __F
-            ) -> ::std::ops::ControlFlow<()> {
+            ) -> ::std::ops::ControlFlow<__F::BreakTy> {
                 match *self { #body_visit }
                 ::std::ops::ControlFlow::CONTINUE
             }

@@ -1131,16 +1131,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes<'a, 'tcx> {
             cx: &'a LateContext<'tcx>,
-            ty: Option<Ty<'tcx>>,
         };
 
         impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+            type BreakTy = Ty<'tcx>;
+
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 match ty.kind() {
-                    ty::Opaque(..) => {
-                        self.ty = Some(ty);
-                        ControlFlow::BREAK
-                    }
+                    ty::Opaque(..) => ControlFlow::Break(ty),
                     // Consider opaque types within projections FFI-safe if they do not normalize
                     // to more opaque types.
                     ty::Projection(..) => {
@@ -1159,9 +1157,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        let mut visitor = ProhibitOpaqueTypes { cx: self.cx, ty: None };
-        ty.visit_with(&mut visitor);
-        if let Some(ty) = visitor.ty {
+        if let Some(ty) = ty.visit_with(&mut ProhibitOpaqueTypes { cx: self.cx }).break_value() {
             self.emit_ffi_unsafe_type_lint(ty, sp, "opaque types have no C equivalent", None);
             true
         } else {

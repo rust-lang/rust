@@ -18,7 +18,9 @@ where
     };
 
     impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<()> {
+        type BreakTy = ();
+
+        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if !c.needs_subst() {
                 return ControlFlow::CONTINUE;
             }
@@ -29,7 +31,7 @@ where
             }
         }
 
-        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<()> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             if !ty.needs_subst() {
                 return ControlFlow::CONTINUE;
             }

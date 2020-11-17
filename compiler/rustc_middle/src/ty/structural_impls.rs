@@ -729,7 +729,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::AdtDef {
         self
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }
 }
@@ -739,7 +739,7 @@ impl<'tcx, T: TypeFoldable<'tcx>, U: TypeFoldable<'tcx>> TypeFoldable<'tcx> for 
         (self.0.fold_with(folder), self.1.fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.0.visit_with(visitor)?;
         self.1.visit_with(visitor)
     }
@@ -752,7 +752,7 @@ impl<'tcx, A: TypeFoldable<'tcx>, B: TypeFoldable<'tcx>, C: TypeFoldable<'tcx>> 
         (self.0.fold_with(folder), self.1.fold_with(folder), self.2.fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.0.visit_with(visitor)?;
         self.1.visit_with(visitor)?;
         self.2.visit_with(visitor)
@@ -779,7 +779,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
         Rc::new((*self).clone().fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         (**self).visit_with(visitor)
     }
 }
@@ -790,7 +790,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Arc<T> {
         Arc::new((*self).clone().fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         (**self).visit_with(visitor)
     }
 }
@@ -800,7 +800,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Box<T> {
         self.map_id(|value| value.fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         (**self).visit_with(visitor)
     }
 }
@@ -810,7 +810,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
         self.map_id(|t| t.fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -820,7 +820,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Box<[T]> {
         self.map_id(|t| t.fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -834,11 +834,11 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
         folder.fold_binder(self)
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.as_ref().skip_binder().visit_with(visitor)
     }
 
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_binder(self)
     }
 }
@@ -848,7 +848,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>>
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_existential_predicates(v))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|p| p.visit_with(visitor))
     }
 }
@@ -858,7 +858,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -868,7 +868,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projs(v))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -894,7 +894,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         use crate::ty::InstanceDef::*;
         self.substs.visit_with(visitor)?;
         match self.def {
@@ -920,7 +920,7 @@ impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
         Self { instance: self.instance.fold_with(folder), promoted: self.promoted }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.instance.visit_with(visitor)
     }
 }
@@ -969,7 +969,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
         folder.fold_ty(self)
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.kind() {
             ty::RawPtr(ref tm) => tm.visit_with(visitor),
             ty::Array(typ, sz) => {
@@ -1011,7 +1011,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
         }
     }
 
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_ty(self)
     }
 }
@@ -1025,11 +1025,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
         folder.fold_region(self)
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }
 
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_region(*self)
     }
 }
@@ -1040,11 +1040,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
         folder.tcx().reuse_or_mk_predicate(self, new)
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ty::PredicateKind::super_visit_with(&self.inner.kind, visitor)
     }
 
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_predicate(*self)
     }
 
@@ -1062,7 +1062,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_predicates(v))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|p| p.visit_with(visitor))
     }
 }
@@ -1072,7 +1072,7 @@ impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> 
         self.map_id(|x| x.fold_with(folder))
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -1092,12 +1092,12 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
         folder.fold_const(self)
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.ty.visit_with(visitor)?;
         self.val.visit_with(visitor)
     }
 
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_const(self)
     }
 }
@@ -1117,7 +1117,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match *self {
             ty::ConstKind::Infer(ic) => ic.visit_with(visitor),
             ty::ConstKind::Param(p) => p.visit_with(visitor),
@@ -1135,7 +1135,7 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
         self
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
     }
 }

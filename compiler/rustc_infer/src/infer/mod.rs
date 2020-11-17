@@ -1,5 +1,3 @@
-//! See the Book for more information.
-
 pub use self::freshen::TypeFreshener;
 pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
@@ -1334,9 +1332,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let mut r = resolve::UnresolvedTypeFinder::new(self);
-        value.visit_with(&mut r);
-        r.first_unresolved
+        value.visit_with(&mut resolve::UnresolvedTypeFinder::new(self)).break_value()
     }
 
     pub fn probe_const_var(

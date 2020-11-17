@@ -160,7 +160,7 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
@@ -392,7 +392,7 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<()> {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
