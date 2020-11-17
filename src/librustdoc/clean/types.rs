@@ -1026,7 +1026,6 @@ impl GetDefId for FnRetTy {
 
 #[derive(Clone, Debug)]
 crate struct Trait {
-    crate auto: bool,
     crate unsafety: hir::Unsafety,
     crate items: Vec<Item>,
     crate generics: Generics,
