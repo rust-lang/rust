@@ -1985,8 +1985,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         }
     }
 
-    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics` so
-    /// this function will emit an error if `min_const_generics` is enabled, the body identified by
+    /// Non-static lifetimes are prohibited in anonymous constants under `min_const_generics`.
+    /// This function will emit an error if `const_generics` is not enabled, the body identified by
     /// `body_id` is an anonymous constant and `lifetime_ref` is non-static.
     crate fn maybe_emit_forbidden_non_static_lifetime_error(
         &self,
@@ -2002,7 +2002,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             hir::LifetimeName::Implicit | hir::LifetimeName::Static | hir::LifetimeName::Underscore
         );
 
-        if self.tcx.features().min_const_generics && is_anon_const && !is_allowed_lifetime {
+        if !self.tcx.lazy_normalization() && is_anon_const && !is_allowed_lifetime {
             feature_err(
                 &self.tcx.sess.parse_sess,
                 sym::const_generics,

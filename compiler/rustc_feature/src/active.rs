@@ -578,9 +578,6 @@ declare_features! (
     /// Allows calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
-    /// The smallest useful subset of `const_generics`.
-    (active, min_const_generics, "1.47.0", Some(74878), None),
-
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
@@ -651,5 +648,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
-pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
-    &[(sym::const_generics, sym::min_const_generics)];
+///
+/// Currently empty, but we will probably need this again in the future,
+/// so let's keep it in for now.
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[];

@@ -2299,7 +2299,7 @@ impl EarlyLintPass for IncompleteFeatures {
     }
 }
 
-const HAS_MIN_FEATURES: &[Symbol] = &[sym::const_generics, sym::specialization];
+const HAS_MIN_FEATURES: &[Symbol] = &[sym::specialization];
 
 declare_lint! {
     /// The `invalid_value` lint detects creating a value that is not valid,

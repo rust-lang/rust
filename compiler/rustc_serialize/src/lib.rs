@@ -13,7 +13,7 @@ Core encoding and decoding interfaces.
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
-#![feature(min_const_generics)]
+#![cfg_attr(bootstrap, feature(min_const_generics))]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
 

@@ -1638,8 +1638,6 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 /// which cause cycle errors.
 ///
 /// ```rust
-/// #![feature(const_generics)]
-///
 /// struct A;
 /// impl A {
 ///     fn foo<const N: usize>(&self) -> [u8; N] { [0; N] }

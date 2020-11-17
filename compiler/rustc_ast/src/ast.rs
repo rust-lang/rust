@@ -1128,7 +1128,7 @@ impl Expr {
     /// Is this expr either `N`, or `{ N }`.
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
-    /// `feature(min_const_generics)` as more complex expressions are not supported.
+    /// `min_const_generics` as more complex expressions are not supported.
     pub fn is_potential_trivial_const_param(&self) -> bool {
         let this = if let ExprKind::Block(ref block, None) = self.kind {
             if block.stmts.len() == 1 {

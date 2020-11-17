@@ -1260,7 +1260,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
                 //
                 // Note that we do not supply the parent generics when using
-                // `feature(min_const_generics)`.
+                // `min_const_generics`.
                 Some(parent_def_id.to_def_id())
             } else {
                 let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));

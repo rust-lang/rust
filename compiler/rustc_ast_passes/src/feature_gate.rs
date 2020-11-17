@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocTyConstraint, AssocTyConstraintKind, NodeId};
-use rustc_ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use rustc_ast::{PatKind, RangeEnd, VariantData};
 use rustc_errors::struct_span_err;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue};
@@ -527,19 +527,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         visit::walk_fn(self, fn_kind, span)
-    }
-
-    fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        if let GenericParamKind::Const { .. } = param.kind {
-            gate_feature_fn!(
-                &self,
-                |x: &Features| x.const_generics || x.min_const_generics,
-                param.ident.span,
-                sym::min_const_generics,
-                "const generics are unstable"
-            );
-        }
-        visit::walk_generic_param(self, param)
     }
 
     fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
