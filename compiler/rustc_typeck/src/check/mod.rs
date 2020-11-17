@@ -521,31 +521,6 @@ fn typeck_with_fallback<'tcx>(
 
             let fn_sig = fixup_opaque_types(tcx, &fn_sig);
 
-            if fn_sig.abi == abi::Abi::RustCall {
-                let expected_args = if let ImplicitSelfKind::None = decl.implicit_self { 1 } else { 2 };
-
-                let err = || {
-                    let item = tcx.hir().expect_item(id);
-
-                    if let hir::ItemKind::Fn(header, ..) = &item.kind {
-                        tcx.sess.span_err(header.span, "A function with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
-                    } else {
-                        bug!("Item being checked wasn't a function")
-                    }
-                };
-
-                if fn_sig.inputs().len() != expected_args {
-                    err()
-                } else {
-                    // FIXME(CraftSpider) Add a check on parameter expansion, so we don't just make the ICE happen later on
-                    //   This will probably require wide-scale changes to support a TupleKind obligation
-                    //   We can't resolve this without knowing the type of the param
-                    if !matches!(fn_sig.inputs()[expected_args - 1].kind(), ty::Tuple(_) | ty::Param(_)) {
-                        err()
-                    }
-                }
-            }
-
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx
         } else {
