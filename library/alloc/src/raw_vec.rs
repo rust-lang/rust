@@ -233,13 +233,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
-    pub fn alloc(&self) -> &A {
+    pub fn alloc_ref(&self) -> &A {
         &self.alloc
-    }
-
-    /// Returns a mutable reference to the allocator backing this `RawVec`.
-    pub fn alloc_mut(&mut self) -> &mut A {
-        &mut self.alloc
     }
 
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {

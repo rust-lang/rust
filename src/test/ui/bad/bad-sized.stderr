@@ -17,7 +17,7 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    | 
   ::: $SRC_DIR/alloc/src/vec.rs:LL:COL
    |
-LL | pub struct Vec<T> {
+LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global> {
    |                - required by this bound in `Vec`
    |
    = help: the trait `Sized` is not implemented for `dyn Trait`

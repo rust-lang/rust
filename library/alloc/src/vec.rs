@@ -68,6 +68,7 @@ use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
@@ -297,8 +298,8 @@ use crate::raw_vec::RawVec;
 /// [`&`]: ../../std/primitive.reference.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
-pub struct Vec<T> {
-    buf: RawVec<T>,
+pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global> {
+    buf: RawVec<T, A>,
     len: usize,
 }
 
@@ -320,7 +321,7 @@ impl<T> Vec<T> {
     #[inline]
     #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn new() -> Vec<T> {
+    pub const fn new() -> Self {
         Vec { buf: RawVec::NEW, len: 0 }
     }
 
@@ -359,46 +360,8 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(capacity: usize) -> Vec<T> {
-        Vec { buf: RawVec::with_capacity(capacity), len: 0 }
-    }
-
-    /// Decomposes a `Vec<T>` into its raw components.
-    ///
-    /// Returns the raw pointer to the underlying data, the length of
-    /// the vector (in elements), and the allocated capacity of the
-    /// data (in elements). These are the same arguments in the same
-    /// order as the arguments to [`from_raw_parts`].
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Vec`. The only way to do
-    /// this is to convert the raw pointer, length, and capacity back
-    /// into a `Vec` with the [`from_raw_parts`] function, allowing
-    /// the destructor to perform the cleanup.
-    ///
-    /// [`from_raw_parts`]: Vec::from_raw_parts
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(vec_into_raw_parts)]
-    /// let v: Vec<i32> = vec![-1, 0, 1];
-    ///
-    /// let (ptr, len, cap) = v.into_raw_parts();
-    ///
-    /// let rebuilt = unsafe {
-    ///     // We can now make changes to the components, such as
-    ///     // transmuting the raw pointer to a compatible type.
-    ///     let ptr = ptr as *mut u32;
-    ///
-    ///     Vec::from_raw_parts(ptr, len, cap)
-    /// };
-    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
-    /// ```
-    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
-    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
-        let mut me = ManuallyDrop::new(self);
-        (me.as_mut_ptr(), me.len(), me.capacity())
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self::with_capacity_in(capacity, Global)
     }
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
@@ -463,9 +426,238 @@ impl<T> Vec<T> {
     ///     assert_eq!(rebuilt, [4, 5, 6]);
     /// }
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Vec<T> {
-        unsafe { Vec { buf: RawVec::from_raw_parts(ptr, capacity), len: length } }
+    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
+        unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
+    }
+}
+
+impl<T, A: AllocRef> Vec<T, A> {
+    /// Constructs a new, empty `Vec<T, A>`.
+    ///
+    /// The vector will not allocate until elements are pushed onto it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// # #[allow(unused_mut)]
+    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn new_in(alloc: A) -> Self {
+        Vec { buf: RawVec::new_in(alloc), len: 0 }
+    }
+
+    /// Constructs a new, empty `Vec<T, A>` with the specified capacity with the provided
+    /// allocator.
+    ///
+    /// The vector will be able to hold exactly `capacity` elements without
+    /// reallocating. If `capacity` is 0, the vector will not allocate.
+    ///
+    /// It is important to note that although the returned vector has the
+    /// *capacity* specified, the vector will have a zero *length*. For an
+    /// explanation of the difference between length and capacity, see
+    /// *[Capacity and reallocation]*.
+    ///
+    /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let mut vec = Vec::with_capacity_in(10, System);
+    ///
+    /// // The vector contains no items, even though it has capacity for more
+    /// assert_eq!(vec.len(), 0);
+    /// assert_eq!(vec.capacity(), 10);
+    ///
+    /// // These are all done without reallocating...
+    /// for i in 0..10 {
+    ///     vec.push(i);
+    /// }
+    /// assert_eq!(vec.len(), 10);
+    /// assert_eq!(vec.capacity(), 10);
+    ///
+    /// // ...but this may make the vector reallocate
+    /// vec.push(11);
+    /// assert_eq!(vec.len(), 11);
+    /// assert!(vec.capacity() >= 11);
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+        Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
+    }
+
+    /// Creates a `Vec<T, A>` directly from the raw components of another vector.
+    ///
+    /// # Safety
+    ///
+    /// This is highly unsafe, due to the number of invariants that aren't
+    /// checked:
+    ///
+    /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
+    ///   (at least, it's highly likely to be incorrect if it wasn't).
+    /// * `T` needs to have the same size and alignment as what `ptr` was allocated with.
+    ///   (`T` having a less strict alignment is not sufficient, the alignment really
+    ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
+    ///   allocated and deallocated with the same layout.)
+    /// * `length` needs to be less than or equal to `capacity`.
+    /// * `capacity` needs to be the capacity that the pointer was allocated with.
+    ///
+    /// Violating these may cause problems like corrupting the allocator's
+    /// internal data structures. For example it is **not** safe
+    /// to build a `Vec<u8>` from a pointer to a C `char` array with length `size_t`.
+    /// It's also not safe to build one from a `Vec<u16>` and its length, because
+    /// the allocator cares about the alignment, and these two types have different
+    /// alignments. The buffer was allocated with alignment 2 (for `u16`), but after
+    /// turning it into a `Vec<u8>` it'll be deallocated with alignment 1.
+    ///
+    /// The ownership of `ptr` is effectively transferred to the
+    /// `Vec<T>` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
+    ///
+    /// [`String`]: crate::string::String
+    /// [`dealloc`]: crate::alloc::GlobalAlloc::dealloc
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// use std::ptr;
+    /// use std::mem;
+    ///
+    /// let mut v = Vec::with_capacity_in(3, System);
+    /// v.push(1);
+    /// v.push(2);
+    /// v.push(3);
+    ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
+    /// // Prevent running `v`'s destructor so we are in complete control
+    /// // of the allocation.
+    /// let mut v = mem::ManuallyDrop::new(v);
+    ///
+    /// // Pull out the various important pieces of information about `v`
+    /// let p = v.as_mut_ptr();
+    /// let len = v.len();
+    /// let cap = v.capacity();
+    /// let alloc = v.alloc_ref();
+    ///
+    /// unsafe {
+    ///     // Overwrite memory with 4, 5, 6
+    ///     for i in 0..len as isize {
+    ///         ptr::write(p.offset(i), 4 + i);
+    ///     }
+    ///
+    ///     // Put everything back together into a Vec
+    ///     let rebuilt = Vec::from_raw_parts_in(p, len, cap, alloc.clone());
+    ///     assert_eq!(rebuilt, [4, 5, 6]);
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
+        unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
+    }
+
+    /// Decomposes a `Vec<T>` into its raw components.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the vector (in elements), and the allocated capacity of the
+    /// data (in elements). These are the same arguments in the same
+    /// order as the arguments to [`from_raw_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `Vec` with the [`from_raw_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts`]: Vec::from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts)]
+    /// let v: Vec<i32> = vec![-1, 0, 1];
+    ///
+    /// let (ptr, len, cap) = v.into_raw_parts();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr as *mut u32;
+    ///
+    ///     Vec::from_raw_parts(ptr, len, cap)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
+        let mut me = ManuallyDrop::new(self);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    }
+
+    /// Decomposes a `Vec<T>` into its raw components.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of the vector (in elements),
+    /// the allocated capacity of the data (in elements), and the allocator. These are the same
+    /// arguments in the same order as the arguments to [`from_raw_parts_in`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `Vec` with the [`from_raw_parts_in`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts_in`]: Vec::from_raw_parts_in
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, vec_into_raw_parts)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let mut v: Vec<i32, System> = Vec::new_in(System);
+    /// v.push(-1);
+    /// v.push(0);
+    /// v.push(1);
+    ///
+    /// let (ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr as *mut u32;
+    ///
+    ///     Vec::from_raw_parts_in(ptr, len, cap, alloc)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
+        let mut me = ManuallyDrop::new(self);
+        let len = me.len();
+        let capacity = me.capacity();
+        let ptr = me.as_mut_ptr();
+        let alloc = unsafe { ptr::read(me.alloc_ref()) };
+        (ptr, len, capacity, alloc)
     }
 
     /// Returns the number of elements the vector can hold without
@@ -684,7 +876,7 @@ impl<T> Vec<T> {
     /// assert_eq!(slice.into_vec().capacity(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_boxed_slice(mut self) -> Box<[T]> {
+    pub fn into_boxed_slice(mut self) -> Box<[T], A> {
         unsafe {
             self.shrink_to_fit();
             let me = ManuallyDrop::new(self);
@@ -861,6 +1053,13 @@ impl<T> Vec<T> {
             assume(!ptr.is_null());
         }
         ptr
+    }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn alloc_ref(&self) -> &A {
+        self.buf.alloc_ref()
     }
 
     /// Forces the length of the vector to `new_len`.
@@ -1299,7 +1498,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v, &[]);
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
     where
         R: RangeBounds<usize>,
     {
@@ -1403,7 +1602,10 @@ impl<T> Vec<T> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    pub fn split_off(&mut self, at: usize) -> Self {
+    pub fn split_off(&mut self, at: usize) -> Self
+    where
+        A: Clone,
+    {
         #[cold]
         #[inline(never)]
         fn assert_failed(at: usize, len: usize) -> ! {
@@ -1416,11 +1618,14 @@ impl<T> Vec<T> {
 
         if at == 0 {
             // the new vector can take over the original buffer and avoid the copy
-            return mem::replace(self, Vec::with_capacity(self.capacity()));
+            return mem::replace(
+                self,
+                Vec::with_capacity_in(self.capacity(), self.alloc_ref().clone()),
+            );
         }
 
         let other_len = self.len - at;
-        let mut other = Vec::with_capacity(other_len);
+        let mut other = Vec::with_capacity_in(other_len, self.alloc_ref().clone());
 
         // Unsafely `set_len` and copy items to `other`.
         unsafe {
@@ -1497,7 +1702,7 @@ impl<T> Vec<T> {
     #[inline]
     pub fn leak<'a>(self) -> &'a mut [T]
     where
-        T: 'a, // Technically not needed, but kept to be explicit.
+        A: 'a,
     {
         Box::leak(self.into_boxed_slice())
     }
@@ -1544,7 +1749,7 @@ impl<T> Vec<T> {
     }
 }
 
-impl<T: Clone> Vec<T> {
+impl<T: Clone, A: AllocRef> Vec<T, A> {
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
@@ -1639,7 +1844,7 @@ impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
     }
 }
 
-impl<T> Vec<T> {
+impl<T, A: AllocRef> Vec<T, A> {
     /// Extend the vector by `n` values, using the given generator.
     fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
         self.reserve(n);
@@ -1699,7 +1904,7 @@ impl Drop for SetLenOnDrop<'_> {
     }
 }
 
-impl<T: PartialEq> Vec<T> {
+impl<T: PartialEq, A: AllocRef> Vec<T, A> {
     /// Removes consecutive repeated elements in the vector according to the
     /// [`PartialEq`] trait implementation.
     ///
@@ -1721,7 +1926,7 @@ impl<T: PartialEq> Vec<T> {
     }
 }
 
-impl<T> Vec<T> {
+impl<T, A: AllocRef> Vec<T, A> {
     /// Removes the first instance of `item` from the vector if the item exists.
     ///
     /// This method will be removed soon.
@@ -1749,17 +1954,23 @@ impl<T> Vec<T> {
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    <T as SpecFromElem>::from_elem(elem, n)
+    <T as SpecFromElem>::from_elem(elem, n, Global)
+}
+
+#[doc(hidden)]
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub fn from_elem_in<T: Clone, A: AllocRef>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
+    <T as SpecFromElem>::from_elem(elem, n, alloc)
 }
 
 // Specialization trait used for Vec::from_elem
 trait SpecFromElem: Sized {
-    fn from_elem(elem: Self, n: usize) -> Vec<Self>;
+    fn from_elem<A: AllocRef>(elem: Self, n: usize, alloc: A) -> Vec<Self, A>;
 }
 
 impl<T: Clone> SpecFromElem for T {
-    default fn from_elem(elem: Self, n: usize) -> Vec<Self> {
-        let mut v = Vec::with_capacity(n);
+    default fn from_elem<A: AllocRef>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
+        let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, ExtendElement(elem));
         v
     }
@@ -1767,12 +1978,12 @@ impl<T: Clone> SpecFromElem for T {
 
 impl SpecFromElem for i8 {
     #[inline]
-    fn from_elem(elem: i8, n: usize) -> Vec<i8> {
+    fn from_elem<A: AllocRef>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {
         if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed(n), len: n };
+            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
         unsafe {
-            let mut v = Vec::with_capacity(n);
+            let mut v = Vec::with_capacity_in(n, alloc);
             ptr::write_bytes(v.as_mut_ptr(), elem as u8, n);
             v.set_len(n);
             v
@@ -1782,12 +1993,12 @@ impl SpecFromElem for i8 {
 
 impl SpecFromElem for u8 {
     #[inline]
-    fn from_elem(elem: u8, n: usize) -> Vec<u8> {
+    fn from_elem<A: AllocRef>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {
         if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed(n), len: n };
+            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
         unsafe {
-            let mut v = Vec::with_capacity(n);
+            let mut v = Vec::with_capacity_in(n, alloc);
             ptr::write_bytes(v.as_mut_ptr(), elem, n);
             v.set_len(n);
             v
@@ -1797,11 +2008,11 @@ impl SpecFromElem for u8 {
 
 impl<T: Clone + IsZero> SpecFromElem for T {
     #[inline]
-    fn from_elem(elem: T, n: usize) -> Vec<T> {
+    fn from_elem<A: AllocRef>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
         if elem.is_zero() {
-            return Vec { buf: RawVec::with_capacity_zeroed(n), len: n };
+            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
         }
-        let mut v = Vec::with_capacity(n);
+        let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, ExtendElement(elem));
         v
     }
@@ -1882,7 +2093,7 @@ unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Deref for Vec<T> {
+impl<T, A: AllocRef> ops::Deref for Vec<T, A> {
     type Target = [T];
 
     fn deref(&self) -> &[T] {
@@ -1891,17 +2102,18 @@ impl<T> ops::Deref for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::DerefMut for Vec<T> {
+impl<T, A: AllocRef> ops::DerefMut for Vec<T, A> {
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone> Clone for Vec<T> {
+impl<T: Clone, A: AllocRef + Clone> Clone for Vec<T, A> {
     #[cfg(not(test))]
-    fn clone(&self) -> Vec<T> {
-        <[T]>::to_vec(&**self)
+    fn clone(&self) -> Self {
+        let alloc = self.alloc_ref().clone();
+        <[T]>::to_vec_in(&**self, alloc)
     }
 
     // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
@@ -1909,17 +2121,27 @@ impl<T: Clone> Clone for Vec<T> {
     // `slice::to_vec`  function which is only available with cfg(test)
     // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
-    fn clone(&self) -> Vec<T> {
-        crate::slice::to_vec(&**self)
+    fn clone(&self) -> Self {
+        let alloc = self.alloc_ref().clone();
+        crate::slice::to_vec(&**self, alloc)
     }
 
-    fn clone_from(&mut self, other: &Vec<T>) {
-        other.as_slice().clone_into(self);
+    fn clone_from(&mut self, other: &Self) {
+        // drop anything that will not be overwritten
+        self.truncate(other.len());
+
+        // self.len <= other.len due to the truncate above, so the
+        // slices here are always in-bounds.
+        let (init, tail) = other.split_at(self.len());
+
+        // reuse the contained values' allocations/resources.
+        self.clone_from_slice(init);
+        self.extend_from_slice(tail);
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Hash> Hash for Vec<T> {
+impl<T: Hash, A: AllocRef> Hash for Vec<T, A> {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
@@ -1931,7 +2153,7 @@ impl<T: Hash> Hash for Vec<T> {
     message = "vector indices are of type `usize` or ranges of `usize`",
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
-impl<T, I: SliceIndex<[T]>> Index<I> for Vec<T> {
+impl<T, I: SliceIndex<[T]>, A: AllocRef> Index<I> for Vec<T, A> {
     type Output = I::Output;
 
     #[inline]
@@ -1945,7 +2167,7 @@ impl<T, I: SliceIndex<[T]>> Index<I> for Vec<T> {
     message = "vector indices are of type `usize` or ranges of `usize`",
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
-impl<T, I: SliceIndex<[T]>> IndexMut<I> for Vec<T> {
+impl<T, I: SliceIndex<[T]>, A: AllocRef> IndexMut<I> for Vec<T, A> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
@@ -1961,9 +2183,9 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> IntoIterator for Vec<T> {
+impl<T, A: AllocRef> IntoIterator for Vec<T, A> {
     type Item = T;
-    type IntoIter = IntoIter<T>;
+    type IntoIter = IntoIter<T, A>;
 
     /// Creates a consuming iterator, that is, one that moves each value out of
     /// the vector (from start to end). The vector cannot be used after calling
@@ -1979,9 +2201,10 @@ impl<T> IntoIterator for Vec<T> {
     /// }
     /// ```
     #[inline]
-    fn into_iter(self) -> IntoIter<T> {
+    fn into_iter(self) -> IntoIter<T, A> {
         unsafe {
             let mut me = ManuallyDrop::new(self);
+            let alloc = ptr::read(me.alloc_ref());
             let begin = me.as_mut_ptr();
             let end = if mem::size_of::<T>() == 0 {
                 arith_offset(begin as *const i8, me.len() as isize) as *const T
@@ -1993,6 +2216,7 @@ impl<T> IntoIterator for Vec<T> {
                 buf: NonNull::new_unchecked(begin),
                 phantom: PhantomData,
                 cap,
+                alloc,
                 ptr: begin,
                 end,
             }
@@ -2001,7 +2225,7 @@ impl<T> IntoIterator for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a Vec<T> {
+impl<'a, T, A: AllocRef> IntoIterator for &'a Vec<T, A> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
@@ -2011,7 +2235,7 @@ impl<'a, T> IntoIterator for &'a Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a mut Vec<T> {
+impl<'a, T, A: AllocRef> IntoIterator for &'a mut Vec<T, A> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
@@ -2021,7 +2245,7 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Extend<T> for Vec<T> {
+impl<T, A: AllocRef> Extend<T> for Vec<T, A> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
@@ -2303,7 +2527,7 @@ trait SpecExtend<T, I> {
     fn spec_extend(&mut self, iter: I);
 }
 
-impl<T, I> SpecExtend<T, I> for Vec<T>
+impl<T, I, A: AllocRef> SpecExtend<T, I> for Vec<T, A>
 where
     I: Iterator<Item = T>,
 {
@@ -2312,7 +2536,7 @@ where
     }
 }
 
-impl<T, I> SpecExtend<T, I> for Vec<T>
+impl<T, I, A: AllocRef> SpecExtend<T, I> for Vec<T, A>
 where
     I: TrustedLen<Item = T>,
 {
@@ -2345,7 +2569,7 @@ where
     }
 }
 
-impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
+impl<T, A: AllocRef> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
     fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
         unsafe {
             self.append_elements(iterator.as_slice() as _);
@@ -2354,7 +2578,7 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
     }
 }
 
-impl<'a, T: 'a, I> SpecExtend<&'a T, I> for Vec<T>
+impl<'a, T: 'a, I, A: AllocRef + 'a> SpecExtend<&'a T, I> for Vec<T, A>
 where
     I: Iterator<Item = &'a T>,
     T: Clone,
@@ -2364,7 +2588,7 @@ where
     }
 }
 
-impl<'a, T: 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T>
+impl<'a, T: 'a, A: AllocRef + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
 where
     T: Copy,
 {
@@ -2374,7 +2598,7 @@ where
     }
 }
 
-impl<T> Vec<T> {
+impl<T, A: AllocRef> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
@@ -2434,7 +2658,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "vec_splice", since = "1.21.0")]
-    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter>
+    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A>
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
@@ -2487,7 +2711,7 @@ impl<T> Vec<T> {
     /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
     #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F>
+    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
     {
@@ -2509,7 +2733,7 @@ impl<T> Vec<T> {
 ///
 /// [`copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
+impl<'a, T: Copy + 'a, A: AllocRef + 'a> Extend<&'a T> for Vec<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
     }
@@ -2528,9 +2752,9 @@ impl<'a, T: 'a + Copy> Extend<&'a T> for Vec<T> {
 macro_rules! __impl_slice_eq1 {
     ([$($vars:tt)*] $lhs:ty, $rhs:ty $(where $ty:ty: $bound:ident)?, #[$stability:meta]) => {
         #[$stability]
-        impl<A, B, $($vars)*> PartialEq<$rhs> for $lhs
+        impl<T, U, $($vars)*> PartialEq<$rhs> for $lhs
         where
-            A: PartialEq<B>,
+            T: PartialEq<U>,
             $($ty: $bound)?
         {
             #[inline]
@@ -2541,18 +2765,18 @@ macro_rules! __impl_slice_eq1 {
     }
 }
 
-__impl_slice_eq1! { [] Vec<A>, Vec<B>, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [] Vec<A>, &[B], #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [] Vec<A>, &mut [B], #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [] &[A], Vec<B>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
-__impl_slice_eq1! { [] &mut [A], Vec<B>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
-__impl_slice_eq1! { [] Vec<A>, [B], #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
-__impl_slice_eq1! { [] [A], Vec<B>, #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
-__impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B> where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [] Cow<'_, [A]>, &[B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [] Cow<'_, [A]>, &mut [B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [const N: usize] Vec<A>, [B; N], #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N], #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [A: AllocRef] Vec<T, A>, Vec<U, A>, #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [A: AllocRef] Vec<T, A>, &[U], #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [A: AllocRef] Vec<T, A>, &mut [U], #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [A: AllocRef] &[T], Vec<U, A>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
+__impl_slice_eq1! { [A: AllocRef] &mut [T], Vec<U, A>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
+__impl_slice_eq1! { [A: AllocRef] Vec<T, A>, [U], #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
+__impl_slice_eq1! { [A: AllocRef] [T], Vec<U, A>, #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
+__impl_slice_eq1! { [A: AllocRef] Cow<'_, [T]>, Vec<U, A> where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [] Cow<'_, [T]>, &[U] where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [] Cow<'_, [T]>, &mut [U] where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [A: AllocRef, const N: usize] Vec<T, A>, [U; N], #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [A: AllocRef, const N: usize] Vec<T, A>, &[U; N], #[stable(feature = "rust1", since = "1.0.0")] }
 
 // NOTE: some less important impls are omitted to reduce code bloat
 // FIXME(Centril): Reconsider this?
@@ -2566,27 +2790,27 @@ __impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N], #[stable(feature = "rust1"
 
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd> PartialOrd for Vec<T> {
+impl<T: PartialOrd, A: AllocRef> PartialOrd for Vec<T, A> {
     #[inline]
-    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq> Eq for Vec<T> {}
+impl<T: Eq, A: AllocRef> Eq for Vec<T, A> {}
 
 /// Implements ordering of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Ord for Vec<T> {
+impl<T: Ord, A: AllocRef> Ord for Vec<T, A> {
     #[inline]
-    fn cmp(&self, other: &Vec<T>) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T> Drop for Vec<T> {
+unsafe impl<#[may_dangle] T, A: AllocRef> Drop for Vec<T, A> {
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
@@ -2607,35 +2831,35 @@ impl<T> Default for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for Vec<T> {
+impl<T: fmt::Debug, A: AllocRef> fmt::Debug for Vec<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> AsRef<Vec<T>> for Vec<T> {
-    fn as_ref(&self) -> &Vec<T> {
+impl<T, A: AllocRef> AsRef<Vec<T, A>> for Vec<T, A> {
+    fn as_ref(&self) -> &Vec<T, A> {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T> AsMut<Vec<T>> for Vec<T> {
-    fn as_mut(&mut self) -> &mut Vec<T> {
+impl<T, A: AllocRef> AsMut<Vec<T, A>> for Vec<T, A> {
+    fn as_mut(&mut self) -> &mut Vec<T, A> {
         self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> AsRef<[T]> for Vec<T> {
+impl<T, A: AllocRef> AsRef<[T]> for Vec<T, A> {
     fn as_ref(&self) -> &[T] {
         self
     }
 }
 
 #[stable(feature = "vec_as_mut", since = "1.5.0")]
-impl<T> AsMut<[T]> for Vec<T> {
+impl<T, A: AllocRef> AsMut<[T]> for Vec<T, A> {
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
@@ -2649,7 +2873,7 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     }
     #[cfg(test)]
     fn from(s: &[T]) -> Vec<T> {
-        crate::slice::to_vec(s)
+        crate::slice::to_vec(s, Global)
     }
 }
 
@@ -2661,7 +2885,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     }
     #[cfg(test)]
     fn from(s: &mut [T]) -> Vec<T> {
-        crate::slice::to_vec(s)
+        crate::slice::to_vec(s, Global)
     }
 }
 
@@ -2690,17 +2914,18 @@ where
 // note: test pulls in libstd, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
-impl<T> From<Box<[T]>> for Vec<T> {
-    fn from(s: Box<[T]>) -> Vec<T> {
-        s.into_vec()
+impl<T, A: AllocRef> From<Box<[T], A>> for Vec<T, A> {
+    fn from(s: Box<[T], A>) -> Self {
+        let len = s.len();
+        Self { buf: RawVec::from_box(s), len }
     }
 }
 
 // note: test pulls in libstd, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
-impl<T> From<Vec<T>> for Box<[T]> {
-    fn from(v: Vec<T>) -> Box<[T]> {
+impl<T, A: AllocRef> From<Vec<T, A>> for Box<[T], A> {
+    fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()
     }
 }
@@ -2713,8 +2938,8 @@ impl From<&str> for Vec<u8> {
 }
 
 #[stable(feature = "array_try_from_vec", since = "1.48.0")]
-impl<T, const N: usize> TryFrom<Vec<T>> for [T; N] {
-    type Error = Vec<T>;
+impl<T, A: AllocRef, const N: usize> TryFrom<Vec<T, A>> for [T; N] {
+    type Error = Vec<T, A>;
 
     /// Gets the entire contents of the `Vec<T>` as an array,
     /// if its size exactly matches that of the requested array.
@@ -2745,7 +2970,7 @@ impl<T, const N: usize> TryFrom<Vec<T>> for [T; N] {
     /// assert_eq!(a, b' ');
     /// assert_eq!(b, b'd');
     /// ```
-    fn try_from(mut vec: Vec<T>) -> Result<[T; N], Vec<T>> {
+    fn try_from(mut vec: Vec<T, A>) -> Result<[T; N], Vec<T, A>> {
         if vec.len() != N {
             return Err(vec);
         }
@@ -2814,22 +3039,24 @@ where
 /// let iter: std::vec::IntoIter<_> = v.into_iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct IntoIter<T> {
+pub struct IntoIter<T, #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global>
+{
     buf: NonNull<T>,
     phantom: PhantomData<T>,
     cap: usize,
+    alloc: A,
     ptr: *const T,
     end: *const T,
 }
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
-impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+impl<T: fmt::Debug, A: AllocRef> fmt::Debug for IntoIter<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoIter").field(&self.as_slice()).finish()
     }
 }
 
-impl<T> IntoIter<T> {
+impl<T, A: AllocRef> IntoIter<T, A> {
     /// Returns the remaining items of this iterator as a slice.
     ///
     /// # Examples
@@ -2864,6 +3091,13 @@ impl<T> IntoIter<T> {
         unsafe { &mut *self.as_raw_mut_slice() }
     }
 
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn alloc_ref(&self) -> &A {
+        &self.alloc
+    }
+
     fn as_raw_mut_slice(&mut self) -> *mut [T] {
         ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
     }
@@ -2886,19 +3120,19 @@ impl<T> IntoIter<T> {
 }
 
 #[stable(feature = "vec_intoiter_as_ref", since = "1.46.0")]
-impl<T> AsRef<[T]> for IntoIter<T> {
+impl<T, A: AllocRef> AsRef<[T]> for IntoIter<T, A> {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send> Send for IntoIter<T> {}
+unsafe impl<T: Send, A: AllocRef + Send> Send for IntoIter<T, A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for IntoIter<T> {}
+unsafe impl<T: Sync, A: AllocRef> Sync for IntoIter<T, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Iterator for IntoIter<T> {
+impl<T, A: AllocRef> Iterator for IntoIter<T, A> {
     type Item = T;
 
     #[inline]
@@ -2955,7 +3189,7 @@ impl<T> Iterator for IntoIter<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> DoubleEndedIterator for IntoIter<T> {
+impl<T, A: AllocRef> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         if self.end == self.ptr {
@@ -2975,23 +3209,23 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IntoIter<T> {
+impl<T, A: AllocRef> ExactSizeIterator for IntoIter<T, A> {
     fn is_empty(&self) -> bool {
         self.ptr == self.end
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for IntoIter<T> {}
+impl<T, A: AllocRef> FusedIterator for IntoIter<T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T> TrustedLen for IntoIter<T> {}
+unsafe impl<T, A: AllocRef> TrustedLen for IntoIter<T, A> {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
 // and thus we can't implement drop-handling
-unsafe impl<T> TrustedRandomAccess for IntoIter<T>
+unsafe impl<T, A: AllocRef> TrustedRandomAccess for IntoIter<T, A>
 where
     T: Copy,
 {
@@ -3001,21 +3235,30 @@ where
 }
 
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
-impl<T: Clone> Clone for IntoIter<T> {
-    fn clone(&self) -> IntoIter<T> {
-        self.as_slice().to_owned().into_iter()
+impl<T: Clone, A: AllocRef + Clone> Clone for IntoIter<T, A> {
+    #[cfg(not(test))]
+    fn clone(&self) -> Self {
+        self.as_slice().to_vec_in(self.alloc.clone()).into_iter()
+    }
+    #[cfg(test)]
+    fn clone(&self) -> Self {
+        crate::slice::to_vec(self.as_slice(), self.alloc.clone()).into_iter()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
+unsafe impl<#[may_dangle] T, A: AllocRef> Drop for IntoIter<T, A> {
     fn drop(&mut self) {
-        struct DropGuard<'a, T>(&'a mut IntoIter<T>);
+        struct DropGuard<'a, T, A: AllocRef>(&'a mut IntoIter<T, A>);
 
-        impl<T> Drop for DropGuard<'_, T> {
+        impl<T, A: AllocRef> Drop for DropGuard<'_, T, A> {
             fn drop(&mut self) {
-                // RawVec handles deallocation
-                let _ = unsafe { RawVec::from_raw_parts(self.0.buf.as_ptr(), self.0.cap) };
+                unsafe {
+                    // `IntoIter::alloc` is not used anymore after this
+                    let alloc = ptr::read(&self.0.alloc);
+                    // RawVec handles deallocation
+                    let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
+                }
             }
         }
 
@@ -3029,11 +3272,11 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T> InPlaceIterable for IntoIter<T> {}
+unsafe impl<T, A: AllocRef> InPlaceIterable for IntoIter<T, A> {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T> SourceIter for IntoIter<T> {
-    type Source = IntoIter<T>;
+unsafe impl<T, A: AllocRef> SourceIter for IntoIter<T, A> {
+    type Source = Self;
 
     #[inline]
     unsafe fn as_inner(&mut self) -> &mut Self::Source {
@@ -3068,24 +3311,28 @@ impl<T> AsIntoIter for IntoIter<T> {
 /// let iter: std::vec::Drain<_> = v.drain(..);
 /// ```
 #[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<'a, T: 'a> {
+pub struct Drain<
+    'a,
+    T: 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef + 'a = Global,
+> {
     /// Index of tail to preserve
     tail_start: usize,
     /// Length of tail
     tail_len: usize,
     /// Current remaining range to remove
     iter: slice::Iter<'a, T>,
-    vec: NonNull<Vec<T>>,
+    vec: NonNull<Vec<T, A>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
+impl<T: fmt::Debug, A: AllocRef> fmt::Debug for Drain<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain").field(&self.iter.as_slice()).finish()
     }
 }
 
-impl<'a, T> Drain<'a, T> {
+impl<'a, T, A: AllocRef> Drain<'a, T, A> {
     /// Returns the remaining items of this iterator as a slice.
     ///
     /// # Examples
@@ -3101,22 +3348,29 @@ impl<'a, T> Drain<'a, T> {
     pub fn as_slice(&self) -> &[T] {
         self.iter.as_slice()
     }
+
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn alloc_ref(&self) -> &A {
+        unsafe { self.vec.as_ref().alloc_ref() }
+    }
 }
 
 #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
-impl<'a, T> AsRef<[T]> for Drain<'a, T> {
+impl<'a, T, A: AllocRef> AsRef<[T]> for Drain<'a, T, A> {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync> Sync for Drain<'_, T> {}
+unsafe impl<T: Sync, A: Sync + AllocRef> Sync for Drain<'_, T, A> {}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send> Send for Drain<'_, T> {}
+unsafe impl<T: Send, A: Send + AllocRef> Send for Drain<'_, T, A> {}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> Iterator for Drain<'_, T> {
+impl<T, A: AllocRef> Iterator for Drain<'_, T, A> {
     type Item = T;
 
     #[inline]
@@ -3130,7 +3384,7 @@ impl<T> Iterator for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> DoubleEndedIterator for Drain<'_, T> {
+impl<T, A: AllocRef> DoubleEndedIterator for Drain<'_, T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back().map(|elt| unsafe { ptr::read(elt as *const _) })
@@ -3138,13 +3392,13 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> Drop for Drain<'_, T> {
+impl<T, A: AllocRef> Drop for Drain<'_, T, A> {
     fn drop(&mut self) {
         /// Continues dropping the remaining elements in the `Drain`, then moves back the
         /// un-`Drain`ed elements to restore the original `Vec`.
-        struct DropGuard<'r, 'a, T>(&'r mut Drain<'a, T>);
+        struct DropGuard<'r, 'a, T, A: AllocRef>(&'r mut Drain<'a, T, A>);
 
-        impl<'r, 'a, T> Drop for DropGuard<'r, 'a, T> {
+        impl<'r, 'a, T, A: AllocRef> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
                 // Continue the same loop we have below. If the loop already finished, this does
                 // nothing.
@@ -3180,17 +3434,17 @@ impl<T> Drop for Drain<'_, T> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T> ExactSizeIterator for Drain<'_, T> {
+impl<T, A: AllocRef> ExactSizeIterator for Drain<'_, T, A> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T> TrustedLen for Drain<'_, T> {}
+unsafe impl<T, A: AllocRef> TrustedLen for Drain<'_, T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T> FusedIterator for Drain<'_, T> {}
+impl<T, A: AllocRef> FusedIterator for Drain<'_, T, A> {}
 
 /// A splicing iterator for `Vec`.
 ///
@@ -3206,13 +3460,17 @@ impl<T> FusedIterator for Drain<'_, T> {}
 /// ```
 #[derive(Debug)]
 #[stable(feature = "vec_splice", since = "1.21.0")]
-pub struct Splice<'a, I: Iterator + 'a> {
-    drain: Drain<'a, I::Item>,
+pub struct Splice<
+    'a,
+    I: Iterator + 'a,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef + 'a = Global,
+> {
+    drain: Drain<'a, I::Item, A>,
     replace_with: I,
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator> Iterator for Splice<'_, I> {
+impl<I: Iterator, A: AllocRef> Iterator for Splice<'_, I, A> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -3225,17 +3483,17 @@ impl<I: Iterator> Iterator for Splice<'_, I> {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator> DoubleEndedIterator for Splice<'_, I> {
+impl<I: Iterator, A: AllocRef> DoubleEndedIterator for Splice<'_, I, A> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator> ExactSizeIterator for Splice<'_, I> {}
+impl<I: Iterator, A: AllocRef> ExactSizeIterator for Splice<'_, I, A> {}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator> Drop for Splice<'_, I> {
+impl<I: Iterator, A: AllocRef> Drop for Splice<'_, I, A> {
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
 
@@ -3276,7 +3534,7 @@ impl<I: Iterator> Drop for Splice<'_, I> {
 }
 
 /// Private helper methods for `Splice::drop`
-impl<T> Drain<'_, T> {
+impl<T, A: AllocRef> Drain<'_, T, A> {
     /// The range from `self.vec.len` to `self.tail_start` contains elements
     /// that have been moved out.
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
@@ -3331,11 +3589,15 @@ impl<T> Drain<'_, T> {
 /// ```
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
-pub struct DrainFilter<'a, T, F>
-where
+pub struct DrainFilter<
+    'a,
+    T,
+    F,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global,
+> where
     F: FnMut(&mut T) -> bool,
 {
-    vec: &'a mut Vec<T>,
+    vec: &'a mut Vec<T, A>,
     /// The index of the item that will be inspected by the next call to `next`.
     idx: usize,
     /// The number of items that have been drained (removed) thus far.
@@ -3352,8 +3614,20 @@ where
     panic_flag: bool,
 }
 
+impl<T, F, A: AllocRef> DrainFilter<'_, T, F, A>
+where
+    F: FnMut(&mut T) -> bool,
+{
+    /// Returns a reference to the underlying allocator.
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn alloc_ref(&self) -> &A {
+        self.vec.alloc_ref()
+    }
+}
+
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F> Iterator for DrainFilter<'_, T, F>
+impl<T, F, A: AllocRef> Iterator for DrainFilter<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {
@@ -3391,19 +3665,19 @@ where
 }
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-impl<T, F> Drop for DrainFilter<'_, T, F>
+impl<T, F, A: AllocRef> Drop for DrainFilter<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        struct BackshiftOnDrop<'a, 'b, T, F>
+        struct BackshiftOnDrop<'a, 'b, T, F, A: AllocRef>
         where
             F: FnMut(&mut T) -> bool,
         {
-            drain: &'b mut DrainFilter<'a, T, F>,
+            drain: &'b mut DrainFilter<'a, T, F, A>,
         }
 
-        impl<'a, 'b, T, F> Drop for BackshiftOnDrop<'a, 'b, T, F>
+        impl<'a, 'b, T, F, A: AllocRef> Drop for BackshiftOnDrop<'a, 'b, T, F, A>
         where
             F: FnMut(&mut T) -> bool,
         {
