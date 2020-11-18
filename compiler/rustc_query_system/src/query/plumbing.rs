@@ -17,7 +17,6 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, FatalError};
-use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -641,31 +640,26 @@ where
 
 /// Ensure that either this query has all green inputs or been executed.
 /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
+/// Returns true if the query should still run.
 ///
 /// This function is particularly useful when executing passes for their
 /// side-effects -- e.g., in order to report errors for erroneous programs.
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_query_impl<CTX, C>(
-    tcx: CTX,
-    state: &QueryState<CTX::DepKind, CTX::Query, C>,
-    key: C::Key,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
-) where
-    C: QueryCache,
-    C::Key: crate::dep_graph::DepNodeParams<CTX>,
+fn ensure_must_run<CTX, K, V>(tcx: CTX, key: &K, query: &QueryVtable<CTX, K, V>) -> bool
+where
+    K: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
     if query.eval_always {
-        let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
-        return;
+        return true;
     }
 
     // Ensuring an anonymous query makes no sense
     assert!(!query.anon);
 
-    let dep_node = query.to_dep_node(tcx, &key);
+    let dep_node = query.to_dep_node(tcx, key);
 
     match tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node) {
         None => {
@@ -675,10 +669,11 @@ fn ensure_query_impl<CTX, C>(
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
+            true
         }
         Some((_, dep_node_index)) => {
             tcx.profiler().query_cache_hit(dep_node_index.into());
+            false
         }
     }
 }
@@ -720,24 +715,27 @@ fn force_query_impl<CTX, C>(
     );
 }
 
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
-where
-    Q: QueryDescription<CTX>,
-    Q::Key: crate::dep_graph::DepNodeParams<CTX>,
-    CTX: QueryContext,
-{
-    debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
-
-    get_query_impl(tcx, Q::query_state(tcx), span, key, &Q::VTABLE)
+pub enum QueryMode {
+    Get,
+    Ensure,
 }
 
-pub fn ensure_query<Q, CTX>(tcx: CTX, key: Q::Key)
+pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
 where
     Q: QueryDescription<CTX>,
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,
     CTX: QueryContext,
 {
-    ensure_query_impl(tcx, Q::query_state(tcx), key, &Q::VTABLE)
+    let query = &Q::VTABLE;
+    if let QueryMode::Ensure = mode {
+        if !ensure_must_run(tcx, &key, query) {
+            return None;
+        }
+    }
+
+    debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
+    let value = get_query_impl(tcx, Q::query_state(tcx), span, key, query);
+    Some(value)
 }
 
 pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
