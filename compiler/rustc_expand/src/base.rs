@@ -888,8 +888,10 @@ pub trait ResolverExpand {
     /// Some parent node that is close enough to the given macro call.
     fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
 
+    // Resolver interfaces for specific built-in macros.
+    /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
-    fn add_derive_copy(&mut self, expn_id: ExpnId);
+    /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 

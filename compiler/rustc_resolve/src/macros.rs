@@ -286,7 +286,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                                     ext.helper_attrs.iter().map(|name| Ident::new(*name, span)),
                                 );
                                 if ext.is_derive_copy {
-                                    self.add_derive_copy(invoc_id);
+                                    self.containers_deriving_copy.insert(invoc_id);
                                 }
                                 ext
                             }
@@ -349,10 +349,6 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
         self.containers_deriving_copy.contains(&expn_id)
-    }
-
-    fn add_derive_copy(&mut self, expn_id: ExpnId) {
-        self.containers_deriving_copy.insert(expn_id);
     }
 
     // The function that implements the resolution logic of `#[cfg_accessible(path)]`.

@@ -1797,7 +1797,4 @@ impl<'feat> ExpansionConfig<'feat> {
     fn proc_macro_hygiene(&self) -> bool {
         self.features.map_or(false, |features| features.proc_macro_hygiene)
     }
-    fn custom_inner_attributes(&self) -> bool {
-        self.features.map_or(false, |features| features.custom_inner_attributes)
-    }
 }
