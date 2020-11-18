@@ -129,6 +129,13 @@ pub fn time_trace_profiler_finish(file_name: &str) {
 // WARNING: the features after applying `to_llvm_feature` must be known
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
+// To find a list of LLVM's names, check llvm-project/llvm/include/llvm/Support/*TargetParser.def
+// where the * matches the architecture's name
+// Beware to not use the llvm github project for this, but check the git submodule
+// found in src/llvm-project
+// Though note that Rust can also be build with an external precompiled version of LLVM
+// which might lead to failures if the oldest tested / supported LLVM version
+// doesn't yet support the relevant intrinsics
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
     match (arch, s) {
@@ -136,6 +143,9 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("x86", "rdrand") => "rdrnd",
         ("x86", "bmi1") => "bmi",
         ("x86", "cmpxchg16b") => "cx16",
+        ("x86", "avx512vaes") => "vaes",
+        ("x86", "avx512gfni") => "gfni",
+        ("x86", "avx512vpclmulqdq") => "vpclmulqdq",
         ("aarch64", "fp") => "fp-armv8",
         ("aarch64", "fp16") => "fullfp16",
         (_, s) => s,
