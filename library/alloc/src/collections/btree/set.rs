@@ -1007,6 +1007,55 @@ impl<T> BTreeSet<T> {
         BTreeSet { map: self.map.split_off_range(range) }
     }
 
+    /// Removes at once all elements within the range from the set, returning
+    /// the removed elements as an iterator in ascending order. If the iterator
+    /// is dropped before being fully consumed, it drops the remaining removed
+    /// elements.
+    ///
+    /// The returned iterator keeps a mutable borrow on the set to allow
+    /// optimizing its implementation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    /// May panic if the [`Ord`] implementation of type `T` is ill-defined,
+    /// either because it does not form a total order or because it does not
+    /// correspond to the [`Ord`] implementation of type `K`.
+    ///
+    /// # Leaking
+    ///
+    /// If the returned iterator goes out of scope without being dropped (due to
+    /// [`core::mem::forget`], for example), the set set have lost and leaked
+    /// elements arbitrarily, including elements outside the range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_drain)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut a = BTreeSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    /// a.insert(17);
+    /// a.insert(41);
+    ///
+    /// let b: Vec<_> = a.drain(3..33).collect();
+    /// assert_eq!(b, vec![3, 17]);
+    /// assert_eq!(a.len(), 3);
+    /// ```
+    #[unstable(feature = "btree_drain", issue = "81074")]
+    pub fn drain<K: ?Sized, R>(&mut self, range: R) -> Drain<'_, T>
+    where
+        K: Ord,
+        T: Borrow<K> + Ord,
+        R: RangeBounds<K>,
+    {
+        Drain { iter: self.map.drain(range) }
+    }
+
     /// Creates an iterator that visits all elements in ascending order and
     /// uses a closure to determine if an element should be removed.
     ///
@@ -1189,6 +1238,36 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
         self.iter()
     }
 }
+
+/// An iterator produced by calling `drain` on BTreeSet.
+#[unstable(feature = "btree_drain", issue = "81074")]
+#[derive(Debug)]
+pub struct Drain<'a, T> {
+    iter: super::map::Drain<'a, T, ()>,
+}
+
+#[unstable(feature = "btree_drain", issue = "81074")]
+impl<T> Iterator for Drain<'_, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        self.iter.next().map(|(k, _)| k)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[unstable(feature = "btree_drain", issue = "81074")]
+impl<T> ExactSizeIterator for Drain<'_, T> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
+
+#[unstable(feature = "btree_drain", issue = "81074")]
+impl<T> FusedIterator for Drain<'_, T> {}
 
 /// An iterator produced by calling `drain_filter` on BTreeSet.
 #[unstable(feature = "btree_drain_filter", issue = "70530")]

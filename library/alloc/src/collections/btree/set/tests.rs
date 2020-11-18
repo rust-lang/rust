@@ -330,6 +330,34 @@ fn test_retain() {
 }
 
 #[test]
+fn test_drain() {
+    let mut set: BTreeSet<_> = (1..=3).collect();
+    let mut drained = set.drain(2..=2);
+    assert_eq!(drained.next(), Some(2));
+    assert_eq!(drained.next(), None);
+    assert_eq!(set.len(), 2);
+    assert_eq!(set.first(), Some(&1));
+    assert_eq!(set.last(), Some(&3));
+}
+
+#[test]
+fn test_drain_drop_panic_leak() {
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+    let mut set = BTreeSet::new();
+    set.insert(a.spawn(Panic::Never));
+    set.insert(b.spawn(Panic::InDrop));
+    set.insert(c.spawn(Panic::Never));
+
+    catch_unwind(move || drop(set.drain(..))).ok();
+
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
+}
+
+#[test]
 fn test_drain_filter() {
     let mut x = BTreeSet::from([1]);
     let mut y = BTreeSet::from([1]);

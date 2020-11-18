@@ -17,6 +17,7 @@ use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
+mod drain;
 mod split_off_range;
 
 // Minimum number of elements to insert, to guarantee a tree with 2 levels,
