@@ -568,10 +568,9 @@ impl<'a> Resolver<'a> {
             struct Flags: u8 {
                 const MACRO_RULES          = 1 << 0;
                 const MODULE               = 1 << 1;
-                const DERIVE_HELPER_COMPAT = 1 << 2;
-                const MISC_SUGGEST_CRATE   = 1 << 3;
-                const MISC_SUGGEST_SELF    = 1 << 4;
-                const MISC_FROM_PRELUDE    = 1 << 5;
+                const MISC_SUGGEST_CRATE   = 1 << 2;
+                const MISC_SUGGEST_SELF    = 1 << 3;
+                const MISC_FROM_PRELUDE    = 1 << 4;
             }
         }
 
@@ -646,14 +645,11 @@ impl<'a> Resolver<'a> {
                             ) {
                                 Ok((Some(ext), _)) => {
                                     if ext.helper_attrs.contains(&ident.name) {
-                                        let binding = (
-                                            Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
-                                            ty::Visibility::Public,
+                                        result = ok(
+                                            Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
                                             derive.span,
-                                            ExpnId::root(),
-                                        )
-                                            .to_name_binding(this.arenas);
-                                        result = Ok((binding, Flags::DERIVE_HELPER_COMPAT));
+                                            this.arenas,
+                                        );
                                         break;
                                     }
                                 }
@@ -799,17 +795,15 @@ impl<'a> Resolver<'a> {
                             let (res, innermost_res) = (binding.res(), innermost_binding.res());
                             if res != innermost_res {
                                 let builtin = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
-                                let is_derive_helper_compat = |res, flags: Flags| {
-                                    res == Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper)
-                                        && flags.contains(Flags::DERIVE_HELPER_COMPAT)
-                                };
+                                let derive_helper_compat =
+                                    Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
 
                                 let ambiguity_error_kind = if is_import {
                                     Some(AmbiguityKind::Import)
                                 } else if innermost_res == builtin || res == builtin {
                                     Some(AmbiguityKind::BuiltinAttr)
-                                } else if is_derive_helper_compat(innermost_res, innermost_flags)
-                                    || is_derive_helper_compat(res, flags)
+                                } else if innermost_res == derive_helper_compat
+                                    || res == derive_helper_compat
                                 {
                                     Some(AmbiguityKind::DeriveHelper)
                                 } else if innermost_flags.contains(Flags::MACRO_RULES)
