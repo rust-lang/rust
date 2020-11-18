@@ -130,6 +130,16 @@ fn full_range<BorrowType, K, V>(
     }
 }
 
+impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
+    /// Duplicates a NodeRef, even for a non-immutable borrow type.
+    /// # Safety
+    /// Never visit the same KV twice, and never end up with overlapping
+    /// value references.
+    unsafe fn fork(self) -> (Self, Self) {
+        unsafe { (ptr::read(&self), self) }
+    }
+}
+
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     /// Creates a pair of leaf edges delimiting a specified range in or underneath a node.
     ///
@@ -180,10 +190,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
         K: Borrow<Q>,
         R: RangeBounds<Q>,
     {
-        // We duplicate the root NodeRef here -- we will never visit the same KV
-        // twice, and never end up with overlapping value references.
-        let self2 = unsafe { ptr::read(&self) };
-        range_search(self, self2, range)
+        let (self1, self2) = unsafe { self.fork() };
+        range_search(self1, self2, range)
     }
 
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
@@ -195,10 +203,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
         Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
         Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
     ) {
-        // We duplicate the root NodeRef here -- we will never visit the same KV
-        // twice, and never end up with overlapping value references.
-        let self2 = unsafe { ptr::read(&self) };
-        full_range(self, self2)
+        let (self1, self2) = unsafe { self.fork() };
+        full_range(self1, self2)
     }
 }
 
@@ -212,10 +218,8 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
         Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
     ) {
-        // We duplicate the root NodeRef here -- we will never access it in a way
-        // that overlaps references obtained from the root.
-        let self2 = unsafe { ptr::read(&self) };
-        full_range(self, self2)
+        let (self1, self2) = unsafe { self.fork() };
+        full_range(self1, self2)
     }
 }
 
