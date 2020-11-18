@@ -60,6 +60,8 @@
 #![feature(once_cell)]
 #![feature(unsafe_block_in_unsafe_fn)]
 #![feature(int_bits_const)]
+#![feature(nonzero_leading_trailing_zeros)]
+#![feature(const_option)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

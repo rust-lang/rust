@@ -1307,10 +1307,10 @@ pub trait Write {
         default_write_vectored(|b| self.write(b), bufs)
     }
 
-    /// Determines if this `Write`er has an efficient [`write_vectored`]
+    /// Determines if this `Write`r has an efficient [`write_vectored`]
     /// implementation.
     ///
-    /// If a `Write`er does not override the default [`write_vectored`]
+    /// If a `Write`r does not override the default [`write_vectored`]
     /// implementation, code using it may want to avoid the method all together
     /// and coalesce writes into a single buffer for higher performance.
     ///
