@@ -28,3 +28,8 @@ fn test_arith_operation() {
         i32_c + i32_c * 2 / 3 * 2 + (i32_c - 7 % 3)
     );
 }
+
+#[test]
+fn test_sub_operation() {
+    let mut x: i32 = -400; x = 0 - x; assert_eq!(x, 400);
+}
