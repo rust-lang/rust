@@ -27,7 +27,24 @@
                     "trivially_copy_pass_by_ref",
                 ),
             ),
-            code_description: None,
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "trivially_copy_pass_by_ref",
+                        ),
+                    },
+                },
+            ),
             source: Some(
                 "clippy",
             ),

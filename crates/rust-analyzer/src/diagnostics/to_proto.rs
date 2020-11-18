@@ -211,6 +211,12 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         }
     }
 
+    let code_description = match source.as_str() {
+        "rustc" => rustc_code_description(code.as_deref()),
+        "clippy" => clippy_code_description(code.as_deref()),
+        _ => None,
+    };
+
     primary_spans
         .iter()
         .map(|primary_span| {
@@ -248,7 +254,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                         range: in_macro_location.range,
                         severity,
                         code: code.clone().map(lsp_types::NumberOrString::String),
-                        code_description: None,
+                        code_description: code_description.clone(),
                         source: Some(source.clone()),
                         message: message.clone(),
                         related_information: Some(information_for_additional_diagnostic),
@@ -269,7 +275,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 range: location.range,
                 severity,
                 code: code.clone().map(lsp_types::NumberOrString::String),
-                code_description: None,
+                code_description: code_description.clone(),
                 source: Some(source.clone()),
                 message,
                 related_information: if related_information.is_empty() {
@@ -290,6 +296,31 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         })
         .flatten()
         .collect()
+}
+
+fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
+    code.filter(|code| {
+        let mut chars = code.chars();
+        chars.next().map_or(false, |c| c == 'E')
+            && chars.by_ref().take(4).all(|c| c.is_ascii_digit())
+            && chars.next().is_none()
+    })
+    .and_then(|code| {
+        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{}", code))
+            .ok()
+            .map(|href| lsp_types::CodeDescription { href })
+    })
+}
+
+fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
+    code.and_then(|code| {
+        lsp_types::Url::parse(&format!(
+            "https://rust-lang.github.io/rust-clippy/master/index.html#{}",
+            code
+        ))
+        .ok()
+        .map(|href| lsp_types::CodeDescription { href })
+    })
 }
 
 #[cfg(test)]

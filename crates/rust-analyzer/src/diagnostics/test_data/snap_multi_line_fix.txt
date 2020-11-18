@@ -27,7 +27,24 @@
                     "let_and_return",
                 ),
             ),
-            code_description: None,
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        host: Some(
+                            Domain(
+                                "rust-lang.github.io",
+                            ),
+                        ),
+                        port: None,
+                        path: "/rust-clippy/master/index.html",
+                        query: None,
+                        fragment: Some(
+                            "let_and_return",
+                        ),
+                    },
+                },
+            ),
             source: Some(
                 "clippy",
             ),

@@ -27,7 +27,24 @@
                     "E0061",
                 ),
             ),
-            code_description: None,
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        host: Some(
+                            Domain(
+                                "doc.rust-lang.org",
+                            ),
+                        ),
+                        port: None,
+                        path: "/error-index.html",
+                        query: None,
+                        fragment: Some(
+                            "E0061",
+                        ),
+                    },
+                },
+            ),
             source: Some(
                 "rustc",
             ),
