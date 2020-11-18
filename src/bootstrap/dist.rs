@@ -1336,13 +1336,7 @@ impl Step for Rls {
         let rls = builder
             .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
-                // We ignore failure on aarch64 Windows because RLS currently
-                // fails to build, due to winapi 0.2 not supporting aarch64.
-                missing_tool(
-                    "RLS",
-                    builder.build.config.missing_tools
-                        || (target.triple.contains("aarch64") && target.triple.contains("windows")),
-                );
+                missing_tool("RLS", builder.build.config.missing_tools);
                 None
             })?;
 
