@@ -66,7 +66,7 @@ impl<K, V> Root<K, V> {
                 let mut last_kv = node.last_kv().consider_for_balancing();
 
                 if last_kv.can_merge() {
-                    cur_node = last_kv.merge(None).into_node();
+                    cur_node = last_kv.merge_tracking_child();
                 } else {
                     let right_len = last_kv.right_child_len();
                     // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
@@ -93,7 +93,7 @@ impl<K, V> Root<K, V> {
                 let mut first_kv = node.first_kv().consider_for_balancing();
 
                 if first_kv.can_merge() {
-                    cur_node = first_kv.merge(None).into_node();
+                    cur_node = first_kv.merge_tracking_child();
                 } else {
                     let left_len = first_kv.left_child_len();
                     // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
