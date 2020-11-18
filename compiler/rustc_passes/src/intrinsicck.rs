@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
-use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmType};
+use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmSupportedTypes, InlineAsmType};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
@@ -255,10 +255,18 @@ impl ExprVisitor<'tcx> {
         // register class.
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
         let reg_class = reg.reg_class();
-        let supported_tys = reg_class.supported_types(asm_arch);
-        let feature = match supported_tys.iter().find(|&&(t, _)| t == asm_ty) {
-            Some((_, feature)) => feature,
-            None => {
+        let found_supported_ty = match reg_class.supported_types(asm_arch) {
+            // FIXME(eddyb) consider skipping the "cannot use value of type" error
+            // above, letting the codegen backend handle non-scalar/vector types.
+            InlineAsmSupportedTypes::Any => Ok((asm_ty, None)),
+
+            InlineAsmSupportedTypes::OneOf(supported_tys) => {
+                supported_tys.iter().find(|&&(t, _)| t == asm_ty).copied().ok_or(supported_tys)
+            }
+        };
+        let feature = match found_supported_ty {
+            Ok((_, feature)) => feature,
+            Err(supported_tys) => {
                 let msg = &format!("type `{}` cannot be used with this register class", ty);
                 let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
                 let supported_tys: Vec<_> =

@@ -28,12 +28,12 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let mut outputs = Vec::new();
 
     let mut new_slot = |reg_class: InlineAsmRegClass| {
-        let reg_size = reg_class
-            .supported_types(InlineAsmArch::X86_64)
-            .iter()
-            .map(|(ty, _)| ty.size())
-            .max()
-            .unwrap();
+        let reg_size = match reg_class.supported_types(InlineAsmArch::X86_64) {
+            InlineAsmSupportedTypes::OneOf(supported_tys) => {
+                supported_tys.iter().map(|(ty, _)| ty.size()).max().unwrap()
+            }
+            _ => unreachable!(),
+        };
         let align = rustc_target::abi::Align::from_bytes(reg_size.bytes()).unwrap();
         slot_size = slot_size.align_to(align);
         let offset = slot_size;

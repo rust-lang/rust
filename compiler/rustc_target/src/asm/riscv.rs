@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmSupportedTypes, InlineAsmType};
 use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
 use std::fmt;
@@ -31,10 +31,7 @@ impl RiscVInlineAsmRegClass {
         None
     }
 
-    pub fn supported_types(
-        self,
-        arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    pub fn supported_types(self, arch: InlineAsmArch) -> InlineAsmSupportedTypes {
         match self {
             Self::reg => {
                 if arch == InlineAsmArch::RiscV64 {

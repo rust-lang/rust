@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmSupportedTypes, InlineAsmType};
 use rustc_macros::HashStable_Generic;
 use std::fmt;
 
@@ -50,10 +50,7 @@ impl AArch64InlineAsmRegClass {
         }
     }
 
-    pub fn supported_types(
-        self,
-        _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    pub fn supported_types(self, _arch: InlineAsmArch) -> InlineAsmSupportedTypes {
         match self {
             Self::reg => types! { _: I8, I16, I32, I64, F32, F64; },
             Self::vreg | Self::vreg_low16 => types! {

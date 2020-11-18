@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmSupportedTypes, InlineAsmType};
 use rustc_macros::HashStable_Generic;
 
 def_reg_class! {
@@ -28,15 +28,8 @@ impl SpirVInlineAsmRegClass {
         None
     }
 
-    pub fn supported_types(
-        self,
-        _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
-        match self {
-            Self::reg => {
-                types! { _: I8, I16, I32, I64, F32, F64; }
-            }
-        }
+    pub fn supported_types(self, _arch: InlineAsmArch) -> InlineAsmSupportedTypes {
+        InlineAsmSupportedTypes::Any
     }
 }
 

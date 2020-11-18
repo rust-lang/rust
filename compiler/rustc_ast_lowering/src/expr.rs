@@ -1396,17 +1396,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // features. We check that at least one type is available for
                 // the current target.
                 let reg_class = reg.reg_class();
-                for &(_, feature) in reg_class.supported_types(asm_arch) {
-                    if let Some(feature) = feature {
-                        if self.sess.target_features.contains(&Symbol::intern(feature)) {
-                            required_features.clear();
-                            break;
-                        } else {
-                            required_features.push(feature);
+                match reg_class.supported_types(asm_arch) {
+                    asm::InlineAsmSupportedTypes::Any => {}
+                    asm::InlineAsmSupportedTypes::OneOf(types) => {
+                        for &(_, feature) in types {
+                            if let Some(feature) = feature {
+                                if self.sess.target_features.contains(&Symbol::intern(feature)) {
+                                    required_features.clear();
+                                    break;
+                                } else {
+                                    required_features.push(feature);
+                                }
+                            } else {
+                                required_features.clear();
+                                break;
+                            }
                         }
-                    } else {
-                        required_features.clear();
-                        break;
                     }
                 }
                 // We are sorting primitive strs here and can use unstable sort here

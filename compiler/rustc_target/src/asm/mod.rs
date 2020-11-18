@@ -137,14 +137,14 @@ macro_rules! types {
     ) => {
         {
             use super::InlineAsmType::*;
-            &[
+            super::InlineAsmSupportedTypes::OneOf(&[
                 $($(
                     ($ty, None),
                 )*)?
                 $($(
                     ($ty2, Some($feature)),
                 )*)*
-            ]
+            ])
         }
     };
 }
@@ -389,12 +389,10 @@ impl InlineAsmRegClass {
         }
     }
 
-    /// Returns a list of supported types for this register class, each with a
-    /// options target feature required to use this type.
-    pub fn supported_types(
-        self,
-        arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    /// Returns either `InlineAsmSupportedTypes::OneOf`, containing a list of
+    /// supported types for this register class, each with an optional target
+    /// feature required to use that type, or `InlineAsmSupportedTypes::Any`.
+    pub fn supported_types(self, arch: InlineAsmArch) -> InlineAsmSupportedTypes {
         match self {
             Self::X86(r) => r.supported_types(arch),
             Self::Arm(r) => r.supported_types(arch),
@@ -471,6 +469,17 @@ impl fmt::Display for InlineAsmRegOrRegClass {
             Self::RegClass(r) => f.write_str(r.name()),
         }
     }
+}
+
+/// Type constrains for a particular register class.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum InlineAsmSupportedTypes {
+    /// Any type is allowed.
+    Any,
+
+    /// Only the listed types are supported, and each is paired with
+    /// an optional target feature required to use that type.
+    OneOf(&'static [(InlineAsmType, Option<&'static str>)]),
 }
 
 /// Set of types which can be used with a particular register class.

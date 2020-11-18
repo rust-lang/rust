@@ -1,4 +1,4 @@
-use super::{InlineAsmArch, InlineAsmType};
+use super::{InlineAsmArch, InlineAsmSupportedTypes, InlineAsmType};
 use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
 use std::fmt;
@@ -42,10 +42,7 @@ impl ArmInlineAsmRegClass {
         None
     }
 
-    pub fn supported_types(
-        self,
-        _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    pub fn supported_types(self, _arch: InlineAsmArch) -> InlineAsmSupportedTypes {
         match self {
             Self::reg | Self::reg_thumb => types! { _: I8, I16, I32, F32; },
             Self::sreg | Self::sreg_low16 => types! { "vfp2": I32, F32; },
