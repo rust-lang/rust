@@ -2070,7 +2070,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let mut parent_predicate = parent_trait_ref.without_const().to_predicate(tcx);
                 let mut data = data;
-                let mut redundant = false;
                 let mut count = 0;
                 seen_requirements.insert(parent_def_id);
                 while let ObligationCauseCode::ImplDerivedObligation(child) = &*data.parent_code {
@@ -2081,12 +2080,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         break;
                     }
                     count += 1;
-                    redundant = true;
                     data = child;
                     parent_predicate = child_trait_ref.without_const().to_predicate(tcx);
                     parent_trait_ref = child_trait_ref;
                 }
-                if redundant {
+                if count > 0 {
                     err.note(&format!("{} redundant requirements hidden", count));
                     err.note(&format!(
                         "required because of the requirements on the impl of `{}` for `{}`",
