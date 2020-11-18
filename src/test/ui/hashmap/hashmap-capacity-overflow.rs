@@ -3,7 +3,6 @@
 // ignore-emscripten no processes
 
 use std::collections::hash_map::HashMap;
-use std::usize;
 use std::mem::size_of;
 
 fn main() {

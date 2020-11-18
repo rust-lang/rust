@@ -1,22 +1,22 @@
 error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
-  --> $DIR/regions-addr-of-upvar-self.rs:10:41
+  --> $DIR/regions-addr-of-upvar-self.rs:8:41
    |
 LL |             let p: &'static mut usize = &mut self.food;
    |                                         ^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'_` as defined on the body at 9:18...
-  --> $DIR/regions-addr-of-upvar-self.rs:9:18
+note: first, the lifetime cannot outlive the lifetime `'_` as defined on the body at 7:18...
+  --> $DIR/regions-addr-of-upvar-self.rs:7:18
    |
 LL |         let _f = || {
    |                  ^^
 note: ...so that closure can access `self`
-  --> $DIR/regions-addr-of-upvar-self.rs:10:41
+  --> $DIR/regions-addr-of-upvar-self.rs:8:41
    |
 LL |             let p: &'static mut usize = &mut self.food;
    |                                         ^^^^^^^^^^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-addr-of-upvar-self.rs:10:41
+  --> $DIR/regions-addr-of-upvar-self.rs:8:41
    |
 LL |             let p: &'static mut usize = &mut self.food;
    |                                         ^^^^^^^^^^^^^^

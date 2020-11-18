@@ -1,5 +1,3 @@
-use std::{usize, isize};
-
 fn main() {
     match 0usize {
         //~^ ERROR non-exhaustive patterns

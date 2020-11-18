@@ -1,16 +1,16 @@
 error: this arithmetic operation will overflow
   --> $DIR/const-err2.rs:19:13
    |
-LL |     let a = -std::i8::MIN;
-   |             ^^^^^^^^^^^^^ attempt to negate `i8::MIN`, which would overflow
+LL |     let a = -i8::MIN;
+   |             ^^^^^^^^ attempt to negate `i8::MIN`, which would overflow
    |
    = note: `#[deny(arithmetic_overflow)]` on by default
 
 error: this arithmetic operation will overflow
   --> $DIR/const-err2.rs:21:18
    |
-LL |     let a_i128 = -std::i128::MIN;
-   |                  ^^^^^^^^^^^^^^^ attempt to negate `i128::MIN`, which would overflow
+LL |     let a_i128 = -i128::MIN;
+   |                  ^^^^^^^^^^ attempt to negate `i128::MIN`, which would overflow
 
 error: this arithmetic operation will overflow
   --> $DIR/const-err2.rs:23:13
@@ -21,8 +21,8 @@ LL |     let b = 200u8 + 200u8 + 200u8;
 error: this arithmetic operation will overflow
   --> $DIR/const-err2.rs:25:18
    |
-LL |     let b_i128 = std::i128::MIN - std::i128::MAX;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to compute `i128::MIN - i128::MAX`, which would overflow
+LL |     let b_i128 = i128::MIN - i128::MAX;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ attempt to compute `i128::MIN - i128::MAX`, which would overflow
 
 error: this arithmetic operation will overflow
   --> $DIR/const-err2.rs:27:13

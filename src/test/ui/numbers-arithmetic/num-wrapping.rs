@@ -21,7 +21,8 @@ macro_rules! int_modules {
     ($(($name:ident, $size:expr),)*) => ($(
         mod $name {
             pub const BITS: usize = $size;
-            pub use std::$name::*;
+            pub const MAX: $name = $name::MAX;
+            pub const MIN: $name = $name::MIN;
         }
     )*)
 }

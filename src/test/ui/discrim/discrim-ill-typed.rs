@@ -7,8 +7,6 @@
 
 #![allow(dead_code, unused_variables, unused_imports)]
 
-use std::{i8,u8,i16,u16,i32,u32,i64, u64};
-
 fn f_i8() {
     #[repr(i8)]
     enum A {

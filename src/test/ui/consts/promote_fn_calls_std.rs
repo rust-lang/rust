@@ -1,3 +1,4 @@
+#![allow(deprecated, deprecated_in_future)] // can be removed if different fns are chosen
 // build-pass (FIXME(62277): could be check-pass?)
 
 fn main() {

@@ -47,21 +47,21 @@ fn test_left_shift() {
     let x = 1_u8 << id(0);
     assert_eq!(x, 1);
     let x = 1_i8 << id(7);
-    assert_eq!(x, std::i8::MIN);
+    assert_eq!(x, i8::MIN);
     let x = 1_u8 << id(7);
     assert_eq!(x, 0x80);
     // high-order bits on LHS are silently discarded without panic.
     let x = 3_i8 << id(7);
-    assert_eq!(x, std::i8::MIN);
+    assert_eq!(x, i8::MIN);
     let x = 3_u8 << id(7);
     assert_eq!(x, 0x80);
 
     // above is (approximately) expanded from:
-    tests!(i8, u8, 7, std::i8::MIN, 0x80_u8);
+    tests!(i8, u8, 7, i8::MIN, 0x80_u8);
 
-    tests!(i16, u16, 15, std::i16::MIN, 0x8000_u16);
-    tests!(i32, u32, 31, std::i32::MIN, 0x8000_0000_u32);
-    tests!(i64, u64, 63, std::i64::MIN, 0x8000_0000_0000_0000_u64);
+    tests!(i16, u16, 15, i16::MIN, 0x8000_u16);
+    tests!(i32, u32, 31, i32::MIN, 0x8000_0000_u32);
+    tests!(i64, u64, 63, i64::MIN, 0x8000_0000_0000_0000_u64);
 }
 
 fn test_right_shift() {
@@ -92,9 +92,9 @@ fn test_right_shift() {
         } }
     }
 
-    tests!(i8, u8, 7, std::i8::MIN, 0x40_i8, 0x80_u8);
-    tests!(i16, u16, 15, std::i16::MIN, 0x4000_u16, 0x8000_u16);
-    tests!(i32, u32, 31, std::i32::MIN, 0x4000_0000_u32, 0x8000_0000_u32);
-    tests!(i64, u64, 63, std::i64::MIN,
+    tests!(i8, u8, 7, i8::MIN, 0x40_i8, 0x80_u8);
+    tests!(i16, u16, 15, i16::MIN, 0x4000_u16, 0x8000_u16);
+    tests!(i32, u32, 31, i32::MIN, 0x4000_0000_u32, 0x8000_0000_u32);
+    tests!(i64, u64, 63, i64::MIN,
            0x4000_0000_0000_0000_u64, 0x8000_0000_0000_0000_u64);
 }

@@ -1,5 +1,4 @@
 // run-pass
-use std::f64;
 
 pub fn main() {
   let nan: f64 = f64::NAN;

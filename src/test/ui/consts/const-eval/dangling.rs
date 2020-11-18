@@ -1,6 +1,6 @@
 #![feature(const_raw_ptr_deref)]
 
-use std::{mem, usize};
+use std::mem;
 
 // Make sure we error with the right kind of error on a too large slice.
 const TEST: () = { unsafe { //~ NOTE
