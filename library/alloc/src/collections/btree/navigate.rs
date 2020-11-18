@@ -1,7 +1,6 @@
 use core::borrow::Borrow;
 use core::cmp::Ordering;
-use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::RangeBounds;
+use core::ops::{Bound, RangeBounds};
 use core::ptr;
 
 use super::node::{marker, ForceResult::*, Handle, NodeRef};
@@ -31,61 +30,76 @@ where
     let start = range.start_bound();
     let end = range.end_bound();
     match (start, end) {
-        (Excluded(s), Excluded(e)) if s == e => {
+        (Bound::Excluded(s), Bound::Excluded(e)) if s == e => {
             panic!("range start and end are equal and excluded in BTreeMap")
         }
-        (Included(s) | Excluded(s), Included(e) | Excluded(e)) if s > e => {
+        (Bound::Included(s) | Bound::Excluded(s), Bound::Included(e) | Bound::Excluded(e))
+            if s > e =>
+        {
             panic!("range start is greater than range end in BTreeMap")
         }
         _ => {}
     };
 
+    enum FullBound<T> {
+        FullyIncluded,
+        Included(T),
+        Excluded(T),
+        FullyExcluded,
+    }
+    use FullBound::*;
+    impl<T> FullBound<T> {
+        fn from(ops_bound: Bound<T>) -> Self {
+            match ops_bound {
+                Bound::Included(t) => Included(t),
+                Bound::Excluded(t) => Excluded(t),
+                Bound::Unbounded => FullyIncluded,
+            }
+        }
+    }
+
     let mut min_node = root1;
     let mut max_node = root2;
-    let mut min_found = false;
-    let mut max_found = false;
+    let mut min_bound = FullBound::from(start);
+    let mut max_bound = FullBound::from(end);
 
     loop {
-        // Using `range` again would be unsound (#81138)
-        let front = match (min_found, start) {
-            (false, Included(key)) => match min_node.search_node(key) {
+        let front = match min_bound {
+            Included(key) => match min_node.search_node(key) {
                 SearchResult::Found(kv) => {
-                    min_found = true;
+                    min_bound = FullyExcluded;
                     kv.left_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match min_node.search_node(key) {
+            Excluded(key) => match min_node.search_node(key) {
                 SearchResult::Found(kv) => {
-                    min_found = true;
+                    min_bound = FullyIncluded;
                     kv.right_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (true, Included(_)) => min_node.last_edge(),
-            (true, Excluded(_)) => min_node.first_edge(),
-            (_, Unbounded) => min_node.first_edge(),
+            FullyExcluded => min_node.last_edge(),
+            FullyIncluded => min_node.first_edge(),
         };
 
-        // Using `range` again would be unsound (#81138)
-        let back = match (max_found, end) {
-            (false, Included(key)) => match max_node.search_node(key) {
+        let back = match max_bound {
+            Included(key) => match max_node.search_node(key) {
                 SearchResult::Found(kv) => {
-                    max_found = true;
+                    max_bound = FullyExcluded;
                     kv.right_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (false, Excluded(key)) => match max_node.search_node(key) {
+            Excluded(key) => match max_node.search_node(key) {
                 SearchResult::Found(kv) => {
-                    max_found = true;
+                    max_bound = FullyIncluded;
                     kv.left_edge()
                 }
                 SearchResult::GoDown(edge) => edge,
             },
-            (true, Included(_)) => max_node.first_edge(),
-            (true, Excluded(_)) => max_node.last_edge(),
-            (_, Unbounded) => max_node.last_edge(),
+            FullyExcluded => max_node.first_edge(),
+            FullyIncluded => max_node.last_edge(),
         };
 
         if front.partial_cmp(&back) == Some(Ordering::Greater) {
