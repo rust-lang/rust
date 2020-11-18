@@ -364,14 +364,14 @@ impl<'tcx> Pat<'tcx> {
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
 #[derive(Debug, Clone)]
-crate struct PatStack<'p, 'tcx> {
+struct PatStack<'p, 'tcx> {
     pats: SmallVec<[&'p Pat<'tcx>; 2]>,
     /// Cache for the constructor of the head
     head_ctor: OnceCell<Constructor<'tcx>>,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    crate fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
+    fn from_pattern(pat: &'p Pat<'tcx>) -> Self {
         Self::from_vec(smallvec![pat])
     }
 
@@ -455,17 +455,17 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
 
 /// A 2D matrix.
 #[derive(Clone, PartialEq)]
-crate struct Matrix<'p, 'tcx> {
+struct Matrix<'p, 'tcx> {
     patterns: Vec<PatStack<'p, 'tcx>>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
-    crate fn empty() -> Self {
+    fn empty() -> Self {
         Matrix { patterns: vec![] }
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
-    crate fn push(&mut self, row: PatStack<'p, 'tcx>) {
+    fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if let Some(rows) = row.expand_or_pat() {
             for row in rows {
                 // We recursively expand the or-patterns of the new rows.
@@ -588,7 +588,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
-    crate fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
+    fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Adt(def, ..) => {
                 def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
@@ -1392,13 +1392,12 @@ impl<'tcx> Usefulness<'tcx> {
         pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-        is_top_level: bool,
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => {
                 let new_witnesses = if ctor.is_wildcard() {
                     let missing_ctors = MissingConstructors::new(pcx);
-                    let new_patterns = missing_ctors.report_patterns(pcx, is_top_level);
+                    let new_patterns = missing_ctors.report_patterns(pcx);
                     witnesses
                         .into_iter()
                         .flat_map(|witness| {
@@ -1440,7 +1439,7 @@ impl<'tcx> Usefulness<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug)]
-crate enum WitnessPreference {
+enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness,
 }
@@ -1454,6 +1453,9 @@ struct PatCtxt<'a, 'p, 'tcx> {
     ty: Ty<'tcx>,
     /// Span of the current pattern under investigation.
     span: Span,
+    /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
+    /// subpattern.
+    is_top_level: bool,
 }
 
 /// A witness of non-exhaustiveness for error reporting, represented
@@ -1493,7 +1495,8 @@ struct PatCtxt<'a, 'p, 'tcx> {
 crate struct Witness<'tcx>(Vec<Pat<'tcx>>);
 
 impl<'tcx> Witness<'tcx> {
-    crate fn single_pattern(self) -> Pat<'tcx> {
+    /// Asserts that the witness contains a single pattern, and returns it.
+    fn single_pattern(self) -> Pat<'tcx> {
         assert_eq!(self.0.len(), 1);
         self.0.into_iter().next().unwrap()
     }
@@ -1585,11 +1588,12 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
             // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-            // as though it had an "unknown" constructor to avoid exposing its emptyness. Note that
-            // an empty match will still be considered exhaustive because that case is handled
-            // separately in `check_match`.
-            let is_secretly_empty =
-                def.variants.is_empty() && !cx.tcx.features().exhaustive_patterns;
+            // as though it had an "unknown" constructor to avoid exposing its emptiness. The
+            // exception is if the pattern is at the top level, because we want empty matches to be
+            // considered exhaustive.
+            let is_secretly_empty = def.variants.is_empty()
+                && !cx.tcx.features().exhaustive_patterns
+                && !pcx.is_top_level;
 
             if is_secretly_empty || is_declared_nonexhaustive {
                 vec![NonExhaustive]
@@ -1635,6 +1639,13 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             let max = size.truncate(u128::MAX);
             vec![make_range(0, max)]
         }
+        // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
+        // expose its emptiness. The exception is if the pattern is at the top level, because we
+        // want empty matches to be considered exhaustive.
+        ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
+            vec![NonExhaustive]
+        }
+        ty::Never => vec![],
         _ if cx.is_uninhabited(pcx.ty) => vec![],
         ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => vec![Single],
         // This type is one for which we cannot list constructors, like `str` or `f64`.
@@ -2012,11 +2023,7 @@ impl<'tcx> MissingConstructors<'tcx> {
 
     /// List the patterns corresponding to the missing constructors. In some cases, instead of
     /// listing all constructors of a given type, we prefer to simply report a wildcard.
-    fn report_patterns<'p>(
-        &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        is_top_level: bool,
-    ) -> SmallVec<[Pat<'tcx>; 1]> {
+    fn report_patterns<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Pat<'tcx>; 1]> {
         // There are 2 ways we can report a witness here.
         // Commonly, we can report all the "free"
         // constructors as witnesses, e.g., if we have:
@@ -2044,7 +2051,7 @@ impl<'tcx> MissingConstructors<'tcx> {
         // `used_ctors` is empty.
         // The exception is: if we are at the top-level, for example in an empty match, we
         // sometimes prefer reporting the list of constructors instead of just `_`.
-        let report_when_all_missing = is_top_level && !IntRange::is_integral(pcx.ty);
+        let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
         if self.used_ctors.is_empty() && !report_when_all_missing {
             // All constructors are unused. Report only a wildcard
             // rather than each individual constructor.
@@ -2086,7 +2093,7 @@ impl<'tcx> MissingConstructors<'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-crate fn is_useful<'p, 'tcx>(
+fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
@@ -2200,7 +2207,7 @@ crate fn is_useful<'p, 'tcx>(
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
     let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
-    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span };
+    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span, is_top_level };
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
 
@@ -2215,7 +2222,7 @@ crate fn is_useful<'p, 'tcx>(
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             let usefulness =
                 is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns, is_top_level)
+            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
         })
         .find(|result| result.is_useful())
         .unwrap_or(NotUseful);
@@ -2282,4 +2289,64 @@ fn pat_constructor<'p, 'tcx>(
         }
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
+}
+
+/// The arm of a match expression.
+#[derive(Clone, Copy)]
+crate struct MatchArm<'p, 'tcx> {
+    /// The pattern must have been lowered through `MatchVisitor::lower_pattern`.
+    crate pat: &'p super::Pat<'tcx>,
+    crate hir_id: HirId,
+    crate has_guard: bool,
+}
+
+/// The output of checking a match for exhaustiveness and arm reachability.
+crate struct UsefulnessReport<'p, 'tcx> {
+    /// For each arm of the input, whether that arm is reachable after the arms above it.
+    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Usefulness<'tcx>)>,
+    /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
+    /// exhaustiveness.
+    crate non_exhaustiveness_witnesses: Vec<super::Pat<'tcx>>,
+}
+
+/// The entrypoint for the usefulness algorithm. Computes whether a match is exhaustive and which
+/// of its arms are reachable.
+///
+/// Note: the input patterns must have been lowered through `MatchVisitor::lower_pattern`.
+crate fn compute_match_usefulness<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    arms: &[MatchArm<'p, 'tcx>],
+    scrut_hir_id: HirId,
+    scrut_ty: Ty<'tcx>,
+) -> UsefulnessReport<'p, 'tcx> {
+    let mut matrix = Matrix::empty();
+    let arm_usefulness: Vec<_> = arms
+        .iter()
+        .copied()
+        .map(|arm| {
+            let v = PatStack::from_pattern(arm.pat);
+            let usefulness =
+                is_useful(cx, &matrix, &v, LeaveOutWitness, arm.hir_id, arm.has_guard, true);
+            if !arm.has_guard {
+                matrix.push(v);
+            }
+            (arm, usefulness)
+        })
+        .collect();
+
+    let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(scrut_ty));
+    let v = PatStack::from_pattern(wild_pattern);
+    let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, scrut_hir_id, false, true);
+    let non_exhaustiveness_witnesses = match usefulness {
+        NotUseful => vec![], // Wildcard pattern isn't useful, so the match is exhaustive.
+        UsefulWithWitness(pats) => {
+            if pats.is_empty() {
+                bug!("Exhaustiveness check returned no witnesses")
+            } else {
+                pats.into_iter().map(|w| w.single_pattern()).collect()
+            }
+        }
+        Useful(_) => bug!(),
+    };
+    UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
 }

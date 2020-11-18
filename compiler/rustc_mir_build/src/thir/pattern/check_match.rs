@@ -1,6 +1,7 @@
 use super::_match::Usefulness::*;
-use super::_match::WitnessPreference::*;
-use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack};
+use super::_match::{
+    compute_match_usefulness, expand_pattern, MatchArm, MatchCheckCtxt, UsefulnessReport,
+};
 use super::{PatCtxt, PatKind, PatternError};
 
 use rustc_arena::TypedArena;
@@ -169,39 +170,50 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
         let mut have_errors = false;
 
-        let inlined_arms: Vec<_> = arms
+        let arms: Vec<_> = arms
             .iter()
-            .map(|hir::Arm { pat, guard, .. }| {
-                (self.lower_pattern(&mut cx, pat, &mut have_errors).0, pat.hir_id, guard.is_some())
+            .map(|hir::Arm { pat, guard, .. }| MatchArm {
+                pat: self.lower_pattern(&mut cx, pat, &mut have_errors).0,
+                hir_id: pat.hir_id,
+                has_guard: guard.is_some(),
             })
             .collect();
 
-        // Bail out early if inlining failed.
+        // Bail out early if lowering failed.
         if have_errors {
             return;
         }
 
-        // Fourth, check for unreachable arms.
-        let matrix = check_arms(&mut cx, &inlined_arms, source);
+        let scrut_ty = self.typeck_results.expr_ty_adjusted(scrut);
+        let report = compute_match_usefulness(&cx, &arms, scrut.hir_id, scrut_ty);
 
-        // Fifth, check if the match is exhaustive.
+        // Report unreachable arms.
+        report_arm_reachability(&cx, &report, source);
+
+        // Check if the match is exhaustive.
         // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
         // since an empty matrix can occur when there are arms, if those arms all have guards.
-        let scrut_ty = self.typeck_results.expr_ty_adjusted(scrut);
-        let is_empty_match = inlined_arms.is_empty();
-        check_exhaustive(&mut cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
+        let is_empty_match = arms.is_empty();
+        let witnesses = report.non_exhaustiveness_witnesses;
+        if !witnesses.is_empty() {
+            non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, is_empty_match);
+        }
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
         let mut cx = self.new_cx(pat.hir_id);
 
         let (pattern, pattern_ty) = self.lower_pattern(&mut cx, pat, &mut false);
-        let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
+        let arms = vec![MatchArm { pat: pattern, hir_id: pat.hir_id, has_guard: false }];
+        let report = compute_match_usefulness(&cx, &arms, pat.hir_id, pattern_ty);
 
-        let witnesses = match check_not_useful(&mut cx, pattern_ty, &pats, pat.hir_id) {
-            Ok(_) => return,
-            Err(err) => err,
-        };
+        // Note: we ignore whether the pattern is unreachable (i.e. whether the type is empty). We
+        // only care about exhaustiveness here.
+        let witnesses = report.non_exhaustiveness_witnesses;
+        if witnesses.is_empty() {
+            // The pattern is irrefutable.
+            return;
+        }
 
         let joined_patterns = joined_uncovered_patterns(&witnesses);
         let mut err = struct_span_err!(
@@ -354,17 +366,15 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::
     });
 }
 
-/// Check for unreachable patterns.
-fn check_arms<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
-    arms: &[(&'p super::Pat<'tcx>, HirId, bool)],
+/// Report unreachable arms, if any.
+fn report_arm_reachability<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
+    report: &UsefulnessReport<'p, 'tcx>,
     source: hir::MatchSource,
-) -> Matrix<'p, 'tcx> {
-    let mut seen = Matrix::empty();
+) {
     let mut catchall = None;
-    for (arm_index, (pat, id, has_guard)) in arms.iter().copied().enumerate() {
-        let v = PatStack::from_pattern(pat);
-        match is_useful(cx, &seen, &v, LeaveOutWitness, id, has_guard, true) {
+    for (arm_index, (arm, is_useful)) in report.arm_usefulness.iter().enumerate() {
+        match is_useful {
             NotUseful => {
                 match source {
                     hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
@@ -373,15 +383,15 @@ fn check_arms<'p, 'tcx>(
                         // Check which arm we're on.
                         match arm_index {
                             // The arm with the user-specified pattern.
-                            0 => unreachable_pattern(cx.tcx, pat.span, id, None),
+                            0 => unreachable_pattern(cx.tcx, arm.pat.span, arm.hir_id, None),
                             // The arm with the wildcard pattern.
-                            1 => irrefutable_let_pattern(cx.tcx, pat.span, id, source),
+                            1 => irrefutable_let_pattern(cx.tcx, arm.pat.span, arm.hir_id, source),
                             _ => bug!(),
                         }
                     }
 
                     hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
-                        unreachable_pattern(cx.tcx, pat.span, id, catchall);
+                        unreachable_pattern(cx.tcx, arm.pat.span, arm.hir_id, catchall);
                     }
 
                     // Unreachable patterns in try and await expressions occur when one of
@@ -389,79 +399,32 @@ fn check_arms<'p, 'tcx>(
                     hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                 }
             }
+            Useful(unreachables) if unreachables.is_empty() => {}
+            // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
             Useful(unreachables) => {
-                let mut unreachables: Vec<_> = unreachables.into_iter().flatten().collect();
+                let mut unreachables: Vec<_> = unreachables.iter().flatten().copied().collect();
                 // Emit lints in the order in which they occur in the file.
                 unreachables.sort_unstable();
                 for span in unreachables {
-                    unreachable_pattern(cx.tcx, span, id, None);
+                    unreachable_pattern(cx.tcx, span, arm.hir_id, None);
                 }
             }
             UsefulWithWitness(_) => bug!(),
         }
-        if !has_guard {
-            seen.push(v);
-            if catchall.is_none() && pat_is_catchall(pat) {
-                catchall = Some(pat.span);
-            }
+        if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
+            catchall = Some(arm.pat.span);
         }
     }
-    seen
 }
 
-fn check_not_useful<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
-    ty: Ty<'tcx>,
-    matrix: &Matrix<'p, 'tcx>,
-    hir_id: HirId,
-) -> Result<(), Vec<super::Pat<'tcx>>> {
-    let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(ty));
-    let v = PatStack::from_pattern(wild_pattern);
-
-    // false is given for `is_under_guard` argument due to the wildcard
-    // pattern not having a guard
-    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, false, true) {
-        NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
-        UsefulWithWitness(pats) => Err(if pats.is_empty() {
-            bug!("Exhaustiveness check returned no witnesses")
-        } else {
-            pats.into_iter().map(|w| w.single_pattern()).collect()
-        }),
-        Useful(_) => bug!(),
-    }
-}
-
-fn check_exhaustive<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+/// Report that a match is not exhaustive.
+fn non_exhaustive_match<'p, 'tcx>(
+    cx: &MatchCheckCtxt<'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
-    matrix: &Matrix<'p, 'tcx>,
-    hir_id: HirId,
+    witnesses: Vec<super::Pat<'tcx>>,
     is_empty_match: bool,
 ) {
-    // In the absence of the `exhaustive_patterns` feature, empty matches are not detected by
-    // `is_useful` to exhaustively match uninhabited types, so we manually check here.
-    if is_empty_match && !cx.tcx.features().exhaustive_patterns {
-        let scrutinee_is_visibly_uninhabited = match scrut_ty.kind() {
-            ty::Never => true,
-            ty::Adt(def, _) => {
-                def.is_enum()
-                    && def.variants.is_empty()
-                    && !cx.is_foreign_non_exhaustive_enum(scrut_ty)
-            }
-            _ => false,
-        };
-        if scrutinee_is_visibly_uninhabited {
-            // If the type *is* uninhabited, an empty match is vacuously exhaustive.
-            return;
-        }
-    }
-
-    let witnesses = match check_not_useful(cx, scrut_ty, matrix, hir_id) {
-        Ok(_) => return,
-        Err(err) => err,
-    };
-
     let non_empty_enum = match scrut_ty.kind() {
         ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
         _ => false,

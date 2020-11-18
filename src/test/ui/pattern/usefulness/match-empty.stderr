@@ -1,17 +1,47 @@
-error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/match-empty.rs:45:18
+error: unreachable pattern
+  --> $DIR/match-empty.rs:51:9
    |
-LL | enum Foo {}
-   | ----------- `Foo` defined here
-...
-LL |     match_false!(x); // Not detected as unreachable nor exhaustive.
-   |                  ^ pattern `_` not covered
+LL |         _ => {},
+   |         ^
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `Foo`
+note: the lint level is defined here
+  --> $DIR/match-empty.rs:4:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/match-empty.rs:54:9
+   |
+LL |         _ if false => {},
+   |         ^
+
+error: unreachable pattern
+  --> $DIR/match-empty.rs:61:9
+   |
+LL |         _ => {},
+   |         ^
+
+error: unreachable pattern
+  --> $DIR/match-empty.rs:64:9
+   |
+LL |         _ if false => {},
+   |         ^
+
+error: unreachable pattern
+  --> $DIR/match-empty.rs:71:9
+   |
+LL |         _ => {},
+   |         ^
+
+error: unreachable pattern
+  --> $DIR/match-empty.rs:74:9
+   |
+LL |         _ if false => {},
+   |         ^
 
 error[E0004]: non-exhaustive patterns: type `u8` is non-empty
-  --> $DIR/match-empty.rs:63:18
+  --> $DIR/match-empty.rs:89:18
    |
 LL |     match_empty!(0u8);
    |                  ^^^
@@ -20,7 +50,7 @@ LL |     match_empty!(0u8);
    = note: the matched value is of type `u8`
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyStruct` is non-empty
-  --> $DIR/match-empty.rs:65:18
+  --> $DIR/match-empty.rs:91:18
    |
 LL | struct NonEmptyStruct(bool);
    | ---------------------------- `NonEmptyStruct` defined here
@@ -32,7 +62,7 @@ LL |     match_empty!(NonEmptyStruct(true));
    = note: the matched value is of type `NonEmptyStruct`
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyUnion1` is non-empty
-  --> $DIR/match-empty.rs:67:18
+  --> $DIR/match-empty.rs:93:18
    |
 LL | / union NonEmptyUnion1 {
 LL | |     foo: (),
@@ -46,7 +76,7 @@ LL |       match_empty!((NonEmptyUnion1 { foo: () }));
    = note: the matched value is of type `NonEmptyUnion1`
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyUnion2` is non-empty
-  --> $DIR/match-empty.rs:69:18
+  --> $DIR/match-empty.rs:95:18
    |
 LL | / union NonEmptyUnion2 {
 LL | |     foo: (),
@@ -61,7 +91,7 @@ LL |       match_empty!((NonEmptyUnion2 { foo: () }));
    = note: the matched value is of type `NonEmptyUnion2`
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` not covered
-  --> $DIR/match-empty.rs:71:18
+  --> $DIR/match-empty.rs:97:18
    |
 LL | / enum NonEmptyEnum1 {
 LL | |     Foo(bool),
@@ -78,7 +108,7 @@ LL |       match_empty!(NonEmptyEnum1::Foo(true));
    = note: the matched value is of type `NonEmptyEnum1`
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` and `Bar` not covered
-  --> $DIR/match-empty.rs:73:18
+  --> $DIR/match-empty.rs:99:18
    |
 LL | / enum NonEmptyEnum2 {
 LL | |     Foo(bool),
@@ -99,7 +129,7 @@ LL |       match_empty!(NonEmptyEnum2::Foo(true));
    = note: the matched value is of type `NonEmptyEnum2`
 
 error[E0004]: non-exhaustive patterns: `V1`, `V2`, `V3` and 2 more not covered
-  --> $DIR/match-empty.rs:75:18
+  --> $DIR/match-empty.rs:101:18
    |
 LL | / enum NonEmptyEnum5 {
 LL | |     V1, V2, V3, V4, V5,
@@ -113,7 +143,7 @@ LL |       match_empty!(NonEmptyEnum5::V1);
    = note: the matched value is of type `NonEmptyEnum5`
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/match-empty.rs:78:18
+  --> $DIR/match-empty.rs:104:18
    |
 LL |     match_false!(0u8);
    |                  ^^^ pattern `_` not covered
@@ -122,7 +152,7 @@ LL |     match_false!(0u8);
    = note: the matched value is of type `u8`
 
 error[E0004]: non-exhaustive patterns: `NonEmptyStruct(_)` not covered
-  --> $DIR/match-empty.rs:80:18
+  --> $DIR/match-empty.rs:106:18
    |
 LL | struct NonEmptyStruct(bool);
    | ---------------------------- `NonEmptyStruct` defined here
@@ -134,7 +164,7 @@ LL |     match_false!(NonEmptyStruct(true));
    = note: the matched value is of type `NonEmptyStruct`
 
 error[E0004]: non-exhaustive patterns: `NonEmptyUnion1 { .. }` not covered
-  --> $DIR/match-empty.rs:82:18
+  --> $DIR/match-empty.rs:108:18
    |
 LL | / union NonEmptyUnion1 {
 LL | |     foo: (),
@@ -148,7 +178,7 @@ LL |       match_false!((NonEmptyUnion1 { foo: () }));
    = note: the matched value is of type `NonEmptyUnion1`
 
 error[E0004]: non-exhaustive patterns: `NonEmptyUnion2 { .. }` not covered
-  --> $DIR/match-empty.rs:84:18
+  --> $DIR/match-empty.rs:110:18
    |
 LL | / union NonEmptyUnion2 {
 LL | |     foo: (),
@@ -163,7 +193,7 @@ LL |       match_false!((NonEmptyUnion2 { foo: () }));
    = note: the matched value is of type `NonEmptyUnion2`
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` not covered
-  --> $DIR/match-empty.rs:86:18
+  --> $DIR/match-empty.rs:112:18
    |
 LL | / enum NonEmptyEnum1 {
 LL | |     Foo(bool),
@@ -180,7 +210,7 @@ LL |       match_false!(NonEmptyEnum1::Foo(true));
    = note: the matched value is of type `NonEmptyEnum1`
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` and `Bar` not covered
-  --> $DIR/match-empty.rs:88:18
+  --> $DIR/match-empty.rs:114:18
    |
 LL | / enum NonEmptyEnum2 {
 LL | |     Foo(bool),
@@ -201,7 +231,7 @@ LL |       match_false!(NonEmptyEnum2::Foo(true));
    = note: the matched value is of type `NonEmptyEnum2`
 
 error[E0004]: non-exhaustive patterns: `V1`, `V2`, `V3` and 2 more not covered
-  --> $DIR/match-empty.rs:90:18
+  --> $DIR/match-empty.rs:116:18
    |
 LL | / enum NonEmptyEnum5 {
 LL | |     V1, V2, V3, V4, V5,
@@ -214,6 +244,6 @@ LL |       match_false!(NonEmptyEnum5::V1);
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `NonEmptyEnum5`
 
-error: aborting due to 15 previous errors
+error: aborting due to 20 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
