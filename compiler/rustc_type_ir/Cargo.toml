@@ -1,0 +1,14 @@
+[package]
+name = "rustc_type_ir"
+version = "0.0.0"
+authors = ["The Rust Project Developers"]
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+bitflags = "1.2.1"
+rustc_index = { path = "../rustc_index" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_data_structures = { path = "../rustc_data_structures" }

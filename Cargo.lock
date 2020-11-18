@@ -3918,6 +3918,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "rustc_type_ir",
  "smallvec 1.4.2",
  "tracing",
 ]
@@ -4249,6 +4250,16 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "tracing",
+]
+
+[[package]]
+name = "rustc_type_ir"
+version = "0.0.0"
+dependencies = [
+ "bitflags",
+ "rustc_data_structures",
+ "rustc_index",
+ "rustc_serialize",
 ]
 
 [[package]]
