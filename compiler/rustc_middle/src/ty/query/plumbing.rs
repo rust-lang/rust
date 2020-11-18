@@ -263,7 +263,7 @@ macro_rules! is_eval_always {
 
 macro_rules! query_storage {
     ([][$K:ty, $V:ty]) => {
-        <<$K as Key>::CacheSelector as CacheSelector<$K, $V>>::Cache
+        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
     };
     ([storage($ty:ty) $($rest:tt)*][$K:ty, $V:ty]) => {
         <$ty as CacheSelector<$K, $V>>::Cache
