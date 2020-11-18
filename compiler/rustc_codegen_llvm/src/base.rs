@@ -74,7 +74,7 @@ pub fn write_compressed_metadata<'tcx>(
     }
 
     let svh = tcx.crate_hash(LOCAL_CRATE);
-    let _llglobal = add_svh(tcx, &llvm_module, &svh);
+    add_svh_symbol(tcx, &llvm_module, &svh);
 }
 
 pub struct ValueIter<'ll> {
@@ -105,8 +105,7 @@ pub fn svh_symbol_name(
     format!("rust_svh_{}_{}", tcx.original_crate_name(LOCAL_CRATE), svh)
 }
 
-fn add_svh(tcx: TyCtxt<'tcx>, llvm_module: &'ll ModuleLlvm, svh: &Svh) -> &'ll Value {
-    // Add SVH @todo insert symbol here
+fn add_svh_symbol(tcx: TyCtxt<'tcx>, llvm_module: &'ll ModuleLlvm, svh: &Svh) {
     let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
     let svh_bytes: Vec<u8> = format!("{}", svh).as_bytes().to_vec();
@@ -133,7 +132,6 @@ fn add_svh(tcx: TyCtxt<'tcx>, llvm_module: &'ll ModuleLlvm, svh: &Svh) -> &'ll V
             directive.len(),
         )
     }
-    llglobal
 }
 
 pub fn compile_codegen_unit(
