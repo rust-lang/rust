@@ -492,6 +492,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.force_mode = force;
 
             // FIXME(jseyfried): Refactor out the following logic
+            let fragment_kind = invoc.fragment_kind;
             let (expanded_fragment, new_invocations) = match res {
                 InvocationRes::Single(ext) => match self.expand_invoc(invoc, &ext.kind) {
                     ExpandResult::Ready(fragment) => self.collect_invocations(fragment, &[]),
@@ -512,36 +513,45 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 InvocationRes::DeriveContainer(_exts) => {
                     // FIXME: Consider using the derive resolutions (`_exts`) immediately,
                     // instead of enqueuing the derives to be resolved again later.
-                    let (derives, item) = match invoc.kind {
+                    let (derives, mut item) = match invoc.kind {
                         InvocationKind::DeriveContainer { derives, item } => (derives, item),
                         _ => unreachable!(),
                     };
-                    if !item.derive_allowed() {
+                    let (item, derive_placeholders) = if !item.derive_allowed() {
                         self.error_derive_forbidden_on_non_adt(&derives, &item);
-                    }
+                        item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
+                        (item, Vec::new())
+                    } else {
+                        let mut item = StripUnconfigured {
+                            sess: self.cx.sess,
+                            features: self.cx.ecfg.features,
+                        }
+                        .fully_configure(item);
+                        item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
 
-                    let mut item = self.fully_configure(item);
-                    item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
+                        invocations.reserve(derives.len());
+                        let derive_placeholders = derives
+                            .into_iter()
+                            .map(|path| {
+                                let expn_id = ExpnId::fresh(None);
+                                invocations.push((
+                                    Invocation {
+                                        kind: InvocationKind::Derive { path, item: item.clone() },
+                                        fragment_kind,
+                                        expansion_data: ExpansionData {
+                                            id: expn_id,
+                                            ..self.cx.current_expansion.clone()
+                                        },
+                                    },
+                                    None,
+                                ));
+                                NodeId::placeholder_from_expn_id(expn_id)
+                            })
+                            .collect::<Vec<_>>();
+                        (item, derive_placeholders)
+                    };
 
-                    let mut derive_placeholders = Vec::with_capacity(derives.len());
-                    invocations.reserve(derives.len());
-                    for path in derives {
-                        let expn_id = ExpnId::fresh(None);
-                        derive_placeholders.push(NodeId::placeholder_from_expn_id(expn_id));
-                        invocations.push((
-                            Invocation {
-                                kind: InvocationKind::Derive { path, item: item.clone() },
-                                fragment_kind: invoc.fragment_kind,
-                                expansion_data: ExpansionData {
-                                    id: expn_id,
-                                    ..invoc.expansion_data.clone()
-                                },
-                            },
-                            None,
-                        ));
-                    }
-                    let fragment =
-                        invoc.fragment_kind.expect_from_annotatables(::std::iter::once(item));
+                    let fragment = fragment_kind.expect_from_annotatables(::std::iter::once(item));
                     self.collect_invocations(fragment, &derive_placeholders)
                 }
             };
