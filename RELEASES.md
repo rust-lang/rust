@@ -1,3 +1,143 @@
+Version 1.48.0 (2020-11-19)
+==========================
+
+Language
+--------
+
+- [The `unsafe` keyword is now syntactically permitted on modules.][75857] This
+  is still rejected *semantically*, but can now be parsed by procedural macros.
+
+Compiler
+--------
+- [Stabilised the `-C link-self-contained=<yes|no>` compiler flag.][76158] This tells
+  `rustc` whether to link its own C runtime and libraries or to rely on a external 
+  linker to find them. (Supported only on `windows-gnu`, `linux-musl`, and `wasi` platforms.)
+- [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
+  Note: If you're using cargo you must explicitly pass the `--target` flag.
+- [Added tier 2\* support for `aarch64-unknown-linux-musl`.][76420]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+- [`io::Write` is now implemented for `&ChildStdin` `&Sink`, `&Stdout`,
+  and `&Stderr`.][76275]
+- [All arrays of any length now implement `TryFrom<Vec<T>>`.][76310]
+- [The `matches!` macro now supports having a trailing comma.][74880]
+- [`Vec<A>` now implements `PartialEq<[B]>` where `A: PartialEq<B>`.][74194]
+- [The `RefCell::{replace, replace_with, clone}` methods now all use `#[track_caller]`.][77055]
+
+Stabilized APIs
+---------------
+- [`slice::as_ptr_range`]
+- [`slice::as_mut_ptr_range`]
+- [`VecDeque::make_contiguous`]
+- [`future::pending`]
+- [`future::ready`]
+
+The following previously stable methods are now `const fn`'s:
+
+- [`Option::is_some`]
+- [`Option::is_none`]
+- [`Option::as_ref`]
+- [`Result::is_ok`]
+- [`Result::is_err`]
+- [`Result::as_ref`]
+- [`Ordering::reverse`]
+- [`Ordering::then`]
+
+Cargo
+-----
+
+Rustdoc
+-------
+- [You can now link to items in `rustdoc` using the intra-doc link
+  syntax.][74430] E.g. ``/// Uses [`std::future`]`` will automatically generate
+  a link to `std::future`'s documentation. See ["Linking to items by
+  name"][intradoc-links] for more information.
+- [You can now specify `#[doc(alias = "<alias>")]` on items to add search aliases
+  when searching through `rustdoc`'s UI.][75740]
+
+Compatibility Notes
+-------------------
+- [Promotion of references to `'static` lifetime inside `const fn` now follows the
+  same rules as inside a `fn` body.][75502] In particular, `&foo()` will not be
+  promoted to `'static` lifetime any more inside `const fn`s.
+- [Associated type bindings on trait objects are now verified to meet the bounds
+  declared on the trait when checking that they implement the trait.][27675]
+- [When trait bounds on associated types or opaque types are ambiguous, the
+  compiler no longer makes an arbitrary choice on which bound to use.][54121]
+- [Fixed recursive nonterminals not being expanded in macros during
+  pretty-print/reparse check.][77153] This may cause errors if your macro wasn't
+  correctly handling recursive nonterminal tokens.
+- [`&mut` references to non zero-sized types are no longer promoted.][75585]
+- [`rustc` will now warn if you use attributes like `#[link_name]` or `#[cold]`
+  in places where they have no effect.][73461]
+- [Updated `_mm256_extract_epi8` and `_mm256_extract_epi16` signatures in
+  `arch::{x86, x86_64}` to return `i32` to match the vendor signatures.][73166]
+- [`mem::uninitialized` will now panic if any inner types inside a struct or enum
+  disallow zero-initialization.][71274]
+- [`#[target_feature]` will now error if used in a place where it has no effect.][78143]
+- [Foreign exceptions are now caught by `catch_unwind` and will cause an abort.][70212]
+  Note: This behaviour is not guaranteed and is still considered undefined behaviour,
+  see the [`catch_unwind`] documentation for further information.
+  
+
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
+- [Building `rustc` from source now uses `ninja` by default over `make`.][74922]
+  You can continue building with `make` by setting `ninja=false` in
+  your `config.toml`.
+- [cg_llvm: `fewer_names` in `uncached_llvm_type`][76030]
+- [Made `ensure_sufficient_stack()` non-generic][76680]
+
+[78143]: https://github.com/rust-lang/rust/issues/78143
+[76680]: https://github.com/rust-lang/rust/pull/76680/
+[76030]: https://github.com/rust-lang/rust/pull/76030/
+[70212]: https://github.com/rust-lang/rust/pull/70212/
+[27675]: https://github.com/rust-lang/rust/issues/27675/
+[54121]: https://github.com/rust-lang/rust/issues/54121/  
+[71274]: https://github.com/rust-lang/rust/pull/71274/
+[77386]: https://github.com/rust-lang/rust/pull/77386/
+[77153]: https://github.com/rust-lang/rust/pull/77153/
+[77055]: https://github.com/rust-lang/rust/pull/77055/
+[76275]: https://github.com/rust-lang/rust/pull/76275/
+[76310]: https://github.com/rust-lang/rust/pull/76310/
+[76420]: https://github.com/rust-lang/rust/pull/76420/
+[76158]: https://github.com/rust-lang/rust/pull/76158/
+[75857]: https://github.com/rust-lang/rust/pull/75857/
+[75585]: https://github.com/rust-lang/rust/pull/75585/
+[75740]: https://github.com/rust-lang/rust/pull/75740/
+[75502]: https://github.com/rust-lang/rust/pull/75502/
+[74880]: https://github.com/rust-lang/rust/pull/74880/
+[74922]: https://github.com/rust-lang/rust/pull/74922/
+[74430]: https://github.com/rust-lang/rust/pull/74430/
+[74194]: https://github.com/rust-lang/rust/pull/74194/
+[73461]: https://github.com/rust-lang/rust/pull/73461/
+[73166]: https://github.com/rust-lang/rust/pull/73166/
+[intradoc-links]: https://doc.rust-lang.org/rustdoc/linking-to-items-by-name.html
+[`catch_unwind`]: https://doc.rust-lang.org/std/panic/fn.catch_unwind.html
+[`Option::is_some`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.is_some
+[`Option::is_none`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.is_none
+[`Option::as_ref`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.as_ref
+[`Result::is_ok`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok
+[`Result::is_err`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.is_err
+[`Result::as_ref`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.as_ref
+[`Ordering::reverse`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.reverse
+[`Ordering::then`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.then
+[`slice::as_ptr_range`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_ptr_range
+[`slice::as_mut_ptr_range`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_mut_ptr_range
+[`VecDeque::make_contiguous`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.make_contiguous
+[`future::pending`]: https://doc.rust-lang.org/std/future/fn.pending.html
+[`future::ready`]: https://doc.rust-lang.org/std/future/fn.ready.html
+
+
 Version 1.47.0 (2020-10-08)
 ==========================
 
@@ -90,6 +230,7 @@ Compatibility Notes
 
 Internal Only
 --------
+
 - [Improved default settings for bootstrapping in `x.py`.][73964] You can read details about this change in the ["Changes to `x.py` defaults"](https://blog.rust-lang.org/inside-rust/2020/08/30/changes-to-x-py-defaults.html) post on the Inside Rust blog.
 
 [1.47.0-cfg]: https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard

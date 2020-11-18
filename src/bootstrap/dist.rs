@@ -1336,7 +1336,13 @@ impl Step for Rls {
         let rls = builder
             .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
-                missing_tool("RLS", builder.build.config.missing_tools);
+                // We ignore failure on aarch64 Windows because RLS currently
+                // fails to build, due to winapi 0.2 not supporting aarch64.
+                missing_tool(
+                    "RLS",
+                    builder.build.config.missing_tools
+                        || (target.triple.contains("aarch64") && target.triple.contains("windows")),
+                );
                 None
             })?;
 
@@ -2355,6 +2361,25 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
         // dynamically linked; it is already included into librustc_llvm
         // statically.
         return;
+    }
+
+    if let Some(config) = builder.config.target_config.get(&target) {
+        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
+            // If the LLVM was externally provided, then we don't currently copy
+            // artifacts into the sysroot. This is not necessarily the right
+            // choice (in particular, it will require the LLVM dylib to be in
+            // the linker's load path at runtime), but the common use case for
+            // external LLVMs is distribution provided LLVMs, and in that case
+            // they're usually in the standard search path (e.g., /usr/lib) and
+            // copying them here is going to cause problems as we may end up
+            // with the wrong files and isn't what distributions want.
+            //
+            // This behavior may be revisited in the future though.
+            //
+            // If the LLVM is coming from ourselves (just from CI) though, we
+            // still want to install it, as it otherwise won't be available.
+            return;
+        }
     }
 
     // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
