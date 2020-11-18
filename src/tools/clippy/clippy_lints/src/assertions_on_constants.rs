@@ -1,6 +1,5 @@
 use crate::consts::{constant, Constant};
-use crate::utils::paths;
-use crate::utils::{is_direct_expn_of, is_expn_of, match_function_call, snippet_opt, span_lint_and_help};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_panic_call, snippet_opt, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind, PatKind, UnOp};
@@ -133,7 +132,7 @@ fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>)
         if let ExprKind::Block(ref inner_block, _) = block_expr.kind;
         if let Some(begin_panic_call) = &inner_block.expr;
         // function call
-        if let Some(args) = match_function_call(cx, begin_panic_call, &paths::BEGIN_PANIC);
+        if let Some(args) = match_panic_call(cx, begin_panic_call);
         if args.len() == 1;
         // bind the second argument of the `assert!` macro if it exists
         if let panic_message = snippet_opt(cx, args[0].span);
