@@ -7,6 +7,7 @@ use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::normalize_projection_type;
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder, Style};
 use rustc_hir as hir;
@@ -158,6 +159,7 @@ pub trait InferCtxtExt<'tcx> {
         predicate: &T,
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
+        seen_requirements: &mut FxHashSet<DefId>,
     ) where
         T: fmt::Display;
 
@@ -1787,6 +1789,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             &obligation.predicate,
             next_code.unwrap(),
             &mut Vec::new(),
+            &mut Default::default(),
         );
     }
 
@@ -1796,6 +1799,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         predicate: &T,
         cause_code: &ObligationCauseCode<'tcx>,
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
+        seen_requirements: &mut FxHashSet<DefId>,
     ) where
         T: fmt::Display,
     {
@@ -2050,12 +2054,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             &parent_predicate,
                             &data.parent_code,
                             obligated_types,
+                            seen_requirements,
                         )
                     });
                 }
             }
             ObligationCauseCode::ImplDerivedObligation(ref data) => {
                 let mut parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
+                let parent_def_id = parent_trait_ref.def_id();
                 err.note(&format!(
                     "required because of the requirements on the impl of `{}` for `{}`",
                     parent_trait_ref.print_only_trait_path(),
@@ -2066,10 +2072,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let mut data = data;
                 let mut redundant = false;
                 let mut count = 0;
+                seen_requirements.insert(parent_def_id);
                 while let ObligationCauseCode::ImplDerivedObligation(child) = &*data.parent_code {
                     // Skip redundant recursive obligation notes. See `ui/issue-20413.rs`.
                     let child_trait_ref = self.resolve_vars_if_possible(child.parent_trait_ref);
-                    if parent_trait_ref.def_id() != child_trait_ref.def_id() {
+                    let child_def_id = child_trait_ref.def_id();
+                    if seen_requirements.insert(child_def_id) {
                         break;
                     }
                     count += 1;
@@ -2093,6 +2101,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         &parent_predicate,
                         &data.parent_code,
                         obligated_types,
+                        seen_requirements,
                     )
                 });
             }
@@ -2106,6 +2115,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         &parent_predicate,
                         &data.parent_code,
                         obligated_types,
+                        seen_requirements,
                     )
                 });
             }
