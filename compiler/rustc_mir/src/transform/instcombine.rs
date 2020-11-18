@@ -20,13 +20,6 @@ pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // Check for fuel here before gathering the optimization list. If we're out of fuel,
-        // we don't want to take the time to pass over the MIR only to find optimizations
-        // we won't run.
-        if !tcx.consider_optimizing(|| format!("InstCombine {:?} ", body.source.def_id())) {
-            return;
-        }
-
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
@@ -46,13 +39,21 @@ pub struct InstCombineVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+impl<'tcx> InstCombineVisitor<'tcx> {
+    fn should_combine(&self, rvalue: &Rvalue<'tcx>, location: Location) -> bool {
+        self.tcx.consider_optimizing(|| {
+            format!("InstCombine - Rvalue: {:?} Location: {:?}", rvalue, location)
+        })
+    }
+}
+
 impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if self.optimizations.and_stars.remove(&location) {
+        if self.optimizations.and_stars.remove(&location) && self.should_combine(rvalue, location) {
             debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
@@ -74,18 +75,24 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            debug!("replacing `Len([_; N])`: {:?}", rvalue);
-            *rvalue = Rvalue::Use(Operand::Constant(box constant));
+            if self.should_combine(rvalue, location) {
+                debug!("replacing `Len([_; N])`: {:?}", rvalue);
+                *rvalue = Rvalue::Use(Operand::Constant(box constant));
+            }
         }
 
         if let Some(operand) = self.optimizations.unneeded_equality_comparison.remove(&location) {
-            debug!("replacing {:?} with {:?}", rvalue, operand);
-            *rvalue = Rvalue::Use(operand);
+            if self.should_combine(rvalue, location) {
+                debug!("replacing {:?} with {:?}", rvalue, operand);
+                *rvalue = Rvalue::Use(operand);
+            }
         }
 
         if let Some(place) = self.optimizations.unneeded_deref.remove(&location) {
-            debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
-            *rvalue = Rvalue::Use(Operand::Copy(place));
+            if self.should_combine(rvalue, location) {
+                debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
+                *rvalue = Rvalue::Use(Operand::Copy(place));
+            }
         }
 
         self.super_rvalue(rvalue, location)

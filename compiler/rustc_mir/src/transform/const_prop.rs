@@ -89,10 +89,6 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             return;
         }
 
-        if !tcx.consider_optimizing(|| format!("ConstantPropagation {:?} {:?}", def_id, hir_id)) {
-            return;
-        }
-
         // Check if it's even possible to satisfy the 'where' clauses
         // for this item.
         // This branch will never be taken for any normal function.
@@ -804,7 +800,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
         }
 
-        trace!("attepting to replace {:?} with {:?}", rval, value);
+        trace!("attempting to replace {:?} with {:?}", rval, value);
         if let Err(e) = self.ecx.const_validate_operand(
             value,
             vec![],
@@ -891,6 +887,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
 
         if mir_opt_level == 0 {
+            return false;
+        }
+
+        if !self.tcx.consider_optimizing(|| format!("ConstantPropagation - OpTy: {:?}", op)) {
             return false;
         }
 
