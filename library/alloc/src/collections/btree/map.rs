@@ -1307,6 +1307,68 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
         }
     }
 
+    /// Splits the collection into two. Returns a new collection with all keys in the given range.
+    ///
+    /// # Panics
+    ///
+    /// Panics if range `start > end`.
+    /// Panics if range `start == end` and both bounds are `Excluded`.
+    /// May panic if the [`Ord`] implementation of type `T` is ill-defined,
+    /// either because it does not form a total order or because it does not
+    /// correspond to the [`Ord`] implementation of type `K`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_split_off_range)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(17, "d");
+    /// a.insert(41, "e");
+    ///
+    /// let b = a.split_off_range(&3..&33);
+    ///
+    /// assert_eq!(a.len(), 3);
+    /// assert_eq!(b.len(), 2);
+    ///
+    /// assert_eq!(a[&1], "a");
+    /// assert_eq!(a[&2], "b");
+    /// assert_eq!(a[&41], "e");
+    ///
+    /// assert_eq!(b[&3], "c");
+    /// assert_eq!(b[&17], "d");
+    /// ```
+    #[unstable(feature = "btree_split_off_range", issue = "81074")]
+    pub fn split_off_range<T: ?Sized, R>(&mut self, range: R) -> Self
+    where
+        T: Ord,
+        K: Borrow<T> + Ord,
+        R: RangeBounds<T>,
+        A: Clone,
+    {
+        let alloc = (*self.alloc).clone();
+        if self.is_empty() {
+            return Self::new_in(alloc);
+        }
+
+        let total_num = self.length;
+        let left_root = self.root.as_mut().unwrap(); // unwrap succeeds because not empty
+
+        let mut right_root = left_root.split_off_range(range, &alloc);
+        right_root.fix_both_borders(&alloc);
+
+        let (new_left_len, right_len) = Root::calc_split_length(total_num, &left_root, &right_root);
+        self.length = new_left_len;
+
+        BTreeMap { root: Some(right_root), length: right_len, alloc: ManuallyDrop::new(alloc) }
+    }
+
     /// Creates an iterator that visits all elements (key-value pairs) in
     /// ascending key order and uses a closure to determine if an element should
     /// be removed. If the closure returns `true`, the element is removed from

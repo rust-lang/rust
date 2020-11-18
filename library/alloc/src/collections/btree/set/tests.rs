@@ -826,6 +826,18 @@ fn test_split_off_large_random_sorted() {
 }
 
 #[test]
+fn test_split_off_range() {
+    let mut set: BTreeSet<_> = (1..=3).collect();
+    let drained = set.split_off_range(2..=2);
+    assert_eq!(drained.len(), 1);
+    assert_eq!(drained.first(), Some(&2));
+    assert_eq!(drained.last(), Some(&2));
+    assert_eq!(set.len(), 2);
+    assert_eq!(set.first(), Some(&1));
+    assert_eq!(set.last(), Some(&3));
+}
+
+#[test]
 fn from_array() {
     let set = BTreeSet::from([1, 2, 3, 4]);
     let unordered_duplicates = BTreeSet::from([4, 1, 4, 3, 2]);

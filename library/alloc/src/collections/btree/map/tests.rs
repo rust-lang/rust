@@ -17,6 +17,8 @@ use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
+mod split_off_range;
+
 // Minimum number of elements to insert, to guarantee a tree with 2 levels,
 // i.e., a tree who's root is an internal node at height 1, with edges to leaf nodes.
 // It's not the minimum size: removing an element from such a tree does not always reduce height.
@@ -26,6 +28,12 @@ const MIN_INSERTS_HEIGHT_1: usize = node::CAPACITY + 1;
 // i.e., a tree who's root is an internal node at height 2, with edges to more internal nodes.
 // It's not the minimum size: removing an element from such a tree does not always reduce height.
 const MIN_INSERTS_HEIGHT_2: usize = 89;
+
+// Like MIN_INSERTS_HEIGHT_2, with an additional internal level.
+const MIN_INSERTS_HEIGHT_3: usize = 628;
+
+// Like MIN_INSERTS_HEIGHT_3, with an additional internal level.
+const MIN_INSERTS_HEIGHT_4: usize = 4401;
 
 // Gathers all references from a mutable iterator and makes sure Miri notices if
 // using them is dangerous.
@@ -174,6 +182,26 @@ fn test_levels() {
     // - 5 elements in right child's last grandchild
     assert_eq!(map.height(), Some(2));
     assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2, "{}", map.dump_keys());
+
+    if cfg!(miri) {
+        // Miri is too slow
+        return;
+    }
+    while map.height() == Some(2) {
+        let last_key = *map.last_key_value().unwrap().0;
+        map.insert(last_key + 1, ());
+    }
+    map.check();
+    assert_eq!(map.height(), Some(3));
+    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_3);
+
+    while map.height() == Some(3) {
+        let last_key = *map.last_key_value().unwrap().0;
+        map.insert(last_key + 1, ());
+    }
+    map.check();
+    assert_eq!(map.height(), Some(4));
+    assert_eq!(map.len(), MIN_INSERTS_HEIGHT_4);
 }
 
 // Ensures the testing infrastructure usually notices order violations.
