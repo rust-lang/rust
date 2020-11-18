@@ -155,13 +155,65 @@ mod hack {
     }
 
     #[inline]
-    pub fn to_vec<T, A: AllocRef>(s: &[T], alloc: A) -> Vec<T, A>
-    where
-        T: Clone,
-    {
-        let mut vec = Vec::with_capacity_in(s.len(), alloc);
-        vec.extend_from_slice(s);
-        vec
+    pub fn to_vec<T: ConvertVec, A: AllocRef>(s: &[T], alloc: A) -> Vec<T, A> {
+        T::to_vec(s, alloc)
+    }
+
+    pub trait ConvertVec {
+        fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where
+            Self: Sized;
+    }
+
+    impl<T: Clone> ConvertVec for T {
+        #[inline]
+        default fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A> {
+            struct DropGuard<'a, T, A: AllocRef> {
+                vec: &'a mut Vec<T, A>,
+                num_init: usize,
+            }
+            impl<'a, T, A: AllocRef> Drop for DropGuard<'a, T, A> {
+                #[inline]
+                fn drop(&mut self) {
+                    // SAFETY:
+                    // items were marked initialized in the loop below
+                    unsafe {
+                        self.vec.set_len(self.num_init);
+                    }
+                }
+            }
+            let mut vec = Vec::with_capacity_in(s.len(), alloc);
+            let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
+            let slots = guard.vec.spare_capacity_mut();
+            // .take(slots.len()) is necessary for LLVM to remove bounds checks
+            // and has better codegen than zip.
+            for (i, b) in s.iter().enumerate().take(slots.len()) {
+                guard.num_init = i;
+                slots[i].write(b.clone());
+            }
+            core::mem::forget(guard);
+            // SAFETY:
+            // the vec was allocated and initialized above to at least this length.
+            unsafe {
+                vec.set_len(s.len());
+            }
+            vec
+        }
+    }
+
+    impl<T: Copy> ConvertVec for T {
+        #[inline]
+        fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A> {
+            let mut v = Vec::with_capacity_in(s.len(), alloc);
+            // SAFETY:
+            // allocated above with the capacity of `s`, and initialize to `s.len()` in
+            // ptr::copy_to_non_overlapping below.
+            unsafe {
+                s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
+                v.set_len(s.len());
+            }
+            v
+        }
     }
 }
 
