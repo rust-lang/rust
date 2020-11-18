@@ -31,7 +31,7 @@ fn test<const N: usize>() {
     let _: foo!({{ N }}); //[min]~ ERROR generic parameters may not
     let _: bar!(N);
     let _: bar!({ N }); //[min]~ ERROR generic parameters may not
-    let _: baz!(N); //~ ERROR expressions must be enclosed in braces
+    let _: baz!(N);
     let _: baz!({ N });
     let _: baz!({{ N }}); //[min]~ ERROR generic parameters may not
     let _: biz!(N);

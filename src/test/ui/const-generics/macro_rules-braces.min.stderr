@@ -1,15 +1,4 @@
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:34:17
-   |
-LL |     let _: baz!(N);
-   |                 ^
-   |
-help: enclose the `const` expression in braces
-   |
-LL |     let _: baz!({ N });
-   |                 ^   ^
-
-error: expressions must be enclosed in braces to be used as const generic arguments
   --> $DIR/macro_rules-braces.rs:54:17
    |
 LL |     let _: baz!(10 + 7);
@@ -52,5 +41,5 @@ LL |     let _: biz!({ N });
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
