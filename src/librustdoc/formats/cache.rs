@@ -269,7 +269,8 @@ impl DocFolder for Cache {
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
-                        Some(*self.parent_stack.last().expect("parent_stack is empty")),
+                        Some(*self.parent_stack.last()
+                            .unwrap_or_else(|| panic!("parent_stack is empty (while indexing {:?})", item.kind))),
                         Some(&self.stack[..self.stack.len() - 1]),
                     ),
                     false,
@@ -303,7 +304,7 @@ impl DocFolder for Cache {
 
             match parent {
                 (parent, Some(path)) if is_inherent_impl_item || !self.stripped_mod => {
-                    debug_assert!(!item.is_stripped());
+                    debug_assert!(!item.is_stripped(), "name={:?}, kind={:?}", item.name, item.kind);
 
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
