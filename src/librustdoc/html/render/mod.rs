@@ -86,7 +86,11 @@ crate type NameDoc = (String, Option<String>);
 
 crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
-        if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
+        if !v.ends_with('/') && !v.is_empty() {
+            write!(f, "{}/", v)
+        } else {
+            write!(f, "{}", v)
+        }
     })
 }
 
@@ -1194,6 +1198,16 @@ fn write_minify(
     }
 }
 
+fn write_srclink(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache) {
+    if let Some(l) = cx.src_href(item, cache) {
+        write!(
+            buf,
+            "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
+            l, "goto source code"
+        )
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Hash)]
 struct ItemEntry {
     url: String,
@@ -1706,13 +1720,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
     if cx.shared.include_sources && !item.is_primitive() {
-        if let Some(l) = cx.src_href(item, cache) {
-            write!(
-                buf,
-                "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                l, "goto source code"
-            );
-        }
+        write_srclink(cx, item, buf, cache);
     }
 
     write!(buf, "</span>"); // out-of-band
@@ -1942,7 +1950,11 @@ fn document_stability(
 }
 
 fn document_non_exhaustive_header(item: &clean::Item) -> &str {
-    if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
+    if item.is_non_exhaustive() {
+        " (Non-exhaustive)"
+    } else {
+        ""
+    }
 }
 
 fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
@@ -3693,13 +3705,7 @@ fn render_impl(
             StabilityLevel::Unstable { .. } => None,
         });
         render_stability_since_raw(w, since.as_deref(), outer_version);
-        if let Some(l) = cx.src_href(&i.impl_item, cache) {
-            write!(
-                w,
-                "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                l, "goto source code"
-            );
-        }
+        write_srclink(cx, &i.impl_item, w, cache);
         write!(w, "</h3>");
 
         if trait_.is_some() {
@@ -3765,13 +3771,7 @@ fn render_impl(
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
                     render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
-                    if let Some(l) = cx.src_href(item, cache) {
-                        write!(
-                            w,
-                            "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                            l, "goto source code"
-                        );
-                    }
+                    write_srclink(cx, item, w, cache);
                     write!(w, "</h4>");
                 }
             }
@@ -3787,13 +3787,7 @@ fn render_impl(
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code>");
                 render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
-                if let Some(l) = cx.src_href(item, cache) {
-                    write!(
-                        w,
-                        "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                        l, "goto source code"
-                    );
-                }
+                write_srclink(cx, item, w, cache);
                 write!(w, "</h4>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
