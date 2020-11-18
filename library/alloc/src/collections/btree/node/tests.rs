@@ -2,7 +2,6 @@ use super::super::navigate;
 use super::*;
 use crate::fmt::Debug;
 use crate::string::String;
-use core::cmp::Ordering::*;
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     // Asserts that the back pointer in each reachable node points to its parent.
@@ -67,7 +66,7 @@ fn test_splitpoint() {
 }
 
 #[test]
-fn test_partial_cmp_eq() {
+fn test_partial_eq() {
     let mut root1 = NodeRef::new_leaf();
     root1.borrow_mut().push(1, ());
     let mut root1 = NodeRef::new_internal(root1.forget_type()).forget_type();
@@ -86,13 +85,6 @@ fn test_partial_cmp_eq() {
     assert!(leaf_edge_1a != top_edge_2);
     assert!(top_edge_1 == top_edge_1);
     assert!(top_edge_1 != top_edge_2);
-
-    assert_eq!(leaf_edge_1a.partial_cmp(&leaf_edge_1a), Some(Equal));
-    assert_eq!(leaf_edge_1a.partial_cmp(&leaf_edge_1b), Some(Less));
-    assert_eq!(leaf_edge_1a.partial_cmp(&top_edge_1), None);
-    assert_eq!(leaf_edge_1a.partial_cmp(&top_edge_2), None);
-    assert_eq!(top_edge_1.partial_cmp(&top_edge_1), Some(Equal));
-    assert_eq!(top_edge_1.partial_cmp(&top_edge_2), None);
 
     root1.pop_internal_level();
     unsafe { root1.into_dying().deallocate_and_ascend() };
