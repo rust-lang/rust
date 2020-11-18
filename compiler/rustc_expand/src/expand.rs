@@ -767,9 +767,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Derive { path, item } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
-                    if !item.derive_allowed() {
-                        return ExpandResult::Ready(fragment_kind.dummy(span));
-                    }
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
