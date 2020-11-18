@@ -296,7 +296,6 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                 let attrs = self.attrs.clean(cx);
                 let is_spotlight = attrs.has_doc_flag(sym::spotlight);
                 NotInlined(TraitItem(Trait {
-                    auto: is_auto.clean(cx),
                     unsafety,
                     items: item_ids
                         .iter()
