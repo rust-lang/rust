@@ -437,8 +437,10 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     fn pop_head_constructor(&self, ctor_wild_subpatterns: &Fields<'p, 'tcx>) -> PatStack<'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let new_fields = ctor_wild_subpatterns.replace_with_pattern_arguments(self.head());
-        new_fields.push_on_patstack(&self.pats[1..])
+        let mut new_fields =
+            ctor_wild_subpatterns.replace_with_pattern_arguments(self.head()).filtered_patterns();
+        new_fields.extend_from_slice(&self.pats[1..]);
+        PatStack::from_vec(new_fields)
     }
 }
 
@@ -1252,6 +1254,18 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         pats.into_iter()
     }
 
+    /// Returns the filtered list of patterns, not including hidden fields.
+    fn filtered_patterns(self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
+        match self {
+            Fields::Slice(pats) => pats.iter().collect(),
+            Fields::Vec(pats) => pats,
+            Fields::Filtered { fields, .. } => {
+                // We skip hidden fields here
+                fields.into_iter().filter_map(|p| p.kept()).collect()
+            }
+        }
+    }
+
     /// Overrides some of the fields with the provided patterns. Exactly like
     /// `replace_fields_indexed`, except that it takes `FieldPat`s as input.
     fn replace_with_fieldpats(
@@ -1357,21 +1371,6 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             }
             _ => self.clone(),
         }
-    }
-
-    fn push_on_patstack(self, stack: &[&'p Pat<'tcx>]) -> PatStack<'p, 'tcx> {
-        let pats: SmallVec<_> = match self {
-            Fields::Slice(pats) => pats.iter().chain(stack.iter().copied()).collect(),
-            Fields::Vec(mut pats) => {
-                pats.extend_from_slice(stack);
-                pats
-            }
-            Fields::Filtered { fields, .. } => {
-                // We skip hidden fields here
-                fields.into_iter().filter_map(|p| p.kept()).chain(stack.iter().copied()).collect()
-            }
-        };
-        PatStack::from_vec(pats)
     }
 }
 
