@@ -402,7 +402,7 @@ macro_rules! define_queries {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                ensure_query::<queries::$name<'_>, _>(self.tcx, key.into_query_param())
+                get_query::<queries::$name<'_>, _>(self.tcx, DUMMY_SP, key.into_query_param(), QueryMode::Ensure);
             })*
         }
 
@@ -483,7 +483,7 @@ macro_rules! define_queries {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
-                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param())
+                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param(), QueryMode::Get).unwrap()
             })*
         }
 
