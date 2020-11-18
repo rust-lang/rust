@@ -69,10 +69,6 @@ use rustc_query_system::query::*;
 mod stats;
 pub use self::stats::print_stats;
 
-#[cfg(parallel_compiler)]
-mod job;
-#[cfg(parallel_compiler)]
-pub use self::job::handle_deadlock;
 pub use rustc_query_system::query::{QueryInfo, QueryJob, QueryJobId};
 
 mod keys;

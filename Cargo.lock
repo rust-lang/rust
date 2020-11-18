@@ -3820,6 +3820,7 @@ version = "0.0.0"
 dependencies = [
  "libc",
  "rustc-rayon",
+ "rustc-rayon-core",
  "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_passes",

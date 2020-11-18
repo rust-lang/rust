@@ -588,7 +588,7 @@ macro_rules! define_queries_struct {
             }
 
             #[cfg(parallel_compiler)]
-            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
+            pub unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
                 let tcx = QueryCtxt { tcx, queries: self };
                 rustc_query_system::query::deadlock(tcx, registry)
             }
