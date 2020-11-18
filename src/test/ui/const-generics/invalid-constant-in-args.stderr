@@ -1,8 +1,8 @@
 error[E0107]: wrong number of generic arguments: expected 1, found 2
-  --> $DIR/invalid-constant-in-args.rs:2:22
+  --> $DIR/invalid-constant-in-args.rs:4:23
    |
-LL |     let _: Vec<&str, "a"> = Vec::new();
-   |                      ^^^ unexpected const argument
+LL |     let _: Cell<&str, "a"> = Cell::new("");
+   |                       ^^^ unexpected const argument
 
 error: aborting due to previous error
 
