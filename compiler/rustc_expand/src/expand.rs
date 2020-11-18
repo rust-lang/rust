@@ -1016,11 +1016,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_attr(
         &mut self,
-        attr: Option<ast::Attribute>,
-        derives: Vec<Path>,
+        (attr, derives, after_derive): (Option<ast::Attribute>, Vec<Path>, bool),
         item: Annotatable,
         kind: AstFragmentKind,
-        after_derive: bool,
     ) -> AstFragment {
         self.collect(
             kind,
@@ -1048,10 +1046,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
-    fn classify_item(
+    fn take_first_attr(
         &mut self,
         item: &mut impl HasAttrs,
-    ) -> (Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool) {
+    ) -> Option<(Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)> {
         let (mut attr, mut traits, mut after_derive) = (None, Vec::new(), false);
 
         item.visit_attrs(|mut attrs| {
@@ -1059,23 +1057,23 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             traits = collect_derives(&mut self.cx, &mut attrs);
         });
 
-        (attr, traits, after_derive)
+        if attr.is_some() || !traits.is_empty() { Some((attr, traits, after_derive)) } else { None }
     }
 
-    /// Alternative to `classify_item()` that ignores `#[derive]` so invocations fallthrough
+    /// Alternative to `take_first_attr()` that ignores `#[derive]` so invocations fallthrough
     /// to the unused-attributes lint (making it an error on statements and expressions
     /// is a breaking change)
-    fn classify_nonitem(
+    fn take_first_attr_no_derive(
         &mut self,
         nonitem: &mut impl HasAttrs,
-    ) -> (Option<ast::Attribute>, /* after_derive */ bool) {
+    ) -> Option<(Option<ast::Attribute>, Vec<Path>, /* after_derive */ bool)> {
         let (mut attr, mut after_derive) = (None, false);
 
         nonitem.visit_attrs(|mut attrs| {
             attr = self.find_attr_invoc(&mut attrs, &mut after_derive);
         });
 
-        (attr, after_derive)
+        attr.map(|attr| (Some(attr), Vec::new(), after_derive))
     }
 
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
@@ -1119,23 +1117,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         visit_clobber(expr.deref_mut(), |mut expr| {
             self.cfg.configure_expr_kind(&mut expr.kind);
 
-            // ignore derives so they remain unused
-            let (attr, after_derive) = self.classify_nonitem(&mut expr);
-
-            if let Some(ref attr_value) = attr {
+            if let Some(attr) = self.take_first_attr_no_derive(&mut expr) {
                 // Collect the invoc regardless of whether or not attributes are permitted here
                 // expansion will eat the attribute so it won't error later.
-                self.cfg.maybe_emit_expr_attr_err(attr_value);
+                attr.0.as_ref().map(|attr| self.cfg.maybe_emit_expr_attr_err(attr));
 
                 // AstFragmentKind::Expr requires the macro to emit an expression.
                 return self
-                    .collect_attr(
-                        attr,
-                        vec![],
-                        Annotatable::Expr(P(expr)),
-                        AstFragmentKind::Expr,
-                        after_derive,
-                    )
+                    .collect_attr(attr, Annotatable::Expr(P(expr)), AstFragmentKind::Expr)
                     .make_expr()
                     .into_inner();
             }
@@ -1153,16 +1142,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
         let mut arm = configure!(self, arm);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut arm);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut arm) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::Arm(arm),
-                    AstFragmentKind::Arms,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::Arm(arm), AstFragmentKind::Arms)
                 .make_arms();
         }
 
@@ -1172,16 +1154,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_field(&mut self, field: ast::Field) -> SmallVec<[ast::Field; 1]> {
         let mut field = configure!(self, field);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut field);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut field) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::Field(field),
-                    AstFragmentKind::Fields,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::Field(field), AstFragmentKind::Fields)
                 .make_fields();
         }
 
@@ -1191,16 +1166,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_field_pattern(&mut self, fp: ast::FieldPat) -> SmallVec<[ast::FieldPat; 1]> {
         let mut fp = configure!(self, fp);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut fp);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut fp) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::FieldPat(fp),
-                    AstFragmentKind::FieldPats,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::FieldPat(fp), AstFragmentKind::FieldPats)
                 .make_field_patterns();
         }
 
@@ -1210,16 +1178,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_param(&mut self, p: ast::Param) -> SmallVec<[ast::Param; 1]> {
         let mut p = configure!(self, p);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut p);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut p) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::Param(p),
-                    AstFragmentKind::Params,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::Param(p), AstFragmentKind::Params)
                 .make_params();
         }
 
@@ -1229,16 +1190,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_struct_field(&mut self, sf: ast::StructField) -> SmallVec<[ast::StructField; 1]> {
         let mut sf = configure!(self, sf);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut sf);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut sf) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::StructField(sf),
-                    AstFragmentKind::StructFields,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::StructField(sf), AstFragmentKind::StructFields)
                 .make_struct_fields();
         }
 
@@ -1248,16 +1202,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_variant(&mut self, variant: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
         let mut variant = configure!(self, variant);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut variant);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut variant) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::Variant(variant),
-                    AstFragmentKind::Variants,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::Variant(variant), AstFragmentKind::Variants)
                 .make_variants();
         }
 
@@ -1269,20 +1216,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         expr.filter_map(|mut expr| {
             self.cfg.configure_expr_kind(&mut expr.kind);
 
-            // Ignore derives so they remain unused.
-            let (attr, after_derive) = self.classify_nonitem(&mut expr);
-
-            if let Some(ref attr_value) = attr {
-                self.cfg.maybe_emit_expr_attr_err(attr_value);
+            if let Some(attr) = self.take_first_attr_no_derive(&mut expr) {
+                attr.0.as_ref().map(|attr| self.cfg.maybe_emit_expr_attr_err(attr));
 
                 return self
-                    .collect_attr(
-                        attr,
-                        vec![],
-                        Annotatable::Expr(P(expr)),
-                        AstFragmentKind::OptExpr,
-                        after_derive,
-                    )
+                    .collect_attr(attr, Annotatable::Expr(P(expr)), AstFragmentKind::OptExpr)
                     .make_opt_expr()
                     .map(|expr| expr.into_inner());
             }
@@ -1321,25 +1259,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
-            let (attr, derives, after_derive) = if stmt.is_item() {
-                // FIXME: Handle custom attributes on statements (#15701)
-                (None, vec![], false)
-            } else {
-                // ignore derives on non-item statements so it falls through
-                // to the unused-attributes lint
-                let (attr, after_derive) = self.classify_nonitem(&mut stmt);
-                (attr, vec![], after_derive)
-            };
+            // FIXME: Handle custom attributes on statements (#15701).
+            let attr =
+                if stmt.is_item() { None } else { self.take_first_attr_no_derive(&mut stmt) };
 
-            if attr.is_some() || !derives.is_empty() {
+            if let Some(attr) = attr {
                 return self
-                    .collect_attr(
-                        attr,
-                        derives,
-                        Annotatable::Stmt(P(stmt)),
-                        AstFragmentKind::Stmts,
-                        after_derive,
-                    )
+                    .collect_attr(attr, Annotatable::Stmt(P(stmt)), AstFragmentKind::Stmts)
                     .make_stmts();
             }
         }
@@ -1379,16 +1305,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let mut item = configure!(self, item);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut item);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut item) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::Item(item),
-                    AstFragmentKind::Items,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::Item(item), AstFragmentKind::Items)
                 .make_items();
         }
 
@@ -1482,16 +1401,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         let mut item = configure!(self, item);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut item);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut item) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::TraitItem(item),
-                    AstFragmentKind::TraitItems,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::TraitItem(item), AstFragmentKind::TraitItems)
                 .make_trait_items();
         }
 
@@ -1512,16 +1424,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
         let mut item = configure!(self, item);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut item);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut item) {
             return self
-                .collect_attr(
-                    attr,
-                    traits,
-                    Annotatable::ImplItem(item),
-                    AstFragmentKind::ImplItems,
-                    after_derive,
-                )
+                .collect_attr(attr, Annotatable::ImplItem(item), AstFragmentKind::ImplItems)
                 .make_impl_items();
         }
 
@@ -1562,16 +1467,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         &mut self,
         mut foreign_item: P<ast::ForeignItem>,
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
-        let (attr, traits, after_derive) = self.classify_item(&mut foreign_item);
-
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut foreign_item) {
             return self
                 .collect_attr(
                     attr,
-                    traits,
                     Annotatable::ForeignItem(foreign_item),
                     AstFragmentKind::ForeignItems,
-                    after_derive,
                 )
                 .make_foreign_items();
         }
@@ -1606,15 +1507,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     ) -> SmallVec<[ast::GenericParam; 1]> {
         let mut param = configure!(self, param);
 
-        let (attr, traits, after_derive) = self.classify_item(&mut param);
-        if attr.is_some() || !traits.is_empty() {
+        if let Some(attr) = self.take_first_attr(&mut param) {
             return self
                 .collect_attr(
                     attr,
-                    traits,
                     Annotatable::GenericParam(param),
                     AstFragmentKind::GenericParams,
-                    after_derive,
                 )
                 .make_generic_params();
         }
