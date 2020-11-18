@@ -1,4 +1,4 @@
-error: the type `[usize; 18446744073709551615]` is too big for the current architecture
+error: values of the type `[usize; 18446744073709551615]` are too big for the current architecture
   --> $DIR/issue-15919-64.rs:9:9
    |
 LL |     let x = [0usize; 0xffff_ffff_ffff_ffff];
