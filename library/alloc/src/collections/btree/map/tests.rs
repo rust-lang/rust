@@ -115,7 +115,7 @@ impl<K, V> BTreeMap<K, V> {
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     fn assert_min_len(self, min_len: usize) {
-        assert!(self.len() >= min_len, "{} < {}", self.len(), min_len);
+        assert!(self.len() >= min_len, "node len {} < {}", self.len(), min_len);
         if let node::ForceResult::Internal(node) = self.force() {
             for idx in 0..=node.len() {
                 let edge = unsafe { Handle::new_edge(node, idx) };
