@@ -25,10 +25,19 @@ mod imp {
     use crate::io::Read;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    fn getrandom(buf: &mut [u8]) -> libc::c_long {
-        unsafe {
-            libc::syscall(libc::SYS_getrandom, buf.as_mut_ptr(), buf.len(), libc::GRND_NONBLOCK)
+    fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
+        // A weak symbol allows interposition, e.g. for perf measurements that want to
+        // disable randomness for consistency. Otherwise, we'll try a raw syscall.
+        // (`getrandom` was added in glibc 2.25, musl 1.1.20, android API level 28)
+        syscall! {
+            fn getrandom(
+                buffer: *mut libc::c_void,
+                length: libc::size_t,
+                flags: libc::c_uint
+            ) -> libc::ssize_t
         }
+
+        unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
