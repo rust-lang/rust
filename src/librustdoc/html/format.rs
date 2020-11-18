@@ -11,7 +11,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};
@@ -1089,19 +1089,31 @@ impl Function<'_> {
 
 impl clean::Visibility {
     crate fn print_with_space(&self) -> impl fmt::Display + '_ {
+        use rustc_span::symbol::kw;
+
         display_fn(move |f| match *self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
-            clean::Visibility::Crate => write!(f, "pub(crate) "),
+            // If this is `pub(crate)`, `path` will be empty.
+            clean::Visibility::Restricted(did, _) if did.index == CRATE_DEF_INDEX => {
+                write!(f, "pub(crate) ")
+            }
             clean::Visibility::Restricted(did, ref path) => {
                 f.write_str("pub(")?;
-                if path.segments.len() != 1
-                    || (path.segments[0].name != "self" && path.segments[0].name != "super")
+                debug!("path={:?}", path);
+                let first_name =
+                    path.data[0].data.get_opt_name().expect("modules are always named");
+                if path.data.len() != 1 || (first_name != kw::SelfLower && first_name != kw::Super)
                 {
                     f.write_str("in ")?;
                 }
-                resolved_path(f, did, path, true, false)?;
-                f.write_str(") ")
+                // modified from `resolved_path()` to work with `DefPathData`
+                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                for seg in &path.data[..path.data.len() - 1] {
+                    write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                }
+                let path = anchor(did, &last_name.as_str()).to_string();
+                write!(f, "{}) ", path)
             }
         })
     }

@@ -124,16 +124,8 @@ crate fn try_inline(
     let attrs = merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
     cx.renderinfo.borrow_mut().inlined.insert(did);
-    ret.push(clean::Item {
-        source: cx.tcx.def_span(did).clean(cx),
-        name: Some(name.clean(cx)),
-        attrs,
-        kind,
-        visibility: clean::Public,
-        stability: cx.tcx.lookup_stability(did).cloned(),
-        deprecation: cx.tcx.lookup_deprecation(did).clean(cx),
-        def_id: did,
-    });
+    let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
+    ret.push(clean::Item { attrs, ..what_rustc_thinks });
     Some(ret)
 }
 
@@ -443,8 +435,10 @@ crate fn build_impl(
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
-    ret.push(clean::Item {
-        kind: clean::ImplItem(clean::Impl {
+    ret.push(clean::Item::from_def_id_and_parts(
+        did,
+        None,
+        clean::ImplItem(clean::Impl {
             unsafety: hir::Unsafety::Normal,
             generics,
             provided_trait_methods: provided,
@@ -455,14 +449,8 @@ crate fn build_impl(
             synthetic: false,
             blanket_impl: None,
         }),
-        source: tcx.def_span(did).clean(cx),
-        name: None,
-        attrs,
-        visibility: clean::Inherited,
-        stability: tcx.lookup_stability(did).cloned(),
-        deprecation: tcx.lookup_deprecation(did).clean(cx),
-        def_id: did,
-    });
+        cx,
+    ));
 }
 
 fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>) -> clean::Module {

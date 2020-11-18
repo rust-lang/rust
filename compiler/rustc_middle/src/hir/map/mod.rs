@@ -806,25 +806,34 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        let attrs = match self.find_entry(id).map(|entry| entry.node) {
-            Some(Node::Param(a)) => Some(&a.attrs[..]),
-            Some(Node::Local(l)) => Some(&l.attrs[..]),
-            Some(Node::Item(i)) => Some(&i.attrs[..]),
-            Some(Node::ForeignItem(fi)) => Some(&fi.attrs[..]),
-            Some(Node::TraitItem(ref ti)) => Some(&ti.attrs[..]),
-            Some(Node::ImplItem(ref ii)) => Some(&ii.attrs[..]),
-            Some(Node::Variant(ref v)) => Some(&v.attrs[..]),
-            Some(Node::Field(ref f)) => Some(&f.attrs[..]),
-            Some(Node::Expr(ref e)) => Some(&*e.attrs),
-            Some(Node::Stmt(ref s)) => Some(s.kind.attrs(|id| self.item(id.id))),
-            Some(Node::Arm(ref a)) => Some(&*a.attrs),
-            Some(Node::GenericParam(param)) => Some(&param.attrs[..]),
+        let attrs = self.find_entry(id).map(|entry| match entry.node {
+            Node::Param(a) => &a.attrs[..],
+            Node::Local(l) => &l.attrs[..],
+            Node::Item(i) => &i.attrs[..],
+            Node::ForeignItem(fi) => &fi.attrs[..],
+            Node::TraitItem(ref ti) => &ti.attrs[..],
+            Node::ImplItem(ref ii) => &ii.attrs[..],
+            Node::Variant(ref v) => &v.attrs[..],
+            Node::Field(ref f) => &f.attrs[..],
+            Node::Expr(ref e) => &*e.attrs,
+            Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id.id)),
+            Node::Arm(ref a) => &*a.attrs,
+            Node::GenericParam(param) => &param.attrs[..],
             // Unit/tuple structs/variants take the attributes straight from
             // the struct/variant definition.
-            Some(Node::Ctor(..)) => return self.attrs(self.get_parent_item(id)),
-            Some(Node::Crate(item)) => Some(&item.attrs[..]),
-            _ => None,
-        };
+            Node::Ctor(..) => self.attrs(self.get_parent_item(id)),
+            Node::Crate(item) => &item.attrs[..],
+            Node::MacroDef(def) => def.attrs,
+            Node::AnonConst(..)
+            | Node::PathSegment(..)
+            | Node::Ty(..)
+            | Node::Pat(..)
+            | Node::Binding(..)
+            | Node::TraitRef(..)
+            | Node::Block(..)
+            | Node::Lifetime(..)
+            | Node::Visibility(..) => &[],
+        });
         attrs.unwrap_or(&[])
     }
 

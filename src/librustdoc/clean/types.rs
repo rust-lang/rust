@@ -112,6 +112,48 @@ impl Item {
         self.attrs.doc_value()
     }
 
+    /// Convenience wrapper around [`Self::from_def_id_and_parts`] which converts
+    /// `hir_id` to a [`DefId`]
+    pub fn from_hir_id_and_parts(
+        hir_id: hir::HirId,
+        name: Option<Symbol>,
+        kind: ItemKind,
+        cx: &DocContext<'_>,
+    ) -> Item {
+        Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
+    }
+
+    pub fn from_def_id_and_parts(
+        def_id: DefId,
+        name: Option<Symbol>,
+        kind: ItemKind,
+        cx: &DocContext<'_>,
+    ) -> Item {
+        use super::Clean;
+
+        debug!("name={:?}, def_id={:?}", name, def_id);
+
+        // `span_if_local()` lies about functions and only gives the span of the function signature
+        let source = def_id.as_local().map_or_else(
+            || cx.tcx.def_span(def_id),
+            |local| {
+                let hir = cx.tcx.hir();
+                hir.span_with_body(hir.local_def_id_to_hir_id(local))
+            },
+        );
+
+        Item {
+            def_id,
+            kind,
+            name: name.clean(cx),
+            source: source.clean(cx),
+            attrs: cx.tcx.get_attrs(def_id).clean(cx),
+            visibility: cx.tcx.visibility(def_id).clean(cx),
+            stability: cx.tcx.lookup_stability(def_id).cloned(),
+            deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
+        }
+    }
+
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
     crate fn collapsed_doc_value(&self) -> Option<String> {
@@ -1460,12 +1502,17 @@ impl From<hir::PrimTy> for PrimitiveType {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 crate enum Visibility {
     Public,
     Inherited,
-    Crate,
-    Restricted(DefId, Path),
+    Restricted(DefId, rustc_hir::definitions::DefPath),
+}
+
+impl Visibility {
+    crate fn is_public(&self) -> bool {
+        matches!(self, Visibility::Public)
+    }
 }
 
 #[derive(Clone, Debug)]
