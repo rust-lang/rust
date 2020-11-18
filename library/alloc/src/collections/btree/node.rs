@@ -142,8 +142,17 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
+    fn new_internal(child: Root<K, V>) -> Self {
+        let mut new_node = Box::new(unsafe { InternalNode::new() });
+        new_node.edges[0].write(child.node);
+        NodeRef::from_new_internal(new_node, child.height + 1)
+    }
+
     fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
-        NodeRef { height, node: NonNull::from(Box::leak(internal)).cast(), _marker: PhantomData }
+        let node = NonNull::from(Box::leak(internal)).cast();
+        let mut this = NodeRef { height, node, _marker: PhantomData };
+        this.borrow_mut().correct_all_childrens_parent_links();
+        this
     }
 }
 
@@ -167,11 +176,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// make that new node the root node, and return it. This increases the height by 1
     /// and is the opposite of `pop_internal_level`.
     pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
-        let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].write(self.node);
-        let mut new_root = NodeRef::from_new_internal(new_node, self.height + 1);
-        new_root.borrow_mut().first_edge().correct_parent_link();
-        *self = new_root.forget_type();
+        super::mem::take_mut(self, |old_root| NodeRef::new_internal(old_root).forget_type());
 
         // `self.borrow_mut()`, except that we just forgot we're internal now:
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
@@ -1193,9 +1198,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             );
 
             let height = self.node.height;
-            let mut right = NodeRef::from_new_internal(new_node, height);
-
-            right.borrow_mut().correct_childrens_parent_links(0..new_len + 1);
+            let right = NodeRef::from_new_internal(new_node, height);
 
             SplitResult { left: self.node, kv, right }
         }
