@@ -25,7 +25,7 @@ use crate::value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
+fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr, requires_inline: bool) {
     use self::InlineAttr::*;
     match inline {
         Hint => Attribute::InlineHint.apply_llfn(Function, val),
@@ -35,11 +35,8 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
                 Attribute::NoInline.apply_llfn(Function, val);
             }
         }
-        None => {
-            Attribute::InlineHint.unapply_llfn(Function, val);
-            Attribute::AlwaysInline.unapply_llfn(Function, val);
-            Attribute::NoInline.unapply_llfn(Function, val);
-        }
+        None if requires_inline => Attribute::InlineHint.apply_llfn(Function, val),
+        None => {}
     };
 }
 
@@ -229,12 +226,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         }
     }
 
-    // FIXME(eddyb) consolidate these two `inline` calls (and avoid overwrites).
-    if instance.def.requires_inline(cx.tcx) {
-        inline(cx, llfn, attributes::InlineAttr::Hint);
-    }
-
-    inline(cx, llfn, codegen_fn_attrs.inline.clone());
+    inline(cx, llfn, codegen_fn_attrs.inline.clone(), instance.def.requires_inline(cx.tcx));
 
     // The `uwtable` attribute according to LLVM is:
     //
