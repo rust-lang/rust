@@ -94,7 +94,10 @@ pub fn push_debuginfo_type_name<'tcx>(
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
-                output.push('*');
+                match inner_type.kind {
+                    ty::Slice(_) | ty::Str => {}
+                    _ => output.push('*');
+                }
             }
         }
         ty::Array(inner_type, len) => {
