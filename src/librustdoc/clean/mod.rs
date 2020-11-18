@@ -304,7 +304,6 @@ impl Clean<Vec<Item>> for hir::Item<'_> {
                     generics: generics.clean(cx),
                     bounds: bounds.clean(cx),
                     is_spotlight,
-                    // FIXME: this is redundant with `auto`
                     is_auto: is_auto.clean(cx),
                 }))
             }
@@ -380,16 +379,17 @@ impl Clean<Item> for hir::Crate<'_> {
             }
         };
 
-        let id = hir::CRATE_HIR_ID;
+        let what_rustc_thinks = Item::from_hir_id_and_parts(
+            hir::CRATE_HIR_ID,
+            Some(cx.tcx.crate_name),
+            ModuleItem(Module { is_crate: true, items: items.collect() }),
+            cx,
+        );
         Item {
-            name: Some(cx.tcx.crate_name.clean(cx)),
+            name: Some(what_rustc_thinks.name.unwrap_or_default()),
             attrs,
             source: span.clean(cx),
-            visibility: Visibility::Public,
-            stability: cx.stability(id),
-            deprecation: cx.deprecation(id).clean(cx),
-            def_id: cx.tcx.hir().local_def_id(id).to_def_id(),
-            kind: ModuleItem(Module { is_crate: true, items: items.collect() }),
+            ..what_rustc_thinks
         }
     }
 }
