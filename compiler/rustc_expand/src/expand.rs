@@ -609,48 +609,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         (fragment, invocations)
     }
 
-    fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
-        let mut cfg = StripUnconfigured { sess: &self.cx.sess, features: self.cx.ecfg.features };
-        // Since the item itself has already been configured by the InvocationCollector,
-        // we know that fold result vector will contain exactly one element
-        match item {
-            Annotatable::Item(item) => Annotatable::Item(cfg.flat_map_item(item).pop().unwrap()),
-            Annotatable::TraitItem(item) => {
-                Annotatable::TraitItem(cfg.flat_map_trait_item(item).pop().unwrap())
-            }
-            Annotatable::ImplItem(item) => {
-                Annotatable::ImplItem(cfg.flat_map_impl_item(item).pop().unwrap())
-            }
-            Annotatable::ForeignItem(item) => {
-                Annotatable::ForeignItem(cfg.flat_map_foreign_item(item).pop().unwrap())
-            }
-            Annotatable::Stmt(stmt) => {
-                Annotatable::Stmt(stmt.map(|stmt| cfg.flat_map_stmt(stmt).pop().unwrap()))
-            }
-            Annotatable::Expr(mut expr) => Annotatable::Expr({
-                cfg.visit_expr(&mut expr);
-                expr
-            }),
-            Annotatable::Arm(arm) => Annotatable::Arm(cfg.flat_map_arm(arm).pop().unwrap()),
-            Annotatable::Field(field) => {
-                Annotatable::Field(cfg.flat_map_field(field).pop().unwrap())
-            }
-            Annotatable::FieldPat(fp) => {
-                Annotatable::FieldPat(cfg.flat_map_field_pattern(fp).pop().unwrap())
-            }
-            Annotatable::GenericParam(param) => {
-                Annotatable::GenericParam(cfg.flat_map_generic_param(param).pop().unwrap())
-            }
-            Annotatable::Param(param) => {
-                Annotatable::Param(cfg.flat_map_param(param).pop().unwrap())
-            }
-            Annotatable::StructField(sf) => {
-                Annotatable::StructField(cfg.flat_map_struct_field(sf).pop().unwrap())
-            }
-            Annotatable::Variant(v) => Annotatable::Variant(cfg.flat_map_variant(v).pop().unwrap()),
-        }
-    }
-
     fn error_recursion_limit_reached(&mut self) {
         let expn_data = self.cx.current_expansion.id.expn_data();
         let suggested_limit = self.cx.ecfg.recursion_limit * 2;
