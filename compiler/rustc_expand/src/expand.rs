@@ -209,6 +209,28 @@ impl AstFragmentKind {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 
+    /// Fragment supports macro expansion and not just inert attributes, `cfg` and `cfg_attr`.
+    pub fn supports_macro_expansion(self) -> bool {
+        match self {
+            AstFragmentKind::OptExpr
+            | AstFragmentKind::Expr
+            | AstFragmentKind::Pat
+            | AstFragmentKind::Ty
+            | AstFragmentKind::Stmts
+            | AstFragmentKind::Items
+            | AstFragmentKind::TraitItems
+            | AstFragmentKind::ImplItems
+            | AstFragmentKind::ForeignItems => true,
+            AstFragmentKind::Arms
+            | AstFragmentKind::Fields
+            | AstFragmentKind::FieldPats
+            | AstFragmentKind::GenericParams
+            | AstFragmentKind::Params
+            | AstFragmentKind::StructFields
+            | AstFragmentKind::Variants => false,
+        }
+    }
+
     fn expect_from_annotatables<I: IntoIterator<Item = Annotatable>>(
         self,
         items: I,
@@ -1014,7 +1036,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attrs: &mut Vec<ast::Attribute>,
         after_derive: &mut bool,
     ) -> Option<ast::Attribute> {
-        let attr = attrs
+        attrs
             .iter()
             .position(|a| {
                 if a.has_name(sym::derive) {
@@ -1022,22 +1044,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 }
                 !self.cx.sess.is_attr_known(a) && !is_builtin_attr(a)
             })
-            .map(|i| attrs.remove(i));
-        if let Some(attr) = &attr {
-            if !self.cx.ecfg.custom_inner_attributes()
-                && attr.style == ast::AttrStyle::Inner
-                && !attr.has_name(sym::test)
-            {
-                feature_err(
-                    &self.cx.sess.parse_sess,
-                    sym::custom_inner_attributes,
-                    attr.span,
-                    "non-builtin inner attributes are unstable",
-                )
-                .emit();
-            }
-        }
-        attr
+            .map(|i| attrs.remove(i))
     }
 
     /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.

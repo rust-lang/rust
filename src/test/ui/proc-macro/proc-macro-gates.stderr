@@ -1,17 +1,17 @@
-error[E0658]: non-builtin inner attributes are unstable
-  --> $DIR/proc-macro-gates.rs:10:5
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:10:8
    |
 LL |     #![empty_attr]
-   |     ^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^
    |
    = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
 
-error[E0658]: non-builtin inner attributes are unstable
-  --> $DIR/proc-macro-gates.rs:14:5
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/proc-macro-gates.rs:14:8
    |
 LL |     #![empty_attr]
-   |     ^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^
    |
    = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
    = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
