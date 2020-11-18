@@ -86,11 +86,7 @@ crate type NameDoc = (String, Option<String>);
 
 crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
-        if !v.ends_with('/') && !v.is_empty() {
-            write!(f, "{}/", v)
-        } else {
-            write!(f, "{}", v)
-        }
+        if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { write!(f, "{}", v) }
     })
 }
 
@@ -1950,11 +1946,7 @@ fn document_stability(
 }
 
 fn document_non_exhaustive_header(item: &clean::Item) -> &str {
-    if item.is_non_exhaustive() {
-        " (Non-exhaustive)"
-    } else {
-        ""
-    }
+    if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
 }
 
 fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
@@ -2636,7 +2628,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         write!(w, "{}<span class=\"loading-content\">Loading content...</span>", extra_content)
     }
 
-    fn trait_item(w: &mut Buffer, cx: &Context, m: &clean::Item, t: &clean::Item) {
+    fn trait_item(w: &mut Buffer, cx: &Context, m: &clean::Item, t: &clean::Item, cache: &Cache) {
         let name = m.name.as_ref().unwrap();
         info!("Documenting {} on {}", name, t.name.as_deref().unwrap_or_default());
         let item_type = m.type_();
@@ -2645,6 +2637,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
+        write_srclink(cx, m, w, cache);
         write!(w, "</h3>");
         document(w, cx, m, Some(t));
     }
@@ -2656,8 +2649,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Associated Types",
             "<div class=\"methods\">",
         );
-        for t in &types {
-            trait_item(w, cx, *t, it);
+        for t in types {
+            trait_item(w, cx, t, it, cache);
         }
         write_loading_content(w, "</div>");
     }
@@ -2669,8 +2662,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Associated Constants",
             "<div class=\"methods\">",
         );
-        for t in &consts {
-            trait_item(w, cx, *t, it);
+        for t in consts {
+            trait_item(w, cx, t, it, cache);
         }
         write_loading_content(w, "</div>");
     }
@@ -2683,8 +2676,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Required methods",
             "<div class=\"methods\">",
         );
-        for m in &required {
-            trait_item(w, cx, *m, it);
+        for m in required {
+            trait_item(w, cx, m, it, cache);
         }
         write_loading_content(w, "</div>");
     }
@@ -2695,8 +2688,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Provided methods",
             "<div class=\"methods\">",
         );
-        for m in &provided {
-            trait_item(w, cx, *m, it);
+        for m in provided {
+            trait_item(w, cx, m, it, cache);
         }
         write_loading_content(w, "</div>");
     }
