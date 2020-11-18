@@ -170,9 +170,12 @@ impl FingerprintDecoder for opaque::Decoder<'_> {
 // `DepNode`s. As of this writing, the size of a `DepNode` decreases by ~30%
 // (from 24 bytes to 17) by using the packed representation here, which
 // noticeably decreases total memory usage when compiling large crates.
+//
+// The wrapped `Fingerprint` is private to reduce the chance of a client
+// invoking undefined behavior by taking a reference to the packed field.
 #[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), repr(packed))]
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy, Hash)]
-pub struct PackedFingerprint(pub Fingerprint);
+pub struct PackedFingerprint(Fingerprint);
 
 impl std::fmt::Display for PackedFingerprint {
     #[inline]
@@ -196,5 +199,19 @@ impl<D: rustc_serialize::Decoder> Decodable<D> for PackedFingerprint {
     #[inline]
     fn decode(d: &mut D) -> Result<Self, D::Error> {
         Fingerprint::decode(d).map(|f| PackedFingerprint(f))
+    }
+}
+
+impl From<Fingerprint> for PackedFingerprint {
+    #[inline]
+    fn from(f: Fingerprint) -> PackedFingerprint {
+        PackedFingerprint(f)
+    }
+}
+
+impl From<PackedFingerprint> for Fingerprint {
+    #[inline]
+    fn from(f: PackedFingerprint) -> Fingerprint {
+        f.0
     }
 }

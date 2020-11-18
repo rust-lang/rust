@@ -61,7 +61,7 @@ use crate::traits::query::{
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 
-use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
@@ -236,7 +236,7 @@ macro_rules! define_dep_nodes {
                 debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
                 DepNode {
                     kind,
-                    hash: PackedFingerprint(def_path_hash.0),
+                    hash: def_path_hash.0.into(),
                 }
             }
 
@@ -252,7 +252,7 @@ macro_rules! define_dep_nodes {
             /// has been removed.
             fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
-                    let def_path_hash = DefPathHash(self.hash.0);
+                    let def_path_hash = DefPathHash(self.hash.into());
                     tcx.def_path_hash_to_def_id.as_ref()?.get(&def_path_hash).cloned()
                 } else {
                     None
