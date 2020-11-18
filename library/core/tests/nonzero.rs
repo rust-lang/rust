@@ -320,3 +320,11 @@ fn test_nonzero_uint_div() {
     let x: u32 = 42u32 / nz;
     assert_eq!(x, 42u32);
 }
+
+#[test]
+fn test_nonzero_uint_rem() {
+    let nz = NonZeroU32::new(10).unwrap();
+
+    let x: u32 = 42u32 % nz;
+    assert_eq!(x, 2u32);
+}

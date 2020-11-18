@@ -1,7 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use crate::fmt;
-use crate::ops::{BitOr, BitOrAssign, Div};
+use crate::ops::{BitOr, BitOrAssign, Div, Rem};
 use crate::str::FromStr;
 
 use super::from_str_radix;
@@ -277,6 +277,18 @@ macro_rules! nonzero_integers_div {
                     // SAFETY: div by zero is checked because `other` is a nonzero,
                     // and MIN/-1 is checked because `self` is an unsigned int.
                     unsafe { crate::intrinsics::unchecked_div(self, other.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_div", since = "1.50.0")]
+            impl Rem<$Ty> for $Int {
+                type Output = $Int;
+                /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
+                #[inline]
+                fn rem(self, other: $Ty) -> $Int {
+                    // SAFETY: rem by zero is checked because `other` is a nonzero,
+                    // and MIN/-1 is checked because `self` is an unsigned int.
+                    unsafe { crate::intrinsics::unchecked_rem(self, other.get()) }
                 }
             }
         )+
