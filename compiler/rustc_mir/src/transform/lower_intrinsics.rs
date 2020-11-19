@@ -11,15 +11,11 @@ pub struct LowerIntrinsics;
 
 impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        for block in body.basic_blocks_mut() {
+        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+        for block in basic_blocks {
             let terminator = block.terminator.as_mut().unwrap();
-            if let TerminatorKind::Call {
-                func: Operand::Constant(box Constant { literal: ty::Const { ty: func_ty, .. }, .. }),
-                args,
-                destination,
-                ..
-            } = &mut terminator.kind
-            {
+            if let TerminatorKind::Call { func, args, destination, .. } = &mut terminator.kind {
+                let func_ty = func.ty(local_decls, tcx);
                 let (intrinsic_name, substs) = match resolve_rust_intrinsic(tcx, func_ty) {
                     None => continue,
                     Some(it) => it,
