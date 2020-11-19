@@ -71,7 +71,8 @@ use crate::ptr;
 ///   optimization that can be applied. You may generally not rely on heap allocations
 ///   happening, if they can be removed without changing program behaviour.
 ///   Whether allocations happen or not is not part of the program behaviour, even if it
-///   could be detected via an allocator that tracks allocations.
+///   could be detected via an allocator that tracks allocations by printing or otherwise
+///   having side effects.
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// Allocate memory as described by the given `layout`.
