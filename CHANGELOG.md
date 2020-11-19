@@ -162,7 +162,7 @@ Current stable, released 2020-11-19
 
 * [`useless_attribute`]: permit allowing [`wildcard_imports`] and [`enum_glob_use`]
   [#5994](https://github.com/rust-lang/rust-clippy/pull/5994)
-* [`transmute_ptr_to_ptr`]: avoid suggesting dereferencing raw pointers in const contexts 
+* [`transmute_ptr_to_ptr`]: avoid suggesting dereferencing raw pointers in const contexts
   [#5999](https://github.com/rust-lang/rust-clippy/pull/5999)
 * [`redundant_closure_call`]: take into account usages of the closure in nested functions and closures
   [#5920](https://github.com/rust-lang/rust-clippy/pull/5920)
@@ -170,7 +170,7 @@ Current stable, released 2020-11-19
   [#5949](https://github.com/rust-lang/rust-clippy/pull/5949)
 * [`doc_markdown`]: allow using "GraphQL" without backticks
   [#5996](https://github.com/rust-lang/rust-clippy/pull/5996)
-* [`to_string_in_display`]: avoid linting when calling `to_string()` on anything that is not `self` 
+* [`to_string_in_display`]: avoid linting when calling `to_string()` on anything that is not `self`
   [#5971](https://github.com/rust-lang/rust-clippy/pull/5971)
 * [`indexing_slicing`] and [`out_of_bounds_indexing`] treat references to arrays as arrays
   [#6034](https://github.com/rust-lang/rust-clippy/pull/6034)
@@ -191,19 +191,19 @@ Current stable, released 2020-11-19
   [#5946](https://github.com/rust-lang/rust-clippy/pull/5946)
 * [`useless_conversion`]: show the type in the error message
   [#6035](https://github.com/rust-lang/rust-clippy/pull/6035)
-* [`unnecessary_mut_passed`]: discriminate between functions and methods in the error message 
+* [`unnecessary_mut_passed`]: discriminate between functions and methods in the error message
   [#5892](https://github.com/rust-lang/rust-clippy/pull/5892)
 * [`float_cmp`] and [`float_cmp_const`]: change wording to make margin of error less ambiguous
   [#6043](https://github.com/rust-lang/rust-clippy/pull/6043)
 * [`default_trait_access`]: do not use unnecessary type parameters in the suggestion
   [#5993](https://github.com/rust-lang/rust-clippy/pull/5993)
-* [`collapsible_if`]: don't use expanded code in the suggestion 
+* [`collapsible_if`]: don't use expanded code in the suggestion
   [#5992](https://github.com/rust-lang/rust-clippy/pull/5992)
 * Do not suggest empty format strings in [`print_with_newline`] and [`write_with_newline`]
   [#6042](https://github.com/rust-lang/rust-clippy/pull/6042)
 * [`unit_arg`]: improve the readability of the suggestion
   [#5931](https://github.com/rust-lang/rust-clippy/pull/5931)
-* [`stable_sort_primitive`]: print the type that is being sorted in the lint message 
+* [`stable_sort_primitive`]: print the type that is being sorted in the lint message
   [#5935](https://github.com/rust-lang/rust-clippy/pull/5935)
 * Show line count and max lines in [`too_many_lines`] lint message
   [#6009](https://github.com/rust-lang/rust-clippy/pull/6009)
@@ -211,7 +211,7 @@ Current stable, released 2020-11-19
   [#5900](https://github.com/rust-lang/rust-clippy/pull/5900)
 * [`option_map_unit_fn`] and [`result_map_unit_fn`]: print the unit type `()` explicitly
   [#6024](https://github.com/rust-lang/rust-clippy/pull/6024)
-* [`redundant_allocation`]: suggest replacing `Rc<Box<T>>` with `Rc<T>` 
+* [`redundant_allocation`]: suggest replacing `Rc<Box<T>>` with `Rc<T>`
   [#5899](https://github.com/rust-lang/rust-clippy/pull/5899)
 * Make lint messages adhere to rustc dev guide conventions
   [#5893](https://github.com/rust-lang/rust-clippy/pull/5893)
