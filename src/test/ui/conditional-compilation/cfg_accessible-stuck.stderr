@@ -4,11 +4,5 @@ error: cannot determine whether the path is accessible or not
 LL | #[cfg_accessible(S)]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: cannot determine whether the path is accessible or not
-  --> $DIR/cfg_accessible-stuck.rs:3:1
-   |
-LL | #[cfg_accessible(Z)]
-   | ^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

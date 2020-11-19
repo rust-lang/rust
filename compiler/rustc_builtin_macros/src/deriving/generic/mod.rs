@@ -407,13 +407,7 @@ impl<'a> TraitDef<'a> {
                             _ => false,
                         })
                     }
-                    _ => {
-                        // Non-ADT derive is an error, but it should have been
-                        // set earlier; see
-                        // librustc_expand/expand.rs:MacroExpander::fully_expand_fragment()
-                        // librustc_expand/base.rs:Annotatable::derive_allowed()
-                        return;
-                    }
+                    _ => unreachable!(),
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent;
                 let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
@@ -475,12 +469,7 @@ impl<'a> TraitDef<'a> {
                 );
                 push(Annotatable::Item(P(ast::Item { attrs, ..(*newitem).clone() })))
             }
-            _ => {
-                // Non-Item derive is an error, but it should have been
-                // set earlier; see
-                // librustc_expand/expand.rs:MacroExpander::fully_expand_fragment()
-                // librustc_expand/base.rs:Annotatable::derive_allowed()
-            }
+            _ => unreachable!(),
         }
     }
 

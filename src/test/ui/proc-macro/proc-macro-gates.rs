@@ -7,11 +7,11 @@
 extern crate test_macros;
 
 fn _test_inner() {
-    #![empty_attr] //~ ERROR: non-builtin inner attributes are unstable
+    #![empty_attr] //~ ERROR: inner macro attributes are unstable
 }
 
 mod _test2_inner {
-    #![empty_attr] //~ ERROR: non-builtin inner attributes are unstable
+    #![empty_attr] //~ ERROR: inner macro attributes are unstable
 }
 
 #[empty_attr = "y"] //~ ERROR: key-value macro attributes are not supported
