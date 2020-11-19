@@ -1,16 +1,16 @@
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:34:17
+  --> $DIR/macro_rules-braces.rs:49:17
    |
-LL |     let _: baz!(N);
-   |                 ^
+LL |     let _: baz!(m::P);
+   |                 ^^^^
    |
 help: enclose the `const` expression in braces
    |
-LL |     let _: baz!({ N });
-   |                 ^   ^
+LL |     let _: baz!({ m::P });
+   |                 ^      ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:54:17
+  --> $DIR/macro_rules-braces.rs:69:17
    |
 LL |     let _: baz!(10 + 7);
    |                 ^^^^^^
@@ -21,7 +21,7 @@ LL |     let _: baz!({ 10 + 7 });
    |                 ^        ^
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:10:13
+  --> $DIR/macro_rules-braces.rs:16:13
    |
 LL |             [u8; $x]
    |             ^^^^^^^^
@@ -33,7 +33,7 @@ LL |     let _: foo!({{ N }});
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:15:13
+  --> $DIR/macro_rules-braces.rs:21:13
    |
 LL |             [u8; { $x }]
    |             ^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     let _: bar!({ N });
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:20:13
+  --> $DIR/macro_rules-braces.rs:26:13
    |
 LL |             Foo<$x>
    |             ^^^^^^^
@@ -57,7 +57,7 @@ LL |     let _: baz!({{ N }});
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:25:13
+  --> $DIR/macro_rules-braces.rs:31:13
    |
 LL |             Foo<{ $x }>
    |             ^^^^^^^^^^^
