@@ -19,7 +19,7 @@ rustc: beta
 # bootstrapping issues with use of new syntax in this repo. If you're looking at
 # the beta/stable branch, this key should be omitted, as we don't want to depend
 # on rustfmt from nightly there.
-rustfmt: nightly-2020-10-12
+rustfmt: nightly-2020-11-19
 
 # When making a stable release the process currently looks like:
 #
