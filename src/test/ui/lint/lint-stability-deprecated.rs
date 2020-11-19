@@ -3,7 +3,6 @@
 // aux-build:inherited_stability.rs
 // aux-build:stability_cfg1.rs
 // aux-build:stability-cfg2.rs
-// ignore-tidy-linelength
 #![warn(deprecated)]
 #![feature(staged_api, unstable_test_feature)]
 

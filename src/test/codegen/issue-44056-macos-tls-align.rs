@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // only-macos
 // no-system-llvm
 // compile-flags: -O

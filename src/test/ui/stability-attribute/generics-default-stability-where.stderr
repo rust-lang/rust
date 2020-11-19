@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability-where.rs:8:45
+  --> $DIR/generics-default-stability-where.rs:7:45
    |
 LL | impl<T> Trait3<usize> for T where T: Trait2<usize> {
    |                                             ^^^^^

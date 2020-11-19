@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-// ignore-tidy-linelength
-
 #[derive(Clone, Copy, Default)]
 struct S {
     a: u8,

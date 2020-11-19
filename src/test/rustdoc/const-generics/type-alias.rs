@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(min_const_generics)]
 #![crate_name = "foo"]
 

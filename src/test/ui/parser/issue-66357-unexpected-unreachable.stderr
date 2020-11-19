@@ -1,11 +1,11 @@
 error: expected one of `,` or `:`, found `(`
-  --> $DIR/issue-66357-unexpected-unreachable.rs:14:13
+  --> $DIR/issue-66357-unexpected-unreachable.rs:12:13
    |
 LL | fn f() { |[](* }
    |             ^ expected one of `,` or `:`
 
 error: expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
-  --> $DIR/issue-66357-unexpected-unreachable.rs:14:14
+  --> $DIR/issue-66357-unexpected-unreachable.rs:12:14
    |
 LL | fn f() { |[](* }
    |             -^ help: `)` may belong here

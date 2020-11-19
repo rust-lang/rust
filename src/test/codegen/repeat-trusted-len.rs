@@ -1,5 +1,4 @@
 // compile-flags: -O
-// ignore-tidy-linelength
 
 #![crate_type = "lib"]
 

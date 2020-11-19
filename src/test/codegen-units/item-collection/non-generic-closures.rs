@@ -3,7 +3,6 @@
 // ignoring this test until MIR codegen has taken over completely
 // ignore-test
 
-// ignore-tidy-linelength
 // compile-flags:-Zprint-mono-items=eager
 
 #![deny(dead_code)]

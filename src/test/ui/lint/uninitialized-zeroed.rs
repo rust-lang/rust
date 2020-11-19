@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // This test checks that calling `mem::{uninitialized,zeroed}` with certain types results
 // in a lint.
 
