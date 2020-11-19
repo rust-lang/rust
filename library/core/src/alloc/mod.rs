@@ -100,7 +100,7 @@ pub unsafe trait AllocRef {
     /// More concretely, the following code example is unsound, irrespective of whether your
     /// custom allocator allows counting how many allocations have happened.
     ///
-    /// ```text
+    /// ```rust,ignore (unsound and has placeholders)
     /// Global::dealloc(Global::alloc(some_layout));
     /// let number_of_heap_allocs = /* call private allocator API */;
     /// unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
