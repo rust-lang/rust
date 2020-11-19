@@ -25,7 +25,7 @@ use crate::value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr, requires_inline: bool) {
+fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint => Attribute::InlineHint.apply_llfn(Function, val),
@@ -35,7 +35,6 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr, requires
                 Attribute::NoInline.apply_llfn(Function, val);
             }
         }
-        None if requires_inline => Attribute::InlineHint.apply_llfn(Function, val),
         None => {}
     };
 }
@@ -226,7 +225,14 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         }
     }
 
-    inline(cx, llfn, codegen_fn_attrs.inline.clone(), instance.def.requires_inline(cx.tcx));
+    let inline_attr = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+        InlineAttr::Never
+    } else if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
+        InlineAttr::Hint
+    } else {
+        codegen_fn_attrs.inline
+    };
+    inline(cx, llfn, inline_attr);
 
     // The `uwtable` attribute according to LLVM is:
     //
