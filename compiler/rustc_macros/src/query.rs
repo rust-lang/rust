@@ -353,7 +353,7 @@ fn add_query_description_impl(
                     tcx: TyCtxt<'tcx>,
                     id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
-                    tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
+                    tcx.queries.on_disk_cache.as_ref().and_then(|c| c.try_load_query_result(tcx, id))
                 }
             }
         };

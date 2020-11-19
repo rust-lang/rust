@@ -164,11 +164,17 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     }
 
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {
-        self.queries.on_disk_cache.load_diagnostics(*self, prev_dep_node_index)
+        self.queries
+            .on_disk_cache
+            .as_ref()
+            .map(|c| c.load_diagnostics(*self, prev_dep_node_index))
+            .unwrap_or_default()
     }
 
     fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>) {
-        self.queries.on_disk_cache.store_diagnostics(dep_node_index, diagnostics)
+        if let Some(c) = self.queries.on_disk_cache.as_ref() {
+            c.store_diagnostics(dep_node_index, diagnostics)
+        }
     }
 
     fn store_diagnostics_for_anon_node(
@@ -176,7 +182,9 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         dep_node_index: DepNodeIndex,
         diagnostics: ThinVec<Diagnostic>,
     ) {
-        self.queries.on_disk_cache.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
+        if let Some(c) = self.queries.on_disk_cache.as_ref() {
+            c.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
+        }
     }
 
     fn profiler(&self) -> &SelfProfilerRef {
