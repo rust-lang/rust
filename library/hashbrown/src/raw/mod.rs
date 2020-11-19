@@ -431,18 +431,18 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
     unsafe fn new_uninitialized(
         alloc: A,
         buckets: usize,
-        fallability: Fallibility,
+        fallibility: Fallibility,
     ) -> Result<Self, TryReserveError> {
         debug_assert!(buckets.is_power_of_two());
 
         // Avoid `Option::ok_or_else` because it bloats LLVM IR.
         let (layout, ctrl_offset) = match calculate_layout::<T>(buckets) {
             Some(lco) => lco,
-            None => return Err(fallability.capacity_overflow()),
+            None => return Err(fallibility.capacity_overflow()),
         };
         let ptr: NonNull<u8> = match do_alloc(&alloc, layout) {
             Ok(block) => block.cast(),
-            Err(_) => return Err(fallability.alloc_err(layout)),
+            Err(_) => return Err(fallibility.alloc_err(layout)),
         };
         let ctrl = NonNull::new_unchecked(ptr.as_ptr().add(ctrl_offset));
         Ok(Self {
@@ -460,7 +460,7 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
     fn fallible_with_capacity(
         alloc: A,
         capacity: usize,
-        fallability: Fallibility,
+        fallibility: Fallibility,
     ) -> Result<Self, TryReserveError> {
         if capacity == 0 {
             Ok(Self::new_in(alloc))
@@ -469,9 +469,9 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
                 // Avoid `Option::ok_or_else` because it bloats LLVM IR.
                 let buckets = match capacity_to_buckets(capacity) {
                     Some(buckets) => buckets,
-                    None => return Err(fallability.capacity_overflow()),
+                    None => return Err(fallibility.capacity_overflow()),
                 };
-                let result = Self::new_uninitialized(alloc, buckets, fallability)?;
+                let result = Self::new_uninitialized(alloc, buckets, fallibility)?;
                 result.ctrl(0).write_bytes(EMPTY, result.num_ctrl_bytes());
 
                 Ok(result)
@@ -794,12 +794,12 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
         &mut self,
         additional: usize,
         hasher: impl Fn(&T) -> u64,
-        fallability: Fallibility,
+        fallibility: Fallibility,
     ) -> Result<(), TryReserveError> {
         // Avoid `Option::ok_or_else` because it bloats LLVM IR.
         let new_items = match self.items.checked_add(additional) {
             Some(new_items) => new_items,
-            None => return Err(fallability.capacity_overflow()),
+            None => return Err(fallibility.capacity_overflow()),
         };
         let full_capacity = bucket_mask_to_capacity(self.bucket_mask);
         if new_items <= full_capacity / 2 {
@@ -813,7 +813,7 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
             self.resize(
                 usize::max(new_items, full_capacity + 1),
                 hasher,
-                fallability,
+                fallibility,
             )
         }
     }
@@ -923,14 +923,14 @@ impl<T, A: AllocRef + Clone> RawTable<T, A> {
         &mut self,
         capacity: usize,
         hasher: impl Fn(&T) -> u64,
-        fallability: Fallibility,
+        fallibility: Fallibility,
     ) -> Result<(), TryReserveError> {
         unsafe {
             debug_assert!(self.items <= capacity);
 
             // Allocate and initialize the new table.
             let mut new_table =
-                Self::fallible_with_capacity(self.alloc.clone(), capacity, fallability)?;
+                Self::fallible_with_capacity(self.alloc.clone(), capacity, fallibility)?;
             new_table.growth_left -= self.items;
             new_table.items = self.items;
 
