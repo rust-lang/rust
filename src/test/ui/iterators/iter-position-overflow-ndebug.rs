@@ -2,7 +2,6 @@
 // only-32bit too impatient for 2⁶⁴ items
 // compile-flags: -C debug_assertions=no -C opt-level=3
 
-use std::panic;
 use std::usize::MAX;
 
 fn main() {
