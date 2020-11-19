@@ -129,8 +129,11 @@ fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>)
         if let ExprKind::Block(ref block, _) = arms[0].body.kind;
         if block.stmts.is_empty();
         if let Some(block_expr) = &block.expr;
-        if let ExprKind::Block(ref inner_block, _) = block_expr.kind;
-        if let Some(begin_panic_call) = &inner_block.expr;
+        // inner block is optional. unwarp it if it exists, or use the expression as is otherwise.
+        if let Some(begin_panic_call) = match block_expr.kind {
+            ExprKind::Block(ref inner_block, _) => &inner_block.expr,
+            _ => &block.expr,
+        };
         // function call
         if let Some(args) = match_panic_call(cx, begin_panic_call);
         if args.len() == 1;
