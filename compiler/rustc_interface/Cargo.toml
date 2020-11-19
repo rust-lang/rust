@@ -41,7 +41,7 @@ rustc_plugin_impl = { path = "../rustc_plugin_impl" }
 rustc_privacy = { path = "../rustc_privacy" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
-rustc_ty = { path = "../rustc_ty" }
+rustc_ty_utils = { path = "../rustc_ty_utils" }
 tempfile = "3.0.5"
 
 [target.'cfg(windows)'.dependencies]
