@@ -659,7 +659,7 @@ a {
 	text-decoration: underline;
 }
 
-.invisible > .srclink, h4 > code + .srclink {
+.invisible > .srclink, h4 > code + .srclink, h3 > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -857,25 +857,25 @@ body.blur > :not(#help) {
 	top: 0;
 }
 
-.impl-items .since, .impl .since {
+.impl-items .since, .impl .since, .methods .since {
 	flex-grow: 0;
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
 }
 
-.impl-items .srclink, .impl .srclink {
+.impl-items .srclink, .impl .srclink, .methods .srclink {
 	flex-grow: 0;
 	/* Override header settings otherwise it's too bold */
 	font-size: 17px;
 	font-weight: normal;
 }
 
-.impl-items code, .impl code {
+.impl-items code, .impl code, .methods code {
 	flex-grow: 1;
 }
 
-.impl-items h4, h4.impl, h3.impl {
+.impl-items h4, h4.impl, h3.impl, .methods h3 {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
