@@ -6,11 +6,117 @@ document.
 
 ## Unreleased / In Rust Nightly
 
-[e636b88...master](https://github.com/rust-lang/rust-clippy/compare/e636b88...master)
+[b20d4c1...master](https://github.com/rust-lang/rust-clippy/compare/b20d4c1...master)
+
+## Rust 1.49
+
+Current beta, release 2020-12-31
+
+[e636b88...b20d4c1](https://github.com/rust-lang/rust-clippy/compare/e636b88...b20d4c1)
+
+### New Lints
+
+* [`field_reassign_with_default`] [#5911](https://github.com/rust-lang/rust-clippy/pull/5911)
+* [`await_holding_refcell_ref`] [#6029](https://github.com/rust-lang/rust-clippy/pull/6029)
+* [`disallowed_method`] [#6081](https://github.com/rust-lang/rust-clippy/pull/6081)
+* [`inline_asm_x86_att_syntax`] [#6092](https://github.com/rust-lang/rust-clippy/pull/6092)
+* [`inline_asm_x86_intel_syntax`] [#6092](https://github.com/rust-lang/rust-clippy/pull/6092)
+* [`from_iter_instead_of_collect`] [#6101](https://github.com/rust-lang/rust-clippy/pull/6101)
+* [`mut_mutex_lock`] [#6103](https://github.com/rust-lang/rust-clippy/pull/6103)
+* [`single_element_loop`] [#6109](https://github.com/rust-lang/rust-clippy/pull/6109)
+* [`manual_unwrap_or`] [#6123](https://github.com/rust-lang/rust-clippy/pull/6123)
+* [`large_types_passed_by_value`] [#6135](https://github.com/rust-lang/rust-clippy/pull/6135)
+* [`result_unit_err`] [#6157](https://github.com/rust-lang/rust-clippy/pull/6157)
+* [`ref_option_ref`] [#6165](https://github.com/rust-lang/rust-clippy/pull/6165)
+* [`manual_range_contains`] [#6177](https://github.com/rust-lang/rust-clippy/pull/6177)
+* [`unusual_byte_groupings`] [#6183](https://github.com/rust-lang/rust-clippy/pull/6183)
+* [`comparison_to_empty`] [#6226](https://github.com/rust-lang/rust-clippy/pull/6226)
+* [`map_collect_result_unit`] [#6227](https://github.com/rust-lang/rust-clippy/pull/6227)
+* [`manual_ok_or`] [#6233](https://github.com/rust-lang/rust-clippy/pull/6233)
+
+### Moves and Deprecations
+
+* Rename `single_char_push_str` to [`single_char_add_str`]
+  [#6037](https://github.com/rust-lang/rust-clippy/pull/6037)
+* Rename `zero_width_space` to [`invisible_characters`]
+  [#6105](https://github.com/rust-lang/rust-clippy/pull/6105)
+* Deprecate [`drop_bounds`] (uplifted)
+  [#6111](https://github.com/rust-lang/rust-clippy/pull/6111)
+* Move [`string_lit_as_bytes`] to `nursery`
+  [#6117](https://github.com/rust-lang/rust-clippy/pull/6117)
+* Move [`rc_buffer`] to `restriction`
+  [#6128](https://github.com/rust-lang/rust-clippy/pull/6128)
+
+### Enhancements
+
+* [`manual_memcpy`]: Also lint when there are loop counters (and produce a
+  reliable suggestion)
+  [#5727](https://github.com/rust-lang/rust-clippy/pull/5727)
+* [`single_char_add_str`]: Also lint on `String::insert_str`
+  [#6037](https://github.com/rust-lang/rust-clippy/pull/6037)
+* [`invisible_characters`]: Also lint the characters `\u{AD}` and `\u{2060}`
+  [#6105](https://github.com/rust-lang/rust-clippy/pull/6105)
+* [`eq_op`]: Also lint on the `assert_*!` macro family
+  [#6167](https://github.com/rust-lang/rust-clippy/pull/6167)
+* [`items_after_statements`]: Also lint in local macro expansions
+  [#6176](https://github.com/rust-lang/rust-clippy/pull/6176)
+* [`unnecessary_cast`]: Also lint casts on integer and float literals
+  [#6187](https://github.com/rust-lang/rust-clippy/pull/6187)
+* [`manual_unwrap_or`]: Also lint `Result::unwrap_or`
+  [#6190](https://github.com/rust-lang/rust-clippy/pull/6190)
+* [`match_like_matches_macro`]: Also lint when `match` has more than two arms
+  [#6216](https://github.com/rust-lang/rust-clippy/pull/6216)
+* [`integer_arithmetic`]: Better handle `/` an `%` operators
+  [#6229](https://github.com/rust-lang/rust-clippy/pull/6229)
+
+### False Positive Fixes
+
+* [`needless_lifetimes`]: Bail out if the function has a `where` clause with the
+  lifetime [#5978](https://github.com/rust-lang/rust-clippy/pull/5978)
+* [`explicit_counter_loop`]: No longer lints, when loop counter is used after it
+  is incremented [#6076](https://github.com/rust-lang/rust-clippy/pull/6076)
+* [`or_fun_call`]: Revert changes addressing the handling of `const fn`
+  [#6077](https://github.com/rust-lang/rust-clippy/pull/6077)
+* [`needless_range_loop`]: No longer lints, when the iterable is used in the
+  range [#6102](https://github.com/rust-lang/rust-clippy/pull/6102)
+* [`inconsistent_digit_grouping`]: Fix bug when using floating point exponent
+  [#6104](https://github.com/rust-lang/rust-clippy/pull/6104)
+* [`mistyped_literal_suffixes`]: No longer lints on the fractional part of a
+  float (e.g. `713.32_64`)
+  [#6114](https://github.com/rust-lang/rust-clippy/pull/6114)
+* [`invalid_regex`]: No longer lint on unicode characters within `bytes::Regex`
+  [#6132](https://github.com/rust-lang/rust-clippy/pull/6132)
+* [`boxed_local`]: No longer lints on `extern fn` arguments
+  [#6133](https://github.com/rust-lang/rust-clippy/pull/6133)
+* [`needless_lifetimes`]: Fix regression, where lifetime is used in `where`
+  clause [#6198](https://github.com/rust-lang/rust-clippy/pull/6198)
+
+### Suggestion Fixes/Improvements
+
+* [`unnecessary_sort_by`]: Avoid dereferencing the suggested closure parameter
+  [#6078](https://github.com/rust-lang/rust-clippy/pull/6078)
+* [`needless_arbitrary_self_type`]: Correctly handle expanded code
+  [#6093](https://github.com/rust-lang/rust-clippy/pull/6093)
+* [`useless_format`]: Preserve raw strings in suggestion
+  [#6151](https://github.com/rust-lang/rust-clippy/pull/6151)
+* [`empty_loop`]: Suggest alternatives
+  [#6162](https://github.com/rust-lang/rust-clippy/pull/6162)
+* [`borrowed_box`]: Correctly add parentheses in suggestion
+  [#6200](https://github.com/rust-lang/rust-clippy/pull/6200)
+* [`unused_unit`]: Improve suggestion formatting
+  [#6247](https://github.com/rust-lang/rust-clippy/pull/6247)
+
+### Documentation Improvements
+
+* Some doc improvements:
+    * [`rc_buffer`] [#6090](https://github.com/rust-lang/rust-clippy/pull/6090)
+    * [`empty_loop`] [#6162](https://github.com/rust-lang/rust-clippy/pull/6162)
+* [`doc_markdown`]: Document problematic link text style
+  [#6107](https://github.com/rust-lang/rust-clippy/pull/6107)
 
 ## Rust 1.48
 
-Current beta, release 2020-11-19
+Current stable, released 2020-11-19
 
 [09bd400...e636b88](https://github.com/rust-lang/rust-clippy/compare/09bd400...e636b88)
 
@@ -128,7 +234,7 @@ Current beta, release 2020-11-19
 
 ## Rust 1.47
 
-Current stable, released 2020-10-08
+Released 2020-10-08
 
 [c2c07fa...09bd400](https://github.com/rust-lang/rust-clippy/compare/c2c07fa...09bd400)
 
