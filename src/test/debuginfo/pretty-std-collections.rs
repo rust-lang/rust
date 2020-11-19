@@ -2,6 +2,7 @@
 // ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new
 // ignore-android: FIXME(#10381)
+// ignore-macos: FIXME(#78665)
 // compile-flags:-g
 
 // The pretty printers being tested here require the patch from
