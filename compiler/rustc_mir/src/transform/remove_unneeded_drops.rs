@@ -11,10 +11,6 @@ pub struct RemoveUnneededDrops;
 
 impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if !tcx.consider_optimizing(|| format!("RemoveUnneededDrops {:?} ", body.source.def_id())) {
-            return;
-        }
-
         trace!("Running RemoveUnneededDrops on {:?}", body.source);
         let mut opt_finder = RemoveUnneededDropsOptimizationFinder {
             tcx,
@@ -25,6 +21,12 @@ impl<'tcx> MirPass<'tcx> for RemoveUnneededDrops {
         opt_finder.visit_body(body);
         let should_simplify = !opt_finder.optimizations.is_empty();
         for (loc, target) in opt_finder.optimizations {
+            if !tcx
+                .consider_optimizing(|| format!("RemoveUnneededDrops {:?} ", body.source.def_id()))
+            {
+                break;
+            }
+
             let terminator = body.basic_blocks_mut()[loc.block].terminator_mut();
             debug!("SUCCESS: replacing `drop` with goto({:?})", target);
             terminator.kind = TerminatorKind::Goto { target };
