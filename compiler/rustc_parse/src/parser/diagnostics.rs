@@ -236,8 +236,7 @@ impl<'a> Parser<'a> {
         }
 
         let prev_token_to_string = pprust::token_kind_to_string(&self.prev_token.kind);
-        let prev_token_seems_reserved_token =
-            Ident::from_str(&prev_token_to_string.to_lowercase()).is_reserved();
+        let prev_token_seems_reserved_token = self.prev_token.is_ident() && Ident::from_str(&prev_token_to_string.to_lowercase()).is_reserved() && prev_token_to_string != prev_token_to_string.to_lowercase();
 
         let mut expected = edible
             .iter()
