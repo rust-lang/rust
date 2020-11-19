@@ -1,0 +1,8 @@
+error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+  --> $DIR/issue-22565-rust-call.rs:3:1
+   |
+LL | extern "rust-call" fn b(_i: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
