@@ -485,6 +485,9 @@ pub fn walk_assoc_ty_constraint<'a, V: Visitor<'a>>(
     constraint: &'a AssocTyConstraint,
 ) {
     visitor.visit_ident(constraint.ident);
+    if let Some(ref gen_args) = constraint.gen_args {
+        visitor.visit_generic_args(gen_args.span(), gen_args);
+    }
     match constraint.kind {
         AssocTyConstraintKind::Equality { ref ty } => {
             visitor.visit_ty(ty);

@@ -441,11 +441,14 @@ pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[
 }
 
 pub fn noop_visit_ty_constraint<T: MutVisitor>(
-    AssocTyConstraint { id, ident, kind, span }: &mut AssocTyConstraint,
+    AssocTyConstraint { id, ident, gen_args, kind, span }: &mut AssocTyConstraint,
     vis: &mut T,
 ) {
     vis.visit_id(id);
     vis.visit_ident(ident);
+    if let Some(ref mut gen_args) = gen_args {
+        vis.visit_generic_args(gen_args);
+    }
     match kind {
         AssocTyConstraintKind::Equality { ref mut ty } => {
             vis.visit_ty(ty);
