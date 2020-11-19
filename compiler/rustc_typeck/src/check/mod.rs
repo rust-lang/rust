@@ -563,7 +563,7 @@ fn typeck_with_fallback<'tcx>(
             fcx
         };
 
-        fallback::type_inference_fallback(&fcx);
+        fcx.type_inference_fallback();
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
