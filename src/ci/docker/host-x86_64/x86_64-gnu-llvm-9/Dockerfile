@@ -2,7 +2,7 @@ FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
-  g++-arm-linux-gnueabi \
+  gcc-multilib \
   make \
   ninja-build \
   file \
@@ -39,22 +39,13 @@ ENV SCRIPT python2.7 ../x.py --stage 2 test --exclude src/tools/tidy && \
            # the PR is approved and tested for merging.
            # It will also detect tests lacking `// EMIT_MIR_FOR_EACH_BIT_WIDTH`,
            # despite having different output on 32-bit vs 64-bit targets.
-           #
-           # HACK(eddyb) `armv5te` is used (not `i686`) to support older LLVM than LLVM 9:
-           # https://github.com/rust-lang/compiler-builtins/pull/311#issuecomment-612270089.
-           # This also requires `--pass=build` because we can't execute the tests
-           # on the `x86_64` host when they're built as `armv5te` binaries.
-           # (we're only interested in the MIR output, so this doesn't matter)
-           python2.7 ../x.py --stage 2 test src/test/mir-opt --pass=build \
-                             --host='' --target=armv5te-unknown-linux-gnueabi && \
+           python2.7 ../x.py --stage 2 test src/test/mir-opt \
+                             --host='' --target=i686-unknown-linux-gnu && \
            # Run the UI test suite again, but in `--pass=check` mode
            #
            # This is intended to make sure that both `--pass=check` continues to
            # work.
            #
-           # FIXME: We ideally want to test this in 32-bit mode, but currently
-           # (due to the LLVM problems mentioned above) that isn't readily
-           # possible.
-           python2.7 ../x.py --stage 2 test src/test/ui --pass=check && \
+           python2.7 ../x.py --stage 2 test src/test/ui --pass=check --target=i686-unknown-linux-gnu && \
            # Run tidy at the very end, after all the other tests.
            python2.7 ../x.py --stage 2 test src/tools/tidy
