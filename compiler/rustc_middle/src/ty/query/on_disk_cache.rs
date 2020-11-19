@@ -98,7 +98,10 @@ pub struct OnDiskCache<'sess> {
     latest_foreign_def_path_hashes: Lock<FxHashMap<DefPathHash, RawDefId>>,
 
     // Maps `DefPathHashes` to their corresponding `LocalDefId`s for all
-    // local items in the current compilation session.
+    // local items in the current compilation session. This is only populated
+    // when we are in incremental mode and have loaded a pre-existing cache
+    // from disk, since this map is only used when deserializing a `DefPathHash`
+    // from the incremental cache.
     local_def_path_hash_to_def_id: FxHashMap<DefPathHash, LocalDefId>,
     // Caches all lookups of `DefPathHashes`, both for local and foreign
     // definitions. A definition from the previous compilation session
@@ -215,7 +218,7 @@ impl<'sess> OnDiskCache<'sess> {
         }
     }
 
-    pub fn new_empty(source_map: &'sess SourceMap, definitions: &Definitions) -> Self {
+    pub fn new_empty(source_map: &'sess SourceMap) -> Self {
         Self {
             serialized_data: Vec::new(),
             file_index_to_stable_id: Default::default(),
@@ -232,7 +235,7 @@ impl<'sess> OnDiskCache<'sess> {
             hygiene_context: Default::default(),
             foreign_def_path_hashes: Default::default(),
             latest_foreign_def_path_hashes: Default::default(),
-            local_def_path_hash_to_def_id: make_local_def_path_hash_map(definitions),
+            local_def_path_hash_to_def_id: Default::default(),
             def_path_hash_to_def_id_cache: Default::default(),
         }
     }
