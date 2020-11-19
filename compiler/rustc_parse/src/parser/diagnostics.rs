@@ -1808,9 +1808,13 @@ impl<'a> Parser<'a> {
         return Ok(false); // Don't continue.
     }
 
-    /// Handle a generic const argument that had not been enclosed in braces, and suggest enclosing
-    /// it braces. In this situation, unlike in `handle_ambiguous_unbraced_const_arg`, this is
-    /// almost certainly a const argument, so we always offer a suggestion.
+    /// Attempt to parse a generic const argument that has not been enclosed in braces.
+    /// There are a limited number of expressions that are permitted without being encoded
+    /// in braces:
+    /// - Literals.
+    /// - Single-segment paths (i.e. standalone generic const parameters).
+    /// All other expressions that can be parsed will emit an error suggesting the expression be
+    /// wrapped in braces.
     pub fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, P<Expr>> {
         let start = self.token.span;
         let expr = self.parse_expr_res(Restrictions::CONST_EXPR, None).map_err(|mut err| {

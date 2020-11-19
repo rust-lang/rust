@@ -1,16 +1,16 @@
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:34:17
+  --> $DIR/macro_rules-braces.rs:49:17
    |
-LL |     let _: baz!(N);
-   |                 ^
+LL |     let _: baz!(m::P);
+   |                 ^^^^
    |
 help: enclose the `const` expression in braces
    |
-LL |     let _: baz!({ N });
-   |                 ^   ^
+LL |     let _: baz!({ m::P });
+   |                 ^      ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:54:17
+  --> $DIR/macro_rules-braces.rs:69:17
    |
 LL |     let _: baz!(10 + 7);
    |                 ^^^^^^
@@ -21,7 +21,7 @@ LL |     let _: baz!({ 10 + 7 });
    |                 ^        ^
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:31:20
+  --> $DIR/macro_rules-braces.rs:37:20
    |
 LL |     let _: foo!({{ N }});
    |                    ^ cannot perform const operation using `N`
@@ -29,7 +29,7 @@ LL |     let _: foo!({{ N }});
    = help: const parameters may only be used as standalone arguments, i.e. `N`
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:33:19
+  --> $DIR/macro_rules-braces.rs:41:19
    |
 LL |     let _: bar!({ N });
    |                   ^ cannot perform const operation using `N`
@@ -37,7 +37,7 @@ LL |     let _: bar!({ N });
    = help: const parameters may only be used as standalone arguments, i.e. `N`
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:36:20
+  --> $DIR/macro_rules-braces.rs:46:20
    |
 LL |     let _: baz!({{ N }});
    |                    ^ cannot perform const operation using `N`
@@ -45,7 +45,7 @@ LL |     let _: baz!({{ N }});
    = help: const parameters may only be used as standalone arguments, i.e. `N`
 
 error: generic parameters may not be used in const operations
-  --> $DIR/macro_rules-braces.rs:38:19
+  --> $DIR/macro_rules-braces.rs:51:19
    |
 LL |     let _: biz!({ N });
    |                   ^ cannot perform const operation using `N`
