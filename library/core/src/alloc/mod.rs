@@ -94,6 +94,18 @@ pub unsafe trait AllocRef {
     /// The returned block may have a larger size than specified by `layout.size()`, and may or may
     /// not have its contents initialized.
     ///
+    /// Note that you may not rely on this method actually getting called, even if there are calls
+    /// to it in the source. The optimizer may detect allocation/deallocation pairs that it can
+    /// instead move to stack allocations/deallocations and thus never invoke the allocator here.
+    /// More concretely, the following code example is unsound, irrespective of whether your
+    /// custom allocator allows counting how many allocations have happened.
+    ///
+    /// ```rust,ignore
+    /// Global::dealloc(Global::alloc(some_layout));
+    /// let number_of_heap_allocs = /* call private allocator API */;
+    /// unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
+    /// ```
+    ///
     /// # Errors
     ///
     /// Returning `Err` indicates that either memory is exhausted or `layout` does not meet

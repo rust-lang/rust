@@ -53,6 +53,19 @@ use crate::ptr;
 /// * `Layout` queries and calculations in general must be correct. Callers of
 ///   this trait are allowed to rely on the contracts defined on each method,
 ///   and implementors must ensure such contracts remain true.
+///
+/// * You may not rely on allocations actually happening, even if there are explicit
+///   heap allocations in the source. The optimizer may detect allocation/deallocation
+///   pairs that it can instead move to stack allocations/deallocations and thus never
+///   invoke the allocator here.
+///   More concretely, the following code example is unsound, irrespective of whether your
+///   custom allocator allows counting how many allocations have happened.
+///
+///   ```rust,ignore
+///   drop(Box::new(42));
+///   let number_of_heap_allocs = /* call private allocator API */;
+///   unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
+///   ```
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// Allocate memory as described by the given `layout`.
