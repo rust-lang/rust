@@ -489,6 +489,7 @@ impl<'a> Parser<'a> {
     /// - An expression surrounded in `{}`.
     /// - A literal.
     /// - A numeric literal prefixed by `-`.
+    /// - A single-segment path.
     pub(super) fn expr_is_valid_const_arg(&self, expr: &P<rustc_ast::Expr>) -> bool {
         match &expr.kind {
             ast::ExprKind::Block(_, _) | ast::ExprKind::Lit(_) => true,
@@ -496,6 +497,13 @@ impl<'a> Parser<'a> {
                 ast::ExprKind::Lit(_) => true,
                 _ => false,
             },
+            // We can only resolve single-segment paths at the moment, because multi-segment paths
+            // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
+            ast::ExprKind::Path(None, path)
+                if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+            {
+                true
+            }
             _ => false,
         }
     }
