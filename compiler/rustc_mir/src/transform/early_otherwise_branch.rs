@@ -46,6 +46,10 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
         let should_cleanup = !opts_to_apply.is_empty();
 
         for opt_to_apply in opts_to_apply {
+            if !tcx.consider_optimizing(|| format!("EarlyOtherwiseBranch {:?}", &opt_to_apply)) {
+                break;
+            }
+
             trace!("SUCCESS: found optimization possibility to apply: {:?}", &opt_to_apply);
 
             let statements_before =
