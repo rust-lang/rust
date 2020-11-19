@@ -1071,28 +1071,28 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     }
 }
 
-pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src)?;
-    let dst = cstr(dst)?;
-    cvt(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) })?;
+pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+    let original = cstr(original)?;
+    let link = cstr(link)?;
+    cvt(unsafe { libc::symlink(original.as_ptr(), link.as_ptr()) })?;
     Ok(())
 }
 
-pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src)?;
-    let dst = cstr(dst)?;
+pub fn link(original: &Path, link: &Path) -> io::Result<()> {
+    let original = cstr(original)?;
+    let link = cstr(link)?;
     cfg_if::cfg_if! {
         if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android"))] {
             // VxWorks, Redox, and old versions of Android lack `linkat`, so use
             // `link` instead. POSIX leaves it implementation-defined whether
             // `link` follows symlinks, so rely on the `symlink_hard_link` test
             // in library/std/src/fs/tests.rs to check the behavior.
-            cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })?;
+            cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
         } else {
             // Use `linkat` with `AT_FDCWD` instead of `link` as `linkat` gives
             // us a flag to specify how symlinks should be handled. Pass 0 as
             // the flags argument, meaning don't follow symlinks.
-            cvt(unsafe { libc::linkat(libc::AT_FDCWD, src.as_ptr(), libc::AT_FDCWD, dst.as_ptr(), 0) })?;
+            cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
         }
     }
     Ok(())
