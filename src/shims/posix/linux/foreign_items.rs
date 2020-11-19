@@ -208,7 +208,9 @@ fn getrandom<'tcx>(
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
     // neither of which have any effect on our current PRNG.
-    this.read_scalar(flags)?.to_i32()?;
+    let _flags = this.read_scalar(flags)?;
+    // FIXME: Check that this is an integer type of the right size.
+    // Currently, some callers pass i32 and some usize, is that even allowed?
 
     this.gen_random(ptr, len)?;
     this.write_scalar(Scalar::from_machine_usize(len, this), dest)?;

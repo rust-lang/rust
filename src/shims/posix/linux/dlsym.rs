@@ -12,6 +12,8 @@ impl Dlsym {
     pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
         Ok(match &*name {
             "__pthread_get_minstack" => None,
+            "getrandom" => None, // std falls back to syscall(SYS_getrandom, ...) when this is NULL.
+            "statx" => None, // std falls back to syscall(SYS_statx, ...) when this is NULL.
             _ => throw_unsup_format!("unsupported Linux dlsym: {}", name),
         })
     }
