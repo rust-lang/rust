@@ -157,8 +157,7 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_str_from_utf8_unchecked", issue = "75196")]
-#[cfg_attr(not(bootstrap), rustc_allow_const_fn_unstable(const_fn_transmute))]
-#[cfg_attr(bootstrap, allow_internal_unstable(const_fn_transmute))]
+#[rustc_allow_const_fn_unstable(const_fn_transmute)]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
     // Also relies on `&str` and `&[u8]` having the same layout.

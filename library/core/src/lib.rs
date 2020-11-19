@@ -63,7 +63,7 @@
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
-#![cfg_attr(not(bootstrap), feature(rustc_allow_const_fn_unstable))]
+#![feature(rustc_allow_const_fn_unstable)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
@@ -85,7 +85,7 @@
 #![feature(const_pin)]
 #![feature(const_fn)]
 #![feature(const_fn_union)]
-#![cfg_attr(not(bootstrap), feature(const_impl_trait))]
+#![feature(const_impl_trait)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_generics)]
@@ -134,9 +134,7 @@
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
-#![cfg_attr(not(bootstrap), feature(unsized_fn_params))]
-#![cfg_attr(bootstrap, feature(unsized_locals))]
-#![cfg_attr(bootstrap, feature(untagged_unions))]
+#![feature(unsized_fn_params)]
 #![feature(unwind_attributes)]
 #![feature(variant_count)]
 #![feature(tbm_target_feature)]
@@ -290,7 +288,7 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn
 )]
-#[cfg_attr(not(bootstrap), allow(non_autolinks))]
+#[allow(non_autolinks)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]
