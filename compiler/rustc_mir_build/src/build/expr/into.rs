@@ -400,7 +400,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Avoid creating a temporary
             ExprKind::VarRef { .. }
-            | ExprKind::SelfRef
+            | ExprKind::UpvarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));

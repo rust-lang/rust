@@ -186,6 +186,10 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         ty.needs_drop(self.tcx, self.param_env)
     }
 
+    crate fn infcx(&self) -> &'a InferCtxt<'a, 'tcx> {
+        self.infcx
+    }
+
     crate fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
