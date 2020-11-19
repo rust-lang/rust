@@ -1,29 +1,9 @@
-use crate::utils::{is_direct_expn_of, is_expn_of, match_panic_call, span_lint};
+use crate::utils::{is_expn_of, match_panic_call, span_lint};
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for missing parameters in `panic!`.
-    ///
-    /// **Why is this bad?** Contrary to the `format!` family of macros, there are
-    /// two forms of `panic!`: if there are no parameters given, the first argument
-    /// is not a format string and used literally. So while `format!("{}")` will
-    /// fail to compile, `panic!("{}")` will not.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```no_run
-    /// panic!("This `panic!` is probably missing a parameter there: {}");
-    /// ```
-    pub PANIC_PARAMS,
-    style,
-    "missing parameters in `panic!` calls"
-}
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `panic!`.
@@ -89,11 +69,11 @@ declare_clippy_lint! {
     "`unreachable!` should not be present in production code"
 }
 
-declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
+declare_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some(params) = match_panic_call(cx, expr) {
+        if let Some(_) = match_panic_call(cx, expr) {
             let span = get_outer_span(expr);
             if is_expn_of(expr.span, "unimplemented").is_some() {
                 span_lint(
@@ -113,7 +93,6 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
                 );
             } else if is_expn_of(expr.span, "panic").is_some() {
                 span_lint(cx, PANIC, span, "`panic` should not be present in production code");
-                match_panic(params, expr, cx);
             }
         }
     }
@@ -129,23 +108,6 @@ fn get_outer_span(expr: &Expr<'_>) -> Span {
             second.call_site
         } else {
             expr.span
-        }
-    }
-}
-
-fn match_panic(params: &[Expr<'_>], expr: &Expr<'_>, cx: &LateContext<'_>) {
-    if_chain! {
-        if let ExprKind::Lit(ref lit) = params[0].kind;
-        if is_direct_expn_of(expr.span, "panic").is_some();
-        if let LitKind::Str(ref string, _) = lit.node;
-        let string = string.as_str().replace("{{", "").replace("}}", "");
-        if let Some(par) = string.find('{');
-        if string[par..].contains('}');
-        if params[0].span.source_callee().is_none();
-        if params[0].span.lo() != params[0].span.hi();
-        then {
-            span_lint(cx, PANIC_PARAMS, params[0].span,
-                      "you probably are missing some parameter in your format string");
         }
     }
 }
