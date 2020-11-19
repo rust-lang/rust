@@ -652,13 +652,21 @@ impl ItemCtxt<'tcx> {
         match b {
             hir::GenericBound::Trait(poly_trait_ref, _) => {
                 let trait_ref = &poly_trait_ref.trait_ref;
-                let trait_did = trait_ref.trait_def_id().unwrap();
-                super_traits_of(self.tcx, trait_did).any(|trait_did| {
-                    self.tcx
-                        .associated_items(trait_did)
-                        .find_by_name_and_kind(self.tcx, assoc_name, ty::AssocKind::Type, trait_did)
-                        .is_some()
-                })
+                if let Some(trait_did) = trait_ref.trait_def_id() {
+                    super_traits_of(self.tcx, trait_did).any(|trait_did| {
+                        self.tcx
+                            .associated_items(trait_did)
+                            .find_by_name_and_kind(
+                                self.tcx,
+                                assoc_name,
+                                ty::AssocKind::Type,
+                                trait_did,
+                            )
+                            .is_some()
+                    })
+                } else {
+                    false
+                }
             }
             _ => false,
         }
