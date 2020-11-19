@@ -161,6 +161,7 @@ struct BacktraceSymbol {
     name: Option<Vec<u8>>,
     filename: Option<BytesOrWide>,
     lineno: Option<u32>,
+    colno: Option<u32>,
 }
 
 enum BytesOrWide {
@@ -197,6 +198,10 @@ impl fmt::Debug for Backtrace {
 
 impl fmt::Debug for BacktraceSymbol {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // FIXME: improve formatting: https://github.com/rust-lang/rust/issues/65280
+        // FIXME: Also, include column numbers into the debug format as Display already has them.
+        // Until there are stable per-frame accessors, the format shouldn't be changed:
+        // https://github.com/rust-lang/rust/issues/65280#issuecomment-638966585
         write!(fmt, "{{ ")?;
 
         if let Some(fn_name) = self.name.as_ref().map(|b| backtrace_rs::SymbolName::new(b)) {
@@ -209,7 +214,7 @@ impl fmt::Debug for BacktraceSymbol {
             write!(fmt, ", file: \"{:?}\"", fname)?;
         }
 
-        if let Some(line) = self.lineno.as_ref() {
+        if let Some(line) = self.lineno {
             write!(fmt, ", line: {:?}", line)?;
         }
 
@@ -381,7 +386,7 @@ impl fmt::Display for Backtrace {
                 f.print_raw(frame.frame.ip(), None, None, None)?;
             } else {
                 for symbol in frame.symbols.iter() {
-                    f.print_raw(
+                    f.print_raw_with_column(
                         frame.frame.ip(),
                         symbol.name.as_ref().map(|b| backtrace_rs::SymbolName::new(b)),
                         symbol.filename.as_ref().map(|b| match b {
@@ -389,6 +394,7 @@ impl fmt::Display for Backtrace {
                             BytesOrWide::Wide(w) => BytesOrWideString::Wide(w),
                         }),
                         symbol.lineno,
+                        symbol.colno,
                     )?;
                 }
             }
@@ -427,6 +433,7 @@ impl Capture {
                             BytesOrWideString::Wide(b) => BytesOrWide::Wide(b.to_owned()),
                         }),
                         lineno: symbol.lineno(),
+                        colno: symbol.colno(),
                     });
                 });
             }
