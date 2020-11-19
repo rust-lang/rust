@@ -47,9 +47,16 @@
 //!
 //! * PowerPC and MIPS platforms with 32-bit pointers do not have `AtomicU64` or
 //!   `AtomicI64` types.
-//! * ARM platforms like `armv5te` that aren't for Linux do not have any atomics
-//!   at all.
-//! * ARM targets with `thumbv6m` do not have atomic operations at all.
+//! * ARM platforms like `armv5te` that aren't for Linux only provide `load`
+//!   and `store` operations, and do not support Compare and Swap (CAS)
+//!   operations, such as `swap`, `fetch_add`, etc. Additionally on Linux,
+//!   these CAS operations are implemented via [operating system support], which
+//!   may come with a performance penalty.
+//! * ARM targets with `thumbv6m` only provide `load` and `store` operations,
+//!   and do not support Compare and Swap (CAS) operations, such as `swap`,
+//!   `fetch_add`, etc.
+//!
+//! [operating system support]: https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 //!
 //! Note that future platforms may be added that also do not have support for
 //! some atomic operations. Maximally portable code will want to be careful
