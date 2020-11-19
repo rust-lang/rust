@@ -1133,16 +1133,38 @@ pub fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> impl Iterator<It
                 _ => bug!("super_trait_of {} is not an item", trait_hir_id),
             };
 
-            let supertraits = match item.kind {
-                hir::ItemKind::Trait(.., ref supertraits, _) => supertraits,
-                hir::ItemKind::TraitAlias(_, ref supertraits) => supertraits,
-                _ => span_bug!(item.span, "super_trait_of invoked on non-trait"),
+            let (generics, supertraits) = match item.kind {
+                hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => {
+                    (generics, supertraits)
+                }
+                hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
+                _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
             };
 
             for supertrait in supertraits.iter() {
                 let trait_ref = supertrait.trait_ref();
                 if let Some(trait_did) = trait_ref.and_then(|trait_ref| trait_ref.trait_def_id()) {
                     stack.push(trait_did);
+                }
+            }
+
+            let icx = ItemCtxt::new(tcx, trait_did);
+            // Convert any explicit superbounds in the where-clause,
+            // e.g., `trait Foo where Self: Bar`.
+            // In the case of trait aliases, however, we include all bounds in the where-clause,
+            // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
+            // as one of its "superpredicates".
+            let is_trait_alias = tcx.is_trait_alias(trait_did);
+            let self_param_ty = tcx.types.self_param;
+            for (predicate, _) in icx.type_parameter_bounds_in_generics(
+                generics,
+                item.hir_id,
+                self_param_ty,
+                OnlySelfBounds(!is_trait_alias),
+                None,
+            ) {
+                if let ty::PredicateAtom::Trait(data, _) = predicate.skip_binders() {
+                    stack.push(data.def_id());
                 }
             }
         } else {
