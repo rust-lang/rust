@@ -312,14 +312,13 @@ impl<'a> Parser<'a> {
 }
 
 pub fn maybe_needs_tokens(attrs: &[ast::Attribute]) -> bool {
+    // One of the attributes may either itself be a macro, or apply derive macros (`derive`),
+    // or expand to macro attributes (`cfg_attr`).
     attrs.iter().any(|attr| {
-        if let Some(ident) = attr.ident() {
+        attr.ident().map_or(true, |ident| {
             ident.name == sym::derive
-            // This might apply a custom attribute/derive
-            || ident.name == sym::cfg_attr
-            || !rustc_feature::is_builtin_attr_name(ident.name)
-        } else {
-            true
-        }
+                || ident.name == sym::cfg_attr
+                || !rustc_feature::is_builtin_attr_name(ident.name)
+        })
     })
 }

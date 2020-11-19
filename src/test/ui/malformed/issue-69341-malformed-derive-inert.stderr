@@ -5,7 +5,7 @@ LL |     #[derive(parse())]
    |                   ^^ help: remove the arguments
 
 error[E0774]: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-69341-malformed-derive-inert.rs:8:5
+  --> $DIR/issue-69341-malformed-derive-inert.rs:7:5
    |
 LL |     path: (),
    |     ^^^^^^^^
@@ -16,12 +16,6 @@ error: cannot find derive macro `parse` in this scope
 LL |     #[derive(parse())]
    |              ^^^^^
 
-error: cannot find derive macro `parse` in this scope
-  --> $DIR/issue-69341-malformed-derive-inert.rs:4:14
-   |
-LL |     #[derive(parse())]
-   |              ^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0774`.
