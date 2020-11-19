@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![deny(warnings)]
 
 struct Borked {}

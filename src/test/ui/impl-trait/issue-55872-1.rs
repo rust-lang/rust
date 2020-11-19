@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(type_alias_impl_trait)]
 
 pub trait Bar {

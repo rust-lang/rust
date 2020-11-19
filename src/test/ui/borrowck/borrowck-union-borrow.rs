@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #[derive(Clone, Copy)]
 union U {
     a: u8,

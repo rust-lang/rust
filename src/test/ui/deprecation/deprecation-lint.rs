@@ -1,6 +1,4 @@
 // aux-build:deprecation-lint.rs
-// ignore-tidy-linelength
-
 #![deny(deprecated)]
 #![allow(warnings)]
 

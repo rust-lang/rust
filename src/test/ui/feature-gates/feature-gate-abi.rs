@@ -1,5 +1,4 @@
 // only-x86_64
-// ignore-tidy-linelength
 // gate-test-intrinsics
 // gate-test-platform_intrinsics
 // gate-test-abi_vectorcall
