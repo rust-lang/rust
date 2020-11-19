@@ -28,11 +28,9 @@ pub enum UnsafetyViolationKind {
     BorrowPacked,
     /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
     /// Has to be handled as a lint for backwards compatibility.
-    /// Should stay gated under `#![feature(unsafe_block_in_unsafe_fn)]`.
     UnsafeFn,
     /// Borrow of packed field in an `unsafe fn` but outside an `unsafe` block.
     /// Has to be handled as a lint for backwards compatibility.
-    /// Should stay gated under `#![feature(unsafe_block_in_unsafe_fn)]`.
     UnsafeFnBorrowPacked,
 }
 
