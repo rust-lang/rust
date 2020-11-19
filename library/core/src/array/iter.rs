@@ -69,7 +69,8 @@ impl<T, const N: usize> IntoIter<T, N> {
 
     /// Returns an immutable slice of all elements that have not been yielded
     /// yet.
-    fn as_slice(&self) -> &[T] {
+    #[unstable(feature = "array_value_iter_slice", issue = "65798")]
+    pub fn as_slice(&self) -> &[T] {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked(self.alive.clone());
@@ -78,7 +79,8 @@ impl<T, const N: usize> IntoIter<T, N> {
     }
 
     /// Returns a mutable slice of all elements that have not been yielded yet.
-    fn as_mut_slice(&mut self) -> &mut [T] {
+    #[unstable(feature = "array_value_iter_slice", issue = "65798")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked_mut(self.alive.clone());
