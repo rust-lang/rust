@@ -1194,6 +1194,16 @@ fn write_minify(
     }
 }
 
+fn write_srclink(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache) {
+    if let Some(l) = cx.src_href(item, cache) {
+        write!(
+            buf,
+            "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
+            l, "goto source code"
+        )
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Hash)]
 struct ItemEntry {
     url: String,
@@ -1706,13 +1716,7 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
     if cx.shared.include_sources && !item.is_primitive() {
-        if let Some(l) = cx.src_href(item, cache) {
-            write!(
-                buf,
-                "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                l, "goto source code"
-            );
-        }
+        write_srclink(cx, item, buf, cache);
     }
 
     write!(buf, "</span>"); // out-of-band
@@ -2624,7 +2628,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         write!(w, "{}<span class=\"loading-content\">Loading content...</span>", extra_content)
     }
 
-    fn trait_item(w: &mut Buffer, cx: &Context, m: &clean::Item, t: &clean::Item) {
+    fn trait_item(w: &mut Buffer, cx: &Context, m: &clean::Item, t: &clean::Item, cache: &Cache) {
         let name = m.name.as_ref().unwrap();
         info!("Documenting {} on {}", name, t.name.as_deref().unwrap_or_default());
         let item_type = m.type_();
@@ -2633,6 +2637,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
+        write_srclink(cx, m, w, cache);
         write!(w, "</h3>");
         document(w, cx, m, Some(t));
     }
@@ -2644,8 +2649,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Associated Types",
             "<div class=\"methods\">",
         );
-        for t in &types {
-            trait_item(w, cx, *t, it);
+        for t in types {
+            trait_item(w, cx, t, it, cache);
         }
         write_loading_content(w, "</div>");
     }
@@ -2657,8 +2662,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Associated Constants",
             "<div class=\"methods\">",
         );
-        for t in &consts {
-            trait_item(w, cx, *t, it);
+        for t in consts {
+            trait_item(w, cx, t, it, cache);
         }
         write_loading_content(w, "</div>");
     }
@@ -2671,8 +2676,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Required methods",
             "<div class=\"methods\">",
         );
-        for m in &required {
-            trait_item(w, cx, *m, it);
+        for m in required {
+            trait_item(w, cx, m, it, cache);
         }
         write_loading_content(w, "</div>");
     }
@@ -2683,8 +2688,8 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
             "Provided methods",
             "<div class=\"methods\">",
         );
-        for m in &provided {
-            trait_item(w, cx, *m, it);
+        for m in provided {
+            trait_item(w, cx, m, it, cache);
         }
         write_loading_content(w, "</div>");
     }
@@ -3693,13 +3698,7 @@ fn render_impl(
             StabilityLevel::Unstable { .. } => None,
         });
         render_stability_since_raw(w, since.as_deref(), outer_version);
-        if let Some(l) = cx.src_href(&i.impl_item, cache) {
-            write!(
-                w,
-                "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                l, "goto source code"
-            );
-        }
+        write_srclink(cx, &i.impl_item, w, cache);
         write!(w, "</h3>");
 
         if trait_.is_some() {
@@ -3765,13 +3764,7 @@ fn render_impl(
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
                     render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
-                    if let Some(l) = cx.src_href(item, cache) {
-                        write!(
-                            w,
-                            "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                            l, "goto source code"
-                        );
-                    }
+                    write_srclink(cx, item, w, cache);
                     write!(w, "</h4>");
                 }
             }
@@ -3787,13 +3780,7 @@ fn render_impl(
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code>");
                 render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
-                if let Some(l) = cx.src_href(item, cache) {
-                    write!(
-                        w,
-                        "<a class=\"srclink\" href=\"{}\" title=\"{}\">[src]</a>",
-                        l, "goto source code"
-                    );
-                }
+                write_srclink(cx, item, w, cache);
                 write!(w, "</h4>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
