@@ -160,7 +160,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 expr_span,
                 source_info,
             ),
-            ExprKind::SelfRef => block.and(PlaceBuilder::from(Local::new(1))),
+            ExprKind::UpvarRef { closure_def_id, var_hir_id } => {
+                let capture = this
+                    .hir
+                    .typeck_results
+                    .closure_captures
+                    .get(&closure_def_id)
+                    .and_then(|captures| captures.get_full(&var_hir_id));
+
+                if capture.is_none() {
+                    if !this.hir.tcx().features().capture_disjoint_fields {
+                        bug!(
+                            "No associated capture found for {:?} even though \
+                            capture_disjoint_fields isn't enabled",
+                            expr.kind
+                        )
+                    }
+                    // FIXME(project-rfc-2229#24): Handle this case properly
+                }
+
+                // Unwrap until the FIXME has been resolved
+                let (capture_index, _, upvar_id) = capture.unwrap();
+                this.lower_closure_capture(block, capture_index, *upvar_id)
+            }
+
             ExprKind::VarRef { id } => {
                 let place_builder = if this.is_bound_var_in_guard(id) {
                     let index = this.var_local_id(id, RefWithinGuard);
@@ -267,6 +290,61 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     unpack!(block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
                 block.and(PlaceBuilder::from(temp))
             }
+        }
+    }
+
+    /// Lower a closure/generator capture by representing it as a field
+    /// access within the desugared closure/generator.
+    ///
+    /// `capture_index` is the index of the capture within the desugared
+    /// closure/generator.
+    fn lower_closure_capture(
+        &mut self,
+        block: BasicBlock,
+        capture_index: usize,
+        upvar_id: ty::UpvarId,
+    )  -> BlockAnd<PlaceBuilder<'tcx>> {
+        let closure_ty = self
+            .hir
+            .typeck_results()
+            .node_type(self.hir.tcx().hir().local_def_id_to_hir_id(upvar_id.closure_expr_id));
+
+        // Captures are represented using fields inside a structure.
+        // This represents accessing self in the closure structure
+        let mut place_builder = PlaceBuilder::from(Local::new(1));
+
+        // In case of Fn/FnMut closures we must deref to access the fields
+        // Generators are considered FnOnce, so we ignore this step for them.
+        if let ty::Closure(_, closure_substs) = closure_ty.kind() {
+            match self.hir.infcx().closure_kind(closure_substs).unwrap() {
+                ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
+                    place_builder = place_builder.deref();
+                }
+                ty::ClosureKind::FnOnce => {}
+            }
+        }
+
+        let substs = match closure_ty.kind() {
+            ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
+            ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
+            _ => bug!("Lowering capture for non-closure type {:?}", closure_ty)
+        };
+
+        // Access the capture by accessing the field within the Closure struct.
+        //
+        // We must have inferred the capture types since we are building MIR, therefore
+        // it's safe to call `upvar_tys` and we can unwrap here because
+        // we know that the capture exists and is the `capture_index`-th capture.
+        let var_ty = substs.upvar_tys().nth(capture_index).unwrap();
+        place_builder = place_builder.field(Field::new(capture_index), var_ty);
+
+        // If the variable is captured via ByRef(Immutable/Mutable) Borrow,
+        // we need to deref it
+        match self.hir.typeck_results.upvar_capture(upvar_id) {
+            ty::UpvarCapture::ByRef(_) => {
+                block.and(place_builder.deref())
+            }
+            ty::UpvarCapture::ByValue(_) => block.and(place_builder),
         }
     }
 

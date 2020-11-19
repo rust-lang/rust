@@ -38,7 +38,7 @@ impl Category {
             ExprKind::Field { .. }
             | ExprKind::Deref { .. }
             | ExprKind::Index { .. }
-            | ExprKind::SelfRef
+            | ExprKind::UpvarRef { .. }
             | ExprKind::VarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => Some(Category::Place),

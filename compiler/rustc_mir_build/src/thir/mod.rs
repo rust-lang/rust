@@ -211,8 +211,14 @@ crate enum ExprKind<'tcx> {
     VarRef {
         id: hir::HirId,
     },
-    /// first argument, used for self in a closure
-    SelfRef,
+    /// Used to represent upvars mentioned in a closure/generator
+    UpvarRef {
+        /// DefId of the closure/generator
+        closure_def_id: DefId,
+
+        /// HirId of the root variable
+        var_hir_id: hir::HirId,
+    },
     Borrow {
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
