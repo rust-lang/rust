@@ -29,8 +29,11 @@ bullet points might be helpful:
 * When writing the release notes for the **upcoming beta release**, you need to check
   out the Clippy commit of the current Rust `master`. [Link][rust_master_tools]
 * When writing the (forgotten) release notes for a **past stable release**, you
-  need to select the Rust release tag from the dropdown and then check the
-  commit of the Clippy directory:
+  need to check out the Rust release tag of the stable release.
+  [Link][rust_stable_tools]
+
+Usually you want to wirte the changelog of the **upcoming stable release**. Make
+sure though, that `beta` was already branched in the Rust repository.
 
 To find the commit hash, issue the following command when in a `rust-lang/rust` checkout:
 ```
@@ -71,6 +74,19 @@ The order should roughly be:
 7. Documentation improvements
 8. Others
 
+As section headers, we use:
+
+```
+### New Lints
+### Moves and Deprecations
+### Enhancements
+### False Positive Fixes
+### Suggestion Fixes/Improvements
+### ICE Fixes
+### Documentation Improvements
+### Others
+```
+
 Please also be sure to update the Beta/Unreleased sections at the top with the
 relevant commit ranges.
 
@@ -78,3 +94,4 @@ relevant commit ranges.
 [forge]: https://forge.rust-lang.org/
 [rust_master_tools]: https://github.com/rust-lang/rust/tree/master/src/tools/clippy
 [rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools/clippy
+[rust_stable_tools]: https://github.com/rust-lang/rust/releases
