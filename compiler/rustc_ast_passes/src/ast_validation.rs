@@ -522,7 +522,7 @@ impl<'a> AstValidator<'a> {
             self.err_handler()
                 .struct_span_err(ident.span, "functions in `extern` blocks cannot have qualifiers")
                 .span_label(self.current_extern_span(), "in this `extern` block")
-                .span_suggestion(
+                .span_suggestion_verbose(
                     span.until(ident.span.shrink_to_lo()),
                     "remove the qualifiers",
                     "fn ".to_string(),
