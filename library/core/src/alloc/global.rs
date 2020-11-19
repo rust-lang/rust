@@ -66,6 +66,12 @@ use crate::ptr;
 ///   let number_of_heap_allocs = /* call private allocator API */;
 ///   unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
 ///   ```
+///
+///   Note that allocation/deallocation pairs being moved to the stack is not the only
+///   optimization that can be applied. You may generally not rely on heap allocations
+///   happening, if they can be removed without changing program behaviour.
+///   Whether allocations happen or not is not part of the program behaviour, even if it
+///   could be detected via an allocator that tracks allocations.
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// Allocate memory as described by the given `layout`.
