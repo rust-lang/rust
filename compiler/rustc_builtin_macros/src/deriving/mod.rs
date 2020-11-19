@@ -98,13 +98,7 @@ fn inject_impl_of_structural_trait(
 ) {
     let item = match *item {
         Annotatable::Item(ref item) => item,
-        _ => {
-            // Non-Item derive is an error, but it should have been
-            // set earlier; see
-            // librustc_expand/expand.rs:MacroExpander::fully_expand_fragment()
-            // librustc_expand/base.rs:Annotatable::derive_allowed()
-            return;
-        }
+        _ => unreachable!(),
     };
 
     let generics = match item.kind {

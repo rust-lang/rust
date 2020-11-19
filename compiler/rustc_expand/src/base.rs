@@ -251,8 +251,7 @@ pub enum ExpandResult<T, U> {
     /// Expansion produced a result (possibly dummy).
     Ready(T),
     /// Expansion could not produce a result and needs to be retried.
-    /// The string is an explanation that will be printed if we are stuck in an infinite retry loop.
-    Retry(U, String),
+    Retry(U),
 }
 
 // `meta_item` is the attribute, and `item` is the item being modified.
@@ -889,8 +888,10 @@ pub trait ResolverExpand {
     /// Some parent node that is close enough to the given macro call.
     fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
 
+    // Resolver interfaces for specific built-in macros.
+    /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
-    fn add_derive_copy(&mut self, expn_id: ExpnId);
+    /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 
@@ -919,6 +920,9 @@ pub struct ExtCtxt<'a> {
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn ResolverExpand,
     pub current_expansion: ExpansionData,
+    /// Error recovery mode entered when expansion is stuck
+    /// (or during eager expansion, but that's a hack).
+    pub force_mode: bool,
     pub expansions: FxHashMap<Span, Vec<String>>,
     /// Called directly after having parsed an external `mod foo;` in expansion.
     pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
@@ -945,6 +949,7 @@ impl<'a> ExtCtxt<'a> {
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
                 prior_type_ascription: None,
             },
+            force_mode: false,
             expansions: FxHashMap::default(),
         }
     }
