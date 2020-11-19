@@ -3802,7 +3802,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_traits",
- "rustc_ty",
+ "rustc_ty_utils",
  "rustc_typeck",
  "smallvec 1.4.2",
  "tempfile",
@@ -4240,7 +4240,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_ty"
+name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
