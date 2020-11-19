@@ -977,7 +977,8 @@ impl<'test> TestCx<'test> {
             script_str.push_str("set print pretty off\n");
 
             // Add the pretty printer directory to GDB's source-file search path
-            script_str.push_str(&format!("directory {}\n", rust_pp_module_abs_path));
+            script_str
+                .push_str(&format!("directory {}\n", rust_pp_module_abs_path.replace(r"\", r"\\")));
 
             // Load the target executable
             script_str

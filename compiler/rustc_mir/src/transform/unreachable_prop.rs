@@ -50,6 +50,12 @@ impl MirPass<'_> for UnreachablePropagation {
 
         let replaced = !replacements.is_empty();
         for (bb, terminator_kind) in replacements {
+            if !tcx.consider_optimizing(|| {
+                format!("UnreachablePropagation {:?} ", body.source.def_id())
+            }) {
+                break;
+            }
+
             body.basic_blocks_mut()[bb].terminator_mut().kind = terminator_kind;
         }
 

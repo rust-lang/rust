@@ -39,13 +39,21 @@ pub struct InstCombineVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
+impl<'tcx> InstCombineVisitor<'tcx> {
+    fn should_combine(&self, rvalue: &Rvalue<'tcx>, location: Location) -> bool {
+        self.tcx.consider_optimizing(|| {
+            format!("InstCombine - Rvalue: {:?} Location: {:?}", rvalue, location)
+        })
+    }
+}
+
 impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        if self.optimizations.and_stars.remove(&location) {
+        if self.optimizations.and_stars.remove(&location) && self.should_combine(rvalue, location) {
             debug!("replacing `&*`: {:?}", rvalue);
             let new_place = match rvalue {
                 Rvalue::Ref(_, _, place) => {
@@ -67,18 +75,24 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
         }
 
         if let Some(constant) = self.optimizations.arrays_lengths.remove(&location) {
-            debug!("replacing `Len([_; N])`: {:?}", rvalue);
-            *rvalue = Rvalue::Use(Operand::Constant(box constant));
+            if self.should_combine(rvalue, location) {
+                debug!("replacing `Len([_; N])`: {:?}", rvalue);
+                *rvalue = Rvalue::Use(Operand::Constant(box constant));
+            }
         }
 
         if let Some(operand) = self.optimizations.unneeded_equality_comparison.remove(&location) {
-            debug!("replacing {:?} with {:?}", rvalue, operand);
-            *rvalue = Rvalue::Use(operand);
+            if self.should_combine(rvalue, location) {
+                debug!("replacing {:?} with {:?}", rvalue, operand);
+                *rvalue = Rvalue::Use(operand);
+            }
         }
 
         if let Some(place) = self.optimizations.unneeded_deref.remove(&location) {
-            debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
-            *rvalue = Rvalue::Use(Operand::Copy(place));
+            if self.should_combine(rvalue, location) {
+                debug!("unneeded_deref: replacing {:?} with {:?}", rvalue, place);
+                *rvalue = Rvalue::Use(Operand::Copy(place));
+            }
         }
 
         self.super_rvalue(rvalue, location)

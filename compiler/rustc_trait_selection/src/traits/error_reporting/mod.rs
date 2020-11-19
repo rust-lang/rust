@@ -200,6 +200,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             &obligation.predicate,
             &obligation.cause.code,
             &mut vec![],
+            &mut Default::default(),
         );
 
         err.emit();
@@ -1700,6 +1701,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 &obligation.predicate,
                 &obligation.cause.code,
                 &mut vec![],
+                &mut Default::default(),
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
         }

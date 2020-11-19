@@ -50,3 +50,10 @@ pub fn f_zst<T>(t: T) {
 
 #[inline(never)]
 pub fn f_non_zst<T>(t: T) {}
+
+// EMIT_MIR lower_intrinsics.non_const.LowerIntrinsics.diff
+pub fn non_const<T>() -> usize {
+    // Check that lowering works with non-const operand as a func.
+    let size_of_t = core::intrinsics::size_of::<T>;
+    size_of_t()
+}

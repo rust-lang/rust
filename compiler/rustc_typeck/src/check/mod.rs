@@ -108,7 +108,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirIdMap, Node};
+use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};

@@ -437,12 +437,15 @@ class RustBuild(object):
             #
             # This works even in a repository that has not yet initialized
             # submodules.
+            top_level = subprocess.check_output([
+                "git", "rev-parse", "--show-toplevel",
+            ]).decode(sys.getdefaultencoding()).strip()
             llvm_sha = subprocess.check_output([
                 "git", "log", "--author=bors", "--format=%H", "-n1",
                 "-m", "--first-parent",
                 "--",
-                "src/llvm-project",
-                "src/bootstrap/download-ci-llvm-stamp",
+                "{}/src/llvm-project".format(top_level),
+                "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
             if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):

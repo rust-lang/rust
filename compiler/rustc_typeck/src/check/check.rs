@@ -94,6 +94,37 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fn_maybe_err(tcx, span, fn_sig.abi);
 
+    if fn_sig.abi == Abi::RustCall {
+        let expected_args = if let ImplicitSelfKind::None = decl.implicit_self { 1 } else { 2 };
+
+        let err = || {
+            let item = match tcx.hir().get(fn_id) {
+                Node::Item(hir::Item { kind: ItemKind::Fn(header, ..), .. }) => Some(header),
+                Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Fn(header, ..), ..
+                }) => Some(header),
+                // Closures are RustCall, but they tuple their arguments, so shouldn't be checked
+                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => None,
+                node => bug!("Item being checked wasn't a function/closure: {:?}", node),
+            };
+
+            if let Some(header) = item {
+                tcx.sess.span_err(header.span, "A function with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
+            }
+        };
+
+        if fn_sig.inputs().len() != expected_args {
+            err()
+        } else {
+            // FIXME(CraftSpider) Add a check on parameter expansion, so we don't just make the ICE happen later on
+            //   This will probably require wide-scale changes to support a TupleKind obligation
+            //   We can't resolve this without knowing the type of the param
+            if !matches!(fn_sig.inputs()[expected_args - 1].kind(), ty::Tuple(_) | ty::Param(_)) {
+                err()
+            }
+        }
+    }
+
     if body.generator_kind.is_some() && can_be_generator.is_some() {
         let yield_ty = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
