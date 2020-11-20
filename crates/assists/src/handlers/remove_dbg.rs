@@ -1,6 +1,6 @@
 use syntax::{
     ast::{self, AstNode},
-    SyntaxElement, SyntaxKind, TextRange, TextSize, T,
+    match_ast, SyntaxElement, SyntaxKind, TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -49,12 +49,29 @@ fn adjusted_macro_contents(macro_call: &ast::MacroCall) -> Option<String> {
         macro_text_with_brackets.len() - TextSize::of(')'),
     ));
 
-    let is_leaf = macro_call.syntax().next_sibling().is_none();
-    Some(if !is_leaf && needs_parentheses_around_macro_contents(contents) {
-        format!("({})", macro_text_in_brackets)
-    } else {
-        macro_text_in_brackets.to_string()
-    })
+    Some(
+        if !is_leaf_or_control_flow_expr(macro_call)
+            && needs_parentheses_around_macro_contents(contents)
+        {
+            format!("({})", macro_text_in_brackets)
+        } else {
+            macro_text_in_brackets.to_string()
+        },
+    )
+}
+
+fn is_leaf_or_control_flow_expr(macro_call: &ast::MacroCall) -> bool {
+    macro_call.syntax().next_sibling().is_none()
+        || match macro_call.syntax().parent() {
+            Some(parent) => match_ast! {
+                match parent {
+                    ast::Condition(_it) => true,
+                    ast::MatchExpr(_it) => true,
+                    _ => false,
+                }
+            },
+            None => false,
+        }
 }
 
 /// Verifies that the given macro_call actually matches the given name
@@ -359,6 +376,46 @@ fn main() {
             remove_dbg,
             r#"let res = <|>dbg!(foo..=bar).foo();"#,
             r#"let res = (foo..=bar).foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_followed_by_block() {
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+    if <|>dbg!(x || y) {}
+}"#,
+            r#"fn foo() {
+    if x || y {}
+}"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+    while let foo = <|>dbg!(&x) {}
+}"#,
+            r#"fn foo() {
+    while let foo = &x {}
+}"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+    if let foo = <|>dbg!(&x) {}
+}"#,
+            r#"fn foo() {
+    if let foo = &x {}
+}"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+    match <|>dbg!(&x) {}
+}"#,
+            r#"fn foo() {
+    match &x {}
+}"#,
         );
     }
 }
