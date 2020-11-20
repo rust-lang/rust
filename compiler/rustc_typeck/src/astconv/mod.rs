@@ -52,7 +52,7 @@ pub trait AstConv<'tcx> {
 
     /// Returns predicates in scope of the form `X: Foo<T>`, where `X`
     /// is a type parameter `X` with the given id `def_id` and T
-    /// matches assoc_name. This is a subset of the full set of
+    /// matches `assoc_name`. This is a subset of the full set of
     /// predicates.
     ///
     /// This is used for one specific purpose: resolving "short-hand"
