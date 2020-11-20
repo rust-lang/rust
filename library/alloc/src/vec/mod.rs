@@ -433,6 +433,7 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[inline]
+    #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
@@ -766,6 +767,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
+    #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
@@ -791,6 +793,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.reserve_exact(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
+    #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.buf.reserve_exact(self.len, additional);
@@ -828,6 +831,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
+    #[doc(alias = "realloc")]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.buf.try_reserve(self.len, additional)
@@ -869,6 +873,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// }
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
+    #[doc(alias = "realloc")]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.buf.try_reserve_exact(self.len, additional)
@@ -888,6 +893,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
     /// ```
+    #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         // The capacity is never less than the length, and there's nothing to do when
@@ -920,6 +926,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.shrink_to(0);
     /// assert!(vec.capacity() >= 3);
     /// ```
+    #[doc(alias = "realloc")]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
