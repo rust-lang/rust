@@ -54,13 +54,17 @@ fn cold() {}
 #[cfg(not(feature = "nightly"))]
 #[inline]
 fn likely(b: bool) -> bool {
-    if !b { cold() }
+    if !b {
+        cold()
+    }
     b
 }
 #[cfg(not(feature = "nightly"))]
 #[inline]
 fn unlikely(b: bool) -> bool {
-    if b { cold() }
+    if b {
+        cold()
+    }
     b
 }
 
