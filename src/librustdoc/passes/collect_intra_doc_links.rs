@@ -23,6 +23,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
@@ -193,8 +194,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// [enum struct variant]: hir::VariantData::Struct
     fn variant_field(
         &self,
+        span: Span,
         path_str: &'path str,
-        span: rustc_span::Span,
         current_item: &Option<String>,
         module_id: DefId,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
@@ -289,12 +290,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// lifetimes on `&'path` will work.
     fn resolve_primitive_associated_item(
         &self,
+        span: Span,
         prim_ty: hir::PrimTy,
         ns: Namespace,
         module_id: DefId,
         item_name: Symbol,
         item_str: &'path str,
-        span: rustc_span::Span,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
@@ -338,8 +339,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// FIXME(jynelson): Can this be unified with `resolve()`?
     fn resolve_macro(
         &self,
+        span: Span,
         path_str: &'a str,
-        span: rustc_span::Span,
         module_id: DefId,
     ) -> Result<Res, ResolutionFailure<'a>> {
         let cx = self.cx;
@@ -385,8 +386,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// Associated items will never be resolved by this function.
     fn resolve_path(
         &self,
+        span: Span,
         path_str: &str,
-        span: rustc_span::Span,
         ns: Namespace,
         module_id: DefId,
     ) -> Option<Res> {
@@ -406,8 +407,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// optional URL fragment in the case of variants and methods.
     fn resolve<'path>(
         &self,
+        span: Span,
         path_str: &'path str,
-        span: rustc_span::Span,
         ns: Namespace,
         // FIXME(#76467): This is for `Self`, and it's wrong.
         current_item: &Option<String>,
@@ -416,7 +417,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
-        if let Some(res) = self.resolve_path(path_str, span, ns, module_id) {
+        if let Some(res) = self.resolve_path(span, path_str, ns, module_id) {
             match res {
                 // FIXME(#76467): make this fallthrough to lookup the associated
                 // item a separate function.
@@ -475,13 +476,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // FIXME: are these both necessary?
         let ty_res = if let Some(ty_res) = resolve_primitive(&path_root, TypeNS)
             .map(|(_, res)| res)
-            .or_else(|| self.resolve_path(&path_root, span, TypeNS, module_id))
+            .or_else(|| self.resolve_path(span, &path_root, TypeNS, module_id))
         {
             ty_res
         } else {
             // FIXME: this is duplicated on the end of this function.
             return if ns == Namespace::ValueNS {
-                self.variant_field(path_str, span, current_item, module_id)
+                self.variant_field(span, path_str, current_item, module_id)
             } else {
                 Err(ResolutionFailure::NotResolved {
                     module_id,
@@ -495,7 +496,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let res = match ty_res {
             Res::PrimTy(prim) => {
                 Some(self.resolve_primitive_associated_item(
-                    prim, ns, module_id, item_name, item_str, span,
+                    span, prim, ns, module_id, item_name, item_str,
                 ))
             }
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias, did) => {
@@ -523,7 +524,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                     .or_else(|| {
                         let kind = resolve_associated_trait_item(
-                            did, module_id, item_name, span, ns, &self.cx,
+                            span, did, module_id, item_name, ns, &self.cx,
                         );
                         debug!("got associated item kind {:?}", kind);
                         kind
@@ -617,7 +618,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         };
         res.unwrap_or_else(|| {
             if ns == Namespace::ValueNS {
-                self.variant_field(path_str, span, current_item, module_id)
+                self.variant_field(span, path_str, current_item, module_id)
             } else {
                 Err(ResolutionFailure::NotResolved {
                     module_id,
@@ -637,9 +638,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// (such as having invalid URL fragments or being in the wrong namespace).
     fn check_full_res(
         &self,
+        span: Span,
         ns: Namespace,
         path_str: &str,
-        span: rustc_span::Span,
         module_id: DefId,
         current_item: &Option<String>,
         extra_fragment: &Option<String>,
@@ -647,10 +648,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // resolve() can't be used for macro namespace
         let result = match ns {
             Namespace::MacroNS => {
-                self.resolve_macro(path_str, span, module_id).map_err(ErrorKind::from)
+                self.resolve_macro(span, path_str, module_id).map_err(ErrorKind::from)
             }
             Namespace::TypeNS | Namespace::ValueNS => self
-                .resolve(path_str, span, ns, current_item, module_id, extra_fragment)
+                .resolve(span, path_str, ns, current_item, module_id, extra_fragment)
                 .map(|(res, _)| res),
         };
 
@@ -670,10 +671,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 /// find `std::error::Error::source` and return
 /// `<io::Error as error::Error>::source`.
 fn resolve_associated_trait_item(
+    span: Span,
     did: DefId,
     module: DefId,
     item_name: Symbol,
-    span: rustc_span::Span,
     ns: Namespace,
     cx: &DocContext<'_>,
 ) -> Option<(ty::AssocKind, DefId)> {
@@ -1248,7 +1249,7 @@ impl LinkCollector<'_, '_> {
 
         match disambiguator.map(Disambiguator::ns) {
             Some(ns @ (ValueNS | TypeNS)) => {
-                match self.resolve(path_str, span, ns, &current_item, base_node, &extra_fragment) {
+                match self.resolve(span, path_str, ns, &current_item, base_node, &extra_fragment) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1258,9 +1259,9 @@ impl LinkCollector<'_, '_> {
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
                             for &new_ns in &[other_ns, MacroNS] {
                                 if let Some(res) = self.check_full_res(
+                                    span,
                                     new_ns,
                                     path_str,
-                                    span,
                                     base_node,
                                     &current_item,
                                     &extra_fragment,
@@ -1294,11 +1295,11 @@ impl LinkCollector<'_, '_> {
                 // Try everything!
                 let mut candidates = PerNS {
                     macro_ns: self
-                        .resolve_macro(path_str, span, base_node)
+                        .resolve_macro(span, path_str, base_node)
                         .map(|res| (res, extra_fragment.clone())),
                     type_ns: match self.resolve(
-                        path_str,
                         span,
+                        path_str,
                         TypeNS,
                         &current_item,
                         base_node,
@@ -1315,8 +1316,8 @@ impl LinkCollector<'_, '_> {
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
                     },
                     value_ns: match self.resolve(
-                        path_str,
                         span,
+                        path_str,
                         ValueNS,
                         &current_item,
                         base_node,
@@ -1384,15 +1385,15 @@ impl LinkCollector<'_, '_> {
                 }
             }
             Some(MacroNS) => {
-                match self.resolve_macro(path_str, span, base_node) {
+                match self.resolve_macro(span, path_str, base_node) {
                     Ok(res) => Some((res, extra_fragment)),
                     Err(mut kind) => {
                         // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
                         for &ns in &[TypeNS, ValueNS] {
                             if let Some(res) = self.check_full_res(
+                                span,
                                 ns,
                                 path_str,
-                                span,
                                 base_node,
                                 &current_item,
                                 &extra_fragment,
@@ -1608,7 +1609,7 @@ fn report_diagnostic(
     item: &Item,
     dox: &str,
     link_range: &Option<Range<usize>>,
-    decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
+    decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<Span>),
 ) {
     let hir_id = match cx.as_local_hir_id(item.def_id) {
         Some(hir_id) => hir_id,
@@ -1737,7 +1738,7 @@ fn resolution_failure(
                         name = start;
                         for &ns in &[TypeNS, ValueNS, MacroNS] {
                             if let Some(res) =
-                                collector.check_full_res(ns, &start, span, module_id, &None, &None)
+                                collector.check_full_res(span, ns, &start, module_id, &None, &None)
                             {
                                 debug!("found partial_res={:?}", res);
                                 *partial_res = Some(res);
@@ -1978,7 +1979,7 @@ fn suggest_disambiguator(
     diag: &mut DiagnosticBuilder<'_>,
     path_str: &str,
     dox: &str,
-    sp: Option<rustc_span::Span>,
+    sp: Option<Span>,
     link_range: &Option<Range<usize>>,
 ) {
     let suggestion = disambiguator.suggestion();
