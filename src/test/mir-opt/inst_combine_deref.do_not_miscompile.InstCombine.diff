@@ -10,7 +10,7 @@
       let mut _8: bool;                    // in scope 0 at $DIR/inst_combine_deref.rs:60:5: 60:23
       let mut _9: bool;                    // in scope 0 at $DIR/inst_combine_deref.rs:60:13: 60:21
       let mut _10: i32;                    // in scope 0 at $DIR/inst_combine_deref.rs:60:13: 60:15
-      let mut _11: !;                      // in scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
+      let mut _11: !;                      // in scope 0 at $DIR/inst_combine_deref.rs:60:5: 60:23
       scope 1 {
           debug x => _1;                   // in scope 1 at $DIR/inst_combine_deref.rs:55:9: 55:10
           let _2: i32;                     // in scope 1 at $DIR/inst_combine_deref.rs:56:9: 56:10
@@ -69,11 +69,11 @@
       }
   
       bb2: {
-          StorageLive(_11);                // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
-          begin_panic::<&str>(const "assertion failed: *y == 99"); // scope 4 at $SRC_DIR/std/src/macros.rs:LL:COL
+          StorageLive(_11);                // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+          core::panicking::panic(const "assertion failed: *y == 99"); // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
                                            // mir::Constant
-                                           // + span: $SRC_DIR/std/src/macros.rs:LL:COL
-                                           // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
+                                           // + span: $DIR/inst_combine_deref.rs:60:5: 60:23
+                                           // + literal: Const { ty: fn(&'static str) -> ! {core::panicking::panic}, val: Value(Scalar(<ZST>)) }
                                            // ty::Const
                                            // + ty: &str
                                            // + val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 42, 121, 32, 61, 61, 32, 57, 57], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [67108863], len: Size { raw: 26 } }, size: Size { raw: 26 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 26 })

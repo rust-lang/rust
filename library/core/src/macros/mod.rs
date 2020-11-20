@@ -2,6 +2,7 @@
 #[macro_export]
 #[allow_internal_unstable(core_panic, const_caller_location)]
 #[stable(feature = "core", since = "1.6.0")]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "core_panic_macro")]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
@@ -162,6 +163,7 @@ macro_rules! assert_ne {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "debug_assert_macro")]
 macro_rules! debug_assert {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert!($($arg)*); })
 }
@@ -1215,6 +1217,8 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(bootstrap), rustc_diagnostic_item = "assert_macro")]
+    #[allow_internal_unstable(core_panic)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};

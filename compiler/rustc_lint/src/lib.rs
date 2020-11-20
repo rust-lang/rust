@@ -55,6 +55,7 @@ mod levels;
 mod methods;
 mod non_ascii_idents;
 mod nonstandard_style;
+mod panic_fmt;
 mod passes;
 mod redundant_semicolon;
 mod traits;
@@ -80,6 +81,7 @@ use internal::*;
 use methods::*;
 use non_ascii_idents::*;
 use nonstandard_style::*;
+use panic_fmt::PanicFmt;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
@@ -166,6 +168,7 @@ macro_rules! late_lint_passes {
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
                 DropTraitConstraints: DropTraitConstraints,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+                PanicFmt: PanicFmt,
             ]
         );
     };
