@@ -496,6 +496,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::temporary_cstring_as_ptr",
         "this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`",
     );
+    store.register_removed(
+        "clippy::panic_params",
+        "this lint has been uplifted to rustc and is now called `panic_fmt`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -790,7 +794,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         &panic_in_result_fn::PANIC_IN_RESULT_FN,
         &panic_unimplemented::PANIC,
-        &panic_unimplemented::PANIC_PARAMS,
         &panic_unimplemented::TODO,
         &panic_unimplemented::UNIMPLEMENTED,
         &panic_unimplemented::UNREACHABLE,
@@ -1505,7 +1508,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(&option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(&overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
-        LintId::of(&panic_unimplemented::PANIC_PARAMS),
         LintId::of(&partialeq_ne_impl::PARTIALEQ_NE_IMPL),
         LintId::of(&precedence::PRECEDENCE),
         LintId::of(&ptr::CMP_NULL),
@@ -1674,7 +1676,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
         LintId::of(&non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(&non_expressive_names::MANY_SINGLE_CHAR_NAMES),
-        LintId::of(&panic_unimplemented::PANIC_PARAMS),
         LintId::of(&ptr::CMP_NULL),
         LintId::of(&ptr::PTR_ARG),
         LintId::of(&ptr_eq::PTR_EQ),

@@ -1839,13 +1839,6 @@ vec![
         module: "panic_in_result_fn",
     },
     Lint {
-        name: "panic_params",
-        group: "style",
-        desc: "missing parameters in `panic!` calls",
-        deprecation: None,
-        module: "panic_unimplemented",
-    },
-    Lint {
         name: "panicking_unwrap",
         group: "correctness",
         desc: "checks for calls of `unwrap[_err]()` that will always fail",
