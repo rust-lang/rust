@@ -90,7 +90,7 @@ jobs:
       run: |
         curl -L -o code.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/10.0-2020-05-05.tar.gz
         tar xzf code.tar.gz --strip-components 1 llvm-project-rustc-10.0-2020-05-05/compiler-rt
-        echo "##[set-env name=RUST_COMPILER_RT_ROOT]./compiler-rt"
+        echo RUST_COMPILER_RT_ROOT=./compiler-rt >> $GITHUB_ENV
       shell: bash
 
     # Non-linux tests just use our raw script
