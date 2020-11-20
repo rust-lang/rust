@@ -1,0 +1,80 @@
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:15:22
+   |
+LL |     m!(0u8, 20..=30, 30..=40);
+   |             -------  ^^^^^^^ overlapping patterns
+   |             |
+   |             this range overlaps on `30_u8`
+   |
+note: the lint level is defined here
+  --> $DIR/overlapping_range_endpoints.rs:2:9
+   |
+LL | #![deny(overlapping_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:16:22
+   |
+LL |     m!(0u8, 30..=40, 20..=30);
+   |             -------  ^^^^^^^ overlapping patterns
+   |             |
+   |             this range overlaps on `30_u8`
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:19:22
+   |
+LL |     m!(0u8, 20.. 30, 29..=40);
+   |             -------  ^^^^^^^ overlapping patterns
+   |             |
+   |             this range overlaps on `29_u8`
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:23:22
+   |
+LL |     m!(0u8, 20..=30, 30..=31);
+   |             -------  ^^^^^^^ overlapping patterns
+   |             |
+   |             this range overlaps on `30_u8`
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:27:22
+   |
+LL |     m!(0u8, 20..=30, 19..=20);
+   |             -------  ^^^^^^^ overlapping patterns
+   |             |
+   |             this range overlaps on `20_u8`
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:32:17
+   |
+LL |     m!(0u8, 20, 20..=30);
+   |             --  ^^^^^^^ overlapping patterns
+   |             |
+   |             this range overlaps on `20_u8`
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:34:17
+   |
+LL |     m!(0u8, 30, 20..=30);
+   |             --  ^^^^^^^ overlapping patterns
+   |             |
+   |             this range overlaps on `30_u8`
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:44:16
+   |
+LL |         (true, 0..=10) => {}
+   |                ------ this range overlaps on `10_u8`
+LL |         (true, 10..20) => {}
+   |                ^^^^^^ overlapping patterns
+
+error: multiple patterns covering the same range
+  --> $DIR/overlapping_range_endpoints.rs:50:14
+   |
+LL |         Some(0..=10) => {}
+   |              ------ this range overlaps on `10_u8`
+LL |         Some(10..20) => {}
+   |              ^^^^^^ overlapping patterns
+
+error: aborting due to 9 previous errors
+
