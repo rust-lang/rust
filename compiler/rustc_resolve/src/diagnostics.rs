@@ -143,7 +143,7 @@ impl<'a> Resolver<'a> {
                     _ => {
                         bug!(
                             "GenericParamsFromOuterFunction should only be used with Res::SelfTy, \
-                            DefKind::TyParam"
+                            DefKind::TyParam or DefKind::ConstParam"
                         );
                     }
                 }
