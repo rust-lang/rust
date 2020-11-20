@@ -147,6 +147,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
     fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
         debug!("Coerce.tys({:?} => {:?})", a, b);
 
         // Just ignore error types.
@@ -162,8 +163,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             //     let _: Option<?T> = Some({ return; });
             //
             // here, we would coerce from `!` to `?T`.
-            let b = self.shallow_resolve(b);
-            return if self.shallow_resolve(b).is_ty_var() {
+            return if b.is_ty_var() {
                 // Micro-optimization: no need for this if `b` is
                 // already resolved in some way.
                 let diverging_ty = self.next_diverging_ty_var(TypeVariableOrigin {
@@ -196,9 +196,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("coerce: unsize failed");
 
         // Examine the supertype and consider auto-borrowing.
-        //
-        // Note: does not attempt to resolve type variables we encounter.
-        // See above for details.
         match *b.kind() {
             ty::RawPtr(mt_b) => {
                 return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
