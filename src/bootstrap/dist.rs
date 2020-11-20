@@ -1057,7 +1057,7 @@ impl Step for Src {
         builder.really_copy(&root_lock, &temp_lock);
 
         let mut cmd = Command::new(&builder.initial_cargo);
-        cmd.arg("vendor").arg(dst_vendor).current_dir(&dst_libtest);
+        cmd.args(&["vendor", "--offline"]).arg(dst_vendor).current_dir(&dst_libtest);
         builder.info("Dist src");
         let _time = timeit(builder);
         builder.run(&mut cmd);

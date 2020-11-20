@@ -35,3 +35,10 @@ panic_immediate_abort = ["std/panic_immediate_abort"]
 profiler = ["std/profiler"]
 std_detect_file_io = ["std/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std/std_detect_dlsym_getauxval"]
+
+# We duplicate these from the toplevel to be able to properly use cargo vendor
+[patch.crates-io]
+rustc-std-workspace-core = { path = '../rustc-std-workspace-core' }
+rustc-std-workspace-alloc = { path = '../rustc-std-workspace-alloc' }
+rustc-std-workspace-std = { path = '../rustc-std-workspace-std' }
+backtrace = { path = "../backtrace" }
