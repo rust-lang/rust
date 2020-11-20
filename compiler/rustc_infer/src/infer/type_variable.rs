@@ -119,7 +119,13 @@ pub enum TypeVariableOriginKind {
 
 pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
-    diverging: bool,
+    diverging: Diverging,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Diverging {
+    NotDiverging,
+    Diverges,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -173,7 +179,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     ///
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
-    pub fn var_diverges(&self, vid: ty::TyVid) -> bool {
+    pub fn var_diverges(&self, vid: ty::TyVid) -> Diverging {
         self.storage.values.get(vid.index as usize).diverging
     }
 
@@ -238,7 +244,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub fn new_var(
         &mut self,
         universe: ty::UniverseIndex,
-        diverging: bool,
+        diverging: Diverging,
         origin: TypeVariableOrigin,
     ) -> ty::TyVid {
         let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
