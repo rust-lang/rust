@@ -14,8 +14,11 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, Node, QPath};
-use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
+use rustc_infer::infer::{
+    canonical::{Canonical, OriginalQueryValues, QueryResponse},
+    type_variable::Diverging,
+};
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -630,56 +633,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ if self.is_tainted_by_errors() => self.tcx().ty_error(),
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
-            Neither => {
-                // This type variable was created from the instantiation of an opaque
-                // type. The fact that we're attempting to perform fallback for it
-                // means that the function neither constrained it to a concrete
-                // type, nor to the opaque type itself.
-                //
-                // For example, in this code:
-                //
-                //```
-                // type MyType = impl Copy;
-                // fn defining_use() -> MyType { true }
-                // fn other_use() -> MyType { defining_use() }
-                // ```
-                //
-                // `defining_use` will constrain the instantiated inference
-                // variable to `bool`, while `other_use` will constrain
-                // the instantiated inference variable to `MyType`.
-                //
-                // When we process opaque types during writeback, we
-                // will handle cases like `other_use`, and not count
-                // them as defining usages
-                //
-                // However, we also need to handle cases like this:
-                //
-                // ```rust
-                // pub type Foo = impl Copy;
-                // fn produce() -> Option<Foo> {
-                //     None
-                //  }
-                //  ```
-                //
-                // In the above snippet, the inference variable created by
-                // instantiating `Option<Foo>` will be completely unconstrained.
-                // We treat this as a non-defining use by making the inference
-                // variable fall back to the opaque type itself.
-                if let FallbackMode::All = mode {
-                    if let Some(opaque_ty) = self.opaque_types_vars.borrow().get(ty) {
-                        debug!(
-                            "fallback_if_possible: falling back opaque type var {:?} to {:?}",
-                            ty, opaque_ty
-                        );
-                        *opaque_ty
+            Neither => match self.type_var_diverges(ty) {
+                Diverging::Diverges => self.tcx.mk_diverging_default(),
+
+                Diverging::NotDiverging => {
+                    // This type variable was created from the instantiation of an opaque
+                    // type. The fact that we're attempting to perform fallback for it
+                    // means that the function neither constrained it to a concrete
+                    // type, nor to the opaque type itself.
+                    //
+                    // For example, in this code:
+                    //
+                    //```
+                    // type MyType = impl Copy;
+                    // fn defining_use() -> MyType { true }
+                    // fn other_use() -> MyType { defining_use() }
+                    // ```
+                    //
+                    // `defining_use` will constrain the instantiated inference
+                    // variable to `bool`, while `other_use` will constrain
+                    // the instantiated inference variable to `MyType`.
+                    //
+                    // When we process opaque types during writeback, we
+                    // will handle cases like `other_use`, and not count
+                    // them as defining usages
+                    //
+                    // However, we also need to handle cases like this:
+                    //
+                    // ```rust
+                    // pub type Foo = impl Copy;
+                    // fn produce() -> Option<Foo> {
+                    //     None
+                    //  }
+                    //  ```
+                    //
+                    // In the above snippet, the inference variable created by
+                    // instantiating `Option<Foo>` will be completely unconstrained.
+                    // We treat this as a non-defining use by making the inference
+                    // variable fall back to the opaque type itself.
+                    if let FallbackMode::All = mode {
+                        if let Some(opaque_ty) = self.opaque_types_vars.borrow().get(ty) {
+                            debug!(
+                                "fallback_if_possible: falling back opaque type var {:?} to {:?}",
+                                ty, opaque_ty
+                            );
+                            *opaque_ty
+                        } else {
+                            return false;
+                        }
                     } else {
                         return false;
                     }
-                } else {
-                    return false;
                 }
-            }
+            },
         };
         debug!("fallback_if_possible: defaulting `{:?}` to `{:?}`", ty, fallback);
         self.demand_eqtype(rustc_span::DUMMY_SP, ty, fallback);

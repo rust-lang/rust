@@ -44,7 +44,7 @@ use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, Veri
 use self::region_constraints::{
     RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
 };
-use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use self::type_variable::{Diverging, TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
 pub mod canonical;
@@ -641,10 +641,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         t.fold_with(&mut self.freshener())
     }
 
-    pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> bool {
+    pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> Diverging {
         match *ty.kind() {
             ty::Infer(ty::TyVar(vid)) => self.inner.borrow_mut().type_variables().var_diverges(vid),
-            _ => false,
+            _ => Diverging::NotDiverging,
         }
     }
 
@@ -977,12 +977,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn next_ty_var_id(&self, diverging: bool, origin: TypeVariableOrigin) -> TyVid {
+    pub fn next_ty_var_id(&self, diverging: Diverging, origin: TypeVariableOrigin) -> TyVid {
         self.inner.borrow_mut().type_variables().new_var(self.universe(), diverging, origin)
     }
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_ty_var(self.next_ty_var_id(false, origin))
+        self.tcx.mk_ty_var(self.next_ty_var_id(Diverging::NotDiverging, origin))
     }
 
     pub fn next_ty_var_in_universe(
@@ -990,12 +990,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: TypeVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> Ty<'tcx> {
-        let vid = self.inner.borrow_mut().type_variables().new_var(universe, false, origin);
+        let vid = self.inner.borrow_mut().type_variables().new_var(
+            universe,
+            Diverging::NotDiverging,
+            origin,
+        );
         self.tcx.mk_ty_var(vid)
     }
 
     pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        self.tcx.mk_ty_var(self.next_ty_var_id(true, origin))
+        self.tcx.mk_ty_var(self.next_ty_var_id(Diverging::Diverges, origin))
     }
 
     pub fn next_const_var(
@@ -1109,7 +1113,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // as the substitutions for the default, `(T, U)`.
                 let ty_var_id = self.inner.borrow_mut().type_variables().new_var(
                     self.universe(),
-                    false,
+                    Diverging::NotDiverging,
                     TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeParameterDefinition(
                             param.name,
