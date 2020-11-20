@@ -464,6 +464,23 @@ impl AtomicBool {
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on `u8`.
     ///
+    /// # Migrating to `compare_exchange` and `compare_exchange_weak`
+    ///
+    /// `compare_and_swap` is equivalent to `compare_exchange` with the following mapping for
+    /// memory orderings:
+    ///
+    /// Original | Success | Failure
+    /// -------- | ------- | -------
+    /// Relaxed  | Relaxed | Relaxed
+    /// Acquire  | Acquire | Acquire
+    /// Release  | Release | Relaxed
+    /// AcqRel   | AcqRel  | Acquire
+    /// SeqCst   | SeqCst  | SeqCst
+    ///
+    /// `compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
+    /// which allows the compiler to generate better assembly code when the compare and swap
+    /// is used in a loop.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1070,6 +1087,23 @@ impl<T> AtomicPtr<T> {
     /// **Note:** This method is only available on platforms that support atomic
     /// operations on pointers.
     ///
+    /// # Migrating to `compare_exchange` and `compare_exchange_weak`
+    ///
+    /// `compare_and_swap` is equivalent to `compare_exchange` with the following mapping for
+    /// memory orderings:
+    ///
+    /// Original | Success | Failure
+    /// -------- | ------- | -------
+    /// Relaxed  | Relaxed | Relaxed
+    /// Acquire  | Acquire | Acquire
+    /// Release  | Release | Relaxed
+    /// AcqRel   | AcqRel  | Acquire
+    /// SeqCst   | SeqCst  | SeqCst
+    ///
+    /// `compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
+    /// which allows the compiler to generate better assembly code when the compare and swap
+    /// is used in a loop.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1611,6 +1645,23 @@ happens, and using [`Release`] makes the load part [`Relaxed`].
 
 **Note**: This method is only available on platforms that support atomic
 operations on [`", $s_int_type, "`](", $int_ref, ").
+
+# Migrating to `compare_exchange` and `compare_exchange_weak`
+
+`compare_and_swap` is equivalent to `compare_exchange` with the following mapping for
+memory orderings:
+
+Original | Success | Failure
+-------- | ------- | -------
+Relaxed  | Relaxed | Relaxed
+Acquire  | Acquire | Acquire
+Release  | Release | Relaxed
+AcqRel   | AcqRel  | Acquire
+SeqCst   | SeqCst  | SeqCst
+
+`compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
+which allows the compiler to generate better assembly code when the compare and swap
+is used in a loop.
 
 # Examples
 
