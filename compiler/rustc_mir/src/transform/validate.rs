@@ -38,9 +38,7 @@ pub struct Validator {
 impl<'tcx> MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
-        // We need to param_env_reveal_all_normalized, as some optimizations
-        // change types in ways that require unfolding opaque types.
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
+        let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
 
         let always_live_locals = AlwaysLiveLocals::new(body);
@@ -81,6 +79,7 @@ pub fn equal_up_to_regions(
     }
 
     // Normalize lifetimes away on both sides, then compare.
+    let param_env = param_env.with_reveal_all_normalized(tcx);
     let normalize = |ty: Ty<'tcx>| {
         tcx.normalize_erasing_regions(
             param_env,
@@ -168,14 +167,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
         // Normalize projections and things like that.
-        let src = self.tcx.normalize_erasing_regions(self.param_env, src);
-        let dest = self.tcx.normalize_erasing_regions(self.param_env, dest);
+        // FIXME: We need to reveal_all, as some optimizations change types in ways
+        // that require unfolding opaque types.
+        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
+        let src = self.tcx.normalize_erasing_regions(param_env, src);
+        let dest = self.tcx.normalize_erasing_regions(param_env, dest);
 
         // Type-changing assignments can happen when subtyping is used. While
         // all normal lifetimes are erased, higher-ranked types with their
         // late-bound lifetimes are still around and can lead to type
         // differences. So we compare ignoring lifetimes.
-        equal_up_to_regions(self.tcx, self.param_env, src, dest)
+        equal_up_to_regions(self.tcx, param_env, src, dest)
     }
 }
 
@@ -363,7 +365,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Call { func, args, destination, cleanup, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
-                let func_ty = self.tcx.normalize_erasing_regions(self.param_env, func_ty);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
                     _ => self.fail(

@@ -484,10 +484,13 @@ impl Step for CompiletestTest {
         let host = self.host;
         let compiler = builder.compiler(0, host);
 
+        // We need `ToolStd` for the locally-built sysroot because
+        // compiletest uses unstable features of the `test` crate.
+        builder.ensure(compile::Std { compiler, target: host });
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolBootstrap,
+            Mode::ToolStd,
             host,
             "test",
             "src/tools/compiletest",

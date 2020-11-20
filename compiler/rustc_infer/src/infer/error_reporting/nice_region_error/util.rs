@@ -131,7 +131,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     }
 
     pub(super) fn asyncness(&self, local_def_id: LocalDefId) -> Option<hir::IsAsync> {
-        // similar to the asyncness fn in rustc_ty::ty
+        // similar to the asyncness fn in rustc_ty_utils::ty
         let hir_id = self.tcx().hir().local_def_id_to_hir_id(local_def_id);
         let node = self.tcx().hir().get(hir_id);
         let fn_like = rustc_middle::hir::map::blocks::FnLikeNode::from_node(node)?;

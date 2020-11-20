@@ -1,6 +1,6 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "rustc_ty"
+name = "rustc_ty_utils"
 version = "0.0.0"
 edition = "2018"
 

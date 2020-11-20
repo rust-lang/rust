@@ -75,38 +75,9 @@ impl MultiItemModifier for ProcMacroDerive {
         item: Annotatable,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let item = match item {
-            Annotatable::Arm(..)
-            | Annotatable::Field(..)
-            | Annotatable::FieldPat(..)
-            | Annotatable::GenericParam(..)
-            | Annotatable::Param(..)
-            | Annotatable::StructField(..)
-            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
-            Annotatable::Item(item) => item,
-            Annotatable::ImplItem(_)
-            | Annotatable::TraitItem(_)
-            | Annotatable::ForeignItem(_)
-            | Annotatable::Stmt(_)
-            | Annotatable::Expr(_) => {
-                ecx.span_err(
-                    span,
-                    "proc-macro derives may only be applied to a struct, enum, or union",
-                );
-                return ExpandResult::Ready(Vec::new());
-            }
+            Annotatable::Item(item) => token::NtItem(item),
+            _ => unreachable!(),
         };
-        match item.kind {
-            ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..) => {}
-            _ => {
-                ecx.span_err(
-                    span,
-                    "proc-macro derives may only be applied to a struct, enum, or union",
-                );
-                return ExpandResult::Ready(Vec::new());
-            }
-        }
-
-        let item = token::NtItem(item);
         let input = if item.pretty_printing_compatibility_hack() {
             TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
         } else {
