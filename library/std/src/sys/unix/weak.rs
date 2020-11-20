@@ -135,7 +135,7 @@ macro_rules! syscall {
             } else {
                 syscall(
                     concat_idents!(SYS_, $name),
-                    $($arg_name as c_long),*
+                    $($arg_name),*
                 ) as $ret
             }
         }
