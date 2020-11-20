@@ -1741,6 +1741,15 @@ impl<'tcx> Place<'tcx> {
     pub fn as_ref(&self) -> PlaceRef<'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
     }
+
+    /// Iterate over the projections in evaluation order, i.e., the first element is the base with
+    /// its projection and then subsequently more projections are added.
+    pub fn iter_projections(self) -> impl Iterator<Item=(PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
+        self.projection.iter().enumerate().map(move |(i, proj)| {
+            let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
+            (base, proj)
+        })
+    }
 }
 
 impl From<Local> for Place<'_> {

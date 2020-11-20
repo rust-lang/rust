@@ -136,6 +136,15 @@ impl<'tcx> Place<'tcx> {
     }
 }
 
+impl<'tcx> PlaceRef<'tcx> {
+    pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        Place::ty_from(self.local, &self.projection, local_decls, tcx)
+    }
+}
+
 pub enum RvalueInitializationState {
     Shallow,
     Deep,
