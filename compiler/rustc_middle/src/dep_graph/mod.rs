@@ -37,7 +37,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
     fn debug_node(node: &DepNode, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", node.kind)?;
 
-        if !node.kind.has_params() && !node.kind.is_anon() {
+        if !node.kind.has_params() && !node.kind.is_anon {
             return Ok(());
         }
 

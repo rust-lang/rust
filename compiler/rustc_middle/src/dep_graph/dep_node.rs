@@ -75,7 +75,12 @@ pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
 /// Information is retrieved by indexing the `DEP_KINDS` array using the integer value
 /// of the `DepKind`. Overall, this allows to implement `DepContext` using this manual
 /// jump table instead of large matches.
-pub struct DepKindStruct {}
+pub struct DepKindStruct {
+    /// Anonymous queries cannot be replayed from one compiler invocation to the next.
+    /// When their result is needed, it is recomputed. They are useful for fine-grained
+    /// dependency tracking, and caching within one compiler invocation.
+    pub(super) is_anon: bool,
+}
 
 impl std::ops::Deref for DepKind {
     type Target = DepKindStruct;
@@ -122,14 +127,14 @@ pub mod dep_kind {
     use super::*;
 
     // We use this for most things when incr. comp. is turned off.
-    pub const Null: DepKindStruct = DepKindStruct {};
+    pub const Null: DepKindStruct = DepKindStruct { is_anon: false };
 
     // Represents metadata from an extern crate.
-    pub const CrateMetadata: DepKindStruct = DepKindStruct {};
+    pub const CrateMetadata: DepKindStruct = DepKindStruct { is_anon: false };
 
-    pub const TraitSelect: DepKindStruct = DepKindStruct {};
+    pub const TraitSelect: DepKindStruct = DepKindStruct { is_anon: true };
 
-    pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {};
+    pub const CompileCodegenUnit: DepKindStruct = DepKindStruct { is_anon: false };
 
     macro_rules! define_query_dep_kinds {
         ($(
@@ -137,7 +142,10 @@ pub mod dep_kind {
             $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
         ,)*) => (
             $(pub const $variant: DepKindStruct = {
+                const is_anon: bool = contains_anon_attr!($($attrs)*);
+
                 DepKindStruct {
+                    is_anon,
                 }
             };)*
         );
@@ -165,13 +173,13 @@ macro_rules! define_dep_nodes {
         impl DepKind {
             #[allow(unreachable_code)]
             pub fn can_reconstruct_query_key<$tcx>(&self) -> bool {
+                if self.is_anon {
+                    return false;
+                }
+
                 match *self {
                     $(
                         DepKind :: $variant => {
-                            if contains_anon_attr!($($attrs)*) {
-                                return false;
-                            }
-
                             // tuple args
                             $({
                                 return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
@@ -180,14 +188,6 @@ macro_rules! define_dep_nodes {
 
                             true
                         }
-                    )*
-                }
-            }
-
-            pub fn is_anon(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => { contains_anon_attr!($($attrs)*) }
                     )*
                 }
             }
