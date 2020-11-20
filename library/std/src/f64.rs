@@ -899,7 +899,7 @@ impl f64 {
     /// assert!((f64::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "clamp", since = "1.49.0")]
+    #[stable(feature = "clamp", since = "1.50.0")]
     #[inline]
     pub fn clamp(self, min: f64, max: f64) -> f64 {
         assert!(min <= max);
