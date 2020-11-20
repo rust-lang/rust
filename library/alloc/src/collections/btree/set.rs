@@ -457,10 +457,7 @@ impl<T> BTreeSet<T> {
     /// assert!(v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn clear(&mut self)
-    where
-        T: Ord,
-    {
+    pub fn clear(&mut self) {
         self.map.clear()
     }
 
