@@ -479,6 +479,10 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(
+        since = "1.50.0",
+        reason = "Use `compare_exchange` or `compare_exchange_weak` instead"
+    )]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
@@ -1080,6 +1084,10 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(
+        since = "1.50.0",
+        reason = "Use `compare_exchange` or `compare_exchange_weak` instead"
+    )]
     #[cfg(target_has_atomic = "ptr")]
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
@@ -1619,6 +1627,10 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
 ```"),
                 #[inline]
                 #[$stable]
+                #[rustc_deprecated(
+                    since = "1.50.0",
+                    reason = "Use `compare_exchange` or `compare_exchange_weak` instead")
+                ]
                 #[$cfg_cas]
                 pub fn compare_and_swap(&self,
                                         current: $int_type,
