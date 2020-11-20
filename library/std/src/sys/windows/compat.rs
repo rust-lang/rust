@@ -90,6 +90,7 @@ macro_rules! compat_fn {
             }
         }
 
+        $(#[$meta])*
         pub use $symbol::call as $symbol;
     )*)
 }
