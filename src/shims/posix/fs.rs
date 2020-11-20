@@ -831,17 +831,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         let path = this.read_path_from_c_str(pathname_scalar)?.into_owned();
-        // `flags` should be a `c_int` but the `syscall` function provides an `isize`.
-        let flags: i32 =
-            this.read_scalar(flags_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
-                err_unsup_format!("failed to convert pointer sized operand to integer: {}", e)
-            })?;
+        // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
         let empty_path_flag = flags & this.eval_libc("AT_EMPTY_PATH")?.to_i32()? != 0;
-        // `dirfd` should be a `c_int` but the `syscall` function provides an `isize`.
-        let dirfd: i32 =
-            this.read_scalar(dirfd_op)?.to_machine_isize(&*this.tcx)?.try_into().map_err(|e| {
-                err_unsup_format!("failed to convert pointer sized operand to integer: {}", e)
-            })?;
+        let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
         // We only support:
         // * interpreting `path` as an absolute directory,
         // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or
