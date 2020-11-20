@@ -65,8 +65,10 @@ current level using `tcx.sess.opts.debugging_opts.mir_opt_level`.
 
 Optimization fuel is a compiler option (`-Z fuel=<crate>=<value>`) that allows for fine grained
 control over which optimizations can be applied during compilation: each optimization reduces
-fuel by 1, and when fuel reaches 0 no more optimizations are applied. This can help with debugging
-and identifying problems with optimizations.
+fuel by 1, and when fuel reaches 0 no more optimizations are applied. The primary use of fuel
+is debugging optimizations that may be incorrect or misapplied. By changing the fuel
+value, you can bisect a compilation session down to the exact incorrect optimization
+(this behaves like a kind of binary search through the optimizations).
 
 MIR optimizations respect fuel, and in general each pass should check fuel by calling
 [`tcx.consider_optimizing`][consideroptimizing] and skipping the optimization if fuel
