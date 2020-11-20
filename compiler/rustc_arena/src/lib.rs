@@ -11,9 +11,13 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
+#![feature(array_value_iter_slice)]
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
+#![feature(array_value_iter)]
+#![feature(min_const_generics)]
+#![feature(min_specialization)]
 #![cfg_attr(test, feature(test))]
 
 use smallvec::SmallVec;
@@ -114,6 +118,72 @@ impl<T> Default for TypedArena<T> {
     }
 }
 
+trait IterExt<T> {
+    fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T];
+}
+
+impl<I, T> IterExt<T> for I
+where
+    I: IntoIterator<Item = T>,
+{
+    #[inline]
+    default fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
+        let vec: SmallVec<[_; 8]> = self.into_iter().collect();
+        vec.alloc_from_iter(arena)
+    }
+}
+
+impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
+    #[inline]
+    fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
+        let len = self.len();
+        if len == 0 {
+            return &mut [];
+        }
+        // Move the content to the arena by copying and then forgetting it
+        unsafe {
+            let start_ptr = arena.alloc_raw_slice(len);
+            self.as_slice().as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            mem::forget(self);
+            slice::from_raw_parts_mut(start_ptr, len)
+        }
+    }
+}
+
+impl<T> IterExt<T> for Vec<T> {
+    #[inline]
+    fn alloc_from_iter(mut self, arena: &TypedArena<T>) -> &mut [T] {
+        let len = self.len();
+        if len == 0 {
+            return &mut [];
+        }
+        // Move the content to the arena by copying and then forgetting it
+        unsafe {
+            let start_ptr = arena.alloc_raw_slice(len);
+            self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            self.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
+        }
+    }
+}
+
+impl<A: smallvec::Array> IterExt<A::Item> for SmallVec<A> {
+    #[inline]
+    fn alloc_from_iter(mut self, arena: &TypedArena<A::Item>) -> &mut [A::Item] {
+        let len = self.len();
+        if len == 0 {
+            return &mut [];
+        }
+        // Move the content to the arena by copying and then forgetting it
+        unsafe {
+            let start_ptr = arena.alloc_raw_slice(len);
+            self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            self.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
+        }
+    }
+}
+
 impl<T> TypedArena<T> {
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
@@ -191,19 +261,7 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);
-        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
-        if vec.is_empty() {
-            return &mut [];
-        }
-        // Move the content to the arena by copying it and then forgetting
-        // the content of the SmallVec
-        unsafe {
-            let len = vec.len();
-            let start_ptr = self.alloc_raw_slice(len);
-            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            vec.set_len(0);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
+        iter.alloc_from_iter(self)
     }
 
     /// Grows the arena.
