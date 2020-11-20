@@ -208,9 +208,8 @@ fn getrandom<'tcx>(
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
     // neither of which have any effect on our current PRNG.
-    let _flags = this.read_scalar(flags)?;
-    // FIXME: Check that this is an integer type of the right size.
-    // Currently, some callers pass i32 and some usize, is that even allowed?
+    // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
+    let _flags = this.read_scalar(flags)?.to_i32();
 
     this.gen_random(ptr, len)?;
     this.write_scalar(Scalar::from_machine_usize(len, this), dest)?;
