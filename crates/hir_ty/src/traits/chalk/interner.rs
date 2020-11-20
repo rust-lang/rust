@@ -25,6 +25,7 @@ pub(crate) type FnDefId = chalk_ir::FnDefId<Interner>;
 pub(crate) type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
 pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
+pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Arc<chalk_ir::TyData<Self>>;
@@ -41,6 +42,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
+    type InternedVariances = Arc<[chalk_ir::Variance]>;
     type DefId = InternId;
     type InternedAdtId = hir_def::AdtId;
     type Identifier = TypeAliasId;
@@ -369,6 +371,20 @@ impl chalk_ir::interner::Interner for Interner {
         _fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
         None
+    }
+
+    fn intern_variances<E>(
+        &self,
+        data: impl IntoIterator<Item = Result<chalk_ir::Variance, E>>,
+    ) -> Result<Self::InternedVariances, E> {
+        data.into_iter().collect()
+    }
+
+    fn variances_data<'a>(
+        &self,
+        variances: &'a Self::InternedVariances,
+    ) -> &'a [chalk_ir::Variance] {
+        &variances
     }
 }
 

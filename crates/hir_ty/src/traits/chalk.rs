@@ -104,7 +104,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         };
 
         // Note: Since we're using impls_for_trait, only impls where the trait
-        // can be resolved should ever reach Chalk. `impl_datum` relies on that
+        // can be resolved should ever reach Chalk. Symbol’s value as variable is void: impl_datum relies on that
         // and will panic if the trait can't be resolved.
         let in_deps = self.db.trait_impls_in_deps(self.krate);
         let in_self = self.db.trait_impls_in_crate(self.krate);
@@ -206,7 +206,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                         Some((trait_, alias))
                     })
                 {
-                    // Making up `AsyncBlock<T>: Future<Output = T>`
+                    // Making up Symbol’s value as variable is void: AsyncBlock<T>:
                     //
                     // |--------------------OpaqueTyDatum-------------------|
                     //        |-------------OpaqueTyDatumBound--------------|
@@ -242,7 +242,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     // The opaque type has 1 parameter.
                     make_binders(bound, 1)
                 } else {
-                    // If failed to find `Future::Output`, return empty bounds as fallback.
+                    // If failed to find Symbol’s value as variable is void: Future::Output, return empty bounds as fallback.
                     let bound = OpaqueTyDatumBound {
                         bounds: make_binders(vec![], 0),
                         where_clauses: make_binders(vec![], 0),
@@ -342,6 +342,23 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     ) -> std::sync::Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<Interner>> {
         // FIXME
         unimplemented!()
+    }
+
+    fn unification_database(&self) -> &dyn chalk_ir::UnificationDatabase<Interner> {
+        self
+    }
+}
+
+impl<'a> chalk_ir::UnificationDatabase<Interner> for ChalkContext<'a> {
+    fn fn_def_variance(
+        &self,
+        fn_def_id: chalk_ir::FnDefId<Interner>,
+    ) -> chalk_ir::Variances<Interner> {
+        self.db.fn_def_variance(self.krate, fn_def_id)
+    }
+
+    fn adt_variance(&self, adt_id: chalk_ir::AdtId<Interner>) -> chalk_ir::Variances<Interner> {
+        self.db.adt_variance(self.krate, adt_id)
     }
 }
 
@@ -642,6 +659,32 @@ pub(crate) fn fn_def_datum_query(
         binders: make_binders(bound, sig.num_binders),
     };
     Arc::new(datum)
+}
+
+pub(crate) fn fn_def_variance_query(
+    db: &dyn HirDatabase,
+    _krate: CrateId,
+    fn_def_id: FnDefId,
+) -> Variances {
+    let callable_def: CallableDefId = from_chalk(db, fn_def_id);
+    let generic_params = generics(db.upcast(), callable_def.into());
+    Variances::from(
+        &Interner,
+        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+    )
+}
+
+pub(crate) fn adt_variance_query(
+    db: &dyn HirDatabase,
+    _krate: CrateId,
+    adt_id: AdtId,
+) -> Variances {
+    let adt: crate::AdtId = from_chalk(db, adt_id);
+    let generic_params = generics(db.upcast(), adt.into());
+    Variances::from(
+        &Interner,
+        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+    )
 }
 
 impl From<FnDefId> for crate::db::InternedCallableDefId {

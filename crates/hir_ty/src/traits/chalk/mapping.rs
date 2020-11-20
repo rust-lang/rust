@@ -31,7 +31,8 @@ impl ToChalk for Ty {
                 TypeCtor::Ref(m) => ref_to_chalk(db, m, apply_ty.parameters),
                 TypeCtor::Array => array_to_chalk(db, apply_ty.parameters),
                 TypeCtor::FnPtr { num_args: _, is_varargs } => {
-                    let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
+                    let substitution =
+                        chalk_ir::FnSubst(apply_ty.parameters.to_chalk(db).shifted_in(&Interner));
                     chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                         num_binders: 0,
                         sig: chalk_ir::FnSig {
@@ -183,7 +184,7 @@ impl ToChalk for Ty {
                 assert_eq!(num_binders, 0);
                 let parameters: Substs = from_chalk(
                     db,
-                    substitution.shifted_out(&Interner).expect("fn ptr should have no binders"),
+                    substitution.0.shifted_out(&Interner).expect("fn ptr should have no binders"),
                 );
                 Ty::Apply(ApplicationTy {
                     ctor: TypeCtor::FnPtr {
@@ -536,6 +537,7 @@ impl ToChalk for GenericPredicate {
         // we don't produce any where clauses with binders and can't currently deal with them
         match where_clause
             .skip_binders()
+            .clone()
             .shifted_out(&Interner)
             .expect("unexpected bound vars in where clause")
         {
@@ -661,7 +663,12 @@ where
                     chalk_ir::TyVariableKind::Integer => TyKind::Integer,
                     chalk_ir::TyVariableKind::Float => TyKind::Float,
                 },
-                chalk_ir::VariableKind::Lifetime => panic!("unexpected lifetime from Chalk"),
+                // HACK: Chalk can sometimes return new lifetime variables. We
+                // want to just skip them, but to not mess up the indices of
+                // other variables, we'll just create a new type variable in
+                // their place instead. This should not matter (we never see the
+                // actual *uses* of the lifetime variable).
+                chalk_ir::VariableKind::Lifetime => TyKind::General,
                 chalk_ir::VariableKind::Const(_) => panic!("unexpected const from Chalk"),
             })
             .collect();
