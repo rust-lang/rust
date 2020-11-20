@@ -129,7 +129,7 @@ impl<T> Packet<T> {
             let ptr = unsafe { signal_token.cast_to_usize() };
 
             // race with senders to enter the blocking state
-            if self.state.compare_and_swap(EMPTY, ptr, Ordering::SeqCst) == EMPTY {
+            if self.state.compare_exchange(EMPTY, ptr, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
                 if let Some(deadline) = deadline {
                     let timed_out = !wait_token.wait_max_until(deadline);
                     // Try to reset the state
@@ -161,7 +161,12 @@ impl<T> Packet<T> {
                 // the state changes under our feet we'd rather just see that state
                 // change.
                 DATA => {
-                    self.state.compare_and_swap(DATA, EMPTY, Ordering::SeqCst);
+                    let _ = self.state.compare_exchange(
+                        DATA,
+                        EMPTY,
+                        Ordering::SeqCst,
+                        Ordering::SeqCst,
+                    );
                     match (&mut *self.data.get()).take() {
                         Some(data) => Ok(data),
                         None => unreachable!(),
@@ -264,7 +269,10 @@ impl<T> Packet<T> {
 
             // If we've got a blocked thread, then use an atomic to gain ownership
             // of it (may fail)
-            ptr => self.state.compare_and_swap(ptr, EMPTY, Ordering::SeqCst),
+            ptr => self
+                .state
+                .compare_exchange(ptr, EMPTY, Ordering::SeqCst, Ordering::SeqCst)
+                .unwrap_or_else(|x| x),
         };
 
         // Now that we've got ownership of our state, figure out what to do

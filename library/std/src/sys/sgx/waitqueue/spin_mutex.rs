@@ -42,7 +42,7 @@ impl<T> SpinMutex<T> {
 
     #[inline(always)]
     pub fn try_lock(&self) -> Option<SpinMutexGuard<'_, T>> {
-        if !self.lock.compare_and_swap(false, true, Ordering::Acquire) {
+        if self.lock.compare_exchange(false, true, Ordering::Acquire, Ordering::Acquire).is_ok() {
             Some(SpinMutexGuard { mutex: self })
         } else {
             None
