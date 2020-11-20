@@ -55,6 +55,12 @@ macro_rules! panic {
 /// io::stdout().flush().unwrap();
 /// ```
 #[macro_export]
+#[doc(alias = "echo")]
+#[doc(alias = "print")]
+#[doc(alias = "printf")]
+#[doc(alias = "console.log")]
+#[doc(alias = "log")]
+#[doc(alias = "puts")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! print {
@@ -88,6 +94,12 @@ macro_rules! print {
 /// println!("format {} arguments", "some");
 /// ```
 #[macro_export]
+#[doc(alias = "echo")]
+#[doc(alias = "print")]
+#[doc(alias = "printf")]
+#[doc(alias = "console.log")]
+#[doc(alias = "log")]
+#[doc(alias = "puts")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! println {
@@ -119,6 +131,12 @@ macro_rules! println {
 /// eprint!("Error: Could not complete task");
 /// ```
 #[macro_export]
+#[doc(alias = "echo")]
+#[doc(alias = "print")]
+#[doc(alias = "printf")]
+#[doc(alias = "console.log")]
+#[doc(alias = "log")]
+#[doc(alias = "puts")]
 #[stable(feature = "eprint", since = "1.19.0")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! eprint {
@@ -147,6 +165,12 @@ macro_rules! eprint {
 /// eprintln!("Error: Could not complete task");
 /// ```
 #[macro_export]
+#[doc(alias = "echo")]
+#[doc(alias = "print")]
+#[doc(alias = "printf")]
+#[doc(alias = "console.log")]
+#[doc(alias = "log")]
+#[doc(alias = "puts")]
 #[stable(feature = "eprint", since = "1.19.0")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! eprintln {
@@ -280,6 +304,13 @@ macro_rules! eprintln {
 /// [`debug!`]: https://docs.rs/log/*/log/macro.debug.html
 /// [`log`]: https://crates.io/crates/log
 #[macro_export]
+#[doc(alias = "echo")]
+#[doc(alias = "print")]
+#[doc(alias = "printf")]
+#[doc(alias = "console.log")]
+#[doc(alias = "log")]
+#[doc(alias = "puts")]
+#[doc(alias = "println")]
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
     () => {
