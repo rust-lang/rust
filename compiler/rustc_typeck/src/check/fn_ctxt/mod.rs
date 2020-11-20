@@ -188,7 +188,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         &self,
         _: Span,
         def_id: DefId,
-        assoc_name: Ident,
+        _: Ident,
     ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
@@ -202,23 +202,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
                     match predicate.skip_binders() {
                         ty::PredicateAtom::Trait(data, _) if data.self_ty().is_param(index) => {
-                            let trait_did = data.def_id();
-                            if tcx
-                                .associated_items(trait_did)
-                                .find_by_name_and_kind(
-                                    tcx,
-                                    assoc_name,
-                                    ty::AssocKind::Type,
-                                    trait_did,
-                                )
-                                .is_some()
-                            {
-                                // HACK(eddyb) should get the original `Span`.
-                                let span = tcx.def_span(def_id);
-                                Some((predicate, span))
-                            } else {
-                                None
-                            }
+                            // HACK(eddyb) should get the original `Span`.
+                            let span = tcx.def_span(def_id);
+                            Some((predicate, span))
                         }
                         _ => None,
                     }
