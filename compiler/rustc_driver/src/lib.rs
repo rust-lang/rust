@@ -1286,6 +1286,7 @@ pub fn init_env_logger(env: &str) {
     }
     let filter = tracing_subscriber::EnvFilter::from_env(env);
     let layer = tracing_tree::HierarchicalLayer::default()
+        .with_writer(io::stderr)
         .with_indent_lines(true)
         .with_ansi(true)
         .with_targets(true)
