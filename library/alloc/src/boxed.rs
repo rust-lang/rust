@@ -62,10 +62,12 @@
 //! T` obtained from [`Box::<T>::into_raw`] may be deallocated using the
 //! [`Global`] allocator with [`Layout::for_value(&*value)`].
 //!
-//! For zero-sized values, the `Box` pointer still has to be [valid] for reads and writes and
-//! sufficiently aligned. In particular, casting any aligned non-zero integer literal to a raw
-//! pointer produces a valid pointer, but a pointer pointing into previously allocated memory that
-//! since got freed is not valid.
+//! For zero-sized values, the `Box` pointer still has to be [valid] for reads
+//! and writes and sufficiently aligned. In particular, casting any aligned
+//! non-zero integer literal to a raw pointer produces a valid pointer, but a
+//! pointer pointing into previously allocated memory that since got freed is
+//! not valid. The recommended way to build a Box to a ZST if `Box::new` cannot
+//! be used is to use [`ptr::NonNull::dangling`].
 //!
 //! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented
 //! as a single pointer and is also ABI-compatible with C pointers
