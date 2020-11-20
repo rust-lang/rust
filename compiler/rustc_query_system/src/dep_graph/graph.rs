@@ -976,7 +976,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             // Fingerprint::combine() is faster than sending Fingerprint
             // through the StableHasher (at least as long as StableHasher
             // is so slow).
-            hash: self.anon_id_seed.combine(hasher.finish()),
+            hash: self.anon_id_seed.combine(hasher.finish()).into(),
         };
 
         self.intern_node(target_dep_node, task_deps.reads, Fingerprint::ZERO)

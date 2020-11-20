@@ -151,8 +151,67 @@ impl<D: rustc_serialize::Decoder> FingerprintDecoder for D {
         panic!("Cannot decode `Fingerprint` with `{}`", std::any::type_name::<D>());
     }
 }
+
 impl FingerprintDecoder for opaque::Decoder<'_> {
     fn decode_fingerprint(&mut self) -> Result<Fingerprint, String> {
         Fingerprint::decode_opaque(self)
+    }
+}
+
+// `PackedFingerprint` wraps a `Fingerprint`. Its purpose is to, on certain
+// architectures, behave like a `Fingerprint` without alignment requirements.
+// This behavior is only enabled on x86 and x86_64, where the impact of
+// unaligned accesses is tolerable in small doses.
+//
+// This may be preferable to use in large collections of structs containing
+// fingerprints, as it can reduce memory consumption by preventing the padding
+// that the more strictly-aligned `Fingerprint` can introduce. An application of
+// this is in the query dependency graph, which contains a large collection of
+// `DepNode`s. As of this writing, the size of a `DepNode` decreases by ~30%
+// (from 24 bytes to 17) by using the packed representation here, which
+// noticeably decreases total memory usage when compiling large crates.
+//
+// The wrapped `Fingerprint` is private to reduce the chance of a client
+// invoking undefined behavior by taking a reference to the packed field.
+#[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), repr(packed))]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy, Hash)]
+pub struct PackedFingerprint(Fingerprint);
+
+impl std::fmt::Display for PackedFingerprint {
+    #[inline]
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Copy to avoid taking reference to packed field.
+        let copy = self.0;
+        copy.fmt(formatter)
+    }
+}
+
+impl<E: rustc_serialize::Encoder> Encodable<E> for PackedFingerprint {
+    #[inline]
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        // Copy to avoid taking reference to packed field.
+        let copy = self.0;
+        copy.encode(s)
+    }
+}
+
+impl<D: rustc_serialize::Decoder> Decodable<D> for PackedFingerprint {
+    #[inline]
+    fn decode(d: &mut D) -> Result<Self, D::Error> {
+        Fingerprint::decode(d).map(|f| PackedFingerprint(f))
+    }
+}
+
+impl From<Fingerprint> for PackedFingerprint {
+    #[inline]
+    fn from(f: Fingerprint) -> PackedFingerprint {
+        PackedFingerprint(f)
+    }
+}
+
+impl From<PackedFingerprint> for Fingerprint {
+    #[inline]
+    fn from(f: PackedFingerprint) -> Fingerprint {
+        f.0
     }
 }

@@ -193,6 +193,15 @@ macro_rules! define_dep_nodes {
 
         pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
 
+        // We keep a lot of `DepNode`s in memory during compilation. It's not
+        // required that their size stay the same, but we don't want to change
+        // it inadvertently. This assert just ensures we're aware of any change.
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        static_assert_size!(DepNode, 17);
+
+        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+        static_assert_size!(DepNode, 24);
+
         pub trait DepNodeExt: Sized {
             /// Construct a DepNode from the given DepKind and DefPathHash. This
             /// method will assert that the given DepKind actually requires a
@@ -227,7 +236,7 @@ macro_rules! define_dep_nodes {
                 debug_assert!(kind.can_reconstruct_query_key() && kind.has_params());
                 DepNode {
                     kind,
-                    hash: def_path_hash.0,
+                    hash: def_path_hash.0.into(),
                 }
             }
 
@@ -243,7 +252,7 @@ macro_rules! define_dep_nodes {
             /// has been removed.
             fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
-                    let def_path_hash = DefPathHash(self.hash);
+                    let def_path_hash = DefPathHash(self.hash.into());
                     tcx.def_path_hash_to_def_id.as_ref()?.get(&def_path_hash).cloned()
                 } else {
                     None
