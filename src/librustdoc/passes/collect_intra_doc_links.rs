@@ -294,6 +294,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
         item_name: Symbol,
         item_str: &'path str,
+        span: rustc_span::Span,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
@@ -303,12 +304,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .find_map(|&impl_| {
                 cx.tcx
                     .associated_items(impl_)
-                    .find_by_name_and_namespace(
-                        cx.tcx,
-                        Ident::with_dummy_span(item_name),
-                        ns,
-                        impl_,
-                    )
+                    .find_by_name_and_namespace(cx.tcx, Ident::new(item_name, span), ns, impl_)
                     .map(|item| match item.kind {
                         ty::AssocKind::Fn => "method",
                         ty::AssocKind::Const => "associatedconstant",
@@ -347,7 +343,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
     ) -> Result<Res, ResolutionFailure<'a>> {
         let cx = self.cx;
-        let path = ast::Path::from_ident(Ident::from_str(path_str));
+        let path = ast::Path::from_ident(Ident::from_str_and_span(path_str, span));
         cx.enter_resolver(|resolver| {
             // FIXME(jynelson): does this really need 3 separate lookups?
             if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
@@ -497,9 +493,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         };
 
         let res = match ty_res {
-            Res::PrimTy(prim) => Some(
-                self.resolve_primitive_associated_item(prim, ns, module_id, item_name, item_str),
-            ),
+            Res::PrimTy(prim) => {
+                Some(self.resolve_primitive_associated_item(
+                    prim, ns, module_id, item_name, item_str, span,
+                ))
+            }
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias, did) => {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
                 // Checks if item_name belongs to `impl SomeItem`
@@ -510,7 +508,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .flat_map(|&imp| {
                         cx.tcx.associated_items(imp).find_by_name_and_namespace(
                             cx.tcx,
-                            Ident::with_dummy_span(item_name),
+                            Ident::new(item_name, span),
                             ns,
                             imp,
                         )
@@ -524,8 +522,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // To handle that properly resolve() would have to support
                     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                     .or_else(|| {
-                        let kind =
-                            resolve_associated_trait_item(did, module_id, item_name, ns, &self.cx);
+                        let kind = resolve_associated_trait_item(
+                            did, module_id, item_name, span, ns, &self.cx,
+                        );
                         debug!("got associated item kind {:?}", kind);
                         kind
                     });
@@ -593,7 +592,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             Res::Def(DefKind::Trait, did) => cx
                 .tcx
                 .associated_items(did)
-                .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, did)
+                .find_by_name_and_namespace(cx.tcx, Ident::new(item_name, span), ns, did)
                 .map(|item| {
                     let kind = match item.kind {
                         ty::AssocKind::Const => "associatedconstant",
@@ -674,6 +673,7 @@ fn resolve_associated_trait_item(
     did: DefId,
     module: DefId,
     item_name: Symbol,
+    span: rustc_span::Span,
     ns: Namespace,
     cx: &DocContext<'_>,
 ) -> Option<(ty::AssocKind, DefId)> {
@@ -722,7 +722,7 @@ fn resolve_associated_trait_item(
                             .associated_items(trait_)
                             .find_by_name_and_namespace(
                                 cx.tcx,
-                                Ident::with_dummy_span(item_name),
+                                Ident::new(item_name, span),
                                 ns,
                                 trait_,
                             )
@@ -742,7 +742,7 @@ fn resolve_associated_trait_item(
         candidates.extend(traits.iter().filter_map(|&trait_| {
             cx.tcx
                 .associated_items(trait_)
-                .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
+                .find_by_name_and_namespace(cx.tcx, Ident::new(item_name, span), ns, trait_)
                 .map(|assoc| (assoc.kind, assoc.def_id))
         }));
     }
