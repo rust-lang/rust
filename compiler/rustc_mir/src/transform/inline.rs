@@ -254,6 +254,11 @@ impl Inliner<'tcx> {
             self.tcx.sess.opts.debugging_opts.inline_mir_threshold
         };
 
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+            debug!("#[naked] present - not inlining");
+            return false;
+        }
+
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
             debug!("#[cold] present - not inlining");
             return false;
