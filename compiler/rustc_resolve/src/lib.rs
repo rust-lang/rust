@@ -3198,8 +3198,8 @@ impl<'a> Resolver<'a> {
         let path = if path_str.starts_with("::") {
             ast::Path {
                 span,
-                segments: iter::once(Ident::with_dummy_span(kw::PathRoot))
-                    .chain(path_str.split("::").skip(1).map(Ident::from_str))
+                segments: iter::once(Ident::new(kw::PathRoot, span))
+                    .chain(path_str.split("::").skip(1).map(|s| Ident::from_str_and_span(s, span)))
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
                 tokens: None,
@@ -3209,7 +3209,7 @@ impl<'a> Resolver<'a> {
                 span,
                 segments: path_str
                     .split("::")
-                    .map(Ident::from_str)
+                    .map(|s| Ident::from_str_and_span(s, span))
                     .map(|i| self.new_ast_path_segment(i))
                     .collect(),
                 tokens: None,
