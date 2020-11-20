@@ -286,7 +286,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
                 // Safety: We have consumed self.handle and the reference returned.
                 let map = unsafe { self.dormant_map.awaken() };
                 let root = map.root.as_mut().unwrap();
-                root.push_internal_level().push(ins.k, ins.v, ins.right);
+                root.push_internal_level().push(ins.kv.0, ins.kv.1, ins.right);
                 map.length += 1;
                 val_ptr
             }

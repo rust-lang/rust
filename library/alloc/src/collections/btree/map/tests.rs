@@ -49,7 +49,7 @@ impl<K, V> BTreeMap<K, V> {
     // Panics if the map (or the code navigating it) is corrupted.
     fn check_invariants(&self) {
         if let Some(root) = &self.root {
-            let root_node = root.node_as_ref();
+            let root_node = root.reborrow();
 
             // Check the back pointers top-down, before we attempt to rely on
             // more serious navigation code.
@@ -92,7 +92,7 @@ impl<K, V> BTreeMap<K, V> {
         K: Debug,
     {
         if let Some(root) = self.root.as_ref() {
-            root.node_as_ref().dump_keys()
+            root.reborrow().dump_keys()
         } else {
             String::from("not yet allocated")
         }
