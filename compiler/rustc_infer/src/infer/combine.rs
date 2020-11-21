@@ -645,6 +645,11 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 .type_variables()
                                 .new_var(self.for_universe, Diverging::NotDiverging, origin);
                             let u = self.tcx().mk_ty_var(new_var_id);
+
+                            // Record that we replaced `vid` with `new_var_id` as part of a generalization
+                            // operation. This is needed to detect cyclic types. To see why, see the
+                            // docs in the `type_variables` module.
+                            self.infcx.inner.borrow_mut().type_variables().sub(vid, new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}", vid, u);
                             Ok(u)
                         }
