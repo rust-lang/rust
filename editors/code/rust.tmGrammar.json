@@ -409,7 +409,7 @@
                 {
                     "comment": "booleans",
                     "name": "constant.language.bool.rust",
-                    "match": "\\btrue|false\\b"
+                    "match": "\\b(true|false)\\b"
                 }
             ]
         },
