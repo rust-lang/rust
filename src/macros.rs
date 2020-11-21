@@ -13,9 +13,7 @@ use std::collections::HashMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use rustc_ast::token::{BinOpToken, DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{
-    Cursor, LazyTokenStream, LazyTokenStreamInner, TokenStream, TokenTree,
-};
+use rustc_ast::tokenstream::{Cursor, LazyTokenStream, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
 use rustc_parse::parser::Parser;
@@ -1214,7 +1212,7 @@ pub(crate) fn convert_try_mac(
             kind: ast::ExprKind::Try(parser.parse_expr().ok()?),
             span: mac.span(), // incorrect span, but shouldn't matter too much
             attrs: ast::AttrVec::new(),
-            tokens: Some(LazyTokenStream::new(LazyTokenStreamInner::Ready(ts))),
+            tokens: Some(LazyTokenStream::new(ts)),
         })
     } else {
         None
