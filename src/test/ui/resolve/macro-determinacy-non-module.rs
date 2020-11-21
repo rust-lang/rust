@@ -1,5 +1,7 @@
+// check-pass
+
 use std as line;
 
-const C: u32 = line!(); //~ ERROR cannot determine resolution for the macro `line`
+const C: u32 = line!();
 
 fn main() {}
