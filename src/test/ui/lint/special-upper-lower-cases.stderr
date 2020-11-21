@@ -1,0 +1,32 @@
+warning: type `𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝` should have an upper camel case name
+  --> $DIR/special-upper-lower-cases.rs:11:8
+   |
+LL | struct 𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝;
+   |        ^^^^^^^^^
+   |
+   = note: `#[warn(non_camel_case_types)]` on by default
+
+warning: type `𝕟𝕠𝕥_𝕒_𝕔𝕒𝕞𝕖𝕝` should have an upper camel case name
+  --> $DIR/special-upper-lower-cases.rs:15:8
+   |
+LL | struct 𝕟𝕠𝕥_𝕒_𝕔𝕒𝕞𝕖𝕝;
+   |        ^^^^^^^^^^^ help: convert the identifier to upper camel case: `𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝`
+
+warning: static variable `𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲` should have an upper case name
+  --> $DIR/special-upper-lower-cases.rs:18:8
+   |
+LL | static 𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲: i32 = 1;
+   |        ^^^^^^^^^^^^
+   |
+   = note: `#[warn(non_upper_case_globals)]` on by default
+
+warning: variable `𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢` should have a snake case name
+  --> $DIR/special-upper-lower-cases.rs:22:9
+   |
+LL |     let 𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢 = 1;
+   |         ^^^^^^^^^
+   |
+   = note: `#[warn(non_snake_case)]` on by default
+
+warning: 4 warnings emitted
+
