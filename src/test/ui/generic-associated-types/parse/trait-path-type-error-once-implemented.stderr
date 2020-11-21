@@ -1,0 +1,8 @@
+error: generic associated types in trait paths are currently not implemented
+  --> $DIR/trait-path-type-error-once-implemented.rs:8:30
+   |
+LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                              ^^^
+
+error: aborting due to previous error
+

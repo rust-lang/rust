@@ -1,0 +1,14 @@
+error: lifetime in trait object type must be followed by `+`
+  --> $DIR/trait-path-unimplemented.rs:13:31
+   |
+LL |   fn f1<'a>(arg : Box<dyn X<Y('a) = &'a ()>>) {}
+   |                               ^^
+
+error: generic associated types in trait paths are currently not implemented
+  --> $DIR/trait-path-unimplemented.rs:8:30
+   |
+LL |   fn f1<'a>(arg : Box<dyn X<Y<'a> = &'a ()>>) {}
+   |                              ^^^^
+
+error: aborting due to 2 previous errors
+
