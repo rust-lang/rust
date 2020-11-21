@@ -1,0 +1,14 @@
+error: constant pattern depends on a generic parameter
+  --> $DIR/issue-79137-toogeneric.rs:12:43
+   |
+LL |     matches!(GetVariantCount::<T>::VALUE, GetVariantCount::<T>::VALUE)
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: constant pattern depends on a generic parameter
+  --> $DIR/issue-79137-toogeneric.rs:12:43
+   |
+LL |     matches!(GetVariantCount::<T>::VALUE, GetVariantCount::<T>::VALUE)
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
