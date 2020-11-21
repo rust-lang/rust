@@ -2,7 +2,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(destructuring_assignment)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]

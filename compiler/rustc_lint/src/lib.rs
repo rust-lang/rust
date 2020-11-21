@@ -35,7 +35,7 @@
 #![feature(iter_order_by)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
 #![feature(control_flow_enum)]

@@ -31,7 +31,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 #![feature(crate_visibility_modifier)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]
 
