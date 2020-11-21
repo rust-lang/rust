@@ -82,50 +82,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         module
     }
 
-    fn visit_variant_data(
-        &mut self,
-        item: &'tcx hir::Item<'_>,
-        name: Symbol,
-        sd: &'tcx hir::VariantData<'_>,
-        generics: &'tcx hir::Generics<'_>,
-    ) -> Struct<'tcx> {
-        debug!("visiting struct");
-        let struct_type = struct_type_from_def(&*sd);
-        Struct { id: item.hir_id, struct_type, name, generics, fields: sd.fields() }
-    }
-
-    fn visit_union_data(
-        &mut self,
-        item: &'tcx hir::Item<'_>,
-        name: Symbol,
-        sd: &'tcx hir::VariantData<'_>,
-        generics: &'tcx hir::Generics<'_>,
-    ) -> Union<'tcx> {
-        debug!("visiting union");
-        let struct_type = struct_type_from_def(&*sd);
-        Union { id: item.hir_id, struct_type, name, generics, fields: sd.fields() }
-    }
-
-    fn visit_enum_def(
-        &mut self,
-        it: &'tcx hir::Item<'_>,
-        name: Symbol,
-        def: &'tcx hir::EnumDef<'_>,
-        generics: &'tcx hir::Generics<'_>,
-    ) -> Enum<'tcx> {
-        debug!("visiting enum");
-        Enum {
-            name,
-            variants: def
-                .variants
-                .iter()
-                .map(|v| Variant { name: v.ident.name, id: v.id, def: &v.data })
-                .collect(),
-            generics,
-            id: it.hir_id,
-        }
-    }
-
     fn visit_fn(
         &mut self,
         om: &mut Module<'tcx>,
@@ -414,45 +370,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     Some(ident.name),
                 ));
             }
-            hir::ItemKind::Enum(ref ed, ref gen) => {
-                om.enums.push(self.visit_enum_def(item, ident.name, ed, gen))
-            }
-            hir::ItemKind::Struct(ref sd, ref gen) => {
-                om.structs.push(self.visit_variant_data(item, ident.name, sd, gen))
-            }
-            hir::ItemKind::Union(ref sd, ref gen) => {
-                om.unions.push(self.visit_union_data(item, ident.name, sd, gen))
-            }
             hir::ItemKind::Fn(ref sig, ref gen, body) => {
                 self.visit_fn(om, item, ident.name, &sig.decl, sig.header, gen, body)
             }
-            hir::ItemKind::TyAlias(ty, ref gen) => {
-                let t = Typedef { ty, gen, name: ident.name, id: item.hir_id };
-                om.typedefs.push(t);
-            }
-            hir::ItemKind::OpaqueTy(ref opaque_ty) => {
-                let t = OpaqueTy { opaque_ty, name: ident.name, id: item.hir_id };
-                om.opaque_tys.push(t);
-            }
-            hir::ItemKind::Static(type_, mutability, expr) => {
-                let s = Static {
-                    type_,
-                    mutability,
-                    expr,
-                    id: item.hir_id,
-                    name: ident.name,
-                    attrs: &item.attrs,
-                    span: item.span,
-                    vis: &item.vis,
-                };
-                om.statics.push(s);
-            }
-            hir::ItemKind::Const(type_, expr) => {
+            hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed)),
+            hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if ident.name != kw::Underscore {
-                    let s = Constant { type_, expr, id: item.hir_id, name: ident.name };
-                    om.constants.push(s);
+                    om.items.push((item, renamed));
                 }
             }
             hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
@@ -469,11 +401,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.traits.push(t);
             }
-            hir::ItemKind::TraitAlias(ref generics, ref bounds) => {
-                let t = TraitAlias { name: ident.name, generics, bounds, id: item.hir_id };
-                om.trait_aliases.push(t);
-            }
-
             hir::ItemKind::Impl {
                 unsafety,
                 polarity,
