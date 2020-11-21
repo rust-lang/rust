@@ -297,7 +297,7 @@
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
 #![feature(auto_traits)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
