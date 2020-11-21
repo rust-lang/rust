@@ -492,7 +492,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             Res::PrimTy(prim) => Some(
                 self.resolve_primitive_associated_item(prim, ns, module_id, item_name, item_str),
             ),
-            Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias, did) => {
+            Res::Def(
+                DefKind::Struct
+                | DefKind::Union
+                | DefKind::Enum
+                | DefKind::TyAlias
+                | DefKind::ForeignTy,
+                did,
+            ) => {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
                 // Checks if item_name belongs to `impl SomeItem`
                 let assoc_item = cx
