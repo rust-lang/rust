@@ -113,6 +113,8 @@ pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
     sysroot.join(&relative_target_lib_path(sysroot, target_triple))
 }
 
+// This function checks if sysroot is found using env::args().next(), and if it
+// is not found, uses env::current_exe() to imply sysroot.
 pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
     fn canonicalize(path: PathBuf) -> PathBuf {
@@ -123,15 +125,51 @@ pub fn get_or_default_sysroot() -> PathBuf {
         fix_windows_verbatim_for_gcc(&path)
     }
 
-    match env::current_exe() {
-        Ok(exe) => {
-            let mut p = canonicalize(exe);
-            p.pop();
-            p.pop();
-            p
+    // Use env::current_exe() to get the path of the executable following
+    // symlinks/canonicalizing components.
+    fn from_current_exe() -> PathBuf {
+        match env::current_exe() {
+            Ok(exe) => {
+                let mut p = canonicalize(exe);
+                p.pop();
+                p.pop();
+                p
+            }
+            Err(e) => panic!("failed to get current_exe: {}", e),
         }
-        Err(e) => panic!("failed to get current_exe: {}", e),
     }
+
+    // Use env::args().next() to get the path of the executable without
+    // following symlinks/canonicalizing any component. This makes the rustc
+    // binary able to locate Rust libraries in systems using content-addressable
+    // storage (CAS).
+    fn from_env_args_next() -> Option<PathBuf> {
+        match env::args_os().next() {
+            Some(first_arg) => {
+                let mut p = PathBuf::from(first_arg);
+
+                // Check if sysroot is found using env::args().next() only if the rustc in argv[0]
+                // is a symlink (see #79253). We might want to change/remove it to conform with
+                // https://www.gnu.org/prep/standards/standards.html#Finding-Program-Files in the
+                // future.
+                if fs::read_link(&p).is_err() {
+                    // Path is not a symbolic link or does not exist.
+                    return None;
+                }
+
+                p.pop();
+                p.pop();
+                let mut libdir = PathBuf::from(&p);
+                libdir.push(find_libdir(&p).as_ref());
+                if libdir.exists() { Some(p) } else { None }
+            }
+            None => None,
+        }
+    }
+
+    // Check if sysroot is found using env::args().next(), and if is not found,
+    // use env::current_exe() to imply sysroot.
+    from_env_args_next().unwrap_or(from_current_exe())
 }
 
 // The name of the directory rustc expects libraries to be located.
