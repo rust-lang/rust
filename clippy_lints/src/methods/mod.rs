@@ -1351,7 +1351,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).collect::<Result<(),_>()`.
+    /// **What it does:** Checks for usage of `_.map(_).collect::<Result<(), _>()`.
     ///
     /// **Why is this bad?** Using `try_for_each` instead is more readable and idiomatic.
     ///

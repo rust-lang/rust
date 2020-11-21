@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// let mut twins = vec!((1,1), (2,2));
+    /// let mut twins = vec!((1, 1), (2, 2));
     /// twins.sort_by_key(|x| { x.1; });
     /// ```
     pub UNIT_RETURN_EXPECTING_ORD,

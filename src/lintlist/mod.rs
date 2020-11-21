@@ -2751,7 +2751,7 @@ vec![
     Lint {
         name: "useless_conversion",
         group: "complexity",
-        desc: "calls to `Into`, `TryInto`, `From`, `TryFrom`, `IntoIter` that performs useless conversions to the same type",
+        desc: "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type",
         deprecation: None,
         module: "useless_conversion",
     },
