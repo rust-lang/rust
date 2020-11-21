@@ -1931,6 +1931,62 @@ fn test_find() {
 }
 
 #[test]
+fn find_or_first() {
+    assert_eq!([0, 1, 2, 3].iter().find_or_first(|&&n| n > 1), Some(2));
+    assert_eq!([0, 1, 2, 3].iter().find_or_first(|&&n| n > 2), Some(3));
+    assert_eq!([0, 1, 2, 3].iter().find_or_first(|&&n| n > 3), Some(0));
+    assert_eq!([3, 2, 1, 0].iter().find_or_first(|&&n| n > 1), Some(3));
+    assert_eq!([1].iter().find_or_first(|&&n| n > 1), Some(1));
+    assert_eq!([2].iter().find_or_first(|&&n| n > 1), Some(2));
+    assert_eq!([(); 0].iter().find_or_first(|()| unreachable!()), None);
+}
+
+#[test]
+fn find_or_nth() {
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 1, 0), Some(2));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 1, 1), Some(2));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 1, 2), Some(2));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 1, 3), Some(2));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 1, 4), Some(2));
+
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 2, 0), Some(3));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 2, 1), Some(3));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 2, 2), Some(3));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 2, 3), Some(3));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 2, 4), Some(3));
+
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 3, 0), Some(0));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 3, 1), Some(1));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 3, 2), Some(2));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 3, 3), Some(3));
+    assert_eq!([0, 1, 2, 3].iter().find_or_nth(|&&n| n > 3, 4), None);
+
+    assert_eq!([3, 2, 1, 0].iter().find_or_nth(|&&n| n > 1, 0), Some(3));
+    assert_eq!([3, 2, 1, 0].iter().find_or_nth(|&&n| n > 1, 1), Some(3));
+    assert_eq!([3, 2, 1, 0].iter().find_or_nth(|&&n| n > 1, 2), Some(3));
+    assert_eq!([3, 2, 1, 0].iter().find_or_nth(|&&n| n > 1, 3), Some(3));
+    assert_eq!([3, 2, 1, 0].iter().find_or_nth(|&&n| n > 1, 4), Some(3));
+
+    assert_eq!([1].iter().find_or_nth(|&&n| n > 1, 0), Some(1));
+    assert_eq!([1].iter().find_or_nth(|&&n| n > 1, 1), None);
+    assert_eq!([2].iter().find_or_nth(|&&n| n > 1, 0), Some(2));
+    assert_eq!([2].iter().find_or_nth(|&&n| n > 1, 1), Some(2));
+
+    assert_eq!([(); 0].iter().find_or_nth(|()| unreachable!(), 0), None);
+}
+
+#[test]
+fn find_or_last() {
+    assert_eq!([0, 1, 2, 3].iter().find_or_last(|&&n| n > 1), Some(2));
+    assert_eq!([0, 1, 2, 3].iter().find_or_last(|&&n| n > 2), Some(3));
+    assert_eq!([0, 1, 2, 3].iter().find_or_last(|&&n| n > 3), Some(3));
+    assert_eq!([3, 2, 1, 0].iter().find_or_last(|&&n| n > 1), Some(3));
+    assert_eq!([1].iter().find_or_last(|&&n| n > 1), Some(1));
+    assert_eq!([2].iter().find_or_last(|&&n| n > 1), Some(2));
+    assert_eq!([(); 0].iter().find_or_last(|()| unreachable!()), None);
+}
+
+#[test]
 fn test_find_map() {
     let xs: &[isize] = &[];
     assert_eq!(xs.iter().find_map(half_if_even), None);

@@ -2231,6 +2231,179 @@ pub trait Iterator {
         self.try_fold((), check(predicate)).break_value()
     }
 
+    /// Searches for an element of an iterator that satisfies a predicate, returns the first
+    /// element if no such element is found.
+    ///
+    /// `find_or_first()` takes a closure that returns `true` or `false`. It applies this closure
+    /// to each element of the iterator, and if any of them return `true`, then `find_or_first()`
+    /// returns [`Some(element)`]. If they all return `false`, it returns the same as if [`next`]
+    /// was invoked instead, though the iterator will be empty.
+    ///
+    /// `find_or_first()` is short-circuiting; in other words, it will stop processing as soon as
+    /// closure returns `true`.
+    ///
+    /// Because `find_or_first()` takes a reference, and many iterators iterate over references,
+    /// this leads to a possibly confusing situation where the argument is a double reference. You
+    /// can see this effect in the examples below, with `&&x`.
+    ///
+    /// [`Some(element)`]: Some
+    /// [`next`]: Iterator::next
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(iter_find_or_fnl)]
+    ///
+    /// let a = [0, 1, 2, 3];
+    ///
+    /// assert_eq!(
+    ///     a.iter().find_or_first(|&&x| x >  1),
+    ///     Some(&2) // predicate is satisfied
+    /// );
+    /// assert_eq!(
+    ///     a.iter().find_or_first(|&&x| x > 10),
+    ///     Some(&0) // predicate not satisfied, first element is returned
+    /// );
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_find_or_fnl", reason = "recently added", issue = "none")]
+    fn find_or_first<P>(&mut self, mut predicate: P) -> Option<Self::Item>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool,
+    {
+        match self.next() {
+            Some(item) if predicate(&item) => Some(item),
+            default => self.find(predicate).or(default),
+        }
+    }
+
+    /// Searches for an element of an iterator that satisfies a predicate, returns the `n`th
+    /// element if no such element is found.
+    ///
+    /// `find_or_nth()` takes a closure that returns `true` or `false`. It applies this closure to
+    /// each element of the iterator, and if any of them return `true`, then `find_or_nth()`
+    /// returns [`Some(element)`]. If they all return `false`, it returns the same as if [`nth(n)`]
+    /// was invoked instead, though the iterator will be empty end.
+    ///
+    /// Like most indexing operations, the count starts from zero, so if `predicate` is never
+    /// satisfied, `find_or_nth(predicate, 0)` returns the first item, `find_or_nth(1)` the second,
+    /// and so on.
+    ///
+    /// `find_or_nth()` is short-circuiting; in other words, it will stop processing as soon as the
+    /// closure returns `true`.
+    ///
+    /// Because `find_or_nth()` takes a reference, and many iterators iterate over references, this
+    /// leads to a possibly confusing situation where the argument is a double reference. You can
+    /// see this effect in the examples below, with `&&x`.
+    ///
+    /// [`Some(element)`]: Some
+    /// [`nth(n)`]: Iterator::nth
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(iter_find_or_fnl)]
+    ///
+    /// let a = [0, 1, 2, 3];
+    ///
+    /// assert_eq!(
+    ///     a.iter().find_or_nth(|&&x| x >  1, 2),
+    ///     Some(&2) // predicate is satisfied
+    /// );
+    /// assert_eq!(
+    ///     a.iter().find_or_nth(|&&x| x > 10, 2),
+    ///     Some(&2) // predicate not satisfied, 3rd element is returned
+    /// );
+    /// assert_eq!(
+    ///     a.iter().find_or_nth(|&&x| x > 10, 5),
+    ///     None // predicate not satisfied, no 6th element
+    /// );
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_find_or_fnl", reason = "recently added", issue = "none")]
+    fn find_or_nth<P>(&mut self, predicate: P, n: usize) -> Option<Self::Item>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool,
+    {
+        #[inline]
+        fn check<T>(
+            mut predicate: impl FnMut(&T) -> bool,
+            n: usize,
+        ) -> impl FnMut(Option<T>, (usize, T)) -> ControlFlow<T, Option<T>> {
+            move |prev, (idx, cur)| {
+                if predicate(&cur) {
+                    ControlFlow::Break(cur)
+                } else if idx == n {
+                    debug_assert!(prev.is_none());
+                    ControlFlow::Continue(Some(cur))
+                } else {
+                    debug_assert_eq!(idx < n, prev.is_none());
+                    ControlFlow::Continue(prev)
+                }
+            }
+        }
+
+        self.enumerate().try_fold(None, check(predicate, n)).into_result().unwrap_or_else(Some)
+    }
+
+    /// Searches for an element of an iterator that satisfies a predicate, returns the last
+    /// element if no such element is found.
+    ///
+    /// `find_or_last()` takes a closure that returns `true` or `false`. It applies this closure to
+    /// each element of the iterator, and if any of them return `true`, then `find_or_last()`
+    /// returns [`Some(element)`]. If they all return `false`, it returns the same as if [`last`]
+    /// was invoked instead.
+    ///
+    /// `find_or_last()` is short-circuiting; in other words, it will stop processing as soon as the
+    /// closure returns `true`.
+    ///
+    /// Because `find_or_last()` takes a reference, and many iterators iterate over references, this
+    /// leads to a possibly confusing situation where the argument is a double reference. You can
+    /// see this effect in the examples below, with `&&x`.
+    ///
+    /// [`Some(element)`]: Some
+    /// [`last`]: Iterator::last
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(iter_find_or_fnl)]
+    ///
+    /// let a = [0, 1, 2, 3];
+    ///
+    /// assert_eq!(
+    ///     a.iter().find_or_last(|&&x| x >  1),
+    ///     Some(&2) // predicate is satisfied
+    /// );
+    /// assert_eq!(
+    ///     a.iter().find_or_last(|&&x| x > 10),
+    ///     Some(&3) // predicate not satisfied, last element is returned
+    /// );
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_find_or_fnl", reason = "recently added", issue = "none")]
+    fn find_or_last<P>(&mut self, predicate: P) -> Option<Self::Item>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool,
+    {
+        #[inline]
+        fn check<T>(
+            mut predicate: impl FnMut(&T) -> bool,
+        ) -> impl FnMut(Option<T>, T) -> ControlFlow<T, Option<T>> {
+            move |_, cur| {
+                if predicate(&cur) {
+                    ControlFlow::Break(cur)
+                } else {
+                    ControlFlow::Continue(Some(cur))
+                }
+            }
+        }
+        self.try_fold(None, check(predicate)).into_result().unwrap_or_else(Some)
+    }
+
     /// Applies function to the elements of iterator and returns
     /// the first non-none result.
     ///
