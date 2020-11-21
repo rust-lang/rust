@@ -324,6 +324,52 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
 
+crate struct MatchCheckCtxt<'a, 'tcx> {
+    crate tcx: TyCtxt<'tcx>,
+    /// The module in which the match occurs. This is necessary for
+    /// checking inhabited-ness of types because whether a type is (visibly)
+    /// inhabited can depend on whether it was defined in the current module or
+    /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
+    /// outside its module and should not be matchable with an empty match statement.
+    crate module: DefId,
+    crate param_env: ty::ParamEnv<'tcx>,
+    crate pattern_arena: &'a TypedArena<Pat<'tcx>>,
+}
+
+impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
+    pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
+        if self.tcx.features().exhaustive_patterns {
+            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
+        } else {
+            false
+        }
+    }
+
+    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
+    pub(super) fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
+        match ty.kind() {
+            ty::Adt(def, ..) => {
+                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
+            }
+            _ => false,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(super) struct PatCtxt<'a, 'p, 'tcx> {
+    pub(super) cx: &'a MatchCheckCtxt<'p, 'tcx>,
+    /// Current state of the matrix.
+    pub(super) matrix: &'a Matrix<'p, 'tcx>,
+    /// Type of the current column under investigation.
+    pub(super) ty: Ty<'tcx>,
+    /// Span of the current pattern under investigation.
+    pub(super) span: Span,
+    /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
+    /// subpattern.
+    pub(super) is_top_level: bool,
+}
+
 crate fn expand_pattern<'tcx>(pat: Pat<'tcx>) -> Pat<'tcx> {
     LiteralExpander.fold_pattern(&pat)
 }
@@ -572,39 +618,6 @@ impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     }
 }
 
-crate struct MatchCheckCtxt<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    /// The module in which the match occurs. This is necessary for
-    /// checking inhabited-ness of types because whether a type is (visibly)
-    /// inhabited can depend on whether it was defined in the current module or
-    /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
-    /// outside it's module and should not be matchable with an empty match
-    /// statement.
-    crate module: DefId,
-    crate param_env: ty::ParamEnv<'tcx>,
-    crate pattern_arena: &'a TypedArena<Pat<'tcx>>,
-}
-
-impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
-    pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
-        } else {
-            false
-        }
-    }
-
-    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
-    pub(super) fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
-        match ty.kind() {
-            ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
-            }
-            _ => false,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 crate enum Usefulness<'tcx> {
     /// Carries, for each column in the matrix, a set of sub-branches that have been found to be
@@ -682,20 +695,6 @@ impl<'tcx> Usefulness<'tcx> {
 enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness,
-}
-
-#[derive(Copy, Clone)]
-pub(super) struct PatCtxt<'a, 'p, 'tcx> {
-    pub(super) cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    /// Current state of the matrix.
-    pub(super) matrix: &'a Matrix<'p, 'tcx>,
-    /// Type of the current column under investigation.
-    pub(super) ty: Ty<'tcx>,
-    /// Span of the current pattern under investigation.
-    pub(super) span: Span,
-    /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
-    /// subpattern.
-    pub(super) is_top_level: bool,
 }
 
 /// A witness of non-exhaustiveness for error reporting, represented
