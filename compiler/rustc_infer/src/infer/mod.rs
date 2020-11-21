@@ -961,23 +961,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         predicate: ty::PolySubtypePredicate<'tcx>,
     ) -> Option<InferResult<'tcx, ()>> {
-        // Subtle: it's ok to skip the binder here and resolve because
-        // `shallow_resolve` just ignores anything that is not a type
-        // variable, and because type variable's can't (at present, at
-        // least) capture any of the things bound by this binder.
+        // Check for two unresolved inference variables, in which case we can
+        // make no progress. This is partly a micro-optimization, but it's
+        // also an opportunity to "sub-unify" the variables. This isn't
+        // *necessary* to prevent cycles, because they would eventually be sub-unified
+        // anyhow during generalization, but it helps with diagnostics (we can detect
+        // earlier that they are sub-unified).
         //
-        // NOTE(nmatsakis): really, there is no *particular* reason to do this
-        // `shallow_resolve` here except as a micro-optimization.
-        // Naturally I could not resist.
-        let two_unbound_type_vars = {
-            let a = self.shallow_resolve(predicate.skip_binder().a);
-            let b = self.shallow_resolve(predicate.skip_binder().b);
-            a.is_ty_var() && b.is_ty_var()
-        };
-
-        if two_unbound_type_vars {
-            // Two unbound type variables? Can't make progress.
-            return None;
+        // Note that we can just skip the binders here because
+        // type variables can't (at present, at
+        // least) capture any of the things bound by this binder.
+        {
+            let r_a = self.shallow_resolve(predicate.skip_binder().a);
+            let r_b = self.shallow_resolve(predicate.skip_binder().b);
+            match (r_a.kind(), r_b.kind()) {
+                (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                    self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
+                    return None;
+                }
+                _ => {}
+            }
         }
 
         Some(self.commit_if_ok(|_snapshot| {

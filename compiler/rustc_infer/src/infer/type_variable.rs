@@ -75,14 +75,30 @@ pub struct TypeVariableStorage<'tcx> {
     ///     ?1 <: ?3
     ///     Box<?3> <: ?1
     ///
-    /// This works because `?1` and `?3` are unified in the
-    /// `sub_relations` relation (not in `eq_relations`). Then when we
-    /// process the `Box<?3> <: ?1` constraint, we do an occurs check
-    /// on `Box<?3>` and find a potential cycle.
+    /// Without this second table, what would happen in a case like
+    /// this is that we would instantiate `?1` with a generalized
+    /// type like `Box<?6>`. We would then relate `Box<?3> <: Box<?6>`
+    /// and infer that `?3 <: ?6`. Next, since `?1` was instantiated,
+    /// we would process `?1 <: ?3`, generalize `?1 = Box<?6>` to `Box<?9>`,
+    /// and instantiate `?3` with `Box<?9>`. Finally, we would relate
+    /// `?6 <: ?9`. But now that we instantiated `?3`, we can process
+    /// `?3 <: ?6`, which gives us `Box<?9> <: ?6`... and the cycle
+    /// continues. (This is `occurs-check-2.rs`.)
+    ///
+    /// What prevents this cycle is that when we generalize
+    /// `Box<?3>` to `Box<?6>`, we also sub-unify `?3` and `?6`
+    /// (in the generalizer). When we then process `Box<?6> <: ?3`,
+    /// the occurs check then fails because `?6` and `?3` are sub-unified,
+    /// and hence generalization fails.
     ///
     /// This is reasonable because, in Rust, subtypes have the same
     /// "skeleton" and hence there is no possible type such that
     /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
+    ///
+    /// In practice, we sometimes sub-unify variables in other spots, such
+    /// as when processing subtype predicates. This is not necessary but is
+    /// done to aid diagnostics, as it allows us to be more effective when
+    /// we guide the user towards where they should insert type hints.
     sub_relations: ut::UnificationTableStorage<ty::TyVid>,
 }
 
