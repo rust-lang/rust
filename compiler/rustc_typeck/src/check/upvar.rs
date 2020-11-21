@@ -55,6 +55,11 @@ enum PlaceAncestryRelation {
     Divergent,
 }
 
+/// Intermediate format to store a captured `Place` and associated `ty::CaptureInfo`
+/// during capture analysis. Information in this map feeds into the minimum capture
+/// analysis pass.
+type InferredCaptureInformation<'tcx> = FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>>;
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn closure_analyze(&self, body: &'tcx hir::Body<'tcx>) {
         InferBorrowKindVisitor { fcx: self }.visit_body(body);
@@ -124,28 +129,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let local_def_id = closure_def_id.expect_local();
 
-        let mut capture_information: FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>> =
-            Default::default();
-        if !self.tcx.features().capture_disjoint_fields {
-            if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
-                for (&var_hir_id, _) in upvars.iter() {
-                    let place = self.place_for_root_variable(local_def_id, var_hir_id);
-
-                    debug!("seed place {:?}", place);
-
-                    let upvar_id = ty::UpvarId::new(var_hir_id, local_def_id);
-                    let capture_kind = self.init_capture_kind(capture_clause, upvar_id, span);
-                    let info = ty::CaptureInfo {
-                        capture_kind_expr_id: None,
-                        path_expr_id: None,
-                        capture_kind,
-                    };
-
-                    capture_information.insert(place, info);
-                }
-            }
-        }
-
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
         assert_eq!(body_owner_def_id.to_def_id(), closure_def_id);
         let mut delegate = InferBorrowKind {
@@ -155,7 +138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             capture_clause,
             current_closure_kind: ty::ClosureKind::LATTICE_BOTTOM,
             current_origin: None,
-            capture_information,
+            capture_information: Default::default(),
         };
         euv::ExprUseVisitor::new(
             &mut delegate,
@@ -171,6 +154,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             closure_def_id, delegate.capture_information
         );
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
+
+        self.compute_min_captures(closure_def_id, delegate.capture_information);
+
+        // We now fake capture information for all variables that are mentioned within the closure
+        // We do this after handling migrations so that min_captures computes before
+        if !self.tcx.features().capture_disjoint_fields {
+            let mut capture_information: InferredCaptureInformation<'tcx> = Default::default();
+
+            if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+                for var_hir_id in upvars.keys() {
+                    let place = self.place_for_root_variable(local_def_id, *var_hir_id);
+
+                    debug!("seed place {:?}", place);
+
+                    let upvar_id = ty::UpvarId::new(*var_hir_id, local_def_id);
+                    let capture_kind = self.init_capture_kind(capture_clause, upvar_id, span);
+                    let fake_info = ty::CaptureInfo {
+                        capture_kind_expr_id: None,
+                        path_expr_id: None,
+                        capture_kind,
+                    };
+
+                    capture_information.insert(place, fake_info);
+                }
+            }
+
+            // This will update the min captures based on this new fake information.
+            self.compute_min_captures(closure_def_id, capture_information);
+        }
 
         if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
@@ -198,7 +210,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.compute_min_captures(closure_def_id, delegate);
         self.log_closure_min_capture_info(closure_def_id, span);
 
         self.min_captures_to_closure_captures_bridge(closure_def_id);
@@ -345,6 +356,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Places (and corresponding capture kind) that we need to keep track of to support all
     /// the required captured paths.
     ///
+    ///
+    /// Note: If this function is called multiple times for the same closure, it will update
+    ///       the existing min_capture map that is stored in TypeckResults.
+    ///
     /// Eg:
     /// ```rust,no_run
     /// struct Point { x: i32, y: i32 }
@@ -409,11 +424,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn compute_min_captures(
         &self,
         closure_def_id: DefId,
-        inferred_info: InferBorrowKind<'_, 'tcx>,
+        capture_information: InferredCaptureInformation<'tcx>,
     ) {
-        let mut root_var_min_capture_list: ty::RootVariableMinCaptureList<'_> = Default::default();
+        if capture_information.is_empty() {
+            return;
+        }
 
-        for (place, capture_info) in inferred_info.capture_information.into_iter() {
+        let mut typeck_results = self.typeck_results.borrow_mut();
+
+        let root_var_min_capture_list =
+            typeck_results.closure_min_captures.entry(closure_def_id).or_insert(Default::default());
+
+        for (place, capture_info) in capture_information.into_iter() {
             let var_hir_id = match place.base {
                 PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                 base => bug!("Expected upvar, found={:?}", base),
@@ -501,13 +523,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         debug!("For closure={:?}, min_captures={:#?}", closure_def_id, root_var_min_capture_list);
-
-        if !root_var_min_capture_list.is_empty() {
-            self.typeck_results
-                .borrow_mut()
-                .closure_min_captures
-                .insert(closure_def_id, root_var_min_capture_list);
-        }
     }
 
     fn init_capture_kind(
@@ -661,9 +676,11 @@ struct InferBorrowKind<'a, 'tcx> {
     ///
     /// For closure `fix_s`, (at a high level) the map contains
     ///
+    /// ```
     /// Place { V1, [ProjectionKind::Field(Index=0, Variant=0)] } : CaptureKind { E1, ImmutableBorrow }
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
-    capture_information: FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>>,
+    /// ```
+    capture_information: InferredCaptureInformation<'tcx>,
 }
 
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
