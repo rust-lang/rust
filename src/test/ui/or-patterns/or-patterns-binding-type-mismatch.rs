@@ -1,8 +1,6 @@
 // Here we test type checking of bindings when combined with or-patterns.
 // Specifically, we ensure that introducing bindings of different types result in type errors.
 
-#![feature(or_patterns)]
-
 fn main() {
     enum Blah {
         A(isize, isize, usize),

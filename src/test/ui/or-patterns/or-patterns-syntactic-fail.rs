@@ -1,8 +1,6 @@
 // Test some cases where or-patterns may ostensibly be allowed but are in fact not.
 // This is not a semantic test. We only test parsing.
 
-#![feature(or_patterns)]
-
 fn main() {}
 
 enum E { A, B }

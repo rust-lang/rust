@@ -1,8 +1,6 @@
 // Regression test for #71297
 // edition:2018
 
-#![feature(or_patterns)]
-
 async fn a((x | s): String) {}
 //~^ ERROR variable `x` is not bound in all patterns
 //~| ERROR variable `s` is not bound in all patterns
