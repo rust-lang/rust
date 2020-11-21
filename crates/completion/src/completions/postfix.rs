@@ -220,6 +220,18 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     )
     .add_to(acc);
 
+    postfix_snippet(ctx, cap, &dot_receiver, "let", "let", &format!("let $0 = {};", receiver_text))
+        .add_to(acc);
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
+        "letm",
+        "let mut",
+        &format!("let mut $0 = {};", receiver_text),
+    )
+    .add_to(acc);
+
     if let ast::Expr::Literal(literal) = dot_receiver.clone() {
         if let Some(literal_text) = ast::String::cast(literal.token()) {
             add_format_like_completions(acc, ctx, &dot_receiver, cap, &literal_text);
@@ -296,6 +308,8 @@ fn main() {
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
                 sn if    if expr {}
+                sn let   let
+                sn letm  let mut
                 sn match match expr {}
                 sn not   !expr
                 sn ok    Ok(expr)
@@ -321,6 +335,8 @@ fn main() {
                 sn call  function(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
+                sn let   let
+                sn letm  let mut
                 sn match match expr {}
                 sn ok    Ok(expr)
                 sn ref   &expr
