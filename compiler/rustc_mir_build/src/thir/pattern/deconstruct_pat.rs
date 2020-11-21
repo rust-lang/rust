@@ -606,6 +606,67 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    /// Determines the constructor that the given pattern can be specialized to.
+    pub(super) fn from_pat<'p>(cx: &MatchCheckCtxt<'p, 'tcx>, pat: &'p Pat<'tcx>) -> Self {
+        match pat.kind.as_ref() {
+            PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
+            PatKind::Binding { .. } | PatKind::Wild => Wildcard,
+            PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
+            &PatKind::Variant { adt_def, variant_index, .. } => {
+                Variant(adt_def.variants[variant_index].def_id)
+            }
+            PatKind::Constant { value } => {
+                if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value, pat.span)
+                {
+                    IntRange(int_range)
+                } else {
+                    match pat.ty.kind() {
+                        ty::Float(_) => FloatRange(value, value, RangeEnd::Included),
+                        // In `expand_pattern`, we convert string literals to `&CONST` patterns with
+                        // `CONST` a pattern of type `str`. In truth this contains a constant of type
+                        // `&str`.
+                        ty::Str => Str(value),
+                        // All constants that can be structurally matched have already been expanded
+                        // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
+                        // opaque.
+                        _ => Opaque,
+                    }
+                }
+            }
+            &PatKind::Range(PatRange { lo, hi, end }) => {
+                let ty = lo.ty;
+                if let Some(int_range) = IntRange::from_range(
+                    cx.tcx,
+                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
+                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
+                    ty,
+                    &end,
+                    pat.span,
+                ) {
+                    IntRange(int_range)
+                } else {
+                    FloatRange(lo, hi, end)
+                }
+            }
+            PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
+                let array_len = match pat.ty.kind() {
+                    ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env)),
+                    ty::Slice(_) => None,
+                    _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
+                };
+                let prefix = prefix.len() as u64;
+                let suffix = suffix.len() as u64;
+                let kind = if slice.is_some() {
+                    VarLen(prefix, suffix)
+                } else {
+                    FixedLen(prefix + suffix)
+                };
+                Slice(Slice::new(array_len, kind))
+            }
+            PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
+        }
+    }
+
     /// Some constructors (namely `Wildcard`, `IntRange` and `Slice`) actually stand for a set of actual
     /// constructors (like variants, integers or fixed-sized slices). When specializing for these
     /// constructors, we want to be specialising for the actual underlying constructors.
@@ -753,67 +814,6 @@ impl<'tcx> Constructor<'tcx> {
                 bug!("found unexpected ctor in all_ctors: {:?}", self)
             }
         }
-    }
-}
-
-/// Determines the constructor that the given pattern can be specialized to.
-/// Returns `None` in case of a catch-all, which can't be specialized.
-pub(super) fn pat_constructor<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    pat: &'p Pat<'tcx>,
-) -> Constructor<'tcx> {
-    match pat.kind.as_ref() {
-        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
-        PatKind::Binding { .. } | PatKind::Wild => Wildcard,
-        PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
-        &PatKind::Variant { adt_def, variant_index, .. } => {
-            Variant(adt_def.variants[variant_index].def_id)
-        }
-        PatKind::Constant { value } => {
-            if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value, pat.span) {
-                IntRange(int_range)
-            } else {
-                match pat.ty.kind() {
-                    ty::Float(_) => FloatRange(value, value, RangeEnd::Included),
-                    // In `expand_pattern`, we convert string literals to `&CONST` patterns with
-                    // `CONST` a pattern of type `str`. In truth this contains a constant of type
-                    // `&str`.
-                    ty::Str => Str(value),
-                    // All constants that can be structurally matched have already been expanded
-                    // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
-                    // opaque.
-                    _ => Opaque,
-                }
-            }
-        }
-        &PatKind::Range(PatRange { lo, hi, end }) => {
-            let ty = lo.ty;
-            if let Some(int_range) = IntRange::from_range(
-                cx.tcx,
-                lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
-                hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
-                ty,
-                &end,
-                pat.span,
-            ) {
-                IntRange(int_range)
-            } else {
-                FloatRange(lo, hi, end)
-            }
-        }
-        PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
-            let array_len = match pat.ty.kind() {
-                ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env)),
-                ty::Slice(_) => None,
-                _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
-            };
-            let prefix = prefix.len() as u64;
-            let suffix = suffix.len() as u64;
-            let kind =
-                if slice.is_some() { VarLen(prefix, suffix) } else { FixedLen(prefix + suffix) };
-            Slice(Slice::new(array_len, kind))
-        }
-        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
 }
 
