@@ -36,6 +36,60 @@ warning: unresolved link to `Qux::Z`
 LL |       //! , [Uniooon::X] and [Qux::Z].
    |                               ^^^^^^ no item named `Qux` in scope
 
+warning: unresolved link to `BarA`
+  --> $DIR/intra-links-warning.rs:21:10
+   |
+LL | /// bar [BarA] bar
+   |          ^^^^ no item named `BarA` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarB`
+  --> $DIR/intra-links-warning.rs:27:9
+   |
+LL |  * bar [BarB] bar
+   |         ^^^^ no item named `BarB` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarC`
+  --> $DIR/intra-links-warning.rs:34:6
+   |
+LL | bar [BarC] bar
+   |      ^^^^ no item named `BarC` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarD`
+  --> $DIR/intra-links-warning.rs:45:1
+   |
+LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           bar [BarD] bar
+                ^^^^
+   = note: no item named `BarD` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarF`
+  --> $DIR/intra-links-warning.rs:50:9
+   |
+LL |         #[doc = $f]
+   |         ^^^^^^^^^^^
+...
+LL | f!("Foo\nbar [BarF] bar\nbaz");
+   | ------------------------------- in this macro invocation
+   |
+   = note: the link appears in this line:
+           
+           bar [BarF] bar
+                ^^^^
+   = note: no item named `BarF` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
 warning: unresolved link to `Qux:Y`
   --> $DIR/intra-links-warning.rs:14:13
    |
@@ -116,60 +170,6 @@ LL | /// docs [error2]
    |           ^^^^^^ no item named `error2` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-warning: unresolved link to `BarA`
-  --> $DIR/intra-links-warning.rs:21:10
-   |
-LL | /// bar [BarA] bar
-   |          ^^^^ no item named `BarA` in scope
-   |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-warning: unresolved link to `BarB`
-  --> $DIR/intra-links-warning.rs:27:9
-   |
-LL |  * bar [BarB] bar
-   |         ^^^^ no item named `BarB` in scope
-   |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-warning: unresolved link to `BarC`
-  --> $DIR/intra-links-warning.rs:34:6
-   |
-LL | bar [BarC] bar
-   |      ^^^^ no item named `BarC` in scope
-   |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-warning: unresolved link to `BarD`
-  --> $DIR/intra-links-warning.rs:45:1
-   |
-LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the link appears in this line:
-           
-           bar [BarD] bar
-                ^^^^
-   = note: no item named `BarD` in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-warning: unresolved link to `BarF`
-  --> $DIR/intra-links-warning.rs:50:9
-   |
-LL |         #[doc = $f]
-   |         ^^^^^^^^^^^
-...
-LL | f!("Foo\nbar [BarF] bar\nbaz");
-   | ------------------------------- in this macro invocation
-   |
-   = note: the link appears in this line:
-           
-           bar [BarF] bar
-                ^^^^
-   = note: no item named `BarF` in scope
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 19 warnings emitted
 
