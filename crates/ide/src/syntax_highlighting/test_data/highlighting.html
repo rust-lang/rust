@@ -40,18 +40,18 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="comment">// Needed for function consuming vs normal</span>
 <span class="keyword">pub</span> <span class="keyword">mod</span> <span class="module declaration">marker</span> <span class="punctuation">{</span>
-    <span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">lang</span><span class="attribute"> </span><span class="operator">=</span><span class="attribute"> </span><span class="string_literal">"copy"</span><span class="attribute">]</span>
+    <span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">lang</span><span class="attribute attribute"> </span><span class="operator attribute">=</span><span class="attribute attribute"> </span><span class="string_literal attribute">"copy"</span><span class="attribute attribute">]</span>
     <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">Copy</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">pub</span> <span class="keyword">mod</span> <span class="module declaration">ops</span> <span class="punctuation">{</span>
-    <span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">lang</span><span class="attribute"> </span><span class="operator">=</span><span class="attribute"> </span><span class="string_literal">"fn_once"</span><span class="attribute">]</span>
+    <span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">lang</span><span class="attribute attribute"> </span><span class="operator attribute">=</span><span class="attribute attribute"> </span><span class="string_literal attribute">"fn_once"</span><span class="attribute attribute">]</span>
     <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">FnOnce</span><span class="punctuation">&lt;</span><span class="type_param declaration">Args</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 
-    <span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">lang</span><span class="attribute"> </span><span class="operator">=</span><span class="attribute"> </span><span class="string_literal">"fn_mut"</span><span class="attribute">]</span>
+    <span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">lang</span><span class="attribute attribute"> </span><span class="operator attribute">=</span><span class="attribute attribute"> </span><span class="string_literal attribute">"fn_mut"</span><span class="attribute attribute">]</span>
     <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">FnMut</span><span class="punctuation">&lt;</span><span class="type_param declaration">Args</span><span class="punctuation">&gt;</span><span class="punctuation">:</span> <span class="trait">FnOnce</span><span class="punctuation">&lt;</span><span class="type_param">Args</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 
-    <span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">lang</span><span class="attribute"> </span><span class="operator">=</span><span class="attribute"> </span><span class="string_literal">"fn"</span><span class="attribute">]</span>
+    <span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">lang</span><span class="attribute attribute"> </span><span class="operator attribute">=</span><span class="attribute attribute"> </span><span class="string_literal attribute">"fn"</span><span class="attribute attribute">]</span>
     <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration">Fn</span><span class="punctuation">&lt;</span><span class="type_param declaration">Args</span><span class="punctuation">&gt;</span><span class="punctuation">:</span> <span class="trait">FnMut</span><span class="punctuation">&lt;</span><span class="type_param">Args</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
@@ -85,7 +85,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
-<span class="attribute">#</span><span class="attribute">[</span><span class="function attribute">derive</span><span class="punctuation">(</span><span class="attribute">Copy</span><span class="punctuation">)</span><span class="attribute">]</span>
+<span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">derive</span><span class="punctuation attribute">(</span><span class="attribute attribute">Copy</span><span class="punctuation attribute">)</span><span class="attribute attribute">]</span>
 <span class="keyword">struct</span> <span class="struct declaration">FooCopy</span> <span class="punctuation">{</span>
     <span class="field declaration">x</span><span class="punctuation">:</span> <span class="builtin_type">u32</span><span class="punctuation">,</span>
 <span class="punctuation">}</span>
