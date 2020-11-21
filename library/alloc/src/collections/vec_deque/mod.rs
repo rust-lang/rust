@@ -1962,7 +1962,7 @@ impl<T> VecDeque<T> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = vec![1,2,3].into_iter().collect();
+    /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
     /// let buf2 = buf.split_off(1);
     /// assert_eq!(buf, [1]);
     /// assert_eq!(buf2, [2, 3]);
@@ -2514,10 +2514,10 @@ impl<T> VecDeque<T> {
     ///          (3, 1), (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
     ///          (1, 21), (2, 34), (4, 55)].into();
     ///
-    /// assert_eq!(deque.binary_search_by_key(&13, |&(a,b)| b),  Ok(9));
-    /// assert_eq!(deque.binary_search_by_key(&4, |&(a,b)| b),   Err(7));
-    /// assert_eq!(deque.binary_search_by_key(&100, |&(a,b)| b), Err(13));
-    /// let r = deque.binary_search_by_key(&1, |&(a,b)| b);
+    /// assert_eq!(deque.binary_search_by_key(&13, |&(a, b)| b),  Ok(9));
+    /// assert_eq!(deque.binary_search_by_key(&4, |&(a, b)| b),   Err(7));
+    /// assert_eq!(deque.binary_search_by_key(&100, |&(a, b)| b), Err(13));
+    /// let r = deque.binary_search_by_key(&1, |&(a, b)| b);
     /// assert!(matches!(r, Ok(1..=4)));
     /// ```
     #[unstable(feature = "vecdeque_binary_search", issue = "78021")]

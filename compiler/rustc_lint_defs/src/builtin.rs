@@ -1719,7 +1719,7 @@ declare_lint! {
     ///
     /// impl<T: ?Sized> MyIterator for T where T: Iterator { }
     ///
-    /// let x = vec![1,2,3];
+    /// let x = vec![1, 2, 3];
     /// let _ = x.iter().is_sorted();
     /// ```
     ///

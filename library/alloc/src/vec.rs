@@ -849,7 +849,7 @@ impl<T> Vec<T> {
     ///     }
     ///     x.set_len(size);
     /// }
-    /// assert_eq!(&*x, &[0,1,2,3]);
+    /// assert_eq!(&*x, &[0, 1, 2, 3]);
     /// ```
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
     #[inline]
@@ -1395,7 +1395,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1,2,3];
+    /// let mut vec = vec![1, 2, 3];
     /// let vec2 = vec.split_off(1);
     /// assert_eq!(vec, [1]);
     /// assert_eq!(vec2, [2, 3]);
