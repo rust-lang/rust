@@ -146,6 +146,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        // First, remove any resolved type variables (at the top level, at least):
         let a = self.shallow_resolve(a);
         let b = self.shallow_resolve(b);
         debug!("Coerce.tys({:?} => {:?})", a, b);
@@ -155,6 +156,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return success(vec![], self.fcx.tcx.ty_error(), vec![]);
         }
 
+        // Coercing from `!` to any type is allowed:
         if a.is_never() {
             // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
             // type variable, we want `?T` to fallback to `!` if not
@@ -174,6 +176,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             } else {
                 success(simple(Adjust::NeverToAny)(b), b, vec![])
             };
+        }
+
+        // Coercing *from* an unresolved inference variable means that
+        // we have no information about the source type. This will always
+        // ultimately fall back to some form of subtyping.
+        if a.is_ty_var() {
+            return self.coerce_from_inference_variable(a, b);
         }
 
         // Consider coercing the subtype to a DST
@@ -231,6 +240,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 self.unify_and(a, b, identity)
             }
         }
+    }
+
+    /// Coercing *from* an inference variable. In this case, we have no information
+    /// about the source type, so we can't really do a true coercion and we always
+    /// fall back to subtyping (`unify_and`).
+    fn coerce_from_inference_variable(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        assert!(a.is_ty_var() && self.infcx.shallow_resolve(a) == a);
+        assert!(self.infcx.shallow_resolve(b) == b);
+
+        self.unify_and(a, b, identity)
     }
 
     /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
