@@ -840,36 +840,31 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Mark a storage as live, killing the previous content and returning it.
-    /// Remember to deallocate that!
-    pub fn storage_live(
-        &mut self,
-        local: mir::Local,
-    ) -> InterpResult<'tcx, LocalValue<M::PointerTag>> {
+    /// Mark a storage as live, killing the previous content.
+    pub fn storage_live(&mut self, local: mir::Local) -> InterpResult<'tcx> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
         let local_val = LocalValue::Uninitialized;
-        // StorageLive *always* kills the value that's currently stored.
-        // However, we do not error if the variable already is live;
-        // see <https://github.com/rust-lang/rust/issues/42371>.
-        Ok(mem::replace(&mut self.frame_mut().locals[local].value, local_val))
+        // StorageLive expects the local to be dead, and marks it live.
+        let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
+        if !matches!(old, LocalValue::Dead) {
+            throw_ub_format!("StorageLive on a local that was already live");
+        }
+        Ok(())
     }
 
-    /// Returns the old value of the local.
-    /// Remember to deallocate that!
-    pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue<M::PointerTag> {
+    pub fn storage_dead(&mut self, local: mir::Local) -> InterpResult<'tcx> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead)
+        // It is entirely okay for this local to be already dead (at least that's how we currently generate MIR)
+        let old = mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead);
+        self.deallocate_local(old)?;
+        Ok(())
     }
 
-    pub(super) fn deallocate_local(
-        &mut self,
-        local: LocalValue<M::PointerTag>,
-    ) -> InterpResult<'tcx> {
-        // FIXME: should we tell the user that there was a local which was never written to?
+    fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty
             // due to the local having ZST type.
