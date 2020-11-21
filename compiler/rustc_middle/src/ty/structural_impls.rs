@@ -130,7 +130,7 @@ impl fmt::Debug for ty::FnSig<'tcx> {
 
 impl fmt::Debug for ty::TyVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}t", self.index)
+        write!(f, "_#{}t", u32::from(*self))
     }
 }
 

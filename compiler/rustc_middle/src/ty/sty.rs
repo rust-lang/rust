@@ -1489,9 +1489,10 @@ pub struct EarlyBoundRegion {
     pub name: Symbol,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-pub struct TyVid {
-    pub index: u32,
+rustc_index::newtype_index! {
+    pub struct TyVid {
+        DEBUG_FORMAT = custom,
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
