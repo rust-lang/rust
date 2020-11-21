@@ -476,6 +476,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         Matrix { patterns: vec![] }
     }
 
+    /// Number of columns of this matrix. `None` is the matrix is empty.
+    fn column_count(&self) -> Option<usize> {
+        self.patterns.get(0).map(|r| r.len())
+    }
+
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
     fn push(&mut self, row: PatStack<'p, 'tcx>) {
         if let Some(rows) = row.expand_or_pat() {
@@ -1897,7 +1902,7 @@ impl<'tcx> IntRange<'tcx> {
         // Collect the span and range of all the intersecting ranges to lint on likely
         // incorrect range patterns. (#63987)
         let mut overlaps = vec![];
-        let row_len = pcx.matrix.patterns.get(0).map(|r| r.len()).unwrap_or(0);
+        let row_len = pcx.matrix.column_count().unwrap_or(0);
         // `borders` is the set of borders between equivalence classes: each equivalence
         // class lies between 2 borders.
         let row_borders = pcx
