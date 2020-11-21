@@ -512,6 +512,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
+                ty::PredicateKind::Coerce(p) => {
+                    let p = bound_predicate.rebind(p);
+                    // Does this code ever run?
+                    match self.infcx.coerce_predicate(&obligation.cause, obligation.param_env, p) {
+                        Some(Ok(InferOk { mut obligations, .. })) => {
+                            self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
+                            self.evaluate_predicates_recursively(
+                                previous_stack,
+                                obligations.into_iter(),
+                            )
+                        }
+                        Some(Err(_)) => Ok(EvaluatedToErr),
+                        None => Ok(EvaluatedToAmbig),
+                    }
+                }
+
                 ty::PredicateKind::WellFormed(arg) => match wf::obligations(
                     self.infcx,
                     obligation.param_env,

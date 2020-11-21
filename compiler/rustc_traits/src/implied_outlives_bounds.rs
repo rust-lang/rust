@@ -99,6 +99,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                 Some(pred) => match pred {
                     ty::PredicateKind::Trait(..)
                     | ty::PredicateKind::Subtype(..)
+                    | ty::PredicateKind::Coerce(..)
                     | ty::PredicateKind::Projection(..)
                     | ty::PredicateKind::ClosureKind(..)
                     | ty::PredicateKind::ObjectSafe(..)

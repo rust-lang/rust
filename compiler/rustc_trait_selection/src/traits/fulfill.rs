@@ -402,6 +402,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 | ty::PredicateKind::ObjectSafe(_)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(_)
+                | ty::PredicateKind::Coerce(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred = infcx.replace_bound_vars_with_placeholders(binder);
@@ -509,6 +510,31 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         Some(Err(err)) => {
                             let expected_found =
                                 ExpectedFound::new(subtype.a_is_expected, subtype.a, subtype.b);
+                            ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
+                                expected_found,
+                                err,
+                            ))
+                        }
+                    }
+                }
+
+                ty::PredicateKind::Coerce(coerce) => {
+                    match self.selcx.infcx().coerce_predicate(
+                        &obligation.cause,
+                        obligation.param_env,
+                        Binder::dummy(coerce),
+                    ) {
+                        None => {
+                            // None means that both are unresolved.
+                            pending_obligation.stalled_on = vec![
+                                TyOrConstInferVar::maybe_from_ty(coerce.a).unwrap(),
+                                TyOrConstInferVar::maybe_from_ty(coerce.b).unwrap(),
+                            ];
+                            ProcessResult::Unchanged
+                        }
+                        Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                        Some(Err(err)) => {
+                            let expected_found = ExpectedFound::new(false, coerce.a, coerce.b);
                             ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
                                 expected_found,
                                 err,

@@ -158,6 +158,10 @@ impl Elaborator<'tcx> {
                 // Currently, we do not "elaborate" predicates like `X <: Y`,
                 // though conceivably we might.
             }
+            ty::PredicateKind::Coerce(..) => {
+                // Currently, we do not "elaborate" predicates like `X -> Y`,
+                // though conceivably we might.
+            }
             ty::PredicateKind::Projection(..) => {
                 // Nothing to elaborate in a projection predicate.
             }

@@ -812,6 +812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
                     ty::PredicateKind::Subtype(..) => None,
+                    ty::PredicateKind::Coerce(..) => None,
                     ty::PredicateKind::RegionOutlives(..) => None,
                     ty::PredicateKind::TypeOutlives(..) => None,
                     ty::PredicateKind::WellFormed(..) => None,
