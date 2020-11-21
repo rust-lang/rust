@@ -83,7 +83,26 @@ crate fn eval_nullary_intrinsic<'tcx>(
             | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_) => throw_inval!(TooGeneric),
-            _ => ConstValue::from_machine_usize(0u64, &tcx),
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
         },
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
