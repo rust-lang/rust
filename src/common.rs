@@ -233,7 +233,7 @@ pub(crate) fn type_min_max_value(
             let min_msb = bcx.ins().iconst(types::I64, (min >> 64) as u64 as i64);
             let min = bcx.ins().iconcat(min_lsb, min_msb);
 
-            let max = i128::MIN as u128;
+            let max = i128::MAX as u128;
             let max_lsb = bcx.ins().iconst(types::I64, max as u64 as i64);
             let max_msb = bcx.ins().iconst(types::I64, (max >> 64) as u64 as i64);
             let max = bcx.ins().iconcat(max_lsb, max_msb);
