@@ -2284,7 +2284,7 @@ pub trait Iterator {
     /// `find_or_nth()` takes a closure that returns `true` or `false`. It applies this closure to
     /// each element of the iterator, and if any of them return `true`, then `find_or_nth()`
     /// returns [`Some(element)`]. If they all return `false`, it returns the same as if [`nth(n)`]
-    /// was invoked instead, though the iterator will be empty end.
+    /// was invoked instead, though the iterator will be empty.
     ///
     /// Like most indexing operations, the count starts from zero, so if `predicate` is never
     /// satisfied, `find_or_nth(predicate, 0)` returns the first item, `find_or_nth(1)` the second,

@@ -43,7 +43,7 @@
 #![feature(int_error_matching)]
 #![feature(array_value_iter)]
 #![feature(iter_advance_by)]
-#![feature(iter_next_or_fnl)]
+#![feature(iter_find_or_fnl)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
