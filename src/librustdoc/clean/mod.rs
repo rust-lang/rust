@@ -1922,13 +1922,17 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Item> for hir::Item<'_> {
+impl Clean<Item> for (&hir::Item<'_>, Option<Ident>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         use hir::ItemKind;
 
-        let def_id = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
-        let name = cx.tcx.hir().name(self.hir_id);
-        let kind = match self.kind {
+        let (item, renamed) = self;
+        let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let name = match renamed {
+            Some(ident) => ident.name,
+            None => cx.tcx.hir().name(item.hir_id),
+        };
+        let kind = match item.kind {
             ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
                 type_: ty.clean(cx),
                 mutability,

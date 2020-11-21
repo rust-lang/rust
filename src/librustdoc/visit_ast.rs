@@ -370,21 +370,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     Some(ident.name),
                 ));
             }
-            hir::ItemKind::Enum(..) => om.items.push(item),
-            hir::ItemKind::Struct(..) => om.items.push(item),
-            hir::ItemKind::Union(..) => om.items.push(item),
             hir::ItemKind::Fn(ref sig, ref gen, body) => {
                 self.visit_fn(om, item, ident.name, &sig.decl, sig.header, gen, body)
             }
-            hir::ItemKind::TyAlias(..)
+            hir::ItemKind::Enum(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Static(..)
-            | hir::ItemKind::TraitAlias(..) => om.items.push(item),
+            | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed)),
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if ident.name != kw::Underscore {
-                    om.items.push(item);
+                    om.items.push((item, renamed));
                 }
             }
             hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {

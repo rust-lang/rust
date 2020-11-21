@@ -4,7 +4,7 @@ crate use self::StructType::*;
 
 use rustc_ast as ast;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{self, Span, Symbol};
+use rustc_span::{self, symbol::Ident, Span, Symbol};
 
 use rustc_hir as hir;
 use rustc_hir::def_id::CrateNum;
@@ -20,7 +20,8 @@ crate struct Module<'hir> {
     crate fns: Vec<Function<'hir>>,
     crate mods: Vec<Module<'hir>>,
     crate id: hir::HirId,
-    crate items: Vec<&'hir hir::Item<'hir>>,
+    // (item, renamed)
+    crate items: Vec<(&'hir hir::Item<'hir>, Option<Ident>)>,
     crate traits: Vec<Trait<'hir>>,
     crate impls: Vec<Impl<'hir>>,
     crate foreigns: Vec<ForeignItem<'hir>>,
