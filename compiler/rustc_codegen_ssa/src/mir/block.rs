@@ -255,7 +255,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
         let llval = match self.fn_abi.ret.mode {
-            PassMode::Ignore | PassMode::Indirect(..) => {
+            PassMode::Ignore | PassMode::Indirect { .. } => {
                 bx.ret_void();
                 return;
             }
@@ -1101,7 +1101,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => match arg.mode {
-                PassMode::Indirect(..) | PassMode::Cast(_) => {
+                PassMode::Indirect { .. } | PassMode::Cast(_) => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
                     op.val.store(bx, scratch);
                     (scratch.llval, scratch.align, true)
