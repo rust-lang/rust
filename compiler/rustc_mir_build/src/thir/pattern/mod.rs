@@ -3,6 +3,7 @@
 mod _match;
 mod check_match;
 mod const_to_pat;
+mod deconstruct_pat;
 
 pub(crate) use self::check_match::check_match;
 
