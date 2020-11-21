@@ -2390,22 +2390,39 @@ impl<'test> TestCx<'test> {
             proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
         }
 
-        // NOTE: this is fine since compiletest never runs out-of-tree
-        let tidy = concat!(env!("CARGO_MANIFEST_DIR"), "/tidy-rustdoc.sh");
-        // FIXME: this overwrites `out_dir` in place, maybe we should make a copy?
-        let status = Command::new(tidy)
-            .arg(out_dir)
-            .spawn()
-            .expect("tidy-rustdoc not found")
-            .wait()
-            .unwrap();
-        if !status.success() {
-            self.fatal("failed to run tidy - is it installed?");
-        }
-        let status = Command::new(tidy).arg(&compare_dir).spawn().unwrap().wait().unwrap();
-        if !status.success() {
-            self.fatal("failed to run tidy");
-        }
+        #[rustfmt::skip]
+        let tidy_args = [
+            "--indent", "yes",
+            "--indent-spaces", "2",
+            "--wrap", "0",
+            "--show-warnings", "no",
+            "--markup", "yes",
+            "--quiet", "yes",
+            "-modify",
+        ];
+        let tidy_dir = |dir| {
+            let tidy = |file: &_| {
+                Command::new("tidy")
+                    .args(&tidy_args)
+                    .arg(file)
+                    .spawn()
+                    .unwrap_or_else(|err| {
+                        self.fatal(&format!("failed to run tidy - is it installed? - {}", err))
+                    })
+                    .wait()
+                    .unwrap()
+            };
+            for entry in walkdir::WalkDir::new(dir) {
+                let entry = entry.expect("failed to read file");
+                if entry.file_type().is_file()
+                    && entry.path().extension().and_then(|p| p.to_str()) == Some("html".into())
+                {
+                    tidy(entry.path());
+                }
+            }
+        };
+        tidy_dir(out_dir);
+        tidy_dir(&compare_dir);
 
         let pager = {
             let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
