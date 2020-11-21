@@ -75,8 +75,8 @@ fn test_checked_mul() {
 
 macro_rules! test_is_power_of_two {
     ($test_name:ident, $T:ident) => {
+        #[test]
         fn $test_name() {
-            #![test]
             assert_eq!((0 as $T).is_power_of_two(), false);
             assert_eq!((1 as $T).is_power_of_two(), true);
             assert_eq!((2 as $T).is_power_of_two(), true);
@@ -96,8 +96,8 @@ test_is_power_of_two! { test_is_power_of_two_uint, usize }
 
 macro_rules! test_next_power_of_two {
     ($test_name:ident, $T:ident) => {
+        #[test]
         fn $test_name() {
-            #![test]
             assert_eq!((0 as $T).next_power_of_two(), 1);
             let mut next_power = 1;
             for i in 1 as $T..40 {
@@ -118,8 +118,8 @@ test_next_power_of_two! { test_next_power_of_two_uint, usize }
 
 macro_rules! test_checked_next_power_of_two {
     ($test_name:ident, $T:ident) => {
+        #[test]
         fn $test_name() {
-            #![test]
             assert_eq!((0 as $T).checked_next_power_of_two(), Some(1));
             let smax = $T::MAX >> 1;
             assert_eq!(smax.checked_next_power_of_two(), Some(smax + 1));
