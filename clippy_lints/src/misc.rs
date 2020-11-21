@@ -18,7 +18,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_lint_hir_and_then, SpanlessEq, unsext,
+    span_lint_and_then, span_lint_hir_and_then, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -439,8 +439,12 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
 
                     if let ty::Int(ity) = cx.typeck_results().expr_ty(right).kind() {
                         if is_integer_const(cx, right, unsext(cx.tcx, -1, *ity)) {
-                            span_lint(cx, MODULO_ONE, expr.span,
-                                "any number modulo -1 will panic/overflow or result in 0");
+                            span_lint(
+                                cx,
+                                MODULO_ONE,
+                                expr.span,
+                                "any number modulo -1 will panic/overflow or result in 0",
+                            );
                         }
                     };
                 }
