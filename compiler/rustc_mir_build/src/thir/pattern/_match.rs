@@ -993,93 +993,6 @@ impl<'tcx> Constructor<'tcx> {
             }
         }
     }
-
-    /// Apply a constructor to a list of patterns, yielding a new pattern. `pats`
-    /// must have as many elements as this constructor's arity.
-    ///
-    /// This is roughly the inverse of `specialize_constructor`.
-    ///
-    /// Examples:
-    /// `self`: `Constructor::Single`
-    /// `ty`: `(u32, u32, u32)`
-    /// `pats`: `[10, 20, _]`
-    /// returns `(10, 20, _)`
-    ///
-    /// `self`: `Constructor::Variant(Option::Some)`
-    /// `ty`: `Option<bool>`
-    /// `pats`: `[false]`
-    /// returns `Some(false)`
-    fn apply<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, fields: Fields<'p, 'tcx>) -> Pat<'tcx> {
-        let mut subpatterns = fields.all_patterns();
-
-        let pat = match self {
-            Single | Variant(_) => match pcx.ty.kind() {
-                ty::Adt(..) | ty::Tuple(..) => {
-                    let subpatterns = subpatterns
-                        .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
-                        .collect();
-
-                    if let ty::Adt(adt, substs) = pcx.ty.kind() {
-                        if adt.is_enum() {
-                            PatKind::Variant {
-                                adt_def: adt,
-                                substs,
-                                variant_index: self.variant_index_for_adt(adt),
-                                subpatterns,
-                            }
-                        } else {
-                            PatKind::Leaf { subpatterns }
-                        }
-                    } else {
-                        PatKind::Leaf { subpatterns }
-                    }
-                }
-                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-                // be careful to reconstruct the correct constant pattern here. However a string
-                // literal pattern will never be reported as a non-exhaustiveness witness, so we
-                // can ignore this issue.
-                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
-                ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, pcx.ty),
-                _ => PatKind::Wild,
-            },
-            Slice(slice) => match slice.kind {
-                FixedLen(_) => {
-                    PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
-                }
-                VarLen(prefix, _) => {
-                    let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix as usize).collect();
-                    if slice.array_len.is_some() {
-                        // Improves diagnostics a bit: if the type is a known-size array, instead
-                        // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
-                        // This is incorrect if the size is not known, since `[_, ..]` captures
-                        // arrays of lengths `>= 1` whereas `[..]` captures any length.
-                        while !prefix.is_empty() && prefix.last().unwrap().is_wildcard() {
-                            prefix.pop();
-                        }
-                    }
-                    let suffix: Vec<_> = if slice.array_len.is_some() {
-                        // Same as above.
-                        subpatterns.skip_while(Pat::is_wildcard).collect()
-                    } else {
-                        subpatterns.collect()
-                    };
-                    let wild = Pat::wildcard_from_ty(pcx.ty);
-                    PatKind::Slice { prefix, slice: Some(wild), suffix }
-                }
-            },
-            &Str(value) => PatKind::Constant { value },
-            &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
-            IntRange(range) => return range.to_pat(pcx.cx.tcx),
-            NonExhaustive => PatKind::Wild,
-            Opaque => bug!("we should not try to apply an opaque constructor"),
-            Wildcard => bug!(
-                "trying to apply a wildcard constructor; this should have been done in `apply_constructors`"
-            ),
-        };
-
-        Pat { ty: pcx.ty, span: DUMMY_SP, kind: Box::new(pat) }
-    }
 }
 
 /// Some fields need to be explicitly hidden away in certain cases; see the comment above the
@@ -1226,6 +1139,93 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
+    }
+
+    /// Apply a constructor to a list of patterns, yielding a new pattern. `self`
+    /// must have as many elements as this constructor's arity.
+    ///
+    /// This is roughly the inverse of `specialize_constructor`.
+    ///
+    /// Examples:
+    /// `ctor`: `Constructor::Single`
+    /// `ty`: `Foo(u32, u32, u32)`
+    /// `self`: `[10, 20, _]`
+    /// returns `Foo(10, 20, _)`
+    ///
+    /// `ctor`: `Constructor::Variant(Option::Some)`
+    /// `ty`: `Option<bool>`
+    /// `self`: `[false]`
+    /// returns `Some(false)`
+    fn apply(self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Pat<'tcx> {
+        let mut subpatterns = self.all_patterns();
+
+        let pat = match ctor {
+            Single | Variant(_) => match pcx.ty.kind() {
+                ty::Adt(..) | ty::Tuple(..) => {
+                    let subpatterns = subpatterns
+                        .enumerate()
+                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                        .collect();
+
+                    if let ty::Adt(adt, substs) = pcx.ty.kind() {
+                        if adt.is_enum() {
+                            PatKind::Variant {
+                                adt_def: adt,
+                                substs,
+                                variant_index: ctor.variant_index_for_adt(adt),
+                                subpatterns,
+                            }
+                        } else {
+                            PatKind::Leaf { subpatterns }
+                        }
+                    } else {
+                        PatKind::Leaf { subpatterns }
+                    }
+                }
+                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+                // be careful to reconstruct the correct constant pattern here. However a string
+                // literal pattern will never be reported as a non-exhaustiveness witness, so we
+                // can ignore this issue.
+                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
+                ty::Slice(_) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", ctor, pcx.ty),
+                _ => PatKind::Wild,
+            },
+            Slice(slice) => match slice.kind {
+                FixedLen(_) => {
+                    PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
+                }
+                VarLen(prefix, _) => {
+                    let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix as usize).collect();
+                    if slice.array_len.is_some() {
+                        // Improves diagnostics a bit: if the type is a known-size array, instead
+                        // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
+                        // This is incorrect if the size is not known, since `[_, ..]` captures
+                        // arrays of lengths `>= 1` whereas `[..]` captures any length.
+                        while !prefix.is_empty() && prefix.last().unwrap().is_wildcard() {
+                            prefix.pop();
+                        }
+                    }
+                    let suffix: Vec<_> = if slice.array_len.is_some() {
+                        // Same as above.
+                        subpatterns.skip_while(Pat::is_wildcard).collect()
+                    } else {
+                        subpatterns.collect()
+                    };
+                    let wild = Pat::wildcard_from_ty(pcx.ty);
+                    PatKind::Slice { prefix, slice: Some(wild), suffix }
+                }
+            },
+            &Str(value) => PatKind::Constant { value },
+            &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
+            IntRange(range) => return range.to_pat(pcx.cx.tcx),
+            NonExhaustive => PatKind::Wild,
+            Opaque => bug!("we should not try to apply an opaque constructor"),
+            Wildcard => bug!(
+                "trying to apply a wildcard constructor; this should have been done in `apply_constructors`"
+            ),
+        };
+
+        Pat { ty: pcx.ty, span: DUMMY_SP, kind: Box::new(pat) }
     }
 
     /// Returns the number of patterns from the viewpoint of match-checking, i.e. excluding hidden
@@ -1534,8 +1534,7 @@ impl<'tcx> Witness<'tcx> {
             let len = self.0.len();
             let arity = ctor_wild_subpatterns.len();
             let pats = self.0.drain((len - arity)..).rev();
-            let fields = ctor_wild_subpatterns.replace_fields(pcx.cx, pats);
-            ctor.apply(pcx, fields)
+            ctor_wild_subpatterns.replace_fields(pcx.cx, pats).apply(pcx, ctor)
         };
 
         self.0.push(pat);
@@ -2072,10 +2071,7 @@ impl<'tcx> MissingConstructors<'tcx> {
             // it. For example, if `ctor` is a `Constructor::Variant` for
             // `Option::Some`, we get the pattern `Some(_)`.
             self.iter(pcx)
-                .map(|missing_ctor| {
-                    let fields = Fields::wildcards(pcx, &missing_ctor);
-                    missing_ctor.apply(pcx, fields)
-                })
+                .map(|missing_ctor| Fields::wildcards(pcx, &missing_ctor).apply(pcx, missing_ctor))
                 .collect()
         }
     }
