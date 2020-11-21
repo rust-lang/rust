@@ -231,20 +231,30 @@ where
 
         let scc_indices = (0..num_nodes)
             .map(G::Node::new)
-            .map(|node| match this.walk_node(0, node) {
+            .map(|node| match this.start_walk_from(node) {
                 WalkReturn::Complete { scc_index } => scc_index,
-                WalkReturn::Cycle { min_depth } => {
-                    panic!("`walk_node(0, {:?})` returned cycle with depth {:?}", node, min_depth)
-                }
+                WalkReturn::Cycle { min_depth } => panic!(
+                    "`start_walk_node({:?})` returned cycle with depth {:?}",
+                    node, min_depth
+                ),
             })
             .collect();
 
         Sccs { scc_indices, scc_data: this.scc_data }
     }
 
-    /// Visits a node during the DFS. We first examine its current
-    /// state -- if it is not yet visited (`NotVisited`), we can push
-    /// it onto the stack and start walking its successors.
+    fn start_walk_from(&mut self, node: G::Node) -> WalkReturn<S> {
+        if let Some(result) = self.inspect_node(node) {
+            result
+        } else {
+            self.walk_unvisited_node(node)
+        }
+    }
+
+    /// Inspect a node during the DFS. We first examine its current
+    /// state -- if it is not yet visited (`NotVisited`), return `None` so
+    /// that the caller might push it onto the stack and start walking its
+    /// successors.
     ///
     /// If it is already on the DFS stack it will be in the state
     /// `BeingVisited`. In that case, we have found a cycle and we
@@ -253,20 +263,19 @@ where
     /// Otherwise, we are looking at a node that has already been
     /// completely visited. We therefore return `WalkReturn::Complete`
     /// with its associated SCC index.
-    fn walk_node(&mut self, depth: usize, node: G::Node) -> WalkReturn<S> {
-        debug!("walk_node(depth = {:?}, node = {:?})", depth, node);
-        match self.find_state(node) {
+    fn inspect_node(&mut self, node: G::Node) -> Option<WalkReturn<S>> {
+        Some(match self.find_state(node) {
             NodeState::InCycle { scc_index } => WalkReturn::Complete { scc_index },
 
             NodeState::BeingVisited { depth: min_depth } => WalkReturn::Cycle { min_depth },
 
-            NodeState::NotVisited => self.walk_unvisited_node(depth, node),
+            NodeState::NotVisited => return None,
 
             NodeState::InCycleWith { parent } => panic!(
                 "`find_state` returned `InCycleWith({:?})`, which ought to be impossible",
                 parent
             ),
-        }
+        })
     }
 
     /// Fetches the state of the node `r`. If `r` is recorded as being
@@ -274,104 +283,292 @@ where
     /// of `r2` (and updates `r` to reflect current result). This is
     /// basically the "find" part of a standard union-find algorithm
     /// (with path compression).
-    fn find_state(&mut self, r: G::Node) -> NodeState<G::Node, S> {
-        debug!("find_state(r = {:?} in state {:?})", r, self.node_states[r]);
-        match self.node_states[r] {
-            NodeState::InCycle { scc_index } => NodeState::InCycle { scc_index },
-            NodeState::BeingVisited { depth } => NodeState::BeingVisited { depth },
-            NodeState::NotVisited => NodeState::NotVisited,
-            NodeState::InCycleWith { parent } => {
-                let parent_state = self.find_state(parent);
-                debug!("find_state: parent_state = {:?}", parent_state);
-                match parent_state {
-                    NodeState::InCycle { .. } => {
-                        self.node_states[r] = parent_state;
-                        parent_state
-                    }
+    fn find_state(&mut self, mut node: G::Node) -> NodeState<G::Node, S> {
+        // To avoid recursion we temporarily reuse the `parent` of each
+        // InCycleWith link to encode a downwards link while compressing
+        // the path. After we have found the root or deepest node being
+        // visited, we traverse the reverse links and correct the node
+        // states on the way.
+        //
+        // **Note**: This mutation requires that this is a leaf function
+        // or at least that none of the called functions inspects the
+        // current node states. Luckily, we are a leaf.
 
-                    NodeState::BeingVisited { depth } => {
-                        self.node_states[r] =
-                            NodeState::InCycleWith { parent: self.node_stack[depth] };
-                        parent_state
-                    }
+        // Remember one previous link. The termination condition when
+        // following links downwards is then simply as soon as we have
+        // found the initial self-loop.
+        let mut previous_node = node;
 
-                    NodeState::NotVisited | NodeState::InCycleWith { .. } => {
-                        panic!("invalid parent state: {:?}", parent_state)
-                    }
+        // Ultimately assigned by the parent when following
+        // `InCycleWith` upwards.
+        let node_state = loop {
+            debug!("find_state(r = {:?} in state {:?})", node, self.node_states[node]);
+            match self.node_states[node] {
+                NodeState::InCycle { scc_index } => break NodeState::InCycle { scc_index },
+                NodeState::BeingVisited { depth } => break NodeState::BeingVisited { depth },
+                NodeState::NotVisited => break NodeState::NotVisited,
+                NodeState::InCycleWith { parent } => {
+                    // We test this, to be extremely sure that we never
+                    // ever break our termination condition for the
+                    // reverse iteration loop.
+                    assert!(node != parent, "Node can not be in cycle with itself");
+                    // Store the previous node as an inverted list link
+                    self.node_states[node] = NodeState::InCycleWith { parent: previous_node };
+                    // Update to parent node.
+                    previous_node = node;
+                    node = parent;
+                }
+            }
+        };
+
+        // The states form a graph where up to one outgoing link is stored at
+        // each node. Initially in general,
+        //
+        //                                                  E
+        //                                                  ^
+        //                                                  |
+        //                                InCycleWith/BeingVisited/NotVisited
+        //                                                  |
+        //   A-InCycleWith->B-InCycleWith…>C-InCycleWith->D-+
+        //   |
+        //   = node, previous_node
+        //
+        // After the first loop, this will look like
+        //                                                  E
+        //                                                  ^
+        //                                                  |
+        //                                InCycleWith/BeingVisited/NotVisited
+        //                                                  |
+        // +>A<-InCycleWith-B<…InCycleWith-C<-InCycleWith-D-+
+        // | |                             |              |
+        // | InCycleWith                   |              = node
+        // +-+                             =previous_node
+        //
+        // Note in particular that A will be linked to itself in a self-cycle
+        // and no other self-cycles occur due to how InCycleWith is assigned in
+        // the find phase implemented by `walk_unvisited_node`.
+        //
+        // We now want to compress the path, that is assign the state of the
+        // link D-E to all other links.
+        //
+        // We can then walk backwards, starting from `previous_node`, and assign
+        // each node in the list with the updated state. The loop terminates
+        // when we reach the self-cycle.
+
+        // Move backwards until we found the node where we started. We
+        // will know when we hit the state where previous_node == node.
+        loop {
+            // Back at the beginning, we can return.
+            if previous_node == node {
+                return node_state;
+            }
+            // Update to previous node in the link.
+            match self.node_states[previous_node] {
+                NodeState::InCycleWith { parent: previous } => {
+                    node = previous_node;
+                    previous_node = previous;
+                }
+                // Only InCycleWith nodes were added to the reverse linked list.
+                other => panic!("Invalid previous link while compressing cycle: {:?}", other),
+            }
+
+            debug!("find_state: parent_state = {:?}", node_state);
+
+            // Update the node state from the parent state. The assigned
+            // state is actually a loop invariant but it will only be
+            // evaluated if there is at least one backlink to follow.
+            // Fully trusting llvm here to find this loop optimization.
+            match node_state {
+                // Path compression, make current node point to the same root.
+                NodeState::InCycle { .. } => {
+                    self.node_states[node] = node_state;
+                }
+                // Still visiting nodes, compress to cycle to the node
+                // at that depth.
+                NodeState::BeingVisited { depth } => {
+                    self.node_states[node] =
+                        NodeState::InCycleWith { parent: self.node_stack[depth] };
+                }
+                // These are never allowed as parent nodes. InCycleWith
+                // should have been followed to a real parent and
+                // NotVisited can not be part of a cycle since it should
+                // have instead gotten explored.
+                NodeState::NotVisited | NodeState::InCycleWith { .. } => {
+                    panic!("invalid parent state: {:?}", node_state)
                 }
             }
         }
     }
 
     /// Walks a node that has never been visited before.
-    fn walk_unvisited_node(&mut self, depth: usize, node: G::Node) -> WalkReturn<S> {
-        debug!("walk_unvisited_node(depth = {:?}, node = {:?})", depth, node);
+    ///
+    /// Call this method when `inspect_node` has returned `None`. Having the
+    /// caller decide avoids mutual recursion between the two methods and allows
+    /// us to maintain an allocated stack for nodes on the path between calls.
+    fn walk_unvisited_node(&mut self, initial: G::Node) -> WalkReturn<S> {
+        struct VisitingNodeFrame<G: DirectedGraph, Successors> {
+            node: G::Node,
+            iter: Option<Successors>,
+            depth: usize,
+            min_depth: usize,
+            successors_len: usize,
+            min_cycle_root: G::Node,
+            successor_node: G::Node,
+        }
 
-        debug_assert!(matches!(self.node_states[node], NodeState::NotVisited));
+        // Move the stack to a local variable. We want to utilize the existing allocation and
+        // mutably borrow it without borrowing self at the same time.
+        let mut successors_stack = core::mem::take(&mut self.successors_stack);
+        debug_assert_eq!(successors_stack.len(), 0);
 
-        // Push `node` onto the stack.
-        self.node_states[node] = NodeState::BeingVisited { depth };
-        self.node_stack.push(node);
+        let mut stack: Vec<VisitingNodeFrame<G, _>> = vec![VisitingNodeFrame {
+            node: initial,
+            depth: 0,
+            min_depth: 0,
+            iter: None,
+            successors_len: 0,
+            min_cycle_root: initial,
+            successor_node: initial,
+        }];
 
-        // Walk each successor of the node, looking to see if any of
-        // them can reach a node that is presently on the stack. If
-        // so, that means they can also reach us.
-        let mut min_depth = depth;
-        let mut min_cycle_root = node;
-        let successors_len = self.successors_stack.len();
-        for successor_node in self.graph.successors(node) {
-            debug!("walk_unvisited_node: node = {:?} successor_ode = {:?}", node, successor_node);
-            match self.walk_node(depth + 1, successor_node) {
-                WalkReturn::Cycle { min_depth: successor_min_depth } => {
-                    // Track the minimum depth we can reach.
-                    assert!(successor_min_depth <= depth);
-                    if successor_min_depth < min_depth {
+        let mut return_value = None;
+
+        'recurse: while let Some(frame) = stack.last_mut() {
+            let VisitingNodeFrame {
+                node,
+                depth,
+                iter,
+                successors_len,
+                min_depth,
+                min_cycle_root,
+                successor_node,
+            } = frame;
+
+            let node = *node;
+            let depth = *depth;
+
+            let successors = match iter {
+                Some(iter) => iter,
+                None => {
+                    // This None marks that we still have the initialize this node's frame.
+                    debug!("walk_unvisited_node(depth = {:?}, node = {:?})", depth, node);
+
+                    debug_assert!(matches!(self.node_states[node], NodeState::NotVisited));
+
+                    // Push `node` onto the stack.
+                    self.node_states[node] = NodeState::BeingVisited { depth };
+                    self.node_stack.push(node);
+
+                    // Walk each successor of the node, looking to see if any of
+                    // them can reach a node that is presently on the stack. If
+                    // so, that means they can also reach us.
+                    *successors_len = successors_stack.len();
+                    // Set and return a reference, this is currently empty.
+                    iter.get_or_insert(self.graph.successors(node))
+                }
+            };
+
+            // Now that iter is initialized, this is a constant for this frame.
+            let successors_len = *successors_len;
+
+            // Construct iterators for the nodes and walk results. There are two cases:
+            // * The walk of a successor node returned.
+            // * The remaining successor nodes.
+            let returned_walk =
+                return_value.take().into_iter().map(|walk| (*successor_node, Some(walk)));
+
+            let successor_walk = successors.by_ref().map(|successor_node| {
+                debug!(
+                    "walk_unvisited_node: node = {:?} successor_ode = {:?}",
+                    node, successor_node
+                );
+                (successor_node, self.inspect_node(successor_node))
+            });
+
+            for (successor_node, walk) in returned_walk.chain(successor_walk) {
+                match walk {
+                    Some(WalkReturn::Cycle { min_depth: successor_min_depth }) => {
+                        // Track the minimum depth we can reach.
+                        assert!(successor_min_depth <= depth);
+                        if successor_min_depth < *min_depth {
+                            debug!(
+                                "walk_unvisited_node: node = {:?} successor_min_depth = {:?}",
+                                node, successor_min_depth
+                            );
+                            *min_depth = successor_min_depth;
+                            *min_cycle_root = successor_node;
+                        }
+                    }
+
+                    Some(WalkReturn::Complete { scc_index: successor_scc_index }) => {
+                        // Push the completed SCC indices onto
+                        // the `successors_stack` for later.
                         debug!(
-                            "walk_unvisited_node: node = {:?} successor_min_depth = {:?}",
-                            node, successor_min_depth
+                            "walk_unvisited_node: node = {:?} successor_scc_index = {:?}",
+                            node, successor_scc_index
                         );
-                        min_depth = successor_min_depth;
-                        min_cycle_root = successor_node;
+                        successors_stack.push(successor_scc_index);
+                    }
+
+                    None => {
+                        let depth = depth + 1;
+                        debug!("walk_node(depth = {:?}, node = {:?})", depth, successor_node);
+                        // Remember which node the return value will come from.
+                        frame.successor_node = successor_node;
+                        // Start a new stack frame the step into it.
+                        stack.push(VisitingNodeFrame {
+                            node: successor_node,
+                            depth,
+                            iter: None,
+                            successors_len: 0,
+                            min_depth: depth,
+                            min_cycle_root: successor_node,
+                            successor_node: successor_node,
+                        });
+                        continue 'recurse;
                     }
                 }
-
-                WalkReturn::Complete { scc_index: successor_scc_index } => {
-                    // Push the completed SCC indices onto
-                    // the `successors_stack` for later.
-                    debug!(
-                        "walk_unvisited_node: node = {:?} successor_scc_index = {:?}",
-                        node, successor_scc_index
-                    );
-                    self.successors_stack.push(successor_scc_index);
-                }
             }
+
+            // Completed walk, remove `node` from the stack.
+            let r = self.node_stack.pop();
+            debug_assert_eq!(r, Some(node));
+
+            // Remove the frame, it's done.
+            let frame = stack.pop().unwrap();
+
+            // If `min_depth == depth`, then we are the root of the
+            // cycle: we can't reach anyone further down the stack.
+
+            // Pass the 'return value' down the stack.
+            // We return one frame at a time so there can't be another return value.
+            debug_assert!(return_value.is_none());
+            return_value = Some(if frame.min_depth == depth {
+                // Note that successor stack may have duplicates, so we
+                // want to remove those:
+                let deduplicated_successors = {
+                    let duplicate_set = &mut self.duplicate_set;
+                    duplicate_set.clear();
+                    successors_stack
+                        .drain(successors_len..)
+                        .filter(move |&i| duplicate_set.insert(i))
+                };
+                let scc_index = self.scc_data.create_scc(deduplicated_successors);
+                self.node_states[node] = NodeState::InCycle { scc_index };
+                WalkReturn::Complete { scc_index }
+            } else {
+                // We are not the head of the cycle. Return back to our
+                // caller. They will take ownership of the
+                // `self.successors` data that we pushed.
+                self.node_states[node] = NodeState::InCycleWith { parent: frame.min_cycle_root };
+                WalkReturn::Cycle { min_depth: frame.min_depth }
+            });
         }
 
-        // Completed walk, remove `node` from the stack.
-        let r = self.node_stack.pop();
-        debug_assert_eq!(r, Some(node));
+        // Keep the allocation we used for successors_stack.
+        self.successors_stack = successors_stack;
+        debug_assert_eq!(self.successors_stack.len(), 0);
 
-        // If `min_depth == depth`, then we are the root of the
-        // cycle: we can't reach anyone further down the stack.
-        if min_depth == depth {
-            // Note that successor stack may have duplicates, so we
-            // want to remove those:
-            let deduplicated_successors = {
-                let duplicate_set = &mut self.duplicate_set;
-                duplicate_set.clear();
-                self.successors_stack
-                    .drain(successors_len..)
-                    .filter(move |&i| duplicate_set.insert(i))
-            };
-            let scc_index = self.scc_data.create_scc(deduplicated_successors);
-            self.node_states[node] = NodeState::InCycle { scc_index };
-            WalkReturn::Complete { scc_index }
-        } else {
-            // We are not the head of the cycle. Return back to our
-            // caller. They will take ownership of the
-            // `self.successors` data that we pushed.
-            self.node_states[node] = NodeState::InCycleWith { parent: min_cycle_root };
-            WalkReturn::Cycle { min_depth }
-        }
+        return_value.unwrap()
     }
 }

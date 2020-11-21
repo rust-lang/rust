@@ -1,3 +1,5 @@
+extern crate test;
+
 use super::*;
 use crate::graph::tests::TestGraph;
 
@@ -138,4 +140,74 @@ fn test_find_state_3() {
     assert_eq!(sccs.scc(5), 1);
     assert_eq!(sccs.successors(0), &[]);
     assert_eq!(sccs.successors(1), &[0]);
+}
+
+#[test]
+fn test_deep_linear() {
+    /*
+    0
+    |
+    v
+    1
+    |
+    v
+    2
+    |
+    v
+    …
+     */
+    const NR_NODES: usize = 1 << 14;
+    let mut nodes = vec![];
+    for i in 1..NR_NODES {
+        nodes.push((i - 1, i));
+    }
+    let graph = TestGraph::new(0, nodes.as_slice());
+    let sccs: Sccs<_, usize> = Sccs::new(&graph);
+    assert_eq!(sccs.num_sccs(), NR_NODES);
+    assert_eq!(sccs.scc(0), NR_NODES - 1);
+    assert_eq!(sccs.scc(NR_NODES - 1), 0);
+}
+
+#[bench]
+fn bench_sccc(b: &mut test::Bencher) {
+    // Like `test_three_sccs` but each state is replaced by a group of
+    // three or four to have some amount of test data.
+    /*
+       0-3
+        |
+        v
+    +->4-6 11-14
+    |   |    |
+    |   v    |
+    +--7-10<-+
+         */
+    fn make_3_clique(slice: &mut [(usize, usize)], base: usize) {
+        slice[0] = (base + 0, base + 1);
+        slice[1] = (base + 1, base + 2);
+        slice[2] = (base + 2, base + 0);
+    }
+    // Not actually a clique but strongly connected.
+    fn make_4_clique(slice: &mut [(usize, usize)], base: usize) {
+        slice[0] = (base + 0, base + 1);
+        slice[1] = (base + 1, base + 2);
+        slice[2] = (base + 2, base + 3);
+        slice[3] = (base + 3, base + 0);
+        slice[4] = (base + 1, base + 3);
+        slice[5] = (base + 2, base + 1);
+    }
+
+    let mut graph = [(0, 0); 6 + 3 + 6 + 3 + 4];
+    make_4_clique(&mut graph[0..6], 0);
+    make_3_clique(&mut graph[6..9], 4);
+    make_4_clique(&mut graph[9..15], 7);
+    make_3_clique(&mut graph[15..18], 11);
+    graph[18] = (0, 4);
+    graph[19] = (5, 7);
+    graph[20] = (11, 10);
+    graph[21] = (7, 4);
+    let graph = TestGraph::new(0, &graph[..]);
+    b.iter(|| {
+        let sccs: Sccs<_, usize> = Sccs::new(&graph);
+        assert_eq!(sccs.num_sccs(), 3);
+    });
 }
