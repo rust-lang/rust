@@ -22,7 +22,7 @@ use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
-use rustc_session::lint::builtin::UNUSED_MACROS;
+use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_MACROS};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -459,22 +459,21 @@ impl<'a> Resolver<'a> {
         }
 
         // We are trying to avoid reporting this error if other related errors were reported.
-        if inner_attr
+        if res != Res::Err
+            && inner_attr
             && !self.session.features_untracked().custom_inner_attributes
-            && path != &sym::test
-            && res != Res::Err
         {
-            feature_err(
-                &self.session.parse_sess,
-                sym::custom_inner_attributes,
-                path.span,
-                match res {
-                    Res::Def(..) => "inner macro attributes are unstable",
-                    Res::NonMacroAttr(..) => "custom inner attributes are unstable",
-                    _ => unreachable!(),
-                },
-            )
-            .emit();
+            let msg = match res {
+                Res::Def(..) => "inner macro attributes are unstable",
+                Res::NonMacroAttr(..) => "custom inner attributes are unstable",
+                _ => unreachable!(),
+            };
+            if path == &sym::test {
+                self.session.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
+            } else {
+                feature_err(&self.session.parse_sess, sym::custom_inner_attributes, path.span, msg)
+                    .emit();
+            }
         }
 
         Ok((ext, res))
