@@ -1082,7 +1082,13 @@ impl Build {
     /// Note that this is a descriptive string which includes the commit date,
     /// sha, version, etc.
     fn rust_version(&self) -> String {
-        self.rust_info.version(self, &self.version)
+        let mut version = self.rust_info.version(self, &self.version);
+        if let Some(ref s) = self.config.description {
+            version.push_str(" (");
+            version.push_str(s);
+            version.push_str(")");
+        }
+        version
     }
 
     /// Returns the full commit hash.

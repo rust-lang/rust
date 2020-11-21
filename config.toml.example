@@ -446,6 +446,11 @@ changelog-seen = 2
 # nightly features
 #channel = "dev"
 
+# A descriptive string to be appended to `rustc --version` output, which is
+# also used in places like debuginfo `DW_AT_producer`. This may be useful for
+# supplementary build information, like distro-specific package versions.
+#description = ""
+
 # The root location of the musl installation directory.
 #musl-root = "..."
 
