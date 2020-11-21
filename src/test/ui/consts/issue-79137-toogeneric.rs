@@ -1,6 +1,4 @@
-// The instrinsic call for variant count should exhaustively match on `tp_ty` and forbid
-// `ty::Projection`, `ty::Opaque`, `ty::Param`, `ty::Bound`, `ty::Placeholder` and `ty::Infer`
-// variant. This test checks that it will fail if it's too generic.
+// Test that `variant_count` only gets evaluated once the type is concrete enough.
 
 #![feature(variant_count)]
 
