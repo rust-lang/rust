@@ -16,12 +16,16 @@
 //! provided at this point are very minimal:
 //!
 //! * A [null] pointer is *never* valid, not even for accesses of [size zero][zst].
-//! * All pointers (except for the null pointer) are valid for all operations of
-//!   [size zero][zst].
 //! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer
 //!   be *dereferenceable*: the memory range of the given size starting at the pointer must all be
 //!   within the bounds of a single allocated object. Note that in Rust,
 //!   every (stack-allocated) variable is considered a separate allocated object.
+//! * Even for operations of [size zero][zst], the pointer must not be pointing to deallocated
+//!   memory, i.e., deallocation makes pointers invalid even for zero-sized operations. However,
+//!   casting any non-zero integer *literal* to a pointer is valid for zero-sized accesses, even if
+//!   some memory happens to exist at that address and gets deallocated. This corresponds to writing
+//!   your own allocator: allocating zero-sized objects is not very hard. The canonical way to
+//!   obtain a pointer that is valid for zero-sized accesses is [`NonNull::dangling`].
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
