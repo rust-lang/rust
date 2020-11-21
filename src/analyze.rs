@@ -17,7 +17,7 @@ pub(crate) fn analyze(fx: &FunctionCx<'_, '_, impl Module>) -> IndexVec<Local, S
         .local_decls
         .iter()
         .map(|local_decl| {
-            let ty = fx.monomorphize(&local_decl.ty);
+            let ty = fx.monomorphize(local_decl.ty);
             if fx.clif_type(ty).is_some() || fx.clif_pair_type(ty).is_some() {
                 SsaKind::Ssa
             } else {

@@ -216,7 +216,7 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
     assert!(!inst.substs.needs_infer());
     let fn_sig = tcx.normalize_erasing_late_bound_regions(
         ParamEnv::reveal_all(),
-        &fn_sig_for_fn_abi(tcx, inst),
+        fn_sig_for_fn_abi(tcx, inst),
     );
     if fn_sig.c_variadic && !support_vararg {
         tcx.sess.span_fatal(
@@ -372,7 +372,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
         .mir
         .args_iter()
         .map(|local| {
-            let arg_ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
+            let arg_ty = fx.monomorphize(fx.mir.local_decls[local].ty);
 
             // Adapted from https://github.com/rust-lang/rust/blob/145155dc96757002c7b2e9de8489416e2fdbbd57/src/librustc_codegen_llvm/mir/mod.rs#L442-L482
             if Some(local) == fx.mir.spread_arg {
@@ -470,7 +470,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
     }
 
     for local in fx.mir.vars_and_temps_iter() {
-        let ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
+        let ty = fx.monomorphize(fx.mir.local_decls[local].ty);
         let layout = fx.layout_of(ty);
 
         let is_ssa = ssa_analyzed[local] == crate::analyze::SsaKind::Ssa;
@@ -492,10 +492,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     args: &[Operand<'tcx>],
     destination: Option<(Place<'tcx>, BasicBlock)>,
 ) {
-    let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
+    let fn_ty = fx.monomorphize(func.ty(fx.mir, fx.tcx));
     let fn_sig = fx
         .tcx
-        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
+        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_ty.fn_sig(fx.tcx));
 
     let destination = destination.map(|(place, bb)| (codegen_place(fx, place), bb));
 
@@ -711,7 +711,7 @@ pub(crate) fn codegen_drop<'tcx>(
         let drop_fn_ty = drop_fn.ty(fx.tcx, ParamEnv::reveal_all());
         let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(
             ParamEnv::reveal_all(),
-            &drop_fn_ty.fn_sig(fx.tcx),
+            drop_fn_ty.fn_sig(fx.tcx),
         );
         assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
 
