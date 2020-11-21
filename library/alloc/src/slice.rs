@@ -87,6 +87,7 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::{self, size_of};
 use core::ptr;
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
@@ -137,26 +138,28 @@ pub use hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
+    use core::alloc::AllocRef;
+
     use crate::boxed::Box;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T>(b: Box<[T]>) -> Vec<T> {
+    pub fn into_vec<T, A: AllocRef>(b: Box<[T], A>) -> Vec<T, A> {
         unsafe {
             let len = b.len();
-            let b = Box::into_raw(b);
-            Vec::from_raw_parts(b as *mut T, len, len)
+            let (b, alloc) = Box::into_raw_with_alloc(b);
+            Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
         }
     }
 
     #[inline]
-    pub fn to_vec<T>(s: &[T]) -> Vec<T>
+    pub fn to_vec<T, A: AllocRef>(s: &[T], alloc: A) -> Vec<T, A>
     where
         T: Clone,
     {
-        let mut vec = Vec::with_capacity(s.len());
+        let mut vec = Vec::with_capacity_in(s.len(), alloc);
         vec.extend_from_slice(s);
         vec
     }
@@ -391,8 +394,30 @@ impl<T> [T] {
     where
         T: Clone,
     {
+        self.to_vec_in(Global)
+    }
+
+    /// Copies `self` into a new `Vec` with an allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let s = [10, 40, 30];
+    /// let x = s.to_vec_in(System);
+    /// // Here, `s` and `x` can be modified independently.
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn to_vec_in<A: AllocRef>(&self, alloc: A) -> Vec<T, A>
+    where
+        T: Clone,
+    {
         // N.B., see the `hack` module in this file for more details.
-        hack::to_vec(self)
+        hack::to_vec(self, alloc)
     }
 
     /// Converts `self` into a vector without clones or allocation.
@@ -411,7 +436,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec(self: Box<Self>) -> Vec<T> {
+    pub fn into_vec<A: AllocRef>(self: Box<Self, A>) -> Vec<T, A> {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
@@ -730,7 +755,7 @@ impl<T: Clone> ToOwned for [T] {
 
     #[cfg(test)]
     fn to_owned(&self) -> Vec<T> {
-        hack::to_vec(self)
+        hack::to_vec(self, Global)
     }
 
     fn clone_into(&self, target: &mut Vec<T>) {

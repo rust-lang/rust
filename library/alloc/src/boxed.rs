@@ -1347,9 +1347,10 @@ impl<I> FromIterator<I> for Box<[I]> {
 }
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone> Clone for Box<[T]> {
+impl<T: Clone, A: AllocRef + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
-        self.to_vec().into_boxed_slice()
+        let alloc = Box::alloc_ref(self).clone();
+        self.to_vec_in(alloc).into_boxed_slice()
     }
 
     fn clone_from(&mut self, other: &Self) {
