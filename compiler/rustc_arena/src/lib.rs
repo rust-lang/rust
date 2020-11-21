@@ -36,6 +36,29 @@ pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
 
+/// Copies the data from an iterator into the arena
+// SAFETY: the caller must ensure the destination memory region is large enough and is free.
+#[inline]
+unsafe fn write_from_iter<'a, T>(
+    mut iter: impl Iterator<Item = T>,
+    expected_len: usize,
+    mem: *mut T,
+) -> &'a mut [T] {
+    let mut i = 0;
+    // Use a manual loop since LLVM manages to optimize it better for
+    // slice iterators
+    loop {
+        let value = iter.next();
+        if i >= expected_len || value.is_none() {
+            // We only return as many items as the iterator gave us, even
+            // though it was supposed to give us `len`
+            return slice::from_raw_parts_mut(mem, i);
+        }
+        ptr::write(mem.add(i), value.unwrap());
+        i += 1;
+    }
+}
+
 /// An arena that can hold objects of only one type.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
@@ -105,9 +128,10 @@ const PAGE: usize = 4096;
 const HUGE_PAGE: usize = 2 * 1024 * 1024;
 
 impl<T> Default for TypedArena<T> {
-    /// Creates a new `TypedArena`.
-    fn default() -> TypedArena<T> {
-        TypedArena {
+    /// Creates a new `BaseTypedArena`.
+    #[inline]
+    fn default() -> Self {
+        Self {
             // We set both `ptr` and `end` to 0 so that the first call to
             // alloc() will trigger a grow().
             ptr: Cell::new(ptr::null_mut()),
@@ -261,7 +285,32 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);
-        iter.alloc_from_iter(self)
+        let iter = iter.into_iter();
+
+        if mem::needs_drop::<T>() {
+            iter.alloc_from_iter(self)
+        } else {
+            let size_hint = iter.size_hint();
+
+            match size_hint {
+                (min, Some(max)) if min == max => {
+                    // We know the exact number of elements the iterator will produce here
+                    let len = min;
+
+                    if len == 0 {
+                        return &mut [];
+                    }
+
+                    // Safety: T doesn't need drop, so a panicking iterator doesn't result in
+                    // dropping uninitialized memory
+                    unsafe {
+                        let start_ptr = self.alloc_raw_slice(len);
+                        write_from_iter(iter, len, start_ptr)
+                    }
+                }
+                _ => cold_path(|| iter.alloc_from_iter(self)),
+            }
+        }
     }
 
     /// Grows the arena.
@@ -490,28 +539,6 @@ impl DroplessArena {
     }
 
     #[inline]
-    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
-        &self,
-        mut iter: I,
-        len: usize,
-        mem: *mut T,
-    ) -> &mut [T] {
-        let mut i = 0;
-        // Use a manual loop since LLVM manages to optimize it better for
-        // slice iterators
-        loop {
-            let value = iter.next();
-            if i >= len || value.is_none() {
-                // We only return as many items as the iterator gave us, even
-                // though it was supposed to give us `len`
-                return slice::from_raw_parts_mut(mem, i);
-            }
-            ptr::write(mem.add(i), value.unwrap());
-            i += 1;
-        }
-    }
-
-    #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         let iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
@@ -529,7 +556,7 @@ impl DroplessArena {
                 }
 
                 let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
-                unsafe { self.write_from_iter(iter, len, mem) }
+                unsafe { write_from_iter(iter, len, mem) }
             }
             (_, _) => {
                 cold_path(move || -> &mut [T] {
