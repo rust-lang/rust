@@ -1,4 +1,4 @@
-use crate::abi::call::{ArgAbi, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
+use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
 use crate::abi::{self, HasDataLayout, LayoutOf, Size, TyAndLayout, TyAndLayoutMethods};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
@@ -7,7 +7,7 @@ fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
         if let abi::Int(i, signed) = scalar.value {
             if !signed && i.size().bits() == 32 {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {
-                    attrs.sext();
+                    attrs.ext(ArgExtension::Sext);
                     return;
                 }
             }

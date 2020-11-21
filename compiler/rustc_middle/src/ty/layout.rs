@@ -15,7 +15,7 @@ use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy};
@@ -2619,7 +2619,7 @@ where
                                       is_return: bool| {
             // Booleans are always an i1 that needs to be zero-extended.
             if scalar.is_bool() {
-                attrs.zext();
+                attrs.ext(ArgExtension::Zext);
                 return;
             }
 

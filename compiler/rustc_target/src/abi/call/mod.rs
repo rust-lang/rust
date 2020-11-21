@@ -96,15 +96,9 @@ impl ArgAttributes {
         }
     }
 
-    pub fn zext(&mut self) -> &mut Self {
-        assert_ne!(self.arg_ext, ArgExtension::Sext);
-        self.arg_ext = ArgExtension::Zext;
-        self
-    }
-
-    pub fn sext(&mut self) -> &mut Self {
-        assert_ne!(self.arg_ext, ArgExtension::Zext);
-        self.arg_ext = ArgExtension::Sext;
+    pub fn ext(&mut self, ext: ArgExtension) -> &mut Self {
+        assert!(self.arg_ext == ArgExtension::None || self.arg_ext == ext);
+        self.arg_ext = ext;
         self
     }
 
@@ -481,9 +475,9 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
                         if signed {
-                            attrs.sext()
+                            attrs.ext(ArgExtension::Sext)
                         } else {
-                            attrs.zext()
+                            attrs.ext(ArgExtension::Zext)
                         };
                     }
                 }
