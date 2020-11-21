@@ -80,6 +80,7 @@ pub fn provide(providers: &mut Providers) {
         projection_ty_from_predicates,
         explicit_predicates_of,
         super_predicates_of,
+        super_traits_of,
         super_predicates_that_define_assoc_type,
         trait_explicit_predicates_and_bounds,
         type_param_predicates,
@@ -653,14 +654,14 @@ impl ItemCtxt<'tcx> {
             hir::GenericBound::Trait(poly_trait_ref, _) => {
                 let trait_ref = &poly_trait_ref.trait_ref;
                 if let Some(trait_did) = trait_ref.trait_def_id() {
-                    super_traits_of(self.tcx, trait_did).any(|trait_did| {
+                    self.tcx.super_traits_of(trait_did).iter().any(|trait_did| {
                         self.tcx
-                            .associated_items(trait_did)
+                            .associated_items(*trait_did)
                             .find_by_name_and_kind(
                                 self.tcx,
                                 assoc_name,
                                 ty::AssocKind::Type,
-                                trait_did,
+                                *trait_did,
                             )
                             .is_some()
                     })
@@ -1125,7 +1126,7 @@ fn super_predicates_that_define_assoc_type(
     }
 }
 
-pub fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
+fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> FxHashSet<DefId> {
     let mut set = FxHashSet::default();
     let mut stack = vec![trait_def_id];
     while let Some(trait_did) = stack.pop() {
@@ -1185,7 +1186,7 @@ pub fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> impl Iterator<It
         }
     }
 
-    set.into_iter()
+    set
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {

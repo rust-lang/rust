@@ -433,7 +433,13 @@ rustc_queries! {
         /// full predicates are available (note that supertraits have
         /// additional acyclicity requirements).
         query super_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
-            desc { |tcx| "computing the supertraits of `{}`", tcx.def_path_str(key) }
+            desc { |tcx| "computing the super predicates of `{}`", tcx.def_path_str(key) }
+        }
+
+        /// Maps from the `DefId` of a trait to the list of
+        /// all the ancestors super traits.
+        query super_traits_of(key: DefId) -> FxHashSet<DefId> {
+            desc { |tcx| "computing the super traits of `{}`", tcx.def_path_str(key) }
         }
 
         /// Maps from the `DefId` of a trait to the list of

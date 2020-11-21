@@ -6,7 +6,6 @@ mod errors;
 mod generics;
 
 use crate::bounds::Bounds;
-use crate::collect::super_traits_of;
 use crate::collect::PlaceholderHirTyCollector;
 use crate::errors::{
     AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
@@ -923,10 +922,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
     /// returns true if the `trait_def_id` defines an associated item of name `assoc_name`.
     fn trait_may_define_assoc_type(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
-        super_traits_of(self.tcx(), trait_def_id).any(|trait_did| {
+        self.tcx().super_traits_of(trait_def_id).iter().any(|trait_did| {
             self.tcx()
-                .associated_items(trait_did)
-                .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_did)
+                .associated_items(*trait_did)
+                .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, *trait_did)
                 .is_some()
         })
     }
