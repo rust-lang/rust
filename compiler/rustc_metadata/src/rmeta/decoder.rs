@@ -947,7 +947,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_type(&self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        self.root.tables.ty.get(self, id).unwrap().decode((self, tcx))
+        self.root
+            .tables
+            .ty
+            .get(self, id)
+            .unwrap_or_else(|| panic!("Not a type: {:?}", id))
+            .decode((self, tcx))
     }
 
     fn get_stability(&self, id: DefIndex) -> Option<attr::Stability> {

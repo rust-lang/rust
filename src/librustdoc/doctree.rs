@@ -4,7 +4,7 @@ crate use self::StructType::*;
 
 use rustc_ast as ast;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{self, Span, Symbol};
+use rustc_span::{self, symbol::Ident, Span, Symbol};
 
 use rustc_hir as hir;
 use rustc_hir::def_id::CrateNum;
@@ -17,22 +17,16 @@ crate struct Module<'hir> {
     crate where_inner: Span,
     crate extern_crates: Vec<ExternCrate<'hir>>,
     crate imports: Vec<Import<'hir>>,
-    crate structs: Vec<Struct<'hir>>,
-    crate unions: Vec<Union<'hir>>,
-    crate enums: Vec<Enum<'hir>>,
     crate fns: Vec<Function<'hir>>,
     crate mods: Vec<Module<'hir>>,
     crate id: hir::HirId,
-    crate typedefs: Vec<Typedef<'hir>>,
-    crate opaque_tys: Vec<OpaqueTy<'hir>>,
-    crate statics: Vec<Static<'hir>>,
-    crate constants: Vec<Constant<'hir>>,
+    // (item, renamed)
+    crate items: Vec<(&'hir hir::Item<'hir>, Option<Ident>)>,
     crate traits: Vec<Trait<'hir>>,
     crate impls: Vec<Impl<'hir>>,
     crate foreigns: Vec<ForeignItem<'hir>>,
     crate macros: Vec<Macro>,
     crate proc_macros: Vec<ProcMacro>,
-    crate trait_aliases: Vec<TraitAlias<'hir>>,
     crate is_crate: bool,
 }
 
@@ -46,21 +40,14 @@ impl Module<'hir> {
             attrs,
             extern_crates: Vec::new(),
             imports: Vec::new(),
-            structs: Vec::new(),
-            unions: Vec::new(),
-            enums: Vec::new(),
             fns: Vec::new(),
             mods: Vec::new(),
-            typedefs: Vec::new(),
-            opaque_tys: Vec::new(),
-            statics: Vec::new(),
-            constants: Vec::new(),
+            items: Vec::new(),
             traits: Vec::new(),
             impls: Vec::new(),
             foreigns: Vec::new(),
             macros: Vec::new(),
             proc_macros: Vec::new(),
-            trait_aliases: Vec::new(),
             is_crate: false,
         }
     }
@@ -74,29 +61,6 @@ crate enum StructType {
     Tuple,
     /// A unit struct
     Unit,
-}
-
-crate struct Struct<'hir> {
-    crate id: hir::HirId,
-    crate struct_type: StructType,
-    crate name: Symbol,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate fields: &'hir [hir::StructField<'hir>],
-}
-
-crate struct Union<'hir> {
-    crate id: hir::HirId,
-    crate struct_type: StructType,
-    crate name: Symbol,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate fields: &'hir [hir::StructField<'hir>],
-}
-
-crate struct Enum<'hir> {
-    crate variants: Vec<Variant<'hir>>,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate id: hir::HirId,
-    crate name: Symbol,
 }
 
 crate struct Variant<'hir> {
@@ -114,38 +78,6 @@ crate struct Function<'hir> {
     crate body: hir::BodyId,
 }
 
-crate struct Typedef<'hir> {
-    crate ty: &'hir hir::Ty<'hir>,
-    crate gen: &'hir hir::Generics<'hir>,
-    crate name: Symbol,
-    crate id: hir::HirId,
-}
-
-crate struct OpaqueTy<'hir> {
-    crate opaque_ty: &'hir hir::OpaqueTy<'hir>,
-    crate name: Symbol,
-    crate id: hir::HirId,
-}
-
-#[derive(Debug)]
-crate struct Static<'hir> {
-    crate type_: &'hir hir::Ty<'hir>,
-    crate mutability: hir::Mutability,
-    crate expr: hir::BodyId,
-    crate name: Symbol,
-    crate attrs: &'hir [ast::Attribute],
-    crate vis: &'hir hir::Visibility<'hir>,
-    crate id: hir::HirId,
-    crate span: Span,
-}
-
-crate struct Constant<'hir> {
-    crate type_: &'hir hir::Ty<'hir>,
-    crate expr: hir::BodyId,
-    crate name: Symbol,
-    crate id: hir::HirId,
-}
-
 crate struct Trait<'hir> {
     crate is_auto: hir::IsAuto,
     crate unsafety: hir::Unsafety,
@@ -154,13 +86,6 @@ crate struct Trait<'hir> {
     crate generics: &'hir hir::Generics<'hir>,
     crate bounds: &'hir [hir::GenericBound<'hir>],
     crate attrs: &'hir [ast::Attribute],
-    crate id: hir::HirId,
-}
-
-crate struct TraitAlias<'hir> {
-    crate name: Symbol,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate bounds: &'hir [hir::GenericBound<'hir>],
     crate id: hir::HirId,
 }
 

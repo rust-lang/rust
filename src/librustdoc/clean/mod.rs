@@ -231,21 +231,14 @@ impl Clean<Item> for doctree::Module<'_> {
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.structs.iter().map(|x| x.clean(cx)));
-        items.extend(self.unions.iter().map(|x| x.clean(cx)));
-        items.extend(self.enums.iter().map(|x| x.clean(cx)));
         items.extend(self.fns.iter().map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
-        items.extend(self.typedefs.iter().map(|x| x.clean(cx)));
-        items.extend(self.opaque_tys.iter().map(|x| x.clean(cx)));
-        items.extend(self.statics.iter().map(|x| x.clean(cx)));
-        items.extend(self.constants.iter().map(|x| x.clean(cx)));
+        items.extend(self.items.iter().map(|x| x.clean(cx)));
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
         items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
         items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
-        items.extend(self.trait_aliases.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -1020,20 +1013,6 @@ impl Clean<Item> for doctree::Trait<'_> {
     }
 }
 
-impl Clean<Item> for doctree::TraitAlias<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            TraitAliasItem(TraitAlias {
-                generics: self.generics.clean(cx),
-                bounds: self.bounds.clean(cx),
-            }),
-            cx,
-        )
-    }
-}
-
 impl Clean<bool> for hir::IsAuto {
     fn clean(&self, _: &DocContext<'_>) -> bool {
         match *self {
@@ -1777,38 +1756,6 @@ impl Clean<Visibility> for ty::Visibility {
     }
 }
 
-impl Clean<Item> for doctree::Struct<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            StructItem(Struct {
-                struct_type: self.struct_type,
-                generics: self.generics.clean(cx),
-                fields: self.fields.clean(cx),
-                fields_stripped: false,
-            }),
-            cx,
-        )
-    }
-}
-
-impl Clean<Item> for doctree::Union<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            UnionItem(Union {
-                struct_type: self.struct_type,
-                generics: self.generics.clean(cx),
-                fields: self.fields.clean(cx),
-                fields_stripped: false,
-            }),
-            cx,
-        )
-    }
-}
-
 impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
@@ -1816,21 +1763,6 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
             fields: self.fields().iter().map(|x| x.clean(cx)).collect(),
             fields_stripped: false,
         }
-    }
-}
-
-impl Clean<Item> for doctree::Enum<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            EnumItem(Enum {
-                variants: self.variants.iter().map(|v| v.clean(cx)).collect(),
-                generics: self.generics.clean(cx),
-                variants_stripped: false,
-            }),
-            cx,
-        )
     }
 }
 
@@ -1981,33 +1913,6 @@ impl Clean<String> for Symbol {
     }
 }
 
-impl Clean<Item> for doctree::Typedef<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let type_ = self.ty.clean(cx);
-        let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            TypedefItem(Typedef { type_, generics: self.gen.clean(cx), item_type }, false),
-            cx,
-        )
-    }
-}
-
-impl Clean<Item> for doctree::OpaqueTy<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            OpaqueTyItem(OpaqueTy {
-                bounds: self.opaque_ty.bounds.clean(cx),
-                generics: self.opaque_ty.generics.clean(cx),
-            }),
-            cx,
-        )
-    }
-}
-
 impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, || {
@@ -2017,37 +1922,75 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Item> for doctree::Static<'_> {
+impl Clean<Item> for (&hir::Item<'_>, Option<Ident>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        debug!("cleaning static {}: {:?}", self.name.clean(cx), self);
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            StaticItem(Static {
-                type_: self.type_.clean(cx),
-                mutability: self.mutability,
-                expr: print_const_expr(cx, self.expr),
+        use hir::ItemKind;
+
+        let (item, renamed) = self;
+        let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let name = match renamed {
+            Some(ident) => ident.name,
+            None => cx.tcx.hir().name(item.hir_id),
+        };
+        let kind = match item.kind {
+            ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
+                type_: ty.clean(cx),
+                mutability,
+                expr: print_const_expr(cx, body_id),
             }),
-            cx,
-        )
+            ItemKind::Const(ty, body_id) => ConstantItem(Constant {
+                type_: ty.clean(cx),
+                expr: print_const_expr(cx, body_id),
+                value: print_evaluated_const(cx, def_id),
+                is_literal: is_literal_expr(cx, body_id.hir_id),
+            }),
+            ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
+                bounds: ty.bounds.clean(cx),
+                generics: ty.generics.clean(cx),
+            }),
+            ItemKind::TyAlias(ty, ref generics) => {
+                let rustdoc_ty = ty.clean(cx);
+                let item_type = rustdoc_ty.def_id().and_then(|did| inline::build_ty(cx, did));
+                TypedefItem(
+                    Typedef { type_: rustdoc_ty, generics: generics.clean(cx), item_type },
+                    false,
+                )
+            }
+            ItemKind::Enum(ref def, ref generics) => EnumItem(Enum {
+                variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
+                generics: generics.clean(cx),
+                variants_stripped: false,
+            }),
+            ItemKind::TraitAlias(ref generics, bounds) => TraitAliasItem(TraitAlias {
+                generics: generics.clean(cx),
+                bounds: bounds.clean(cx),
+            }),
+            ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
+                struct_type: doctree::struct_type_from_def(&variant_data),
+                generics: generics.clean(cx),
+                fields: variant_data.fields().clean(cx),
+                fields_stripped: false,
+            }),
+            ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
+                struct_type: doctree::struct_type_from_def(&variant_data),
+                generics: generics.clean(cx),
+                fields: variant_data.fields().clean(cx),
+                fields_stripped: false,
+            }),
+            _ => unreachable!("not yet converted"),
+        };
+
+        Item::from_def_id_and_parts(def_id, Some(name), kind, cx)
     }
 }
 
-impl Clean<Item> for doctree::Constant<'_> {
+impl Clean<Item> for hir::Variant<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let def_id = cx.tcx.hir().local_def_id(self.id).to_def_id();
-
-        Item::from_def_id_and_parts(
-            def_id,
-            Some(self.name),
-            ConstantItem(Constant {
-                type_: self.type_.clean(cx),
-                expr: print_const_expr(cx, self.expr),
-                value: print_evaluated_const(cx, def_id),
-                is_literal: is_literal_expr(cx, self.expr.hir_id),
-            }),
-            cx,
-        )
+        let kind = VariantItem(Variant { kind: self.data.clean(cx) });
+        let what_rustc_thinks =
+            Item::from_hir_id_and_parts(self.id, Some(self.ident.name), kind, cx);
+        // don't show `pub` for variants, which are always public
+        Item { visibility: Inherited, ..what_rustc_thinks }
     }
 }
 

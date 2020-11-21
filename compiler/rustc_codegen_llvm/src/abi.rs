@@ -36,17 +36,17 @@ impl ArgAttributeExt for ArgAttribute {
     where
         F: FnMut(llvm::Attribute),
     {
-        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt, InReg)
+        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg)
     }
 }
 
 pub trait ArgAttributesExt {
-    fn apply_llfn(&self, idx: AttributePlace, llfn: &Value, ty: Option<&Type>);
-    fn apply_callsite(&self, idx: AttributePlace, callsite: &Value, ty: Option<&Type>);
+    fn apply_attrs_to_llfn(&self, idx: AttributePlace, llfn: &Value);
+    fn apply_attrs_to_callsite(&self, idx: AttributePlace, callsite: &Value);
 }
 
 impl ArgAttributesExt for ArgAttributes {
-    fn apply_llfn(&self, idx: AttributePlace, llfn: &Value, ty: Option<&Type>) {
+    fn apply_attrs_to_llfn(&self, idx: AttributePlace, llfn: &Value) {
         let mut regular = self.regular;
         unsafe {
             let deref = self.pointee_size.bytes();
@@ -61,14 +61,20 @@ impl ArgAttributesExt for ArgAttributes {
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
             }
-            if regular.contains(ArgAttribute::ByVal) {
-                llvm::LLVMRustAddByValAttr(llfn, idx.as_uint(), ty.unwrap());
-            }
             regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
+            match self.arg_ext {
+                ArgExtension::None => {}
+                ArgExtension::Zext => {
+                    llvm::Attribute::ZExt.apply_llfn(idx, llfn);
+                }
+                ArgExtension::Sext => {
+                    llvm::Attribute::SExt.apply_llfn(idx, llfn);
+                }
+            }
         }
     }
 
-    fn apply_callsite(&self, idx: AttributePlace, callsite: &Value, ty: Option<&Type>) {
+    fn apply_attrs_to_callsite(&self, idx: AttributePlace, callsite: &Value) {
         let mut regular = self.regular;
         unsafe {
             let deref = self.pointee_size.bytes();
@@ -91,10 +97,16 @@ impl ArgAttributesExt for ArgAttributes {
                     align.bytes() as u32,
                 );
             }
-            if regular.contains(ArgAttribute::ByVal) {
-                llvm::LLVMRustAddByValCallSiteAttr(callsite, idx.as_uint(), ty.unwrap());
-            }
             regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
+            match self.arg_ext {
+                ArgExtension::None => {}
+                ArgExtension::Zext => {
+                    llvm::Attribute::ZExt.apply_callsite(idx, callsite);
+                }
+                ArgExtension::Sext => {
+                    llvm::Attribute::SExt.apply_callsite(idx, callsite);
+                }
+            }
         }
     }
 }
@@ -146,7 +158,7 @@ impl LlvmType for CastTarget {
             .prefix
             .iter()
             .flat_map(|option_kind| {
-                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk }.llvm_type(cx))
+                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk_size }.llvm_type(cx))
             })
             .chain((0..rest_count).map(|_| rest_ll_unit))
             .collect();
@@ -267,10 +279,12 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
-            PassMode::Indirect(_, Some(_)) => {
+            PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
             }
-            PassMode::Direct(_) | PassMode::Indirect(_, None) | PassMode::Cast(_) => {
+            PassMode::Direct(_)
+            | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ }
+            | PassMode::Cast(_) => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             }
@@ -315,14 +329,14 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             if let PassMode::Pair(_, _) = arg.mode { 2 } else { 1 }
         ).sum();
         let mut llargument_tys = Vec::with_capacity(
-            if let PassMode::Indirect(..) = self.ret.mode { 1 } else { 0 } + args_capacity,
+            if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 } + args_capacity,
         );
 
         let llreturn_ty = match self.ret.mode {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
             PassMode::Cast(cast) => cast.llvm_type(cx),
-            PassMode::Indirect(..) => {
+            PassMode::Indirect { .. } => {
                 llargument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
                 cx.type_void()
             }
@@ -342,7 +356,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Indirect(_, Some(_)) => {
+                PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
                     let ptr_ty = cx.tcx.mk_mut_ptr(arg.layout.ty);
                     let ptr_layout = cx.layout_of(ptr_ty);
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 0, true));
@@ -350,7 +364,9 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
-                PassMode::Indirect(_, None) => cx.type_ptr_to(arg.memory_ty(cx)),
+                PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
+                    cx.type_ptr_to(arg.memory_ty(cx))
+                }
             };
             llargument_tys.push(llarg_ty);
         }
@@ -402,35 +418,54 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
 
         let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
-            attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn, ty);
+        let mut apply = |attrs: &ArgAttributes| {
+            attrs.apply_attrs_to_llfn(llvm::AttributePlace::Argument(i), llfn);
             i += 1;
+            i - 1
         };
         match self.ret.mode {
             PassMode::Direct(ref attrs) => {
-                attrs.apply_llfn(llvm::AttributePlace::ReturnValue, llfn, None);
+                attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, llfn);
             }
-            PassMode::Indirect(ref attrs, _) => apply(attrs, Some(self.ret.layout.llvm_type(cx))),
+            PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
+                assert!(!on_stack);
+                let i = apply(attrs);
+                llvm::Attribute::StructRet.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
+            }
             _ => {}
         }
         for arg in &self.args {
             if arg.pad.is_some() {
-                apply(&ArgAttributes::new(), None);
+                apply(&ArgAttributes::new());
             }
             match arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Direct(ref attrs) | PassMode::Indirect(ref attrs, None) => {
-                    apply(attrs, Some(arg.layout.llvm_type(cx)))
+                PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: true } => {
+                    let i = apply(attrs);
+                    unsafe {
+                        llvm::LLVMRustAddByValAttr(
+                            llfn,
+                            llvm::AttributePlace::Argument(i).as_uint(),
+                            arg.layout.llvm_type(cx),
+                        );
+                    }
                 }
-                PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
-                    apply(attrs, None);
-                    apply(extra_attrs, None);
+                PassMode::Direct(ref attrs)
+                | PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: false } => {
+                    apply(attrs);
+                }
+                PassMode::Indirect { ref attrs, extra_attrs: Some(ref extra_attrs), on_stack } => {
+                    assert!(!on_stack);
+                    apply(attrs);
+                    apply(extra_attrs);
                 }
                 PassMode::Pair(ref a, ref b) => {
-                    apply(a, None);
-                    apply(b, None);
+                    apply(a);
+                    apply(b);
                 }
-                PassMode::Cast(_) => apply(&ArgAttributes::new(), None),
+                PassMode::Cast(_) => {
+                    apply(&ArgAttributes::new());
+                }
             }
         }
     }
@@ -439,15 +474,21 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         // FIXME(wesleywiser, eddyb): We should apply `nounwind` and `noreturn` as appropriate to this callsite.
 
         let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
-            attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite, ty);
+        let mut apply = |attrs: &ArgAttributes| {
+            attrs.apply_attrs_to_callsite(llvm::AttributePlace::Argument(i), callsite);
             i += 1;
+            i - 1
         };
         match self.ret.mode {
             PassMode::Direct(ref attrs) => {
-                attrs.apply_callsite(llvm::AttributePlace::ReturnValue, callsite, None);
+                attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, callsite);
             }
-            PassMode::Indirect(ref attrs, _) => apply(attrs, Some(self.ret.layout.llvm_type(bx))),
+            PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
+                assert!(!on_stack);
+                let i = apply(attrs);
+                llvm::Attribute::StructRet
+                    .apply_callsite(llvm::AttributePlace::Argument(i), callsite);
+            }
             _ => {}
         }
         if let abi::Abi::Scalar(ref scalar) = self.ret.layout.abi {
@@ -465,22 +506,39 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
         for arg in &self.args {
             if arg.pad.is_some() {
-                apply(&ArgAttributes::new(), None);
+                apply(&ArgAttributes::new());
             }
             match arg.mode {
                 PassMode::Ignore => {}
-                PassMode::Direct(ref attrs) | PassMode::Indirect(ref attrs, None) => {
-                    apply(attrs, Some(arg.layout.llvm_type(bx)))
+                PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: true } => {
+                    let i = apply(attrs);
+                    unsafe {
+                        llvm::LLVMRustAddByValCallSiteAttr(
+                            callsite,
+                            llvm::AttributePlace::Argument(i).as_uint(),
+                            arg.layout.llvm_type(bx),
+                        );
+                    }
                 }
-                PassMode::Indirect(ref attrs, Some(ref extra_attrs)) => {
-                    apply(attrs, None);
-                    apply(extra_attrs, None);
+                PassMode::Direct(ref attrs)
+                | PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: false } => {
+                    apply(attrs);
+                }
+                PassMode::Indirect {
+                    ref attrs,
+                    extra_attrs: Some(ref extra_attrs),
+                    on_stack: _,
+                } => {
+                    apply(attrs);
+                    apply(extra_attrs);
                 }
                 PassMode::Pair(ref a, ref b) => {
-                    apply(a, None);
-                    apply(b, None);
+                    apply(a);
+                    apply(b);
                 }
-                PassMode::Cast(_) => apply(&ArgAttributes::new(), None),
+                PassMode::Cast(_) => {
+                    apply(&ArgAttributes::new());
+                }
             }
         }
 

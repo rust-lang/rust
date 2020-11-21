@@ -308,10 +308,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
 
     match self_ty.kind() {
         _ if is_copy => builder.copy_shim(),
-        ty::Array(ty, len) => {
-            let len = len.eval_usize(tcx, param_env);
-            builder.array_shim(dest, src, ty, len)
-        }
+        ty::Array(ty, len) => builder.array_shim(dest, src, ty, len),
         ty::Closure(_, substs) => {
             builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys())
         }
@@ -485,7 +482,13 @@ impl CloneShimBuilder<'tcx> {
         }
     }
 
-    fn array_shim(&mut self, dest: Place<'tcx>, src: Place<'tcx>, ty: Ty<'tcx>, len: u64) {
+    fn array_shim(
+        &mut self,
+        dest: Place<'tcx>,
+        src: Place<'tcx>,
+        ty: Ty<'tcx>,
+        len: &'tcx ty::Const<'tcx>,
+    ) {
         let tcx = self.tcx;
         let span = self.span;
 
@@ -503,7 +506,11 @@ impl CloneShimBuilder<'tcx> {
             ))),
             self.make_statement(StatementKind::Assign(box (
                 end,
-                Rvalue::Use(Operand::Constant(self.make_usize(len))),
+                Rvalue::Use(Operand::Constant(box Constant {
+                    span: self.span,
+                    user_ty: None,
+                    literal: len,
+                })),
             ))),
         ];
         self.block(inits, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);

@@ -75,13 +75,35 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ensure_monomorphic_enough(tcx, tp_ty)?;
             ConstValue::from_u64(tcx.type_id_hash(tp_ty))
         }
-        sym::variant_count => {
-            if let ty::Adt(ref adt, _) = tp_ty.kind() {
-                ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx)
-            } else {
-                ConstValue::from_machine_usize(0u64, &tcx)
-            }
-        }
+        sym::variant_count => match tp_ty.kind() {
+            ty::Adt(ref adt, _) => ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx),
+            ty::Projection(_)
+            | ty::Opaque(_, _)
+            | ty::Param(_)
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => throw_inval!(TooGeneric),
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Foreign(_)
+            | ty::Str
+            | ty::Array(_, _)
+            | ty::Slice(_)
+            | ty::RawPtr(_)
+            | ty::Ref(_, _, _)
+            | ty::FnDef(_, _)
+            | ty::FnPtr(_)
+            | ty::Dynamic(_, _)
+            | ty::Closure(_, _)
+            | ty::Generator(_, _, _)
+            | ty::GeneratorWitness(_)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Error(_) => ConstValue::from_machine_usize(0u64, &tcx),
+        },
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }

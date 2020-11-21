@@ -33,11 +33,11 @@ pub struct QueryInfo<Q> {
 
 pub(crate) type QueryMap<D, Q> = FxHashMap<QueryJobId<D>, QueryJobInfo<D, Q>>;
 
-/// A value uniquely identifiying an active query job within a shard in the query cache.
+/// A value uniquely identifying an active query job within a shard in the query cache.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct QueryShardJobId(pub NonZeroU32);
 
-/// A value uniquely identifiying an active query job.
+/// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct QueryJobId<D> {
     /// Which job within a shard is this
@@ -536,7 +536,7 @@ fn remove_cycle<CTX: QueryContext>(
         };
 
         // We unwrap `waiter` here since there must always be one
-        // edge which is resumeable / waited using a query latch
+        // edge which is resumable / waited using a query latch
         let (waitee_query, waiter_idx) = waiter.unwrap();
 
         // Extract the waiter we want to resume
