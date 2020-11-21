@@ -909,7 +909,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for ast_bound in ast_bounds {
             if let Some(trait_ref) = ast_bound.trait_ref() {
                 if let Some(trait_did) = trait_ref.trait_def_id() {
-                    if self.trait_may_define_assoc_type(trait_did, assoc_name) {
+                    if self.tcx().trait_may_define_assoc_type(trait_did, assoc_name) {
                         result.push(ast_bound);
                     }
                 }
@@ -917,17 +917,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         self.compute_bounds(param_ty, &result, sized_by_default, span)
-    }
-
-    /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
-    /// returns true if the `trait_def_id` defines an associated item of name `assoc_name`.
-    fn trait_may_define_assoc_type(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
-        self.tcx().super_traits_of(trait_def_id).iter().any(|trait_did| {
-            self.tcx()
-                .associated_items(*trait_did)
-                .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, *trait_did)
-                .is_some()
-        })
     }
 
     /// Given an HIR binding like `Item = Foo` or `Item: Foo`, pushes the corresponding predicates

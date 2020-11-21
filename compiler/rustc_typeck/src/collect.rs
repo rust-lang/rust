@@ -654,17 +654,7 @@ impl ItemCtxt<'tcx> {
             hir::GenericBound::Trait(poly_trait_ref, _) => {
                 let trait_ref = &poly_trait_ref.trait_ref;
                 if let Some(trait_did) = trait_ref.trait_def_id() {
-                    self.tcx.super_traits_of(trait_did).iter().any(|trait_did| {
-                        self.tcx
-                            .associated_items(*trait_did)
-                            .find_by_name_and_kind(
-                                self.tcx,
-                                assoc_name,
-                                ty::AssocKind::Type,
-                                *trait_did,
-                            )
-                            .is_some()
-                    })
+                    self.tcx.trait_may_define_assoc_type(trait_did, assoc_name)
                 } else {
                     false
                 }
