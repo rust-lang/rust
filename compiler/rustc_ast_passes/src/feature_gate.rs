@@ -257,7 +257,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
                 gate_doc!(
                     include => external_doc
-                    cfg => doc_cfg
                     masked => doc_masked
                     spotlight => doc_spotlight
                     keyword => doc_keyword

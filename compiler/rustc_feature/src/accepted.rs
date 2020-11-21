@@ -274,6 +274,10 @@ declare_features! (
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.48.0", Some(68354), None),
 
+    /// Allows `#[doc(cfg(...))]`. It adds information about under which condition an item is
+    /// available.
+    (active, doc_cfg, "1.50.0", Some(43781), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
     // -------------------------------------------------------------------------

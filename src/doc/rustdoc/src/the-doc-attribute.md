@@ -214,3 +214,10 @@ the `strip-hidden` pass is removed.
 Since primitive types are defined in the compiler, there's no place to attach documentation
 attributes. This attribute is used by the standard library to provide a way to generate
 documentation for primitive types.
+
+## `#[doc(cfg)]`
+
+You can use `#[doc(cfg(...))]` to tell Rustdoc exactly which platform items appear on. For more
+information, take a look at the [advanced-features][advanced-features] chapter.
+
+[advanced-features]: ./advanced-features.md

@@ -251,7 +251,7 @@
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(decl_macro)]
-#![feature(doc_cfg)]
+#![cfg_attr(bootstrap, doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
 #![feature(doc_spotlight)]

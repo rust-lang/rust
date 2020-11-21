@@ -2,6 +2,41 @@
 
 The features listed on this page fall outside the rest of the main categories.
 
+### `#[doc(cfg)]`: Recording what platforms or features are required for code to be present
+
+You can use `#[doc(cfg(...))]` to tell Rustdoc exactly which platform items appear on.
+This has two effects:
+
+1. doctests will only run on the appropriate platforms, and
+2. When Rustdoc renders documentation for that item, it will be accompanied by a banner explaining
+   that the item is only available on certain platforms.
+
+`#[doc(cfg)]` is intended to be used alongside `#[cfg(doc)]` (described a bit below on this same
+page). For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during
+the documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc
+that the item is supposed to be used on Windows. For example:
+
+```rust
+/// Token struct that can only be used on Windows.
+#[cfg(any(windows, doc))]
+#[doc(cfg(windows))]
+pub struct WindowsToken;
+
+/// Token struct that can only be used on Unix.
+#[cfg(any(unix, doc))]
+#[doc(cfg(unix))]
+pub struct UnixToken;
+
+/// Token struct that is only available with the `serde` feature
+#[cfg(feature = "serde")]
+#[doc(cfg(feature = "serde"))]
+#[derive(serde::Deserialize)]
+pub struct SerdeToken;
+```
+
+In this sample, the tokens will only appear on their respective platforms, but they will both appear
+in documentation.
+
 ## `#[cfg(doc)]`: Documenting platform-specific or feature-specific information
 
 For conditional compilation, Rustdoc treats your crate the same way the compiler does. Only things

@@ -104,7 +104,7 @@
 #![feature(const_unreachable_unchecked)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
-#![feature(doc_cfg)]
+#![cfg_attr(bootstrap, doc_cfg)]
 #![feature(doc_spotlight)]
 #![feature(duration_consts_2)]
 #![feature(duration_saturating_ops)]

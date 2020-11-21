@@ -367,9 +367,6 @@ declare_features! (
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
 
-    /// Allows `#[doc(cfg(...))]`.
-    (active, doc_cfg, "1.21.0", Some(43781), None),
-
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
 

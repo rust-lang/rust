@@ -43,51 +43,6 @@ plain text.
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
 and enabled with a `#![feature(...)]` attribute in your crate.
 
-### `#[doc(cfg)]`: Recording what platforms or features are required for code to be present
-
-You can use `#[doc(cfg(...))]` to tell Rustdoc exactly which platform items appear on.
-This has two effects:
-
-1. doctests will only run on the appropriate platforms, and
-2. When Rustdoc renders documentation for that item, it will be accompanied by a banner explaining
-   that the item is only available on certain platforms.
-
-`#[doc(cfg)]` is intended to be used alongside [`#[cfg(doc)]`][cfg-doc].
-For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during the
-documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
-the item is supposed to be used on Windows. For example:
-
-```rust
-#![feature(doc_cfg)]
-
-/// Token struct that can only be used on Windows.
-#[cfg(any(windows, doc))]
-#[doc(cfg(windows))]
-pub struct WindowsToken;
-
-/// Token struct that can only be used on Unix.
-#[cfg(any(unix, doc))]
-#[doc(cfg(unix))]
-pub struct UnixToken;
-
-/// Token struct that is only available with the `serde` feature
-#[cfg(feature = "serde")]
-#[doc(cfg(feature = "serde"))]
-#[derive(serde::Deserialize)]
-pub struct SerdeToken;
-```
-
-In this sample, the tokens will only appear on their respective platforms, but they will both appear
-in documentation.
-
-`#[doc(cfg(...))]` was introduced to be used by the standard library and currently requires the
-`#![feature(doc_cfg)]` feature gate. For more information, see [its chapter in the Unstable
-Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
-
-[cfg-doc]: ./advanced-features.md
-[unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
-[issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
-
 ### Adding your trait to the "Important Traits" dialog
 
 Rustdoc keeps a list of a few traits that are believed to be "fundamental" to a given type when
