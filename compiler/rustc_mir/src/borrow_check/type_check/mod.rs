@@ -1988,44 +1988,48 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // If the length is larger than 1, the repeat expression will need to copy the
                 // element, so we require the `Copy` trait.
                 if len.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
-                    if let Operand::Move(_) = operand {
-                        // While this is located in `nll::typeck` this error is not an NLL error, it's
-                        // a required check to make sure that repeated elements implement `Copy`.
-                        let span = body.source_info(location).span;
-                        let ty = operand.ty(body, tcx);
-                        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
-                            let ccx = ConstCx::new_with_param_env(tcx, body, self.param_env);
-                            // To determine if `const_in_array_repeat_expressions` feature gate should
-                            // be mentioned, need to check if the rvalue is promotable.
-                            let should_suggest =
-                                should_suggest_const_in_array_repeat_expressions_attribute(
-                                    &ccx, operand,
-                                );
-                            debug!("check_rvalue: should_suggest={:?}", should_suggest);
+                    match operand {
+                        Operand::Copy(..) | Operand::Constant(..) => {
+                            // These are always okay: direct use of a const, or a value that can evidently be copied.
+                        }
+                        Operand::Move(_) => {
+                            // Make sure that repeated elements implement `Copy`.
+                            let span = body.source_info(location).span;
+                            let ty = operand.ty(body, tcx);
+                            if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                                let ccx = ConstCx::new_with_param_env(tcx, body, self.param_env);
+                                // To determine if `const_in_array_repeat_expressions` feature gate should
+                                // be mentioned, need to check if the rvalue is promotable.
+                                let should_suggest =
+                                    should_suggest_const_in_array_repeat_expressions_attribute(
+                                        &ccx, operand,
+                                    );
+                                debug!("check_rvalue: should_suggest={:?}", should_suggest);
 
-                            let def_id = body.source.def_id().expect_local();
-                            self.infcx.report_selection_error(
-                                &traits::Obligation::new(
-                                    ObligationCause::new(
-                                        span,
-                                        self.tcx().hir().local_def_id_to_hir_id(def_id),
-                                        traits::ObligationCauseCode::RepeatVec(should_suggest),
-                                    ),
-                                    self.param_env,
-                                    ty::Binder::bind(ty::TraitRef::new(
-                                        self.tcx().require_lang_item(
-                                            LangItem::Copy,
-                                            Some(self.last_span),
+                                let def_id = body.source.def_id().expect_local();
+                                self.infcx.report_selection_error(
+                                    &traits::Obligation::new(
+                                        ObligationCause::new(
+                                            span,
+                                            self.tcx().hir().local_def_id_to_hir_id(def_id),
+                                            traits::ObligationCauseCode::RepeatVec(should_suggest),
                                         ),
-                                        tcx.mk_substs_trait(ty, &[]),
-                                    ))
-                                    .without_const()
-                                    .to_predicate(self.tcx()),
-                                ),
-                                &traits::SelectionError::Unimplemented,
-                                false,
-                                false,
-                            );
+                                        self.param_env,
+                                        ty::Binder::bind(ty::TraitRef::new(
+                                            self.tcx().require_lang_item(
+                                                LangItem::Copy,
+                                                Some(self.last_span),
+                                            ),
+                                            tcx.mk_substs_trait(ty, &[]),
+                                        ))
+                                        .without_const()
+                                        .to_predicate(self.tcx()),
+                                    ),
+                                    &traits::SelectionError::Unimplemented,
+                                    false,
+                                    false,
+                                );
+                            }
                         }
                     }
                 }
