@@ -878,22 +878,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn compute_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[&hir::GenericBound<'_>],
+        ast_bounds: &[hir::GenericBound<'_>],
         sized_by_default: SizedByDefault,
         span: Span,
     ) -> Bounds<'tcx> {
-        let mut bounds = Bounds::default();
-
-        self.add_bounds(param_ty, ast_bounds, &mut bounds);
-        bounds.trait_bounds.sort_by_key(|(t, _, _)| t.def_id());
-
-        bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
-            if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
-        } else {
-            None
-        };
-
-        bounds
+        let ast_bounds: Vec<_> = ast_bounds.iter().collect();
+        self.compute_bounds_inner(param_ty, &ast_bounds, sized_by_default, span)
     }
 
     pub fn compute_bounds_that_match_assoc_type(
@@ -916,7 +906,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        self.compute_bounds(param_ty, &result, sized_by_default, span)
+        self.compute_bounds_inner(param_ty, &result, sized_by_default, span)
+    }
+
+    fn compute_bounds_inner(
+        &self,
+        param_ty: Ty<'tcx>,
+        ast_bounds: &[&hir::GenericBound<'_>],
+        sized_by_default: SizedByDefault,
+        span: Span,
+    ) -> Bounds<'tcx> {
+        let mut bounds = Bounds::default();
+
+        self.add_bounds(param_ty, ast_bounds, &mut bounds);
+        bounds.trait_bounds.sort_by_key(|(t, _, _)| t.def_id());
+
+        bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
+            if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
+        } else {
+            None
+        };
+
+        bounds
     }
 
     /// Given an HIR binding like `Item = Foo` or `Item: Foo`, pushes the corresponding predicates
