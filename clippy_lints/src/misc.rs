@@ -18,7 +18,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_lint_hir_and_then, SpanlessEq,
+    span_lint_and_then, span_lint_hir_and_then, SpanlessEq, unsext,
 };
 
 declare_clippy_lint! {
@@ -139,12 +139,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for getting the remainder of a division by one.
+    /// **What it does:** Checks for getting the remainder of a division by one or minus
+    /// one.
     ///
-    /// **Why is this bad?** The result can only ever be zero. No one will write
-    /// such code deliberately, unless trying to win an Underhanded Rust
-    /// Contest. Even for that contest, it's probably a bad idea. Use something more
-    /// underhanded.
+    /// **Why is this bad?** The result for a divisor of one can only ever be zero; for
+    /// minus one it can cause panic/overflow (if the left operand is the minimal value of
+    /// the respective integer type) or results in zero. No one will write such code
+    /// deliberately, unless trying to win an Underhanded Rust Contest. Even for that
+    /// contest, it's probably a bad idea. Use something more underhanded.
     ///
     /// **Known problems:** None.
     ///
@@ -152,10 +154,11 @@ declare_clippy_lint! {
     /// ```rust
     /// # let x = 1;
     /// let a = x % 1;
+    /// let a = x % -1;
     /// ```
     pub MODULO_ONE,
     correctness,
-    "taking a number modulo 1, which always returns 0"
+    "taking a number modulo +/-1, which can either panic/overflow or always returns 0"
 }
 
 declare_clippy_lint! {
@@ -429,8 +432,17 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                         }
                         diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`");
                     });
-                } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
-                    span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
+                } else if op == BinOpKind::Rem {
+                    if is_integer_const(cx, right, 1) {
+                        span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
+                    }
+
+                    if let ty::Int(ity) = cx.typeck_results().expr_ty(right).kind() {
+                        if is_integer_const(cx, right, unsext(cx.tcx, -1, *ity)) {
+                            span_lint(cx, MODULO_ONE, expr.span,
+                                "any number modulo -1 will panic/overflow or result in 0");
+                        }
+                    };
                 }
             },
             _ => {},
