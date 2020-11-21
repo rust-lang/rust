@@ -532,6 +532,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span_bug!(span, "subtype requirement gave wrong error: `{:?}`", predicate)
                     }
 
+                    ty::PredicateAtom::Coerce(predicate) => {
+                        // Errors for Coerce predicates show up as
+                        // `FulfillmentErrorCode::CodeSubtypeError`,
+                        // not selection error.
+                        span_bug!(span, "coerce requirement gave wrong error: `{:?}`", predicate)
+                    }
+
                     ty::PredicateAtom::RegionOutlives(predicate) => {
                         let predicate = bound_predicate.rebind(predicate);
                         let predicate = self.resolve_vars_if_possible(predicate);

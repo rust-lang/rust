@@ -306,6 +306,7 @@ fn predicate_references_self(
         | ty::PredicateAtom::RegionOutlives(..)
         | ty::PredicateAtom::ClosureKind(..)
         | ty::PredicateAtom::Subtype(..)
+        | ty::PredicateAtom::Coerce(..)
         | ty::PredicateAtom::ConstEvaluatable(..)
         | ty::PredicateAtom::ConstEquate(..)
         | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
@@ -334,6 +335,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             }
             ty::PredicateAtom::Projection(..)
             | ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::Coerce(..)
             | ty::PredicateAtom::RegionOutlives(..)
             | ty::PredicateAtom::WellFormed(..)
             | ty::PredicateAtom::ObjectSafe(..)

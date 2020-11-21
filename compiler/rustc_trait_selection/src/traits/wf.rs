@@ -127,6 +127,10 @@ pub fn predicate_obligations<'a, 'tcx>(
             wf.compute(a.into());
             wf.compute(b.into());
         }
+        ty::PredicateAtom::Coerce(ty::CoercePredicate { a, b }) => {
+            wf.compute(a.into());
+            wf.compute(b.into());
+        }
         ty::PredicateAtom::ConstEvaluatable(def, substs) => {
             let obligations = wf.nominal_obligations(def.did, substs);
             wf.out.extend(obligations);

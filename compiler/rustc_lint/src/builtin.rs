@@ -1568,6 +1568,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |
+                    Coerce(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
                     TypeWellFormedFromEnv(..) => continue,

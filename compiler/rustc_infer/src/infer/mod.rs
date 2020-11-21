@@ -926,6 +926,35 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
     }
 
+    /// Processes a `Coerce` predicate from the fulfillment context.
+    /// This is NOT the preferred way to handle coercion, which is to
+    /// invoke `FnCtxt::coerce` or a similar method (see `coercion.rs`).
+    ///
+    /// This method here is actually a fallback that winds up being
+    /// invoked when `FnCtxt::coerce` encounters unresolved type variables
+    /// and records a coercion predicate. Presently, this method is equivalent
+    /// to `subtype_predicate` -- that is, "coercing" `a` to `b` winds up
+    /// actually requiring `a <: b`. This is of course a valid coercion,
+    /// but it's not as flexible as `FnCtxt::coerce` would be.
+    ///
+    /// (We may refactor this in the future, but there are a number of
+    /// practical obstacles. Among other things, `FnCtxt::coerce` presently
+    /// records adjustments that are required on the HIR in order to perform
+    /// the coercion, and we don't currently have a way to manage that.)
+    pub fn coerce_predicate(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        predicate: ty::PolyCoercePredicate<'tcx>,
+    ) -> Option<InferResult<'tcx, ()>> {
+        let subtype_predicate = predicate.map_bound(|p| ty::SubtypePredicate {
+            a_is_expected: false, // when coercing from `a` to `b`, `b` is expected
+            a: p.a,
+            b: p.b,
+        });
+        self.subtype_predicate(cause, param_env, subtype_predicate)
+    }
+
     pub fn subtype_predicate(
         &self,
         cause: &ObligationCause<'tcx>,

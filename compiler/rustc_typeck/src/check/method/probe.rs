@@ -807,6 +807,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
                 ty::PredicateAtom::Subtype(..)
+                | ty::PredicateAtom::Coerce(..)
                 | ty::PredicateAtom::Projection(..)
                 | ty::PredicateAtom::RegionOutlives(..)
                 | ty::PredicateAtom::WellFormed(..)

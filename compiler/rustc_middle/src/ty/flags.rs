@@ -236,6 +236,10 @@ impl FlagComputation {
                 self.add_ty(a);
                 self.add_ty(b);
             }
+            ty::PredicateAtom::Coerce(ty::CoercePredicate { a, b }) => {
+                self.add_ty(a);
+                self.add_ty(b);
+            }
             ty::PredicateAtom::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
                 self.add_projection_ty(projection_ty);
                 self.add_ty(ty);

@@ -778,6 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some((ty::Binder::bind(data).to_poly_trait_ref(), obligation))
                     }
                     ty::PredicateAtom::Subtype(..) => None,
+                    ty::PredicateAtom::Coerce(..) => None,
                     ty::PredicateAtom::RegionOutlives(..) => None,
                     ty::PredicateAtom::TypeOutlives(..) => None,
                     ty::PredicateAtom::WellFormed(..) => None,

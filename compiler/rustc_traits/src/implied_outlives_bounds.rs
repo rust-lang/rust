@@ -99,6 +99,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                 &ty::PredicateKind::Atom(atom) => match atom {
                     ty::PredicateAtom::Trait(..)
                     | ty::PredicateAtom::Subtype(..)
+                    | ty::PredicateAtom::Coerce(..)
                     | ty::PredicateAtom::Projection(..)
                     | ty::PredicateAtom::ClosureKind(..)
                     | ty::PredicateAtom::ObjectSafe(..)

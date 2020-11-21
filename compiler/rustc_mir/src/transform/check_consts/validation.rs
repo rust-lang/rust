@@ -397,8 +397,8 @@ impl Validator<'mir, 'tcx> {
                     ty::PredicateAtom::ClosureKind(..) => {
                         bug!("closure kind predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateAtom::Subtype(_) => {
-                        bug!("subtype predicate on function: {:#?}", predicate)
+                    ty::PredicateAtom::Subtype(_) | ty::PredicateAtom::Coerce(_) => {
+                        bug!("subtype/coerce predicate on function: {:#?}", predicate)
                     }
                     ty::PredicateAtom::Trait(pred, constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {

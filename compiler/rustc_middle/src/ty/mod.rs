@@ -1208,7 +1208,21 @@ pub enum PredicateAtom<'tcx> {
     ClosureKind(DefId, SubstsRef<'tcx>, ClosureKind),
 
     /// `T1 <: T2`
+    ///
+    /// This obligation is created most often when we have two
+    /// unresolved type variables and hence don't have enough
+    /// information to process the subtyping obligation yet.
     Subtype(SubtypePredicate<'tcx>),
+
+    /// `T1` coerced to `T2`
+    ///
+    /// Like a subtyping obligation, thi sis created most often
+    /// when we have two unresolved type variables and hence
+    /// don't have enough information to process the coercion
+    /// obligation yet. At the moment, we actually process coercions
+    /// very much like subtyping and don't handle the full coercion
+    /// logic.
+    Coerce(CoercePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
@@ -1362,6 +1376,9 @@ pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'t
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<TypeOutlivesPredicate<'tcx>>;
 
+/// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
+/// whether the `a` type is the type that we should label as "expected" when
+/// presenting user diagnostics.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct SubtypePredicate<'tcx> {
@@ -1370,6 +1387,15 @@ pub struct SubtypePredicate<'tcx> {
     pub b: Ty<'tcx>,
 }
 pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
+
+/// Encodes that we have to coerce *from* the `a` type to the `b` type.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable)]
+pub struct CoercePredicate<'tcx> {
+    pub a: Ty<'tcx>,
+    pub b: Ty<'tcx>,
+}
+pub type PolyCoercePredicate<'tcx> = ty::Binder<CoercePredicate<'tcx>>;
 
 /// This kind of predicate has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
@@ -1508,6 +1534,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateAtom::Trait(t, _) => Some(ty::Binder::bind(t.trait_ref)),
             PredicateAtom::Projection(..)
             | PredicateAtom::Subtype(..)
+            | PredicateAtom::Coerce(..)
             | PredicateAtom::RegionOutlives(..)
             | PredicateAtom::WellFormed(..)
             | PredicateAtom::ObjectSafe(..)
@@ -1525,6 +1552,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateAtom::Trait(..)
             | PredicateAtom::Projection(..)
             | PredicateAtom::Subtype(..)
+            | PredicateAtom::Coerce(..)
             | PredicateAtom::RegionOutlives(..)
             | PredicateAtom::WellFormed(..)
             | PredicateAtom::ObjectSafe(..)

@@ -2003,6 +2003,10 @@ define_print_and_forward_display! {
         p!(print(self.a), " <: ", print(self.b))
     }
 
+    ty::CoercePredicate<'tcx> {
+        p!(print(self.a), " -> ", print(self.b))
+    }
+
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ",
            print(self.trait_ref.print_only_trait_path()))
@@ -2040,6 +2044,7 @@ define_print_and_forward_display! {
                 p!(print(data))
             }
             ty::PredicateAtom::Subtype(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::Coerce(predicate) => p!(print(predicate)),
             ty::PredicateAtom::RegionOutlives(predicate) => p!(print(predicate)),
             ty::PredicateAtom::TypeOutlives(predicate) => p!(print(predicate)),
             ty::PredicateAtom::Projection(predicate) => p!(print(predicate)),

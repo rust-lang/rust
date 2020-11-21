@@ -499,6 +499,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
             ty::PredicateAtom::Projection(pred) => Some(pred.clean(cx)),
 
             ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::Coerce(..)
             | ty::PredicateAtom::WellFormed(..)
             | ty::PredicateAtom::ObjectSafe(..)
             | ty::PredicateAtom::ClosureKind(..)

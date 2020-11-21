@@ -114,6 +114,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 | ty::PredicateAtom::ObjectSafe(..)
                 | ty::PredicateAtom::ClosureKind(..)
                 | ty::PredicateAtom::Subtype(..)
+                | ty::PredicateAtom::Coerce(..)
                 | ty::PredicateAtom::ConstEvaluatable(..)
                 | ty::PredicateAtom::ConstEquate(..) => bug!("unexpected predicate {}", predicate),
             };
@@ -201,6 +202,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             // some of these in terms of chalk operations.
             ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::Coerce(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
             | ty::PredicateAtom::ConstEquate(..) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
@@ -604,6 +606,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             ty::PredicateAtom::ObjectSafe(..)
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::Coerce(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
             | ty::PredicateAtom::ConstEquate(..)
             | ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
@@ -727,6 +730,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             | ty::PredicateAtom::ObjectSafe(..)
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::Coerce(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
             | ty::PredicateAtom::ConstEquate(..)
             | ty::PredicateAtom::TypeWellFormedFromEnv(..) => {

@@ -1265,6 +1265,7 @@ crate fn required_region_bounds(
                 ty::PredicateAtom::Projection(..)
                 | ty::PredicateAtom::Trait(..)
                 | ty::PredicateAtom::Subtype(..)
+                | ty::PredicateAtom::Coerce(..)
                 | ty::PredicateAtom::WellFormed(..)
                 | ty::PredicateAtom::ObjectSafe(..)
                 | ty::PredicateAtom::ClosureKind(..)
