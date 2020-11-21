@@ -72,11 +72,6 @@ impl EarlyLintPass for UnnestedOrPatterns {
 }
 
 fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
-    if !cx.sess.features_untracked().or_patterns {
-        // Do not suggest nesting the patterns if the feature `or_patterns` is not enabled.
-        return;
-    }
-
     if let Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
         // This is a leaf pattern, so cloning is unprofitable.
         return;
