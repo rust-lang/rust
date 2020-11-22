@@ -1,17 +1,16 @@
-// run-pass
-// ignore-emscripten no threads support
-
-use std::thread::{self, sleep};
-use std::time::Duration;
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
-fn main() {
+#[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
+fn sleep() {
     let finished = Arc::new(Mutex::new(false));
     let t_finished = finished.clone();
     thread::spawn(move || {
-        sleep(Duration::new(u64::MAX, 0));
+        thread::sleep(Duration::new(u64::MAX, 0));
         *t_finished.lock().unwrap() = true;
     });
-    sleep(Duration::from_millis(100));
+    thread::sleep(Duration::from_millis(100));
     assert_eq!(*finished.lock().unwrap(), false);
 }
