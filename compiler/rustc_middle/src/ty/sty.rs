@@ -2010,6 +2010,13 @@ impl<'tcx> TyS<'tcx> {
         self.is_region_ptr() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
+    /// Return `true` if `def_id` refers to any callable object (i.e., function,
+    /// function pointers, closure, …).
+    #[inline]
+    pub fn is_callable(self) -> bool {
+        self.is_fn() || self.is_fn_ptr() || self.is_closure()
+    }
+
     #[inline]
     pub fn is_box(&self) -> bool {
         match self.kind() {
