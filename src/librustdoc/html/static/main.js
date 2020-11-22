@@ -2332,12 +2332,18 @@ function defocusSearchBar() {
             var dontApplyBlockRule = toggle.parentNode.parentNode.id !== "main";
             if (action === "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
-                removeClass(docblock, "hidden-by-usual-hider");
+                // Stability information is never hidden.
+                if (hasClass(docblock, "stability") === false) {
+                    removeClass(docblock, "hidden-by-usual-hider");
+                }
                 onEachLazy(toggle.childNodes, adjustToggle(false, dontApplyBlockRule));
                 onEachLazy(relatedDoc.childNodes, implHider(false, dontApplyBlockRule));
             } else if (action === "hide") {
                 addClass(relatedDoc, "fns-now-collapsed");
-                addClass(docblock, "hidden-by-usual-hider");
+                // Stability information should be shown even when detailed info is hidden.
+                if (hasClass(docblock, "stability") === false) {
+                    addClass(docblock, "hidden-by-usual-hider");
+                }
                 onEachLazy(toggle.childNodes, adjustToggle(true, dontApplyBlockRule));
                 onEachLazy(relatedDoc.childNodes, implHider(true, dontApplyBlockRule));
             }
