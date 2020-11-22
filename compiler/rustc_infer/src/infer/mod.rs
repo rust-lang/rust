@@ -23,7 +23,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
 use rustc_middle::mir::interpret::EvalToConstValueResult;
 use rustc_middle::traits::select;
-use rustc_middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
@@ -679,10 +679,27 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         t.fold_with(&mut self.freshener())
     }
 
+    /// Returns whether `ty` is a diverging type variable or not.
+    /// (If `ty` is not a type variable at all, returns not diverging.)
+    ///
+    /// No attempt is made to resolve `ty`.
     pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> Diverging {
         match *ty.kind() {
             ty::Infer(ty::TyVar(vid)) => self.inner.borrow_mut().type_variables().var_diverges(vid),
             _ => Diverging::NotDiverging,
+        }
+    }
+
+    /// Returns the origin of the type variable identified by `vid`, or `None`
+    /// if this is not a type variable.
+    ///
+    /// No attempt is made to resolve `ty`.
+    pub fn type_var_origin(&'a self, ty: Ty<'tcx>) -> Option<TypeVariableOrigin> {
+        match *ty.kind() {
+            ty::Infer(ty::TyVar(vid)) => {
+                Some(*self.inner.borrow_mut().type_variables().var_origin(vid))
+            }
+            _ => None,
         }
     }
 
@@ -693,28 +710,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Like `freshener`, but does not replace `'static` regions.
     pub fn freshener_keep_static<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
         freshen::TypeFreshener::new(self, true)
-    }
-
-    pub fn type_is_unconstrained_numeric(&'a self, ty: Ty<'_>) -> UnconstrainedNumeric {
-        use rustc_middle::ty::error::UnconstrainedNumeric::Neither;
-        use rustc_middle::ty::error::UnconstrainedNumeric::{UnconstrainedFloat, UnconstrainedInt};
-        match *ty.kind() {
-            ty::Infer(ty::IntVar(vid)) => {
-                if self.inner.borrow_mut().int_unification_table().probe_value(vid).is_some() {
-                    Neither
-                } else {
-                    UnconstrainedInt
-                }
-            }
-            ty::Infer(ty::FloatVar(vid)) => {
-                if self.inner.borrow_mut().float_unification_table().probe_value(vid).is_some() {
-                    Neither
-                } else {
-                    UnconstrainedFloat
-                }
-            }
-            _ => Neither,
-        }
     }
 
     pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {

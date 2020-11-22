@@ -71,12 +71,6 @@ pub enum TypeError<'tcx> {
     TargetFeatureCast(DefId),
 }
 
-pub enum UnconstrainedNumeric {
-    UnconstrainedFloat,
-    UnconstrainedInt,
-    Neither,
-}
-
 /// Explains the source of a type err in a short, human readable way. This is meant to be placed
 /// in parentheses after some larger message. You should also invoke `note_and_explain_type_err()`
 /// afterwards to present additional details, particularly when it comes to lifetime-related
