@@ -13,7 +13,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` calls
-    /// that uselessly convert to the same type.
+    /// which uselessly convert to the same type.
     ///
     /// **Why is this bad?** Redundant code.
     ///
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     pub USELESS_CONVERSION,
     complexity,
-    "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` that perform useless conversions to the same type"
+    "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type"
 }
 
 #[derive(Default)]
