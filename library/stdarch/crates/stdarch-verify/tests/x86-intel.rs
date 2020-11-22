@@ -32,15 +32,15 @@ struct Function {
 
 static F32: Type = Type::PrimFloat(32);
 static F64: Type = Type::PrimFloat(64);
+static I8: Type = Type::PrimSigned(8);
 static I16: Type = Type::PrimSigned(16);
 static I32: Type = Type::PrimSigned(32);
 static I64: Type = Type::PrimSigned(64);
-static I8: Type = Type::PrimSigned(8);
+static U8: Type = Type::PrimUnsigned(8);
 static U16: Type = Type::PrimUnsigned(16);
 static U32: Type = Type::PrimUnsigned(32);
 static U64: Type = Type::PrimUnsigned(64);
 static U128: Type = Type::PrimUnsigned(128);
-static U8: Type = Type::PrimUnsigned(8);
 static ORDERING: Type = Type::Ordering;
 
 static M64: Type = Type::M64;
@@ -55,6 +55,8 @@ static M512I: Type = Type::M512I;
 static M512D: Type = Type::M512D;
 static MMASK8: Type = Type::MMASK8;
 static MMASK16: Type = Type::MMASK16;
+static MMASK32: Type = Type::MMASK32;
+static MMASK64: Type = Type::MMASK64;
 static MM_CMPINT_ENUM: Type = Type::MM_CMPINT_ENUM;
 static MM_MANTISSA_NORM_ENUM: Type = Type::MM_MANTISSA_NORM_ENUM;
 static MM_MANTISSA_SIGN_ENUM: Type = Type::MM_MANTISSA_SIGN_ENUM;
@@ -83,6 +85,8 @@ enum Type {
     M512I,
     MMASK8,
     MMASK16,
+    MMASK32,
+    MMASK64,
     MM_CMPINT_ENUM,
     MM_MANTISSA_NORM_ENUM,
     MM_MANTISSA_SIGN_ENUM,
@@ -691,6 +695,8 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::MutPtr(&Type::PrimFloat(32)), "void*") => {}
         (&Type::MutPtr(&Type::PrimFloat(64)), "void*") => {}
         (&Type::MutPtr(&Type::PrimSigned(32)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(16)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(8)), "void*") => {}
         (&Type::MutPtr(&Type::PrimSigned(32)), "int*") => {}
         (&Type::MutPtr(&Type::PrimSigned(32)), "__int32*") => {}
         (&Type::MutPtr(&Type::PrimSigned(64)), "void*") => {}
@@ -717,9 +723,11 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::ConstPtr(&Type::PrimFloat(64)), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "int const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(8)), "void const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(16)), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "void const*") => {}
-        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(64)), "void const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(8)), "char const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
@@ -738,6 +746,8 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
 
         (&Type::MMASK8, "__mmask8") => {}
         (&Type::MMASK16, "__mmask16") => {}
+        (&Type::MMASK32, "__mmask32") => {}
+        (&Type::MMASK64, "__mmask64") => {}
         (&Type::MM_CMPINT_ENUM, "_MM_CMPINT_ENUM") => {}
         (&Type::MM_MANTISSA_NORM_ENUM, "_MM_MANTISSA_NORM_ENUM") => {}
         (&Type::MM_MANTISSA_SIGN_ENUM, "_MM_MANTISSA_SIGN_ENUM") => {}

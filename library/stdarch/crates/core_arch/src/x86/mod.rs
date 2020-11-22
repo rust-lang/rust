@@ -298,6 +298,14 @@ types! {
     pub struct __m512d(f64, f64, f64, f64, f64, f64, f64, f64);
 }
 
+/// The `__mmask64` type used in AVX-512 intrinsics, a 64-bit integer
+#[allow(non_camel_case_types)]
+pub type __mmask64 = u64;
+
+/// The `__mmask32` type used in AVX-512 intrinsics, a 32-bit integer
+#[allow(non_camel_case_types)]
+pub type __mmask32 = u32;
+
 /// The `__mmask16` type used in AVX-512 intrinsics, a 16-bit integer
 #[allow(non_camel_case_types)]
 pub type __mmask16 = u16;
@@ -493,7 +501,17 @@ pub(crate) trait m512iExt: Sized {
     fn as_m512i(self) -> __m512i;
 
     #[inline]
+    fn as_u8x64(self) -> crate::core_arch::simd::u8x64 {
+        unsafe { transmute(self.as_m512i()) }
+    }
+
+    #[inline]
     fn as_i8x64(self) -> crate::core_arch::simd::i8x64 {
+        unsafe { transmute(self.as_m512i()) }
+    }
+
+    #[inline]
+    fn as_u16x32(self) -> crate::core_arch::simd::u16x32 {
         unsafe { transmute(self.as_m512i()) }
     }
 
@@ -647,6 +665,9 @@ pub unsafe fn ud2() -> ! {
 
 mod avx512f;
 pub use self::avx512f::*;
+
+mod avx512bw;
+pub use self::avx512bw::*;
 
 mod avx512ifma;
 pub use self::avx512ifma::*;
