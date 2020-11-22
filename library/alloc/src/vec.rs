@@ -693,6 +693,7 @@ impl<T, A: AllocRef> Vec<T, A> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
     }
@@ -718,6 +719,7 @@ impl<T, A: AllocRef> Vec<T, A> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.buf.reserve_exact(self.len, additional);
     }
@@ -815,6 +817,7 @@ impl<T, A: AllocRef> Vec<T, A> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn shrink_to_fit(&mut self) {
         // The capacity is never less than the length, and there's nothing to do when
         // they are equal, so we can avoid the panic case in `RawVec::shrink_to_fit`
@@ -847,6 +850,7 @@ impl<T, A: AllocRef> Vec<T, A> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
+    #[track_caller]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
     }
@@ -876,6 +880,7 @@ impl<T, A: AllocRef> Vec<T, A> {
     /// assert_eq!(slice.into_vec().capacity(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn into_boxed_slice(mut self) -> Box<[T], A> {
         unsafe {
             self.shrink_to_fit();
@@ -1402,6 +1407,7 @@ impl<T, A: AllocRef> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
@@ -1455,6 +1461,7 @@ impl<T, A: AllocRef> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
+    #[track_caller]
     pub fn append(&mut self, other: &mut Self) {
         unsafe {
             self.append_elements(other.as_slice() as _);
@@ -1464,6 +1471,7 @@ impl<T, A: AllocRef> Vec<T, A> {
 
     /// Appends elements to `Self` from other buffer.
     #[inline]
+    #[track_caller]
     unsafe fn append_elements(&mut self, other: *const [T]) {
         let count = unsafe { (*other).len() };
         self.reserve(count);
@@ -1803,6 +1811,7 @@ impl<T: Clone, A: AllocRef> Vec<T, A> {
     ///
     /// [`extend`]: Vec::extend
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
+    #[track_caller]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
     }
@@ -1846,6 +1855,7 @@ impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
 
 impl<T, A: AllocRef> Vec<T, A> {
     /// Extend the vector by `n` values, using the given generator.
+    #[track_caller]
     fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
         self.reserve(n);
 
@@ -2177,6 +2187,7 @@ impl<T, I: SliceIndex<[T]>, A: AllocRef> IndexMut<I> for Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
+    #[track_caller]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
         <Self as SpecFromIter<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
@@ -2247,16 +2258,19 @@ impl<'a, T, A: AllocRef> IntoIterator for &'a mut Vec<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: AllocRef> Extend<T> for Vec<T, A> {
     #[inline]
+    #[track_caller]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
     }
 
     #[inline]
+    #[track_caller]
     fn extend_one(&mut self, item: T) {
         self.push(item);
     }
 
     #[inline]
+    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -2297,6 +2311,7 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
+    #[track_caller]
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
         // expanded on this iteration in every case when the iterable is not
@@ -2326,6 +2341,7 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 where
     I: TrustedLen<Item = T>,
 {
+    #[track_caller]
     fn from_iter(iterator: I) -> Self {
         let mut vector = Vec::new();
         // must delegate to spec_extend() since extend() itself delegates
@@ -2339,6 +2355,7 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T>,
 {
+    #[track_caller]
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
     }
@@ -2367,6 +2384,7 @@ impl<T> Drop for InPlaceDrop<T> {
 }
 
 impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
+    #[track_caller]
     fn from_iter(iterator: IntoIter<T>) -> Self {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter
@@ -2432,6 +2450,7 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
     I: Iterator<Item = T> + SourceIterMarker,
 {
+    #[track_caller]
     default fn from_iter(mut iterator: I) -> Self {
         // Additional requirements which cannot expressed via trait bounds. We rely on const eval
         // instead:
@@ -2503,6 +2522,7 @@ where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
+    #[track_caller]
     default fn from_iter(iterator: I) -> Self {
         SpecFromIter::from_iter(iterator.cloned())
     }
@@ -2513,6 +2533,7 @@ where
     T: Copy,
 {
     // reuses the extend specialization for T: Copy
+    #[track_caller]
     fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
         let mut vec = Vec::new();
         // must delegate to spec_extend() since extend() itself delegates
@@ -2570,6 +2591,7 @@ where
 }
 
 impl<T, A: AllocRef> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
+    #[track_caller]
     fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
         unsafe {
             self.append_elements(iterator.as_slice() as _);
@@ -2583,6 +2605,7 @@ where
     I: Iterator<Item = &'a T>,
     T: Clone,
 {
+    #[track_caller]
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.cloned())
     }
@@ -2592,6 +2615,7 @@ impl<'a, T: 'a, A: AllocRef + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<
 where
     T: Copy,
 {
+    #[track_caller]
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();
         unsafe { self.append_elements(slice) };
@@ -2601,6 +2625,7 @@ where
 impl<T, A: AllocRef> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
+    #[track_caller]
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
         //
@@ -2734,16 +2759,19 @@ impl<T, A: AllocRef> Vec<T, A> {
 /// [`copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: AllocRef + 'a> Extend<&'a T> for Vec<T, A> {
+    #[track_caller]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
     }
 
     #[inline]
+    #[track_caller]
     fn extend_one(&mut self, &item: &'a T) {
         self.push(item);
     }
 
     #[inline]
+    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -3018,6 +3046,7 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]>
 where
     T: Clone,
 {
+    #[track_caller]
     fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
     }
