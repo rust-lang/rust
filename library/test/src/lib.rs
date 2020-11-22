@@ -23,7 +23,6 @@
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
 #![feature(rustc_private)]
 #![feature(nll)]
-#![feature(bool_to_option)]
 #![feature(available_concurrency)]
 #![feature(internal_output_capture)]
 #![feature(panic_unwind)]
