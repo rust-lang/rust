@@ -297,6 +297,58 @@ pub unsafe fn vsubq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_sub(a, b)
 }
 
+/// Maximum (vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmax))]
+pub unsafe fn vmax_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v1f64")]
+        fn vmax_f64_(a: float64x1_t, a: float64x1_t) -> float64x1_t;
+    }
+    vmax_f64_(a, b)
+}
+
+/// Maximum (vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmax))]
+pub unsafe fn vmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v2f64")]
+        fn vmaxq_f64_(a: float64x2_t, a: float64x2_t) -> float64x2_t;
+    }
+    vmaxq_f64_(a, b)
+}
+
+/// Minimum (vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmin))]
+pub unsafe fn vmin_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v1f64")]
+        fn vmin_f64_(a: float64x1_t, a: float64x1_t) -> float64x1_t;
+    }
+    vmin_f64_(a, b)
+}
+
+/// Minimum (vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmin))]
+pub unsafe fn vminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v2f64")]
+        fn vminq_f64_(a: float64x2_t, a: float64x2_t) -> float64x2_t;
+    }
+    vminq_f64_(a, b)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -661,6 +713,42 @@ mod test {
         let b: f64x2 = f64x2::new(1.0, 2.0);
         let e: f64x2 = f64x2::new(0.0, 2.0);
         let r: f64x2 = transmute(vsubq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmax_f64() {
+        let a: f64 = 1.0;
+        let b: f64 = 0.0;
+        let e: f64 = 1.0;
+        let r: f64 = transmute(vmax_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmaxq_f64() {
+        let a: f64x2 = f64x2::new(1.0, -2.0);
+        let b: f64x2 = f64x2::new(0.0, 3.0);
+        let e: f64x2 = f64x2::new(1.0, 3.0);
+        let r: f64x2 = transmute(vmaxq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmin_f64() {
+        let a: f64 = 1.0;
+        let b: f64 = 0.0;
+        let e: f64 = 0.0;
+        let r: f64 = transmute(vmin_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vminq_f64() {
+        let a: f64x2 = f64x2::new(1.0, -2.0);
+        let b: f64x2 = f64x2::new(0.0, 3.0);
+        let e: f64x2 = f64x2::new(0.0, -2.0);
+        let r: f64x2 = transmute(vminq_f64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 }

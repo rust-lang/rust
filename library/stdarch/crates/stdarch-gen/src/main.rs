@@ -318,13 +318,12 @@ fn gen_aarch64(
         let ext = type_to_ext(in_t);
 
         format!(
-            r#"
-    #[allow(improper_ctypes)]
+            r#"#[allow(improper_ctypes)]
     extern "C" {{
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.{}")]
         fn {}(a: {}, a: {}) -> {};
     }}
-"#,
+    "#,
             link_aarch64.replace("_EXT_", ext),
             current_fn,
             in_t,

@@ -448,3 +448,71 @@ aarch64 = shsub
 link-arm = vhsubs._EXT_
 link-aarch64 = shsub._EXT_
 generate int*_t
+
+/// Maximum (vector)
+name = vmax
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+validate 16, 15, 14, 13, 12, 11, 10, 9, 9, 10, 11, 12, 13, 14, 15, 16
+
+arm = vmax
+aarch64 = smax
+link-arm = vmaxs._EXT_
+link-aarch64 = smax._EXT_
+generate int*_t
+
+arm = vmax
+aarch64 = umax
+link-arm = vmaxu._EXT_
+link-aarch64 = umax._EXT_
+generate uint*_t
+
+/// Maximum (vector)
+name = vmax
+a = 1.0, -2.0, 3.0, -4.0
+b = 0.0, 3.0, 2.0, 8.0
+validate 1.0, 3.0, 3.0, 8.0
+
+aarch64 = fmax
+link-aarch64 = fmax._EXT_
+generate float64x*_t
+
+arm = vmax
+aarch64 = fmax
+link-arm = vmaxs._EXT_
+link-aarch64 = fmax._EXT_
+generate float*_t
+
+/// Minimum (vector)
+name = vmin
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+validate 1, 2, 3, 4, 5, 6, 7, 8, 8, 7, 6, 5, 4, 3, 2, 1
+
+arm = vmin
+aarch64 = smin
+link-arm = vmins._EXT_
+link-aarch64 = smin._EXT_
+generate int*_t
+
+arm = vmin
+aarch64 = umin
+link-arm = vminu._EXT_
+link-aarch64 = umin._EXT_
+generate uint*_t
+
+/// Minimum (vector)
+name = vmin
+a = 1.0, -2.0, 3.0, -4.0
+b = 0.0, 3.0, 2.0, 8.0
+validate 0.0, -2.0, 2.0, -4.0
+
+aarch64 = fmin
+link-aarch64 = fmin._EXT_
+generate float64x*_t
+
+arm = vmin
+aarch64 = fmin
+link-arm = vmins._EXT_
+link-aarch64 = fmin._EXT_
+generate float*_t
