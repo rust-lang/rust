@@ -60,9 +60,9 @@ impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     #[allow(clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if let hir::ItemKind::Impl {
+        if let hir::ItemKind::Impl(hir::Impl {
             of_trait: None, items, ..
-        } = item.kind
+        }) = item.kind
         {
             for assoc_item in items {
                 if let hir::AssocItemKind::Fn { has_self: false } = assoc_item.kind {
