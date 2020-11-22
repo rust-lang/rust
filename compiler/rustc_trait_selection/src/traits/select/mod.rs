@@ -1354,11 +1354,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitAliasCandidate(..)
                 | ObjectCandidate(_)
                 | ProjectionCandidate(_),
-            ) => !is_global(cand),
+            ) => !is_global(&cand.value),
             (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(cand)
+                is_global(&cand.value)
             }
             (
                 ImplCandidate(_)
@@ -1373,7 +1373,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(cand) && other.evaluation.must_apply_modulo_regions()
+                is_global(&cand.value) && other.evaluation.must_apply_modulo_regions()
             }
 
             (ProjectionCandidate(i), ProjectionCandidate(j))

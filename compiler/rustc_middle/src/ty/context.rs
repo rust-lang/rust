@@ -42,7 +42,9 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathHash, Definitions};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{HirId, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet, Node, TraitCandidate};
+use rustc_hir::{
+    Constness, HirId, ItemKind, ItemLocalId, ItemLocalMap, ItemLocalSet, Node, TraitCandidate,
+};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
@@ -1634,6 +1636,8 @@ nop_list_lift! {projs; ProjectionKind => ProjectionKind}
 
 // This is the impl for `&'a InternalSubsts<'a>`.
 nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
+
+CloneLiftImpls! { for<'tcx> { Constness, } }
 
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};
