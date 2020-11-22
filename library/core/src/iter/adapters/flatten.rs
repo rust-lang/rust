@@ -1,8 +1,6 @@
 use crate::fmt;
+use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map};
 use crate::ops::Try;
-
-use super::super::{DoubleEndedIterator, Fuse, FusedIterator, Iterator};
-use super::Map;
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
@@ -14,8 +12,9 @@ use super::Map;
 pub struct FlatMap<I, U: IntoIterator, F> {
     inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>,
 }
+
 impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
-    pub(in super::super) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
+    pub(in crate::iter) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
         FlatMap { inner: FlattenCompat::new(iter.map(f)) }
     }
 }
