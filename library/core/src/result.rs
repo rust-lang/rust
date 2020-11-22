@@ -1212,6 +1212,47 @@ impl<T, E> Result<Result<T, E>, E> {
     }
 }
 
+impl<T> Result<T, T> {
+    /// Gets a reference to the contained value, requiring that the `Ok` and
+    /// `Err` variants have the same type.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(result_value)]
+    ///
+    /// let x: Result<u8, u8> = Ok(1);
+    /// assert_eq!(*x.value(), 1);
+    /// let y: Result<u32, u32> = Err(42);
+    /// assert_eq!(*y.value(), 42);
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_value", issue = "none")]
+    pub fn value(&self) -> &T {
+        match self {
+            Ok(ref t) | Err(ref t) => t,
+        }
+    }
+
+    /// Consumes the Result, returning the contained value. This requires that the `Ok` and `Err`
+    /// variant have the same type. This can be useful when a function returns a `Result` with the
+    /// same information on both variants, e.g.
+    /// [`binary_search`](../../std/primitive.slice.html#method.binary_search)
+    ///
+    /// # Examples
+    /// #![feature(result_value)]
+    ///
+    /// let slice = &[1, 2, 4, 5, 7];
+    /// assert_eq(slice.binary_search(3).into_value(), slice.binary_search(4).into_value());
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_value", issue = "none")]
+    pub fn into_value(self) -> T {
+        match self {
+            Ok(t) | Err(t) => t,
+        }
+    }
+}
+
 // This is a separate function to reduce the code size of the methods
 #[inline(never)]
 #[cold]
