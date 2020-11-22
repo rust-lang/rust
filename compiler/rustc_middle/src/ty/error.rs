@@ -829,7 +829,8 @@ fn foo(&self) -> Self::T { String::new() }
                 }
             }
             Some(hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Impl { items, .. }, ..
+                kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
+                ..
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {

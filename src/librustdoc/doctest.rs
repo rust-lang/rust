@@ -1026,8 +1026,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
-        let name = if let hir::ItemKind::Impl { ref self_ty, .. } = item.kind {
-            rustc_hir_pretty::id_to_string(&self.map, self_ty.hir_id)
+        let name = if let hir::ItemKind::Impl(impl_) = &item.kind {
+            rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
         } else {
             item.ident.to_string()
         };

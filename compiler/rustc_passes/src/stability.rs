@@ -330,11 +330,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod { .. } => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
+            | hir::ItemKind::ForeignMod { .. } => {
                 self.in_trait_impl = false;
                 kind = AnnotationKind::Container;
             }
-            hir::ItemKind::Impl { of_trait: Some(_), .. } => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => {
                 self.in_trait_impl = true;
                 kind = AnnotationKind::DeprecationProhibited;
             }
@@ -503,7 +504,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         // optional. They inherit stability from their parents when unannotated.
         if !matches!(
             i.kind,
-            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod { .. }
+            hir::ItemKind::Impl(hir::Impl { of_trait: None, .. }) | hir::ItemKind::ForeignMod { .. }
         ) {
             self.check_missing_stability(i.hir_id, i.span);
         }
@@ -672,7 +673,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl { of_trait: Some(ref t), self_ty, items, .. } => {
+            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
                 if self.tcx.features().staged_api {
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because

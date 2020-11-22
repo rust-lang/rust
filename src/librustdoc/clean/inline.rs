@@ -358,18 +358,16 @@ crate fn build_impl(
     let impl_item = match did.as_local() {
         Some(did) => {
             let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-            match tcx.hir().expect_item(hir_id).kind {
-                hir::ItemKind::Impl { self_ty, ref generics, ref items, .. } => {
-                    Some((self_ty, generics, items))
-                }
+            match &tcx.hir().expect_item(hir_id).kind {
+                hir::ItemKind::Impl(impl_) => Some(impl_),
                 _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
             }
         }
         None => None,
     };
 
-    let for_ = match impl_item {
-        Some((self_ty, _, _)) => self_ty.clean(cx),
+    let for_ = match &impl_item {
+        Some(impl_) => impl_.self_ty.clean(cx),
         None => tcx.type_of(did).clean(cx),
     };
 
@@ -391,9 +389,13 @@ crate fn build_impl(
 
     let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = match impl_item {
-        Some((_, generics, items)) => (
-            items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
-            generics.clean(cx),
+        Some(impl_) => (
+            impl_
+                .items
+                .iter()
+                .map(|item| tcx.hir().impl_item(item.id).clean(cx))
+                .collect::<Vec<_>>(),
+            impl_.generics.clean(cx),
         ),
         None => (
             tcx.associated_items(did)

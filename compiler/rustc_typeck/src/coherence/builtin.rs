@@ -55,7 +55,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
     let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
     let sp = match tcx.hir().expect_item(impl_hir_id).kind {
-        ItemKind::Impl { self_ty, .. } => self_ty.span,
+        ItemKind::Impl(ref impl_) => impl_.self_ty.span,
         _ => bug!("expected Drop impl item"),
     };
 
@@ -80,7 +80,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir().expect_item(impl_hir_id);
-            let span = if let ItemKind::Impl { of_trait: Some(ref tr), .. } = item.kind {
+            let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(ref tr), .. }) = item.kind {
                 tr.path.span
             } else {
                 span
@@ -100,7 +100,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir().expect_item(impl_hir_id);
             let span =
-                if let ItemKind::Impl { self_ty, .. } = item.kind { self_ty.span } else { span };
+                if let ItemKind::Impl(ref impl_) = item.kind { impl_.self_ty.span } else { span };
 
             tcx.sess.emit_err(CopyImplOnNonAdt { span });
         }
@@ -453,7 +453,9 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
                     return err_info;
                 } else if diff_fields.len() > 1 {
                     let item = tcx.hir().expect_item(impl_hir_id);
-                    let span = if let ItemKind::Impl { of_trait: Some(ref t), .. } = item.kind {
+                    let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(ref t), .. }) =
+                        item.kind
+                    {
                         t.path.span
                     } else {
                         tcx.hir().span(impl_hir_id)

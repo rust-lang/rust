@@ -2562,22 +2562,25 @@ pub enum ItemKind<'hir> {
     TraitAlias(Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl {
-        unsafety: Unsafety,
-        polarity: ImplPolarity,
-        defaultness: Defaultness,
-        // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
-        // decoding as `Span`s cannot be decoded when a `Session` is not available.
-        defaultness_span: Option<Span>,
-        constness: Constness,
-        generics: Generics<'hir>,
+    Impl(Impl<'hir>),
+}
 
-        /// The trait being implemented, if any.
-        of_trait: Option<TraitRef<'hir>>,
+#[derive(Debug, HashStable_Generic)]
+pub struct Impl<'hir> {
+    pub unsafety: Unsafety,
+    pub polarity: ImplPolarity,
+    pub defaultness: Defaultness,
+    // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
+    // decoding as `Span`s cannot be decoded when a `Session` is not available.
+    pub defaultness_span: Option<Span>,
+    pub constness: Constness,
+    pub generics: Generics<'hir>,
 
-        self_ty: &'hir Ty<'hir>,
-        items: &'hir [ImplItemRef<'hir>],
-    },
+    /// The trait being implemented, if any.
+    pub of_trait: Option<TraitRef<'hir>>,
+
+    pub self_ty: &'hir Ty<'hir>,
+    pub items: &'hir [ImplItemRef<'hir>],
 }
 
 impl ItemKind<'_> {
@@ -2590,7 +2593,7 @@ impl ItemKind<'_> {
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
             | ItemKind::Trait(_, _, ref generics, _, _)
-            | ItemKind::Impl { ref generics, .. } => generics,
+            | ItemKind::Impl(Impl { ref generics, .. }) => generics,
             _ => return None,
         })
     }
