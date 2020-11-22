@@ -234,9 +234,8 @@ impl Clean<Item> for doctree::Module<'_> {
         items.extend(self.fns.iter().map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
-        items.extend(self.items.iter().map(|x| x.clean(cx)));
+        items.extend(self.items.iter().map(|x| x.clean(cx)).flatten());
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
-        items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
         items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
 
@@ -1922,8 +1921,8 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Item> for (&hir::Item<'_>, Option<Ident>) {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
+impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
+    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         use hir::ItemKind;
 
         let (item, renamed) = self;
@@ -1977,10 +1976,11 @@ impl Clean<Item> for (&hir::Item<'_>, Option<Ident>) {
                 fields: variant_data.fields().clean(cx),
                 fields_stripped: false,
             }),
+            ItemKind::Impl { .. } => return clean_impl(item, cx),
             _ => unreachable!("not yet converted"),
         };
 
-        Item::from_def_id_and_parts(def_id, Some(name), kind, cx)
+        vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
     }
 }
 
@@ -2005,57 +2005,53 @@ impl Clean<ImplPolarity> for ty::ImplPolarity {
     }
 }
 
-impl Clean<Vec<Item>> for doctree::Impl<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        let mut ret = Vec::new();
-        let trait_ = self.trait_.clean(cx);
-        let items = self.items.iter().map(|ii| ii.clean(cx)).collect::<Vec<_>>();
-        let def_id = cx.tcx.hir().local_def_id(self.id);
-
-        // If this impl block is an implementation of the Deref trait, then we
-        // need to try inlining the target's inherent impl blocks as well.
-        if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
-            build_deref_target_impls(cx, &items, &mut ret);
+fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
+    let mut ret = Vec::new();
+    let (trait_, items, for_, unsafety, generics) = match &impl_.kind {
+        hir::ItemKind::Impl { of_trait, items, self_ty, unsafety, generics, .. } => {
+            (of_trait, items, self_ty, *unsafety, generics)
         }
+        _ => unreachable!(),
+    };
+    let trait_ = trait_.clean(cx);
+    let items = items.iter().map(|ii| cx.tcx.hir().impl_item(ii.id).clean(cx)).collect::<Vec<_>>();
+    let def_id = cx.tcx.hir().local_def_id(impl_.hir_id);
 
-        let provided: FxHashSet<String> = trait_
-            .def_id()
-            .map(|did| {
-                cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect()
-            })
-            .unwrap_or_default();
-
-        let for_ = self.for_.clean(cx);
-        let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
-            DefKind::TyAlias => Some(cx.tcx.type_of(did).clean(cx)),
-            _ => None,
-        });
-        let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| Item {
-            name: None,
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: def_id.to_def_id(),
-            visibility: self.vis.clean(cx),
-            stability: cx.stability(self.id),
-            deprecation: cx.deprecation(self.id).clean(cx),
-            kind: ImplItem(Impl {
-                unsafety: self.unsafety,
-                generics: self.generics.clean(cx),
-                provided_trait_methods: provided.clone(),
-                trait_,
-                for_,
-                items,
-                polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
-                synthetic: false,
-                blanket_impl: None,
-            }),
-        };
-        if let Some(type_alias) = type_alias {
-            ret.push(make_item(trait_.clone(), type_alias, items.clone()));
-        }
-        ret.push(make_item(trait_, for_, items));
-        ret
+    // If this impl block is an implementation of the Deref trait, then we
+    // need to try inlining the target's inherent impl blocks as well.
+    if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
+        build_deref_target_impls(cx, &items, &mut ret);
     }
+
+    let provided: FxHashSet<String> = trait_
+        .def_id()
+        .map(|did| cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect())
+        .unwrap_or_default();
+
+    let for_ = for_.clean(cx);
+    let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
+        DefKind::TyAlias => Some(cx.tcx.type_of(did).clean(cx)),
+        _ => None,
+    });
+    let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| {
+        let kind = ImplItem(Impl {
+            unsafety,
+            generics: generics.clean(cx),
+            provided_trait_methods: provided.clone(),
+            trait_,
+            for_,
+            items,
+            polarity: Some(cx.tcx.impl_polarity(def_id).clean(cx)),
+            synthetic: false,
+            blanket_impl: None,
+        });
+        Item::from_hir_id_and_parts(impl_.hir_id, None, kind, cx)
+    };
+    if let Some(type_alias) = type_alias {
+        ret.push(make_item(trait_.clone(), type_alias, items.clone()));
+    }
+    ret.push(make_item(trait_, for_, items));
+    ret
 }
 
 impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {

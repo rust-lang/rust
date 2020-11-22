@@ -23,7 +23,6 @@ crate struct Module<'hir> {
     // (item, renamed)
     crate items: Vec<(&'hir hir::Item<'hir>, Option<Ident>)>,
     crate traits: Vec<Trait<'hir>>,
-    crate impls: Vec<Impl<'hir>>,
     crate foreigns: Vec<ForeignItem<'hir>>,
     crate macros: Vec<Macro>,
     crate proc_macros: Vec<ProcMacro>,
@@ -44,7 +43,6 @@ impl Module<'hir> {
             mods: Vec::new(),
             items: Vec::new(),
             traits: Vec::new(),
-            impls: Vec::new(),
             foreigns: Vec::new(),
             macros: Vec::new(),
             proc_macros: Vec::new(),
@@ -86,22 +84,6 @@ crate struct Trait<'hir> {
     crate generics: &'hir hir::Generics<'hir>,
     crate bounds: &'hir [hir::GenericBound<'hir>],
     crate attrs: &'hir [ast::Attribute],
-    crate id: hir::HirId,
-}
-
-#[derive(Debug)]
-crate struct Impl<'hir> {
-    crate unsafety: hir::Unsafety,
-    crate polarity: hir::ImplPolarity,
-    crate defaultness: hir::Defaultness,
-    crate constness: hir::Constness,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate trait_: &'hir Option<hir::TraitRef<'hir>>,
-    crate for_: &'hir hir::Ty<'hir>,
-    crate items: Vec<&'hir hir::ImplItem<'hir>>,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
-    crate vis: &'hir hir::Visibility<'hir>,
     crate id: hir::HirId,
 }
 
