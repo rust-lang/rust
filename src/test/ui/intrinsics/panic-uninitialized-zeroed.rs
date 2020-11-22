@@ -70,20 +70,20 @@ fn main() {
             "attempted to instantiate uninhabited type `!`"
         );
         test_panic_msg(
-            || mem::uninitialized::<[!; 2]>(),
-            "attempted to instantiate uninhabited type `[!; 2]`"
-        );
-        test_panic_msg(
             || mem::zeroed::<!>(),
             "attempted to instantiate uninhabited type `!`"
         );
         test_panic_msg(
-            || mem::zeroed::<[!; 2]>(),
+            || MaybeUninit::<!>::uninit().assume_init(),
+            "attempted to instantiate uninhabited type `!`"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[!; 2]>(),
             "attempted to instantiate uninhabited type `[!; 2]`"
         );
         test_panic_msg(
-            || MaybeUninit::<!>::uninit().assume_init(),
-            "attempted to instantiate uninhabited type `!`"
+            || mem::zeroed::<[!; 2]>(),
+            "attempted to instantiate uninhabited type `[!; 2]`"
         );
         test_panic_msg(
             || MaybeUninit::<[!; 2]>::uninit().assume_init(),
@@ -95,20 +95,20 @@ fn main() {
             "attempted to instantiate uninhabited type `Foo`"
         );
         test_panic_msg(
-            || mem::uninitialized::<[Foo; 2]>(),
-            "attempted to instantiate uninhabited type `[Foo; 2]`"
-        );
-        test_panic_msg(
             || mem::zeroed::<Foo>(),
             "attempted to instantiate uninhabited type `Foo`"
         );
         test_panic_msg(
-            || mem::zeroed::<[Foo; 2]>(),
+            || MaybeUninit::<Foo>::uninit().assume_init(),
+            "attempted to instantiate uninhabited type `Foo`"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[Foo; 2]>(),
             "attempted to instantiate uninhabited type `[Foo; 2]`"
         );
         test_panic_msg(
-            || MaybeUninit::<Foo>::uninit().assume_init(),
-            "attempted to instantiate uninhabited type `Foo`"
+            || mem::zeroed::<[Foo; 2]>(),
+            "attempted to instantiate uninhabited type `[Foo; 2]`"
         );
         test_panic_msg(
             || MaybeUninit::<[Foo; 2]>::uninit().assume_init(),
@@ -120,20 +120,20 @@ fn main() {
             "attempted to instantiate uninhabited type `Bar`"
         );
         test_panic_msg(
-            || mem::uninitialized::<[Bar; 4]>(),
-            "attempted to instantiate uninhabited type `[Bar; 4]`"
-        );
-        test_panic_msg(
             || mem::zeroed::<Bar>(),
             "attempted to instantiate uninhabited type `Bar`"
         );
         test_panic_msg(
-            || mem::zeroed::<[Bar; 4]>(),
+            || MaybeUninit::<Bar>::uninit().assume_init(),
+            "attempted to instantiate uninhabited type `Bar`"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[Bar; 4]>(),
             "attempted to instantiate uninhabited type `[Bar; 4]`"
         );
         test_panic_msg(
-            || MaybeUninit::<Bar>::uninit().assume_init(),
-            "attempted to instantiate uninhabited type `Bar`"
+            || mem::zeroed::<[Bar; 4]>(),
+            "attempted to instantiate uninhabited type `[Bar; 4]`"
         );
         test_panic_msg(
             || MaybeUninit::<[Bar; 4]>::uninit().assume_init(),
@@ -146,12 +146,12 @@ fn main() {
             "attempted to leave type `fn()` uninitialized, which is invalid"
         );
         test_panic_msg(
-            || mem::uninitialized::<[fn(); 2]>(),
-            "attempted to leave type `[fn(); 2]` uninitialized, which is invalid"
-        );
-        test_panic_msg(
             || mem::zeroed::<fn()>(),
             "attempted to zero-initialize type `fn()`, which is invalid"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[fn(); 2]>(),
+            "attempted to leave type `[fn(); 2]` uninitialized, which is invalid"
         );
         test_panic_msg(
             || mem::zeroed::<[fn(); 2]>(),
@@ -163,16 +163,18 @@ fn main() {
             "attempted to leave type `*const dyn core::marker::Send` uninitialized, which is invalid"
         );
         test_panic_msg(
-            || mem::uninitialized::<[*const dyn Send; 2]>(),
-            "attempted to leave type `[*const dyn std::marker::Send; 2]` uninitialized, which is invalid"
-        );
-        test_panic_msg(
             || mem::zeroed::<*const dyn Send>(),
             "attempted to zero-initialize type `*const dyn core::marker::Send`, which is invalid"
         );
         test_panic_msg(
+            || mem::uninitialized::<[*const dyn Send; 2]>(),
+            "attempted to leave type `[*const dyn std::marker::Send; 2]` uninitialized, \
+                which is invalid"
+        );
+        test_panic_msg(
             || mem::zeroed::<[*const dyn Send; 2]>(),
-            "attempted to zero-initialize type `[*const dyn std::marker::Send; 2]`, which is invalid"
+            "attempted to zero-initialize type `[*const dyn std::marker::Send; 2]`, \
+                which is invalid"
         );
 
         /* FIXME(#66151) we conservatively do not error here yet.
@@ -203,8 +205,8 @@ fn main() {
                 which is invalid"
         );
         test_panic_msg(
-            || mem::uninitialized::<[(NonNull<u32>, u32, u32); 2]>(),
-            "attempted to leave type `[(std::ptr::NonNull<u32>, u32, u32); 2]` uninitialized, \
+            || mem::zeroed::<(NonNull<u32>, u32, u32)>(),
+            "attempted to zero-initialize type `(std::ptr::NonNull<u32>, u32, u32)`, \
                 which is invalid"
         );
         test_panic_msg(
@@ -224,13 +226,13 @@ fn main() {
                 which is invalid"
         );
         test_panic_msg(
-            || mem::uninitialized::<[OneVariant_NonZero; 2]>(),
-            "attempted to leave type `[OneVariant_NonZero; 2]` uninitialized, \
+            || mem::zeroed::<OneVariant_NonZero>(),
+            "attempted to zero-initialize type `OneVariant_NonZero`, \
                 which is invalid"
         );
         test_panic_msg(
-            || mem::zeroed::<OneVariant_NonZero>(),
-            "attempted to zero-initialize type `OneVariant_NonZero`, \
+            || mem::uninitialized::<[OneVariant_NonZero; 2]>(),
+            "attempted to leave type `[OneVariant_NonZero; 2]` uninitialized, \
                 which is invalid"
         );
         test_panic_msg(
@@ -245,13 +247,13 @@ fn main() {
                 which is invalid"
         );
         test_panic_msg(
-            || mem::uninitialized::<[NoNullVariant; 2]>(),
-            "attempted to leave type `[NoNullVariant; 2]` uninitialized, \
+            || mem::zeroed::<NoNullVariant>(),
+            "attempted to zero-initialize type `NoNullVariant`, \
                 which is invalid"
         );
         test_panic_msg(
-            || mem::zeroed::<NoNullVariant>(),
-            "attempted to zero-initialize type `NoNullVariant`, \
+            || mem::uninitialized::<[NoNullVariant; 2]>(),
+            "attempted to leave type `[NoNullVariant; 2]` uninitialized, \
                 which is invalid"
         );
         test_panic_msg(
@@ -266,16 +268,25 @@ fn main() {
             "attempted to leave type `bool` uninitialized, which is invalid"
         );
         test_panic_msg(
-            || mem::uninitialized::<[bool; 2]>(),
-            "attempted to leave type `[bool; 2]` uninitialized, which is invalid"
-        );
-        test_panic_msg(
             || mem::uninitialized::<LR>(),
             "attempted to leave type `LR` uninitialized, which is invalid"
         );
         test_panic_msg(
             || mem::uninitialized::<ManuallyDrop<LR>>(),
             "attempted to leave type `core::mem::manually_drop::ManuallyDrop<LR>` uninitialized, which is invalid"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[bool; 2]>(),
+            "attempted to leave type `[bool; 2]` uninitialized, which is invalid"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[LR; 2]>(),
+            "attempted to leave type `[LR; 2]` uninitialized, which is invalid"
+        );
+        test_panic_msg(
+            || mem::uninitialized::<[ManuallyDrop<LR>; 2]>(),
+            "attempted to leave type `[std::mem::ManuallyDrop<LR>; 2]` uninitialized, \
+                which is invalid"
         );
 
         // Some things that should work.
