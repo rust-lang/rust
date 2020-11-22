@@ -343,9 +343,8 @@ impl<W: Write> Write for BufWriter<W> {
                 Ok(total_len)
             }
         } else {
-            let mut total_written = 0;
             let mut iter = bufs.iter();
-            if let Some(buf) = iter.by_ref().find(|&buf| !buf.is_empty()) {
+            let mut total_written = if let Some(buf) = iter.by_ref().find(|&buf| !buf.is_empty()) {
                 // This is the first non-empty slice to write, so if it does
                 // not fit in the buffer, we still get to flush and proceed.
                 if self.buf.len() + buf.len() > self.buf.capacity() {
@@ -360,22 +359,18 @@ impl<W: Write> Write for BufWriter<W> {
                     return r;
                 } else {
                     self.buf.extend_from_slice(buf);
-                    total_written += buf.len();
+                    buf.len()
                 }
-                debug_assert!(total_written != 0);
-            }
+            } else {
+                return Ok(0);
+            };
+            debug_assert!(total_written != 0);
             for buf in iter {
-                if buf.len() >= self.buf.capacity() {
-                    // This slice should be written directly, but we have
-                    // already buffered some of the input. Bail out,
-                    // expecting it to be handled as the first slice in the
-                    // next call to write_vectored.
+                if self.buf.len() + buf.len() > self.buf.capacity() {
                     break;
                 } else {
-                    total_written += self.write_to_buf(buf);
-                    if self.buf.capacity() == self.buf.len() {
-                        break;
-                    }
+                    self.buf.extend_from_slice(buf);
+                    total_written += buf.len();
                 }
             }
             Ok(total_written)
