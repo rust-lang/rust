@@ -110,7 +110,7 @@ use crate::thread::{self, Thread};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Once {
-    // `state_and_queue` is actually an a pointer to a `Waiter` with extra state
+    // `state_and_queue` is actually a pointer to a `Waiter` with extra state
     // bits, so we add the `PhantomData` appropriately.
     state_and_queue: AtomicUsize,
     _marker: marker::PhantomData<*const Waiter>,
