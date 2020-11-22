@@ -4,7 +4,7 @@ error[E0391]: cycle detected when computing the super predicates of `Chromosome`
 LL | trait Chromosome: Chromosome {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires computing the supertraits of `Chromosome`...
+note: ...which requires computing the super traits of `Chromosome`...
   --> $DIR/cycle-trait-supertrait-direct.rs:3:19
    |
 LL | trait Chromosome: Chromosome {

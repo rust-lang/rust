@@ -449,7 +449,10 @@ rustc_queries! {
         /// full predicates are available (note that supertraits have
         /// additional acyclicity requirements).
         query super_predicates_that_define_assoc_type(key: (DefId, Option<rustc_span::symbol::Ident>)) -> ty::GenericPredicates<'tcx> {
-            desc { |tcx| "computing the supertraits of `{}`", tcx.def_path_str(key.0) }
+            desc { |tcx| "computing the super traits of `{}`{}",
+                tcx.def_path_str(key.0),
+                if let Some(assoc_name) = key.1 { format!(" with associated type name `{}`", assoc_name) } else { "".to_string() },
+            }
         }
 
         /// To avoid cycles within the predicates of a single item we compute
