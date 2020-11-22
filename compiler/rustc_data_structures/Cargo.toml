@@ -21,7 +21,8 @@ crossbeam-utils = { version = "0.7", features = ["nightly"] }
 stable_deref_trait = "1.0.0"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 rayon-core = { version = "0.3.0", package = "rustc-rayon-core" }
-rustc-hash = "1.1.0"
+#rustc-hash = "1.1.0"
+ahash = { version = "0.5.6", features = ["specialize"] }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 bitflags = "1.2.1"

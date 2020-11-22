@@ -34,7 +34,7 @@ use std::mem;
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHasher;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -1500,8 +1500,9 @@ where
 
     let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
 
-    let mut map: FxHashMap<_, Vec<&_>> =
-        FxHashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
+    use std::collections::HashMap;
+    let mut map: HashMap<_, Vec<&_>, BuildHasherDefault<FxHasher>> =
+        HashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
 
     for expr in exprs {
         match map.entry(hash(expr)) {

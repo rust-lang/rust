@@ -23,6 +23,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahash"
+version = "0.5.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4eb6ec8807cd25b59e6b8100815afc73f54e294f1a425a2e555971969889a8f8"
+dependencies = [
+ "getrandom 0.2.0",
+ "lazy_static",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3572,6 +3582,7 @@ dependencies = [
 name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
+ "ahash",
  "arrayvec",
  "bitflags",
  "cfg-if 0.1.10",
@@ -3582,7 +3593,6 @@ dependencies = [
  "libc",
  "measureme",
  "parking_lot 0.11.0",
- "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_graphviz",
