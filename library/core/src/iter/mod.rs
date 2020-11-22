@@ -335,15 +335,14 @@ pub use self::sources::{successors, Successors};
 
 #[stable(feature = "fused", since = "1.26.0")]
 pub use self::traits::FusedIterator;
+#[unstable(issue = "none", feature = "inplace_iteration")]
+pub use self::traits::InPlaceIterable;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::traits::{DoubleEndedIterator, Extend, FromIterator, IntoIterator};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::traits::{ExactSizeIterator, Product, Sum};
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-pub use self::traits::InPlaceIterable;
+pub use self::traits::{
+    DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator, Product, Sum,
+};
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;
@@ -351,21 +350,19 @@ pub use self::adapters::Cloned;
 pub use self::adapters::Copied;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
-
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::adapters::MapWhile;
-#[unstable(issue = "none", feature = "inplace_iteration")]
+#[unstable(feature = "inplace_iteration", issue = "none")]
 pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccess;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::adapters::{Chain, Cycle, Enumerate, Filter, FilterMap, Map, Rev, Zip};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::adapters::{FlatMap, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::adapters::{Fuse, Inspect};
+pub use self::adapters::{
+    Chain, Cycle, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Rev, Scan,
+    Skip, SkipWhile, Take, TakeWhile, Zip,
+};
 
 pub(crate) use self::adapters::process_results;
 
