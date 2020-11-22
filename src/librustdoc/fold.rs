@@ -16,7 +16,7 @@ impl StripItem {
 
 crate trait DocFolder: Sized {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
-        self.fold_item_recur(item)
+        Some(self.fold_item_recur(item))
     }
 
     /// don't override!
@@ -71,15 +71,12 @@ crate trait DocFolder: Sized {
     }
 
     /// don't override!
-    fn fold_item_recur(&mut self, item: Item) -> Option<Item> {
-        let Item { attrs, name, source, visibility, def_id, kind, stability, deprecation } = item;
-
-        let kind = match kind {
+    fn fold_item_recur(&mut self, mut item: Item) -> Item {
+        item.kind = match item.kind {
             StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
-            _ => self.fold_inner_recur(kind),
+            _ => self.fold_inner_recur(item.kind),
         };
-
-        Some(Item { attrs, name, source, kind, visibility, stability, deprecation, def_id })
+        item
     }
 
     fn fold_mod(&mut self, m: Module) -> Module {

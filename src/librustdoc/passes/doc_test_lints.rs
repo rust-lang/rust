@@ -41,7 +41,7 @@ impl<'a, 'tcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx> {
 
         look_for_tests(&cx, &dox, &item);
 
-        self.fold_item_recur(item)
+        Some(self.fold_item_recur(item))
     }
 }
 

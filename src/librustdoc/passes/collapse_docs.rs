@@ -23,7 +23,7 @@ struct Collapser;
 impl fold::DocFolder for Collapser {
     fn fold_item(&mut self, mut i: Item) -> Option<Item> {
         i.attrs.collapse_doc_comments();
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }
 

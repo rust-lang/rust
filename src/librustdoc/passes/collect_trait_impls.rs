@@ -133,7 +133,7 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
             }
         }
 
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }
 
@@ -152,7 +152,7 @@ impl DocFolder for ItemCollector {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         self.items.insert(i.def_id);
 
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }
 

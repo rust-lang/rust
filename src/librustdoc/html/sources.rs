@@ -60,7 +60,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
                 }
             };
         }
-        self.fold_item_recur(item)
+        Some(self.fold_item_recur(item))
     }
 }
 
