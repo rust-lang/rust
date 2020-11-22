@@ -47,7 +47,7 @@ impl<T: Write> JsonFormatter<T> {
             evt
         ))?;
         if let Some(exec_time) = exec_time {
-            self.write_message(&*format!(r#", "exec_time": "{}""#, exec_time))?;
+            self.write_message(&*format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64()))?;
         }
         if let Some(stdout) = stdout {
             self.write_message(&*format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
@@ -181,7 +181,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         ))?;
 
         if let Some(ref exec_time) = state.exec_time {
-            let time_str = format!(", \"exec_time\": \"{}\"", exec_time);
+            let time_str = format!(", \"exec_time\": {}", exec_time.0.as_secs_f64());
             self.write_message(&time_str)?;
         }
 
