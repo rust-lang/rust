@@ -283,7 +283,6 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_MUT,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
-        OVERLAPPING_RANGE_ENDPOINTS,
         UNUSED_MUST_USE,
         UNUSED_UNSAFE,
         PATH_STATEMENTS,
