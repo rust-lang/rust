@@ -134,13 +134,13 @@ pub type Root<K, V> = NodeRef<marker::Owned, K, V, marker::LeafOrInternal>;
 
 impl<K, V> Root<K, V> {
     /// Returns a new owned tree, with its own root node that is initially empty.
-    pub fn new_leaf() -> Self {
-        NodeRef::new().forget_type()
+    pub fn new() -> Self {
+        NodeRef::new_leaf().forget_type()
     }
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
-    fn new() -> Self {
+    fn new_leaf() -> Self {
         Self::from_new_leaf(Box::new(unsafe { LeafNode::new() }))
     }
 

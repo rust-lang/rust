@@ -9,7 +9,7 @@ use core::ops::{Index, RangeBounds};
 use core::ptr;
 
 use super::borrow::DormantMutRef;
-use super::node::{self, marker, ForceResult::*, Handle, NodeRef};
+use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::{self, SearchResult::*};
 use super::unwrap_unchecked;
 
@@ -128,7 +128,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeMap<K, V> {
-    root: Option<node::Root<K, V>>,
+    root: Option<Root<K, V>>,
     length: usize,
 }
 
@@ -145,7 +145,7 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
     fn clone(&self) -> BTreeMap<K, V> {
         fn clone_subtree<'a, K: Clone, V: Clone>(
-            node: node::NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
+            node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>,
         ) -> BTreeMap<K, V>
         where
             K: 'a,
@@ -153,7 +153,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
         {
             match node.force() {
                 Leaf(leaf) => {
-                    let mut out_tree = BTreeMap { root: Some(node::Root::new_leaf()), length: 0 };
+                    let mut out_tree = BTreeMap { root: Some(Root::new()), length: 0 };
 
                     {
                         let root = out_tree.root.as_mut().unwrap(); // unwrap succeeds because we just wrapped
@@ -198,7 +198,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
                                 (root, length)
                             };
 
-                            out_node.push(k, v, subroot.unwrap_or_else(node::Root::new_leaf));
+                            out_node.push(k, v, subroot.unwrap_or_else(Root::new));
                             out_tree.length += 1 + sublength;
                         }
                     }
@@ -1558,7 +1558,7 @@ pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     length: &'a mut usize,
     /// Burried reference to the root field in the borrowed map.
     /// Wrapped in `Option` to allow drop handler to `take` it.
-    dormant_root: Option<DormantMutRef<'a, node::Root<K, V>>>,
+    dormant_root: Option<DormantMutRef<'a, Root<K, V>>>,
     /// Contains a leaf edge preceding the next element to be returned, or the last leaf edge.
     /// Empty if the map has no root, if iteration went beyond the last leaf edge,
     /// or if a panic occurred in the predicate.
@@ -2160,8 +2160,8 @@ impl<K, V> BTreeMap<K, V> {
 
     /// If the root node is the empty (non-allocated) root node, allocate our
     /// own node. Is an associated function to avoid borrowing the entire BTreeMap.
-    fn ensure_is_owned(root: &mut Option<node::Root<K, V>>) -> &mut node::Root<K, V> {
-        root.get_or_insert_with(node::Root::new_leaf)
+    fn ensure_is_owned(root: &mut Option<Root<K, V>>) -> &mut Root<K, V> {
+        root.get_or_insert_with(Root::new)
     }
 }
 
