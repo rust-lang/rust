@@ -79,7 +79,7 @@ pub trait Index<Idx: ?Sized> {
 /// each can be indexed mutably and immutably.
 ///
 /// ```
-/// use std::ops::{Index,IndexMut};
+/// use std::ops::{Index, IndexMut};
 ///
 /// #[derive(Debug)]
 /// enum Side {

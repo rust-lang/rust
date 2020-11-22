@@ -1152,7 +1152,7 @@ declare_lint! {
     /// ```rust
     /// #![feature(box_syntax)]
     /// fn main() {
-    ///     let a = (box [1,2,3]).len();
+    ///     let a = (box [1, 2, 3]).len();
     /// }
     /// ```
     ///
