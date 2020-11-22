@@ -1673,6 +1673,14 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
+    pub fn ty_vid(&self) -> Option<ty::TyVid> {
+        match self.kind() {
+            &Infer(TyVar(vid)) => Some(vid),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn is_ty_infer(&self) -> bool {
         matches!(self.kind(), Infer(_))
     }

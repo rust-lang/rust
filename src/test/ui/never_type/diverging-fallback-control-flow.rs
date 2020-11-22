@@ -4,27 +4,24 @@
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
-
 // Test various cases where we permit an unconstrained variable
-// to fallback based on control-flow.
-//
-// These represent current behavior, but are pretty dubious.  I would
-// like to revisit these and potentially change them. --nmatsakis
-
+// to fallback based on control-flow. In all of these cases,
+// the type variable winds up being the target of both a `!` coercion
+// and a coercion from a non-`!` variable, and hence falls back to `()`.
 #![feature(never_type, never_type_fallback)]
 
-trait BadDefault {
+trait UnitDefault {
     fn default() -> Self;
 }
 
-impl BadDefault for u32 {
+impl UnitDefault for u32 {
     fn default() -> Self {
         0
     }
 }
 
-impl BadDefault for ! {
-    fn default() -> ! {
+impl UnitDefault for () {
+    fn default() -> () {
         panic!()
     }
 }
@@ -33,7 +30,7 @@ fn assignment() {
     let x;
 
     if true {
-        x = BadDefault::default();
+        x = UnitDefault::default();
     } else {
         x = return;
     }
@@ -45,13 +42,13 @@ fn assignment_rev() {
     if true {
         x = return;
     } else {
-        x = BadDefault::default();
+        x = UnitDefault::default();
     }
 }
 
 fn if_then_else() {
     let _x = if true {
-        BadDefault::default()
+        UnitDefault::default()
     } else {
         return;
     };
@@ -61,19 +58,19 @@ fn if_then_else_rev() {
     let _x = if true {
         return;
     } else {
-        BadDefault::default()
+        UnitDefault::default()
     };
 }
 
 fn match_arm() {
-    let _x = match Ok(BadDefault::default()) {
+    let _x = match Ok(UnitDefault::default()) {
         Ok(v) => v,
         Err(()) => return,
     };
 }
 
 fn match_arm_rev() {
-    let _x = match Ok(BadDefault::default()) {
+    let _x = match Ok(UnitDefault::default()) {
         Err(()) => return,
         Ok(v) => v,
     };
@@ -84,7 +81,7 @@ fn loop_break() {
         if false {
             break return;
         } else {
-            break BadDefault::default();
+            break UnitDefault::default();
         }
     };
 }
@@ -94,9 +91,9 @@ fn loop_break_rev() {
         if false {
             break return;
         } else {
-            break BadDefault::default();
+            break UnitDefault::default();
         }
     };
 }
 
-fn main() { }
+fn main() {}
