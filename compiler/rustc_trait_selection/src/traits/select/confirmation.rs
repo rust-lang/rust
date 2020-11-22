@@ -8,6 +8,7 @@
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::Constness;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
@@ -55,8 +56,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ParamCandidate(param) => {
-                let obligations = self.confirm_param_candidate(obligation, param);
-                Ok(ImplSource::Param(obligations))
+                let obligations = self.confirm_param_candidate(obligation, param.value);
+                Ok(ImplSource::Param(obligations, param.constness))
             }
 
             ImplCandidate(impl_def_id) => {
@@ -70,7 +71,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ProjectionCandidate(idx) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
-                Ok(ImplSource::Param(obligations))
+                // FIXME(jschievink): constness
+                Ok(ImplSource::Param(obligations, Constness::NotConst))
             }
 
             ObjectCandidate(idx) => {
@@ -106,7 +108,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // This indicates something like `Trait + Send: Send`. In this case, we know that
                 // this holds because that's what the object type is telling us, and there's really
                 // no additional obligations to prove and no types in particular to unify, etc.
-                Ok(ImplSource::Param(Vec::new()))
+                Ok(ImplSource::Param(Vec::new(), Constness::NotConst))
             }
 
             BuiltinUnsizeCandidate => {
@@ -151,7 +153,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.extend(self.infcx.commit_if_ok(|_| {
                 self.infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(placeholder_trait_predicate.trait_ref.to_poly_trait_ref(), candidate)
+                    .sup(placeholder_trait_predicate.trait_ref.to_poly_trait_ref(), candidate.value)
                     .map(|InferOk { obligations, .. }| obligations)
                     .map_err(|_| Unimplemented)
             })?);

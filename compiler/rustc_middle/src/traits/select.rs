@@ -101,7 +101,7 @@ pub enum SelectionCandidate<'tcx> {
         /// `false` if there are no *further* obligations.
         has_nested: bool,
     },
-    ParamCandidate(ty::PolyTraitRef<'tcx>),
+    ParamCandidate(ty::ConstnessAnd<ty::PolyTraitRef<'tcx>>),
     ImplCandidate(DefId),
     AutoImplCandidate(DefId),
 

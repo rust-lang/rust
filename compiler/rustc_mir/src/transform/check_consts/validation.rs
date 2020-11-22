@@ -4,6 +4,7 @@ use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
@@ -11,9 +12,10 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
 };
+use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
-use rustc_trait_selection::traits::{self, TraitEngine};
+use rustc_trait_selection::traits::{self, SelectionContext, TraitEngine};
 
 use std::mem;
 use std::ops::Deref;
@@ -765,9 +767,39 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     }
                 };
 
-                // Resolve a trait method call to its concrete implementation, which may be in a
-                // `const` trait impl.
-                if self.tcx.features().const_trait_impl {
+                // Attempting to call a trait method?
+                if let Some(trait_id) = tcx.trait_of_item(callee) {
+                    if !self.tcx.features().const_trait_impl {
+                        self.check_op(ops::FnCallNonConst(callee));
+                        return;
+                    }
+
+                    let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
+                    let obligation = Obligation::new(
+                        ObligationCause::dummy(),
+                        param_env,
+                        Binder::bind(TraitPredicate {
+                            trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                        }),
+                    );
+
+                    let implsrc = tcx.infer_ctxt().enter(|infcx| {
+                        let mut selcx = SelectionContext::new(&infcx);
+                        selcx.select(&obligation).unwrap()
+                    });
+
+                    // If the method is provided via a where-clause that does not use the `?const`
+                    // opt-out, the call is allowed.
+                    if let Some(ImplSource::Param(_, hir::Constness::Const)) = implsrc {
+                        debug!(
+                            "const_trait_impl: provided {:?} via where-clause in {:?}",
+                            trait_ref, param_env
+                        );
+                        return;
+                    }
+
+                    // Resolve a trait method call to its concrete implementation, which may be in a
+                    // `const` trait impl.
                     let instance = Instance::resolve(tcx, param_env, callee, substs);
                     debug!("Resolving ({:?}) -> {:?}", callee, instance);
                     if let Ok(Some(func)) = instance {

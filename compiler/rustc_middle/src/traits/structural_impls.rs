@@ -21,7 +21,9 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
 
             super::ImplSource::Object(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSource::Param(ref n) => write!(f, "ImplSourceParamData({:?})", n),
+            super::ImplSource::Param(ref n, ct) => {
+                write!(f, "ImplSourceParamData({:?}, {:?})", n, ct)
+            }
 
             super::ImplSource::Builtin(ref d) => write!(f, "{:?}", d),
 
