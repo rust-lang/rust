@@ -1046,16 +1046,6 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-/// Controls how we perform fallback for unconstrained
-/// type variables.
-enum FallbackMode {
-    /// Do not fallback type variables to opaque types.
-    NoOpaque,
-    /// Perform all possible kinds of fallback, including
-    /// turning type variables to opaque types.
-    All,
-}
-
 /// A wrapper for `InferCtxt`'s `in_progress_typeck_results` field.
 #[derive(Copy, Clone)]
 struct MaybeInProgressTables<'a, 'tcx> {
