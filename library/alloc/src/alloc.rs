@@ -358,7 +358,7 @@ extern "Rust" {
 /// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
-#[cfg(not(any(test, bootstrap)))]
+#[cfg(not(test))]
 #[rustc_allocator_nounwind]
 pub fn handle_alloc_error(layout: Layout) -> ! {
     unsafe {
@@ -370,22 +370,7 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(test)]
 pub use std::alloc::handle_alloc_error;
 
-// In stage0 (bootstrap) `__rust_alloc_error_handler`,
-// might not be generated yet, because an old compiler is used,
-// so use the old direct call.
-#[cfg(all(bootstrap, not(test)))]
-#[stable(feature = "global_alloc", since = "1.28.0")]
-#[doc(hidden)]
-#[rustc_allocator_nounwind]
-pub fn handle_alloc_error(layout: Layout) -> ! {
-    extern "Rust" {
-        #[lang = "oom"]
-        fn oom_impl(layout: Layout) -> !;
-    }
-    unsafe { oom_impl(layout) }
-}
-
-#[cfg(not(any(target_os = "hermit", test, bootstrap)))]
+#[cfg(not(any(target_os = "hermit", test)))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
