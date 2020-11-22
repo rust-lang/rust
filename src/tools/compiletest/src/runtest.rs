@@ -287,6 +287,7 @@ pub fn compute_stamp_hash(config: &Config) -> String {
     format!("{:x}", hash.finish())
 }
 
+#[derive(Copy, Clone)]
 struct TestCx<'test> {
     config: &'test Config,
     props: &'test TestProps,
@@ -1729,7 +1730,7 @@ impl<'test> TestCx<'test> {
         self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
     }
 
-    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
+    fn build_all_auxiliary(&self, rustc: &mut Command) -> PathBuf {
         let aux_dir = self.aux_output_dir_name();
 
         if !self.props.aux_builds.is_empty() {
@@ -1748,6 +1749,11 @@ impl<'test> TestCx<'test> {
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
         }
 
+        aux_dir
+    }
+
+    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
+        let aux_dir = self.build_all_auxiliary(&mut rustc);
         self.props.unset_rustc_env.clone().iter().fold(&mut rustc, |rustc, v| rustc.env_remove(v));
         rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(
@@ -2209,7 +2215,17 @@ impl<'test> TestCx<'test> {
 
     fn fatal_proc_rec(&self, err: &str, proc_res: &ProcRes) -> ! {
         self.error(err);
-        proc_res.fatal(None);
+        proc_res.fatal(None, || ());
+    }
+
+    fn fatal_proc_rec_with_ctx(
+        &self,
+        err: &str,
+        proc_res: &ProcRes,
+        on_failure: impl FnOnce(Self),
+    ) -> ! {
+        self.error(err);
+        proc_res.fatal(None, || on_failure(*self));
     }
 
     // codegen tests (using FileCheck)
@@ -2326,13 +2342,129 @@ impl<'test> TestCx<'test> {
             let res = self.cmd2procres(
                 Command::new(&self.config.docck_python)
                     .arg(root.join("src/etc/htmldocck.py"))
-                    .arg(out_dir)
+                    .arg(&out_dir)
                     .arg(&self.testpaths.file),
             );
             if !res.status.success() {
-                self.fatal_proc_rec("htmldocck failed!", &res);
+                self.fatal_proc_rec_with_ctx("htmldocck failed!", &res, |mut this| {
+                    this.compare_to_default_rustdoc(&out_dir)
+                });
             }
         }
+    }
+
+    fn compare_to_default_rustdoc(&mut self, out_dir: &Path) {
+        println!("info: generating a diff against nightly rustdoc");
+
+        let suffix =
+            self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
+        let compare_dir = output_base_dir(self.config, self.testpaths, Some(&suffix));
+        // Don't give an error if the directory didn't already exist
+        let _ = fs::remove_dir_all(&compare_dir);
+        create_dir_all(&compare_dir).unwrap();
+
+        // We need to create a new struct for the lifetimes on `config` to work.
+        let new_rustdoc = TestCx {
+            config: &Config {
+                // FIXME: use beta or a user-specified rustdoc instead of
+                // hardcoding the default toolchain
+                rustdoc_path: Some("rustdoc".into()),
+                // Needed for building auxiliary docs below
+                rustc_path: "rustc".into(),
+                ..self.config.clone()
+            },
+            ..*self
+        };
+
+        let output_file = TargetLocation::ThisDirectory(new_rustdoc.aux_output_dir_name());
+        let mut rustc = new_rustdoc.make_compile_args(
+            &new_rustdoc.testpaths.file,
+            output_file,
+            EmitMetadata::No,
+            AllowUnused::Yes,
+        );
+        rustc.arg("-L").arg(&new_rustdoc.aux_output_dir_name());
+        new_rustdoc.build_all_auxiliary(&mut rustc);
+
+        let proc_res = new_rustdoc.document(&compare_dir);
+        if !proc_res.status.success() {
+            proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
+        }
+
+        #[rustfmt::skip]
+        let tidy_args = [
+            "--indent", "yes",
+            "--indent-spaces", "2",
+            "--wrap", "0",
+            "--show-warnings", "no",
+            "--markup", "yes",
+            "--quiet", "yes",
+            "-modify",
+        ];
+        let tidy_dir = |dir| {
+            let tidy = |file: &_| {
+                Command::new("tidy")
+                    .args(&tidy_args)
+                    .arg(file)
+                    .spawn()
+                    .unwrap_or_else(|err| {
+                        self.fatal(&format!("failed to run tidy - is it installed? - {}", err))
+                    })
+                    .wait()
+                    .unwrap()
+            };
+            for entry in walkdir::WalkDir::new(dir) {
+                let entry = entry.expect("failed to read file");
+                if entry.file_type().is_file()
+                    && entry.path().extension().and_then(|p| p.to_str()) == Some("html".into())
+                {
+                    tidy(entry.path());
+                }
+            }
+        };
+        tidy_dir(out_dir);
+        tidy_dir(&compare_dir);
+
+        let pager = {
+            let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
+            output.and_then(|out| {
+                if out.status.success() {
+                    Some(String::from_utf8(out.stdout).expect("invalid UTF8 in git pager"))
+                } else {
+                    None
+                }
+            })
+        };
+        let mut diff = Command::new("diff");
+        diff.args(&["-u", "-r"]).args(&[out_dir, &compare_dir]);
+
+        let output = if let Some(pager) = pager {
+            let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");
+            let pager = pager.trim();
+            if self.config.verbose {
+                eprintln!("using pager {}", pager);
+            }
+            let output = Command::new(pager)
+                // disable paging; we want this to be non-interactive
+                .env("PAGER", "")
+                .stdin(diff_pid.stdout.unwrap())
+                // Capture output and print it explicitly so it will in turn be
+                // captured by libtest.
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+            output
+        } else {
+            eprintln!("warning: no pager configured, falling back to `diff --color`");
+            eprintln!(
+                "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
+            );
+            let output = diff.arg("--color").output().unwrap();
+            assert!(output.status.success() || output.status.code() == Some(1));
+            output
+        };
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     }
 
     fn get_lines<P: AsRef<Path>>(
@@ -3591,7 +3723,7 @@ pub struct ProcRes {
 }
 
 impl ProcRes {
-    pub fn fatal(&self, err: Option<&str>) -> ! {
+    pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
         if let Some(e) = err {
             println!("\nerror: {}", e);
         }
@@ -3613,6 +3745,7 @@ impl ProcRes {
             json::extract_rendered(&self.stdout),
             json::extract_rendered(&self.stderr),
         );
+        on_failure();
         // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
         // compiletest, which is unnecessary noise.
         std::panic::resume_unwind(Box::new(()));
