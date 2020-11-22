@@ -788,13 +788,13 @@ fn for_each_late_bound_region_defined_on<'tcx>(
     fn_def_id: DefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    if let Some(late_bounds) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
-        for late_bound in late_bounds.iter() {
-            let hir_id = HirId { owner: fn_def_id.expect_local(), local_id: *late_bound };
+    if let Some((owner, late_bounds)) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
+        for &late_bound in late_bounds.iter() {
+            let hir_id = HirId { owner, local_id: late_bound };
             let name = tcx.hir().name(hir_id);
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: fn_def_id,
+                scope: owner.to_def_id(),
                 bound_region: ty::BoundRegionKind::BrNamed(region_def_id.to_def_id(), name),
             }));
             f(liberated_region);
