@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/feature-gate-precise_pointer_size_matching.rs:6:11
+  --> $DIR/feature-gate-precise_pointer_size_matching.rs:4:11
    |
 LL |     match 0usize {
    |           ^^^^^^ pattern `_` not covered
@@ -10,7 +10,7 @@ LL |     match 0usize {
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/feature-gate-precise_pointer_size_matching.rs:10:11
+  --> $DIR/feature-gate-precise_pointer_size_matching.rs:12:11
    |
 LL |     match 0isize {
    |           ^^^^^^ pattern `_` not covered
