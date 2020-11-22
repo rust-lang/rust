@@ -1163,9 +1163,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         match &self.fields {
             FieldsShape::Primitive | FieldsShape::Union { .. } => {}
             FieldsShape::Array { count, .. } => {
-                if !(*count == 0
-                    || self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)?)
-                {
+                if *count > 0 && !self.field(cx, 0).to_result()?.might_permit_raw_init(cx, zero)? {
                     // Found non empty array with a type that is unhappy about this kind of initialization
                     return Ok(false);
                 }
