@@ -2186,11 +2186,12 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
     }
 }
 
-impl Clean<Item> for doctree::ForeignItem<'_> {
+impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Ident>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let kind = match self.kind {
+        let (item, renamed) = self;
+        let kind = match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
-                let abi = cx.tcx.hir().get_foreign_abi(self.id);
+                let abi = cx.tcx.hir().get_foreign_abi(item.hir_id);
                 let (generics, decl) =
                     enter_impl_trait(cx, || (generics.clean(cx), (&**decl, &names[..]).clean(cx)));
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
@@ -2207,15 +2208,13 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
                     ret_types,
                 })
             }
-            hir::ForeignItemKind::Static(ref ty, mutbl) => ForeignStaticItem(Static {
-                type_: ty.clean(cx),
-                mutability: *mutbl,
-                expr: String::new(),
-            }),
+            hir::ForeignItemKind::Static(ref ty, mutability) => {
+                ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: String::new() })
+            }
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        Item::from_hir_id_and_parts(self.id, Some(self.name), kind, cx)
+        Item::from_hir_id_and_parts(item.hir_id, Some(renamed.unwrap_or(item.ident).name), kind, cx)
     }
 }
 
