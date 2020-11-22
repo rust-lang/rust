@@ -18,7 +18,7 @@ testing123
 testing321
 thread 'main' panicked at 'assertion failed: `(left == right)`
   left: `2`,
- right: `5`', $DIR/test-panic-abort.rs:33:5
+ right: `5`', $DIR/test-panic-abort.rs:34:5
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 
@@ -26,5 +26,5 @@ failures:
     it_exits
     it_fails
 
-test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

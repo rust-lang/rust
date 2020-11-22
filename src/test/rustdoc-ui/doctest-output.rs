@@ -2,6 +2,7 @@
 // aux-build:extern_macros.rs
 // compile-flags:--test --test-args=--test-threads=1
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 // check-pass
 
 //! ```

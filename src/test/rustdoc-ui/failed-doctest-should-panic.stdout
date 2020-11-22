@@ -1,14 +1,14 @@
 
 running 1 test
-test $DIR/failed-doctest-should-panic.rs - Foo (line 8) ... FAILED
+test $DIR/failed-doctest-should-panic.rs - Foo (line 9) ... FAILED
 
 failures:
 
----- $DIR/failed-doctest-should-panic.rs - Foo (line 8) stdout ----
+---- $DIR/failed-doctest-should-panic.rs - Foo (line 9) stdout ----
 Test executable succeeded, but it's marked `should_panic`.
 
 failures:
-    $DIR/failed-doctest-should-panic.rs - Foo (line 8)
+    $DIR/failed-doctest-should-panic.rs - Foo (line 9)
 
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 
