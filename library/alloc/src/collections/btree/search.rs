@@ -50,7 +50,7 @@ where
 {
     match search_linear(&node, key) {
         (idx, true) => Found(unsafe { Handle::new_kv(node, idx) }),
-        (idx, false) => SearchResult::GoDown(unsafe { Handle::new_edge(node, idx) }),
+        (idx, false) => GoDown(unsafe { Handle::new_edge(node, idx) }),
     }
 }
 

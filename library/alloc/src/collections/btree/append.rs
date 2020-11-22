@@ -67,7 +67,7 @@ impl<K, V> Root<K, V> {
 
                 // Push key-value pair and new right subtree.
                 let tree_height = open_node.height() - 1;
-                let mut right_tree = Root::new_leaf();
+                let mut right_tree = Root::new();
                 for _ in 0..tree_height {
                     right_tree.push_internal_level();
                 }
