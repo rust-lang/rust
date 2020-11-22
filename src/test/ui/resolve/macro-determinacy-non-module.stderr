@@ -1,0 +1,10 @@
+error: cannot determine resolution for the macro `line`
+  --> $DIR/macro-determinacy-non-module.rs:3:16
+   |
+LL | const C: u32 = line!();
+   |                ^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to previous error
+
