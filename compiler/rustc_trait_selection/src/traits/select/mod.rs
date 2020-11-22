@@ -31,6 +31,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::Constness;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
@@ -1335,7 +1336,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate, _) => true,
             (_, BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate) => false,
 
-            (ParamCandidate(..), ParamCandidate(..)) => false,
+            (ParamCandidate(other), ParamCandidate(victim)) => {
+                if other.value == victim.value && victim.constness == Constness::NotConst {
+                    // Drop otherwise equivalent non-const candidates in favor of const candidates.
+                    true
+                } else {
+                    false
+                }
+            }
 
             // Global bounds from the where clause should be ignored
             // here (see issue #50825). Otherwise, we have a where
