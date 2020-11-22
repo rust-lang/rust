@@ -1,6 +1,5 @@
 //! The main parser interface.
 
-#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(bindings_after_at)]
 #![feature(iter_order_by)]
