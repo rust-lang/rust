@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::cmp::Ordering::{self, *};
 use std::ptr;
 
+// Minimal type with an `Ord` implementation violating transitivity.
 #[derive(Debug)]
 pub enum Cyclic3 {
     A,
@@ -34,6 +35,7 @@ impl PartialEq for Cyclic3 {
 
 impl Eq for Cyclic3 {}
 
+// Controls the ordering of values wrapped by `Governed`.
 #[derive(Debug)]
 pub struct Governor {
     flipped: Cell<bool>,
@@ -49,6 +51,9 @@ impl Governor {
     }
 }
 
+// Type with an `Ord` implementation that forms a total order at any moment
+// (assuming that `T` respects total order), but can suddenly be made to invert
+// that total order.
 #[derive(Debug)]
 pub struct Governed<'a, T>(pub T, pub &'a Governor);
 

@@ -56,24 +56,23 @@ impl<K, V> BTreeMap<K, V> {
             assert!(root_node.ascend().is_err());
             root_node.assert_back_pointers();
 
-            // Check consistenty of `length` and some of the navigation.
+            // Check consistency of `length` with what navigation code encounters.
             assert_eq!(self.length, root_node.calc_length());
-            assert_eq!(self.length, self.keys().count());
 
             // Lastly, check the invariant causing the least harm.
             root_node.assert_min_len(if root_node.height() > 0 { 1 } else { 0 });
         } else {
-            // Check consistenty of `length` and some of the navigation.
             assert_eq!(self.length, 0);
-            assert_eq!(self.length, self.keys().count());
         }
+
+        // Check that `assert_strictly_ascending` will encounter all keys.
+        assert_eq!(self.length, self.keys().count());
     }
 
     // Panics if the map is corrupted or if the keys are not in strictly
     // ascending order, in the current opinion of the `Ord` implementation.
-    // If the `Ord` implementation does not honor transitivity, this method
-    // does not guarantee that all the keys are unique, just that adjacent
-    // keys are unique.
+    // If the `Ord` implementation violates transitivity, this method does not
+    // guarantee that all keys are unique, just that adjacent keys are unique.
     fn check(&self)
     where
         K: Debug + Ord,
@@ -879,6 +878,7 @@ mod test_drain_filter {
         map.check();
     }
 
+    // Explicitly consumes the iterator, where most test cases drop it instantly.
     #[test]
     fn consumed_keeping_all() {
         let pairs = (0..3).map(|i| (i, i));
@@ -887,6 +887,7 @@ mod test_drain_filter {
         map.check();
     }
 
+    // Explicitly consumes the iterator, where most test cases drop it instantly.
     #[test]
     fn consumed_removing_all() {
         let pairs = (0..3).map(|i| (i, i));
@@ -896,15 +897,7 @@ mod test_drain_filter {
         map.check();
     }
 
-    #[test]
-    fn dropped_removing_all() {
-        let pairs = (0..3).map(|i| (i, i));
-        let mut map: BTreeMap<_, _> = pairs.collect();
-        map.drain_filter(|_, _| true);
-        assert!(map.is_empty());
-        map.check();
-    }
-
+    // Explicitly consumes the iterator and modifies values through it.
     #[test]
     fn mutating_and_keeping() {
         let pairs = (0..3).map(|i| (i, i));
@@ -921,6 +914,7 @@ mod test_drain_filter {
         map.check();
     }
 
+    // Explicitly consumes the iterator and modifies values through it.
     #[test]
     fn mutating_and_removing() {
         let pairs = (0..3).map(|i| (i, i));
