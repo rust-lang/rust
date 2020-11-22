@@ -1948,8 +1948,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!("lower_async_fn_ret_ty: lifetime_params={:#?}", lifetime_params);
 
             let generic_params =
-                this.arena.alloc_from_iter(lifetime_params.iter().map(|(span, hir_name)| {
-                    this.lifetime_to_generic_param(*span, *hir_name, opaque_ty_def_id)
+                this.arena.alloc_from_iter(lifetime_params.iter().map(|&(span, hir_name)| {
+                    this.lifetime_to_generic_param(span, hir_name, opaque_ty_def_id)
                 }));
 
             let opaque_ty_item = hir::OpaqueTy {
