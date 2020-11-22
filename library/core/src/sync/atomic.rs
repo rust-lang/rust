@@ -546,6 +546,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
+    #[doc(alias = "compare_and_swap")]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_exchange(
         &self,
@@ -599,6 +600,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
+    #[doc(alias = "compare_and_swap")]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_exchange_weak(
         &self,
