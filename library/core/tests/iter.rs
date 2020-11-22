@@ -3482,3 +3482,15 @@ fn test_flatten_non_fused_inner() {
     assert_eq!(iter.next(), Some(1));
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+pub fn extend_for_unit() {
+    let mut x = 0;
+    {
+        let iter = (0..5).map(|_| {
+            x += 1;
+        });
+        ().extend(iter);
+    }
+    assert_eq!(x, 5);
+}
