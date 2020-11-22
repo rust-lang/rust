@@ -106,6 +106,15 @@ LL | /// [S!]
    |      this link resolves to the struct `S`, which is not in the macro namespace
    |      help: to link to the struct, prefix with `struct@`: `struct@S`
 
+error: unresolved link to `S::h`
+  --> $DIR/intra-link-errors.rs:78:6
+   |
+LL | /// [type@S::h]
+   |      ^^^^^^^^^
+   |      |
+   |      this link resolves to the associated function `h`, which is not in the type namespace
+   |      help: to link to the associated function, add parentheses: `S::h()`
+
 error: unresolved link to `T::g`
   --> $DIR/intra-link-errors.rs:86:6
    |
@@ -120,15 +129,6 @@ error: unresolved link to `T::h`
    |
 LL | /// [T::h!]
    |      ^^^^^ the trait `T` has no macro named `h`
-
-error: unresolved link to `S::h`
-  --> $DIR/intra-link-errors.rs:78:6
-   |
-LL | /// [type@S::h]
-   |      ^^^^^^^^^
-   |      |
-   |      this link resolves to the associated function `h`, which is not in the type namespace
-   |      help: to link to the associated function, add parentheses: `S::h()`
 
 error: unresolved link to `m`
   --> $DIR/intra-link-errors.rs:98:6

@@ -1,4 +1,3 @@
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
@@ -155,21 +154,6 @@ impl<'tcx> DocContext<'tcx> {
         } else {
             def_id.as_local().map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
         }
-    }
-
-    crate fn stability(&self, id: HirId) -> Option<attr::Stability> {
-        self.tcx
-            .hir()
-            .opt_local_def_id(id)
-            .and_then(|def_id| self.tcx.lookup_stability(def_id.to_def_id()))
-            .cloned()
-    }
-
-    crate fn deprecation(&self, id: HirId) -> Option<attr::Deprecation> {
-        self.tcx
-            .hir()
-            .opt_local_def_id(id)
-            .and_then(|def_id| self.tcx.lookup_deprecation(def_id.to_def_id()))
     }
 }
 
