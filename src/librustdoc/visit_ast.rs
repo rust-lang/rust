@@ -418,15 +418,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
-        if self.inlining && !item.vis.node.is_pub() {
-            return;
+        if !self.inlining || item.vis.node.is_pub() {
+            om.foreigns.push((item, renamed));
         }
-
-        om.foreigns.push(ForeignItem {
-            id: item.hir_id,
-            name: renamed.unwrap_or(item.ident).name,
-            kind: &item.kind,
-        });
     }
 
     // Convert each `exported_macro` into a doc item.
