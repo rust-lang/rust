@@ -1027,7 +1027,6 @@ impl<T: Default> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_take)]
     /// use std::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
@@ -1036,7 +1035,7 @@ impl<T: Default> RefCell<T> {
     /// assert_eq!(five, 5);
     /// assert_eq!(c.into_inner(), 0);
     /// ```
-    #[unstable(feature = "refcell_take", issue = "71395")]
+    #[stable(feature = "refcell_take", since = "1.50.0")]
     pub fn take(&self) -> T {
         self.replace(Default::default())
     }
