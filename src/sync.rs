@@ -61,7 +61,11 @@ struct Mutex {
     lock_count: usize,
     /// The queue of threads waiting for this mutex.
     queue: VecDeque<ThreadId>,
-    /// Data race handle
+    /// Data race handle, this tracks the happens-before
+    /// relationship between each mutex access. It is
+    /// released to during unlock and acquired from during
+    /// locking, and therefore stores the clock of the last
+    /// thread to release this mutex.
     data_race: VClock
 }
 
@@ -79,9 +83,24 @@ struct RwLock {
     writer_queue: VecDeque<ThreadId>,
     /// The queue of reader threads waiting for this lock.
     reader_queue: VecDeque<ThreadId>,
-    /// Data race handle for writers
+    /// Data race handle for writers, tracks the happens-before
+    /// ordering between each write access to a rwlock and is updated
+    /// after a sequence of concurrent readers to track the happens-
+    /// before ordering between the set of previous readers and
+    /// the current writer.
+    /// Contains the clock of the last thread to release a writer
+    /// lock or the joined clock of the set of last threads to release
+    /// shared reader locks.
     data_race: VClock,
-    /// Data race handle for readers
+    /// Data race handle for readers, this is temporary storage
+    /// for the combined happens-before ordering for between all
+    /// concurrent readers and the next writer, and the value
+    /// is stored to the main data_race variable once all
+    /// readers are finished.
+    /// Has to be stored separately since reader lock acquires
+    /// must load the clock of the last write and must not 
+    /// add happens-before orderings between shared reader
+    /// locks.
     data_race_reader: VClock,
 }
 
@@ -100,6 +119,11 @@ struct CondvarWaiter {
 #[derive(Default, Debug)]
 struct Condvar {
     waiters: VecDeque<CondvarWaiter>,
+    /// Tracks the happens-before relationship
+    /// between a cond-var signal and a cond-var
+    /// wait during a non-suprious signal event.
+    /// Contains the clock of the last thread to
+    /// perform a futex-signal.
     data_race: VClock,
 }
 
@@ -107,6 +131,11 @@ struct Condvar {
 #[derive(Default, Debug)]
 struct Futex {
     waiters: VecDeque<FutexWaiter>,
+    /// Tracks the happens-before relationship
+    /// between a futex-wake and a futex-wait
+    /// during a non-spurious wake event.
+    /// Contains the clock of the last thread to
+    /// perform a futex-wake.
     data_race: VClock,
 }
 

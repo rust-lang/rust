@@ -150,7 +150,7 @@ impl MemoryExtra {
         };
         let data_race = if config.data_race_detector {
             Some(Rc::new(data_race::GlobalState::new()))
-        }else{
+        } else {
             None
         };
         MemoryExtra {

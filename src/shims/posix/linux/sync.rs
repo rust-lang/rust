@@ -85,12 +85,10 @@ pub fn futex<'tcx>(
             //   with the expected value, and starting to sleep are performed
             //   atomically and totally ordered with respect to other futex
             //   operations on the same futex word."
-            // SeqCst is total order over all operations, so uses acquire,
-            // either are equal under the current implementation.
-            // FIXME: is Acquire correct or should some additional ordering constraints be observed?
-            // FIXME: use RMW or similar?
+            // SeqCst is total order over all operations.
+            // FIXME: check if this should be changed when weak memory orders are added.
             let futex_val = this.read_scalar_at_offset_atomic(
-                addr.into(), 0, this.machine.layouts.i32, AtomicReadOp::Acquire
+                addr.into(), 0, this.machine.layouts.i32, AtomicReadOp::SeqCst
             )?.to_i32()?;
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.

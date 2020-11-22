@@ -28,7 +28,7 @@ fn test_fence_sync() {
         if SYNC.load(Ordering::Relaxed) == 1 {
             fence(Ordering::Acquire);
             unsafe { *evil_ptr.0 }
-        }else{
+        } else {
             0
         }
     });
@@ -77,7 +77,7 @@ pub fn test_rmw_no_block() {
         let j3 = spawn(move || {
             if SYNC.load(Ordering::Acquire) == 2 {
                 *c.0
-            }else{
+            } else {
                 0
             }
         });
@@ -104,7 +104,7 @@ pub fn test_release_no_block() {
         let j2 = spawn(move || {
             if SYNC.load(Ordering::Acquire) == 3 {
                 *c.0
-            }else{
+            } else {
                 0
             }
         });

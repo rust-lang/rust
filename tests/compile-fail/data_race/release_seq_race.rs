@@ -35,7 +35,7 @@ pub fn main() {
             sleep(Duration::from_millis(1000));
             if SYNC.load(Ordering::Acquire) == 3 {
                 *c.0 //~ ERROR Data race
-            }else{
+            } else {
                 0
             }
         });
