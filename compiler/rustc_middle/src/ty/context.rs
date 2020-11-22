@@ -2617,7 +2617,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner).map(|set| set.contains(&id.local_id)).unwrap_or(false)
+        self.is_late_bound_map(id.owner)
+            .map(|(owner, set)| owner == id.owner && set.contains(&id.local_id))
+            .unwrap_or(false)
     }
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<&'tcx [ObjectLifetimeDefault]> {

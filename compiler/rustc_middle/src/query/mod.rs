@@ -1271,7 +1271,7 @@ rustc_queries! {
             desc { "looking up a named region" }
         }
         query is_late_bound_map(_: LocalDefId) ->
-            Option<&'tcx FxHashSet<ItemLocalId>> {
+            Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
             desc { "testing if a region is late bound" }
         }
         query object_lifetime_defaults_map(_: LocalDefId)
