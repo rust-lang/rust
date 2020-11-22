@@ -647,9 +647,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// No attempt is made to resolve `ty`.
     pub fn type_var_diverges(&'a self, ty: Ty<'_>) -> Diverging {
         match *ty.kind() {
-            ty::Infer(ty::TyVar(vid)) => self.inner.borrow_mut().type_variables().var_diverges(vid),
+            ty::Infer(ty::TyVar(vid)) => self.ty_vid_diverges(vid),
             _ => Diverging::NotDiverging,
         }
+    }
+
+    /// Returns true if the type inference variable `vid` was created
+    /// as a diverging type variable. No attempt is made to resolve `vid`.
+    pub fn ty_vid_diverges(&'a self, vid: ty::TyVid) -> Diverging {
+        self.inner.borrow_mut().type_variables().var_diverges(vid)
     }
 
     /// Returns the origin of the type variable identified by `vid`, or `None`
@@ -1001,6 +1007,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
             Ok(())
         })
+    }
+
+    /// Number of type variables created so far.
+    pub fn num_ty_vars(&self) -> usize {
+        self.inner.borrow_mut().type_variables().num_vars()
     }
 
     pub fn next_ty_var_id(&self, diverging: Diverging, origin: TypeVariableOrigin) -> TyVid {

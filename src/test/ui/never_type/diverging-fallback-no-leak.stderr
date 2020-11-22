@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `!: Test` is not satisfied
+  --> $DIR/diverging-fallback-no-leak.rs:14:5
+   |
+LL | fn unconstrained_arg<T: Test>(_: T) {}
+   |                         ---- required by this bound in `unconstrained_arg`
+...
+LL |     unconstrained_arg(return);
+   |     ^^^^^^^^^^^^^^^^^ the trait `Test` is not implemented for `!`
+   |
+   = note: the trait is implemented for `()`. Possibly this error has been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information). Consider whether you meant to use the type `()` here instead.
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
