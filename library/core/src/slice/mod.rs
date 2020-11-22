@@ -2585,6 +2585,7 @@ impl<T> [T] {
     /// buf.fill(1);
     /// assert_eq!(buf, vec![1; 10]);
     /// ```
+    #[doc(alias = "memset")]
     #[unstable(feature = "slice_fill", issue = "70758")]
     pub fn fill(&mut self, value: T)
     where
