@@ -2006,6 +2006,7 @@ Released 2018-09-13
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
 [`print_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_literal
+[`print_stderr`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_stderr
 [`print_stdout`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_stdout
 [`print_with_newline`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_with_newline
 [`println_empty_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#println_empty_string

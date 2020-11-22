@@ -76,6 +76,24 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for printing on *stderr*. The purpose of this lint
+    /// is to catch debugging remnants.
+    ///
+    /// **Why is this bad?** People often print on *stderr* while debugging an
+    /// application and might forget to remove those prints afterward.
+    ///
+    /// **Known problems:** Only catches `eprint!` and `eprintln!` calls.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// eprintln!("Hello world!");
+    /// ```
+    pub PRINT_STDERR,
+    restriction,
+    "printing on stderr"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for use of `Debug` formatting. The purpose of this
     /// lint is to catch debugging remnants.
     ///
@@ -201,6 +219,7 @@ impl_lint_pass!(Write => [
     PRINT_WITH_NEWLINE,
     PRINTLN_EMPTY_STRING,
     PRINT_STDOUT,
+    PRINT_STDERR,
     USE_DEBUG,
     PRINT_LITERAL,
     WRITE_WITH_NEWLINE,
@@ -260,6 +279,10 @@ impl EarlyLintPass for Write {
                     );
                 }
             }
+        } else if mac.path == sym!(eprintln) {
+            span_lint(cx, PRINT_STDERR, mac.span(), "use of `eprintln!`");
+        } else if mac.path == sym!(eprint) {
+            span_lint(cx, PRINT_STDERR, mac.span(), "use of `eprint!`");
         } else if mac.path == sym!(print) {
             if !is_build_script(cx) {
                 span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");

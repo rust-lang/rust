@@ -934,6 +934,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &wildcard_imports::WILDCARD_IMPORTS,
         &write::PRINTLN_EMPTY_STRING,
         &write::PRINT_LITERAL,
+        &write::PRINT_STDERR,
         &write::PRINT_STDOUT,
         &write::PRINT_WITH_NEWLINE,
         &write::USE_DEBUG,
@@ -1247,6 +1248,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::RC_BUFFER),
         LintId::of(&unwrap_in_result::UNWRAP_IN_RESULT),
         LintId::of(&verbose_file_reads::VERBOSE_FILE_READS),
+        LintId::of(&write::PRINT_STDERR),
         LintId::of(&write::PRINT_STDOUT),
         LintId::of(&write::USE_DEBUG),
     ]);
