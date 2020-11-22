@@ -1,43 +1,55 @@
-error: cannot find attribute `lt_hof` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:51:21
+error: cannot find attribute `lt_struct` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:4:15
    |
-LL |     where Q: for <#[lt_hof] 'i> Fn(&'i [u32]) -> &'i u32
-   |                     ^^^^^^
+LL | struct StLt<#[lt_struct] 'a>(&'a u32);
+   |               ^^^^^^^^^
 
-error: cannot find attribute `ty_meth` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:46:15
+error: cannot find attribute `ty_struct` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:6:15
    |
-LL |     fn m_ty<#[ty_meth] P>(_: P) { }
-   |               ^^^^^^^
+LL | struct StTy<#[ty_struct] I>(I);
+   |               ^^^^^^^^^
 
-error: cannot find attribute `lt_meth` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:44:15
+error: cannot find attribute `lt_enum` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:9:13
    |
-LL |     fn m_lt<#[lt_meth] 'h>(_: &'h [u32]) -> &'h u32 { loop { } }
-   |               ^^^^^^^
+LL | enum EnLt<#[lt_enum] 'b> { A(&'b u32), B }
+   |             ^^^^^^^
 
-error: cannot find attribute `ty_fn` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:40:11
+error: cannot find attribute `ty_enum` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:11:13
    |
-LL | fn f_ty<#[ty_fn] O>(_: O) { }
-   |           ^^^^^
+LL | enum EnTy<#[ty_enum] J> { A(J), B }
+   |             ^^^^^^^
 
-error: cannot find attribute `lt_fn` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:38:11
+error: cannot find attribute `lt_trait` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:14:14
    |
-LL | fn f_lt<#[lt_fn] 'g>(_: &'g [u32]) -> &'g u32 { loop { } }
-   |           ^^^^^
+LL | trait TrLt<#[lt_trait] 'c> { fn foo(&self, _: &'c [u32]) -> &'c u32; }
+   |              ^^^^^^^^
 
-error: cannot find attribute `ty_impl_for` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:33:8
+error: cannot find attribute `ty_trait` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:16:14
    |
-LL | impl<#[ty_impl_for] N> TrTy<N> for StTy<N> {
-   |        ^^^^^^^^^^^
+LL | trait TrTy<#[ty_trait] K> { fn foo(&self, _: K); }
+   |              ^^^^^^^^
 
-error: cannot find attribute `lt_impl_for` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:29:8
+error: cannot find attribute `lt_type` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:19:13
    |
-LL | impl<#[lt_impl_for] 'f> TrLt<'f> for StLt<'f> {
+LL | type TyLt<#[lt_type] 'd> = &'d u32;
+   |             ^^^^^^^
+
+error: cannot find attribute `ty_type` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:21:13
+   |
+LL | type TyTy<#[ty_type] L> = (L, );
+   |             ^^^^^^^
+
+error: cannot find attribute `lt_inherent` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:24:8
+   |
+LL | impl<#[lt_inherent] 'e> StLt<'e> { }
    |        ^^^^^^^^^^^
 
 error: cannot find attribute `ty_inherent` in this scope
@@ -46,59 +58,47 @@ error: cannot find attribute `ty_inherent` in this scope
 LL | impl<#[ty_inherent] M> StTy<M> { }
    |        ^^^^^^^^^^^
 
-error: cannot find attribute `lt_inherent` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:24:8
+error: cannot find attribute `lt_impl_for` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:29:8
    |
-LL | impl<#[lt_inherent] 'e> StLt<'e> { }
+LL | impl<#[lt_impl_for] 'f> TrLt<'f> for StLt<'f> {
    |        ^^^^^^^^^^^
 
-error: cannot find attribute `ty_type` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:21:13
+error: cannot find attribute `ty_impl_for` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:33:8
    |
-LL | type TyTy<#[ty_type] L> = (L, );
-   |             ^^^^^^^
+LL | impl<#[ty_impl_for] N> TrTy<N> for StTy<N> {
+   |        ^^^^^^^^^^^
 
-error: cannot find attribute `lt_type` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:19:13
+error: cannot find attribute `lt_fn` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:38:11
    |
-LL | type TyLt<#[lt_type] 'd> = &'d u32;
-   |             ^^^^^^^
+LL | fn f_lt<#[lt_fn] 'g>(_: &'g [u32]) -> &'g u32 { loop { } }
+   |           ^^^^^
 
-error: cannot find attribute `ty_trait` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:16:14
+error: cannot find attribute `ty_fn` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:40:11
    |
-LL | trait TrTy<#[ty_trait] K> { fn foo(&self, _: K); }
-   |              ^^^^^^^^
+LL | fn f_ty<#[ty_fn] O>(_: O) { }
+   |           ^^^^^
 
-error: cannot find attribute `lt_trait` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:14:14
+error: cannot find attribute `lt_meth` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:44:15
    |
-LL | trait TrLt<#[lt_trait] 'c> { fn foo(&self, _: &'c [u32]) -> &'c u32; }
-   |              ^^^^^^^^
+LL |     fn m_lt<#[lt_meth] 'h>(_: &'h [u32]) -> &'h u32 { loop { } }
+   |               ^^^^^^^
 
-error: cannot find attribute `ty_enum` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:11:13
+error: cannot find attribute `ty_meth` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:46:15
    |
-LL | enum EnTy<#[ty_enum] J> { A(J), B }
-   |             ^^^^^^^
+LL |     fn m_ty<#[ty_meth] P>(_: P) { }
+   |               ^^^^^^^
 
-error: cannot find attribute `lt_enum` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:9:13
+error: cannot find attribute `lt_hof` in this scope
+  --> $DIR/feature-gate-custom_attribute2.rs:51:21
    |
-LL | enum EnLt<#[lt_enum] 'b> { A(&'b u32), B }
-   |             ^^^^^^^
-
-error: cannot find attribute `ty_struct` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:6:15
-   |
-LL | struct StTy<#[ty_struct] I>(I);
-   |               ^^^^^^^^^
-
-error: cannot find attribute `lt_struct` in this scope
-  --> $DIR/feature-gate-custom_attribute2.rs:4:15
-   |
-LL | struct StLt<#[lt_struct] 'a>(&'a u32);
-   |               ^^^^^^^^^
+LL |     where Q: for <#[lt_hof] 'i> Fn(&'i [u32]) -> &'i u32
+   |                     ^^^^^^
 
 error: aborting due to 17 previous errors
 
