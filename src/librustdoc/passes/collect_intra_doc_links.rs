@@ -1022,7 +1022,7 @@ impl LinkCollector<'_, '_> {
             (link.trim(), None)
         };
 
-        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, ".contains(ch))) {
+        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !".contains(ch))) {
             return None;
         }
 
