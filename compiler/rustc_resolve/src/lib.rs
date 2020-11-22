@@ -12,6 +12,7 @@
 #![feature(box_patterns)]
 #![feature(bool_to_option)]
 #![feature(control_flow_enum)]
+#![feature(bindings_after_at)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(nll)]
@@ -597,6 +598,10 @@ impl<'a> ModuleData<'a> {
         matches!(self.kind, ModuleKind::Def(DefKind::Trait, _, _))
     }
 
+    fn is_block(&self) -> bool {
+        matches!(self.kind, ModuleKind::Block(_))
+    }
+
     fn nearest_item_scope(&'a self) -> Module<'a> {
         match self.kind {
             ModuleKind::Def(DefKind::Enum | DefKind::Trait, ..) => {
@@ -837,6 +842,13 @@ pub struct ExternPreludeEntry<'a> {
 enum BuiltinMacroState {
     NotYetSeen(SyntaxExtensionKind),
     AlreadySeen(Span),
+}
+
+/// Whether resolve_path_with_ribs may resolve to anonymous block modules
+#[derive(Copy, Clone, Debug)]
+enum AllowResolveBlocks {
+    No,
+    Yes,
 }
 
 /// The main resolver class.
@@ -2177,6 +2189,7 @@ impl<'a> Resolver<'a> {
             path_span,
             crate_lint,
             None,
+            AllowResolveBlocks::No,
         )
     }
 
@@ -2189,6 +2202,7 @@ impl<'a> Resolver<'a> {
         path_span: Span,
         crate_lint: CrateLint,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
+        resolve_opaque: AllowResolveBlocks,
     ) -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
@@ -2231,9 +2245,11 @@ impl<'a> Resolver<'a> {
                     };
                     if let Some(self_module) = self_module {
                         if let Some(parent) = self_module.parent {
-                            module = Some(ModuleOrUniformRoot::Module(
-                                self.resolve_self(&mut ctxt, parent),
-                            ));
+                            let resolved = match (resolve_opaque, &parent.kind) {
+                                (AllowResolveBlocks::Yes, ModuleKind::Block(_)) => parent,
+                                _ => self.resolve_self(&mut ctxt, parent),
+                            };
+                            module = Some(ModuleOrUniformRoot::Module(resolved));
                             continue;
                         }
                     }

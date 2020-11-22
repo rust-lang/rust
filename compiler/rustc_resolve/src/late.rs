@@ -747,6 +747,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             path_span,
             crate_lint,
             Some(&self.ribs),
+            crate::AllowResolveBlocks::No,
         )
     }
 

@@ -4,10 +4,10 @@ use crate::diagnostics::Suggestion;
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, MacroNS, TypeNS};
 use crate::{module_to_string, names_to_string};
+use crate::{AllowResolveBlocks, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
-use crate::{BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
 use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet, Weak};
-use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
+use crate::{ModuleData, NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
 use rustc_ast::unwrap_or;
 use rustc_ast::NodeId;
@@ -777,13 +777,15 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             // For better failure detection, pretend that the import will
             // not define any names while resolving its module path.
             let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-            let path_res = self.r.resolve_path(
+            let path_res = self.r.resolve_path_with_ribs(
                 &import.module_path,
                 None,
                 &import.parent_scope,
                 false,
                 import.span,
                 import.crate_lint(),
+                None,
+                AllowResolveBlocks::Yes,
             );
             import.vis.set(orig_vis);
 
@@ -818,7 +820,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     // For better failure detection, pretend that the import will
                     // not define any names while resolving its module path.
                     let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-                    let binding = this.resolve_ident_in_module(
+                    let mut binding = this.resolve_ident_in_module(
                         module,
                         source,
                         ns,
@@ -826,8 +828,29 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         false,
                         import.span,
                     );
-                    import.vis.set(orig_vis);
 
+                    let mut module = module;
+                    while binding.is_err() {
+                        match module {
+                            ModuleOrUniformRoot::Module(m @ ModuleData { parent: Some(p), .. })
+                                if m.is_block() =>
+                            {
+                                // item not found in opaque block module; try inside module containing the block
+                                module = ModuleOrUniformRoot::Module(*p);
+                                binding = this.resolve_ident_in_module(
+                                    module,
+                                    source,
+                                    ns,
+                                    &import.parent_scope,
+                                    false,
+                                    import.span,
+                                );
+                            }
+                            _ => break,
+                        }
+                    }
+
+                    import.vis.set(orig_vis);
                     source_bindings[ns].set(binding);
                 } else {
                     return;
@@ -878,13 +901,15 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             _ => None,
         };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
-        let path_res = self.r.resolve_path(
+        let path_res = self.r.resolve_path_with_ribs(
             &import.module_path,
             None,
             &import.parent_scope,
             true,
             import.span,
             import.crate_lint(),
+            None,
+            AllowResolveBlocks::Yes,
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         if let Some(orig_unusable_binding) = orig_unusable_binding {
@@ -1010,7 +1035,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let orig_unusable_binding =
                     mem::replace(&mut this.unusable_binding, target_bindings[ns].get());
                 let orig_last_import_segment = mem::replace(&mut this.last_import_segment, true);
-                let binding = this.resolve_ident_in_module(
+                let mut binding = this.resolve_ident_in_module(
                     module,
                     ident,
                     ns,
@@ -1018,6 +1043,28 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     true,
                     import.span,
                 );
+
+                let mut module = module;
+                while binding.is_err() {
+                    match module {
+                        ModuleOrUniformRoot::Module(m @ ModuleData { parent: Some(p), .. })
+                            if m.is_block() =>
+                        {
+                            // item not found in opaque block module; try inside module containing the block
+                            module = ModuleOrUniformRoot::Module(*p);
+                            binding = this.resolve_ident_in_module(
+                                module,
+                                ident,
+                                ns,
+                                &import.parent_scope,
+                                false,
+                                import.span,
+                            );
+                        }
+                        _ => break,
+                    }
+                }
+
                 this.last_import_segment = orig_last_import_segment;
                 this.unusable_binding = orig_unusable_binding;
                 import.vis.set(orig_vis);
@@ -1323,7 +1370,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     }
 
     fn resolve_glob_import(&mut self, import: &'b Import<'b>) {
-        let module = match import.imported_module.get().unwrap() {
+        let mut module = match import.imported_module.get().unwrap() {
             ModuleOrUniformRoot::Module(module) => module,
             _ => {
                 self.r.session.span_err(import.span, "cannot glob-import all possible crates");
@@ -1346,7 +1393,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
-        let bindings = self
+        let mut bindings = self
             .r
             .resolutions(module)
             .borrow()
@@ -1355,6 +1402,53 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 resolution.borrow().binding().map(|binding| (*key, binding))
             })
             .collect::<Vec<_>>();
+
+        if module.is_block() {
+            // Glob imports should see "through" an opaque module.
+            // Prefer items in the opaque module to items in the parent.
+
+            let mut imported_items = FxHashSet::default();
+
+            while module.is_block() && module.parent.is_some() {
+                // import these bindings
+                for (mut key, binding) in bindings {
+                    let scope =
+                        match key.ident.span.reverse_glob_adjust(module.expansion, import.span) {
+                            Some(Some(def)) => self.r.macro_def_scope(def),
+                            Some(None) => import.parent_scope.module,
+                            None => continue,
+                        };
+                    if self.r.is_accessible_from(binding.vis, scope) {
+                        let imported_binding = self.r.import(binding, import);
+                        let _ =
+                            self.r.try_define(import.parent_scope.module, key, imported_binding);
+                        imported_items.insert(key);
+                    }
+                }
+
+                // This was an opaque module; repeat with parent module.
+                module = module.parent.unwrap();
+
+                // Add to module's glob_importers
+                module.glob_importers.borrow_mut().push(import);
+
+                // Ensure that `resolutions` isn't borrowed during `try_define`,
+                // since it might get updated via a glob cycle.
+                bindings = self
+                    .r
+                    .resolutions(module)
+                    .borrow()
+                    .iter()
+                    .filter_map(|(key, resolution)| {
+                        if imported_items.contains(key) {
+                            return None;
+                        }
+                        resolution.borrow().binding().map(|binding| (*key, binding))
+                    })
+                    .collect::<Vec<_>>();
+            }
+        }
+
         for (mut key, binding) in bindings {
             let scope = match key.ident.span.reverse_glob_adjust(module.expansion, import.span) {
                 Some(Some(def)) => self.r.macro_def_scope(def),
