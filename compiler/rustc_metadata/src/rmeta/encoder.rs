@@ -1780,7 +1780,7 @@ impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
         intravisit::walk_expr(self, ex);
         self.encode_info_for_expr(ex);
     }
-    fn visit_anon_const(&mut self, c: &'tcx AnonConst) {
+    fn visit_anon_const(&mut self, c: &'tcx AnonConst<'_>) {
         intravisit::walk_anon_const(self, c);
         let def_id = self.tcx.hir().local_def_id(c.hir_id);
         self.encode_info_for_anon_const(def_id);

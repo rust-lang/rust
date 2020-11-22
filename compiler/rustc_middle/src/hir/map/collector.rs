@@ -441,11 +441,17 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
-        self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
+    fn visit_anon_const(&mut self, constant: &'hir AnonConst<'hir>) {
+        debug_assert_eq!(
+            constant.hir_id.owner,
+            self.definitions.opt_hir_id_to_local_def_id(constant.hir_id).unwrap()
+        );
+        self.with_dep_node_owner(constant.hir_id.owner, constant, |this, hash| {
+            this.insert_with_hash(DUMMY_SP, constant.hir_id, Node::AnonConst(constant), hash);
 
-        self.with_parent(constant.hir_id, |this| {
-            intravisit::walk_anon_const(this, constant);
+            this.with_parent(constant.hir_id, |this| {
+                intravisit::walk_anon_const(this, constant);
+            })
         });
     }
 

@@ -47,7 +47,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
         NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 
-    fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'hir hir::AnonConst<'_>) {
         self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
     }
 

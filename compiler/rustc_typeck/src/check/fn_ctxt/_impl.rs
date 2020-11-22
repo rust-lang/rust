@@ -472,7 +472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
+    pub fn to_const(&self, ast_c: &hir::AnonConst<'_>) -> &'tcx ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
         self.register_wf_obligation(
@@ -485,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn const_arg_to_const(
         &self,
-        ast_c: &hir::AnonConst,
+        ast_c: &hir::AnonConst<'_>,
         param_def_id: DefId,
     ) -> &'tcx ty::Const<'tcx> {
         let const_def = ty::WithOptConstParam {

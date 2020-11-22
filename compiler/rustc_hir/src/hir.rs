@@ -241,9 +241,9 @@ impl<'hir> PathSegment<'hir> {
     }
 }
 
-#[derive(Encodable, Debug, HashStable_Generic)]
-pub struct ConstArg {
-    pub value: AnonConst,
+#[derive(Debug, HashStable_Generic)]
+pub struct ConstArg<'hir> {
+    pub value: AnonConst<'hir>,
     pub span: Span,
 }
 
@@ -251,7 +251,7 @@ pub struct ConstArg {
 pub enum GenericArg<'hir> {
     Lifetime(Lifetime),
     Type(Ty<'hir>),
-    Const(ConstArg),
+    Const(ConstArg<'hir>),
 }
 
 impl GenericArg<'_> {
@@ -1354,9 +1354,11 @@ pub type Lit = Spanned<LitKind>;
 /// These are usually found nested inside types (e.g., array lengths)
 /// or expressions (e.g., repeat counts), and also used to define
 /// explicit discriminant values for enum variants.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
-pub struct AnonConst {
+#[derive(Debug, HashStable_Generic)]
+pub struct AnonConst<'hir> {
     pub hir_id: HirId,
+    pub generics: Generics<'hir>,
+    pub generic_args: GenericArgs<'hir>,
     pub body: BodyId,
 }
 
@@ -1371,7 +1373,7 @@ pub struct Expr<'hir> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr<'static>, 72);
+rustc_data_structures::static_assert_size!(Expr<'static>, 144);
 
 impl Expr<'_> {
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1519,7 +1521,7 @@ pub enum ExprKind<'hir> {
     /// A `box x` expression.
     Box(&'hir Expr<'hir>),
     /// Allow anonymous constants from an inline `const` block
-    ConstBlock(AnonConst),
+    ConstBlock(AnonConst<'hir>),
     /// An array (e.g., `[a, b, c, d]`).
     Array(&'hir [Expr<'hir>]),
     /// A function call.
@@ -1619,7 +1621,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    Repeat(&'hir Expr<'hir>, AnonConst),
+    Repeat(&'hir Expr<'hir>, AnonConst<'hir>),
 
     /// A suspension point for generators (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
@@ -2064,7 +2066,7 @@ pub enum TyKind<'hir> {
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
-    Array(&'hir Ty<'hir>, AnonConst),
+    Array(&'hir Ty<'hir>, AnonConst<'hir>),
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
@@ -2090,7 +2092,7 @@ pub enum TyKind<'hir> {
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], Lifetime),
     /// Unused for now.
-    Typeof(AnonConst),
+    Typeof(AnonConst<'hir>),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
@@ -2306,7 +2308,7 @@ pub struct Variant<'hir> {
     /// Fields and constructor id of the variant.
     pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
-    pub disr_expr: Option<AnonConst>,
+    pub disr_expr: Option<AnonConst<'hir>>,
     /// Span
     pub span: Span,
 }
@@ -2693,7 +2695,7 @@ pub enum Node<'hir> {
     ImplItem(&'hir ImplItem<'hir>),
     Variant(&'hir Variant<'hir>),
     Field(&'hir StructField<'hir>),
-    AnonConst(&'hir AnonConst),
+    AnonConst(&'hir AnonConst<'hir>),
     Expr(&'hir Expr<'hir>),
     Stmt(&'hir Stmt<'hir>),
     PathSegment(&'hir PathSegment<'hir>),

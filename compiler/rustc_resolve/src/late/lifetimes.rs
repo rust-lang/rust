@@ -479,6 +479,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
+    fn visit_anon_const(&mut self, ct: &'tcx hir::AnonConst<'tcx>) {
+        self.visit_generics(&ct.generics);
+        self.visit_generic_args(crate::DUMMY_SP, &ct.generic_args);
+        intravisit::walk_anon_const(self, ct);
+    }
+
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {

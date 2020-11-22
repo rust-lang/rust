@@ -183,7 +183,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
-    fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
+    fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst<'_>) {
         let kind = Some(hir::ConstContext::Const);
         self.recurse_into(kind, None, |this| intravisit::walk_anon_const(this, anon));
     }

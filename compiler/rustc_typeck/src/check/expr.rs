@@ -1022,7 +1022,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_repeat(
         &self,
         element: &'tcx hir::Expr<'tcx>,
-        count: &'tcx hir::AnonConst,
+        count: &'tcx hir::AnonConst<'_>,
         expected: Expectation<'tcx>,
         _expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {

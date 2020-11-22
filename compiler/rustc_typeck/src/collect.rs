@@ -1282,7 +1282,7 @@ impl<'v> Visitor<'v> for AnonConstInParamListDetector {
         self.in_param_list = prev;
     }
 
-    fn visit_anon_const(&mut self, c: &'v hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'v hir::AnonConst<'v>) {
         if self.in_param_list && self.ct == c.hir_id {
             self.found_anon_const_in_list = true;
         } else {
@@ -1434,6 +1434,8 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             ForeignItemKind::Fn(_, _, ref generics) => generics,
             ForeignItemKind::Type => &no_generics,
         },
+
+        Node::AnonConst(ct) => &ct.generics,
 
         _ => &no_generics,
     };
@@ -2121,7 +2123,7 @@ fn const_evaluatable_predicates_of<'tcx>(
             intravisit::NestedVisitorMap::None
         }
 
-        fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst<'tcx>) {
             let def_id = self.tcx.hir().local_def_id(c.hir_id);
             let ct = ty::Const::from_anon_const(self.tcx, def_id);
             if let ty::ConstKind::Unevaluated(def, substs, None) = ct.val {

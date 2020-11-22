@@ -362,7 +362,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat(&mut self, p: &'v Pat<'v>) {
         walk_pat(self, p)
     }
-    fn visit_anon_const(&mut self, c: &'v AnonConst) {
+    fn visit_anon_const(&mut self, c: &'v AnonConst<'v>) {
         walk_anon_const(self, c)
     }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
@@ -1089,7 +1089,7 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) {
     }
 }
 
-pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst) {
+pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst<'v>) {
     visitor.visit_id(constant.hir_id);
     visitor.visit_nested_body(constant.body);
 }

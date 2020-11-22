@@ -1429,6 +1429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fields: self.non_enum_variant(&variant.data).fields,
                 explicit_discr: variant
                     .disr_expr
+                    .as_ref()
                     .map(|explicit_discr| self.tcx.hir().local_def_id(explicit_discr.hir_id)),
             })
             .collect()

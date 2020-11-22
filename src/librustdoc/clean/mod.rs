@@ -430,7 +430,7 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
     }
 }
 
-impl Clean<Constant> for hir::ConstArg {
+impl Clean<Constant> for hir::ConstArg<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Constant {
         Constant {
             type_: cx

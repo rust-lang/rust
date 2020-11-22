@@ -512,6 +512,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     _ => visit::walk_ty(self, t),
                 }
             }
+
+            fn visit_anon_const(&mut self, ct: &'tcx AnonConst) {
+                self.lctx.allocate_hir_id_counter(ct.id);
+                self.with_hir_id_owner(Some(ct.id), |this| {
+                    visit::walk_anon_const(this, ct);
+                });
+            }
         }
 
         self.lower_node_id(CRATE_NODE_ID);
@@ -1158,9 +1165,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 tokens: None,
                             };
 
-                            let ct = self.with_new_scopes(|this| hir::AnonConst {
-                                hir_id: this.lower_node_id(node_id),
-                                body: this.lower_const_body(path_expr.span, Some(&path_expr)),
+                            let ct = self.lower_anon_const(&AnonConst {
+                                id: node_id,
+                                value: ast::ptr::P(path_expr),
                             });
                             return GenericArg::Const(ConstArg { value: ct, span: ty.span });
                         }
@@ -1169,7 +1176,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArg::Type(self.lower_ty_direct(&ty, itctx))
             }
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
-                value: self.lower_anon_const(&ct),
+                value: self.lower_anon_const(ct),
                 span: ct.value.span,
             }),
         }
@@ -2320,10 +2327,57 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.expr_block(block, AttrVec::new())
     }
 
-    fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
-        self.with_new_scopes(|this| hir::AnonConst {
-            hir_id: this.lower_node_id(c.id),
-            body: this.lower_const_body(c.value.span, Some(&c.value)),
+    fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst<'hir> {
+        self.with_new_scopes(|this| {
+            this.allocate_hir_id_counter(c.id);
+            this.with_hir_id_owner(c.id, |this| {
+                let def_id = this.resolver.local_def_id(c.id);
+
+                let hir_id = this.lower_node_id(c.id);
+                // Calculate all the lifetimes that should be captured
+                // by the opaque type. This should include all in-scope
+                // lifetime parameters, including those defined in-band.
+                //
+                // Note: this must be done after lowering the output type,
+                // as the output type may introduce new in-band lifetimes.
+                let lifetime_params: Vec<(Span, ParamName)> = this
+                    .in_scope_lifetimes
+                    .iter()
+                    .cloned()
+                    .map(|name| (name.ident().span, name))
+                    .chain(this.lifetimes_to_define.iter().cloned())
+                    .collect();
+
+                let generic_params =
+                    this.arena.alloc_from_iter(lifetime_params.iter().map(|&(span, hir_name)| {
+                        this.lifetime_to_generic_param(span, hir_name, def_id)
+                    }));
+
+                let mut generic_args = Vec::with_capacity(lifetime_params.len());
+                generic_args.extend(lifetime_params.iter().map(|&(span, hir_name)| {
+                    GenericArg::Lifetime(hir::Lifetime {
+                        hir_id: this.next_id(),
+                        span,
+                        name: hir::LifetimeName::Param(hir_name),
+                    })
+                }));
+                let generic_args = this.arena.alloc_from_iter(generic_args);
+
+                hir::AnonConst {
+                    hir_id,
+                    generics: hir::Generics {
+                        params: generic_params,
+                        where_clause: hir::WhereClause { predicates: &[], span: c.value.span },
+                        span: c.value.span,
+                    },
+                    generic_args: hir::GenericArgs {
+                        args: generic_args,
+                        bindings: &[],
+                        parenthesized: false,
+                    },
+                    body: this.lower_const_body(c.value.span, Some(&c.value)),
+                }
+            })
         })
     }
 

@@ -3,6 +3,7 @@ use crate::mir::interpret::{LitToConstInput, Scalar};
 use crate::ty::subst::InternalSubsts;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ParamEnv, ParamEnvAnd};
+use crate::middle::resolve_lifetime as rl;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -41,15 +42,17 @@ impl<'tcx> Const<'tcx> {
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
-        let body_id = match tcx.hir().get(hir_id) {
-            hir::Node::AnonConst(ac) => ac.body,
+        let hir_ct = match tcx.hir().get(hir_id) {
+            hir::Node::AnonConst(ac) => ac,
             _ => span_bug!(
                 tcx.def_span(def.did.to_def_id()),
                 "from_anon_const can only process anonymous constants"
             ),
         };
 
-        let expr = &tcx.hir().body(body_id).value;
+        warn!(?hir_ct.generics, ?hir_ct.generic_args);
+
+        let expr = &tcx.hir().body(hir_ct.body).value;
 
         let ty = tcx.type_of(def.def_id_for_type_of());
 
@@ -97,11 +100,77 @@ impl<'tcx> Const<'tcx> {
                 let name = tcx.hir().name(hir_id);
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
-            _ => ty::ConstKind::Unevaluated(
-                def.to_global(),
-                InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                None,
-            ),
+            _ => {
+                let generics = tcx.generics_of(def.did);
+                let substs = InternalSubsts::for_item(tcx, def.did.to_def_id(), |param, _| {
+                    if let Some(i) =
+                        (param.index as usize).checked_sub(generics.parent_count)
+                    {
+                        // Our own parameters are the resolved lifetimes.
+                        match param.kind {
+                            ty::GenericParamDefKind::Lifetime => {
+                                if let hir::GenericArg::Lifetime(lifetime) = &hir_ct.generic_args.args[i] {
+                                    let lifetime_name = |def_id| {
+                                        tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id))
+                                    };
+
+                                    match tcx.named_region(lifetime.hir_id) {
+                                        Some(rl::Region::Static) => tcx.lifetimes.re_static,
+
+                                        Some(rl::Region::LateBound(debruijn, id, _)) => {
+                                            let name = lifetime_name(id.expect_local());
+                                            tcx.mk_region(ty::ReLateBound(
+                                                debruijn,
+                                                ty::BrNamed(id, name),
+                                            ))
+                                        }
+
+                                        Some(rl::Region::LateBoundAnon(debruijn, index)) => tcx
+                                            .mk_region(ty::ReLateBound(
+                                                debruijn,
+                                                ty::BrAnon(index),
+                                            )),
+
+                                        Some(rl::Region::EarlyBound(index, id, _)) => {
+                                            let name = lifetime_name(id.expect_local());
+                                            tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                                                def_id: id,
+                                                index,
+                                                name,
+                                            }))
+                                        }
+
+                                        Some(rl::Region::Free(scope, id)) => {
+                                            let name = lifetime_name(id.expect_local());
+                                            tcx.mk_region(ty::ReFree(ty::FreeRegion {
+                                                scope,
+                                                bound_region: ty::BrNamed(id, name),
+                                            }))
+
+                                            // (*) -- not late-bound, won't change
+                                        }
+
+                                        None => {
+                                            tcx.sess.delay_span_bug(
+                                                lifetime.span,
+                                                "unelided lifetime in signature",
+                                            );
+                                            tcx.lifetimes.re_static
+                                        }
+                                    }
+                                } else {
+                                    bug!()
+                                }
+                            }.into(),
+                            _ => bug!(),
+                        }
+                    } else {
+                        tcx.mk_param_from_def(param)
+                    }
+                });
+
+                ty::ConstKind::Unevaluated(def.to_global(), substs, None)
+            }
         };
 
         tcx.mk_const(ty::Const { val, ty })

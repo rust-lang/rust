@@ -1083,7 +1083,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Block(blk))
     }
 
-    pub fn print_anon_const(&mut self, constant: &hir::AnonConst) {
+    pub fn print_anon_const(&mut self, constant: &hir::AnonConst<'_>) {
         self.ann.nested(self, Nested::Body(constant.body))
     }
 
@@ -1132,14 +1132,14 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_anon_const(&mut self, anon_const: &hir::AnonConst) {
+    fn print_expr_anon_const(&mut self, anon_const: &hir::AnonConst<'_>) {
         self.ibox(INDENT_UNIT);
         self.s.word_space("const");
         self.print_anon_const(anon_const);
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::AnonConst) {
+    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::AnonConst<'_>) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.print_expr(element);

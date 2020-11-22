@@ -320,7 +320,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         intravisit::walk_ty(self, ty);
     }
 
-    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst<'_>) {
         self.live_symbols.insert(c.hir_id);
         intravisit::walk_anon_const(self, c);
     }

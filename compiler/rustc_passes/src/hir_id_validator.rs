@@ -176,6 +176,10 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         // different owner.
     }
 
+    fn visit_anon_const(&mut self, _: &'hir hir::AnonConst<'hir>) {
+        // Do nothing here, the bodies of anon consts have a different hir owner.
+    }
+
     fn visit_generic_param(&mut self, param: &'hir hir::GenericParam<'hir>) {
         if let hir::GenericParamKind::Type {
             synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
