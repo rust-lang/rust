@@ -33,6 +33,12 @@ fn main() {
     m!(0u8, 25, 20..=30);
     m!(0u8, 30, 20..=30); //~ ERROR multiple patterns covering the same range
 
+    match 0u8 {
+        0..=10 => {}
+        20..=30 => {}
+        10..=20 => {} //~ ERROR multiple patterns covering the same range
+        _ => {}
+    }
     match (0u8, true) {
         (0..=10, true) => {}
         (10..20, true) => {} // not detected
