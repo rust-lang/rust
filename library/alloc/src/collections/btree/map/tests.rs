@@ -6,13 +6,14 @@ use crate::fmt::Debug;
 use crate::rc::Rc;
 use crate::string::{String, ToString};
 use crate::vec::Vec;
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::iter::{self, FromIterator};
 use std::mem;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 
 mod ord_chaos;
 use ord_chaos::{Cyclic3, Governed, Governor};
@@ -1094,7 +1095,7 @@ mod test_drain_filter {
         struct D;
         impl Drop for D {
             fn drop(&mut self) {
-                if DROPS.fetch_add(1, Ordering::SeqCst) == 1 {
+                if DROPS.fetch_add(1, SeqCst) == 1 {
                     panic!("panic in `drop`");
                 }
             }
@@ -1105,14 +1106,14 @@ mod test_drain_filter {
 
         catch_unwind(move || {
             drop(map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                PREDS.fetch_add(1usize << i, SeqCst);
                 true
             }))
         })
         .unwrap_err();
 
-        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
-        assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+        assert_eq!(PREDS.load(SeqCst), 0x011);
+        assert_eq!(DROPS.load(SeqCst), 3);
     }
 
     #[test]
@@ -1123,7 +1124,7 @@ mod test_drain_filter {
         struct D;
         impl Drop for D {
             fn drop(&mut self) {
-                DROPS.fetch_add(1, Ordering::SeqCst);
+                DROPS.fetch_add(1, SeqCst);
             }
         }
 
@@ -1132,7 +1133,7 @@ mod test_drain_filter {
 
         catch_unwind(AssertUnwindSafe(|| {
             drop(map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                PREDS.fetch_add(1usize << i, SeqCst);
                 match i {
                     0 => true,
                     _ => panic!(),
@@ -1141,8 +1142,8 @@ mod test_drain_filter {
         }))
         .unwrap_err();
 
-        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
-        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+        assert_eq!(PREDS.load(SeqCst), 0x011);
+        assert_eq!(DROPS.load(SeqCst), 1);
         assert_eq!(map.len(), 2);
         assert_eq!(map.first_entry().unwrap().key(), &4);
         assert_eq!(map.last_entry().unwrap().key(), &8);
@@ -1158,7 +1159,7 @@ mod test_drain_filter {
         struct D;
         impl Drop for D {
             fn drop(&mut self) {
-                DROPS.fetch_add(1, Ordering::SeqCst);
+                DROPS.fetch_add(1, SeqCst);
             }
         }
 
@@ -1167,7 +1168,7 @@ mod test_drain_filter {
 
         {
             let mut it = map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                PREDS.fetch_add(1usize << i, SeqCst);
                 match i {
                     0 => true,
                     _ => panic!(),
@@ -1180,8 +1181,8 @@ mod test_drain_filter {
             assert!(matches!(result, Ok(None)));
         }
 
-        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
-        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+        assert_eq!(PREDS.load(SeqCst), 0x011);
+        assert_eq!(DROPS.load(SeqCst), 1);
         assert_eq!(map.len(), 2);
         assert_eq!(map.first_entry().unwrap().key(), &4);
         assert_eq!(map.last_entry().unwrap().key(), &8);
@@ -1315,8 +1316,6 @@ fn test_zst() {
 // undefined.
 #[test]
 fn test_bad_zst() {
-    use std::cmp::Ordering;
-
     #[derive(Clone, Copy, Debug)]
     struct Bad;
 
@@ -1763,7 +1762,7 @@ fn test_append_drop_leak() {
 
     impl Drop for D {
         fn drop(&mut self) {
-            if DROPS.fetch_add(1, Ordering::SeqCst) == 0 {
+            if DROPS.fetch_add(1, SeqCst) == 0 {
                 panic!("panic in `drop`");
             }
         }
@@ -1779,7 +1778,7 @@ fn test_append_drop_leak() {
 
     catch_unwind(move || left.append(&mut right)).unwrap_err();
 
-    assert_eq!(DROPS.load(Ordering::SeqCst), 4); // Rust issue #47949 ate one little piggy
+    assert_eq!(DROPS.load(SeqCst), 4); // Rust issue #47949 ate one little piggy
 }
 
 #[test]
@@ -1894,7 +1893,7 @@ fn test_into_iter_drop_leak_height_0() {
 
     impl Drop for D {
         fn drop(&mut self) {
-            if DROPS.fetch_add(1, Ordering::SeqCst) == 3 {
+            if DROPS.fetch_add(1, SeqCst) == 3 {
                 panic!("panic in `drop`");
             }
         }
@@ -1909,7 +1908,7 @@ fn test_into_iter_drop_leak_height_0() {
 
     catch_unwind(move || drop(map.into_iter())).unwrap_err();
 
-    assert_eq!(DROPS.load(Ordering::SeqCst), 5);
+    assert_eq!(DROPS.load(SeqCst), 5);
 }
 
 #[test]
@@ -1921,18 +1920,18 @@ fn test_into_iter_drop_leak_height_1() {
     struct D;
     impl Drop for D {
         fn drop(&mut self) {
-            if DROPS.fetch_add(1, Ordering::SeqCst) == PANIC_POINT.load(Ordering::SeqCst) {
+            if DROPS.fetch_add(1, SeqCst) == PANIC_POINT.load(SeqCst) {
                 panic!("panic in `drop`");
             }
         }
     }
 
     for panic_point in vec![0, 1, size - 2, size - 1] {
-        DROPS.store(0, Ordering::SeqCst);
-        PANIC_POINT.store(panic_point, Ordering::SeqCst);
+        DROPS.store(0, SeqCst);
+        PANIC_POINT.store(panic_point, SeqCst);
         let map: BTreeMap<_, _> = (0..size).map(|i| (i, D)).collect();
         catch_unwind(move || drop(map.into_iter())).unwrap_err();
-        assert_eq!(DROPS.load(Ordering::SeqCst), size);
+        assert_eq!(DROPS.load(SeqCst), size);
     }
 }
 
