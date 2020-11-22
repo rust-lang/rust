@@ -158,6 +158,136 @@ macro_rules! define_opaque_mask {
                 self.0.partial_cmp(&other.0)
             }
         }
+
+        impl core::fmt::Debug for $name {
+            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                f.debug_list()
+                    .entries((0..$lanes).map(|i| self.test(i)))
+                    .finish()
+            }
+        }
+
+        impl core::ops::BitAnd for $name {
+            type Output = Self;
+            #[inline]
+            fn bitand(self, rhs: Self) -> Self {
+                Self(self.0 & rhs.0)
+            }
+        }
+
+        impl core::ops::BitAnd<bool> for $name {
+            type Output = Self;
+            #[inline]
+            fn bitand(self, rhs: bool) -> Self {
+                self & Self::splat(rhs)
+            }
+        }
+
+        impl core::ops::BitAnd<$name> for bool {
+            type Output = $name;
+            #[inline]
+            fn bitand(self, rhs: $name) -> $name {
+                $name::splat(self) & rhs
+            }
+        }
+
+        impl core::ops::BitOr for $name {
+            type Output = Self;
+            #[inline]
+            fn bitor(self, rhs: Self) -> Self {
+                Self(self.0 | rhs.0)
+            }
+        }
+
+        impl core::ops::BitOr<bool> for $name {
+            type Output = Self;
+            #[inline]
+            fn bitor(self, rhs: bool) -> Self {
+                self | Self::splat(rhs)
+            }
+        }
+
+        impl core::ops::BitOr<$name> for bool {
+            type Output = $name;
+            #[inline]
+            fn bitor(self, rhs: $name) -> $name {
+                $name::splat(self) | rhs
+            }
+        }
+
+        impl core::ops::BitXor for $name {
+            type Output = Self;
+            #[inline]
+            fn bitxor(self, rhs: Self) -> Self::Output {
+                Self(self.0 ^ rhs.0)
+            }
+        }
+
+        impl core::ops::BitXor<bool> for $name {
+            type Output = Self;
+            #[inline]
+            fn bitxor(self, rhs: bool) -> Self::Output {
+                self ^ Self::splat(rhs)
+            }
+        }
+
+        impl core::ops::BitXor<$name> for bool {
+            type Output = $name;
+            #[inline]
+            fn bitxor(self, rhs: $name) -> Self::Output {
+                $name::splat(self) ^ rhs
+            }
+        }
+
+        impl core::ops::Not for $name {
+            type Output = $name;
+            #[inline]
+            fn not(self) -> Self::Output {
+                Self(!self.0)
+            }
+        }
+
+        impl core::ops::BitAndAssign for $name {
+            #[inline]
+            fn bitand_assign(&mut self, rhs: Self) {
+                self.0 &= rhs.0;
+            }
+        }
+
+        impl core::ops::BitAndAssign<bool> for $name {
+            #[inline]
+            fn bitand_assign(&mut self, rhs: bool) {
+                *self &= Self::splat(rhs);
+            }
+        }
+
+        impl core::ops::BitOrAssign for $name {
+            #[inline]
+            fn bitor_assign(&mut self, rhs: Self) {
+                self.0 |= rhs.0;
+            }
+        }
+
+        impl core::ops::BitOrAssign<bool> for $name {
+            #[inline]
+            fn bitor_assign(&mut self, rhs: bool) {
+                *self |= Self::splat(rhs);
+            }
+        }
+
+        impl core::ops::BitXorAssign for $name {
+            #[inline]
+            fn bitxor_assign(&mut self, rhs: Self) {
+                self.0 ^= rhs.0;
+            }
+        }
+
+        impl core::ops::BitXorAssign<bool> for $name {
+            #[inline]
+            fn bitxor_assign(&mut self, rhs: bool) {
+                *self ^= Self::splat(rhs);
+            }
+        }
     };
     { new [$width:ty; $lanes:tt] $($var:ident)* } => {
         /// Construct a vector by setting each lane to the given values.
