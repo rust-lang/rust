@@ -243,9 +243,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         icx.to_ty(ty)
                     }
                 }
-                ItemKind::TyAlias(ref self_ty, _) | ItemKind::Impl { ref self_ty, .. } => {
-                    icx.to_ty(self_ty)
-                }
+                ItemKind::TyAlias(ref self_ty, _)
+                | ItemKind::Impl(hir::Impl { ref self_ty, .. }) => icx.to_ty(self_ty),
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_fn_def(def_id.to_def_id(), substs)

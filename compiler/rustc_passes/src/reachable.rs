@@ -349,7 +349,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
-        if let hir::ItemKind::Impl { of_trait: Some(ref trait_ref), ref items, .. } = item.kind {
+        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
+            item.kind
+        {
             if !self.access_levels.is_reachable(item.hir_id) {
                 // FIXME(#53488) remove `let`
                 let tcx = self.tcx;

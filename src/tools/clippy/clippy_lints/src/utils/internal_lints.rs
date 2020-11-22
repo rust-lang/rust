@@ -352,11 +352,11 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
         } else if is_expn_of(item.span, "impl_lint_pass").is_some()
             || is_expn_of(item.span, "declare_lint_pass").is_some()
         {
-            if let hir::ItemKind::Impl {
+            if let hir::ItemKind::Impl(hir::Impl {
                 of_trait: None,
                 items: ref impl_item_refs,
                 ..
-            } = item.kind
+            }) = item.kind
             {
                 let mut collector = LintCollector {
                     output: &mut self.registered_lints,

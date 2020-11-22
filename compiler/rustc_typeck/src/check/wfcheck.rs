@@ -103,35 +103,28 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemKind::Impl {
-            defaultness,
-            defaultness_span,
-            polarity,
-            ref of_trait,
-            ref self_ty,
-            ..
-        } => {
+        hir::ItemKind::Impl(ref impl_) => {
             let is_auto = tcx
                 .impl_trait_ref(tcx.hir().local_def_id(item.hir_id))
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
-            if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
-                let sp = of_trait.as_ref().map(|t| t.path.span).unwrap_or(item.span);
+            if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
+                let sp = impl_.of_trait.as_ref().map(|t| t.path.span).unwrap_or(item.span);
                 let mut err =
                     tcx.sess.struct_span_err(sp, "impls of auto traits cannot be default");
-                err.span_labels(defaultness_span, "default because of this");
+                err.span_labels(impl_.defaultness_span, "default because of this");
                 err.span_label(sp, "auto trait");
                 err.emit();
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match (tcx.impl_polarity(def_id), polarity) {
+            match (tcx.impl_polarity(def_id), impl_.polarity) {
                 (ty::ImplPolarity::Positive, _) => {
-                    check_impl(tcx, item, self_ty, of_trait);
+                    check_impl(tcx, item, impl_.self_ty, &impl_.of_trait);
                 }
                 (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
                     // FIXME(#27579): what amount of WF checking do we need for neg impls?
-                    if let hir::Defaultness::Default { .. } = defaultness {
+                    if let hir::Defaultness::Default { .. } = impl_.defaultness {
                         let mut spans = vec![span];
-                        spans.extend(defaultness_span);
+                        spans.extend(impl_.defaultness_span);
                         struct_span_err!(
                             tcx.sess,
                             spans,

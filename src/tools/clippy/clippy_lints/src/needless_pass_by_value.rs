@@ -8,7 +8,7 @@ use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, ItemKind, Node, PatKind, QPath, TyKind};
+use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, ItemKind, Impl, Node, PatKind, QPath, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, TypeFoldable};
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
             if matches!(
                 item.kind,
-                ItemKind::Impl { of_trait: Some(_), .. } | ItemKind::Trait(..)
+                ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
             ) {
                 return;
             }

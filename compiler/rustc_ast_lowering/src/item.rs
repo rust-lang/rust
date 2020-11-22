@@ -134,7 +134,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let old_len = self.in_scope_lifetimes.len();
 
         let parent_generics = match self.items.get(&parent_hir_id).unwrap().kind {
-            hir::ItemKind::Impl { ref generics, .. }
+            hir::ItemKind::Impl(hir::Impl { ref generics, .. })
             | hir::ItemKind::Trait(_, _, ref generics, ..) => &generics.params[..],
             _ => &[],
         };
@@ -431,7 +431,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // to not cause an assertion failure inside the `lower_defaultness` function.
                 let has_val = true;
                 let (defaultness, defaultness_span) = self.lower_defaultness(defaultness, has_val);
-                hir::ItemKind::Impl {
+                hir::ItemKind::Impl(hir::Impl {
                     unsafety: self.lower_unsafety(unsafety),
                     polarity,
                     defaultness,
@@ -441,7 +441,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     of_trait: trait_ref,
                     self_ty: lowered_ty,
                     items: new_impl_items,
-                }
+                })
             }
             ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
                 let bounds = self.lower_param_bounds(bounds, ImplTraitContext::disallowed());

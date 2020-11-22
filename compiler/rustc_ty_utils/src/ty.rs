@@ -129,8 +129,8 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     let parent_def_id = tcx.hir().local_def_id(parent_id);
     let parent_item = tcx.hir().expect_item(parent_id);
     match parent_item.kind {
-        hir::ItemKind::Impl { ref items, .. } => {
-            if let Some(impl_item_ref) = items.iter().find(|i| i.id.hir_id == id) {
+        hir::ItemKind::Impl(ref impl_) => {
+            if let Some(impl_item_ref) = impl_.items.iter().find(|i| i.id.hir_id == id) {
                 let assoc_item =
                     associated_item_from_impl_item_ref(tcx, parent_def_id, impl_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
@@ -160,8 +160,8 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
 fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let item = tcx.hir().expect_item(hir_id);
-    if let hir::ItemKind::Impl { defaultness, .. } = item.kind {
-        defaultness
+    if let hir::ItemKind::Impl(impl_) = &item.kind {
+        impl_.defaultness
     } else {
         bug!("`impl_defaultness` called on {:?}", item);
     }
@@ -201,8 +201,9 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
                 .map(|trait_item_ref| trait_item_ref.id)
                 .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
         ),
-        hir::ItemKind::Impl { ref items, .. } => tcx.arena.alloc_from_iter(
-            items
+        hir::ItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
+            impl_
+                .items
                 .iter()
                 .map(|impl_item_ref| impl_item_ref.id)
                 .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
@@ -323,8 +324,8 @@ fn well_formed_types_in_env<'tcx>(
         },
 
         Node::Item(item) => match item.kind {
-            ItemKind::Impl { of_trait: Some(_), .. } => NodeKind::TraitImpl,
-            ItemKind::Impl { of_trait: None, .. } => NodeKind::InherentImpl,
+            ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => NodeKind::TraitImpl,
+            ItemKind::Impl(hir::Impl { of_trait: None, .. }) => NodeKind::InherentImpl,
             ItemKind::Fn(..) => NodeKind::Fn,
             _ => NodeKind::Other,
         },

@@ -181,8 +181,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             return;
         }
         if_chain! {
-            if let ItemKind::Impl{ self_ty: ref item_type, items: refs, .. } = item.kind;
-            if let TyKind::Path(QPath::Resolved(_, ref item_path)) = item_type.kind;
+            if let ItemKind::Impl(impl_) = &item.kind;
+            if let TyKind::Path(QPath::Resolved(_, ref item_path)) = impl_.self_ty.kind;
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                 let should_check = parameters.as_ref().map_or(
@@ -200,7 +200,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     let impl_trait_ref = cx.tcx.impl_trait_ref(impl_def_id);
 
                     if let Some(impl_trait_ref) = impl_trait_ref {
-                        for impl_item_ref in refs {
+                        for impl_item_ref in impl_.items {
                             let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             if let ImplItemKind::Fn(FnSig{ decl: impl_decl, .. }, impl_body_id)
                                     = &impl_item.kind {
@@ -213,7 +213,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                             }
                         }
                     } else {
-                        for impl_item_ref in refs {
+                        for impl_item_ref in impl_.items {
                             let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             visitor.visit_impl_item(impl_item);
                         }

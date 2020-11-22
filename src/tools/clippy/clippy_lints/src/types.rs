@@ -258,7 +258,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
-            if let ItemKind::Impl { of_trait: Some(_), .. } = item.kind {
+            if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
                 return;
             }
         }
@@ -2558,21 +2558,16 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
         }
 
         match item.kind {
-            ItemKind::Impl {
-                ref generics,
-                self_ty: ref ty,
-                ref items,
-                ..
-            } => {
+            ItemKind::Impl(ref impl_) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
-                vis.visit_ty(ty);
+                vis.visit_ty(impl_.self_ty);
 
                 for target in &vis.found {
                     if differing_macro_contexts(item.span, target.span()) {
                         return;
                     }
 
-                    let generics_suggestion_span = generics.span.substitute_dummy({
+                    let generics_suggestion_span = impl_.generics.span.substitute_dummy({
                         let pos = snippet_opt(cx, item.span.until(target.span()))
                             .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
                         if let Some(pos) = pos {
@@ -2583,7 +2578,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     });
 
                     let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
-                    for item in items.iter().map(|item| cx.tcx.hir().impl_item(item.id)) {
+                    for item in impl_.items.iter().map(|item| cx.tcx.hir().impl_item(item.id)) {
                         ctr_vis.visit_impl_item(item);
                     }
 
@@ -2596,7 +2591,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             target.type_name()
                         ),
                         move |diag| {
-                            suggestion(cx, diag, generics.span, generics_suggestion_span, target, ctr_vis);
+                            suggestion(cx, diag, impl_.generics.span, generics_suggestion_span, target, ctr_vis);
                         },
                     );
                 }

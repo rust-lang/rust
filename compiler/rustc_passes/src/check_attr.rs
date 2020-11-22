@@ -32,7 +32,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
             let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
             let containing_item = tcx.hir().expect_item(parent_hir_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
-                hir::ItemKind::Impl { ref of_trait, .. } => of_trait.is_some(),
+                hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
                 _ => bug!("parent of an ImplItem must be an Impl"),
             };
             if containing_impl_is_for_trait {
@@ -343,7 +343,7 @@ impl CheckAttrVisitor<'tcx> {
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
                 match containing_item.kind {
-                    ItemKind::Impl { of_trait: Some(_), .. } => Some(err),
+                    ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => Some(err),
                     _ => None,
                 }
             }
