@@ -20,7 +20,6 @@ crate struct Module<'hir> {
     crate id: hir::HirId,
     // (item, renamed)
     crate items: Vec<(&'hir hir::Item<'hir>, Option<Ident>)>,
-    crate traits: Vec<Trait<'hir>>,
     crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Ident>)>,
     crate macros: Vec<Macro>,
     crate is_crate: bool,
@@ -38,7 +37,6 @@ impl Module<'hir> {
             imports: Vec::new(),
             mods: Vec::new(),
             items: Vec::new(),
-            traits: Vec::new(),
             foreigns: Vec::new(),
             macros: Vec::new(),
             is_crate: false,
@@ -60,17 +58,6 @@ crate struct Variant<'hir> {
     crate name: Symbol,
     crate id: hir::HirId,
     crate def: &'hir hir::VariantData<'hir>,
-}
-
-crate struct Trait<'hir> {
-    crate is_auto: hir::IsAuto,
-    crate unsafety: hir::Unsafety,
-    crate name: Symbol,
-    crate items: Vec<&'hir hir::TraitItem<'hir>>,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate bounds: &'hir [hir::GenericBound<'hir>],
-    crate attrs: &'hir [ast::Attribute],
-    crate id: hir::HirId,
 }
 
 // For Macro we store the DefId instead of the NodeId, since we also create

@@ -319,6 +319,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Static(..)
+            | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed)),
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
@@ -326,20 +327,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if ident.name != kw::Underscore {
                     om.items.push((item, renamed));
                 }
-            }
-            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
-                let items = item_ids.iter().map(|ti| self.cx.tcx.hir().trait_item(ti.id)).collect();
-                let t = Trait {
-                    is_auto,
-                    unsafety,
-                    name: ident.name,
-                    items,
-                    generics,
-                    bounds,
-                    id: item.hir_id,
-                    attrs: &item.attrs,
-                };
-                om.traits.push(t);
             }
             hir::ItemKind::Impl { ref of_trait, .. } => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
