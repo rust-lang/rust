@@ -112,20 +112,8 @@ impl<K, V> InternalNode<K, V> {
 ///
 /// However, `BoxedNode` contains no information as to which of the two types
 /// of nodes it actually contains, and, partially due to this lack of information,
-/// has no destructor.
-struct BoxedNode<K, V> {
-    ptr: NonNull<LeafNode<K, V>>,
-}
-
-impl<K, V> BoxedNode<K, V> {
-    fn from_owned(ptr: NonNull<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr }
-    }
-
-    fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
-        self.ptr
-    }
-}
+/// is not a separate type and has no destructor.
+type BoxedNode<K, V> = NonNull<LeafNode<K, V>>;
 
 /// An owned tree.
 ///
@@ -168,11 +156,6 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
     pub fn borrow_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
-
-    /// Packs the reference, aware of type and height, into a type-agnostic pointer.
-    fn into_boxed_node(self) -> BoxedNode<K, V> {
-        BoxedNode::from_owned(self.node)
-    }
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
@@ -181,7 +164,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
     /// and is the opposite of `pop_internal_level`.
     pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].write(BoxedNode::from_owned(self.node));
+        new_node.edges[0].write(self.node);
         let mut new_root = NodeRef::from_new_internal(new_node, self.height + 1);
         new_root.borrow_mut().first_edge().correct_parent_link();
         *self = new_root.forget_type();
@@ -287,13 +270,6 @@ unsafe impl<'a, K: Sync + 'a, V: Sync + 'a, Type> Send for NodeRef<marker::Immut
 unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::Mut<'a>, K, V, Type> {}
 unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::ValMut<'a>, K, V, Type> {}
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> {}
-
-impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-    /// Unpack a node reference that was packed by `Root::into_boxed_node`.
-    fn from_boxed_node(boxed_node: BoxedNode<K, V>, height: usize) -> Self {
-        NodeRef { height, node: boxed_node.as_ptr(), _marker: PhantomData }
-    }
-}
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
     /// Unpack a node reference that was packed as `NodeRef::parent`.
@@ -695,7 +671,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         unsafe {
             self.reborrow_mut().into_key_area_mut_at(idx).write(key);
             self.reborrow_mut().into_val_area_mut_at(idx).write(val);
-            self.reborrow_mut().into_edge_area_mut_at(idx + 1).write(edge.into_boxed_node());
+            self.reborrow_mut().into_edge_area_mut_at(idx + 1).write(edge.node);
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
         }
     }
@@ -710,7 +686,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
             *self.reborrow_mut().into_len_mut() += 1;
             slice_insert(self.reborrow_mut().into_key_area_slice(), 0, key);
             slice_insert(self.reborrow_mut().into_val_area_slice(), 0, val);
-            slice_insert(self.reborrow_mut().into_edge_area_slice(), 0, edge.into_boxed_node());
+            slice_insert(self.reborrow_mut().into_edge_area_slice(), 0, edge.node);
         }
 
         self.correct_all_childrens_parent_links();
@@ -732,8 +708,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(internal) => {
-                    let boxed_node = ptr::read(internal.reborrow().edge_at(idx + 1));
-                    let mut edge = Root::from_boxed_node(boxed_node, internal.height - 1);
+                    let node = ptr::read(internal.reborrow().edge_at(idx + 1));
+                    let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
                     // In practice, clearing the parent is a waste of time, because we will
                     // insert the node elsewhere and set its parent link again.
                     edge.borrow_mut().clear_parent_link();
@@ -760,9 +736,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(mut internal) => {
-                    let boxed_node =
-                        slice_remove(internal.reborrow_mut().into_edge_area_slice(), 0);
-                    let mut edge = Root::from_boxed_node(boxed_node, internal.height - 1);
+                    let node = slice_remove(internal.reborrow_mut().into_edge_area_slice(), 0);
+                    let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
                     // In practice, clearing the parent is a waste of time, because we will
                     // insert the node elsewhere and set its parent link again.
                     edge.borrow_mut().clear_parent_link();
@@ -1041,12 +1016,11 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         debug_assert!(self.node.len() < CAPACITY);
         debug_assert!(edge.height == self.node.height - 1);
 
-        let boxed_node = edge.into_boxed_node();
         unsafe {
             *self.node.reborrow_mut().into_len_mut() += 1;
             slice_insert(self.node.reborrow_mut().into_key_area_slice(), self.idx, key);
             slice_insert(self.node.reborrow_mut().into_val_area_slice(), self.idx, val);
-            slice_insert(self.node.reborrow_mut().into_edge_area_slice(), self.idx + 1, boxed_node);
+            slice_insert(self.node.reborrow_mut().into_edge_area_slice(), self.idx + 1, edge.node);
 
             self.node.correct_childrens_parent_links((self.idx + 1)..=self.node.len());
         }
@@ -1135,8 +1109,8 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
         // reference (Rust issue #73987) and invalidate any other references
         // to or inside the array, should any be around.
         let parent_ptr = NodeRef::as_internal_ptr(&self.node);
-        let boxed_node = unsafe { (*parent_ptr).edges.get_unchecked(self.idx).assume_init_read() };
-        NodeRef::from_boxed_node(boxed_node, self.node.height - 1)
+        let node = unsafe { (*parent_ptr).edges.get_unchecked(self.idx).assume_init_read() };
+        NodeRef { node, height: self.node.height - 1, _marker: PhantomData }
     }
 }
 
