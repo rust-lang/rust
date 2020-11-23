@@ -1791,10 +1791,14 @@ extern "C" {
 
     pub fn LLVMRustCoverageCreatePGOFuncNameVar(F: &'a Value, FuncName: *const c_char)
     -> &'a Value;
-    pub fn LLVMRustCoverageComputeHash(Name: *const c_char) -> u64;
+    pub fn LLVMRustCoverageHashCString(StrVal: *const c_char) -> u64;
+    pub fn LLVMRustCoverageHashByteArray(Bytes: *const c_char, NumBytes: size_t) -> u64;
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustCoverageWriteSectionNameToString(M: &Module, Str: &RustString);
+    pub fn LLVMRustCoverageWriteMapSectionNameToString(M: &Module, Str: &RustString);
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteFuncSectionNameToString(M: &Module, Str: &RustString);
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
