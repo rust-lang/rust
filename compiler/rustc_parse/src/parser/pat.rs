@@ -18,7 +18,7 @@ pub(super) const PARAM_EXPECTED: Expected = Some("parameter name");
 const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here";
 
 /// Whether or not an or-pattern should be gated when occurring in the current context.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub(super) enum GateOr {
     Yes,
     No,
@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Pat>> {
         // Parse the first pattern (`p_0`).
         let first_pat = self.parse_pat(expected)?;
-        self.maybe_recover_unexpected_comma(first_pat.span, rc)?;
+        self.maybe_recover_unexpected_comma(first_pat.span, rc, gate_or)?;
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
-            self.maybe_recover_unexpected_comma(pat.span, rc)?;
+            self.maybe_recover_unexpected_comma(pat.span, rc, gate_or)?;
             pats.push(pat);
         }
         let or_pattern_span = lo.to(self.prev_token.span);
@@ -190,7 +190,12 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    fn maybe_recover_unexpected_comma(&mut self, lo: Span, rc: RecoverComma) -> PResult<'a, ()> {
+    fn maybe_recover_unexpected_comma(
+        &mut self,
+        lo: Span,
+        rc: RecoverComma,
+        gate_or: GateOr,
+    ) -> PResult<'a, ()> {
         if rc == RecoverComma::No || self.token != token::Comma {
             return Ok(());
         }
@@ -209,18 +214,24 @@ impl<'a> Parser<'a> {
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
+            const MSG: &str = "try adding parentheses to match on a tuple...";
+
+            let or_suggestion =
+                gate_or == GateOr::No || !self.sess.gated_spans.is_ungated(sym::or_patterns);
             err.span_suggestion(
                 seq_span,
-                "try adding parentheses to match on a tuple...",
+                if or_suggestion { MSG } else { MSG.trim_end_matches('.') },
                 format!("({})", seq_snippet),
                 Applicability::MachineApplicable,
-            )
-            .span_suggestion(
-                seq_span,
-                "...or a vertical bar to match on multiple alternatives",
-                seq_snippet.replace(",", " |"),
-                Applicability::MachineApplicable,
             );
+            if or_suggestion {
+                err.span_suggestion(
+                    seq_span,
+                    "...or a vertical bar to match on multiple alternatives",
+                    seq_snippet.replace(",", " |"),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
         Err(err)
     }
