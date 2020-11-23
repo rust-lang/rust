@@ -3,7 +3,6 @@
 crate use self::StructType::*;
 
 use rustc_ast as ast;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::{self, symbol::Ident, Span, Symbol};
 
 use rustc_hir as hir;
@@ -17,7 +16,6 @@ crate struct Module<'hir> {
     crate where_inner: Span,
     crate extern_crates: Vec<ExternCrate<'hir>>,
     crate imports: Vec<Import<'hir>>,
-    crate fns: Vec<Function<'hir>>,
     crate mods: Vec<Module<'hir>>,
     crate id: hir::HirId,
     // (item, renamed)
@@ -25,7 +23,6 @@ crate struct Module<'hir> {
     crate traits: Vec<Trait<'hir>>,
     crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Ident>)>,
     crate macros: Vec<Macro>,
-    crate proc_macros: Vec<ProcMacro>,
     crate is_crate: bool,
 }
 
@@ -39,13 +36,11 @@ impl Module<'hir> {
             attrs,
             extern_crates: Vec::new(),
             imports: Vec::new(),
-            fns: Vec::new(),
             mods: Vec::new(),
             items: Vec::new(),
             traits: Vec::new(),
             foreigns: Vec::new(),
             macros: Vec::new(),
-            proc_macros: Vec::new(),
             is_crate: false,
         }
     }
@@ -65,15 +60,6 @@ crate struct Variant<'hir> {
     crate name: Symbol,
     crate id: hir::HirId,
     crate def: &'hir hir::VariantData<'hir>,
-}
-
-crate struct Function<'hir> {
-    crate decl: &'hir hir::FnDecl<'hir>,
-    crate id: hir::HirId,
-    crate name: Symbol,
-    crate header: hir::FnHeader,
-    crate generics: &'hir hir::Generics<'hir>,
-    crate body: hir::BodyId,
 }
 
 crate struct Trait<'hir> {
@@ -115,13 +101,6 @@ crate struct Import<'hir> {
     crate path: &'hir hir::Path<'hir>,
     crate glob: bool,
     crate span: Span,
-}
-
-crate struct ProcMacro {
-    crate name: Symbol,
-    crate id: hir::HirId,
-    crate kind: MacroKind,
-    crate helpers: Vec<Symbol>,
 }
 
 crate fn struct_type_from_def(vdata: &hir::VariantData<'_>) -> StructType {
