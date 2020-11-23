@@ -122,15 +122,8 @@ impl LateLintPass<'_> for Default {
             let mut assigned_fields = Vec::new();
             let mut cancel_lint = false;
             for consecutive_statement in &block.stmts[stmt_idx + 1..] {
-                // interrupt if the statement is a let binding (`Local`) that shadows the original
-                // binding
-                if stmt_shadows_binding(consecutive_statement, binding_name) {
-                    break;
-                }
                 // find out if and which field was set by this `consecutive_statement`
-                else if let Some((field_ident, assign_rhs)) =
-                    field_reassigned_by_stmt(consecutive_statement, binding_name)
-                {
+                if let Some((field_ident, assign_rhs)) = field_reassigned_by_stmt(consecutive_statement, binding_name) {
                     // interrupt and cancel lint if assign_rhs references the original binding
                     if contains_name(binding_name, assign_rhs) {
                         cancel_lint = true;
@@ -152,7 +145,7 @@ impl LateLintPass<'_> for Default {
                         first_assign = Some(consecutive_statement);
                     }
                 }
-                // interrupt also if no field was assigned, since we only want to look at consecutive statements
+                // interrupt if no field was assigned, since we only want to look at consecutive statements
                 else {
                     break;
                 }
@@ -254,15 +247,6 @@ fn enumerate_bindings_using_default<'tcx>(
             }
         })
         .collect()
-}
-
-fn stmt_shadows_binding(this: &Stmt<'_>, shadowed: Symbol) -> bool {
-    if let StmtKind::Local(local) = &this.kind {
-        if let PatKind::Binding(_, _, ident, _) = local.pat.kind {
-            return ident.name == shadowed;
-        }
-    }
-    false
 }
 
 /// Returns the reassigned field and the assigning expression (right-hand side of assign).
