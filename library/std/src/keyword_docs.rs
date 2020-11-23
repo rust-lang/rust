@@ -1739,7 +1739,7 @@ mod super_keyword {}
 ///
 /// # Differences between the 2015 and 2018 editions
 ///
-/// In the 2015 edition parameters pattern where not needed for traits:
+/// In the 2015 edition the parameters pattern was not needed for traits:
 ///
 /// ```rust,edition2015
 /// trait Tr {
