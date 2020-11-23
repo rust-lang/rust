@@ -2508,17 +2508,23 @@ where
     }
 }
 
-impl<'a, T: 'a> SpecFromIter<&'a T, slice::Iter<'a, T>> for Vec<T>
-where
-    T: Copy,
-{
-    // reuses the extend specialization for T: Copy
+// This utilizes `iterator.as_slice().to_vec()` since spec_extend
+// must take more steps to reason about the final capacity + length
+// and thus do more work. `to_vec()` directly allocates the correct amount
+// and fills it exactly.
+impl<'a, T: 'a + Clone> SpecFromIter<&'a T, slice::Iter<'a, T>> for Vec<T> {
+    #[cfg(not(test))]
     fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
-        let mut vec = Vec::new();
-        // must delegate to spec_extend() since extend() itself delegates
-        // to spec_from for empty Vecs
-        vec.spec_extend(iterator);
-        vec
+        iterator.as_slice().to_vec()
+    }
+
+    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
+    // required for this method definition, is not available. Instead use the
+    // `slice::to_vec`  function which is only available with cfg(test)
+    // NB see the slice::hack module in slice.rs for more information
+    #[cfg(test)]
+    fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
+        crate::slice::to_vec(iterator.as_slice(), Global)
     }
 }
 
