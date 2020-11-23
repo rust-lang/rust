@@ -21,6 +21,7 @@ pub mod ptr;
 pub mod qualify_min_const_fn;
 pub mod sugg;
 pub mod usage;
+pub mod visitors;
 
 pub use self::attrs::*;
 pub use self::diagnostics::*;
@@ -468,6 +469,13 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
         .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id.to_def_id())
 }
 
+/// Returns `true` if the expression is in the program's `#[panic_handler]`.
+pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+    let parent = cx.tcx.hir().get_parent_item(e.hir_id);
+    let def_id = cx.tcx.hir().local_def_id(parent).to_def_id();
+    Some(def_id) == cx.tcx.lang_items().panic_impl()
+}
+
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
@@ -657,6 +665,35 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 /// ```
 pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
     snippet_opt(cx, line_span(cx, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
+}
+
+/// Returns the positon just before rarrow
+///
+/// ```rust,ignore
+/// fn into(self) -> () {}
+///              ^
+/// // in case of unformatted code
+/// fn into2(self)-> () {}
+///               ^
+/// fn into3(self)   -> () {}
+///               ^
+/// ```
+#[allow(clippy::needless_pass_by_value)]
+pub fn position_before_rarrow(s: String) -> Option<usize> {
+    s.rfind("->").map(|rpos| {
+        let mut rpos = rpos;
+        let chars: Vec<char> = s.chars().collect();
+        while rpos > 1 {
+            if let Some(c) = chars.get(rpos - 1) {
+                if c.is_whitespace() {
+                    rpos -= 1;
+                    continue;
+                }
+            }
+            break;
+        }
+        rpos
+    })
 }
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.

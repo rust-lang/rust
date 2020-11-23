@@ -62,14 +62,14 @@ vec![
     },
     Lint {
         name: "await_holding_lock",
-        group: "correctness",
+        group: "pedantic",
         desc: "Inside an async function, holding a MutexGuard while calling await",
         deprecation: None,
         module: "await_holding_invalid",
     },
     Lint {
         name: "await_holding_refcell_ref",
-        group: "correctness",
+        group: "pedantic",
         desc: "Inside an async function, holding a RefCell ref while calling await",
         deprecation: None,
         module: "await_holding_invalid",
@@ -1118,6 +1118,13 @@ vec![
         module: "returns",
     },
     Lint {
+        name: "let_underscore_drop",
+        group: "pedantic",
+        desc: "non-binding let on a type that implements `Drop`",
+        deprecation: None,
+        module: "let_underscore",
+    },
+    Lint {
         name: "let_underscore_lock",
         group: "correctness",
         desc: "non-binding let on a synchronization lock",
@@ -1832,13 +1839,6 @@ vec![
         module: "panic_in_result_fn",
     },
     Lint {
-        name: "panic_params",
-        group: "style",
-        desc: "missing parameters in `panic!` calls",
-        deprecation: None,
-        module: "panic_unimplemented",
-    },
-    Lint {
         name: "panicking_unwrap",
         group: "correctness",
         desc: "checks for calls of `unwrap[_err]()` that will always fail",
@@ -2114,7 +2114,7 @@ vec![
     Lint {
         name: "search_is_some",
         group: "complexity",
-        desc: "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`",
+        desc: "using an iterator or string search followed by `is_some()`, which is more succinctly expressed as a call to `any()` or `contains()`",
         deprecation: None,
         module: "methods",
     },
@@ -2257,6 +2257,13 @@ vec![
         desc: "using `x.extend(s.chars())` where s is a `&str` or `String`",
         deprecation: None,
         module: "methods",
+    },
+    Lint {
+        name: "string_from_utf8_as_bytes",
+        group: "complexity",
+        desc: "casting string slices to byte slices and back",
+        deprecation: None,
+        module: "strings",
     },
     Lint {
         name: "string_lit_as_bytes",
@@ -2595,6 +2602,13 @@ vec![
         module: "unwrap",
     },
     Lint {
+        name: "unnecessary_wraps",
+        group: "complexity",
+        desc: "functions that only return `Ok` or `Some`",
+        deprecation: None,
+        module: "unnecessary_wraps",
+    },
+    Lint {
         name: "unneeded_field_pattern",
         group: "restriction",
         desc: "struct fields bound to a wildcard instead of using `..`",
@@ -2737,7 +2751,7 @@ vec![
     Lint {
         name: "useless_conversion",
         group: "complexity",
-        desc: "calls to `Into`, `TryInto`, `From`, `TryFrom`, `IntoIter` that performs useless conversions to the same type",
+        desc: "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type",
         deprecation: None,
         module: "useless_conversion",
     },

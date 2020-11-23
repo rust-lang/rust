@@ -33,6 +33,17 @@ pub(super) fn lint<'tcx>(
                 } else {
                     "unnecessary closure used to substitute value for `Result::Err`"
                 };
+                let applicability = if body
+                    .params
+                    .iter()
+                    // bindings are checked to be unused above
+                    .all(|param| matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))
+                {
+                    Applicability::MachineApplicable
+                } else {
+                    // replacing the lambda may break type inference
+                    Applicability::MaybeIncorrect
+                };
 
                 span_lint_and_sugg(
                     cx,
@@ -46,7 +57,7 @@ pub(super) fn lint<'tcx>(
                         simplify_using,
                         snippet(cx, body_expr.span, ".."),
                     ),
-                    Applicability::MachineApplicable,
+                    applicability,
                 );
             }
         }
