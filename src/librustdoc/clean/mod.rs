@@ -234,7 +234,6 @@ impl Clean<Item> for doctree::Module<'_> {
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.items.iter().map(|x| x.clean(cx)).flatten());
-        items.extend(self.traits.iter().map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
@@ -1019,26 +1018,6 @@ impl Clean<FnRetTy> for hir::FnRetTy<'_> {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,
         }
-    }
-}
-
-impl Clean<Item> for doctree::Trait<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let attrs = self.attrs.clean(cx);
-        let is_spotlight = attrs.has_doc_flag(sym::spotlight);
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            TraitItem(Trait {
-                unsafety: self.unsafety,
-                items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
-                generics: self.generics.clean(cx),
-                bounds: self.bounds.clean(cx),
-                is_spotlight,
-                is_auto: self.is_auto.clean(cx),
-            }),
-            cx,
-        )
     }
 }
 
@@ -2010,6 +1989,20 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
             // proc macros can have a name set by attributes
             ItemKind::Fn(ref sig, ref generics, body_id) => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
+            }
+            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
+                let items =
+                    item_ids.iter().map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx)).collect();
+                let attrs = item.attrs.clean(cx);
+                let is_spotlight = attrs.has_doc_flag(sym::spotlight);
+                TraitItem(Trait {
+                    unsafety,
+                    items,
+                    generics: generics.clean(cx),
+                    bounds: bounds.clean(cx),
+                    is_spotlight,
+                    is_auto: is_auto.clean(cx),
+                })
             }
             _ => unreachable!("not yet converted"),
         };
