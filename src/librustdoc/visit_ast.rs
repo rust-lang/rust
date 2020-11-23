@@ -9,7 +9,6 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, Span};
@@ -80,63 +79,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
 
         module
-    }
-
-    fn visit_fn(
-        &mut self,
-        om: &mut Module<'tcx>,
-        item: &'tcx hir::Item<'_>,
-        name: Symbol,
-        decl: &'tcx hir::FnDecl<'_>,
-        header: hir::FnHeader,
-        generics: &'tcx hir::Generics<'_>,
-        body: hir::BodyId,
-    ) {
-        debug!("visiting fn");
-        let macro_kind = item.attrs.iter().find_map(|a| {
-            if a.has_name(sym::proc_macro) {
-                Some(MacroKind::Bang)
-            } else if a.has_name(sym::proc_macro_derive) {
-                Some(MacroKind::Derive)
-            } else if a.has_name(sym::proc_macro_attribute) {
-                Some(MacroKind::Attr)
-            } else {
-                None
-            }
-        });
-        match macro_kind {
-            Some(kind) => {
-                let name = if kind == MacroKind::Derive {
-                    item.attrs
-                        .lists(sym::proc_macro_derive)
-                        .find_map(|mi| mi.ident())
-                        .expect("proc-macro derives require a name")
-                        .name
-                } else {
-                    name
-                };
-
-                let mut helpers = Vec::new();
-                for mi in item.attrs.lists(sym::proc_macro_derive) {
-                    if !mi.has_name(sym::attributes) {
-                        continue;
-                    }
-
-                    if let Some(list) = mi.meta_item_list() {
-                        for inner_mi in list {
-                            if let Some(ident) = inner_mi.ident() {
-                                helpers.push(ident.name);
-                            }
-                        }
-                    }
-                }
-
-                om.proc_macros.push(ProcMacro { name, id: item.hir_id, kind, helpers });
-            }
-            None => {
-                om.fns.push(Function { id: item.hir_id, decl, name, generics, header, body });
-            }
-        }
     }
 
     fn visit_mod_contents(
@@ -370,10 +312,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     Some(ident.name),
                 ));
             }
-            hir::ItemKind::Fn(ref sig, ref gen, body) => {
-                self.visit_fn(om, item, ident.name, &sig.decl, sig.header, gen, body)
-            }
-            hir::ItemKind::Enum(..)
+            hir::ItemKind::Fn(..)
+            | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)
             | hir::ItemKind::TyAlias(..)

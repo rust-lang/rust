@@ -231,13 +231,11 @@ impl Clean<Item> for doctree::Module<'_> {
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.fns.iter().map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.items.iter().map(|x| x.clean(cx)).flatten());
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
-        items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -871,40 +869,72 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
     }
 }
 
+fn clean_fn_or_proc_macro(
+    item: &hir::Item<'_>,
+    sig: &'a hir::FnSig<'a>,
+    generics: &'a hir::Generics<'a>,
+    body_id: hir::BodyId,
+    name: &mut Symbol,
+    cx: &DocContext<'_>,
+) -> ItemKind {
+    let macro_kind = item.attrs.iter().find_map(|a| {
+        if a.has_name(sym::proc_macro) {
+            Some(MacroKind::Bang)
+        } else if a.has_name(sym::proc_macro_derive) {
+            Some(MacroKind::Derive)
+        } else if a.has_name(sym::proc_macro_attribute) {
+            Some(MacroKind::Attr)
+        } else {
+            None
+        }
+    });
+    match macro_kind {
+        Some(kind) => {
+            if kind == MacroKind::Derive {
+                *name = item
+                    .attrs
+                    .lists(sym::proc_macro_derive)
+                    .find_map(|mi| mi.ident())
+                    .expect("proc-macro derives require a name")
+                    .name;
+            }
+
+            let mut helpers = Vec::new();
+            for mi in item.attrs.lists(sym::proc_macro_derive) {
+                if !mi.has_name(sym::attributes) {
+                    continue;
+                }
+
+                if let Some(list) = mi.meta_item_list() {
+                    for inner_mi in list {
+                        if let Some(ident) = inner_mi.ident() {
+                            helpers.push(ident.name);
+                        }
+                    }
+                }
+            }
+            ProcMacroItem(ProcMacro { kind, helpers: helpers.clean(cx) })
+        }
+        None => {
+            let mut func = (sig, generics, body_id).clean(cx);
+            let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+            func.header.constness =
+                if is_const_fn(cx.tcx, def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
+                    hir::Constness::Const
+                } else {
+                    hir::Constness::NotConst
+                };
+            FunctionItem(func)
+        }
+    }
+}
+
 impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
     fn clean(&self, cx: &DocContext<'_>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, || (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
         let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
         Function { decl, generics, header: self.0.header, all_types, ret_types }
-    }
-}
-
-impl Clean<Item> for doctree::Function<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let (generics, decl) =
-            enter_impl_trait(cx, || (self.generics.clean(cx), (self.decl, self.body).clean(cx)));
-
-        let did = cx.tcx.hir().local_def_id(self.id).to_def_id();
-        let constness = if is_const_fn(cx.tcx, did) && !is_unstable_const_fn(cx.tcx, did).is_some()
-        {
-            hir::Constness::Const
-        } else {
-            hir::Constness::NotConst
-        };
-        let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-        Item::from_def_id_and_parts(
-            did,
-            Some(self.name),
-            FunctionItem(Function {
-                decl,
-                generics,
-                header: hir::FnHeader { constness, ..self.header },
-                all_types,
-                ret_types,
-            }),
-            cx,
-        )
     }
 }
 
@@ -1927,7 +1957,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
 
         let (item, renamed) = self;
         let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
-        let name = match renamed {
+        let mut name = match renamed {
             Some(ident) => ident.name,
             None => cx.tcx.hir().name(item.hir_id),
         };
@@ -1977,6 +2007,10 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
                 fields_stripped: false,
             }),
             ItemKind::Impl { .. } => return clean_impl(item, cx),
+            // proc macros can have a name set by attributes
+            ItemKind::Fn(ref sig, ref generics, body_id) => {
+                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
+            }
             _ => unreachable!("not yet converted"),
         };
 
@@ -2234,17 +2268,6 @@ impl Clean<Item> for doctree::Macro {
                 ),
                 imported_from: self.imported_from.clean(cx),
             }),
-            cx,
-        )
-    }
-}
-
-impl Clean<Item> for doctree::ProcMacro {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            ProcMacroItem(ProcMacro { kind: self.kind, helpers: self.helpers.clean(cx) }),
             cx,
         )
     }
