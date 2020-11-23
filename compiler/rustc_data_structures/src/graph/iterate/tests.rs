@@ -25,6 +25,14 @@ fn is_cyclic() {
 fn dfs() {
     let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 3), (3, 0)]);
 
-    let result: Vec<usize> = DepthFirstSearch::new(&graph, 0).collect();
+    let result: Vec<usize> = DepthFirstSearch::new(&graph).with_start_node(0).collect();
     assert_eq!(result, vec![0, 2, 3, 1]);
+}
+
+#[test]
+fn dfs_debug() {
+    let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 3), (3, 0)]);
+    let mut dfs = DepthFirstSearch::new(&graph).with_start_node(0);
+    while let Some(_) = dfs.next() {}
+    assert_eq!(format!("{{0, 1, 2, 3}}"), format!("{:?}", dfs));
 }
