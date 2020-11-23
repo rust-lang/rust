@@ -146,10 +146,17 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
-                fx.tcx.sess.span_fatal(
+                fx.tcx.sess.span_warn(
                     span,
                     "Index argument for `simd_extract` is not a constant",
                 );
+                let res = crate::trap::trap_unimplemented_ret_value(
+                    fx,
+                    ret.layout(),
+                    "Index argument for `simd_extract` is not a constant",
+                );
+                ret.write_cvalue(fx, res);
+                return;
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
