@@ -1779,6 +1779,7 @@ pub fn exit(code: i32) -> ! {
 ///
 /// [panic hook]: crate::panic::set_hook
 #[stable(feature = "process_abort", since = "1.17.0")]
+#[cold]
 pub fn abort() -> ! {
     crate::sys::abort_internal();
 }

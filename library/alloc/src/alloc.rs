@@ -360,6 +360,7 @@ extern "Rust" {
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[cfg(not(test))]
 #[rustc_allocator_nounwind]
+#[cold]
 pub fn handle_alloc_error(layout: Layout) -> ! {
     unsafe {
         __rust_alloc_error_handler(layout.size(), layout.align());
