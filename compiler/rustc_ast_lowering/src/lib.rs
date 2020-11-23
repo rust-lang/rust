@@ -2335,11 +2335,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 let hir_id = this.lower_node_id(c.id);
                 // Calculate all the lifetimes that should be captured
-                // by the opaque type. This should include all in-scope
-                // lifetime parameters, including those defined in-band.
+                // by the anonymous constant. This is needed for binders,
+                // for example `for<'a> dyn Trait<{ inner_fn::<'a>() }> where
+                // we somehow have to deal with `'a` in the anonymous constant.
                 //
-                // Note: this must be done after lowering the output type,
-                // as the output type may introduce new in-band lifetimes.
+                // We therefore add these lifetimes as additional generic parameters.
+
+                // FIXME(const_generics): We currently add all lifetimes as generic params,
+                // but as we already mention the parent generics this is not actually needed.
+                //
+                // Consider only adding explicit higher ranked lifetimes here.
                 let lifetime_params: Vec<(Span, ParamName)> = this
                     .in_scope_lifetimes
                     .iter()
@@ -2353,15 +2358,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         this.lifetime_to_generic_param(span, hir_name, def_id)
                     }));
 
-                let mut generic_args = Vec::with_capacity(lifetime_params.len());
-                generic_args.extend(lifetime_params.iter().map(|&(span, hir_name)| {
-                    GenericArg::Lifetime(hir::Lifetime {
-                        hir_id: this.next_id(),
-                        span,
-                        name: hir::LifetimeName::Param(hir_name),
-                    })
-                }));
-                let generic_args = this.arena.alloc_from_iter(generic_args);
+                let generic_args =
+                    this.arena.alloc_from_iter(lifetime_params.iter().map(|&(span, hir_name)| {
+                        GenericArg::Lifetime(hir::Lifetime {
+                            hir_id: this.next_id(),
+                            span,
+                            name: hir::LifetimeName::Param(hir_name),
+                        })
+                    }));
 
                 hir::AnonConst {
                     hir_id,

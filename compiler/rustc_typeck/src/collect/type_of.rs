@@ -8,7 +8,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::Ident;
@@ -16,6 +16,38 @@ use rustc_span::{Span, DUMMY_SP};
 
 use super::ItemCtxt;
 use super::{bad_placeholder_type, is_suggestable_infer_ty};
+use crate::AstConv;
+
+pub(super) fn default_substs_for_anon_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> SubstsRef<'tcx> {
+    let generics = tcx.generics_of(def_id);
+    let icx = ItemCtxt::new(tcx, def_id.to_def_id());
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+
+    if let hir::Node::AnonConst(hir_ct) = tcx.hir().get(hir_id) {
+        InternalSubsts::for_item(tcx, def_id.to_def_id(), |param, _| {
+            if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
+                // Our own parameters are the resolved lifetimes.
+                match param.kind {
+                    ty::GenericParamDefKind::Lifetime => {
+                        if let hir::GenericArg::Lifetime(lifetime) = &hir_ct.generic_args.args[i] {
+                            AstConv::ast_region_to_region(&icx, lifetime, Some(param)).into()
+                        } else {
+                            bug!()
+                        }
+                    }
+                    _ => bug!(),
+                }
+            } else {
+                tcx.mk_param_from_def(param)
+            }
+        })
+    } else {
+        bug!("unexpected caller: {:?}", def_id);
+    }
+}
 
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///

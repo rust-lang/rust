@@ -629,6 +629,25 @@ impl<'hir> Map<'hir> {
         None
     }
 
+    /// Returns the containing scope which may also define generics.
+    ///
+    /// Similar to `get_parent_item` except that it also
+    /// returns anonymous constants.
+    pub fn get_generic_context(&self, hir_id: HirId) -> HirId {
+        for (hir_id, node) in self.parent_iter(hir_id) {
+            match node {
+                Node::Crate(_)
+                | Node::Item(_)
+                | Node::ForeignItem(_)
+                | Node::TraitItem(_)
+                | Node::ImplItem(_)
+                | Node::AnonConst(_) => return hir_id,
+                _ => {}
+            }
+        }
+        hir_id
+    }
+
     /// Retrieves the `HirId` for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item

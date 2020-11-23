@@ -434,15 +434,19 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             let obligations = self.nominal_obligations(def.did, substs);
                             self.out.extend(obligations);
 
-                            let predicate = ty::PredicateAtom::ConstEvaluatable(def, substs)
-                                .to_predicate(self.tcx());
-                            let cause = self.cause(traits::MiscObligation);
-                            self.out.push(traits::Obligation::with_depth(
-                                cause,
-                                self.recursion_depth,
-                                self.param_env,
-                                predicate,
-                            ));
+                            // FIXME(const_generics): Do we actually end up having to deal with
+                            // this bound later or is this unsound?
+                            if !substs.has_escaping_bound_vars() {
+                                let predicate = ty::PredicateAtom::ConstEvaluatable(def, substs)
+                                    .to_predicate(self.tcx());
+                                let cause = self.cause(traits::MiscObligation);
+                                self.out.push(traits::Obligation::with_depth(
+                                    cause,
+                                    self.recursion_depth,
+                                    self.param_env,
+                                    predicate,
+                                ));
+                            }
                         }
                         ty::ConstKind::Infer(infer) => {
                             let resolved = self.infcx.shallow_resolve(infer);

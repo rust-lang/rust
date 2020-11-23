@@ -70,6 +70,7 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
+        default_substs_for_anon_const: type_of::default_substs_for_anon_const,
         opt_const_param_of: type_of::opt_const_param_of,
         type_of: type_of::type_of,
         item_bounds: item_bounds::item_bounds,
@@ -1309,7 +1310,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         // FIXME(#43408) always enable this once `lazy_normalization` is
         // stable enough and does not need a feature gate anymore.
         Node::AnonConst(_) => {
-            let parent_id = tcx.hir().get_parent_item(hir_id);
+            let parent_id = tcx.hir().get_generic_context(hir_id);
             let parent_def_id = tcx.hir().local_def_id(parent_id);
 
             let mut in_param_list = false;

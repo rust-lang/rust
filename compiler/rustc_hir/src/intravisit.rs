@@ -1091,6 +1091,8 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) {
 
 pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst<'v>) {
     visitor.visit_id(constant.hir_id);
+    visitor.visit_generic_args(constant.generics.span, &constant.generic_args);
+    visitor.visit_generics(&constant.generics);
     visitor.visit_nested_body(constant.body);
 }
 

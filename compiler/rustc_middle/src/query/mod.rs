@@ -89,6 +89,10 @@ rustc_queries! {
             desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
+        query default_substs_for_anon_const(key: LocalDefId) -> SubstsRef<'tcx> {
+            desc { |tcx| "computing the identity substs for `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+
         /// Computes the `DefId` of the corresponding const parameter in case the `key` is a
         /// const argument and returns `None` otherwise.
         ///

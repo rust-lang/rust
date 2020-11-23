@@ -28,7 +28,7 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::mem::take;
 
-use tracing::debug;
+use tracing::*;
 
 // This counts the no of times a lifetime is used
 #[derive(Clone, Copy, Debug)]
@@ -192,7 +192,7 @@ crate struct LifetimeContext<'a, 'tcx> {
 #[derive(Debug)]
 enum Scope<'a> {
     /// Declares lifetimes, and each can be early-bound or late-bound.
-    /// The `DebruijnIndex` of late-bound lifetimes starts at `1` and
+    /// The `DebruijnIndex` of late-bound lifetimes starts at `0` and
     /// it should be shifted by the number of `Binder`s in between the
     /// declaration `Binder` and the location it's referenced from.
     Binder {
@@ -206,6 +206,12 @@ enum Scope<'a> {
         /// equivalent to a "single-use region". This is true on
         /// impls, but not other kinds of items.
         track_lifetime_uses: bool,
+
+        /// Whether these lifetimes are synthetic and only added
+        /// for anon consts.
+        ///
+        /// We do not emit lints in `check_uses_for_lifetimes_defined_by_scope`.
+        from_anon_const: bool,
 
         /// Whether or not this binder would serve as the parent
         /// binder for opaque types introduced within. For example:
@@ -467,6 +473,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     lifetimes,
                     next_early_index: index + non_lifetime_count,
                     opaque_type_parent: true,
+                    from_anon_const: false,
                     track_lifetime_uses,
                     s: ROOT_SCOPE,
                 };
@@ -480,9 +487,36 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_anon_const(&mut self, ct: &'tcx hir::AnonConst<'tcx>) {
-        self.visit_generics(&ct.generics);
         self.visit_generic_args(crate::DUMMY_SP, &ct.generic_args);
-        intravisit::walk_anon_const(self, ct);
+
+        let generics = &ct.generics;
+        let mut index = self.next_early_index();
+        debug!("visit_anon_const: index = {}", index);
+        let lifetimes = generics
+            .params
+            .iter()
+            .map(|param| match param.kind {
+                GenericParamKind::Lifetime { .. } => {
+                    Region::early(&self.tcx.hir(), &mut index, param)
+                }
+                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
+                    bug!("unexpected param: {:?}", param)
+                }
+            })
+            .collect();
+        let scope = Scope::Binder {
+            lifetimes,
+            next_early_index: index,
+            s: self.scope,
+            track_lifetime_uses: true,
+            from_anon_const: true,
+            opaque_type_parent: true,
+        };
+        self.with(scope, |_, this| {
+            this.visit_id(ct.hir_id);
+            this.visit_generics(generics);
+            this.visit_nested_body(ct.body);
+        });
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
@@ -535,6 +569,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: self.scope,
                     next_early_index,
                     track_lifetime_uses: true,
+                    from_anon_const: false,
                     opaque_type_parent: false,
                 };
                 self.with(scope, |old_scope, this| {
@@ -708,6 +743,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             next_early_index,
                             s: this.scope,
                             track_lifetime_uses: true,
+                            from_anon_const: false,
                             opaque_type_parent: false,
                         };
                         this.with(scope, |_old_scope, this| {
@@ -723,6 +759,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         next_early_index,
                         s: self.scope,
                         track_lifetime_uses: true,
+                        from_anon_const: false,
                         opaque_type_parent: false,
                     };
                     self.with(scope, |_old_scope, this| {
@@ -775,6 +812,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index: index + non_lifetime_count,
                     s: self.scope,
                     track_lifetime_uses: true,
+                    from_anon_const: false,
                     opaque_type_parent: true,
                 };
                 self.with(scope, |old_scope, this| {
@@ -837,6 +875,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index: index + non_lifetime_count,
                     s: self.scope,
                     track_lifetime_uses: true,
+                    from_anon_const: false,
                     opaque_type_parent: true,
                 };
                 self.with(scope, |old_scope, this| {
@@ -934,6 +973,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             s: self.scope,
                             next_early_index,
                             track_lifetime_uses: true,
+                            from_anon_const: false,
                             opaque_type_parent: false,
                         };
                         let result = self.with(scope, |old_scope, this| {
@@ -977,6 +1017,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: self.scope,
                     next_early_index: self.next_early_index(),
                     track_lifetime_uses: true,
+                    from_anon_const: false,
                     opaque_type_parent: false,
                 };
                 self.with(scope, |_, this| {
@@ -1027,6 +1068,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 s: self.scope,
                 next_early_index,
                 track_lifetime_uses: true,
+                from_anon_const: false,
                 opaque_type_parent: false,
             };
             self.with(scope, |old_scope, this| {
@@ -1370,6 +1412,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         f(self)
     }
 
+    #[instrument(skip(self, f))]
     fn with<F>(&mut self, wrap_scope: Scope<'_>, f: F)
     where
         F: for<'b> FnOnce(ScopeRef<'_>, &mut LifetimeContext<'b, 'tcx>),
@@ -1390,10 +1433,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             lifetime_uses,
             missing_named_lifetime_spots,
         };
-        debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);
         this.check_uses_for_lifetimes_defined_by_scope();
-        debug!("exiting scope {:?}", this.scope);
         self.labels_in_fn = this.labels_in_fn;
         self.xcrate_object_lifetime_defaults = this.xcrate_object_lifetime_defaults;
         self.missing_named_lifetime_spots = this.missing_named_lifetime_spots;
@@ -1537,6 +1578,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     fn check_uses_for_lifetimes_defined_by_scope(&mut self) {
         let defined_by = match self.scope {
+            Scope::Binder { from_anon_const: true, .. } => {
+                debug!("check_uses_for_lifetimes_defined_by_scope: synthetic anon const binder");
+                return;
+            }
             Scope::Binder { lifetimes, .. } => lifetimes,
             _ => {
                 debug!("check_uses_for_lifetimes_defined_by_scope: not in a binder scope");
@@ -1743,6 +1788,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             next_early_index,
             s: self.scope,
             opaque_type_parent: true,
+            from_anon_const: false,
             track_lifetime_uses: false,
         };
         self.with(scope, move |old_scope, this| {
@@ -2340,6 +2386,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 self.outer_index.shift_in(1);
                 intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
                 self.outer_index.shift_out(1);
+            }
+
+            fn visit_anon_const(&mut self, _ct: &hir::AnonConst<'_>) {
+                // Do not look inside of anonymous constants, they should
+                // not participate in lifetime elision.
+
+                // FIXME(const_generics): is this true?
             }
 
             fn visit_param_bound(&mut self, bound: &hir::GenericBound<'_>) {
