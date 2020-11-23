@@ -458,7 +458,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
 }
 
 impl<K: Ord, V> BTreeMap<K, V> {
-    /// Makes a new empty BTreeMap.
+    /// Makes a new, empty `BTreeMap`.
     ///
     /// Does not allocate anything on its own.
     ///
@@ -1924,7 +1924,7 @@ impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Default for BTreeMap<K, V> {
-    /// Creates an empty `BTreeMap<K, V>`.
+    /// Creates an empty `BTreeMap`.
     fn default() -> BTreeMap<K, V> {
         BTreeMap::new()
     }
