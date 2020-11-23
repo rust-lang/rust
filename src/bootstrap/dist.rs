@@ -1183,7 +1183,11 @@ impl Step for PlainSourceTarball {
 // characters and on `C:\` paths, so normalize both of them away.
 pub fn sanitize_sh(path: &Path) -> String {
     let path = path.to_str().unwrap().replace("\\", "/");
-    return change_drive(&path).unwrap_or(path);
+    return change_drive(unc_to_lfs(&path)).unwrap_or(path);
+
+    fn unc_to_lfs(s: &str) -> &str {
+        if s.starts_with("//?/") { &s[4..] } else { s }
+    }
 
     fn change_drive(s: &str) -> Option<String> {
         let mut ch = s.chars();
