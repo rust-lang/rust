@@ -775,7 +775,7 @@ pub auto trait Unpin {}
 ///
 /// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
 #[stable(feature = "pin", since = "1.33.0")]
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PhantomPinned;
 
 #[stable(feature = "pin", since = "1.33.0")]
