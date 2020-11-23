@@ -370,7 +370,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::Trait(ast::IsAuto::Yes, ..) => {
                 gate_feature_post!(
                     &self,
-                    optin_builtin_traits,
+                    auto_traits,
                     i.span,
                     "auto traits are experimental and possibly buggy"
                 );

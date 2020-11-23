@@ -2,7 +2,7 @@
 // a simple OIBIT `..` impl alone still doesn't allow arbitrary bounds
 // to be synthesized.
 
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 #![feature(negative_impls)]
 
 auto trait Magic: Copy {} //~ ERROR E0568

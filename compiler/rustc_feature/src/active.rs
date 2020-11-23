@@ -149,9 +149,6 @@ declare_features! (
     /// Allows using the `#[linkage = ".."]` attribute.
     (active, linkage, "1.0.0", Some(29603), None),
 
-    /// Allows features specific to OIBIT (auto traits).
-    (active, optin_builtin_traits, "1.0.0", Some(13231), None),
-
     /// Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
 
@@ -214,6 +211,10 @@ declare_features! (
     /// This is an attribute on `const fn` for the same
     /// purpose as `#[allow_internal_unstable]`.
     (active, rustc_allow_const_fn_unstable, "1.49.0", Some(69399), None),
+
+    /// Allows features specific to auto traits.
+    /// Renamed from `optin_builtin_traits`.
+    (active, auto_traits, "1.50.0", Some(13231), None),
 
     // no-tracking-issue-end
 

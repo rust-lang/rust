@@ -1,5 +1,5 @@
 // check-pass
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 #![feature(negative_impls)]
 
 auto trait NotSame {}

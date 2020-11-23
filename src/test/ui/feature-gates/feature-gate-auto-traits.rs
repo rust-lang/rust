@@ -1,5 +1,5 @@
 // Test that default and negative trait implementations are gated by
-// `optin_builtin_traits` feature gate
+// `auto_traits` feature gate
 
 struct DummyStruct;
 

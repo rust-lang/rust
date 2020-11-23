@@ -2,7 +2,7 @@
 #![crate_type = "lib"]
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
-#![feature(no_core, optin_builtin_traits)]
+#![feature(no_core, auto_traits)]
 #![no_core]
 #![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
 

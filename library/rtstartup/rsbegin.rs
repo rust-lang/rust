@@ -9,10 +9,13 @@
 // headers or footers.
 //
 // Note that the actual module entry point is located in the C runtime startup
-// object (usually called `crtX.o), which then invokes initialization callbacks
+// object (usually called `crtX.o`), which then invokes initialization callbacks
 // of other runtime components (registered via yet another special image section).
 
-#![feature(no_core, lang_items, optin_builtin_traits)]
+#![feature(no_core)]
+#![feature(lang_items)]
+#![cfg_attr(bootstrap, feature(optin_builtin_traits))]
+#![cfg_attr(not(bootstrap), feature(auto_traits))]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(non_camel_case_types)]
