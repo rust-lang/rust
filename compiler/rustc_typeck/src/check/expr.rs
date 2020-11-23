@@ -77,7 +77,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 !self.typeck_results.borrow().adjustments().contains_key(expr.hir_id),
                 "expression with never type wound up being adjusted"
             );
-            let adj_ty = self.next_diverging_ty_var(TypeVariableOrigin {
+            let adj_ty = self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::AdjustmentType,
                 span: expr.span,
             });

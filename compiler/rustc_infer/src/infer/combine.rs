@@ -22,6 +22,7 @@
 // is also useful to track which value is the "expected" value in
 // terms of error reporting.
 
+use super::equate::Equate;
 use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
@@ -29,7 +30,6 @@ use super::type_variable::TypeVariableValue;
 use super::unify_key::replace_if_possible;
 use super::unify_key::{ConstVarValue, ConstVariableValue};
 use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use super::{equate::Equate, type_variable::Diverging};
 use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use crate::traits::{Obligation, PredicateObligations};
@@ -645,7 +645,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 .inner
                                 .borrow_mut()
                                 .type_variables()
-                                .new_var(self.for_universe, Diverging::NotDiverging, origin);
+                                .new_var(self.for_universe, origin);
                             let u = self.tcx().mk_ty_var(new_var_id);
 
                             // Record that we replaced `vid` with `new_var_id` as part of a generalization
@@ -885,11 +885,12 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
 
                         let origin =
                             *self.infcx.inner.borrow_mut().type_variables().var_origin(vid);
-                        let new_var_id = self.infcx.inner.borrow_mut().type_variables().new_var(
-                            self.for_universe,
-                            Diverging::NotDiverging,
-                            origin,
-                        );
+                        let new_var_id = self
+                            .infcx
+                            .inner
+                            .borrow_mut()
+                            .type_variables()
+                            .new_var(self.for_universe, origin);
                         let u = self.tcx().mk_ty_var(new_var_id);
                         debug!(
                             "ConstInferUnifier: replacing original vid={:?} with new={:?}",
