@@ -148,7 +148,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)).is_unspecified(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)).is_unspecified(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     pub const fn is_unspecified(&self) -> bool {
         match self {
@@ -170,7 +170,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     pub const fn is_loopback(&self) -> bool {
         match self {
@@ -215,7 +215,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(224, 254, 0, 0)).is_multicast(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0)).is_multicast(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     pub const fn is_multicast(&self) -> bool {
         match self {
@@ -301,8 +301,8 @@ impl Ipv4Addr {
     ///
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         // `s_addr` is stored as BE on all machine and the array is in BE order.
         // So the native endian conversion method is used so that it's never swapped.
@@ -358,7 +358,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn octets(&self) -> [u8; 4] {
         // This returns the order we want because s_addr is stored in big-endian.
@@ -380,8 +380,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_unspecified(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_unspecified(), false);
     /// ```
-    #[stable(feature = "ip_shared", since = "1.12.0")]
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
+    #[stable(feature = "ip_shared", since = "1.12.0")]
     pub const fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
@@ -400,7 +400,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
@@ -429,7 +429,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
     /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_private(&self) -> bool {
         match self.octets() {
@@ -455,7 +455,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
     /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_link_local(&self) -> bool {
         matches!(self.octets(), [169, 254, ..])
@@ -675,7 +675,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
     /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
@@ -695,7 +695,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_broadcast(&self) -> bool {
         u32::from_be_bytes(self.octets()) == u32::from_be_bytes(Self::BROADCAST.octets())
@@ -721,7 +721,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
     /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_documentation(&self) -> bool {
         match self.octets() {
@@ -751,7 +751,7 @@ impl Ipv4Addr {
     ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767)
     /// );
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
@@ -774,7 +774,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
     ///            Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 49152, 767));
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
@@ -1043,9 +1043,9 @@ impl Ipv6Addr {
     ///
     /// let addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
     #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
         let addr16 = [
             a.to_be(),
@@ -1061,6 +1061,8 @@ impl Ipv6Addr {
             inner: c::in6_addr {
                 // All elements in `addr16` are big endian.
                 // SAFETY: `[u16; 8]` is always safe to transmute to `[u8; 16]`.
+                // rustc_allow_const_fn_unstable: the transmute could be written as stable const
+                // code, but that leads to worse code generation (#75085)
                 s6_addr: unsafe { transmute::<_, [u8; 16]>(addr16) },
             },
         }
@@ -1102,11 +1104,14 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
     ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
+    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn segments(&self) -> [u16; 8] {
         // All elements in `s6_addr` must be big endian.
         // SAFETY: `[u8; 16]` is always safe to transmute to `[u16; 8]`.
+        // rustc_allow_const_fn_unstable: the transmute could be written as stable const code, but
+        // that leads to worse code generation (#75085)
         let [a, b, c, d, e, f, g, h] = unsafe { transmute::<_, [u16; 8]>(self.inner.s6_addr) };
         // We want native endian u16
         [
@@ -1135,7 +1140,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unspecified(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0).is_unspecified(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_unspecified(&self) -> bool {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
@@ -1155,7 +1160,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_loopback(&self) -> bool {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
@@ -1465,7 +1470,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_multicast(), true);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_multicast(), false);
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub const fn is_multicast(&self) -> bool {
         (self.segments()[0] & 0xff00) == 0xff00
@@ -1520,7 +1525,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
     ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
     /// ```
-    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn to_ipv4(&self) -> Option<Ipv4Addr> {
         if let [0, 0, 0, 0, 0, 0 | 0xffff, ab, cd] = self.segments() {
@@ -1540,8 +1545,8 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).octets(),
     ///            [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     /// ```
-    #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
+    #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
     pub const fn octets(&self) -> [u8; 16] {
         self.inner.s6_addr
     }
