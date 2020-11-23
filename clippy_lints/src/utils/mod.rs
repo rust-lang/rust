@@ -365,6 +365,9 @@ pub fn implements_trait<'tcx>(
         return false;
     }
     let ty = cx.tcx.erase_regions(ty);
+    if ty.has_escaping_bound_vars() {
+        return false;
+    }
     let ty_params = cx.tcx.mk_substs(ty_params.iter());
     cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
 }
