@@ -1134,6 +1134,17 @@ fn test_iterator_peekable_next_if_eq() {
     assert_eq!(it.next_if_eq(""), None);
 }
 
+#[test]
+fn test_iterator_peekable_mut() {
+    let mut it = vec![1, 2, 3].into_iter().peekable();
+    if let Some(p) = it.peek_mut() {
+        if *p == 1 {
+            *p = 5;
+        }
+    }
+    assert_eq!(it.collect::<Vec<_>>(), vec![5, 2, 3]);
+}
+
 /// This is an iterator that follows the Iterator contract,
 /// but it is not fused. After having returned None once, it will start
 /// producing elements if .next() is called again.
