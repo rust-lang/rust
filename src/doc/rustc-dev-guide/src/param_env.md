@@ -25,7 +25,7 @@ You can get the parameter environment for a `def_id` using the
 your use case. Using the `ParamEnv` from the surrounding context can allow you
 to evaluate more things. For example, suppose we had something the following:
 
-[query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ty/ty/fn.param_env.html
+[query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ty_utils/ty/fn.param_env.html
 
 ```rust
 trait Foo {
