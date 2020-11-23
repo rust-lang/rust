@@ -4,10 +4,10 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    indent_of, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment,
-    match_trait_method, match_type, match_var, multispan_sugg, qpath_res, single_segment_path, snippet,
-    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
-    span_lint_and_then, sugg, SpanlessEq,
+    indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item,
+    last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, qpath_res, single_segment_path,
+    snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help,
+    span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -543,17 +543,15 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
         if let ExprKind::Loop(ref block, _, LoopSource::Loop) = expr.kind {
-            // also check for empty `loop {}` statements
-            // TODO(issue #6161): Enable for no_std crates (outside of #[panic_handler])
-            if block.stmts.is_empty() && block.expr.is_none() && !is_no_std_crate(cx.tcx.hir().krate()) {
-                span_lint_and_help(
-                    cx,
-                    EMPTY_LOOP,
-                    expr.span,
-                    "empty `loop {}` wastes CPU cycles",
-                    None,
-                    "You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.",
-                );
+            // also check for empty `loop {}` statements, skipping those in #[panic_handler]
+            if block.stmts.is_empty() && block.expr.is_none() && !is_in_panic_handler(cx, expr) {
+                let msg = "empty `loop {}` wastes CPU cycles";
+                let help = if is_no_std_crate(cx.tcx.hir().krate()) {
+                    "you should either use `panic!()` or add a call pausing or sleeping the thread to the loop body"
+                } else {
+                    "you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body"
+                };
+                span_lint_and_help(cx, EMPTY_LOOP, expr.span, msg, None, help);
             }
 
             // extract the expression from the first statement (if any) in a block

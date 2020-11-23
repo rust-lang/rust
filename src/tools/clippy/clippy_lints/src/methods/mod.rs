@@ -515,11 +515,11 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for an iterator search (such as `find()`,
+    /// **What it does:** Checks for an iterator or string search (such as `find()`,
     /// `position()`, or `rposition()`) followed by a call to `is_some()`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.any(_)`.
+    /// `_.any(_)` or `_.contains(_)`.
     ///
     /// **Known problems:** None.
     ///
@@ -535,7 +535,7 @@ declare_clippy_lint! {
     /// ```
     pub SEARCH_IS_SOME,
     complexity,
-    "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`"
+    "using an iterator or string search followed by `is_some()`, which is more succinctly expressed as a call to `any()` or `contains()`"
 }
 
 declare_clippy_lint! {
@@ -1351,7 +1351,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).collect::<Result<(),_>()`.
+    /// **What it does:** Checks for usage of `_.map(_).collect::<Result<(), _>()`.
     ///
     /// **Why is this bad?** Using `try_for_each` instead is more readable and idiomatic.
     ///
@@ -1797,12 +1797,20 @@ fn lint_or_fun_call<'tcx>(
         cx: &LateContext<'tcx>,
         name: &str,
         method_span: Span,
-        fun_span: Span,
         self_expr: &hir::Expr<'_>,
         arg: &'tcx hir::Expr<'_>,
-        or_has_args: bool,
         span: Span,
+        // None if lambda is required
+        fun_span: Option<Span>,
     ) {
+        // (path, fn_has_argument, methods, suffix)
+        static KNOW_TYPES: [(&[&str], bool, &[&str], &str); 4] = [
+            (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
+            (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
+        ];
+
         if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = &arg.kind {
             if path.ident.as_str() == "len" {
                 let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
@@ -1818,16 +1826,8 @@ fn lint_or_fun_call<'tcx>(
             }
         }
 
-        // (path, fn_has_argument, methods, suffix)
-        let know_types: &[(&[_], _, &[_], _)] = &[
-            (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
-            (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
-            (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
-            (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
-        ];
-
         if_chain! {
-            if know_types.iter().any(|k| k.2.contains(&name));
+            if KNOW_TYPES.iter().any(|k| k.2.contains(&name));
 
             if is_lazyness_candidate(cx, arg);
             if !contains_return(&arg);
@@ -1835,15 +1835,23 @@ fn lint_or_fun_call<'tcx>(
             let self_ty = cx.typeck_results().expr_ty(self_expr);
 
             if let Some(&(_, fn_has_arguments, poss, suffix)) =
-                know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
+                KNOW_TYPES.iter().find(|&&i| match_type(cx, self_ty, i.0));
 
             if poss.contains(&name);
 
             then {
-                let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
-                    (true, _) => format!("|_| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-                    (false, false) => format!("|| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-                    (false, true) => snippet_with_macro_callsite(cx, fun_span, ".."),
+                let sugg: Cow<'_, str> = {
+                    let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
+                        (false, Some(fun_span)) => (fun_span, false),
+                        _ => (arg.span, true),
+                    };
+                    let snippet = snippet_with_macro_callsite(cx, snippet_span, "..");
+                    if use_lambda {
+                        let l_arg = if fn_has_arguments { "_" } else { "" };
+                        format!("|{}| {}", l_arg, snippet).into()
+                    } else {
+                        snippet
+                    }
                 };
                 let span_replace_word = method_span.with_hi(span.hi());
                 span_lint_and_sugg(
@@ -1864,28 +1872,13 @@ fn lint_or_fun_call<'tcx>(
             hir::ExprKind::Call(ref fun, ref or_args) => {
                 let or_has_args = !or_args.is_empty();
                 if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
-                    check_general_case(
-                        cx,
-                        name,
-                        method_span,
-                        fun.span,
-                        &args[0],
-                        &args[1],
-                        or_has_args,
-                        expr.span,
-                    );
+                    let fun_span = if or_has_args { None } else { Some(fun.span) };
+                    check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, fun_span);
                 }
             },
-            hir::ExprKind::MethodCall(_, span, ref or_args, _) => check_general_case(
-                cx,
-                name,
-                method_span,
-                span,
-                &args[0],
-                &args[1],
-                !or_args.is_empty(),
-                expr.span,
-            ),
+            hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
+                check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
+            },
             _ => {},
         }
     }
@@ -3048,6 +3041,7 @@ fn lint_flat_map_identity<'tcx>(
 }
 
 /// lint searching an Iterator followed by `is_some()`
+/// or calling `find()` on a string followed by `is_some()`
 fn lint_search_is_some<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
@@ -3059,10 +3053,10 @@ fn lint_search_is_some<'tcx>(
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!(
-            "called `is_some()` after searching an `Iterator` with {}. This is more succinctly \
-             expressed by calling `any()`.",
+            "called `is_some()` after searching an `Iterator` with `{}`",
             search_method
         );
+        let hint = "this is more succinctly expressed by calling `any()`";
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
@@ -3090,7 +3084,7 @@ fn lint_search_is_some<'tcx>(
                 SEARCH_IS_SOME,
                 method_span.with_hi(expr.span.hi()),
                 &msg,
-                "try this",
+                "use `any()` instead",
                 format!(
                     "any({})",
                     any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
@@ -3098,7 +3092,36 @@ fn lint_search_is_some<'tcx>(
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
+            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, &msg, None, hint);
+        }
+    }
+    // lint if `find()` is called by `String` or `&str`
+    else if search_method == "find" {
+        let is_string_or_str_slice = |e| {
+            let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
+            if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
+                true
+            } else {
+                *self_ty.kind() == ty::Str
+            }
+        };
+        if_chain! {
+            if is_string_or_str_slice(&search_args[0]);
+            if is_string_or_str_slice(&search_args[1]);
+            then {
+                let msg = "called `is_some()` after calling `find()` on a string";
+                let mut applicability = Applicability::MachineApplicable;
+                let find_arg = snippet_with_applicability(cx, search_args[1].span, "..", &mut applicability);
+                span_lint_and_sugg(
+                    cx,
+                    SEARCH_IS_SOME,
+                    method_span.with_hi(expr.span.hi()),
+                    msg,
+                    "use `contains()` instead",
+                    format!("contains({})", find_arg),
+                    applicability,
+                );
+            }
         }
     }
 }
@@ -3901,21 +3924,24 @@ fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<
     let ty = cx.typeck_results().expr_ty(expr);
     let arg_ty = cx.typeck_results().expr_ty(&args[0]);
 
-    let from_iter_id = get_trait_def_id(cx, &paths::FROM_ITERATOR).unwrap();
-    let iter_id = get_trait_def_id(cx, &paths::ITERATOR).unwrap();
+    if_chain! {
+        if let Some(from_iter_id) = get_trait_def_id(cx, &paths::FROM_ITERATOR);
+        if let Some(iter_id) = get_trait_def_id(cx, &paths::ITERATOR);
 
-    if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]) {
-        // `expr` implements `FromIterator` trait
-        let iter_expr = snippet(cx, args[0].span, "..");
-        span_lint_and_sugg(
-            cx,
-            FROM_ITER_INSTEAD_OF_COLLECT,
-            expr.span,
-            "usage of `FromIterator::from_iter`",
-            "use `.collect()` instead of `::from_iter()`",
-            format!("{}.collect()", iter_expr),
-            Applicability::MaybeIncorrect,
-        );
+        if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]);
+        then {
+            // `expr` implements `FromIterator` trait
+            let iter_expr = snippet(cx, args[0].span, "..");
+            span_lint_and_sugg(
+                cx,
+                FROM_ITER_INSTEAD_OF_COLLECT,
+                expr.span,
+                "usage of `FromIterator::from_iter`",
+                "use `.collect()` instead of `::from_iter()`",
+                format!("{}.collect()", iter_expr),
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 }
 

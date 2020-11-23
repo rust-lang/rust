@@ -72,11 +72,17 @@ error: lint `clippy::temporary_cstring_as_ptr` has been removed: `this lint has 
 LL | #[warn(clippy::temporary_cstring_as_ptr)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: lint `clippy::panic_params` has been removed: `this lint has been uplifted to rustc and is now called `panic_fmt``
+  --> $DIR/deprecated.rs:13:8
+   |
+LL | #[warn(clippy::panic_params)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
 error: lint `clippy::str_to_string` has been removed: `using `str::to_string` is common even today and specialization will likely happen soon`
   --> $DIR/deprecated.rs:1:8
    |
 LL | #[warn(clippy::str_to_string)]
    |        ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 

@@ -320,11 +320,11 @@ fn find_stmt_assigns_to<'tcx>(
 
     match (by_ref, &*rvalue) {
         (true, mir::Rvalue::Ref(_, _, place)) | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
-            base_local_and_movability(cx, mir, *place)
+            Some(base_local_and_movability(cx, mir, *place))
         },
         (false, mir::Rvalue::Ref(_, _, place)) => {
             if let [mir::ProjectionElem::Deref] = place.as_ref().projection {
-                base_local_and_movability(cx, mir, *place)
+                Some(base_local_and_movability(cx, mir, *place))
             } else {
                 None
             }
@@ -341,7 +341,7 @@ fn base_local_and_movability<'tcx>(
     cx: &LateContext<'tcx>,
     mir: &mir::Body<'tcx>,
     place: mir::Place<'tcx>,
-) -> Option<(mir::Local, CannotMoveOut)> {
+) -> (mir::Local, CannotMoveOut) {
     use rustc_middle::mir::PlaceRef;
 
     // Dereference. You cannot move things out from a borrowed value.
@@ -362,7 +362,7 @@ fn base_local_and_movability<'tcx>(
             && !is_copy(cx, mir::Place::ty_from(local, projection, &mir.local_decls, cx.tcx).ty);
     }
 
-    Some((local, deref || field || slice))
+    (local, deref || field || slice)
 }
 
 struct LocalUseVisitor {

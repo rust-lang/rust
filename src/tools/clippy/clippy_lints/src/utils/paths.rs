@@ -126,6 +126,7 @@ pub const STRING: [&str; 3] = ["alloc", "string", "String"];
 pub const STRING_AS_MUT_STR: [&str; 4] = ["alloc", "string", "String", "as_mut_str"];
 pub const STRING_AS_STR: [&str; 4] = ["alloc", "string", "String", "as_str"];
 pub const STR_ENDS_WITH: [&str; 4] = ["core", "str", "<impl str>", "ends_with"];
+pub const STR_FROM_UTF8: [&str; 4] = ["core", "str", "converts", "from_utf8"];
 pub const STR_LEN: [&str; 4] = ["core", "str", "<impl str>", "len"];
 pub const STR_STARTS_WITH: [&str; 4] = ["core", "str", "<impl str>", "starts_with"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];

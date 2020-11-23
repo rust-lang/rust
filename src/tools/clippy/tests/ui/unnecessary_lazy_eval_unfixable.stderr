@@ -1,0 +1,22 @@
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> $DIR/unnecessary_lazy_eval_unfixable.rs:12:13
+   |
+LL |     let _ = Ok(1).unwrap_or_else(|()| 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `unwrap_or` instead: `Ok(1).unwrap_or(2)`
+   |
+   = note: `-D clippy::unnecessary-lazy-evaluations` implied by `-D warnings`
+
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> $DIR/unnecessary_lazy_eval_unfixable.rs:16:13
+   |
+LL |     let _ = Ok(1).unwrap_or_else(|e::E| 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `unwrap_or` instead: `Ok(1).unwrap_or(2)`
+
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> $DIR/unnecessary_lazy_eval_unfixable.rs:17:13
+   |
+LL |     let _ = Ok(1).unwrap_or_else(|SomeStruct { .. }| 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Use `unwrap_or` instead: `Ok(1).unwrap_or(2)`
+
+error: aborting due to 3 previous errors
+

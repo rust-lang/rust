@@ -7,6 +7,7 @@
     unused_must_use,
     clippy::needless_bool,
     clippy::match_like_matches_macro,
+    clippy::unnecessary_wraps,
     deprecated
 )]
 

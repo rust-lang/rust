@@ -1,5 +1,5 @@
 use crate::utils::paths::FUTURE_FROM_GENERATOR;
-use crate::utils::{match_function_call, snippet_block, snippet_opt, span_lint_and_then};
+use crate::utils::{match_function_call, position_before_rarrow, snippet_block, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                     |diag| {
                         if_chain! {
                             if let Some(header_snip) = snippet_opt(cx, header_span);
-                            if let Some(ret_pos) = header_snip.rfind("->");
+                            if let Some(ret_pos) = position_before_rarrow(header_snip.clone());
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
                                 let help = format!("make the function `async` and {}", ret_sugg);
@@ -194,7 +194,7 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
         },
         _ => {
             let sugg = "return the output of the future directly";
-            snippet_opt(cx, output.span).map(|snip| (sugg, format!("-> {}", snip)))
+            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {}", snip)))
         },
     }
 }
