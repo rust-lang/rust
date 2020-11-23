@@ -84,7 +84,9 @@ where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
 {
     pub fn new(graph: &'graph G, start_node: G::Node) -> Self {
-        Self { graph, stack: vec![start_node], visited: BitSet::new_empty(graph.num_nodes()) }
+        let mut visited = BitSet::new_empty(graph.num_nodes());
+        visited.insert(start_node);
+        Self { graph, stack: vec![start_node], visited }
     }
 }
 
