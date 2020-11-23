@@ -2372,13 +2372,9 @@ impl<'o, 'tcx> Iterator for TraitObligationStackList<'o, 'tcx> {
     type Item = &'o TraitObligationStack<'o, 'tcx>;
 
     fn next(&mut self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
-        match self.head {
-            Some(o) => {
-                *self = o.previous;
-                Some(o)
-            }
-            None => None,
-        }
+        let o = self.head?;
+        *self = o.previous;
+        Some(o)
     }
 }
 

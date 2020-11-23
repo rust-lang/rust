@@ -649,17 +649,13 @@ pub mod shell {
     impl<'a> Iterator for Substitutions<'a> {
         type Item = Substitution<'a>;
         fn next(&mut self) -> Option<Self::Item> {
-            match parse_next_substitution(self.s) {
-                Some((mut sub, tail)) => {
-                    self.s = tail;
-                    if let Some(InnerSpan { start, end }) = sub.position() {
-                        sub.set_position(start + self.pos, end + self.pos);
-                        self.pos += end;
-                    }
-                    Some(sub)
-                }
-                None => None,
+            let (mut sub, tail) = parse_next_substitution(self.s)?;
+            self.s = tail;
+            if let Some(InnerSpan { start, end }) = sub.position() {
+                sub.set_position(start + self.pos, end + self.pos);
+                self.pos += end;
             }
+            Some(sub)
         }
 
         fn size_hint(&self) -> (usize, Option<usize>) {
