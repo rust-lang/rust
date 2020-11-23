@@ -287,7 +287,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
 }
 
 macro simd_cmp {
-    ($fx:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $cc:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
         let vector_ty = clif_vector_type($fx.tcx, $x.layout());
 
         if let Some(vector_ty) = vector_ty {
@@ -308,6 +308,7 @@ macro simd_cmp {
                 |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
                     let res_lane = match lane_layout.ty.kind() {
                         ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
+                        ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
                         _ => unreachable!("{:?}", lane_layout.ty),
                     };
                     bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
@@ -315,7 +316,7 @@ macro simd_cmp {
             );
         }
     },
-    ($fx:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $cc_u:ident|$cc_s:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
         // FIXME use vector icmp when possible
         simd_pair_for_each_lane(
             $fx,
@@ -326,6 +327,7 @@ macro simd_cmp {
                 let res_lane = match lane_layout.ty.kind() {
                     ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
                     ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
+                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
                 };
                 bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)

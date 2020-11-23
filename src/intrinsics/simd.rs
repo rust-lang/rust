@@ -35,30 +35,33 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        // FIXME support float comparisons
         simd_eq, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, Equal(x, y) -> ret);
+            simd_cmp!(fx, Equal|Equal(x, y) -> ret);
         };
         simd_ne, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, NotEqual(x, y) -> ret);
+            simd_cmp!(fx, NotEqual|NotEqual(x, y) -> ret);
         };
         simd_lt, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedLessThan|SignedLessThan(x, y) -> ret);
+            simd_cmp!(fx, UnsignedLessThan|SignedLessThan|LessThan(x, y) -> ret);
         };
         simd_le, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedLessThanOrEqual|SignedLessThanOrEqual(x, y) -> ret);
+            simd_cmp!(fx, UnsignedLessThanOrEqual|SignedLessThanOrEqual|LessThanOrEqual(x, y) -> ret);
         };
         simd_gt, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedGreaterThan|SignedGreaterThan(x, y) -> ret);
+            simd_cmp!(fx, UnsignedGreaterThan|SignedGreaterThan|GreaterThan(x, y) -> ret);
         };
         simd_ge, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
+            simd_cmp!(
+                fx,
+                UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual|GreaterThanOrEqual
+                (x, y) -> ret
+            );
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
