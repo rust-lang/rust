@@ -129,7 +129,11 @@ pub enum TypeVariableOriginKind {
     SubstitutionPlaceholder,
     AutoDeref,
     AdjustmentType,
-    DivergingFn,
+
+    /// In type check, when we are type checking a function that
+    /// returns `-> dyn Foo`, we substitute a type variable for the
+    /// return type for diagnostic purposes.
+    DynReturnFn,
     LatticeVariable,
 }
 
