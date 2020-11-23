@@ -46,6 +46,7 @@ mod binary_long;
 
 #[macro_use]
 mod delegate;
+pub use self::delegate::u128_divide_sparc;
 
 #[macro_use]
 mod trifecta;
@@ -60,26 +61,30 @@ fn zero_div_fn() -> ! {
     unsafe { core::hint::unreachable_unchecked() }
 }
 
-// The `B` extension on RISC-V determines if a CLZ assembly instruction exists
-#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-const USE_LZ: bool = cfg!(target_feature = "b");
-
-#[cfg(target_arch = "arm")]
-const USE_LZ: bool = if cfg!(target_feature = "thumb-mode") {
-    // ARM thumb targets have CLZ instructions if the instruction set of ARMv6T2 is supported. This
-    // is needed to successfully differentiate between targets like `thumbv8.base` and
-    // `thumbv8.main`.
-    cfg!(target_feature = "v6t2")
-} else {
-    // Regular ARM targets have CLZ instructions if the ARMv5TE instruction set is supported.
-    // Technically, ARMv5T was the first to have CLZ, but the "v5t" target feature does not seem to
-    // work.
-    cfg!(target_feature = "v5te")
+const USE_LZ: bool = {
+    if cfg!(target_arch = "arm") {
+        if cfg!(target_feature = "thumb-mode") {
+            // ARM thumb targets have CLZ instructions if the instruction set of ARMv6T2 is
+            // supported. This is needed to successfully differentiate between targets like
+            // `thumbv8.base` and `thumbv8.main`.
+            cfg!(target_feature = "v6t2")
+        } else {
+            // Regular ARM targets have CLZ instructions if the ARMv5TE instruction set is
+            // supported. Technically, ARMv5T was the first to have CLZ, but the "v5t" target
+            // feature does not seem to work.
+            cfg!(target_feature = "v5te")
+        }
+    } else if cfg!(any(target_arch = "sparc", target_arch = "sparc64")) {
+        // LZD or LZCNT on SPARC only exists for the VIS 3 extension and later.
+        cfg!(target_feature = "vis3")
+    } else if cfg!(any(target_arch = "riscv32", target_arch = "riscv64")) {
+        // The `B` extension on RISC-V determines if a CLZ assembly instruction exists
+        cfg!(target_feature = "b")
+    } else {
+        // All other common targets Rust supports should have CLZ instructions
+        true
+    }
 };
-
-// All other targets Rust supports have CLZ instructions
-#[cfg(not(any(target_arch = "arm", target_arch = "riscv32", target_arch = "riscv64")))]
-const USE_LZ: bool = true;
 
 impl_normalization_shift!(
     u32_normalization_shift,
@@ -115,8 +120,9 @@ fn u64_by_u64_div_rem(duo: u64, div: u64) -> (u64, u64) {
 // microarchitecture can multiply and divide. We decide to be optimistic and assume `trifecta` is
 // faster if the target pointer width is at least 64.
 #[cfg(all(
+    not(any(target_pointer_width = "16", target_pointer_width = "32")),
     not(all(not(feature = "no-asm"), target_arch = "x86_64")),
-    not(any(target_pointer_width = "16", target_pointer_width = "32"))
+    not(any(target_arch = "sparc", target_arch = "sparc64"))
 ))]
 impl_trifecta!(
     u128_div_rem,
@@ -131,8 +137,9 @@ impl_trifecta!(
 // If the pointer width less than 64, then the target architecture almost certainly does not have
 // the fast 64 to 128 bit widening multiplication needed for `trifecta` to be faster.
 #[cfg(all(
+    any(target_pointer_width = "16", target_pointer_width = "32"),
     not(all(not(feature = "no-asm"), target_arch = "x86_64")),
-    any(target_pointer_width = "16", target_pointer_width = "32")
+    not(any(target_arch = "sparc", target_arch = "sparc64"))
 ))]
 impl_delegate!(
     u128_div_rem,
