@@ -1486,7 +1486,7 @@ extern "rust-intrinsic" {
     /// let num_leading = unsafe { ctlz_nonzero(x) };
     /// assert_eq!(num_leading, 3);
     /// ```
-    #[rustc_const_unstable(feature = "constctlz", issue = "none")]
+    #[rustc_const_stable(feature = "constctlz", since = "1.50.0")]
     pub fn ctlz_nonzero<T: Copy>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
