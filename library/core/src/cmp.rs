@@ -696,7 +696,7 @@ impl PartialOrd for Ordering {
 /// - asymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`; and
 /// - transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
 ///
-/// Note that these requirements mean that the trait itself must be implemented symmetrically and
+/// Note that these requirements mean that the trait itself must be implemented asymmetrically and
 /// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
 /// PartialOrd<V>`.
 ///
