@@ -1,9 +1,35 @@
 # Feature Gates
 
-This chapter is intended to provide basic help for modifying feature gates. See
-["Stability in code"][stability-section] for help with *adding* feature gates.
+This chapter is intended to provide basic help for adding, removing, and
+modifying feature gates.
 
-[stability-section]: ./implementing_new_features.md#stability-in-code
+
+## Adding a feature gate
+
+See ["Stability in code"][stability-section] for help with adding a new feature;
+this section just covers how to add the feature gate *declaration*.
+
+Add a feature gate declaration to `rustc_feature/src/active.rs` in the active
+`declare_features` block:
+
+```rust,ignore
+/// description of feature
+(active, $feature_name, "$current_nightly_version", Some($tracking_issue_number), $edition)
+```
+
+where `$edition` has the type `Option<Edition>`, and is typically
+just `None`.
+
+For example:
+
+```rust,ignore
+/// Allows defining identifiers beyond ASCII.
+(active, non_ascii_idents, "1.0.0", Some(55467), None),
+```
+
+When added, the current version should be the one for the current nightly.
+Once the feature is moved to `accepted.rs`, the version is changed to that
+nightly version.
 
 
 ## Removing a feature gate
@@ -63,3 +89,6 @@ to follow when [removing a feature gate][removing]):
    /// description of feature
    (active, $new_feature_name, "$version", Some($tracking_issue_number), $edition)
    ```
+
+
+[stability-section]: ./implementing_new_features.md#stability-in-code

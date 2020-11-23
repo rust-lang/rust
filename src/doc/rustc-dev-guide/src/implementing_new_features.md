@@ -127,25 +127,8 @@ a new unstable feature:
    in the RFC).
 
 3. Add a feature gate declaration to `rustc_feature/src/active.rs`
-   in the active `declare_features` block:
-
-   ```rust,ignore
-   /// description of feature
-   (active, $feature_name, "$current_nightly_version", Some($tracking_issue_number), $edition)
-   ```
-
-   where `$edition` has the type `Option<Edition>`, and is typically
-   just `None`.
-
-   For example:
-
-   ```rust,ignore
-   /// Allows defining identifiers beyond ASCII.
-   (active, non_ascii_idents, "1.0.0", Some(55467), None),
-   ```
-
-   When added, the current version should be the one for the current nightly.
-   Once the feature is moved to `accepted.rs`, the version is changed to that nightly version.
+   in the active `declare_features` block. See [here][add-feature-gate] for
+   detailed instructions.
 
 4. Prevent usage of the new feature unless the feature gate is set.
    You can check it in most places in the compiler using the
@@ -182,3 +165,4 @@ a new unstable feature:
 [stability in code]: #stability-in-code
 [here]: ./stabilization_guide.md
 [tracking issue]: #tracking-issue
+[add-feature-gate]: ./feature-gates.md#adding-a-feature-gate
