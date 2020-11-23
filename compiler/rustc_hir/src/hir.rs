@@ -2607,11 +2607,18 @@ pub struct ImplItemRef<'hir> {
     pub defaultness: Defaultness,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Hash, Encodable, Debug, HashStable_Generic)]
 pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
+}
+
+impl PartialEq for AssocItemKind {
+    fn eq(&self, other: &AssocItemKind) -> bool {
+        // ignore `has_self` parameter
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
 }
 
 impl AssocItemKind {

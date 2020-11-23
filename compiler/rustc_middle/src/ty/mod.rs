@@ -184,7 +184,7 @@ pub enum ImplPolarity {
     Reservation,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable, Hash)]
 pub struct AssocItem {
     pub def_id: DefId,
     #[stable_hasher(project(name))]
@@ -194,6 +194,8 @@ pub struct AssocItem {
     pub defaultness: hir::Defaultness,
     pub container: AssocItemContainer,
 }
+
+impl Eq for AssocItem {}
 
 impl AssocItem {
     /// Whether this is a method with an explicit self
