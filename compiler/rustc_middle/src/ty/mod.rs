@@ -1503,9 +1503,11 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn to_opt_poly_trait_ref(self) -> Option<PolyTraitRef<'tcx>> {
+    pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
         match self.skip_binders() {
-            PredicateAtom::Trait(t, _) => Some(ty::Binder::bind(t.trait_ref)),
+            PredicateAtom::Trait(t, constness) => {
+                Some(ConstnessAnd { constness, value: ty::Binder::bind(t.trait_ref) })
+            }
             PredicateAtom::Projection(..)
             | PredicateAtom::Subtype(..)
             | PredicateAtom::RegionOutlives(..)
@@ -1947,7 +1949,7 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ConstnessAnd<T> {
     pub constness: Constness,
     pub value: T,

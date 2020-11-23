@@ -791,7 +791,7 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -974,7 +974,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1340,7 +1340,7 @@ assert_eq!(3i8.wrapping_pow(6), -39);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1707,7 +1707,7 @@ assert_eq!(3i8.overflowing_pow(5), (-13, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1757,7 +1757,7 @@ assert_eq!(x.pow(5), 32);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]

@@ -1106,10 +1106,7 @@ impl<T> Binder<T> {
 
 impl<T> Binder<Option<T>> {
     pub fn transpose(self) -> Option<Binder<T>> {
-        match self.0 {
-            Some(v) => Some(Binder(v)),
-            None => None,
-        }
+        self.0.map(Binder)
     }
 }
 

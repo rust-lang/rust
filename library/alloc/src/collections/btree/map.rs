@@ -1551,12 +1551,12 @@ where
     pred: F,
     inner: DrainFilterInner<'a, K, V>,
 }
-/// Most of the implementation of DrainFilter, independent of the type
+/// Most of the implementation of DrainFilter are generic over the type
 /// of the predicate, thus also serving for BTreeSet::DrainFilter.
 pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     /// Reference to the length field in the borrowed map, updated live.
     length: &'a mut usize,
-    /// Burried reference to the root field in the borrowed map.
+    /// Buried reference to the root field in the borrowed map.
     /// Wrapped in `Option` to allow drop handler to `take` it.
     dormant_root: Option<DormantMutRef<'a, Root<K, V>>>,
     /// Contains a leaf edge preceding the next element to be returned, or the last leaf edge.

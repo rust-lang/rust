@@ -810,10 +810,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // can be given the suggestion "u32::from(x) > y" rather than
                 // "x > y.try_into().unwrap()".
                 let lhs_expr_and_src = expected_ty_expr.and_then(|expr| {
-                    match self.tcx.sess.source_map().span_to_snippet(expr.span).ok() {
-                        Some(src) => Some((expr, src)),
-                        None => None,
-                    }
+                    self.tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(expr.span)
+                        .ok()
+                        .map(|src| (expr, src))
                 });
                 let (span, msg, suggestion) = if let (Some((lhs_expr, lhs_src)), false) =
                     (lhs_expr_and_src, exp_to_found_is_fallible)

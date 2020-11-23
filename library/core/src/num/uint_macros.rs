@@ -749,7 +749,7 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -865,7 +865,7 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1159,7 +1159,7 @@ Basic usage:
 assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1484,7 +1484,7 @@ Basic usage:
 assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1532,7 +1532,7 @@ Basic usage:
 ", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(5), 32);", $EndFeature, "
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
         #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
         #[inline]
@@ -1648,7 +1648,7 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
         // overflow cases it instead ends up returning the maximum value
         // of the type, and can return 0 for 0.
         #[inline]
-        #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
         const fn one_less_than_next_power_of_two(self) -> Self {
             if self <= 1 { return 0; }
 
@@ -1677,7 +1677,7 @@ Basic usage:
 assert_eq!(3", stringify!($SelfT), ".next_power_of_two(), 4);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn next_power_of_two(self) -> Self {
@@ -1703,7 +1703,7 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             pub const fn checked_next_power_of_two(self) -> Option<Self> {
                 self.one_less_than_next_power_of_two().checked_add(1)
             }
@@ -1728,7 +1728,7 @@ $EndFeature, "
 ```"),
             #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                        reason = "needs decision on wrapping behaviour")]
-            #[rustc_const_unstable(feature = "const_int_pow", issue = "53718")]
+            #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
             pub const fn wrapping_next_power_of_two(self) -> Self {
                 self.one_less_than_next_power_of_two().wrapping_add(1)
             }

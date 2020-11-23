@@ -78,8 +78,6 @@
 #![feature(const_overflowing_int_methods)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_mut_refs)]
-#![feature(const_int_pow)]
-#![feature(constctlz)]
 #![feature(const_cttz)]
 #![feature(const_panic)]
 #![feature(const_pin)]

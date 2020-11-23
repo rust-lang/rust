@@ -2539,6 +2539,7 @@ impl<'a> Resolver<'a> {
         span: Span,
         all_ribs: &[Rib<'a>],
     ) -> Res {
+        const CG_BUG_STR: &str = "min_const_generics resolve check didn't stop compilation";
         debug!("validate_res_from_ribs({:?})", res);
         let ribs = &all_ribs[rib_index + 1..];
 
@@ -2639,6 +2640,8 @@ impl<'a> Resolver<'a> {
                                             },
                                         );
                                     }
+
+                                    self.session.delay_span_bug(span, CG_BUG_STR);
                                     return Res::Err;
                                 }
                             }
@@ -2720,6 +2723,8 @@ impl<'a> Resolver<'a> {
                                         },
                                     );
                                 }
+
+                                self.session.delay_span_bug(span, CG_BUG_STR);
                                 return Res::Err;
                             }
 
