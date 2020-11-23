@@ -503,7 +503,13 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    let doc = this.mem_docs.get_mut(&path).unwrap();
+                    let doc = match this.mem_docs.get_mut(&path) {
+                        Some(doc) => doc,
+                        None => {
+                            log::error!("expected DidChangeTextDocument: {}", path);
+                            return Ok(());
+                        }
+                    };
                     let vfs = &mut this.vfs.write().0;
                     let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
