@@ -2,6 +2,7 @@
 
 #![warn(clippy::option_map_unit_fn)]
 #![allow(unused)]
+#![allow(clippy::unnecessary_wraps)]
 
 fn do_nothing<T>(_: T) {}
 

@@ -7,27 +7,21 @@ A collection of lints to catch common mistakes and improve your [Rust](https://g
 
 [There are over 400 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
-We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
+Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
+You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
 
-* `clippy::all` (everything that is on by default: all the categories below except for `nursery`, `pedantic`, and `cargo`)
-* `clippy::correctness` (code that is just **outright wrong** or **very very useless**, causes hard errors by default)
-* `clippy::style` (code that should be written in a more idiomatic way)
-* `clippy::complexity` (code that does something simple but in a complex way)
-* `clippy::perf` (code that can be written in a faster way)
-* `clippy::pedantic` (lints which are rather strict, off by default)
-* `clippy::nursery` (new lints that aren't quite ready yet, off by default)
-* `clippy::cargo` (checks against the cargo manifest, off by default)
+Category | Description | Default level
+-- | -- | --
+`clippy::all` | all lints that are on by default (correctness, style, complexity, perf) | **warn/deny**
+`clippy::correctness` | code that is outright wrong or very useless | **deny**
+`clippy::style` | code that should be written in a more idiomatic way | **warn**
+`clippy::complexity` | code that does something simple but in a complex way | **warn**
+`clippy::perf` | code that can be written to run faster | **warn**
+`clippy::pedantic` | lints which are rather strict or might have false positives | allow
+`clippy::nursery` | new lints that are still under development | allow
+`clippy::cargo` | lints for the cargo manifest | allow
 
 More to come, please [file an issue](https://github.com/rust-lang/rust-clippy/issues) if you have ideas!
-
-Only the following of those categories are enabled by default:
-
-* `clippy::style`
-* `clippy::correctness`
-* `clippy::complexity`
-* `clippy::perf`
-
-Other categories need to be enabled in order for their lints to be executed.
 
 The [lint list](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are
 for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used

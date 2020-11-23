@@ -222,13 +222,14 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
             let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
+            let space = if lo.ends_with('.') { " " } else { "" };
             span_lint_and_sugg(
                 cx,
                 MANUAL_RANGE_CONTAINS,
                 span,
                 &format!("manual `{}::contains` implementation", range_type),
                 "use",
-                format!("({}{}{}).contains(&{})", lo, range_op, hi, name),
+                format!("({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
                 applicability,
             );
         } else if !combine_and && ord == Some(lord) {
@@ -251,13 +252,14 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
             let name = snippet_with_applicability(cx, name_span, "_", &mut applicability);
             let lo = snippet_with_applicability(cx, l_span, "_", &mut applicability);
             let hi = snippet_with_applicability(cx, u_span, "_", &mut applicability);
+            let space = if lo.ends_with('.') { " " } else { "" };
             span_lint_and_sugg(
                 cx,
                 MANUAL_RANGE_CONTAINS,
                 span,
                 &format!("manual `!{}::contains` implementation", range_type),
                 "use",
-                format!("!({}{}{}).contains(&{})", lo, range_op, hi, name),
+                format!("!({}{}{}{}).contains(&{})", lo, space, range_op, hi, name),
                 applicability,
             );
         }

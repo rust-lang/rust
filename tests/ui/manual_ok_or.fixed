@@ -28,7 +28,7 @@ fn main() {
     // not applicable, or side isn't `Result::Err`
     foo.map_or(Ok::<i32, &str>(1), |v| Ok(v));
 
-    // not applicatble, expr is not a `Result` value
+    // not applicable, expr is not a `Result` value
     foo.map_or(42, |v| v);
 
     // TODO patterns not covered yet
