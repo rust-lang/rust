@@ -1152,10 +1152,7 @@ impl<'ll> MemberDescription<'ll> {
                 self.size.bits(),
                 self.align.bits() as u32,
                 self.offset.bits(),
-                match self.discriminant {
-                    None => None,
-                    Some(value) => Some(cx.const_u64(value)),
-                },
+                self.discriminant.map(|v| cx.const_u64(v)),
                 self.flags,
                 self.type_metadata,
             )
