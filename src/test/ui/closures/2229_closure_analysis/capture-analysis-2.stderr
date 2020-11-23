@@ -1,14 +1,14 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/simple-struct-min-capture.rs:27:17
+  --> $DIR/capture-analysis-2.rs:17:13
    |
-LL |     let mut c = #[rustc_capture_analysis]
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let c = #[rustc_capture_analysis]
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/simple-struct-min-capture.rs:3:12
+  --> $DIR/capture-analysis-2.rs:2:12
    |
 LL | #![feature(capture_disjoint_fields)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,45 +17,45 @@ LL | #![feature(capture_disjoint_fields)]
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
 error: First Pass analysis includes:
-  --> $DIR/simple-struct-min-capture.rs:30:5
+  --> $DIR/capture-analysis-2.rs:20:5
    |
 LL | /     || {
 LL | |
 LL | |
-LL | |         p.x += 10;
+LL | |         let _x = p.x;
 ...  |
 LL | |
 LL | |     };
    | |_____^
    |
-note: Capturing p[(0, 0)] -> MutBorrow
-  --> $DIR/simple-struct-min-capture.rs:33:9
+note: Capturing p[(0, 0)] -> ByValue
+  --> $DIR/capture-analysis-2.rs:23:18
    |
-LL |         p.x += 10;
-   |         ^^^
+LL |         let _x = p.x;
+   |                  ^^^
 note: Capturing p[] -> ImmBorrow
-  --> $DIR/simple-struct-min-capture.rs:36:26
+  --> $DIR/capture-analysis-2.rs:26:26
    |
 LL |         println!("{:?}", p);
    |                          ^
 
 error: Min Capture analysis includes:
-  --> $DIR/simple-struct-min-capture.rs:30:5
+  --> $DIR/capture-analysis-2.rs:20:5
    |
 LL | /     || {
 LL | |
 LL | |
-LL | |         p.x += 10;
+LL | |         let _x = p.x;
 ...  |
 LL | |
 LL | |     };
    | |_____^
    |
-note: Min Capture p[] -> MutBorrow
-  --> $DIR/simple-struct-min-capture.rs:33:9
+note: Min Capture p[] -> ByValue
+  --> $DIR/capture-analysis-2.rs:23:18
    |
-LL |         p.x += 10;
-   |         ^^^ p[] captured as MutBorrow here
+LL |         let _x = p.x;
+   |                  ^^^ p[] captured as ByValue here
 ...
 LL |         println!("{:?}", p);
    |                          ^ p[] used here

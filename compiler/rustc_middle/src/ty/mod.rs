@@ -741,8 +741,20 @@ pub struct CapturedPlace<'tcx> {
 pub struct CaptureInfo<'tcx> {
     /// Expr Id pointing to use that resulted in selecting the current capture kind
     ///
+    /// Eg:
+    /// ```rust,no_run
+    /// let mut t = (0,1);
+    ///
+    /// let c = || {
+    ///     println!("{}",t); // L1
+    ///     t.1 = 4; // L2
+    /// };
+    /// ```
+    /// `capture_kind_expr_id` will point to the use on L2 and `path_expr_id` will point to the
+    /// use on L1.
+    ///
     /// If the user doesn't enable feature `capture_disjoint_fields` (RFC 2229) then, it is
-    /// possible that we don't see the use of a particular place resulting in expr_id being
+    /// possible that we don't see the use of a particular place resulting in capture_kind_expr_id being
     /// None. In such case we fallback on uvpars_mentioned for span.
     ///
     /// Eg:
@@ -756,7 +768,12 @@ pub struct CaptureInfo<'tcx> {
     ///
     /// In this example, if `capture_disjoint_fields` is **not** set, then x will be captured,
     /// but we won't see it being used during capture analysis, since it's essentially a discard.
-    pub expr_id: Option<hir::HirId>,
+    pub capture_kind_expr_id: Option<hir::HirId>,
+    /// Expr Id pointing to use that resulted the corresponding place being captured
+    ///
+    /// See `capture_kind_expr_id` for example.
+    ///
+    pub path_expr_id: Option<hir::HirId>,
 
     /// Capture mode that was selected
     pub capture_kind: UpvarCapture<'tcx>,
