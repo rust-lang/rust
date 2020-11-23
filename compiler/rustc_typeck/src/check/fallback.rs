@@ -2,7 +2,6 @@ use crate::check::FnCtxt;
 use rustc_data_structures::{
     fx::FxHashMap, graph::vec_graph::VecGraph, graph::WithSuccessors, stable_set::FxHashSet,
 };
-use rustc_infer::infer::type_variable::Diverging;
 use rustc_middle::ty::{self, Ty};
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
@@ -250,8 +249,27 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         // Extract the unsolved type inference variable vids; note that some
         // unsolved variables are integer/float variables and are excluded.
-        let unsolved_vids: Vec<_> =
-            unsolved_variables.iter().filter_map(|ty| ty.ty_vid()).collect();
+        let unsolved_vids = unsolved_variables.iter().filter_map(|ty| ty.ty_vid());
+
+        // Compute the diverging root vids D -- that is, the root vid of
+        // those type variables that (a) are the target of a coercion from
+        // a `!` type and (b) have not yet been solved.
+        //
+        // These variables are the ones that are targets for fallback to
+        // either `!` or `()`.
+        let diverging_roots: FxHashSet<ty::TyVid> = self
+            .diverging_type_vars
+            .borrow()
+            .iter()
+            .map(|&ty| self.infcx.shallow_resolve(ty))
+            .filter_map(|ty| ty.ty_vid())
+            .map(|vid| self.infcx.root_var(vid))
+            .collect();
+        debug!(
+            "calculate_diverging_fallback: diverging_type_vars={:?}",
+            self.diverging_type_vars.borrow()
+        );
+        debug!("calculate_diverging_fallback: diverging_roots={:?}", diverging_roots);
 
         // Find all type variables that are reachable from a diverging
         // type variable. These will typically default to `!`, unless
@@ -260,27 +278,24 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let mut roots_reachable_from_diverging = FxHashSet::default();
         let mut diverging_vids = vec![];
         let mut non_diverging_vids = vec![];
-        for &unsolved_vid in &unsolved_vids {
+        for unsolved_vid in unsolved_vids {
+            let root_vid = self.infcx.root_var(unsolved_vid);
             debug!(
-                "calculate_diverging_fallback: unsolved_vid={:?} diverges={:?}",
+                "calculate_diverging_fallback: unsolved_vid={:?} root_vid={:?} diverges={:?}",
                 unsolved_vid,
-                self.infcx.ty_vid_diverges(unsolved_vid)
+                root_vid,
+                diverging_roots.contains(&root_vid),
             );
-            match self.infcx.ty_vid_diverges(unsolved_vid) {
-                Diverging::Diverges => {
-                    diverging_vids.push(unsolved_vid);
-                    let root_vid = self.infcx.root_var(unsolved_vid);
-                    debug!(
-                        "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
-                        root_vid,
-                        coercion_graph.depth_first_search(root_vid).collect::<Vec<_>>()
-                    );
-                    roots_reachable_from_diverging
-                        .extend(coercion_graph.depth_first_search(root_vid));
-                }
-                Diverging::NotDiverging => {
-                    non_diverging_vids.push(unsolved_vid);
-                }
+            if diverging_roots.contains(&root_vid) {
+                diverging_vids.push(unsolved_vid);
+                debug!(
+                    "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
+                    root_vid,
+                    coercion_graph.depth_first_search(root_vid).collect::<Vec<_>>()
+                );
+                roots_reachable_from_diverging.extend(coercion_graph.depth_first_search(root_vid));
+            } else {
+                non_diverging_vids.push(unsolved_vid);
             }
         }
         debug!(
