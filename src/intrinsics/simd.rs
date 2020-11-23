@@ -107,9 +107,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             for (out_idx, in_idx) in indexes.into_iter().enumerate() {
                 let in_lane = if in_idx < lane_count {
-                    x.value_field(fx, mir::Field::new(in_idx.try_into().unwrap()))
+                    x.value_field(fx, mir::Field::new(in_idx.into()))
                 } else {
-                    y.value_field(fx, mir::Field::new((in_idx - lane_count).try_into().unwrap()))
+                    y.value_field(fx, mir::Field::new((in_idx - lane_count).into()))
                 };
                 let out_lane = ret.place_field(fx, mir::Field::new(out_idx));
                 out_lane.write_cvalue(fx, in_lane);
@@ -207,7 +207,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             assert_eq!(lane_count, ret_lane_count);
 
             for lane in 0..lane_count {
-                let lane = mir::Field::new(lane.try_into().unwrap());
+                let lane = mir::Field::new(lane.into());
                 let a_lane = a.value_field(fx, lane).load_scalar(fx);
                 let b_lane = b.value_field(fx, lane).load_scalar(fx);
                 let c_lane = c.value_field(fx, lane).load_scalar(fx);
@@ -228,11 +228,47 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
 
+        simd_reduce_add_ordered | simd_reduce_add_unordered, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, v.layout());
+            assert_eq!(lane_layout.ty, ret.layout().ty);
+
+            let mut res_val = v.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+            for lane_idx in 1..lane_count {
+                let lane = v.value_field(fx, mir::Field::new(lane_idx.into())).load_scalar(fx);
+                res_val = if lane_layout.ty.is_floating_point() {
+                    fx.bcx.ins().fadd(res_val, lane)
+                } else {
+                    fx.bcx.ins().iadd(res_val, lane)
+                };
+            }
+            let res = CValue::by_val(res_val, lane_layout);
+            ret.write_cvalue(fx, res);
+        };
+
+        simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, v.layout());
+            assert_eq!(lane_layout.ty, ret.layout().ty);
+
+            let mut res_val = v.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+            for lane_idx in 1..lane_count {
+                let lane = v.value_field(fx, mir::Field::new(lane_idx.into())).load_scalar(fx);
+                res_val = if lane_layout.ty.is_floating_point() {
+                    fx.bcx.ins().fmul(res_val, lane)
+                } else {
+                    fx.bcx.ins().imul(res_val, lane)
+                };
+            }
+            let res = CValue::by_val(res_val, lane_layout);
+            ret.write_cvalue(fx, res);
+        };
+
         // simd_fabs
         // simd_saturating_add
         // simd_bitmask
         // simd_select
-        // simd_reduce_add_{,un}ordered
+        // simd_reduce_{add,mul}_{,un}ordered
         // simd_rem
     }
 }
