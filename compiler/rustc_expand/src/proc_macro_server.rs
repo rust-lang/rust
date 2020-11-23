@@ -2,7 +2,8 @@ use crate::base::ExtCtxt;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
+use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens};
+use rustc_ast::tokenstream::{DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
@@ -178,7 +179,7 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
                 {
                     TokenTree::Ident(Ident::new(sess, name.name, is_raw, name.span))
                 } else {
-                    let stream = nt_to_tokenstream(&nt, sess, span);
+                    let stream = nt_to_tokenstream(&nt, sess, span, CanSynthesizeMissingTokens::No);
                     TokenTree::Group(Group {
                         delimiter: Delimiter::None,
                         stream,
