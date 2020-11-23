@@ -14,7 +14,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
@@ -229,7 +229,6 @@ impl Clean<Item> for doctree::Module<'_> {
         let attrs = self.attrs.clean(cx);
 
         let mut items: Vec<Item> = vec![];
-        items.extend(self.extern_crates.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
@@ -2004,6 +2003,9 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
                     is_auto: is_auto.clean(cx),
                 })
             }
+            ItemKind::ExternCrate(orig_name) => {
+                return clean_extern_crate(item, name, orig_name, cx);
+            }
             _ => unreachable!("not yet converted"),
         };
 
@@ -2081,45 +2083,54 @@ fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
     ret
 }
 
-impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        let please_inline = self.vis.node.is_pub()
-            && self.attrs.iter().any(|a| {
-                a.has_name(sym::doc)
-                    && match a.meta_item_list() {
-                        Some(l) => attr::list_contains_name(&l, sym::inline),
-                        None => false,
-                    }
-            });
+fn clean_extern_crate(
+    krate: &hir::Item<'_>,
+    name: Symbol,
+    orig_name: Option<Symbol>,
+    cx: &DocContext<'_>,
+) -> Vec<Item> {
+    // this is the ID of the `extern crate` statement
+    let def_id = cx.tcx.hir().local_def_id(krate.hir_id);
+    let cnum = cx.tcx.extern_mod_stmt_cnum(def_id).unwrap_or(LOCAL_CRATE);
+    // this is the ID of the crate itself
+    let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+    let please_inline = krate.vis.node.is_pub()
+        && krate.attrs.iter().any(|a| {
+            a.has_name(sym::doc)
+                && match a.meta_item_list() {
+                    Some(l) => attr::list_contains_name(&l, sym::inline),
+                    None => false,
+                }
+        });
 
-        if please_inline {
-            let mut visited = FxHashSet::default();
+    if please_inline {
+        let mut visited = FxHashSet::default();
 
-            let res = Res::Def(DefKind::Mod, DefId { krate: self.cnum, index: CRATE_DEF_INDEX });
+        let res = Res::Def(DefKind::Mod, crate_def_id);
 
-            if let Some(items) = inline::try_inline(
-                cx,
-                cx.tcx.parent_module(self.hir_id).to_def_id(),
-                res,
-                self.name,
-                Some(self.attrs),
-                &mut visited,
-            ) {
-                return items;
-            }
+        if let Some(items) = inline::try_inline(
+            cx,
+            cx.tcx.parent_module(krate.hir_id).to_def_id(),
+            res,
+            name,
+            Some(krate.attrs),
+            &mut visited,
+        ) {
+            return items;
         }
-
-        vec![Item {
-            name: None,
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: DefId { krate: self.cnum, index: CRATE_DEF_INDEX },
-            visibility: self.vis.clean(cx),
-            stability: None,
-            deprecation: None,
-            kind: ExternCrateItem(self.name.clean(cx), self.path.clone()),
-        }]
     }
+    let path = orig_name.map(|x| x.to_string());
+    // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
+    vec![Item {
+        name: None,
+        attrs: krate.attrs.clean(cx),
+        source: krate.span.clean(cx),
+        def_id: crate_def_id,
+        visibility: krate.vis.clean(cx),
+        stability: None,
+        deprecation: None,
+        kind: ExternCrateItem(name.clean(cx), path),
+    }]
 }
 
 impl Clean<Vec<Item>> for doctree::Import<'_> {

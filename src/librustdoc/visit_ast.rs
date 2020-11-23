@@ -5,7 +5,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
@@ -248,18 +248,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // If we're inlining, skip private items.
             _ if self.inlining && !item.vis.node.is_pub() => {}
             hir::ItemKind::GlobalAsm(..) => {}
-            hir::ItemKind::ExternCrate(orig_name) => {
-                let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
-                om.extern_crates.push(ExternCrate {
-                    cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id).unwrap_or(LOCAL_CRATE),
-                    name: ident.name,
-                    hir_id: item.hir_id,
-                    path: orig_name.map(|x| x.to_string()),
-                    vis: &item.vis,
-                    attrs: &item.attrs,
-                    span: item.span,
-                })
-            }
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(ref path, kind) => {
                 let is_glob = kind == hir::UseKind::Glob;
@@ -313,6 +301,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 ));
             }
             hir::ItemKind::Fn(..)
+            | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)

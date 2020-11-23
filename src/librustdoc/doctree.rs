@@ -6,15 +6,12 @@ use rustc_ast as ast;
 use rustc_span::{self, symbol::Ident, Span, Symbol};
 
 use rustc_hir as hir;
-use rustc_hir::def_id::CrateNum;
-use rustc_hir::HirId;
 
 crate struct Module<'hir> {
     crate name: Option<Symbol>,
     crate attrs: &'hir [ast::Attribute],
     crate where_outer: Span,
     crate where_inner: Span,
-    crate extern_crates: Vec<ExternCrate<'hir>>,
     crate imports: Vec<Import<'hir>>,
     crate mods: Vec<Module<'hir>>,
     crate id: hir::HirId,
@@ -33,7 +30,6 @@ impl Module<'hir> {
             where_outer: rustc_span::DUMMY_SP,
             where_inner: rustc_span::DUMMY_SP,
             attrs,
-            extern_crates: Vec::new(),
             imports: Vec::new(),
             mods: Vec::new(),
             items: Vec::new(),
@@ -67,16 +63,6 @@ crate struct Macro {
     crate def_id: hir::def_id::DefId,
     crate matchers: Vec<Span>,
     crate imported_from: Option<Symbol>,
-}
-
-crate struct ExternCrate<'hir> {
-    crate name: Symbol,
-    crate hir_id: HirId,
-    crate cnum: CrateNum,
-    crate path: Option<String>,
-    crate vis: &'hir hir::Visibility<'hir>,
-    crate attrs: &'hir [ast::Attribute],
-    crate span: Span,
 }
 
 #[derive(Debug)]
