@@ -165,12 +165,6 @@ impl LateLintPass<'_> for Default {
                 let stmt = &block.stmts[stmt_idx];
 
                 if let StmtKind::Local(preceding_local) = &stmt.kind {
-                    // filter out fields like `= Default::default()`, because the FRU already covers them
-                    let assigned_fields = assigned_fields
-                        .into_iter()
-                        .filter(|(_, rhs)| !is_expr_default(rhs, cx))
-                        .collect::<Vec<(Symbol, &Expr<'_>)>>();
-
                     // if all fields of the struct are not assigned, add `.. Default::default()` to the suggestion.
                     let ext_with_default = !fields_of_type(binding_type)
                         .iter()
