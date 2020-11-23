@@ -18,7 +18,6 @@ fn main() {
         || target.contains("uwp")
         || target.contains("windows")
         || target.contains("fuchsia")
-        || target.contains("cloudabi")
         || (target.contains("sgx") && target.contains("fortanix"))
         || target.contains("hermit")
         || target.contains("l4re")

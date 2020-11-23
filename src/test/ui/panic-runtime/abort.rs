@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 // compile-flags:-C panic=abort
 // no-prefer-dynamic
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-macos

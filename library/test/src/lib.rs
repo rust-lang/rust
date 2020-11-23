@@ -20,7 +20,7 @@
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "50297")]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
-#![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
+#![cfg_attr(unix, feature(libc))]
 #![feature(rustc_private)]
 #![feature(nll)]
 #![feature(available_concurrency)]

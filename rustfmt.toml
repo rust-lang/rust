@@ -32,7 +32,4 @@ ignore = [
     "src/tools/rust-analyzer",
     "src/tools/rustfmt",
     "src/tools/rust-installer",
-
-    # We do not format this file as it is externally sourced and auto-generated.
-    "library/std/src/sys/cloudabi/abi/cloudabi.rs",
 ]

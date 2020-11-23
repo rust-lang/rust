@@ -32,9 +32,6 @@ cfg_if::cfg_if! {
     } else if #[cfg(windows)] {
         mod windows;
         pub use self::windows::*;
-    } else if #[cfg(target_os = "cloudabi")] {
-        mod cloudabi;
-        pub use self::cloudabi::*;
     } else if #[cfg(target_os = "hermit")] {
         mod hermit;
         pub use self::hermit::*;
@@ -63,11 +60,10 @@ cfg_if::cfg_if! {
         // On unix we'll document what's already available
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as unix_ext;
-    } else if #[cfg(any(target_os = "cloudabi",
-                        target_os = "hermit",
+    } else if #[cfg(any(target_os = "hermit",
                         target_arch = "wasm32",
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
-        // On CloudABI and wasm right now the module below doesn't compile
+        // On wasm right now the module below doesn't compile
         // (missing things in `libc` which is empty) so just omit everything
         // with an empty module
         #[unstable(issue = "none", feature = "std_internals")]
@@ -88,11 +84,10 @@ cfg_if::cfg_if! {
         #[allow(missing_docs)]
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as windows_ext;
-    } else if #[cfg(any(target_os = "cloudabi",
-                        target_os = "hermit",
+    } else if #[cfg(any(target_os = "hermit",
                         target_arch = "wasm32",
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
-        // On CloudABI and wasm right now the shim below doesn't compile, so
+        // On wasm right now the shim below doesn't compile, so
         // just omit it
         #[unstable(issue = "none", feature = "std_internals")]
         #[allow(missing_docs)]

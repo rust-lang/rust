@@ -44,8 +44,6 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("redox") {
         // redox is handled in lib.rs
-    } else if target.contains("cloudabi") {
-        println!("cargo:rustc-link-lib=unwind");
     }
 }
 

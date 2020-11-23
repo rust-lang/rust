@@ -1,5 +1,3 @@
-// ignore-cloudabi no std::net support
-
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::io::{self, Read, Write};

@@ -1,5 +1,4 @@
 // run-pass
-// ignore-cloudabi no std::env
 
 fn parse_args() -> String {
     let args: Vec<_> = ::std::env::args().collect();

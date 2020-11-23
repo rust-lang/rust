@@ -1,5 +1,3 @@
-// ignore-cloudabi no std::env support
-
 use std::env;
 
 pub struct Foo {

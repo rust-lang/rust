@@ -1,5 +1,3 @@
-// ignore-cloudabi no std::path
-
 use std::path::Path;
 
 trait Foo {

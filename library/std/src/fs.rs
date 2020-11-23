@@ -8,7 +8,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_env = "sgx"))))]
 mod tests;
 
 use crate::ffi::OsString;

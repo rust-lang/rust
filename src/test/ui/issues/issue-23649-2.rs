@@ -1,5 +1,4 @@
 // run-pass
-// ignore-cloudabi no std::path
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

@@ -32,7 +32,7 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
     abort();
 
     cfg_if::cfg_if! {
-        if #[cfg(any(unix, target_os = "cloudabi"))] {
+        if #[cfg(unix)] {
             unsafe fn abort() -> ! {
                 libc::abort();
             }

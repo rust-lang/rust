@@ -1,5 +1,4 @@
 // run-pass
-// ignore-cloudabi no std::env
 // ignore-wasm32 issue 42629
 
 #[inline(never)]
