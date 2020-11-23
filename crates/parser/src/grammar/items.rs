@@ -112,7 +112,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         has_mods = true;
     }
 
-    if p.at(T![extern]) {
+    if p.at(T![extern]) && p.nth(1) != T!['{'] && (p.nth(1) != STRING || p.nth(2) != T!['{']) {
         has_mods = true;
         abi(p);
     }
@@ -181,6 +181,14 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         T![type] => {
             type_alias(p, m);
         }
+
+        // unsafe extern "C" {}
+        T![extern] => {
+            abi(p);
+            extern_item_list(p);
+            m.complete(p, EXTERN_BLOCK);
+        }
+
         _ => {
             if !has_visibility && !has_mods {
                 return Err(m);

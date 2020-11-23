@@ -14,3 +14,5 @@ unsafe auto trait T {}
 unsafe impl Foo {}
 default impl Foo {}
 unsafe default impl Foo {}
+
+unsafe extern "C++" {}
