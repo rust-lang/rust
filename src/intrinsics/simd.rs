@@ -233,45 +233,40 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
         simd_reduce_add_ordered | simd_reduce_add_unordered, (c v) {
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
-            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, v.layout());
-            assert_eq!(lane_layout.ty, ret.layout().ty);
-
-            let mut res_val = v.value_field(fx, mir::Field::new(0)).load_scalar(fx);
-            for lane_idx in 1..lane_count {
-                let lane = v.value_field(fx, mir::Field::new(lane_idx.into())).load_scalar(fx);
-                res_val = if lane_layout.ty.is_floating_point() {
-                    fx.bcx.ins().fadd(res_val, lane)
+            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+                if lane_layout.ty.is_floating_point() {
+                    fx.bcx.ins().fadd(a, b)
                 } else {
-                    fx.bcx.ins().iadd(res_val, lane)
-                };
-            }
-            let res = CValue::by_val(res_val, lane_layout);
-            ret.write_cvalue(fx, res);
+                    fx.bcx.ins().iadd(a, b)
+                }
+            });
         };
 
         simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v) {
             validate_simd_type!(fx, intrinsic, span, v.layout().ty);
-            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, v.layout());
-            assert_eq!(lane_layout.ty, ret.layout().ty);
-
-            let mut res_val = v.value_field(fx, mir::Field::new(0)).load_scalar(fx);
-            for lane_idx in 1..lane_count {
-                let lane = v.value_field(fx, mir::Field::new(lane_idx.into())).load_scalar(fx);
-                res_val = if lane_layout.ty.is_floating_point() {
-                    fx.bcx.ins().fmul(res_val, lane)
+            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+                if lane_layout.ty.is_floating_point() {
+                    fx.bcx.ins().fmul(a, b)
                 } else {
-                    fx.bcx.ins().imul(res_val, lane)
-                };
-            }
-            let res = CValue::by_val(res_val, lane_layout);
-            ret.write_cvalue(fx, res);
+                    fx.bcx.ins().imul(a, b)
+                }
+            });
+        };
+
+        simd_reduce_all, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce_bool(fx, v, ret, |fx, a, b| fx.bcx.ins().band(a, b));
+        };
+
+        simd_reduce_any, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce_bool(fx, v, ret, |fx, a, b| fx.bcx.ins().bor(a, b));
         };
 
         // simd_fabs
         // simd_saturating_add
         // simd_bitmask
         // simd_select
-        // simd_reduce_{add,mul}_{,un}ordered
         // simd_rem
     }
 }

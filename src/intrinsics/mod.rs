@@ -263,6 +263,48 @@ fn simd_pair_for_each_lane<'tcx, M: Module>(
     }
 }
 
+fn simd_reduce<'tcx, M: Module>(
+    fx: &mut FunctionCx<'_, 'tcx, M>,
+    val: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, TyAndLayout<'tcx>, Value, Value) -> Value,
+) {
+    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, val.layout());
+    assert_eq!(lane_layout, ret.layout());
+
+    let mut res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+    for lane_idx in 1..lane_count {
+        let lane = val
+            .value_field(fx, mir::Field::new(lane_idx.into()))
+            .load_scalar(fx);
+        res_val = f(fx, lane_layout, res_val, lane);
+    }
+    let res = CValue::by_val(res_val, lane_layout);
+    ret.write_cvalue(fx, res);
+}
+
+fn simd_reduce_bool<'tcx, M: Module>(
+    fx: &mut FunctionCx<'_, 'tcx, M>,
+    val: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, Value, Value) -> Value,
+) {
+    let (_lane_layout, lane_count) = lane_type_and_count(fx.tcx, val.layout());
+    assert!(ret.layout().ty.is_bool());
+
+    let res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+    let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
+    for lane_idx in 1..lane_count {
+        let lane = val
+            .value_field(fx, mir::Field::new(lane_idx.into()))
+            .load_scalar(fx);
+        let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
+        res_val = f(fx, res_val, lane);
+    }
+    let res = CValue::by_val(res_val, ret.layout());
+    ret.write_cvalue(fx, res);
+}
+
 fn bool_to_zero_or_max_uint<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     layout: TyAndLayout<'tcx>,
