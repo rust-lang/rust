@@ -1,16 +1,15 @@
 //! FIXME: write short doc here
+use std::{
+    convert::TryInto,
+    error::Error,
+    fmt::{self, Display},
+};
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::base_db::{FileRange, SourceDatabaseExt};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
-};
-
-use std::{
-    convert::TryInto,
-    error::Error,
-    fmt::{self, Display},
 };
 use syntax::{
     algo::find_node_at_offset,
