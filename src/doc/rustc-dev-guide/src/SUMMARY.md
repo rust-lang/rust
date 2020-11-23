@@ -38,6 +38,7 @@
 - [Implementing new features](./implementing_new_features.md)
 - [Stability attributes](./stability.md)
 - [Stabilizing Features](./stabilization_guide.md)
+- [Feature Gates](./feature-gates.md)
 - [Coding conventions](./conventions.md)
 - [Notification groups](notification-groups/about.md)
     - [ARM](notification-groups/arm.md)
