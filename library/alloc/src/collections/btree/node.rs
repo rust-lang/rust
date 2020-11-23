@@ -1124,21 +1124,20 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
     /// by taking care of leaf data.
     fn split_leaf_data(&mut self, new_node: &mut LeafNode<K, V>) -> (K, V) {
         debug_assert!(self.idx < self.node.len());
-        let new_len = self.node.len() - self.idx - 1;
+        let old_len = self.node.len();
+        let new_len = old_len - self.idx - 1;
         new_node.len = new_len as u16;
         unsafe {
             let k = self.node.key_area_mut(self.idx).assume_init_read();
             let v = self.node.val_area_mut(self.idx).assume_init_read();
 
-            ptr::copy_nonoverlapping(
-                self.node.key_area_mut(self.idx + 1..).as_ptr(),
-                new_node.keys.as_mut_ptr(),
-                new_len,
+            move_to_slice(
+                self.node.key_area_mut(self.idx + 1..old_len),
+                &mut new_node.keys[..new_len],
             );
-            ptr::copy_nonoverlapping(
-                self.node.val_area_mut(self.idx + 1..).as_ptr(),
-                new_node.vals.as_mut_ptr(),
-                new_len,
+            move_to_slice(
+                self.node.val_area_mut(self.idx + 1..old_len),
+                &mut new_node.vals[..new_len],
             );
 
             *self.node.len_mut() = self.idx as u16;
@@ -1190,20 +1189,20 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// - All the edges and key-value pairs to the right of this handle are put into
     ///   a newly allocated node.
     pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {
+        let old_len = self.node.len();
         unsafe {
             let mut new_node = Box::new(InternalNode::new());
             let kv = self.split_leaf_data(&mut new_node.data);
             let new_len = usize::from(new_node.data.len);
-            ptr::copy_nonoverlapping(
-                self.node.edge_area_mut(self.idx + 1..).as_ptr(),
-                new_node.edges.as_mut_ptr(),
-                new_len + 1,
+            move_to_slice(
+                self.node.edge_area_mut(self.idx + 1..old_len + 1),
+                &mut new_node.edges[..new_len + 1],
             );
 
             let height = self.node.height;
             let mut right = NodeRef::from_new_internal(new_node, height);
 
-            right.borrow_mut().correct_childrens_parent_links(0..=new_len);
+            right.borrow_mut().correct_childrens_parent_links(0..new_len + 1);
 
             SplitResult { left: self.node, kv, right }
         }
@@ -1323,18 +1322,16 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
             let parent_key = slice_remove(parent_node.key_area_mut(..old_parent_len), parent_idx);
             left_node.key_area_mut(old_left_len).write(parent_key);
-            ptr::copy_nonoverlapping(
-                right_node.key_area_mut(..).as_ptr(),
-                left_node.key_area_mut(old_left_len + 1..).as_mut_ptr(),
-                right_len,
+            move_to_slice(
+                right_node.key_area_mut(..right_len),
+                left_node.key_area_mut(old_left_len + 1..new_left_len),
             );
 
             let parent_val = slice_remove(parent_node.val_area_mut(..old_parent_len), parent_idx);
             left_node.val_area_mut(old_left_len).write(parent_val);
-            ptr::copy_nonoverlapping(
-                right_node.val_area_mut(..).as_ptr(),
-                left_node.val_area_mut(old_left_len + 1..).as_mut_ptr(),
-                right_len,
+            move_to_slice(
+                right_node.val_area_mut(..right_len),
+                left_node.val_area_mut(old_left_len + 1..new_left_len),
             );
 
             slice_remove(&mut parent_node.edge_area_mut(..old_parent_len + 1), parent_idx + 1);
@@ -1346,10 +1343,9 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 // of the node of this edge, thus above zero, so they are internal.
                 let mut left_node = left_node.reborrow_mut().cast_to_internal_unchecked();
                 let mut right_node = right_node.cast_to_internal_unchecked();
-                ptr::copy_nonoverlapping(
-                    right_node.edge_area_mut(..).as_ptr(),
-                    left_node.edge_area_mut(old_left_len + 1..).as_mut_ptr(),
-                    right_len + 1,
+                move_to_slice(
+                    right_node.edge_area_mut(..right_len + 1),
+                    left_node.edge_area_mut(old_left_len + 1..new_left_len + 1),
                 );
 
                 left_node.correct_childrens_parent_links(old_left_len + 1..new_left_len + 1);
@@ -1738,6 +1734,16 @@ unsafe fn slice_remove<T>(slice: &mut [MaybeUninit<T>], idx: usize) -> T {
         let ret = (*slice_ptr.add(idx)).assume_init_read();
         ptr::copy(slice_ptr.add(idx + 1), slice_ptr.add(idx), len - idx - 1);
         ret
+    }
+}
+
+/// Moves all values from a slice of initialized elements to a slice
+/// of uninitialized elements, leaving behind `src` as all uninitialized.
+/// Works like `dst.copy_from_slice(src)` but does not require `T` to be `Copy`.
+fn move_to_slice<T>(src: &mut [MaybeUninit<T>], dst: &mut [MaybeUninit<T>]) {
+    assert!(src.len() == dst.len());
+    unsafe {
+        ptr::copy_nonoverlapping(src.as_ptr(), dst.as_mut_ptr(), src.len());
     }
 }
 
