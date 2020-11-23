@@ -159,24 +159,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Coercing from `!` to any type is allowed:
         if a.is_never() {
-            // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
-            // type variable, we want `?T` to fallback to `!` if not
-            // otherwise constrained. An example where this arises:
-            //
-            //     let _: Option<?T> = Some({ return; });
-            //
-            // here, we would coerce from `!` to `?T`.
-            return if b.is_ty_var() {
-                // Micro-optimization: no need for this if `b` is
-                // already resolved in some way.
-                let diverging_ty = self.next_diverging_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::AdjustmentType,
-                    span: self.cause.span,
-                });
-                self.coerce_from_inference_variable(diverging_ty, b, simple(Adjust::NeverToAny))
-            } else {
-                success(simple(Adjust::NeverToAny)(b), b, vec![])
-            };
+            return success(simple(Adjust::NeverToAny)(b), b, vec![]);
         }
 
         // Coercing *from* an unresolved inference variable means that
