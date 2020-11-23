@@ -1,6 +1,9 @@
 use crate::check::FnCtxt;
 use rustc_data_structures::{
-    fx::FxHashMap, graph::vec_graph::VecGraph, graph::WithSuccessors, stable_set::FxHashSet,
+    fx::FxHashMap,
+    graph::WithSuccessors,
+    graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
+    stable_set::FxHashSet,
 };
 use rustc_middle::ty::{self, Ty};
 
@@ -275,7 +278,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // type variable. These will typically default to `!`, unless
         // we find later that they are *also* reachable from some
         // other type variable outside this set.
-        let mut roots_reachable_from_diverging = FxHashSet::default();
+        let mut roots_reachable_from_diverging = DepthFirstSearch::new(&coercion_graph);
         let mut diverging_vids = vec![];
         let mut non_diverging_vids = vec![];
         for unsolved_vid in unsolved_vids {
@@ -288,16 +291,21 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             );
             if diverging_roots.contains(&root_vid) {
                 diverging_vids.push(unsolved_vid);
+                roots_reachable_from_diverging.push_start_node(root_vid);
+
                 debug!(
                     "calculate_diverging_fallback: root_vid={:?} reaches {:?}",
                     root_vid,
                     coercion_graph.depth_first_search(root_vid).collect::<Vec<_>>()
                 );
-                roots_reachable_from_diverging.extend(coercion_graph.depth_first_search(root_vid));
+
+                // drain the iterator to visit all nodes reachable from this node
+                roots_reachable_from_diverging.complete_search();
             } else {
                 non_diverging_vids.push(unsolved_vid);
             }
         }
+
         debug!(
             "calculate_diverging_fallback: roots_reachable_from_diverging={:?}",
             roots_reachable_from_diverging,
@@ -307,13 +315,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // diverging variable, and then compute the set reachable from
         // N0, which we call N. These are the *non-diverging* type
         // variables. (Note that this set consists of "root variables".)
-        let mut roots_reachable_from_non_diverging = FxHashSet::default();
+        let mut roots_reachable_from_non_diverging = DepthFirstSearch::new(&coercion_graph);
         for &non_diverging_vid in &non_diverging_vids {
             let root_vid = self.infcx.root_var(non_diverging_vid);
-            if roots_reachable_from_diverging.contains(&root_vid) {
+            if roots_reachable_from_diverging.visited(root_vid) {
                 continue;
             }
-            roots_reachable_from_non_diverging.extend(coercion_graph.depth_first_search(root_vid));
+            roots_reachable_from_non_diverging.push_start_node(root_vid);
+            roots_reachable_from_non_diverging.complete_search();
         }
         debug!(
             "calculate_diverging_fallback: roots_reachable_from_non_diverging={:?}",
@@ -329,7 +338,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             let root_vid = self.infcx.root_var(diverging_vid);
             let can_reach_non_diverging = coercion_graph
                 .depth_first_search(root_vid)
-                .any(|n| roots_reachable_from_non_diverging.contains(&n));
+                .any(|n| roots_reachable_from_non_diverging.visited(n));
             if can_reach_non_diverging {
                 debug!("fallback to (): {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);

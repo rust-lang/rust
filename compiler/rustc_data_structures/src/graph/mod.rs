@@ -32,7 +32,7 @@ where
     where
         Self: WithNumNodes,
     {
-        iterate::DepthFirstSearch::new(self, from)
+        iterate::DepthFirstSearch::new(self).with_start_node(from)
     }
 }
 
