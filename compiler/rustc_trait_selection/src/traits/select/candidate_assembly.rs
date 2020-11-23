@@ -350,11 +350,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
-            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
+            all_bounds.filter(|p| p.value.def_id() == stack.obligation.predicate.def_id());
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in matching_bounds {
-            let wc = self.evaluate_where_clause(stack, bound)?;
+            let wc = self.evaluate_where_clause(stack, bound.value)?;
             if wc.may_apply() {
                 candidates.vec.push(ParamCandidate(bound));
             }

@@ -294,7 +294,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let mut cause = cause.clone();
             if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref() {
                 let derived_cause = traits::DerivedObligationCause {
-                    parent_trait_ref,
+                    parent_trait_ref: parent_trait_ref.value,
                     parent_code: Rc::new(obligation.cause.code.clone()),
                 };
                 cause.make_mut().code =

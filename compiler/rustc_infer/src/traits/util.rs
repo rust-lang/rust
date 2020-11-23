@@ -309,7 +309,7 @@ impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToT
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
             if let Some(data) = obligation.predicate.to_opt_poly_trait_ref() {
-                return Some(data);
+                return Some(data.value);
             }
         }
         None

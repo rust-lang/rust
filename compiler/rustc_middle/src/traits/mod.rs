@@ -16,6 +16,7 @@ use crate::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::Constness;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
@@ -457,7 +458,7 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(Vec<N>),
+    Param(Vec<N>, Constness),
 
     /// Virtual calls through an object.
     Object(ImplSourceObjectData<'tcx, N>),
@@ -487,7 +488,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {
             ImplSource::UserDefined(i) => i.nested,
-            ImplSource::Param(n) => n,
+            ImplSource::Param(n, _) => n,
             ImplSource::Builtin(i) => i.nested,
             ImplSource::AutoImpl(d) => d.nested,
             ImplSource::Closure(c) => c.nested,
@@ -502,7 +503,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match &self {
             ImplSource::UserDefined(i) => &i.nested[..],
-            ImplSource::Param(n) => &n[..],
+            ImplSource::Param(n, _) => &n[..],
             ImplSource::Builtin(i) => &i.nested[..],
             ImplSource::AutoImpl(d) => &d.nested[..],
             ImplSource::Closure(c) => &c.nested[..],
@@ -524,7 +525,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                 substs: i.substs,
                 nested: i.nested.into_iter().map(f).collect(),
             }),
-            ImplSource::Param(n) => ImplSource::Param(n.into_iter().map(f).collect()),
+            ImplSource::Param(n, ct) => ImplSource::Param(n.into_iter().map(f).collect(), ct),
             ImplSource::Builtin(i) => ImplSource::Builtin(ImplSourceBuiltinData {
                 nested: i.nested.into_iter().map(f).collect(),
             }),
