@@ -166,7 +166,7 @@ pre {
 	color: #c5c5c5;
 }
 
-.content .stability::before { color: #ccc; }
+.content .item-info::before { color: #ccc; }
 
 .content span.foreigntype, .content a.foreigntype { color: #ef57ff; }
 .content span.union, .content a.union { color: #98a01c; }
@@ -219,7 +219,7 @@ a {
 }
 
 .docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
-.docblock-short a:not(.srclink):not(.test-arrow), .stability a,
+.docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
 #help a {
 	color: #39AFD7;
 }
