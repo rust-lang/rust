@@ -56,7 +56,7 @@ pub(crate) fn ignore_test(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
 fn has_ignore_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
     fn_def.attrs().find_map(|attr| {
-        if attr.path()?.syntax().text().to_string() == "ignore" {
+        if attr.path()?.syntax().text() == "ignore" {
             Some(attr)
         } else {
             None
