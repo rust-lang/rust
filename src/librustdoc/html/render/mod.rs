@@ -1880,10 +1880,17 @@ fn render_markdown(
 fn document_short(
     w: &mut Buffer,
     item: &clean::Item,
+    cx: &Context,
     link: AssocItemLink<'_>,
     prefix: &str,
     is_hidden: bool,
+    parent: Option<&clean::Item>,
+    show_def_docs: bool,
 ) {
+    document_item_info(w, cx, item, is_hidden, parent);
+    if !show_def_docs {
+        return;
+    }
     if let Some(s) = item.doc_value() {
         let mut summary_html = MarkdownSummaryLine(s, &item.links()).into_string();
 
@@ -3806,13 +3813,22 @@ fn render_impl(
                     if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
-                        document_item_info(w, cx, it, is_hidden, Some(parent));
                         if item.doc_value().is_some() {
+                            document_item_info(w, cx, it, is_hidden, Some(parent));
                             document_full(w, item, cx, "", is_hidden);
-                        } else if show_def_docs {
+                        } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link, "", is_hidden);
+                            document_short(
+                                w,
+                                it,
+                                cx,
+                                link,
+                                "",
+                                is_hidden,
+                                Some(parent),
+                                show_def_docs,
+                            );
                         }
                     }
                 } else {
@@ -3822,10 +3838,7 @@ fn render_impl(
                     }
                 }
             } else {
-                document_item_info(w, cx, item, is_hidden, Some(parent));
-                if show_def_docs {
-                    document_short(w, item, link, "", is_hidden);
-                }
+                document_short(w, item, cx, link, "", is_hidden, Some(parent), show_def_docs);
             }
         }
     }
