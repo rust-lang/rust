@@ -5,11 +5,10 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, Span};
@@ -80,63 +79,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
 
         module
-    }
-
-    fn visit_fn(
-        &mut self,
-        om: &mut Module<'tcx>,
-        item: &'tcx hir::Item<'_>,
-        name: Symbol,
-        decl: &'tcx hir::FnDecl<'_>,
-        header: hir::FnHeader,
-        generics: &'tcx hir::Generics<'_>,
-        body: hir::BodyId,
-    ) {
-        debug!("visiting fn");
-        let macro_kind = item.attrs.iter().find_map(|a| {
-            if a.has_name(sym::proc_macro) {
-                Some(MacroKind::Bang)
-            } else if a.has_name(sym::proc_macro_derive) {
-                Some(MacroKind::Derive)
-            } else if a.has_name(sym::proc_macro_attribute) {
-                Some(MacroKind::Attr)
-            } else {
-                None
-            }
-        });
-        match macro_kind {
-            Some(kind) => {
-                let name = if kind == MacroKind::Derive {
-                    item.attrs
-                        .lists(sym::proc_macro_derive)
-                        .find_map(|mi| mi.ident())
-                        .expect("proc-macro derives require a name")
-                        .name
-                } else {
-                    name
-                };
-
-                let mut helpers = Vec::new();
-                for mi in item.attrs.lists(sym::proc_macro_derive) {
-                    if !mi.has_name(sym::attributes) {
-                        continue;
-                    }
-
-                    if let Some(list) = mi.meta_item_list() {
-                        for inner_mi in list {
-                            if let Some(ident) = inner_mi.ident() {
-                                helpers.push(ident.name);
-                            }
-                        }
-                    }
-                }
-
-                om.proc_macros.push(ProcMacro { name, id: item.hir_id, kind, helpers });
-            }
-            None => {
-                om.fns.push(Function { id: item.hir_id, decl, name, generics, header, body });
-            }
-        }
     }
 
     fn visit_mod_contents(
@@ -306,18 +248,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // If we're inlining, skip private items.
             _ if self.inlining && !item.vis.node.is_pub() => {}
             hir::ItemKind::GlobalAsm(..) => {}
-            hir::ItemKind::ExternCrate(orig_name) => {
-                let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
-                om.extern_crates.push(ExternCrate {
-                    cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id).unwrap_or(LOCAL_CRATE),
-                    name: ident.name,
-                    hir_id: item.hir_id,
-                    path: orig_name.map(|x| x.to_string()),
-                    vis: &item.vis,
-                    attrs: &item.attrs,
-                    span: item.span,
-                })
-            }
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(ref path, kind) => {
                 let is_glob = kind == hir::UseKind::Glob;
@@ -370,15 +300,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     Some(ident.name),
                 ));
             }
-            hir::ItemKind::Fn(ref sig, ref gen, body) => {
-                self.visit_fn(om, item, ident.name, &sig.decl, sig.header, gen, body)
-            }
-            hir::ItemKind::Enum(..)
+            hir::ItemKind::Fn(..)
+            | hir::ItemKind::ExternCrate(..)
+            | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..)
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Static(..)
+            | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed)),
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
@@ -386,20 +316,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if ident.name != kw::Underscore {
                     om.items.push((item, renamed));
                 }
-            }
-            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
-                let items = item_ids.iter().map(|ti| self.cx.tcx.hir().trait_item(ti.id)).collect();
-                let t = Trait {
-                    is_auto,
-                    unsafety,
-                    name: ident.name,
-                    items,
-                    generics,
-                    bounds,
-                    id: item.hir_id,
-                    attrs: &item.attrs,
-                };
-                om.traits.push(t);
             }
             hir::ItemKind::Impl { ref of_trait, .. } => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
@@ -418,15 +334,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
-        if self.inlining && !item.vis.node.is_pub() {
-            return;
+        if !self.inlining || item.vis.node.is_pub() {
+            om.foreigns.push((item, renamed));
         }
-
-        om.foreigns.push(ForeignItem {
-            id: item.hir_id,
-            name: renamed.unwrap_or(item.ident).name,
-            kind: &item.kind,
-        });
     }
 
     // Convert each `exported_macro` into a doc item.

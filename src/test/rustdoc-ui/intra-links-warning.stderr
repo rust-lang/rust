@@ -36,6 +36,14 @@ warning: unresolved link to `Qux::Z`
 LL |       //! , [Uniooon::X] and [Qux::Z].
    |                               ^^^^^^ no item named `Qux` in scope
 
+warning: unresolved link to `Qux:Y`
+  --> $DIR/intra-links-warning.rs:14:13
+   |
+LL |        /// [Qux:Y]
+   |             ^^^^^ no item named `Qux:Y` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
 warning: unresolved link to `BarA`
   --> $DIR/intra-links-warning.rs:21:10
    |
@@ -89,14 +97,6 @@ LL | f!("Foo\nbar [BarF] bar\nbaz");
    = note: no item named `BarF` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-warning: unresolved link to `Qux:Y`
-  --> $DIR/intra-links-warning.rs:14:13
-   |
-LL |        /// [Qux:Y]
-   |             ^^^^^ no item named `Qux:Y` in scope
-   |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
   --> $DIR/intra-links-warning.rs:58:30

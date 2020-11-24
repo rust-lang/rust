@@ -14,7 +14,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
@@ -229,15 +229,11 @@ impl Clean<Item> for doctree::Module<'_> {
         let attrs = self.attrs.clean(cx);
 
         let mut items: Vec<Item> = vec![];
-        items.extend(self.extern_crates.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
-        items.extend(self.fns.iter().map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(self.items.iter().map(|x| x.clean(cx)).flatten());
-        items.extend(self.traits.iter().map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
-        items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -871,40 +867,72 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
     }
 }
 
+fn clean_fn_or_proc_macro(
+    item: &hir::Item<'_>,
+    sig: &'a hir::FnSig<'a>,
+    generics: &'a hir::Generics<'a>,
+    body_id: hir::BodyId,
+    name: &mut Symbol,
+    cx: &DocContext<'_>,
+) -> ItemKind {
+    let macro_kind = item.attrs.iter().find_map(|a| {
+        if a.has_name(sym::proc_macro) {
+            Some(MacroKind::Bang)
+        } else if a.has_name(sym::proc_macro_derive) {
+            Some(MacroKind::Derive)
+        } else if a.has_name(sym::proc_macro_attribute) {
+            Some(MacroKind::Attr)
+        } else {
+            None
+        }
+    });
+    match macro_kind {
+        Some(kind) => {
+            if kind == MacroKind::Derive {
+                *name = item
+                    .attrs
+                    .lists(sym::proc_macro_derive)
+                    .find_map(|mi| mi.ident())
+                    .expect("proc-macro derives require a name")
+                    .name;
+            }
+
+            let mut helpers = Vec::new();
+            for mi in item.attrs.lists(sym::proc_macro_derive) {
+                if !mi.has_name(sym::attributes) {
+                    continue;
+                }
+
+                if let Some(list) = mi.meta_item_list() {
+                    for inner_mi in list {
+                        if let Some(ident) = inner_mi.ident() {
+                            helpers.push(ident.name);
+                        }
+                    }
+                }
+            }
+            ProcMacroItem(ProcMacro { kind, helpers: helpers.clean(cx) })
+        }
+        None => {
+            let mut func = (sig, generics, body_id).clean(cx);
+            let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+            func.header.constness =
+                if is_const_fn(cx.tcx, def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
+                    hir::Constness::Const
+                } else {
+                    hir::Constness::NotConst
+                };
+            FunctionItem(func)
+        }
+    }
+}
+
 impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
     fn clean(&self, cx: &DocContext<'_>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, || (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
         let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
         Function { decl, generics, header: self.0.header, all_types, ret_types }
-    }
-}
-
-impl Clean<Item> for doctree::Function<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let (generics, decl) =
-            enter_impl_trait(cx, || (self.generics.clean(cx), (self.decl, self.body).clean(cx)));
-
-        let did = cx.tcx.hir().local_def_id(self.id).to_def_id();
-        let constness = if is_const_fn(cx.tcx, did) && !is_unstable_const_fn(cx.tcx, did).is_some()
-        {
-            hir::Constness::Const
-        } else {
-            hir::Constness::NotConst
-        };
-        let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-        Item::from_def_id_and_parts(
-            did,
-            Some(self.name),
-            FunctionItem(Function {
-                decl,
-                generics,
-                header: hir::FnHeader { constness, ..self.header },
-                all_types,
-                ret_types,
-            }),
-            cx,
-        )
     }
 }
 
@@ -989,26 +1017,6 @@ impl Clean<FnRetTy> for hir::FnRetTy<'_> {
             Self::Return(ref typ) => Return(typ.clean(cx)),
             Self::DefaultReturn(..) => DefaultReturn,
         }
-    }
-}
-
-impl Clean<Item> for doctree::Trait<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let attrs = self.attrs.clean(cx);
-        let is_spotlight = attrs.has_doc_flag(sym::spotlight);
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            TraitItem(Trait {
-                unsafety: self.unsafety,
-                items: self.items.iter().map(|ti| ti.clean(cx)).collect(),
-                generics: self.generics.clean(cx),
-                bounds: self.bounds.clean(cx),
-                is_spotlight,
-                is_auto: self.is_auto.clean(cx),
-            }),
-            cx,
-        )
     }
 }
 
@@ -1927,7 +1935,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
 
         let (item, renamed) = self;
         let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
-        let name = match renamed {
+        let mut name = match renamed {
             Some(ident) => ident.name,
             None => cx.tcx.hir().name(item.hir_id),
         };
@@ -1977,6 +1985,27 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
                 fields_stripped: false,
             }),
             ItemKind::Impl { .. } => return clean_impl(item, cx),
+            // proc macros can have a name set by attributes
+            ItemKind::Fn(ref sig, ref generics, body_id) => {
+                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
+            }
+            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref item_ids) => {
+                let items =
+                    item_ids.iter().map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx)).collect();
+                let attrs = item.attrs.clean(cx);
+                let is_spotlight = attrs.has_doc_flag(sym::spotlight);
+                TraitItem(Trait {
+                    unsafety,
+                    items,
+                    generics: generics.clean(cx),
+                    bounds: bounds.clean(cx),
+                    is_spotlight,
+                    is_auto: is_auto.clean(cx),
+                })
+            }
+            ItemKind::ExternCrate(orig_name) => {
+                return clean_extern_crate(item, name, orig_name, cx);
+            }
             _ => unreachable!("not yet converted"),
         };
 
@@ -2054,45 +2083,54 @@ fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
     ret
 }
 
-impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
-    fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
-        let please_inline = self.vis.node.is_pub()
-            && self.attrs.iter().any(|a| {
-                a.has_name(sym::doc)
-                    && match a.meta_item_list() {
-                        Some(l) => attr::list_contains_name(&l, sym::inline),
-                        None => false,
-                    }
-            });
+fn clean_extern_crate(
+    krate: &hir::Item<'_>,
+    name: Symbol,
+    orig_name: Option<Symbol>,
+    cx: &DocContext<'_>,
+) -> Vec<Item> {
+    // this is the ID of the `extern crate` statement
+    let def_id = cx.tcx.hir().local_def_id(krate.hir_id);
+    let cnum = cx.tcx.extern_mod_stmt_cnum(def_id).unwrap_or(LOCAL_CRATE);
+    // this is the ID of the crate itself
+    let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+    let please_inline = krate.vis.node.is_pub()
+        && krate.attrs.iter().any(|a| {
+            a.has_name(sym::doc)
+                && match a.meta_item_list() {
+                    Some(l) => attr::list_contains_name(&l, sym::inline),
+                    None => false,
+                }
+        });
 
-        if please_inline {
-            let mut visited = FxHashSet::default();
+    if please_inline {
+        let mut visited = FxHashSet::default();
 
-            let res = Res::Def(DefKind::Mod, DefId { krate: self.cnum, index: CRATE_DEF_INDEX });
+        let res = Res::Def(DefKind::Mod, crate_def_id);
 
-            if let Some(items) = inline::try_inline(
-                cx,
-                cx.tcx.parent_module(self.hir_id).to_def_id(),
-                res,
-                self.name,
-                Some(self.attrs),
-                &mut visited,
-            ) {
-                return items;
-            }
+        if let Some(items) = inline::try_inline(
+            cx,
+            cx.tcx.parent_module(krate.hir_id).to_def_id(),
+            res,
+            name,
+            Some(krate.attrs),
+            &mut visited,
+        ) {
+            return items;
         }
-
-        vec![Item {
-            name: None,
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: DefId { krate: self.cnum, index: CRATE_DEF_INDEX },
-            visibility: self.vis.clean(cx),
-            stability: None,
-            deprecation: None,
-            kind: ExternCrateItem(self.name.clean(cx), self.path.clone()),
-        }]
     }
+    let path = orig_name.map(|x| x.to_string());
+    // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
+    vec![Item {
+        name: None,
+        attrs: krate.attrs.clean(cx),
+        source: krate.span.clean(cx),
+        def_id: crate_def_id,
+        visibility: krate.vis.clean(cx),
+        stability: None,
+        deprecation: None,
+        kind: ExternCrateItem(name.clean(cx), path),
+    }]
 }
 
 impl Clean<Vec<Item>> for doctree::Import<'_> {
@@ -2186,11 +2224,12 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
     }
 }
 
-impl Clean<Item> for doctree::ForeignItem<'_> {
+impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Ident>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let kind = match self.kind {
+        let (item, renamed) = self;
+        let kind = match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
-                let abi = cx.tcx.hir().get_foreign_abi(self.id);
+                let abi = cx.tcx.hir().get_foreign_abi(item.hir_id);
                 let (generics, decl) =
                     enter_impl_trait(cx, || (generics.clean(cx), (&**decl, &names[..]).clean(cx)));
                 let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
@@ -2207,15 +2246,13 @@ impl Clean<Item> for doctree::ForeignItem<'_> {
                     ret_types,
                 })
             }
-            hir::ForeignItemKind::Static(ref ty, mutbl) => ForeignStaticItem(Static {
-                type_: ty.clean(cx),
-                mutability: *mutbl,
-                expr: String::new(),
-            }),
+            hir::ForeignItemKind::Static(ref ty, mutability) => {
+                ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: String::new() })
+            }
             hir::ForeignItemKind::Type => ForeignTypeItem,
         };
 
-        Item::from_hir_id_and_parts(self.id, Some(self.name), kind, cx)
+        Item::from_hir_id_and_parts(item.hir_id, Some(renamed.unwrap_or(item.ident).name), kind, cx)
     }
 }
 
@@ -2235,17 +2272,6 @@ impl Clean<Item> for doctree::Macro {
                 ),
                 imported_from: self.imported_from.clean(cx),
             }),
-            cx,
-        )
-    }
-}
-
-impl Clean<Item> for doctree::ProcMacro {
-    fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_hir_id_and_parts(
-            self.id,
-            Some(self.name),
-            ProcMacroItem(ProcMacro { kind: self.kind, helpers: self.helpers.clean(cx) }),
             cx,
         )
     }
