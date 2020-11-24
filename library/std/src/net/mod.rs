@@ -14,6 +14,34 @@
 //! * [`ToSocketAddrs`] is a trait that used for generic address resolution when interacting
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
+//!
+//! # Stability guarantees for IETF-defined behavior
+//!
+//! [`IpAddr`], [`Ipv4Addr`] and [`Ipv6Addr`] offer helper methods that provide information about
+//! an address, for instance whether it is globally routable (see [`IpAddr::is_global()`]), or if
+//! it is a multicast address (see [`IpAddr::is_multicast()`]). These methods are compliant with
+//! the [IETF RFCs]. As erratas and new RFCs are published, these methods behavior may be subject
+//! to changes.
+//!
+//! For instance, the `240/4` IPv4 block is currently reserved for "future use". If it is made
+//! globally routable by an RFC, then in a future release [`Ipv4Addr::is_reserved()`] will return
+//! `false` for such addresses, while [`Ipv4Addr::is_global`] will return true.
+//!
+//! [`IpAddr`]: crate::net::IpAddr
+//! [`Ipv4Addr`]: crate::net::Ipv4Addr
+//! [`IpAddr::is_global()`]: crate::net::IpAddr::is_global()
+//! [`IpAddr::is_multicast()`]: crate::net::IpAddr::is_multicast()
+//! [`Ipv4Addr::is_reserved()`]: crate::net::Ipv4Addr::is_reserved()
+//! [`Ipv4Addr::is_global()`]: crate::net::Ipv4Addr::is_global()
+//! [`Ipv6Addr`]: crate::net::Ipv6Addr
+//! [`SocketAddr`]: crate::net::SocketAddr
+//! [`SocketAddrV4`]: crate::net::SocketAddrV4
+//! [`SocketAddrV6`]: crate::net::SocketAddrV6
+//! [`TcpListener`]: crate::net::TcpListener
+//! [`TcpStream`]: crate::net::TcpStream
+//! [`ToSocketAddrs`]: crate::net::ToSocketAddrs
+//! [`UdpSocket`]: crate::net::UdpSocket
+//! [IETF RFCs]: https://tools.ietf.org/rfc/index
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
