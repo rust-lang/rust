@@ -6,8 +6,8 @@ modifying feature gates.
 
 ## Adding a feature gate
 
-See ["Stability in code"][stability-section] for help with adding a new feature;
-this section just covers how to add the feature gate *declaration*.
+See ["Stability in code"] for help with adding a new feature; this section just
+covers how to add the feature gate *declaration*.
 
 Add a feature gate declaration to `rustc_feature/src/active.rs` in the active
 `declare_features` block:
@@ -91,4 +91,12 @@ to follow when [removing a feature gate][removing]):
    ```
 
 
-[stability-section]: ./implementing_new_features.md#stability-in-code
+## Stabilizing a feature
+
+See ["Updating the feature-gate listing"] in the "Stabilizing Features" chapter
+for instructions. There are additional steps you will need to take beyond just
+updating the declaration!
+
+
+["Stability in code"]: ./implementing_new_features.md#stability-in-code
+["Updating the feature-gate listing"]: ./stabilization_guide.md#updating-the-feature-gate-listing
