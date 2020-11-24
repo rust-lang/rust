@@ -1,7 +1,7 @@
 //! Renderer for `enum` variants.
 
-use assists::utils::{ImportScope, MergeBehaviour};
 use hir::{HasAttrs, HirDisplay, ModPath, StructKind};
+use ide_helpers::insert_use::{ImportScope, MergeBehaviour};
 use itertools::Itertools;
 use test_utils::mark;
 

@@ -1,9 +1,9 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
-use assists::utils::ImportScope;
 use either::Either;
 use hir::{Adt, ModuleDef, ScopeDef, Type};
 use ide_db::imports_locator;
+use ide_helpers::insert_use::ImportScope;
 use syntax::AstNode;
 use test_utils::mark;
 

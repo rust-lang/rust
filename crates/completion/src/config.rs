@@ -4,7 +4,7 @@
 //! module, and we use to statically check that we only produce snippet
 //! completions if we are allowed to.
 
-use assists::utils::MergeBehaviour;
+use ide_helpers::insert_use::MergeBehaviour;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {

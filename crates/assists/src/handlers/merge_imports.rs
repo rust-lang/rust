@@ -1,3 +1,4 @@
+use ide_helpers::insert_use::{try_merge_imports, try_merge_trees, MergeBehaviour};
 use syntax::{
     algo::{neighbor, SyntaxRewriter},
     ast, AstNode,
@@ -5,10 +6,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::{
-        insert_use::{try_merge_imports, try_merge_trees},
-        next_prev, MergeBehaviour,
-    },
+    utils::next_prev,
     AssistId, AssistKind,
 };
 

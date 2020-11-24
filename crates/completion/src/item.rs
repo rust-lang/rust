@@ -2,8 +2,11 @@
 
 use std::fmt;
 
-use assists::utils::{insert_use, mod_path_to_ast, ImportScope, MergeBehaviour};
 use hir::{Documentation, ModPath, Mutability};
+use ide_helpers::{
+    insert_use::{self, ImportScope, MergeBehaviour},
+    mod_path_to_ast,
+};
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
@@ -300,7 +303,7 @@ impl Builder {
                 label = format!("{}::{}", import_path_without_last_segment, label);
             }
 
-            let rewriter = insert_use(&import_scope, import, merge_behaviour);
+            let rewriter = insert_use::insert_use(&import_scope, import, merge_behaviour);
             if let Some(old_ast) = rewriter.rewrite_root() {
                 algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
             }

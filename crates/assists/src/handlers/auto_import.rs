@@ -1,8 +1,11 @@
+use ide_helpers::{
+    insert_use::{insert_use, ImportScope},
+    mod_path_to_ast,
+};
 use syntax::ast;
 
 use crate::{
     utils::import_assets::{ImportAssets, ImportCandidate},
-    utils::{insert_use, mod_path_to_ast, ImportScope},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 

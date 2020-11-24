@@ -5,8 +5,9 @@
 //! assists if we are allowed to.
 
 use hir::PrefixKind;
+use ide_helpers::insert_use::MergeBehaviour;
 
-use crate::{utils::MergeBehaviour, AssistKind};
+use crate::AssistKind;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssistConfig {

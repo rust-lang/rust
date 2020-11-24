@@ -1,7 +1,7 @@
 [package]
-name = "assists"
+name = "ide_helpers"
 version = "0.0.0"
-description = "TBD"
+description = "A set of helper methods shared between various ide-level modules"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer developers"]
 edition = "2018"
@@ -9,16 +9,15 @@ edition = "2018"
 [lib]
 doctest = false
 
-[dependencies]
-rustc-hash = "1.1.0"
-itertools = "0.9.0"
-either = "1.6.1"
+[features]
+wasm = []
 
-stdx = { path = "../stdx", version = "0.0.0" }
+[dependencies]
+either = "1.6.1"
+itertools = "0.9.0"
+
 syntax = { path = "../syntax", version = "0.0.0" }
-text_edit = { path = "../text_edit", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
 ide_db = { path = "../ide_db", version = "0.0.0" }
 hir = { path = "../hir", version = "0.0.0" }
+profile = { path = "../profile", version = "0.0.0" }
 test_utils = { path = "../test_utils", version = "0.0.0" }
-ide_helpers = { path = "../ide_helpers", version = "0.0.0" }

@@ -1,7 +1,7 @@
 //! Renderer for macro invocations.
 
-use assists::utils::{ImportScope, MergeBehaviour};
 use hir::{Documentation, HasSource, ModPath};
+use ide_helpers::insert_use::{ImportScope, MergeBehaviour};
 use syntax::display::macro_label;
 use test_utils::mark;
 
@@ -12,6 +12,7 @@ use crate::{
 
 pub(crate) fn render_macro<'a>(
     ctx: RenderContext<'a>,
+    // TODO kb add some object instead of a tuple?
     import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
     name: String,
     macro_: hir::MacroDef,

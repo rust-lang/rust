@@ -53,6 +53,7 @@ dependencies = [
  "either",
  "hir",
  "ide_db",
+ "ide_helpers",
  "itertools",
  "profile",
  "rustc-hash",
@@ -253,12 +254,12 @@ dependencies = [
 name = "completion"
 version = "0.0.0"
 dependencies = [
- "assists",
  "base_db",
  "either",
  "expect-test",
  "hir",
  "ide_db",
+ "ide_helpers",
  "itertools",
  "log",
  "profile",
@@ -657,6 +658,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide_db",
+ "ide_helpers",
  "indexmap",
  "itertools",
  "log",
@@ -691,6 +693,19 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
+]
+
+[[package]]
+name = "ide_helpers"
+version = "0.0.0"
+dependencies = [
+ "either",
+ "hir",
+ "ide_db",
+ "itertools",
+ "profile",
+ "syntax",
+ "test_utils",
 ]
 
 [[package]]
@@ -1361,6 +1376,7 @@ dependencies = [
  "hir_ty",
  "ide",
  "ide_db",
+ "ide_helpers",
  "itertools",
  "jod-thread",
  "log",

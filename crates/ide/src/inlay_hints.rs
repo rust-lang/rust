@@ -1,7 +1,7 @@
-use assists::utils::FamousDefs;
 use either::Either;
 use hir::{known, Callable, HirDisplay, Semantics};
 use ide_db::RootDatabase;
+use ide_helpers::FamousDefs;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, ArgListOwner, AstNode, NameOwner},
@@ -427,8 +427,8 @@ fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<hir:
 
 #[cfg(test)]
 mod tests {
-    use assists::utils::FamousDefs;
     use expect_test::{expect, Expect};
+    use ide_helpers::FamousDefs;
     use test_utils::extract_annotations;
 
     use crate::{fixture, inlay_hints::InlayHintsConfig};

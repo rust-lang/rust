@@ -1,4 +1,5 @@
 use ide_db::imports_locator;
+use ide_helpers::mod_path_to_ast;
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, AstNode},
@@ -10,8 +11,7 @@ use syntax::{
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, mod_path_to_ast, render_snippet, Cursor,
-        DefaultMethods,
+        add_trait_assoc_items_to_impl, filter_assoc_items, render_snippet, Cursor, DefaultMethods,
     },
     AssistId, AssistKind,
 };

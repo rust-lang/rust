@@ -2,12 +2,13 @@ use std::iter;
 
 use hir::{Adt, HasSource, ModuleDef, Semantics};
 use ide_db::RootDatabase;
+use ide_helpers::{mod_path_to_ast, FamousDefs};
 use itertools::Itertools;
 use syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 use test_utils::mark;
 
 use crate::{
-    utils::{mod_path_to_ast, render_snippet, Cursor, FamousDefs},
+    utils::{render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -212,12 +213,10 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> O
 
 #[cfg(test)]
 mod tests {
+    use ide_helpers::FamousDefs;
     use test_utils::mark;
 
-    use crate::{
-        tests::{check_assist, check_assist_not_applicable, check_assist_target},
-        utils::FamousDefs,
-    };
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::fill_match_arms;
 

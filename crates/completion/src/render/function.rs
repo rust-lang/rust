@@ -1,7 +1,7 @@
 //! Renderer for function calls.
 
-use assists::utils::{ImportScope, MergeBehaviour};
 use hir::{HasSource, ModPath, Type};
+use ide_helpers::insert_use::{ImportScope, MergeBehaviour};
 use syntax::{ast::Fn, display::function_declaration};
 
 use crate::{

@@ -1,10 +1,8 @@
+use ide_helpers::insert_use::{insert_use, ImportScope};
 use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode};
 use test_utils::mark;
 
-use crate::{
-    utils::{insert_use, ImportScope},
-    AssistContext, AssistId, AssistKind, Assists,
-};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_qualified_name_with_use
 //
@@ -53,7 +51,7 @@ pub(crate) fn replace_qualified_name_with_use(
     )
 }
 
-/// Adds replacements to `re` that shorten `path` in all descendants of `node`.
+/// Adds replacements to `re` that shorten `path` in all descendants of `node`.g
 fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
