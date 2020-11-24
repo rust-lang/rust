@@ -184,6 +184,7 @@ impl Config {
             },
             completion: CompletionConfig {
                 enable_postfix_completions: true,
+                enable_experimental_completions: true,
                 add_call_parenthesis: true,
                 add_call_argument_snippets: true,
                 ..CompletionConfig::default()
@@ -306,6 +307,7 @@ impl Config {
         };
 
         self.completion.enable_postfix_completions = data.completion_postfix_enable;
+        self.completion.enable_experimental_completions = data.completion_enableExperimental;
         self.completion.add_call_parenthesis = data.completion_addCallParenthesis;
         self.completion.add_call_argument_snippets = data.completion_addCallArgumentSnippets;
         self.completion.merge = self.assist.insert_use.merge;
@@ -506,6 +508,7 @@ config_data! {
         completion_addCallArgumentSnippets: bool = true,
         completion_addCallParenthesis: bool      = true,
         completion_postfix_enable: bool          = true,
+        completion_enableExperimental: bool      = true,
 
         diagnostics_enable: bool                = true,
         diagnostics_enableExperimental: bool    = true,

@@ -9,6 +9,7 @@ use assists::utils::MergeBehaviour;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
     pub enable_postfix_completions: bool,
+    pub enable_experimental_completions: bool,
     pub add_call_parenthesis: bool,
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
@@ -30,6 +31,7 @@ impl Default for CompletionConfig {
     fn default() -> Self {
         CompletionConfig {
             enable_postfix_completions: true,
+            enable_experimental_completions: true,
             add_call_parenthesis: true,
             add_call_argument_snippets: true,
             snippet_cap: Some(SnippetCap { _private: () }),

@@ -67,6 +67,13 @@ pub use crate::{
 //     fn test_name() {}
 // }
 // ```
+//
+// And experimental completions, enabled with the `rust-analyzer.completion.enableExperimental` setting.
+// This flag enables or disables:
+//
+// - Auto import: additional completion options with automatic `use` import and options from all project importable items, matched for the input
+//
+// Experimental completions might cause issues with performance and completion list look.
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///

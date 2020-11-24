@@ -44,7 +44,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         acc.add_resolution(ctx, name.to_string(), &res)
     });
 
-    fuzzy_completion(acc, ctx).unwrap_or_default()
+    if ctx.config.enable_experimental_completions {
+        fuzzy_completion(acc, ctx).unwrap_or_default()
+    }
 }
 
 fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
