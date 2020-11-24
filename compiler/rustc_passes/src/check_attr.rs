@@ -171,7 +171,7 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            _ if self.tcx.sess.contains_name(attrs, sym::naked) => {
+            _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
