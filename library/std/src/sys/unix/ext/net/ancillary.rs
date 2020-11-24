@@ -5,6 +5,8 @@ use crate::marker::PhantomData;
 use crate::mem::{size_of, zeroed};
 use crate::os::unix::io::RawFd;
 use crate::path::Path;
+#[cfg(target_os = "android")]
+use crate::ptr::eq;
 use crate::ptr::read_unaligned;
 use crate::slice::from_raw_parts;
 use crate::sys::net::Socket;
@@ -157,6 +159,13 @@ fn add_to_ancillary_data<T>(
         while !cmsg.is_null() {
             previous_cmsg = cmsg;
             cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "android")] {
+                    if cmsg == previous_cmsg {
+                        break;
+                    }
+                }
+            }
         }
 
         if previous_cmsg.is_null() {
@@ -420,6 +429,16 @@ impl<'a> Iterator for Messages<'a> {
             };
 
             let cmsg = cmsg.as_ref()?;
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "android")] {
+                    if let Some(current) = self.current {
+                        if eq(current, cmsg) {
+                            return None;
+                        }
+                    }
+                }
+            }
+
             self.current = Some(cmsg);
             let ancillary_result = AncillaryData::try_from_cmsghdr(cmsg);
             Some(ancillary_result)
