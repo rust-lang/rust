@@ -25,8 +25,11 @@ pub trait AsRawFd {
 /// descriptor.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub trait FromRawFd {
+    /// An associated type that contains relevant metadata for `Self`.
+    type Metadata: Default;
+
     /// Constructs a new instance of `Self` from the given raw file
-    /// descriptor.
+    /// descriptor and metadata.
     ///
     /// This function **consumes ownership** of the specified file
     /// descriptor. The returned object will take responsibility for closing
@@ -38,7 +41,7 @@ pub trait FromRawFd {
     /// accidentally allow violating this contract which can cause memory
     /// unsafety in code that relies on it being true.
     #[unstable(feature = "sgx_platform", issue = "56975")]
-    unsafe fn from_raw_fd(fd: RawFd) -> Self;
+    unsafe fn from_raw_fd(fd: RawFd, metadata: Self::Metadata) -> Self;
 }
 
 /// A trait to express the ability to consume an object and acquire ownership of
@@ -71,18 +74,40 @@ impl AsRawFd for net::TcpListener {
     }
 }
 
+/// Metadata for `TcpStream`.
+#[derive(Debug, Clone, Default)]
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub struct TcpStreamMetadata {
+    /// Local address of the TCP stream
+    pub local_addr: Option<String>,
+    /// Peer address of the TCP stream
+    pub peer_addr: Option<String>,
+}
+
 impl FromRawFd for net::TcpStream {
-    unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
+    type Metadata = TcpStreamMetadata;
+
+    unsafe fn from_raw_fd(fd: RawFd, metadata: Self::Metadata) -> net::TcpStream {
         let fd = sys::fd::FileDesc::from_inner(fd);
-        let socket = sys::net::Socket::from_inner(fd);
-        net::TcpStream::from_inner(sys::net::TcpStream::from_inner((socket, None)))
+        let socket = sys::net::Socket::from_inner((fd, metadata.local_addr));
+        net::TcpStream::from_inner(sys::net::TcpStream::from_inner((socket, metadata.peer_addr)))
     }
 }
 
+/// Metadata for `TcpListener`.
+#[derive(Debug, Clone, Default)]
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub struct TcpListenerMetadata {
+    /// Local address of the TCP listener
+    pub local_addr: Option<String>,
+}
+
 impl FromRawFd for net::TcpListener {
-    unsafe fn from_raw_fd(fd: RawFd) -> net::TcpListener {
+    type Metadata = TcpListenerMetadata;
+
+    unsafe fn from_raw_fd(fd: RawFd, metadata: Self::Metadata) -> net::TcpListener {
         let fd = sys::fd::FileDesc::from_inner(fd);
-        let socket = sys::net::Socket::from_inner(fd);
+        let socket = sys::net::Socket::from_inner((fd, metadata.local_addr));
         net::TcpListener::from_inner(sys::net::TcpListener::from_inner(socket))
     }
 }
