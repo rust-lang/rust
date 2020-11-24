@@ -795,7 +795,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::TraitItem(_)
             | Annotatable::ImplItem(_)
             | Annotatable::ForeignItem(_) => return,
-            Annotatable::Stmt(_) => "statements",
+            Annotatable::Stmt(stmt) => {
+                // Attributes are stable on item statements,
+                // but unstable on all other kinds of statements
+                if stmt.is_item() {
+                    return;
+                }
+                "statements"
+            }
             Annotatable::Expr(_) => "expressions",
             Annotatable::Arm(..)
             | Annotatable::Field(..)
@@ -1266,9 +1273,19 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
-            // FIXME: Handle custom attributes on statements (#15701).
-            let attr =
-                if stmt.is_item() { None } else { self.take_first_attr_no_derive(&mut stmt) };
+            let attr = if stmt.is_item() {
+                // FIXME: Implement proper token collection for statements
+                if let StmtKind::Item(item) = &mut stmt.kind {
+                    stmt.tokens = item.tokens.take()
+                } else {
+                    unreachable!()
+                };
+                self.take_first_attr(&mut stmt)
+            } else {
+                // Ignore derives on non-item statements for backwards compatibility.
+                // This will result in a unused attribute warning
+                self.take_first_attr_no_derive(&mut stmt)
+            };
 
             if let Some(attr) = attr {
                 return self

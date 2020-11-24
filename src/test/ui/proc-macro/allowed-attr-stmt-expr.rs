@@ -1,24 +1,25 @@
 // aux-build:attr-stmt-expr.rs
 // aux-build:test-macros.rs
 // compile-flags: -Z span-debug
+// check-pass
 
 #![feature(proc_macro_hygiene)]
+#![feature(stmt_expr_attributes)]
 #![feature(rustc_attrs)]
+#![allow(dead_code)]
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
-extern crate test_macros;
-extern crate attr_stmt_expr;
 
+extern crate attr_stmt_expr;
+extern crate test_macros;
+use attr_stmt_expr::{expect_let, expect_print_stmt, expect_expr, expect_print_expr};
 use test_macros::print_attr;
 use std::println;
-use attr_stmt_expr::{expect_let, expect_print_stmt, expect_expr, expect_print_expr};
 
 fn print_str(string: &'static str) {
     // macros are handled a bit differently
     #[expect_print_expr]
-    //~^ ERROR attributes on expressions are experimental
-    //~| HELP add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
     println!("{}", string)
 }
 
@@ -33,6 +34,7 @@ macro_rules! second_make_stmt {
         make_stmt!($stmt);
     }
 }
+
 
 fn main() {
     make_stmt!(struct Foo {});
@@ -50,10 +52,8 @@ fn main() {
 
     #[print_attr]
     #[rustc_dummy]
-    struct Other {}
+    struct Other {};
 
     #[expect_expr]
-    //~^ ERROR attributes on expressions are experimental
-    //~| HELP add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
     print_str("string")
 }
