@@ -1,0 +1,14 @@
+error: lifetime parameter `'a` never used
+  --> $DIR/unused-lt.rs:5:8
+   |
+LL | fn err<'a>() -> [u8; 3 + 4] { todo!() }
+   |       -^^- help: elide the unused lifetime
+   |
+note: the lint level is defined here
+  --> $DIR/unused-lt.rs:3:9
+   |
+LL | #![deny(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

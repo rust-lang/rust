@@ -155,6 +155,10 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// We always store a `normalize_to_macros_2_0()` version of the param-name in this
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
+    /// The index of the first lifetime introduced using `for<'lt>`.
+    ///
+    /// Used to only add lifetimes from binders as generics to anon consts.
+    hrtb_start: Option<usize>,
 
     current_module: hir::HirId,
 
@@ -166,6 +170,12 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
+}
+
+#[derive(Copy, Clone)]
+enum LifetimeOrigin {
+    Hrtb,
+    Other,
 }
 
 pub trait ResolverAstLowering {
@@ -322,6 +332,7 @@ pub fn lower_crate<'a, 'hir>(
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
+        hrtb_start: None,
         allow_try_trait: Some([sym::try_trait][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
     }
@@ -853,6 +864,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // for them.
     fn with_in_scope_lifetime_defs<T>(
         &mut self,
+        origin: LifetimeOrigin,
         params: &[GenericParam],
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
@@ -864,9 +876,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
+        let hrtb_start = self.hrtb_start;
+        if matches!(origin, LifetimeOrigin::Hrtb) && self.hrtb_start.is_none() {
+            self.hrtb_start = Some(old_len);
+        }
 
         let res = f(self);
 
+        self.hrtb_start = hrtb_start;
         self.in_scope_lifetimes.truncate(old_len);
         res
     }
@@ -885,7 +902,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
     ) -> (hir::Generics<'hir>, T) {
         let (in_band_defs, (mut lowered_generics, res)) =
-            self.with_in_scope_lifetime_defs(&generics.params, |this| {
+            self.with_in_scope_lifetime_defs(LifetimeOrigin::Other, &generics.params, |this| {
                 this.collect_in_band_defs(parent_def_id, anonymous_lifetime_mode, |this| {
                     let mut params = Vec::new();
                     // Note: it is necessary to lower generics *before* calling `f`.
@@ -1225,21 +1242,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
-            TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
-                this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
-                    hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
-                        generic_params: this.lower_generic_params(
-                            &f.generic_params,
-                            &NodeMap::default(),
-                            ImplTraitContext::disallowed(),
-                        ),
-                        unsafety: this.lower_unsafety(f.unsafety),
-                        abi: this.lower_extern(f.ext),
-                        decl: this.lower_fn_decl(&f.decl, None, false, None),
-                        param_names: this.lower_fn_params_to_names(&f.decl),
-                    }))
+            TyKind::BareFn(ref f) => {
+                self.with_in_scope_lifetime_defs(LifetimeOrigin::Hrtb, &f.generic_params, |this| {
+                    this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
+                        hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
+                            generic_params: this.lower_generic_params(
+                                &f.generic_params,
+                                &NodeMap::default(),
+                                ImplTraitContext::disallowed(),
+                            ),
+                            unsafety: this.lower_unsafety(f.unsafety),
+                            abi: this.lower_extern(f.ext),
+                            decl: this.lower_fn_decl(&f.decl, None, false, None),
+                            param_names: this.lower_fn_params_to_names(&f.decl),
+                        }))
+                    })
                 })
-            }),
+            }
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => {
                 hir::TyKind::Tup(self.arena.alloc_from_iter(
@@ -2243,28 +2262,35 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             itctx.reborrow(),
         );
 
-        let trait_ref = self.with_in_scope_lifetime_defs(&p.bound_generic_params, |this| {
-            // Any impl Trait types defined within this scope can capture
-            // lifetimes bound on this predicate.
-            let lt_def_names = p.bound_generic_params.iter().filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => Some(hir::LifetimeName::Param(
-                    ParamName::Plain(param.ident.normalize_to_macros_2_0()),
-                )),
-                _ => None,
-            });
-            if let ImplTraitContext::OtherOpaqueTy { ref mut capturable_lifetimes, .. } = itctx {
-                capturable_lifetimes.extend(lt_def_names.clone());
-            }
-
-            let res = this.lower_trait_ref(&p.trait_ref, itctx.reborrow());
-
-            if let ImplTraitContext::OtherOpaqueTy { ref mut capturable_lifetimes, .. } = itctx {
-                for param in lt_def_names {
-                    capturable_lifetimes.remove(&param);
+        let trait_ref = self.with_in_scope_lifetime_defs(
+            LifetimeOrigin::Hrtb,
+            &p.bound_generic_params,
+            |this| {
+                // Any impl Trait types defined within this scope can capture
+                // lifetimes bound on this predicate.
+                let lt_def_names =
+                    p.bound_generic_params.iter().filter_map(|param| match param.kind {
+                        GenericParamKind::Lifetime { .. } => Some(hir::LifetimeName::Param(
+                            ParamName::Plain(param.ident.normalize_to_macros_2_0()),
+                        )),
+                        _ => None,
+                    });
+                if let ImplTraitContext::OtherOpaqueTy { ref mut capturable_lifetimes, .. } = itctx
+                {
+                    capturable_lifetimes.extend(lt_def_names.clone());
                 }
-            }
-            res
-        });
+
+                let res = this.lower_trait_ref(&p.trait_ref, itctx.reborrow());
+
+                if let ImplTraitContext::OtherOpaqueTy { ref mut capturable_lifetimes, .. } = itctx
+                {
+                    for param in lt_def_names {
+                        capturable_lifetimes.remove(&param);
+                    }
+                }
+                res
+            },
+        );
 
         hir::PolyTraitRef { bound_generic_params, trait_ref, span: p.span }
     }
@@ -2341,20 +2367,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 //
                 // We therefore add these lifetimes as additional generic parameters.
 
-                // FIXME(const_generics): We currently add all lifetimes as generic params,
-                // but as we already mention the parent generics this is not actually needed.
-                //
-                // Consider only adding explicit higher ranked lifetimes here.
-
                 // We only need `in_scope_lifetimes` because all in-band lifetimes are
                 // added to the generics of the parent.
-                let lifetime_params: Vec<(Span, ParamName)> = this
-                    .in_scope_lifetimes
-                    .iter()
-                    .cloned()
-                    .map(|name| (name.ident().span, name))
-                    .collect();
-
+                let lifetime_params: Vec<(Span, ParamName)> =
+                    if let Some(hrtb_start) = this.hrtb_start {
+                        this.in_scope_lifetimes
+                            .iter()
+                            .skip(hrtb_start)
+                            .cloned()
+                            .map(|name| (name.ident().span, name))
+                            .collect()
+                    } else {
+                        vec![]
+                    };
                 let generic_params =
                     this.arena.alloc_from_iter(lifetime_params.iter().map(|&(span, hir_name)| {
                         this.lifetime_to_generic_param(span, hir_name, def_id)

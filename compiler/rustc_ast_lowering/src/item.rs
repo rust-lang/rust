@@ -1,5 +1,5 @@
 use super::{AnonymousLifetimeMode, LoweringContext, ParamMode};
-use super::{ImplTraitContext, ImplTraitPosition};
+use super::{ImplTraitContext, ImplTraitPosition, LifetimeOrigin};
 use crate::Arena;
 
 use rustc_ast::node_id::NodeMap;
@@ -420,12 +420,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 );
 
-                let new_impl_items =
-                    self.with_in_scope_lifetime_defs(&ast_generics.params, |this| {
+                let new_impl_items = self.with_in_scope_lifetime_defs(
+                    LifetimeOrigin::Other,
+                    &ast_generics.params,
+                    |this| {
                         this.arena.alloc_from_iter(
                             impl_items.iter().map(|item| this.lower_impl_item_ref(item)),
                         )
-                    });
+                    },
+                );
 
                 // `defaultness.has_value()` is never called for an `impl`, always `true` in order
                 // to not cause an assertion failure inside the `lower_defaultness` function.
@@ -1430,27 +1433,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref bounds,
                 span,
             }) => {
-                self.with_in_scope_lifetime_defs(&bound_generic_params, |this| {
-                    hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                        bound_generic_params: this.lower_generic_params(
-                            bound_generic_params,
-                            &NodeMap::default(),
-                            ImplTraitContext::disallowed(),
-                        ),
-                        bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
-                        bounds: this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| {
-                            match *bound {
-                                // Ignore `?Trait` bounds.
-                                // They were copied into type parameters already.
-                                GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
-                                _ => Some(
-                                    this.lower_param_bound(bound, ImplTraitContext::disallowed()),
-                                ),
-                            }
-                        })),
-                        span,
-                    })
-                })
+                self.with_in_scope_lifetime_defs(
+                    LifetimeOrigin::Hrtb,
+                    &bound_generic_params,
+                    |this| {
+                        hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                            bound_generic_params: this.lower_generic_params(
+                                bound_generic_params,
+                                &NodeMap::default(),
+                                ImplTraitContext::disallowed(),
+                            ),
+                            bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
+                            bounds: this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| {
+                                match *bound {
+                                    // Ignore `?Trait` bounds.
+                                    // They were copied into type parameters already.
+                                    GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
+                                    _ => {
+                                        Some(this.lower_param_bound(
+                                            bound,
+                                            ImplTraitContext::disallowed(),
+                                        ))
+                                    }
+                                }
+                            })),
+                            span,
+                        })
+                    },
+                )
             }
             WherePredicate::RegionPredicate(WhereRegionPredicate {
                 ref lifetime,
