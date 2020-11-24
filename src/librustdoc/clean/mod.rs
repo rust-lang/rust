@@ -122,7 +122,7 @@ impl Clean<ExternalCrate> for CrateNum {
                         }
                     }
                 }
-                return prim.map(|p| (def_id, p, attrs));
+                return prim.map(|p| (def_id, p));
             }
             None
         };
@@ -144,9 +144,9 @@ impl Clean<ExternalCrate> for CrateNum {
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
-                            as_primitive(path.res).map(|(_, prim, attrs)| {
+                            as_primitive(path.res).map(|(_, prim)| {
                                 // Pretend the primitive is local.
-                                (cx.tcx.hir().local_def_id(id.id).to_def_id(), prim, attrs)
+                                (cx.tcx.hir().local_def_id(id.id).to_def_id(), prim)
                             })
                         }
                         _ => None,
@@ -1099,7 +1099,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocTypeItem(bounds.clean(cx), default.clean(cx))
                 }
             };
-            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name.clean(cx)), inner, cx)
         })
     }
 }
@@ -1127,7 +1127,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
                 }
             };
-            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name.clean(cx)), inner, cx)
         })
     }
 }
@@ -1284,7 +1284,7 @@ impl Clean<Item> for ty::AssocItem {
             }
         };
 
-        Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), kind, cx)
+        Item::from_def_id_and_parts(self.def_id, Some(self.ident.name.clean(cx)), kind, cx)
     }
 }
 
@@ -1769,7 +1769,7 @@ impl Clean<Item> for ty::FieldDef {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let what_rustc_thinks = Item::from_def_id_and_parts(
             self.did,
-            Some(self.ident.name),
+            Some(self.ident.name.clean(cx)),
             StructFieldItem(cx.tcx.type_of(self.did).clean(cx)),
             cx,
         );
@@ -1845,7 +1845,7 @@ impl Clean<Item> for ty::VariantDef {
                     .fields
                     .iter()
                     .map(|field| {
-                        let name = Some(field.ident.name);
+                        let name = Some(field.ident.name.clean(cx));
                         let kind = StructFieldItem(cx.tcx.type_of(field.did).clean(cx));
                         let what_rustc_thinks =
                             Item::from_def_id_and_parts(field.did, name, kind, cx);
@@ -1857,7 +1857,7 @@ impl Clean<Item> for ty::VariantDef {
         };
         let what_rustc_thinks = Item::from_def_id_and_parts(
             self.def_id,
-            Some(self.ident.name),
+            Some(self.ident.name.clean(cx)),
             VariantItem(Variant { kind }),
             cx,
         );
@@ -2055,7 +2055,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
                 _ => unreachable!("not yet converted"),
             };
 
-            vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
+            vec![Item::from_def_id_and_parts(def_id, Some(name.clean(cx)), kind, cx)]
         })
     }
 }
@@ -2317,7 +2317,7 @@ impl Clean<Item> for doctree::Macro {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         Item::from_def_id_and_parts(
             self.def_id,
-            Some(self.name),
+            Some(self.name.clean(cx)),
             MacroItem(Macro {
                 source: format!(
                     "macro_rules! {} {{\n{}}}",

@@ -1,15 +1,14 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, Deprecation, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
+    inline, Clean, Crate, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
     GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemKind, Lifetime,
-    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Type, TypeBinding,
-    TypeKind, Visibility, WherePredicate,
+    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
+    TypeKind, WherePredicate,
 };
 use crate::core::DocContext;
 
 use itertools::Itertools;
-use rustc_attr::Stability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -66,17 +65,18 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
             ItemKind::ModuleItem(ref mut m) => m,
             _ => unreachable!(),
         };
-        m.items.extend(primitives.iter().map(|&(def_id, prim, ref attrs)| Item {
-            source: Span::empty(),
-            name: Some(prim.to_url_str().to_string()),
-            attrs: attrs.clone(),
-            visibility: Visibility::Public,
-            stability: get_stability(cx, def_id),
-            deprecation: get_deprecation(cx, def_id),
-            def_id,
-            kind: ItemKind::PrimitiveItem(prim),
+        m.items.extend(primitives.iter().map(|&(def_id, prim)| {
+            Item::from_def_id_and_parts(
+                def_id,
+                Some(prim.to_url_str().to_owned()),
+                ItemKind::PrimitiveItem(prim),
+                cx,
+            )
         }));
-        m.items.extend(keywords.into_iter().map(|(def_id, kw, attrs)| Item {
+        m.items.extend(keywords.into_iter()
+            .map(|(def_id, kw, _)| Item::from_def_id_and_parts(def_id, Some(kw.clone()), ItemKind::KeywordItem(kw), cx)
+        ));
+        /*
             source: Span::empty(),
             name: Some(kw.clone()),
             attrs,
@@ -86,6 +86,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
             def_id,
             kind: ItemKind::KeywordItem(kw),
         }));
+        */
     }
 
     Crate {
@@ -99,15 +100,6 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
         masked_crates,
         collapsed: false,
     }
-}
-
-// extract the stability index for a node from tcx, if possible
-crate fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
-    cx.tcx.lookup_stability(def_id).cloned()
-}
-
-crate fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation> {
-    cx.tcx.lookup_deprecation(def_id).clean(cx)
 }
 
 fn external_generic_args(
