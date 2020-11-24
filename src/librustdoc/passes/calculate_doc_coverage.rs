@@ -268,6 +268,6 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
             }
         }
 
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }

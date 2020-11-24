@@ -421,55 +421,52 @@ impl DocFolder for Cache {
 
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
-        let ret = self.fold_item_recur(item).and_then(|item| {
-            if let clean::Item { kind: clean::ImplItem(_), .. } = item {
-                // Figure out the id of this impl. This may map to a
-                // primitive rather than always to a struct/enum.
-                // Note: matching twice to restrict the lifetime of the `i` borrow.
-                let mut dids = FxHashSet::default();
-                if let clean::Item { kind: clean::ImplItem(ref i), .. } = item {
-                    match i.for_ {
-                        clean::ResolvedPath { did, .. }
-                        | clean::BorrowedRef {
-                            type_: box clean::ResolvedPath { did, .. }, ..
-                        } => {
+        let item = self.fold_item_recur(item);
+        let ret = if let clean::Item { kind: clean::ImplItem(_), .. } = item {
+            // Figure out the id of this impl. This may map to a
+            // primitive rather than always to a struct/enum.
+            // Note: matching twice to restrict the lifetime of the `i` borrow.
+            let mut dids = FxHashSet::default();
+            if let clean::Item { kind: clean::ImplItem(ref i), .. } = item {
+                match i.for_ {
+                    clean::ResolvedPath { did, .. }
+                    | clean::BorrowedRef { type_: box clean::ResolvedPath { did, .. }, .. } => {
+                        dids.insert(did);
+                    }
+                    ref t => {
+                        let did = t
+                            .primitive_type()
+                            .and_then(|t| self.primitive_locations.get(&t).cloned());
+
+                        if let Some(did) = did {
                             dids.insert(did);
                         }
-                        ref t => {
-                            let did = t
-                                .primitive_type()
-                                .and_then(|t| self.primitive_locations.get(&t).cloned());
-
-                            if let Some(did) = did {
-                                dids.insert(did);
-                            }
-                        }
                     }
-
-                    if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
-                        for bound in generics {
-                            if let Some(did) = bound.def_id() {
-                                dids.insert(did);
-                            }
-                        }
-                    }
-                } else {
-                    unreachable!()
-                };
-                let impl_item = Impl { impl_item: item };
-                if impl_item.trait_did().map_or(true, |d| self.traits.contains_key(&d)) {
-                    for did in dids {
-                        self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
-                    }
-                } else {
-                    let trait_did = impl_item.trait_did().expect("no trait did");
-                    self.orphan_trait_impls.push((trait_did, dids, impl_item));
                 }
-                None
+
+                if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
+                    for bound in generics {
+                        if let Some(did) = bound.def_id() {
+                            dids.insert(did);
+                        }
+                    }
+                }
             } else {
-                Some(item)
+                unreachable!()
+            };
+            let impl_item = Impl { impl_item: item };
+            if impl_item.trait_did().map_or(true, |d| self.traits.contains_key(&d)) {
+                for did in dids {
+                    self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());
+                }
+            } else {
+                let trait_did = impl_item.trait_did().expect("no trait did");
+                self.orphan_trait_impls.push((trait_did, dids, impl_item));
             }
-        });
+            None
+        } else {
+            Some(item)
+        };
 
         if pushed {
             self.stack.pop().expect("stack already empty");

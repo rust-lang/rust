@@ -152,7 +152,8 @@ pub fn target_machine_factory(
     let features = features.join(",");
     let features = CString::new(features).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
-    let trap_unreachable = sess.target.trap_unreachable;
+    let trap_unreachable =
+        sess.opts.debugging_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();

@@ -858,7 +858,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             // we don't display docs on `extern crate` items anyway, so don't process them.
             clean::ExternCrateItem(..) => {
                 debug!("ignoring extern crate item {:?}", item.def_id);
-                return self.fold_item_recur(item);
+                return Some(self.fold_item_recur(item));
             }
             clean::ImportItem(Import { kind: clean::ImportKind::Simple(ref name, ..), .. }) => {
                 Some(name.clone())
@@ -958,7 +958,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
         }
 
-        if item.is_mod() {
+        Some(if item.is_mod() {
             if !item.attrs.inner_docs {
                 self.mod_ids.push(item.def_id);
             }
@@ -968,7 +968,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             ret
         } else {
             self.fold_item_recur(item)
-        }
+        })
     }
 }
 
@@ -1022,7 +1022,7 @@ impl LinkCollector<'_, '_> {
             (link.trim(), None)
         };
 
-        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, ".contains(ch))) {
+        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !".contains(ch))) {
             return None;
         }
 

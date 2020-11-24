@@ -5,6 +5,7 @@ LL |     fn successor() -> Const<{C + 1}> {
    |                              ^ cannot perform const operation using `C`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `C`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to previous error
 

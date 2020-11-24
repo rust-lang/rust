@@ -5,6 +5,7 @@ LL | impl <const N: usize> Collatz<{Some(N)}> {}
    |                                     ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-68366.rs:12:13

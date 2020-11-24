@@ -5,6 +5,7 @@ LL |     let _: [u8; foo::<T>()];
    |                       ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:15:23
@@ -13,6 +14,7 @@ LL |     let _: [u8; bar::<N>()];
    |                       ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:25:23
@@ -21,6 +23,7 @@ LL |     let _ = [0; bar::<N>()];
    |                       ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:30:24
@@ -29,6 +32,7 @@ LL |     let _: Foo<{ foo::<T>() }>;
    |                        ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:31:24
@@ -37,6 +41,7 @@ LL |     let _: Foo<{ bar::<N>() }>;
    |                        ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:36:27
@@ -45,6 +50,7 @@ LL |     let _ = Foo::<{ foo::<T>() }>;
    |                           ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/const-arg-in-const-arg.rs:37:27
@@ -53,6 +59,7 @@ LL |     let _ = Foo::<{ bar::<N>() }>;
    |                           ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
   --> $DIR/const-arg-in-const-arg.rs:16:23
