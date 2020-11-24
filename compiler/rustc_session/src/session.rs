@@ -734,12 +734,15 @@ impl Session {
         self.opts.cg.panic.unwrap_or(self.target.panic_strategy)
     }
     pub fn fewer_names(&self) -> bool {
-        let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
-            || self.opts.output_types.contains_key(&OutputType::Bitcode)
-            // AddressSanitizer and MemorySanitizer use alloca name when reporting an issue.
-            || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
-
-        self.opts.debugging_opts.fewer_names || !more_names
+        if let Some(fewer_names) = self.opts.debugging_opts.fewer_names {
+            fewer_names
+        } else {
+            let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly)
+                || self.opts.output_types.contains_key(&OutputType::Bitcode)
+                // AddressSanitizer and MemorySanitizer use alloca name when reporting an issue.
+                || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY);
+            !more_names
+        }
     }
 
     pub fn unstable_options(&self) -> bool {
