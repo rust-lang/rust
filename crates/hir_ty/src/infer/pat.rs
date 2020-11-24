@@ -111,20 +111,29 @@ impl<'a> InferenceContext<'a> {
         let expected = expected;
 
         let ty = match &body[pat] {
-            Pat::Tuple { ref args, .. } => {
+            Pat::Tuple { ref args, ellipsis } => {
                 let expectations = match expected.as_tuple() {
                     Some(parameters) => &*parameters.0,
                     _ => &[],
                 };
-                let expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
 
-                let inner_tys = args
-                    .iter()
-                    .zip(expectations_iter)
-                    .map(|(&pat, ty)| self.infer_pat(pat, ty, default_bm))
-                    .collect();
+                let (pre, post) = match ellipsis {
+                    &Some(idx) => args.split_at(idx),
+                    None => (&args[..], &[][..]),
+                };
+                let uncovered_range = pre.len()..expectations.len().saturating_sub(post.len());
+                let mut expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
+                let mut infer_pat = |(&pat, ty)| self.infer_pat(pat, ty, default_bm);
 
-                Ty::apply(TypeCtor::Tuple { cardinality: args.len() as u16 }, Substs(inner_tys))
+                let mut inner_tys = Vec::with_capacity(expectations.len());
+                inner_tys.extend(pre.iter().zip(expectations_iter.by_ref()).map(&mut infer_pat));
+                inner_tys.extend(expectations_iter.by_ref().take(uncovered_range.len()).cloned());
+                inner_tys.extend(post.iter().zip(expectations_iter).map(infer_pat));
+
+                Ty::apply(
+                    TypeCtor::Tuple { cardinality: inner_tys.len() as u16 },
+                    Substs(inner_tys.into()),
+                )
             }
             Pat::Or(ref pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
