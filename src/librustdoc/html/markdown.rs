@@ -1043,12 +1043,10 @@ impl MarkdownSummaryLine<'_> {
 ///
 /// Returns a tuple of the rendered HTML string and whether the output was shortened
 /// due to the provided `length_limit`.
-fn markdown_summary_with_limit(md: &str, length_limit: Option<u16>) -> (String, bool) {
+fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) {
     if md.is_empty() {
         return (String::new(), false);
     }
-
-    let length_limit = length_limit.unwrap_or(u16::MAX) as usize;
 
     let mut s = String::with_capacity(md.len() * 3 / 2);
     let mut text_length = 0;
@@ -1115,7 +1113,7 @@ fn markdown_summary_with_limit(md: &str, length_limit: Option<u16>) -> (String, 
 ///
 /// See [`markdown_summary_with_limit`] for details about what is rendered and what is not.
 crate fn short_markdown_summary(markdown: &str) -> String {
-    let (mut s, was_shortened) = markdown_summary_with_limit(markdown, Some(59));
+    let (mut s, was_shortened) = markdown_summary_with_limit(markdown, 59);
 
     if was_shortened {
         s.push('…');
