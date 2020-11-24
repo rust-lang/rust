@@ -1379,6 +1379,20 @@ fn main() {
 }"#,
         );
     }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_in_middle_missing_arm() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, true, false) {
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        (true, .., false) => (),
+    }
+}"#,
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
