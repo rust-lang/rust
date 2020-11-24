@@ -438,7 +438,7 @@ rustc_queries! {
 
         /// Maps from the `DefId` of a trait to the list of
         /// all the ancestors super traits.
-        query super_traits_of(key: DefId) -> FxHashSet<DefId> {
+        query super_traits_of(key: DefId) -> Lrc<FxHashSet<DefId>> {
             desc { |tcx| "computing the super traits of `{}`", tcx.def_path_str(key) }
         }
 
