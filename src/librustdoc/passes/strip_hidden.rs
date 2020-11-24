@@ -47,7 +47,7 @@ impl<'a> DocFolder for Stripper<'a> {
                     // strip things like impl methods but when doing so
                     // we must not add any items to the `retained` set.
                     let old = mem::replace(&mut self.update_retained, false);
-                    let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
+                    let ret = StripItem(self.fold_item_recur(i)).strip();
                     self.update_retained = old;
                     return ret;
                 }
@@ -58,6 +58,6 @@ impl<'a> DocFolder for Stripper<'a> {
                 self.retained.insert(i.def_id);
             }
         }
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }

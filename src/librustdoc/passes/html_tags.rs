@@ -178,7 +178,7 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
             Some(hir_id) => hir_id,
             None => {
                 // If non-local, no need to check anything.
-                return self.fold_item_recur(item);
+                return Some(self.fold_item_recur(item));
             }
         };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
@@ -223,6 +223,6 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
             }
         }
 
-        self.fold_item_recur(item)
+        Some(self.fold_item_recur(item))
     }
 }
