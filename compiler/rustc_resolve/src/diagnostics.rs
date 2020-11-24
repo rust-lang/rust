@@ -480,8 +480,8 @@ impl<'a> Resolver<'a> {
                         "const parameters may only be used as standalone arguments, i.e. `{}`",
                         name
                     ));
-                    err.note("use feature(const_generics) and feature(const_evaluatable_checked) to enable this");
                 }
+                err.note("use #![feature(const_generics)] and #![feature(const_evaluatable_checked)] to allow generic const expressions");
 
                 err
             }

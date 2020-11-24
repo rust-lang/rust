@@ -5,6 +5,7 @@ LL |     T: Trait<{std::intrinsics::type_name::<T>()}>
    |                                            ^ cannot perform const operation using `T`
    |
    = note: type parameters may not be used in const expressions
+   = note: use #![feature(const_generics)] and #![feature(const_evaluatable_checked)] to allow generic const expressions
 
 error: `&'static str` is forbidden as the type of a const generic parameter
   --> $DIR/intrinsics-type_name-as-const-argument.rs:10:22
