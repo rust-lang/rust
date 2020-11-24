@@ -5,6 +5,7 @@ LL | struct Break0<const N: usize>([u8; { N + 1 }]);
    |                                      ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = note: use feature(const_generics) and feature(const_evaluatable_checked) to enable this
 
 error: generic parameters may not be used in const operations
   --> $DIR/complex-expression.rs:14:40
@@ -13,6 +14,7 @@ LL | struct Break1<const N: usize>([u8; { { N } }]);
    |                                        ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = note: use feature(const_generics) and feature(const_evaluatable_checked) to enable this
 
 error: generic parameters may not be used in const operations
   --> $DIR/complex-expression.rs:18:17
@@ -21,6 +23,7 @@ LL |     let _: [u8; N + 1];
    |                 ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = note: use feature(const_generics) and feature(const_evaluatable_checked) to enable this
 
 error: generic parameters may not be used in const operations
   --> $DIR/complex-expression.rs:23:17
@@ -29,6 +32,7 @@ LL |     let _ = [0; N + 1];
    |                 ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = note: use feature(const_generics) and feature(const_evaluatable_checked) to enable this
 
 error: generic parameters may not be used in const operations
   --> $DIR/complex-expression.rs:27:45

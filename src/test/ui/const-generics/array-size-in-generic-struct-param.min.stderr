@@ -5,6 +5,7 @@ LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
    |                                                ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = note: use feature(const_generics) and feature(const_evaluatable_checked) to enable this
 
 error: generic parameters may not be used in const operations
   --> $DIR/array-size-in-generic-struct-param.rs:20:15
@@ -13,6 +14,7 @@ LL |     arr: [u8; CFG.arr_size],
    |               ^^^ cannot perform const operation using `CFG`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `CFG`
+   = note: use feature(const_generics) and feature(const_evaluatable_checked) to enable this
 
 error: `Config` is forbidden as the type of a const generic parameter
   --> $DIR/array-size-in-generic-struct-param.rs:18:21
