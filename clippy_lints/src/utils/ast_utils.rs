@@ -110,8 +110,7 @@ pub fn eq_expr_opt(l: &Option<P<Expr>>, r: &Option<P<Expr>>) -> bool {
 pub fn eq_struct_rest(l: &StructRest, r: &StructRest) -> bool {
     match (l, r) {
         (StructRest::Base(lb), StructRest::Base(rb)) => eq_expr(lb, rb),
-        (StructRest::Rest(_), StructRest::Rest(_)) => true,
-        (StructRest::None, StructRest::None) => true,
+        (StructRest::Rest(_), StructRest::Rest(_)) | (StructRest::None, StructRest::None) => true,
         _ => false,
     }
 }

@@ -2,6 +2,7 @@
 // aux-build:macro_rules.rs
 
 #![deny(clippy::try_err)]
+#![allow(clippy::unnecessary_wraps)]
 
 #[macro_use]
 extern crate macro_rules;
@@ -78,12 +79,46 @@ fn nested_error() -> Result<i32, i32> {
     Ok(1)
 }
 
+// Bad suggestion when in macro (see #6242)
+macro_rules! try_validation {
+    ($e: expr) => {{
+        match $e {
+            Ok(_) => 0,
+            Err(_) => Err(1)?,
+        }
+    }};
+}
+
+macro_rules! ret_one {
+    () => {
+        1
+    };
+}
+
+macro_rules! try_validation_in_macro {
+    ($e: expr) => {{
+        match $e {
+            Ok(_) => 0,
+            Err(_) => Err(ret_one!())?,
+        }
+    }};
+}
+
+fn calling_macro() -> Result<i32, i32> {
+    // macro
+    try_validation!(Ok::<_, i32>(5));
+    // `Err` arg is another macro
+    try_validation_in_macro!(Ok::<_, i32>(5));
+    Ok(5)
+}
+
 fn main() {
     basic_test().unwrap();
     into_test().unwrap();
     negative_test().unwrap();
     closure_matches_test().unwrap();
     closure_into_test().unwrap();
+    calling_macro().unwrap();
 
     // We don't want to lint in external macros
     try_err!();

@@ -1,5 +1,5 @@
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:32:19
+  --> $DIR/or_fun_call.rs:33:19
    |
 LL |     with_const_fn.unwrap_or(Duration::from_secs(5));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| Duration::from_secs(5))`
@@ -7,88 +7,100 @@ LL |     with_const_fn.unwrap_or(Duration::from_secs(5));
    = note: `-D clippy::or-fun-call` implied by `-D warnings`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:35:22
+  --> $DIR/or_fun_call.rs:36:22
    |
 LL |     with_constructor.unwrap_or(make());
    |                      ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(make)`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:38:5
+  --> $DIR/or_fun_call.rs:39:5
    |
 LL |     with_new.unwrap_or(Vec::new());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:41:21
+  --> $DIR/or_fun_call.rs:42:21
    |
 LL |     with_const_args.unwrap_or(Vec::with_capacity(12));
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:44:14
+  --> $DIR/or_fun_call.rs:45:14
    |
 LL |     with_err.unwrap_or(make());
    |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| make())`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:47:19
+  --> $DIR/or_fun_call.rs:48:19
    |
 LL |     with_err_args.unwrap_or(Vec::with_capacity(12));
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| Vec::with_capacity(12))`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:50:5
+  --> $DIR/or_fun_call.rs:51:5
    |
 LL |     with_default_trait.unwrap_or(Default::default());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/or_fun_call.rs:53:5
+  --> $DIR/or_fun_call.rs:54:5
    |
 LL |     with_default_type.unwrap_or(u64::default());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/or_fun_call.rs:56:5
+  --> $DIR/or_fun_call.rs:57:5
    |
 LL |     with_vec.unwrap_or(vec![]);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_vec.unwrap_or_default()`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:59:21
+  --> $DIR/or_fun_call.rs:60:21
    |
 LL |     without_default.unwrap_or(Foo::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(Foo::new)`
 
 error: use of `or_insert` followed by a function call
-  --> $DIR/or_fun_call.rs:62:19
+  --> $DIR/or_fun_call.rs:63:19
    |
 LL |     map.entry(42).or_insert(String::new());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
 
 error: use of `or_insert` followed by a function call
-  --> $DIR/or_fun_call.rs:65:21
+  --> $DIR/or_fun_call.rs:66:21
    |
 LL |     btree.entry(42).or_insert(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:68:21
+  --> $DIR/or_fun_call.rs:69:21
    |
 LL |     let _ = stringy.unwrap_or("".to_owned());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
 
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:77:21
+   |
+LL |     let _ = Some(1).unwrap_or(map[&1]);
+   |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
+
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:79:21
+   |
+LL |     let _ = Some(1).unwrap_or(map[&1]);
+   |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
+
 error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:93:35
+  --> $DIR/or_fun_call.rs:103:35
    |
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some("b".to_string()))`
 
 error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:97:10
+  --> $DIR/or_fun_call.rs:107:10
    |
 LL |         .or(Some(Bar(b, Duration::from_secs(2))));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(Bar(b, Duration::from_secs(2))))`
 
-error: aborting due to 15 previous errors
+error: aborting due to 17 previous errors
 

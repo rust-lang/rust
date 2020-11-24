@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub AWAIT_HOLDING_LOCK,
-    correctness,
+    pedantic,
     "Inside an async function, holding a MutexGuard while calling await"
 }
 
@@ -65,8 +65,8 @@ declare_clippy_lint! {
     /// use std::cell::RefCell;
     ///
     /// async fn foo(x: &RefCell<u32>) {
-    ///   let b = x.borrow_mut()();
-    ///   *ref += 1;
+    ///   let mut y = x.borrow_mut();
+    ///   *y += 1;
     ///   bar.await;
     /// }
     /// ```
@@ -77,14 +77,14 @@ declare_clippy_lint! {
     ///
     /// async fn foo(x: &RefCell<u32>) {
     ///   {
-    ///     let b = x.borrow_mut();
-    ///     *ref += 1;
+    ///      let mut y = x.borrow_mut();
+    ///      *y += 1;
     ///   }
     ///   bar.await;
     /// }
     /// ```
     pub AWAIT_HOLDING_REFCELL_REF,
-    correctness,
+    pedantic,
     "Inside an async function, holding a RefCell ref while calling await"
 }
 

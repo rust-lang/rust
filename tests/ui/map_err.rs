@@ -1,4 +1,5 @@
 #![warn(clippy::map_err_ignore)]
+#![allow(clippy::unnecessary_wraps)]
 use std::convert::TryFrom;
 use std::error::Error;
 use std::fmt;
