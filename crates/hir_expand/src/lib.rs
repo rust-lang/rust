@@ -144,7 +144,7 @@ impl HirFileId {
                 let def_tt = loc.def.ast_id?.to_node(db).token_tree()?;
 
                 let macro_def = db.macro_def(loc.def)?;
-                let (parse, exp_map) = db.parse_macro(macro_file)?;
+                let (parse, exp_map) = db.parse_macro(macro_file).value?;
                 let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
                 Some(ExpansionInfo {
