@@ -88,6 +88,7 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
 
 #[derive(Debug)]
 pub(super) struct HirOwnerData<'hir> {
+    pub(super) attrs: &'hir IndexVec<ItemLocalId, &'hir [ast::Attribute]>,
     pub(super) signature: Option<&'hir Owner<'hir>>,
     pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
 }
@@ -457,10 +458,7 @@ impl<'hir> Map<'hir> {
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
-        match self.get_entry(CRATE_HIR_ID).node {
-            Node::Crate(item) => item.attrs,
-            _ => bug!(),
-        }
+        self.attrs(CRATE_HIR_ID)
     }
 
     pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
@@ -853,34 +851,7 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.find_entry(id).map_or(&[], |entry| match entry.node {
-            Node::Param(a) => a.attrs,
-            Node::Local(l) => &l.attrs[..],
-            Node::Item(i) => i.attrs,
-            Node::ForeignItem(fi) => fi.attrs,
-            Node::TraitItem(ref ti) => ti.attrs,
-            Node::ImplItem(ref ii) => ii.attrs,
-            Node::Variant(ref v) => v.attrs,
-            Node::Field(ref f) => f.attrs,
-            Node::Expr(ref e) => &*e.attrs,
-            Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id)),
-            Node::Arm(ref a) => &*a.attrs,
-            Node::GenericParam(param) => param.attrs,
-            // Unit/tuple structs/variants take the attributes straight from
-            // the struct/variant definition.
-            Node::Ctor(..) => self.attrs(self.get_parent_item(id)),
-            Node::Crate(item) => item.attrs,
-            Node::MacroDef(def) => def.attrs,
-            Node::AnonConst(..)
-            | Node::PathSegment(..)
-            | Node::Ty(..)
-            | Node::Pat(..)
-            | Node::Binding(..)
-            | Node::TraitRef(..)
-            | Node::Block(..)
-            | Node::Lifetime(..)
-            | Node::Visibility(..) => &[],
-        })
+        self.tcx.hir_attrs(id.owner).get(id.local_id).copied().unwrap_or(&[])
     }
 
     /// Gets the span of the definition of the specified HIR node.

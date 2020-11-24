@@ -82,6 +82,20 @@ impl<T> HirIdVec<T> {
         debug_assert_eq!(_ret_id, id.local_id);
     }
 
+    pub fn push_sparse(&mut self, id: HirId, value: T)
+    where
+        T: Default,
+    {
+        self.map.ensure_contains_elem(id.owner, IndexVec::new);
+        let submap = &mut self.map[id.owner];
+        let i = id.local_id.index();
+        let len = submap.len();
+        if i >= len {
+            submap.extend(std::iter::repeat_with(T::default).take(i - len + 1));
+        }
+        submap[id.local_id] = value;
+    }
+
     pub fn get(&self, id: HirId) -> Option<&T> {
         self.map.get(id.owner)?.get(id.local_id)
     }

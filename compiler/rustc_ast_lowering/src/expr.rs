@@ -260,6 +260,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Merge attributes into the inner expression.
                     let mut attrs: Vec<_> = e.attrs.iter().map(|a| self.lower_attr(a)).collect();
                     attrs.extend::<Vec<_>>(ex.attrs.into());
+                    self.attrs[ex.hir_id] = &*self.arena.alloc_from_iter(attrs.iter().cloned());
                     ex.attrs = attrs.into();
                     return ex;
                 }
@@ -272,12 +273,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::MacCall(_) => panic!("{:?} shouldn't exist here", e.span),
             };
 
-            hir::Expr {
-                hir_id: self.lower_node_id(e.id),
-                kind,
-                span: e.span,
-                attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
-            }
+            let hir_id = self.lower_node_id(e.id);
+            let attrs = e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>();
+            self.attrs.push_sparse(hir_id, &*self.arena.alloc_from_iter(attrs.iter().cloned()));
+            hir::Expr { hir_id, kind, span: e.span, attrs: attrs.into() }
         })
     }
 
@@ -618,9 +617,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::Guard::If(self.lower_expr(cond))
             }
         });
+        let hir_id = self.next_id();
         hir::Arm {
-            hir_id: self.next_id(),
-            attrs: self.lower_attrs(&arm.attrs),
+            hir_id,
+            attrs: self.lower_attrs(hir_id, &arm.attrs),
             pat,
             guard,
             body: self.lower_expr(&arm.body),
@@ -2159,7 +2159,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         kind: hir::ExprKind<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        hir::Expr { hir_id: self.next_id(), kind, span, attrs }
+        let hir_id = self.next_id();
+        self.attrs.push_sparse(hir_id, &*self.arena.alloc_from_iter(attrs.iter().cloned()));
+        hir::Expr { hir_id, kind, span, attrs }
     }
 
     fn field(&mut self, ident: Ident, expr: &'hir hir::Expr<'hir>, span: Span) -> hir::Field<'hir> {

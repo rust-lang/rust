@@ -116,6 +116,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 modules: _,
                 proc_macros: _,
                 trait_map: _,
+                attrs: _,
             } = *krate;
 
             hash_body(&mut hcx, root_mod_def_path_hash, item, &mut hir_body_nodes)
@@ -131,7 +132,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hcx,
             hir_body_nodes,
             map: (0..definitions.def_index_count())
-                .map(|_| HirOwnerData { signature: None, with_bodies: None })
+                .map(|id| HirOwnerData {
+                    attrs: krate.attrs.get_owner(Idx::new(id)),
+                    signature: None,
+                    with_bodies: None,
+                })
                 .collect(),
         };
         collector.insert_entry(
