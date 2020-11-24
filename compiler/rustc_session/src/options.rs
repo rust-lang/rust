@@ -900,7 +900,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "emits a future-incompatibility report for lints (RFC 2834)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    fewer_names: bool = (false, parse_bool, [TRACKED],
+    fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
     force_overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
