@@ -90,6 +90,11 @@ pub fn elaborate_trait_refs<'tcx>(
     elaborate_predicates(tcx, predicates)
 }
 
+/// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
+/// define the given associated type `assoc_name`. It uses the
+/// `super_predicates_that_define_assoc_type` query to avoid enumerating super-predicates that
+/// aren't related to `assoc_item`.  This is used when resolving types like `Self::Item` or
+/// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
 pub fn elaborate_trait_refs_that_define_assoc_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
