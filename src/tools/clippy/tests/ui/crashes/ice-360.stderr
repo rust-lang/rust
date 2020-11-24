@@ -19,7 +19,7 @@ LL |         loop {}
    |         ^^^^^^^
    |
    = note: `-D clippy::empty-loop` implied by `-D warnings`
-   = help: You should either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
+   = help: you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body
 
 error: aborting due to 2 previous errors
 

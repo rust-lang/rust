@@ -1,0 +1,106 @@
+error: this function's return value is unnecessarily wrapped by `Option`
+  --> $DIR/unnecessary_wraps.rs:8:1
+   |
+LL | / fn func1(a: bool, b: bool) -> Option<i32> {
+LL | |     if a && b {
+LL | |         return Some(42);
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
+help: remove `Option` from the return type...
+   |
+LL | fn func1(a: bool, b: bool) -> i32 {
+   |                               ^^^
+help: ...and change the returning expressions
+   |
+LL |         return 42;
+LL |     }
+LL |     if a {
+LL |         Some(-1);
+LL |         2
+LL |     } else {
+ ...
+
+error: this function's return value is unnecessarily wrapped by `Option`
+  --> $DIR/unnecessary_wraps.rs:21:1
+   |
+LL | / fn func2(a: bool, b: bool) -> Option<i32> {
+LL | |     if a && b {
+LL | |         return Some(10);
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: remove `Option` from the return type...
+   |
+LL | fn func2(a: bool, b: bool) -> i32 {
+   |                               ^^^
+help: ...and change the returning expressions
+   |
+LL |         return 10;
+LL |     }
+LL |     if a {
+LL |         20
+LL |     } else {
+LL |         30
+   |
+
+error: this function's return value is unnecessarily wrapped by `Option`
+  --> $DIR/unnecessary_wraps.rs:51:1
+   |
+LL | / fn func5() -> Option<i32> {
+LL | |     Some(1)
+LL | | }
+   | |_^
+   |
+help: remove `Option` from the return type...
+   |
+LL | fn func5() -> i32 {
+   |               ^^^
+help: ...and change the returning expressions
+   |
+LL |     1
+   |
+
+error: this function's return value is unnecessarily wrapped by `Result`
+  --> $DIR/unnecessary_wraps.rs:61:1
+   |
+LL | / fn func7() -> Result<i32, ()> {
+LL | |     Ok(1)
+LL | | }
+   | |_^
+   |
+help: remove `Result` from the return type...
+   |
+LL | fn func7() -> i32 {
+   |               ^^^
+help: ...and change the returning expressions
+   |
+LL |     1
+   |
+
+error: this function's return value is unnecessarily wrapped by `Option`
+  --> $DIR/unnecessary_wraps.rs:93:5
+   |
+LL | /     fn func12() -> Option<i32> {
+LL | |         Some(1)
+LL | |     }
+   | |_____^
+   |
+help: remove `Option` from the return type...
+   |
+LL |     fn func12() -> i32 {
+   |                    ^^^
+help: ...and change the returning expressions
+   |
+LL |         1
+   |
+
+error: aborting due to 5 previous errors
+
