@@ -88,7 +88,7 @@ pub trait AstDatabase: SourceDatabase {
     #[salsa::transparent]
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
-    fn parse_macro(
+    fn parse_macro_expansion(
         &self,
         macro_file: MacroFile,
     ) -> MacroResult<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>;
@@ -283,12 +283,12 @@ fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNod
     match file_id.0 {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
-            db.parse_macro(macro_file).map(|(it, _)| it.syntax_node()).value
+            db.parse_macro_expansion(macro_file).map(|(it, _)| it.syntax_node()).value
         }
     }
 }
 
-fn parse_macro(
+fn parse_macro_expansion(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
 ) -> MacroResult<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {

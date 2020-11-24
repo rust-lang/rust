@@ -113,7 +113,7 @@ impl RootDatabase {
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
         let lru_capacity = lru_capacity.unwrap_or(base_db::DEFAULT_LRU_CAP);
         base_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
-        hir::db::ParseMacroQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
+        hir::db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
         hir::db::MacroExpandQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
     }
 }

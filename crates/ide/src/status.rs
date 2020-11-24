@@ -19,7 +19,7 @@ fn syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
     ide_db::base_db::ParseQuery.in_db(db).entries::<SyntaxTreeStats>()
 }
 fn macro_syntax_tree_stats(db: &RootDatabase) -> SyntaxTreeStats {
-    hir::db::ParseMacroQuery.in_db(db).entries::<SyntaxTreeStats>()
+    hir::db::ParseMacroExpansionQuery.in_db(db).entries::<SyntaxTreeStats>()
 }
 
 // Feature: Status
