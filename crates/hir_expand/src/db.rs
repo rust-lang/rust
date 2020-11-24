@@ -88,7 +88,7 @@ pub trait AstDatabase: SourceDatabase {
     #[salsa::transparent]
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
-    fn parse_macro(
+    fn parse_macro_expansion(
         &self,
         macro_file: MacroFile,
     ) -> MacroResult<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>;
@@ -138,16 +138,13 @@ pub fn expand_hypothetical(
     Some((node.syntax_node(), token))
 }
 
-pub(crate) fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
+fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
     let map =
         db.parse_or_expand(file_id).map_or_else(AstIdMap::default, |it| AstIdMap::from_source(&it));
     Arc::new(map)
 }
 
-pub(crate) fn macro_def(
-    db: &dyn AstDatabase,
-    id: MacroDefId,
-) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
+fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
         MacroDefKind::Declarative => {
             let macro_call = id.ast_id?.to_node(db);
@@ -178,7 +175,7 @@ pub(crate) fn macro_def(
     }
 }
 
-pub(crate) fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
+fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     let id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(_id) => {
@@ -191,16 +188,13 @@ pub(crate) fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<Gr
     Some(arg.green().clone())
 }
 
-pub(crate) fn macro_arg(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
-) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
+fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let arg = db.macro_arg_text(id)?;
     let (tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg))?;
     Some(Arc::new((tt, tmap)))
 }
 
-pub(crate) fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> MacroResult<Arc<tt::Subtree>> {
+fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> MacroResult<Arc<tt::Subtree>> {
     macro_expand_with_arg(db, id, None)
 }
 
@@ -258,7 +252,7 @@ fn macro_expand_with_arg(
     MacroResult { value: Some(Arc::new(tt)), error: err.map(|e| format!("{:?}", e)) }
 }
 
-pub(crate) fn expand_proc_macro(
+fn expand_proc_macro(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
@@ -285,23 +279,23 @@ pub(crate) fn expand_proc_macro(
     expander.expand(db, lazy_id, &macro_arg.0)
 }
 
-pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
+fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
     match file_id.0 {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
-            db.parse_macro(macro_file).map(|(it, _)| it.syntax_node()).value
+            db.parse_macro_expansion(macro_file).map(|(it, _)| it.syntax_node()).value
         }
     }
 }
 
-pub(crate) fn parse_macro(
+fn parse_macro_expansion(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
 ) -> MacroResult<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
     parse_macro_with_arg(db, macro_file, None)
 }
 
-pub fn parse_macro_with_arg(
+fn parse_macro_with_arg(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
@@ -359,11 +353,7 @@ pub fn parse_macro_with_arg(
 
     match result.error {
         Some(error) => {
-            // FIXME:
-            // In future, we should propagate the actual error with recovery information
-            // instead of ignore the error here.
-
-            // Safe check for recurisve identity macro
+            // Safety check for recursive identity macro.
             let node = parse.syntax_node();
             let file: HirFileId = macro_file.into();
             let call_node = match file.call_node(db) {
@@ -374,7 +364,7 @@ pub fn parse_macro_with_arg(
             };
 
             if !diff(&node, &call_node.value).is_empty() {
-                MacroResult { value: Some((parse, Arc::new(rev_token_map))), error: None }
+                MacroResult { value: Some((parse, Arc::new(rev_token_map))), error: Some(error) }
             } else {
                 return MacroResult::error(error);
             }

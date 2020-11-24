@@ -76,7 +76,7 @@ impl RootDatabase {
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
 
         base_db::ParseQuery.in_db(self).sweep(sweep);
-        hir::db::ParseMacroQuery.in_db(self).sweep(sweep);
+        hir::db::ParseMacroExpansionQuery.in_db(self).sweep(sweep);
 
         // Macros do take significant space, but less then the syntax trees
         // self.query(hir::db::MacroDefQuery).sweep(sweep);
@@ -143,7 +143,7 @@ impl RootDatabase {
             hir::db::AstIdMapQuery
             hir::db::MacroArgTextQuery
             hir::db::MacroDefQuery
-            hir::db::ParseMacroQuery
+            hir::db::ParseMacroExpansionQuery
             hir::db::MacroExpandQuery
 
             // DefDatabase

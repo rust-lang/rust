@@ -11,7 +11,7 @@ pub use hir_def::db::{
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, InternEagerExpansionQuery, InternMacroQuery,
-    MacroArgTextQuery, MacroDefQuery, MacroExpandQuery, ParseMacroQuery,
+    MacroArgTextQuery, MacroDefQuery, MacroExpandQuery, ParseMacroExpansionQuery,
 };
 pub use hir_ty::db::*;
 
