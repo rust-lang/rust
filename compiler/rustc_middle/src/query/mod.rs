@@ -346,6 +346,14 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
+        /// Returns the function source hash and code region for the body of a function that is
+        /// uncovered, because it was unreachable and not codegen'ed.
+        query uncovered_function_hash_and_region(key: DefId) -> Option<(u64, mir::coverage::CodeRegion)> {
+            desc { |tcx| "retrieving uncovered function hash and code region from MIR for `{}`", tcx.def_path_str(key) }
+            storage(ArenaCacheSelector<'tcx>)
+            cache_on_disk_if { key.is_local() }
+        }
+
         /// The `DefId` is the `DefId` of the containing MIR body. Promoteds do not have their own
         /// `DefId`. This function returns all promoteds in the specified body. The body references
         /// promoteds by the `DefId` and the `mir::Promoted` index. This is necessary, because
@@ -1410,6 +1418,9 @@ rustc_queries! {
         }
         query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
             desc { "codegen_unit" }
+        }
+        query indexed_codegen_unit(_: Symbol) -> (usize, &'tcx CodegenUnit<'tcx>) {
+            desc { "indexed_codegen_unit" }
         }
         query unused_generic_params(key: DefId) -> FiniteBitSet<u32> {
             cache_on_disk_if { key.is_local() }

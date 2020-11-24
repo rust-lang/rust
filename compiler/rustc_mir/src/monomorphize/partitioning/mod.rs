@@ -430,4 +430,12 @@ pub fn provide(providers: &mut Providers) {
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
     };
+
+    providers.indexed_codegen_unit = |tcx, name| {
+        let (_, all) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        all.iter()
+            .enumerate()
+            .find(|(_, cgu)| cgu.name() == name)
+            .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
+    };
 }

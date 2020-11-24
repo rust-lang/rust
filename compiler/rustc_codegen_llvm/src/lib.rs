@@ -11,6 +11,7 @@
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(option_expect_none)]
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 

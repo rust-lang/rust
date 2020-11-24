@@ -24,21 +24,26 @@ use crate::metadata;
 use crate::value::Value;
 
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
+use rustc_codegen_ssa::coverageinfo::map::FunctionCoverage;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_session::config::{DebugInfo, SanitizerSet};
 use rustc_span::symbol::Symbol;
 
 use std::ffi::CString;
 use std::time::Instant;
+
+use tracing::debug;
 
 pub fn write_compressed_metadata<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -109,7 +114,7 @@ pub fn compile_codegen_unit(
     let cost = time_to_codegen.as_nanos() as u64;
 
     fn module_codegen(tcx: TyCtxt<'_>, cgu_name: Symbol) -> ModuleCodegen<ModuleLlvm> {
-        let cgu = tcx.codegen_unit(cgu_name);
+        let (index, cgu) = tcx.indexed_codegen_unit(cgu_name);
         let _prof_timer = tcx.prof.generic_activity_with_args(
             "codegen_module",
             &[cgu_name.to_string(), cgu.size_estimate().to_string()],
@@ -145,7 +150,37 @@ pub fn compile_codegen_unit(
 
             // Finalize code coverage by injecting the coverage map. Note, the coverage map will
             // also be added to the `llvm.used` variable, created next.
-            if cx.sess().opts.debugging_opts.instrument_coverage {
+            if let Some(coverage_cx) = cx.coverage_context() {
+                if index == 0 {
+                    // If this is the first CGU for the current `Crate` (because this should only
+                    // be done once per `Crate`), find any MIR not associated with a `MonoItem`,
+                    // and add it's `mir::Body`s code region to the Coverage Map, with a `Zero`
+                    // Counter. Codegen was not done for these items, so nothing was added to the
+                    // Coverage Map otherwise.
+                    let mut coverage_map = coverage_cx.function_coverage_map.borrow_mut();
+                    for local_def_id in tcx
+                        .mir_keys(LOCAL_CRATE)
+                        .iter()
+                        .filter(|&def_id| !tcx.is_codegened_item(*def_id))
+                    {
+                        let def_id = local_def_id.to_def_id();
+                        if let Some((hash, region)) = tcx.uncovered_function_hash_and_region(def_id) {
+                            let substs = InternalSubsts::identity_for_item(tcx, def_id);
+                            let instance = Instance::new(def_id, substs);
+                            debug!(
+                                "adding a coverage map entry for uncovered function {:?}, \
+                                 mangled name={}, function source hash={} at {:?}",
+                                instance, cx.tcx.symbol_name(instance).to_string(), hash, region,
+                            );
+                            let mut function_coverage = FunctionCoverage::new(tcx, instance);
+                            function_coverage.set_function_source_hash(*hash);
+                            function_coverage.add_unreachable_region(region.clone());
+                            coverage_map.insert(instance, function_coverage).expect_none(
+                                "uncovered functions should not already be in the coverage map",
+                            );
+                        }
+                    }
+                }
                 cx.coverageinfo_finalize();
             }
 

@@ -28,6 +28,7 @@ pub struct Expression {
 /// only whitespace or comments). According to LLVM Code Coverage Mapping documentation, "A count
 /// for a gap area is only used as the line execution count if there are no other regions on a
 /// line."
+#[derive(Debug)]
 pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
@@ -55,6 +56,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Sets the function source hash value. If called multiple times for the same function, all
     /// calls should have the same hash value.
     pub fn set_function_source_hash(&mut self, source_hash: u64) {
+        debug!("set_function_source_hash({}), for {:?}", source_hash, self.instance);
         if self.source_hash == 0 {
             self.source_hash = source_hash;
         } else {
@@ -64,6 +66,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Adds a code region to be counted by an injected counter intrinsic.
     pub fn add_counter(&mut self, id: CounterValueReference, region: CodeRegion) {
+        debug!("add_counter({:?}) at {:?}, for {:?}", id, region, self.instance);
         self.counters[id].replace(region).expect_none("add_counter called with duplicate `id`");
     }
 
@@ -90,8 +93,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
         region: Option<CodeRegion>,
     ) {
         debug!(
-            "add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?} at {:?}",
-            expression_id, lhs, op, rhs, region
+            "add_counter_expression({:?}, lhs={:?}, op={:?}, rhs={:?}) at {:?}, for {:?}",
+            expression_id, lhs, op, rhs, region, self.instance
         );
         let expression_index = self.expression_index(u32::from(expression_id));
         self.expressions[expression_index]
@@ -101,6 +104,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Add a region that will be marked as "unreachable", with a constant "zero counter".
     pub fn add_unreachable_region(&mut self, region: CodeRegion) {
+        debug!("add_unreachable_region() at {:?}, for {:?}", region, self.instance);
         self.unreachable_regions.push(region)
     }
 

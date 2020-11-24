@@ -1,14 +1,19 @@
+use super::*;
+
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{Coverage, CoverageInfo, Location};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::BytePos;
 use rustc_span::def_id::DefId;
 
 /// The `query` provider for `CoverageInfo`, requested by `codegen_coverage()` (to inject each
 /// counter) and `FunctionCoverage::new()` (to extract the coverage map metadata from the MIR).
 pub(crate) fn provide(providers: &mut Providers) {
     providers.coverageinfo = |tcx, def_id| coverageinfo_from_mir(tcx, def_id);
+    providers.uncovered_function_hash_and_region =
+        |tcx, def_id| uncovered_function_hash_and_region(tcx, def_id);
 }
 
 /// The `num_counters` argument to `llvm.instrprof.increment` is the max counter_id + 1, or in
@@ -122,4 +127,25 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
     coverage_visitor.visit_body(mir_body);
 
     coverage_visitor.info
+}
+
+fn uncovered_function_hash_and_region<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<(u64, CodeRegion)> {
+    let mir_body = tcx.optimized_mir(def_id);
+    if ! mir_body.basic_blocks().iter_enumerated().any(|(_, data)| data.statements.iter().any(|statement| match statement.kind {
+        StatementKind::Coverage(_) => true,
+        _ => false,
+    })) {
+        return None;
+
+    }
+    let hir_body = hir_body(tcx, def_id);
+    let body_span = hir_body.value.span;
+    let source_map = tcx.sess.source_map();
+    let source_file = source_map.lookup_source_file(body_span.lo());
+    let file_name = Symbol::intern(&source_file.name.to_string());
+    let function_span_to_closing_brace = body_span.with_hi(body_span.hi() - BytePos(1));
+    Some((
+        hash_mir_source(tcx, hir_body),
+        make_code_region(file_name, &source_file, function_span_to_closing_brace, body_span),
+    ))
 }
