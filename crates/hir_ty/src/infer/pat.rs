@@ -23,6 +23,7 @@ impl<'a> InferenceContext<'a> {
         expected: &Ty,
         default_bm: BindingMode,
         id: PatId,
+        ellipsis: Option<usize>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
         let var_data = def.map(|it| variant_data(self.db.upcast(), it));
@@ -34,8 +35,15 @@ impl<'a> InferenceContext<'a> {
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
+        let (pre, post) = match ellipsis {
+            Some(idx) => subpats.split_at(idx),
+            None => (&subpats[..], &[][..]),
+        };
+        let post_idx_offset = field_tys.iter().count() - post.len();
 
-        for (i, &subpat) in subpats.iter().enumerate() {
+        let pre_iter = pre.iter().enumerate();
+        let post_iter = (post_idx_offset..).zip(post.iter());
+        for (i, &subpat) in pre_iter.chain(post_iter) {
             let expected_ty = var_data
                 .as_ref()
                 .and_then(|d| d.field(&Name::new_tuple_field(i)))
@@ -111,20 +119,29 @@ impl<'a> InferenceContext<'a> {
         let expected = expected;
 
         let ty = match &body[pat] {
-            Pat::Tuple { ref args, .. } => {
+            &Pat::Tuple { ref args, ellipsis } => {
                 let expectations = match expected.as_tuple() {
                     Some(parameters) => &*parameters.0,
                     _ => &[],
                 };
-                let expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
 
-                let inner_tys = args
-                    .iter()
-                    .zip(expectations_iter)
-                    .map(|(&pat, ty)| self.infer_pat(pat, ty, default_bm))
-                    .collect();
+                let (pre, post) = match ellipsis {
+                    Some(idx) => args.split_at(idx),
+                    None => (&args[..], &[][..]),
+                };
+                let n_uncovered_patterns = expectations.len().saturating_sub(args.len());
+                let mut expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
+                let mut infer_pat = |(&pat, ty)| self.infer_pat(pat, ty, default_bm);
 
-                Ty::apply(TypeCtor::Tuple { cardinality: args.len() as u16 }, Substs(inner_tys))
+                let mut inner_tys = Vec::with_capacity(n_uncovered_patterns + args.len());
+                inner_tys.extend(pre.iter().zip(expectations_iter.by_ref()).map(&mut infer_pat));
+                inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns).cloned());
+                inner_tys.extend(post.iter().zip(expectations_iter).map(infer_pat));
+
+                Ty::apply(
+                    TypeCtor::Tuple { cardinality: inner_tys.len() as u16 },
+                    Substs(inner_tys.into()),
+                )
             }
             Pat::Or(ref pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
@@ -150,9 +167,14 @@ impl<'a> InferenceContext<'a> {
                 let subty = self.infer_pat(*pat, expectation, default_bm);
                 Ty::apply_one(TypeCtor::Ref(*mutability), subty)
             }
-            Pat::TupleStruct { path: p, args: subpats, .. } => {
-                self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm, pat)
-            }
+            Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
+                p.as_ref(),
+                subpats,
+                expected,
+                default_bm,
+                pat,
+                *ellipsis,
+            ),
             Pat::Record { path: p, args: fields, ellipsis: _ } => {
                 self.infer_record_pat(p.as_ref(), fields, expected, default_bm, pat)
             }
