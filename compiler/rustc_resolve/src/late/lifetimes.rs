@@ -1577,12 +1577,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 
     fn check_uses_for_lifetimes_defined_by_scope(&mut self) {
-        let defined_by = match self.scope {
-            Scope::Binder { from_anon_const: true, .. } => {
-                debug!("check_uses_for_lifetimes_defined_by_scope: synthetic anon const binder");
-                return;
-            }
-            Scope::Binder { lifetimes, .. } => lifetimes,
+        let (defined_by, from_anon_const) = match self.scope {
+            &Scope::Binder { ref lifetimes, from_anon_const, .. } => (lifetimes, from_anon_const),
             _ => {
                 debug!("check_uses_for_lifetimes_defined_by_scope: not in a binder scope");
                 return;
@@ -1599,6 +1595,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Region::LateBoundAnon(..) | Region::Static => None,
             })
             .collect();
+
+        if from_anon_const {
+            debug!("check_uses_for_lifetimes_defined_by_scope: synthetic anon const");
+            for def_id in def_ids {
+                self.lifetime_uses.remove(&def_id);
+            }
+            return;
+        }
 
         // ensure that we issue lints in a repeatable order
         def_ids.sort_by_cached_key(|&def_id| self.tcx.def_path_hash(def_id));

@@ -523,13 +523,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     _ => visit::walk_ty(self, t),
                 }
             }
-
-            fn visit_anon_const(&mut self, ct: &'tcx AnonConst) {
-                self.lctx.allocate_hir_id_counter(ct.id);
-                self.with_hir_id_owner(Some(ct.id), |this| {
-                    visit::walk_anon_const(this, ct);
-                });
-            }
         }
 
         self.lower_node_id(CRATE_NODE_ID);
@@ -2401,7 +2394,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         })
                     }));
 
-                hir::AnonConst {
+                // The generics of an anonymous constants refer to the
+                // generics of their parent anon const, so we only have to
+                // deal with each higher ranked lifetime at the outermost const.
+                let hrtb_start = mem::replace(&mut this.hrtb_start, None);
+                let ct = hir::AnonConst {
                     hir_id,
                     generics: hir::Generics {
                         params: generic_params,
@@ -2414,7 +2411,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         parenthesized: false,
                     },
                     body: this.lower_const_body(c.value.span, Some(&c.value)),
-                }
+                };
+                this.hrtb_start = hrtb_start;
+                ct
             })
         })
     }
