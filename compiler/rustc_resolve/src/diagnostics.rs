@@ -481,7 +481,7 @@ impl<'a> Resolver<'a> {
                         name
                     ));
                 }
-                err.note("use #![feature(const_generics)] and #![feature(const_evaluatable_checked)] to allow generic const expressions");
+                err.help("use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions");
 
                 err
             }

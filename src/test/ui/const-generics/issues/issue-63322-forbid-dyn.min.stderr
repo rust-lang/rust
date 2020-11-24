@@ -5,7 +5,7 @@ LL | fn test<const T: &'static dyn A>() {
    |                  ^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = note: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#[feature(const_generics)]`
 
 error[E0741]: `&'static (dyn A + 'static)` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
   --> $DIR/issue-63322-forbid-dyn.rs:10:18
