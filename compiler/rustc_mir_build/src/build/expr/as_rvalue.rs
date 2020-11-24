@@ -96,7 +96,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
                 // The `Box<T>` temporary created here is not a part of the HIR,
-                // and therefore is not considered during generator OIBIT
+                // and therefore is not considered during generator auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
                 let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span).internal());
                 this.cfg.push(

@@ -1,3 +1,3 @@
 #![feature(auto_traits)]
 
-pub auto trait AnOibit {}
+pub auto trait AnAutoTrait {}

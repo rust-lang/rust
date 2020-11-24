@@ -1,5 +1,5 @@
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/phantom-oibit.rs:21:12
+  --> $DIR/phantom-auto-trait.rs:21:12
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    |              --- required by this bound in `is_zen`
@@ -16,7 +16,7 @@ LL | fn not_sync<T: Sync>(x: Guard<T>) {
    |              ^^^^^^
 
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/phantom-oibit.rs:26:12
+  --> $DIR/phantom-auto-trait.rs:26:12
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    |              --- required by this bound in `is_zen`

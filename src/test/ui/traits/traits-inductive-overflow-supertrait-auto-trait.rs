@@ -1,5 +1,5 @@
-// OIBIT-based version of #29859, supertrait version. Test that using
-// a simple OIBIT `..` impl alone still doesn't allow arbitrary bounds
+// Auto-trait-based version of #29859, supertrait version. Test that using
+// a simple auto trait `..` impl alone still doesn't allow arbitrary bounds
 // to be synthesized.
 
 #![feature(auto_traits)]
