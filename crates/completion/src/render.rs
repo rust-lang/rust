@@ -150,6 +150,7 @@ impl<'a> Render<'a> {
         import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
         resolution: &ScopeDef,
     ) -> Option<CompletionItem> {
+        let _p = profile::span("render_resolution");
         use hir::ModuleDef::*;
 
         let completion_kind = match resolution {

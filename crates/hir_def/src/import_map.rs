@@ -7,7 +7,7 @@ use fst::{self, Streamer};
 use hir_expand::name::Name;
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHasher};
+use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use smallvec::SmallVec;
 use syntax::SmolStr;
 
@@ -225,6 +225,19 @@ fn cmp((_, lhs): &(&ItemInNs, &ImportInfo), (_, rhs): &(&ItemInNs, &ImportInfo))
     lhs_str.cmp(&rhs_str)
 }
 
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub enum ImportKind {
+    Module,
+    Function,
+    Adt,
+    EnumVariant,
+    Const,
+    Static,
+    Trait,
+    TypeAlias,
+    BuiltinType,
+}
+
 #[derive(Debug)]
 pub struct Query {
     query: String,
@@ -232,6 +245,7 @@ pub struct Query {
     anchor_end: bool,
     case_sensitive: bool,
     limit: usize,
+    exclude_import_kinds: FxHashSet<ImportKind>,
 }
 
 impl Query {
@@ -242,6 +256,7 @@ impl Query {
             anchor_end: false,
             case_sensitive: false,
             limit: usize::max_value(),
+            exclude_import_kinds: FxHashSet::default(),
         }
     }
 
@@ -259,6 +274,12 @@ impl Query {
     /// Respect casing of the query string when matching.
     pub fn case_sensitive(self) -> Self {
         Self { case_sensitive: true, ..self }
+    }
+
+    /// Do not include imports of the specified kind in the search results.
+    pub fn exclude_import_kind(mut self, import_kind: ImportKind) -> Self {
+        self.exclude_import_kinds.insert(import_kind);
+        self
     }
 }
 
@@ -303,10 +324,17 @@ pub fn search_dependencies<'a>(
 
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
-            let iter = importables.iter().copied().take_while(|item| {
-                let item_path = &import_map.map[item].path;
-                fst_path(item_path) == fst_path(path)
-            });
+            let iter = importables
+                .iter()
+                .copied()
+                .take_while(|item| {
+                    let item_path = &import_map.map[item].path;
+                    fst_path(item_path) == fst_path(path)
+                })
+                .filter(|&item| match item_import_kind(item) {
+                    Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
+                    None => true,
+                });
 
             if query.case_sensitive {
                 // FIXME: This does not do a subsequence match.
@@ -339,6 +367,20 @@ pub fn search_dependencies<'a>(
     }
 
     res
+}
+
+fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
+    Some(match item.as_module_def_id()? {
+        ModuleDefId::ModuleId(_) => ImportKind::Module,
+        ModuleDefId::FunctionId(_) => ImportKind::Function,
+        ModuleDefId::AdtId(_) => ImportKind::Adt,
+        ModuleDefId::EnumVariantId(_) => ImportKind::EnumVariant,
+        ModuleDefId::ConstId(_) => ImportKind::Const,
+        ModuleDefId::StaticId(_) => ImportKind::Static,
+        ModuleDefId::TraitId(_) => ImportKind::Trait,
+        ModuleDefId::TypeAliasId(_) => ImportKind::TypeAlias,
+        ModuleDefId::BuiltinType(_) => ImportKind::BuiltinType,
+    })
 }
 
 #[cfg(test)]
@@ -756,6 +798,36 @@ mod tests {
                 dep::fmt (t)
                 dep::Fmt (t)
             "#]],
+        );
+    }
+
+    #[test]
+    fn search_exclusions() {
+        let ra_fixture = r#"
+            //- /main.rs crate:main deps:dep
+            //- /dep.rs crate:dep
+
+            pub struct fmt;
+            pub struct FMT;
+        "#;
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("FMT"),
+            expect![[r#"
+                dep::fmt (t)
+                dep::fmt (v)
+                dep::FMT (t)
+                dep::FMT (v)
+            "#]],
+        );
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("FMT").exclude_import_kind(ImportKind::Adt),
+            expect![[r#""#]],
         );
     }
 }
