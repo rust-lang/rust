@@ -15,8 +15,11 @@
 // @has foo/index.html '//a[@href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html"]' 'with the generic, Option<T>'
 
 //! We should also try linking to [`Result<T, E>`]; it has *two* generics!
+//! And [`Result<T, !>`] and [`Result<!, E>`].
 //!
 // @has foo/index.html '//a[@href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html"]' 'Result<T, E>'
+// @has foo/index.html '//a[@href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html"]' 'Result<T, !>'
+// @has foo/index.html '//a[@href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html"]' 'Result<!, E>'
 
 //! Now let's test a trickier case: [`Vec::<T>::new`], or you could write it
 //! [with parentheses as `Vec::<T>::new()`][Vec::<T>::new()].
