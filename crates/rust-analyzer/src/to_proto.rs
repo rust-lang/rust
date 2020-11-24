@@ -629,12 +629,21 @@ pub(crate) fn resource_op(
     match file_system_edit {
         FileSystemEdit::CreateFile { anchor, dst } => {
             let uri = snap.anchored_path(anchor, &dst);
-            lsp_types::ResourceOp::Create(lsp_types::CreateFile { uri, options: None })
+            lsp_types::ResourceOp::Create(lsp_types::CreateFile {
+                uri,
+                options: None,
+                annotation: None,
+            })
         }
         FileSystemEdit::MoveFile { src, anchor, dst } => {
             let old_uri = snap.file_id_to_url(src);
             let new_uri = snap.anchored_path(anchor, &dst);
-            lsp_types::ResourceOp::Rename(lsp_types::RenameFile { old_uri, new_uri, options: None })
+            lsp_types::ResourceOp::Rename(lsp_types::RenameFile {
+                old_uri,
+                new_uri,
+                options: None,
+                annotation: None,
+            })
         }
     }
 }
@@ -684,9 +693,11 @@ impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
                                         edits: edit
                                             .edits
                                             .into_iter()
-                                            .map(|edit| lsp_types::TextEdit {
-                                                range: edit.range,
-                                                new_text: edit.new_text,
+                                            .map(|edit| {
+                                                lsp_types::OneOf::Left(lsp_types::TextEdit {
+                                                    range: edit.range,
+                                                    new_text: edit.new_text,
+                                                })
                                             })
                                             .collect(),
                                     },
