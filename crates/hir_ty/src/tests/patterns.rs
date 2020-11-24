@@ -726,3 +726,51 @@ fn foo(tuple: (u8, i16, f32)) {
         "#]],
     );
 }
+
+#[test]
+fn tuple_struct_ellipsis_pattern() {
+    check_infer(
+        r#"
+struct Tuple(u8, i16, f32);
+fn foo(tuple: Tuple) {
+    match tuple {
+        Tuple(.., b, c) => {},
+        Tuple(a, .., c) => {},
+        Tuple(a, b, ..) => {},
+        Tuple(a, b) => {/*too short*/}
+        Tuple(a, b, c, d) => {/*too long*/}
+        _ => {}
+    }
+}"#,
+        expect![[r#"
+            35..40 'tuple': Tuple
+            49..268 '{     ...   } }': ()
+            55..266 'match ...     }': ()
+            61..66 'tuple': Tuple
+            77..92 'Tuple(.., b, c)': Tuple
+            87..88 'b': i16
+            90..91 'c': f32
+            96..98 '{}': ()
+            108..123 'Tuple(a, .., c)': Tuple
+            114..115 'a': u8
+            121..122 'c': f32
+            127..129 '{}': ()
+            139..154 'Tuple(a, b, ..)': Tuple
+            145..146 'a': u8
+            148..149 'b': i16
+            158..160 '{}': ()
+            170..181 'Tuple(a, b)': Tuple
+            176..177 'a': u8
+            179..180 'b': i16
+            185..200 '{/*too short*/}': ()
+            209..226 'Tuple(... c, d)': Tuple
+            215..216 'a': u8
+            218..219 'b': i16
+            221..222 'c': f32
+            224..225 'd': {unknown}
+            230..244 '{/*too long*/}': ()
+            253..254 '_': Tuple
+            258..260 '{}': ()
+        "#]],
+    );
+}
