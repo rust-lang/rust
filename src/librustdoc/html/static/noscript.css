@@ -1,3 +1,9 @@
+/*
+This whole CSS file is used only in case rustdoc is rendered with javascript disabled. Since a lot
+of content is hidden by default (depending on the settings too), we have to overwrite some of the
+rules.
+*/
+
 #main > h2 + div, #main > h2 + h3, #main > h3 + div {
 	display: block;
 }
@@ -12,4 +18,8 @@
 
 #main > h2 + h3 {
 	display: flex;
+}
+
+#main .impl-items .hidden {
+	display: block !important;
 }
