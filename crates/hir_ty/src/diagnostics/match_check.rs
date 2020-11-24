@@ -216,7 +216,7 @@
 //!   U(P, p) := U(P, (r_1, p_2, .., p_n))
 //!            || U(P, (r_2, p_2, .., p_n))
 //!   ```
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
 use arena::Idx;
 use hir_def::{
@@ -366,16 +366,17 @@ impl PatStack {
 
         let head_pat = head.as_pat(cx);
         let result = match (head_pat, constructor) {
-            (Pat::Tuple { args: ref pat_ids, ellipsis }, Constructor::Tuple { arity: _ }) => {
-                if ellipsis.is_some() {
-                    // If there are ellipsis here, we should add the correct number of
-                    // Pat::Wild patterns to `pat_ids`. We should be able to use the
-                    // constructors arity for this, but at the time of writing we aren't
-                    // correctly calculating this arity when ellipsis are present.
-                    return Err(MatchCheckErr::NotImplemented);
+            (Pat::Tuple { args: pat_ids, ellipsis }, &Constructor::Tuple { arity }) => {
+                if let Some(ellipsis) = ellipsis {
+                    let (pre, post) = pat_ids.split_at(ellipsis);
+                    let n_wild_pats = arity.saturating_sub(pat_ids.len());
+                    let pre_iter = pre.iter().map(Into::into);
+                    let wildcards = iter::repeat(PatIdOrWild::Wild).take(n_wild_pats);
+                    let post_iter = post.iter().map(Into::into);
+                    Some(self.replace_head_with(pre_iter.chain(wildcards).chain(post_iter)))
+                } else {
+                    Some(self.replace_head_with(pat_ids.iter()))
                 }
-
-                Some(self.replace_head_with(pat_ids.iter()))
             }
             (Pat::Lit(lit_expr), Constructor::Bool(constructor_val)) => {
                 match cx.body.exprs[lit_expr] {
@@ -767,10 +768,11 @@ impl Constructor {
 fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Option<Constructor>> {
     let res = match pat.as_pat(cx) {
         Pat::Wild => None,
-        // FIXME somehow create the Tuple constructor with the proper arity. If there are
-        // ellipsis, the arity is not equal to the number of patterns.
-        Pat::Tuple { args: pats, ellipsis } if ellipsis.is_none() => {
-            Some(Constructor::Tuple { arity: pats.len() })
+        Pat::Tuple { .. } => {
+            let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
+            Some(Constructor::Tuple {
+                arity: cx.infer.type_of_pat[pat_id].as_tuple().ok_or(MatchCheckErr::Unknown)?.len(),
+            })
         }
         Pat::Lit(lit_expr) => match cx.body.exprs[lit_expr] {
             Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
@@ -1352,6 +1354,31 @@ fn main() {
         );
     }
 
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, true, false) {
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        (false, ..) => (),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, true, false) {
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        (.., false) => (),
+    }
+}"#,
+        );
+    }
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
@@ -1388,34 +1415,6 @@ fn main() {
     enum Either { A(bool), B }
     match Either::B {
         Either::A(true | false) => (),
-    }
-}
-"#,
-            );
-        }
-
-        #[test]
-        fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
-            // We don't currently handle tuple patterns with ellipsis.
-            check_diagnostics(
-                r#"
-fn main() {
-    match (false, true, false) {
-        (false, ..) => (),
-    }
-}
-"#,
-            );
-        }
-
-        #[test]
-        fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
-            // We don't currently handle tuple patterns with ellipsis.
-            check_diagnostics(
-                r#"
-fn main() {
-    match (false, true, false) {
-        (.., false) => (),
     }
 }
 "#,
