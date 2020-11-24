@@ -216,6 +216,10 @@ def children_of_btree_map(map):
             internal_type = lookup_type(internal_type_name)
             return node.cast(internal_type.pointer())
 
+        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+            # BACKCOMPAT: rust 1.49
+            node_ptr = node_ptr["ptr"]
+        node_ptr = unwrap_unique_or_non_null(node_ptr)
         leaf = node_ptr.dereference()
         keys = leaf["keys"]
         vals = leaf["vals"]
@@ -224,9 +228,8 @@ def children_of_btree_map(map):
 
         for i in xrange(0, length + 1):
             if height > 0:
-                boxed_child_node = edges[i]["value"]["value"]
-                child_node = unwrap_unique_or_non_null(boxed_child_node["ptr"])
-                for child in children_of_node(child_node, height - 1):
+                child_ptr = edges[i]["value"]["value"]
+                for child in children_of_node(child_ptr, height - 1):
                     yield child
             if i < length:
                 # Avoid "Cannot perform pointer math on incomplete type" on zero-sized arrays.
@@ -239,9 +242,6 @@ def children_of_btree_map(map):
         if root.type.name.startswith("core::option::Option<"):
             root = root.cast(gdb.lookup_type(root.type.name[21:-1]))
         node_ptr = root["node"]
-        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
-            node_ptr = node_ptr["ptr"]
-        node_ptr = unwrap_unique_or_non_null(node_ptr)
         height = root["height"]
         for child in children_of_node(node_ptr, height):
             yield child
