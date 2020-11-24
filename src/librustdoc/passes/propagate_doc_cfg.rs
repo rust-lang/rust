@@ -39,6 +39,6 @@ impl DocFolder for CfgPropagator {
         let result = self.fold_item_recur(item);
         self.parent_cfg = old_parent_cfg;
 
-        result
+        Some(result)
     }
 }

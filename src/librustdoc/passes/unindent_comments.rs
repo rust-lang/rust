@@ -23,7 +23,7 @@ struct CommentCleaner;
 impl fold::DocFolder for CommentCleaner {
     fn fold_item(&mut self, mut i: Item) -> Option<Item> {
         i.attrs.unindent_doc_comments();
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }
 

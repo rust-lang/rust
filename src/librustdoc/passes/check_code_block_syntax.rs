@@ -105,7 +105,7 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
             }
         }
 
-        self.fold_item_recur(item)
+        Some(self.fold_item_recur(item))
     }
 }
 
