@@ -442,12 +442,10 @@ rustc_queries! {
             desc { |tcx| "computing the super traits of `{}`", tcx.def_path_str(key) }
         }
 
-        /// Maps from the `DefId` of a trait to the list of
-        /// super-predicates. This is a subset of the full list of
-        /// predicates. We store these in a separate map because we must
-        /// evaluate them even during type conversion, often before the
-        /// full predicates are available (note that supertraits have
-        /// additional acyclicity requirements).
+        /// The `Option<Ident>` is the name of an associated type. If it is `None`, then this query
+        /// returns the full set of predicates. If `Some<Ident>`, then the query returns only the
+        /// subset of super-predicates that reference traits that define the given associated type.
+        /// This is used to avoid cycles in resolving types like `T::Item`.
         query super_predicates_that_define_assoc_type(key: (DefId, Option<rustc_span::symbol::Ident>)) -> ty::GenericPredicates<'tcx> {
             desc { |tcx| "computing the super traits of `{}`{}",
                 tcx.def_path_str(key.0),
