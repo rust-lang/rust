@@ -309,12 +309,8 @@ The following tables indicate the outputs of various stage actions:
 ## Passing stage-specific flags to `rustc`
 
 `x.py` allows you to pass stage-specific flags to `rustc` when bootstrapping.
-The `RUSTFLAGS_STAGE_0`, `RUSTFLAGS_STAGE_1` and `RUSTFLAGS_STAGE_2`
-environment variables pass the given flags when building stage 0, 1, and 2
-artifacts respectively.
-
-Additionally, the `RUSTFLAGS_STAGE_NOT_0` variable, as its name suggests, passes
-the given arguments if the stage is not 0.
+The `RUSTFLAGS_BOOTSTRAP` environment variable is passed as RUSTFLAGS to the bootstrap stage
+(stage0), and `RUSTFLAGS_NOT_BOOTSTRAP` is passed when building artifacts for later stages.
 
 ## Environment Variables
 
