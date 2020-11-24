@@ -57,8 +57,8 @@ pub use hir_def::{
     visibility::Visibility,
 };
 pub use hir_expand::{
-    name::known, name::AsName, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc,
-    /* FIXME */ MacroDefId, MacroFile, Origin,
+    db::MacroResult, name::known, name::AsName, name::Name, HirFileId, InFile, MacroCallId,
+    MacroCallLoc, /* FIXME */ MacroDefId, MacroFile, Origin,
 };
 pub use hir_ty::display::HirDisplay;
 
