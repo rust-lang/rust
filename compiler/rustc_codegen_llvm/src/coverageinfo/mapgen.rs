@@ -15,9 +15,9 @@ use tracing::debug;
 
 /// Generates and exports the Coverage Map.
 ///
-/// This Coverage Map complies with Coverage Mapping Format version 3 (zero-based encoded as 2),
-/// as defined at [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format)
-/// and published in Rust's current (July 2020) fork of LLVM. This version is supported by the
+/// This Coverage Map complies with Coverage Mapping Format version 4 (zero-based encoded as 3),
+/// as defined at [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format)
+/// and published in Rust's current (November 2020) fork of LLVM. This version is supported by the
 /// LLVM coverage tools (`llvm-profdata` and `llvm-cov`) bundled with Rust's fork of LLVM.
 ///
 /// Consequently, Rust's bundled version of Clang also generates Coverage Maps compliant with
