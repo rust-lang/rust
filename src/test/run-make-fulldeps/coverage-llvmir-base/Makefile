@@ -56,7 +56,14 @@ else
 		-DINSTR_PROF_ORDERFILE='$(DATA_SECTION_PREFIX)__llvm_orderfile'
 endif
 
+ifeq ($(LLVM_VERSION_11_PLUS),false)
+all: test_llvm_ir
+else
+$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
 all:
+endif
+
+test_llvm_ir:
 	# Compile the test program with non-experimental coverage instrumentation, and generate LLVM IR
 	#
 	# Note: `-Clink-dead-code=no` disables the option, needed because the option is automatically
@@ -68,4 +75,5 @@ all:
 			-Clink-dead-code=$(LINK_DEAD_CODE) \
 			--emit=llvm-ir
 
-	cat "$(TMPDIR)"/testprog.ll | "$(LLVM_FILECHECK)" $(BASEDIR)/filecheck.testprog.txt $(LLVM_FILECHECK_OPTIONS)
+	cat "$(TMPDIR)"/testprog.ll | \
+			"$(LLVM_FILECHECK)" $(BASEDIR)/filecheck.testprog.txt $(LLVM_FILECHECK_OPTIONS)

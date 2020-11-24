@@ -39,7 +39,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 
     // Encode coverage mappings and generate function records
     let mut function_data = Vec::new();
-    for (instance, function_coverage) in function_coverage_map.into_iter() {
+    for (instance, function_coverage) in function_coverage_map {
         debug!("Generate coverage map for: {:?}", instance);
 
         let mangled_function_name = cx.tcx.symbol_name(instance).to_string();
@@ -172,7 +172,7 @@ impl CoverageMapGenerator {
         // as of `llvm::coverage::CovMapVersion::Version4`.
         let zero_was_n_records_val = cx.const_u32(0);
         let filenames_size_val = cx.const_u32(filenames_size as u32);
-        let zero_was_coverage_size_val = cx.const_u32(0 as u32);
+        let zero_was_coverage_size_val = cx.const_u32(0);
         let version_val = cx.const_u32(coverageinfo::mapping_version());
         let cov_data_header_val = cx.const_struct(
             &[zero_was_n_records_val, filenames_size_val, zero_was_coverage_size_val, version_val],
