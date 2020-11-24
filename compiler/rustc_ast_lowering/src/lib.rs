@@ -2345,12 +2345,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // but as we already mention the parent generics this is not actually needed.
                 //
                 // Consider only adding explicit higher ranked lifetimes here.
+
+                // We only need `in_scope_lifetimes` because all in-band lifetimes are
+                // added to the generics of the parent.
                 let lifetime_params: Vec<(Span, ParamName)> = this
                     .in_scope_lifetimes
                     .iter()
                     .cloned()
                     .map(|name| (name.ident().span, name))
-                    .chain(this.lifetimes_to_define.iter().cloned())
                     .collect();
 
                 let generic_params =
