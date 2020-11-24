@@ -886,6 +886,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.compute_bounds_inner(param_ty, &ast_bounds, sized_by_default, span)
     }
 
+    /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
+    /// named `assoc_name` into ty::Bounds. Ignore the rest.
     pub fn compute_bounds_that_match_assoc_type(
         &self,
         param_ty: Ty<'tcx>,
