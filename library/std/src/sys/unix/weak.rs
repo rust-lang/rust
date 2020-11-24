@@ -100,7 +100,7 @@ unsafe fn fetch(name: &str) -> usize {
     libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
+#[cfg(not(target_os = "linux"))]
 macro_rules! syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name: $t),*) -> $ret {
@@ -118,7 +118,7 @@ macro_rules! syscall {
     )
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(target_os = "linux")]
 macro_rules! syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
         unsafe fn $name($($arg_name:$t),*) -> $ret {
@@ -126,18 +126,10 @@ macro_rules! syscall {
             // (not paths).
             use libc::*;
 
-            weak! { fn $name($($t),*) -> $ret }
-
-            // Use a weak symbol from libc when possible, allowing `LD_PRELOAD`
-            // interposition, but if it's not found just use a raw syscall.
-            if let Some(fun) = $name.get() {
-                fun($($arg_name),*)
-            } else {
-                syscall(
-                    concat_idents!(SYS_, $name),
-                    $($arg_name),*
-                ) as $ret
-            }
+            syscall(
+                concat_idents!(SYS_, $name),
+                $($arg_name as c_long),*
+            ) as $ret
         }
     )
 }

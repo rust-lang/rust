@@ -445,15 +445,15 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
     // We store the availability in a global to avoid unnecessary syscalls
     static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
 
-    syscall! {
-        fn copy_file_range(
-            fd_in: libc::c_int,
-            off_in: *mut libc::loff_t,
-            fd_out: libc::c_int,
-            off_out: *mut libc::loff_t,
-            len: libc::size_t,
-            flags: libc::c_uint
-        ) -> libc::ssize_t
+    unsafe fn copy_file_range(
+        fd_in: libc::c_int,
+        off_in: *mut libc::loff_t,
+        fd_out: libc::c_int,
+        off_out: *mut libc::loff_t,
+        len: libc::size_t,
+        flags: libc::c_uint,
+    ) -> libc::c_long {
+        libc::syscall(libc::SYS_copy_file_range, fd_in, off_in, fd_out, off_out, len, flags)
     }
 
     let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
