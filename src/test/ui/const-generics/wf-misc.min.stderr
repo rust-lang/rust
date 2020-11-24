@@ -5,6 +5,7 @@ LL |     let _: [u8; N + 1];
    |                 ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/wf-misc.rs:17:21
@@ -13,6 +14,7 @@ LL |     let _: Const::<{N + 1}>;
    |                     ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to 2 previous errors
 

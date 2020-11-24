@@ -5,6 +5,7 @@ LL |     fn t1() -> [u8; std::mem::size_of::<Self>()];
    |                                         ^^^^ cannot perform const operation using `Self`
    |
    = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic `Self` types are currently not permitted in anonymous constants
   --> $DIR/self-ty-in-const-1.rs:14:41

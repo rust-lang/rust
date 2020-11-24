@@ -5,6 +5,7 @@ LL |     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
    |                 ^^^^^^^^ cannot perform const operation using `INT_BITS`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `INT_BITS`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/issue-68977.rs:29:28
@@ -13,6 +14,7 @@ LL |     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
    |                            ^^^^^^^^^ cannot perform const operation using `FRAC_BITS`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `FRAC_BITS`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to 2 previous errors
 

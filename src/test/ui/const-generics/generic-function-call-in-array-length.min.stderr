@@ -5,6 +5,7 @@ LL | fn bar<const N: usize>() -> [u32; foo(N)] {
    |                                       ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
   --> $DIR/generic-function-call-in-array-length.rs:12:13
@@ -13,6 +14,7 @@ LL |     [0; foo(N)]
    |             ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to 2 previous errors
 

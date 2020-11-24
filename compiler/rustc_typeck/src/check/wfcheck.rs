@@ -329,7 +329,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                             ),
                         )
                         .note("the only supported types are integers, `bool` and `char`")
-                        .note("more complex types are supported with `#[feature(const_generics)]`")
+                        .help("more complex types are supported with `#[feature(const_generics)]`")
                         .emit()
                 }
             };

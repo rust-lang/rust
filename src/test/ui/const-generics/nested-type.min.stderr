@@ -12,7 +12,7 @@ LL | | }]>;
    | |__^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = note: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#[feature(const_generics)]`
 
 error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
   --> $DIR/nested-type.rs:16:5
