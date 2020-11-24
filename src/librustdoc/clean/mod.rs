@@ -1844,15 +1844,13 @@ impl Clean<Item> for ty::VariantDef {
                 fields: self
                     .fields
                     .iter()
-                    .map(|field| Item {
-                        source: cx.tcx.def_span(field.did).clean(cx),
-                        name: Some(field.ident.name.clean(cx)),
-                        attrs: cx.tcx.get_attrs(field.did).clean(cx),
-                        visibility: Visibility::Inherited,
-                        def_id: field.did,
-                        stability: get_stability(cx, field.did),
-                        deprecation: get_deprecation(cx, field.did),
-                        kind: StructFieldItem(cx.tcx.type_of(field.did).clean(cx)),
+                    .map(|field| {
+                        let name = Some(field.ident.name);
+                        let kind = StructFieldItem(cx.tcx.type_of(field.did).clean(cx));
+                        let what_rustc_thinks =
+                            Item::from_def_id_and_parts(field.did, name, kind, cx);
+                        // don't show `pub` for fields, which are always public
+                        Item { visibility: Visibility::Inherited, ..what_rustc_thinks }
                     })
                     .collect(),
             }),
