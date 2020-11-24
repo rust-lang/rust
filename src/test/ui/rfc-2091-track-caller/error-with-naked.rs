@@ -12,10 +12,4 @@ impl S {
     fn g() {}
 }
 
-extern "Rust" {
-    #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
-    #[naked]
-    fn h();
-}
-
 fn main() {}
