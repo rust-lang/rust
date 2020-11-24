@@ -1115,9 +1115,9 @@ fn super_predicates_that_define_assoc_type(
     }
 }
 
-/// Ensures that the super traits of the trait with a `DefId`
-/// of `trait_def_id` are converted and stored. This also ensures that
-/// the transitive super traits are converted.
+/// Computes the def-ids of the transitive super-traits of `trait_def_id`. This (intentionally)
+/// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
+/// to identify which traits may define a given associated type to help avoid cycle errors.
 fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> FxHashSet<DefId> {
     let mut set = FxHashSet::default();
     let mut stack = vec![trait_def_id];
