@@ -876,9 +876,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
+
         let hrtb_start = self.hrtb_start;
-        if matches!(origin, LifetimeOrigin::Hrtb) && self.hrtb_start.is_none() {
-            self.hrtb_start = Some(old_len);
+        match (hrtb_start, origin) {
+            (None, LifetimeOrigin::Hrtb) => self.hrtb_start = Some(old_len),
+            (Some(idx), LifetimeOrigin::Hrtb) => debug_assert!(idx <= old_len),
+            (None, LifetimeOrigin::Other) => (),
+            (Some(idx), LifetimeOrigin::Other) => panic!(
+                "unexpected lifetime origin inside of hrtb: {:?}, hrtb={:?}, new={:?}",
+                self.in_scope_lifetimes, idx, old_len
+            ),
         }
 
         let res = f(self);
