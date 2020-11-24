@@ -1,7 +1,7 @@
 use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
-use crate::{itemlikevisit, LangItem};
+use crate::{itemlikevisit, HirIdVec, LangItem};
 
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{self as ast, CrateSugar, LlvmAsmDialect};
@@ -674,6 +674,9 @@ pub struct Crate<'hir> {
     pub proc_macros: Vec<HirId>,
 
     pub trait_map: BTreeMap<HirId, Vec<TraitCandidate>>,
+
+    /// Collected attributes from HIR nodes.
+    pub attrs: HirIdVec<&'hir [Attribute]>,
 }
 
 impl Crate<'hir> {
