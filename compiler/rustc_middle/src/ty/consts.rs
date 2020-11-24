@@ -40,17 +40,15 @@ impl<'tcx> Const<'tcx> {
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
-        let hir_ct = match tcx.hir().get(hir_id) {
-            hir::Node::AnonConst(ac) => ac,
+        let body_id = match tcx.hir().get(hir_id) {
+            hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
                 tcx.def_span(def.did.to_def_id()),
                 "from_anon_const can only process anonymous constants"
             ),
         };
 
-        warn!(?hir_ct.generics, ?hir_ct.generic_args);
-
-        let expr = &tcx.hir().body(hir_ct.body).value;
+        let expr = &tcx.hir().body(body_id).value;
 
         let ty = tcx.type_of(def.def_id_for_type_of());
 
