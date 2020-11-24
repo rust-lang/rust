@@ -177,7 +177,7 @@ impl Clean<ExternalCrate> for CrateNum {
                         }
                     }
                 }
-                return keyword.map(|p| (def_id, p, attrs));
+                return keyword.map(|p| (def_id, p));
             }
             None
         };
@@ -199,8 +199,8 @@ impl Clean<ExternalCrate> for CrateNum {
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
-                            as_keyword(path.res).map(|(_, prim, attrs)| {
-                                (cx.tcx.hir().local_def_id(id.id).to_def_id(), prim, attrs)
+                            as_keyword(path.res).map(|(_, prim)| {
+                                (cx.tcx.hir().local_def_id(id.id).to_def_id(), prim)
                             })
                         }
                         _ => None,

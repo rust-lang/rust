@@ -33,8 +33,8 @@ use smallvec::{smallvec, SmallVec};
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
 use crate::clean::inline;
-use crate::clean::Clean;
 use crate::clean::types::Type::{QPath, ResolvedPath};
+use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::doctree;
 use crate::formats::cache::cache;
@@ -69,7 +69,7 @@ crate struct ExternalCrate {
     crate src: FileName,
     crate attrs: Attributes,
     crate primitives: Vec<(DefId, PrimitiveType)>,
-    crate keywords: Vec<(DefId, String, Attributes)>,
+    crate keywords: Vec<(DefId, String)>,
 }
 
 /// Anything with a source location and set of attributes and, optionally, a
@@ -121,7 +121,12 @@ impl Item {
         kind: ItemKind,
         cx: &DocContext<'_>,
     ) -> Item {
-        Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name.clean(cx), kind, cx)
+        Item::from_def_id_and_parts(
+            cx.tcx.hir().local_def_id(hir_id).to_def_id(),
+            name.clean(cx),
+            kind,
+            cx,
+        )
     }
 
     pub fn from_def_id_and_parts(

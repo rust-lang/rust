@@ -1,10 +1,10 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg,
-    GenericArgs, GenericBound, Generics, GetDefId, ImportSource, Item, ItemKind, Lifetime,
-    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
-    TypeKind, WherePredicate,
+    inline, Clean, Crate, ExternalCrate, FnDecl, FnRetTy, Generic, GenericArg, GenericArgs,
+    GenericBound, Generics, GetDefId, ImportSource, Item, ItemKind, Lifetime, MacroKind, Path,
+    PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding, TypeKind,
+    WherePredicate,
 };
 use crate::core::DocContext;
 
@@ -73,20 +73,9 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
                 cx,
             )
         }));
-        m.items.extend(keywords.into_iter()
-            .map(|(def_id, kw, _)| Item::from_def_id_and_parts(def_id, Some(kw.clone()), ItemKind::KeywordItem(kw), cx)
-        ));
-        /*
-            source: Span::empty(),
-            name: Some(kw.clone()),
-            attrs,
-            visibility: Visibility::Public,
-            stability: get_stability(cx, def_id),
-            deprecation: get_deprecation(cx, def_id),
-            def_id,
-            kind: ItemKind::KeywordItem(kw),
+        m.items.extend(keywords.into_iter().map(|(def_id, kw)| {
+            Item::from_def_id_and_parts(def_id, Some(kw.clone()), ItemKind::KeywordItem(kw), cx)
         }));
-        */
     }
 
     Crate {
