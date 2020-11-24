@@ -1,3 +1,5 @@
+#![feature(min_const_generics)]
+// FIXME(const_generics): This should be stabilized soon enough
 trait Dim {
     fn dim() -> usize;
 }
@@ -12,7 +14,7 @@ impl Dim for Dim3 {
 
 pub struct Vector<T, D: Dim> {
     entries: [T; D::dim()],
-    //~^ ERROR no function or associated item named `dim` found
+    //~^ ERROR generic parameters may not be used
     _dummy: D,
 }
 

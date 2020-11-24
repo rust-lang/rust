@@ -87,6 +87,11 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
         NestedVisitorMap::OnlyBodies(self.infcx.tcx.hir())
     }
 
+    fn visit_anon_const(&mut self, _ct: &'tcx hir::AnonConst<'tcx>) {
+        // Do not look into anonymous constants as they are typechecked
+        // seperately.
+    }
+
     fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
         if let (None, Some(ty)) =
             (self.found_local_pattern, self.node_ty_contains_target(local.hir_id))
