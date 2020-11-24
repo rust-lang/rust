@@ -181,3 +181,8 @@ declare_deprecated_lint! {
     pub TEMPORARY_CSTRING_AS_PTR,
     "this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`"
 }
+
+declare_deprecated_lint! {
+    pub PANIC_PARAMS,
+    "this lint has been uplifted to rustc and is now called `panic_fmt`"
+}

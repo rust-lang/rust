@@ -69,7 +69,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for comparing to an empty slice such as "" or [],`
+    /// **What it does:** Checks for comparing to an empty slice such as `""` or `[]`,
     /// and suggests using `.is_empty()` where applicable.
     ///
     /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
