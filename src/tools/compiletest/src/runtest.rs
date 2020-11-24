@@ -2394,7 +2394,8 @@ impl<'test> TestCx<'test> {
 
         let proc_res = new_rustdoc.document(&compare_dir);
         if !proc_res.status.success() {
-            proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
+            eprintln!("failed to run nightly rustdoc");
+            return;
         }
 
         #[rustfmt::skip]
@@ -2409,22 +2410,26 @@ impl<'test> TestCx<'test> {
         ];
         let tidy_dir = |dir| {
             let tidy = |file: &_| {
-                Command::new("tidy")
-                    .args(&tidy_args)
-                    .arg(file)
-                    .spawn()
-                    .unwrap_or_else(|err| {
-                        self.fatal(&format!("failed to run tidy - is it installed? - {}", err))
-                    })
-                    .wait()
-                    .unwrap()
+                let tidy_proc = Command::new("tidy").args(&tidy_args).arg(file).spawn();
+                match tidy_proc {
+                    Ok(mut proc) => {
+                        proc.wait().unwrap();
+                        true
+                    }
+                    Err(err) => {
+                        eprintln!("failed to run tidy - is it installed? - {}", err);
+                        false
+                    }
+                }
             };
             for entry in walkdir::WalkDir::new(dir) {
                 let entry = entry.expect("failed to read file");
                 if entry.file_type().is_file()
                     && entry.path().extension().and_then(|p| p.to_str()) == Some("html".into())
                 {
-                    tidy(entry.path());
+                    if !tidy(entry.path()) {
+                        return;
+                    }
                 }
             }
         };
