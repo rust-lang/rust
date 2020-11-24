@@ -359,11 +359,7 @@ pub fn parse_macro_with_arg(
 
     match result.error {
         Some(error) => {
-            // FIXME:
-            // In future, we should propagate the actual error with recovery information
-            // instead of ignore the error here.
-
-            // Safe check for recurisve identity macro
+            // Safety check for recursive identity macro.
             let node = parse.syntax_node();
             let file: HirFileId = macro_file.into();
             let call_node = match file.call_node(db) {
@@ -374,7 +370,7 @@ pub fn parse_macro_with_arg(
             };
 
             if !diff(&node, &call_node.value).is_empty() {
-                MacroResult { value: Some((parse, Arc::new(rev_token_map))), error: None }
+                MacroResult { value: Some((parse, Arc::new(rev_token_map))), error: Some(error) }
             } else {
                 return MacroResult::error(error);
             }
