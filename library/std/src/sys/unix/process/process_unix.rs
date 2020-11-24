@@ -265,8 +265,7 @@ impl Command {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "freebsd",
-        all(target_os = "linux", target_env = "gnu"),
-        all(target_os = "linux", target_env = "musl"),
+        all(target_os = "linux", any(target_env = "gnu", target_env = "musl")),
     )))]
     fn posix_spawn(
         &mut self,
@@ -281,8 +280,7 @@ impl Command {
     #[cfg(any(
         target_os = "macos",
         target_os = "freebsd",
-        all(target_os = "linux", target_env = "gnu"),
-        all(target_os = "linux", target_env = "musl"),
+        all(target_os = "linux", any(target_env = "gnu", target_env = "musl")),
     ))]
     fn posix_spawn(
         &mut self,
@@ -302,7 +300,7 @@ impl Command {
         }
 
         // Only glibc 2.24+ posix_spawn() supports returning ENOENT directly.
-        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        #[cfg(all(target_os = "linux", any(target_env = "gnu", target_env = "uclibc")))]
         {
             if let Some(version) = sys::os::glibc_version() {
                 if version < (2, 24) {

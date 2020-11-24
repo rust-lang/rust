@@ -100,13 +100,16 @@ mod imp {
         // On Linux-GNU, we rely on `ARGV_INIT_ARRAY` below to initialize
         // `ARGC` and `ARGV`. But in Miri that does not actually happen so we
         // still initialize here.
-        #[cfg(any(miri, not(all(target_os = "linux", target_env = "gnu"))))]
+        #[cfg(any(
+            miri,
+            not(all(target_os = "linux", any(target_env = "gnu", target_env = "uclibc")))
+        ))]
         really_init(_argc, _argv);
     }
 
     /// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
     /// This allows `std::env::args` to work even in a `cdylib`, as it does on macOS and Windows.
-    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    #[cfg(all(target_os = "linux", any(target_env = "gnu", target_env = "uclibc")))]
     #[used]
     #[link_section = ".init_array.00099"]
     static ARGV_INIT_ARRAY: extern "C" fn(

@@ -169,6 +169,7 @@ target | std | host | notes
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
+`armv7-unknown-linux-uclibceabihf` | ✓ | ? | ARMv7 Linux uClibc
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7 FreeBSD
 `armv7-unknown-netbsd-eabihf` | ✓ | ✓ |
 `armv7-wrs-vxworks-eabihf` | ? |  |
