@@ -1288,12 +1288,19 @@ pub fn init_env_logger(env: &str) {
             "always" => true,
             "never" => false,
             "auto" => stdout_isatty(),
-            _ => panic!("invalid log color value '{}': expected one of always, never, or auto", value),
+            _ => early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "invalid log color value '{}': expected one of always, never, or auto",
+                    value
+                ),
+            ),
         },
         Err(std::env::VarError::NotPresent) => stdout_isatty(),
-        Err(std::env::VarError::NotUnicode(_value)) => {
-            panic!("non-unicode log color value: expected one of always, never, or auto")
-        }
+        Err(std::env::VarError::NotUnicode(_value)) => early_error(
+            ErrorOutputType::default(),
+            "non-Unicode log color value: expected one of always, never, or auto",
+        ),
     };
     let filter = tracing_subscriber::EnvFilter::from_env(env);
     let layer = tracing_tree::HierarchicalLayer::default()
@@ -1324,7 +1331,7 @@ pub fn main() -> ! {
                 arg.into_string().unwrap_or_else(|arg| {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!("Argument {} is not valid Unicode: {:?}", i, arg),
+                        &format!("argument {} is not valid Unicode: {:?}", i, arg),
                     )
                 })
             })
