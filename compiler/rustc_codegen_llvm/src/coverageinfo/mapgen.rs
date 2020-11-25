@@ -169,7 +169,7 @@ impl CoverageMapGenerator {
         );
 
         // Create the coverage data header (Note, fields 0 and 2 are now always zero,
-        // as of `llvm::coverage::CovMapVersion::Version4`.
+        // as of `llvm::coverage::CovMapVersion::Version4`.)
         let zero_was_n_records_val = cx.const_u32(0);
         let filenames_size_val = cx.const_u32(filenames_size as u32);
         let zero_was_coverage_size_val = cx.const_u32(0);

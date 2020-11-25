@@ -56,7 +56,7 @@ else
 		-DINSTR_PROF_ORDERFILE='$(DATA_SECTION_PREFIX)__llvm_orderfile'
 endif
 
-ifeq ($(LLVM_VERSION_11_PLUS),false)
+ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: test_llvm_ir
 else
 $(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
