@@ -14,7 +14,7 @@ use std::cmp::Ordering;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_parent_expr, is_integer_const, meets_msrv, single_segment_path, snippet, snippet_opt,
+    get_parent_expr, in_constant, is_integer_const, meets_msrv, single_segment_path, snippet, snippet_opt,
     snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
 };
 use crate::utils::{higher, SpanlessEq};
@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
             },
             ExprKind::Binary(ref op, ref l, ref r) => {
                 if meets_msrv(self.msrv.as_ref(), &MANUAL_RANGE_CONTAINS_MSRV) {
-                    check_possible_range_contains(cx, op.node, l, r, expr.span);
+                    check_possible_range_contains(cx, op.node, l, r, expr);
                 }
             },
             _ => {},
@@ -203,7 +203,12 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, span: Span) {
+fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, expr: &Expr<'_>) {
+    if in_constant(cx, expr.hir_id) {
+        return;
+    }
+
+    let span = expr.span;
     let combine_and = match op {
         BinOpKind::And | BinOpKind::BitAnd => true,
         BinOpKind::Or | BinOpKind::BitOr => false,
