@@ -154,7 +154,7 @@ LL |         x_u32 > x_usize;
    |
 help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
    |
-LL |         x_u32 > x_usize.try_into().unwrap();
+LL |         x_u32 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -203,7 +203,7 @@ LL |         x_u64 > x_usize;
    |
 help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
    |
-LL |         x_u64 > x_usize.try_into().unwrap();
+LL |         x_u64 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -250,7 +250,7 @@ LL |         x_u128 > x_usize;
    |
 help: you can convert a `usize` to a `u128` and panic if the converted value doesn't fit
    |
-LL |         x_u128 > x_usize.try_into().unwrap();
+LL |         x_u128 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -279,7 +279,7 @@ LL |         x_usize > x_u32;
    |
 help: you can convert a `u32` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_u32.try_into().unwrap();
+LL |         x_usize > x_u32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -290,7 +290,7 @@ LL |         x_usize > x_u64;
    |
 help: you can convert a `u64` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_u64.try_into().unwrap();
+LL |         x_usize > x_u64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -301,7 +301,7 @@ LL |         x_usize > x_u128;
    |
 help: you can convert a `u128` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_u128.try_into().unwrap();
+LL |         x_usize > x_u128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -460,7 +460,7 @@ LL |         x_i32 > x_isize;
    |
 help: you can convert an `isize` to an `i32` and panic if the converted value doesn't fit
    |
-LL |         x_i32 > x_isize.try_into().unwrap();
+LL |         x_i32 > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -509,7 +509,7 @@ LL |         x_i64 > x_isize;
    |
 help: you can convert an `isize` to an `i64` and panic if the converted value doesn't fit
    |
-LL |         x_i64 > x_isize.try_into().unwrap();
+LL |         x_i64 > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -556,7 +556,7 @@ LL |         x_i128 > x_isize;
    |
 help: you can convert an `isize` to an `i128` and panic if the converted value doesn't fit
    |
-LL |         x_i128 > x_isize.try_into().unwrap();
+LL |         x_i128 > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -585,7 +585,7 @@ LL |         x_isize > x_i32;
    |
 help: you can convert an `i32` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_i32.try_into().unwrap();
+LL |         x_isize > x_i32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -596,7 +596,7 @@ LL |         x_isize > x_i64;
    |
 help: you can convert an `i64` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_i64.try_into().unwrap();
+LL |         x_isize > x_i64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -607,7 +607,7 @@ LL |         x_isize > x_i128;
    |
 help: you can convert an `i128` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_i128.try_into().unwrap();
+LL |         x_isize > x_i128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -618,7 +618,7 @@ LL |         x_u8 > x_i8;
    |
 help: you can convert an `i8` to a `u8` and panic if the converted value doesn't fit
    |
-LL |         x_u8 > x_i8.try_into().unwrap();
+LL |         x_u8 > x_i8.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -684,7 +684,7 @@ LL |         x_u16 > x_i8;
    |
 help: you can convert an `i8` to a `u16` and panic if the converted value doesn't fit
    |
-LL |         x_u16 > x_i8.try_into().unwrap();
+LL |         x_u16 > x_i8.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -695,7 +695,7 @@ LL |         x_u16 > x_i16;
    |
 help: you can convert an `i16` to a `u16` and panic if the converted value doesn't fit
    |
-LL |         x_u16 > x_i16.try_into().unwrap();
+LL |         x_u16 > x_i16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -739,7 +739,7 @@ LL |         x_u16 > x_isize;
    |
 help: you can convert an `isize` to a `u16` and panic if the converted value doesn't fit
    |
-LL |         x_u16 > x_isize.try_into().unwrap();
+LL |         x_u16 > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -750,7 +750,7 @@ LL |         x_u32 > x_i8;
    |
 help: you can convert an `i8` to a `u32` and panic if the converted value doesn't fit
    |
-LL |         x_u32 > x_i8.try_into().unwrap();
+LL |         x_u32 > x_i8.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -761,7 +761,7 @@ LL |         x_u32 > x_i16;
    |
 help: you can convert an `i16` to a `u32` and panic if the converted value doesn't fit
    |
-LL |         x_u32 > x_i16.try_into().unwrap();
+LL |         x_u32 > x_i16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -772,7 +772,7 @@ LL |         x_u32 > x_i32;
    |
 help: you can convert an `i32` to a `u32` and panic if the converted value doesn't fit
    |
-LL |         x_u32 > x_i32.try_into().unwrap();
+LL |         x_u32 > x_i32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -805,7 +805,7 @@ LL |         x_u32 > x_isize;
    |
 help: you can convert an `isize` to a `u32` and panic if the converted value doesn't fit
    |
-LL |         x_u32 > x_isize.try_into().unwrap();
+LL |         x_u32 > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -816,7 +816,7 @@ LL |         x_u64 > x_i8;
    |
 help: you can convert an `i8` to a `u64` and panic if the converted value doesn't fit
    |
-LL |         x_u64 > x_i8.try_into().unwrap();
+LL |         x_u64 > x_i8.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -827,7 +827,7 @@ LL |         x_u64 > x_i16;
    |
 help: you can convert an `i16` to a `u64` and panic if the converted value doesn't fit
    |
-LL |         x_u64 > x_i16.try_into().unwrap();
+LL |         x_u64 > x_i16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -838,7 +838,7 @@ LL |         x_u64 > x_i32;
    |
 help: you can convert an `i32` to a `u64` and panic if the converted value doesn't fit
    |
-LL |         x_u64 > x_i32.try_into().unwrap();
+LL |         x_u64 > x_i32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -849,7 +849,7 @@ LL |         x_u64 > x_i64;
    |
 help: you can convert an `i64` to a `u64` and panic if the converted value doesn't fit
    |
-LL |         x_u64 > x_i64.try_into().unwrap();
+LL |         x_u64 > x_i64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -871,7 +871,7 @@ LL |         x_u64 > x_isize;
    |
 help: you can convert an `isize` to a `u64` and panic if the converted value doesn't fit
    |
-LL |         x_u64 > x_isize.try_into().unwrap();
+LL |         x_u64 > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -882,7 +882,7 @@ LL |         x_u128 > x_i8;
    |
 help: you can convert an `i8` to a `u128` and panic if the converted value doesn't fit
    |
-LL |         x_u128 > x_i8.try_into().unwrap();
+LL |         x_u128 > x_i8.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -893,7 +893,7 @@ LL |         x_u128 > x_i16;
    |
 help: you can convert an `i16` to a `u128` and panic if the converted value doesn't fit
    |
-LL |         x_u128 > x_i16.try_into().unwrap();
+LL |         x_u128 > x_i16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -904,7 +904,7 @@ LL |         x_u128 > x_i32;
    |
 help: you can convert an `i32` to a `u128` and panic if the converted value doesn't fit
    |
-LL |         x_u128 > x_i32.try_into().unwrap();
+LL |         x_u128 > x_i32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -915,7 +915,7 @@ LL |         x_u128 > x_i64;
    |
 help: you can convert an `i64` to a `u128` and panic if the converted value doesn't fit
    |
-LL |         x_u128 > x_i64.try_into().unwrap();
+LL |         x_u128 > x_i64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -926,7 +926,7 @@ LL |         x_u128 > x_i128;
    |
 help: you can convert an `i128` to a `u128` and panic if the converted value doesn't fit
    |
-LL |         x_u128 > x_i128.try_into().unwrap();
+LL |         x_u128 > x_i128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -937,7 +937,7 @@ LL |         x_u128 > x_isize;
    |
 help: you can convert an `isize` to a `u128` and panic if the converted value doesn't fit
    |
-LL |         x_u128 > x_isize.try_into().unwrap();
+LL |         x_u128 > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -948,7 +948,7 @@ LL |         x_usize > x_i8;
    |
 help: you can convert an `i8` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_i8.try_into().unwrap();
+LL |         x_usize > x_i8.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -959,7 +959,7 @@ LL |         x_usize > x_i16;
    |
 help: you can convert an `i16` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_i16.try_into().unwrap();
+LL |         x_usize > x_i16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -970,7 +970,7 @@ LL |         x_usize > x_i32;
    |
 help: you can convert an `i32` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_i32.try_into().unwrap();
+LL |         x_usize > x_i32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -981,7 +981,7 @@ LL |         x_usize > x_i64;
    |
 help: you can convert an `i64` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_i64.try_into().unwrap();
+LL |         x_usize > x_i64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -992,7 +992,7 @@ LL |         x_usize > x_i128;
    |
 help: you can convert an `i128` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_i128.try_into().unwrap();
+LL |         x_usize > x_i128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1003,7 +1003,7 @@ LL |         x_usize > x_isize;
    |
 help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         x_usize > x_isize.try_into().unwrap();
+LL |         x_usize > x_isize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1014,7 +1014,7 @@ LL |         x_i8 > x_u8;
    |
 help: you can convert a `u8` to an `i8` and panic if the converted value doesn't fit
    |
-LL |         x_i8 > x_u8.try_into().unwrap();
+LL |         x_i8 > x_u8.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1025,7 +1025,7 @@ LL |         x_i8 > x_u16;
    |
 help: you can convert a `u16` to an `i8` and panic if the converted value doesn't fit
    |
-LL |         x_i8 > x_u16.try_into().unwrap();
+LL |         x_i8 > x_u16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1036,7 +1036,7 @@ LL |         x_i8 > x_u32;
    |
 help: you can convert a `u32` to an `i8` and panic if the converted value doesn't fit
    |
-LL |         x_i8 > x_u32.try_into().unwrap();
+LL |         x_i8 > x_u32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1047,7 +1047,7 @@ LL |         x_i8 > x_u64;
    |
 help: you can convert a `u64` to an `i8` and panic if the converted value doesn't fit
    |
-LL |         x_i8 > x_u64.try_into().unwrap();
+LL |         x_i8 > x_u64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1058,7 +1058,7 @@ LL |         x_i8 > x_u128;
    |
 help: you can convert a `u128` to an `i8` and panic if the converted value doesn't fit
    |
-LL |         x_i8 > x_u128.try_into().unwrap();
+LL |         x_i8 > x_u128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1069,7 +1069,7 @@ LL |         x_i8 > x_usize;
    |
 help: you can convert a `usize` to an `i8` and panic if the converted value doesn't fit
    |
-LL |         x_i8 > x_usize.try_into().unwrap();
+LL |         x_i8 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1089,7 +1089,7 @@ LL |         x_i16 > x_u16;
    |
 help: you can convert a `u16` to an `i16` and panic if the converted value doesn't fit
    |
-LL |         x_i16 > x_u16.try_into().unwrap();
+LL |         x_i16 > x_u16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1100,7 +1100,7 @@ LL |         x_i16 > x_u32;
    |
 help: you can convert a `u32` to an `i16` and panic if the converted value doesn't fit
    |
-LL |         x_i16 > x_u32.try_into().unwrap();
+LL |         x_i16 > x_u32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1111,7 +1111,7 @@ LL |         x_i16 > x_u64;
    |
 help: you can convert a `u64` to an `i16` and panic if the converted value doesn't fit
    |
-LL |         x_i16 > x_u64.try_into().unwrap();
+LL |         x_i16 > x_u64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1122,7 +1122,7 @@ LL |         x_i16 > x_u128;
    |
 help: you can convert a `u128` to an `i16` and panic if the converted value doesn't fit
    |
-LL |         x_i16 > x_u128.try_into().unwrap();
+LL |         x_i16 > x_u128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1133,7 +1133,7 @@ LL |         x_i16 > x_usize;
    |
 help: you can convert a `usize` to an `i16` and panic if the converted value doesn't fit
    |
-LL |         x_i16 > x_usize.try_into().unwrap();
+LL |         x_i16 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1162,7 +1162,7 @@ LL |         x_i32 > x_u32;
    |
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
-LL |         x_i32 > x_u32.try_into().unwrap();
+LL |         x_i32 > x_u32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1173,7 +1173,7 @@ LL |         x_i32 > x_u64;
    |
 help: you can convert a `u64` to an `i32` and panic if the converted value doesn't fit
    |
-LL |         x_i32 > x_u64.try_into().unwrap();
+LL |         x_i32 > x_u64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1184,7 +1184,7 @@ LL |         x_i32 > x_u128;
    |
 help: you can convert a `u128` to an `i32` and panic if the converted value doesn't fit
    |
-LL |         x_i32 > x_u128.try_into().unwrap();
+LL |         x_i32 > x_u128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1195,7 +1195,7 @@ LL |         x_i32 > x_usize;
    |
 help: you can convert a `usize` to an `i32` and panic if the converted value doesn't fit
    |
-LL |         x_i32 > x_usize.try_into().unwrap();
+LL |         x_i32 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1233,7 +1233,7 @@ LL |         x_i64 > x_u64;
    |
 help: you can convert a `u64` to an `i64` and panic if the converted value doesn't fit
    |
-LL |         x_i64 > x_u64.try_into().unwrap();
+LL |         x_i64 > x_u64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1244,7 +1244,7 @@ LL |         x_i64 > x_u128;
    |
 help: you can convert a `u128` to an `i64` and panic if the converted value doesn't fit
    |
-LL |         x_i64 > x_u128.try_into().unwrap();
+LL |         x_i64 > x_u128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1255,7 +1255,7 @@ LL |         x_i64 > x_usize;
    |
 help: you can convert a `usize` to an `i64` and panic if the converted value doesn't fit
    |
-LL |         x_i64 > x_usize.try_into().unwrap();
+LL |         x_i64 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1302,7 +1302,7 @@ LL |         x_i128 > x_u128;
    |
 help: you can convert a `u128` to an `i128` and panic if the converted value doesn't fit
    |
-LL |         x_i128 > x_u128.try_into().unwrap();
+LL |         x_i128 > x_u128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1313,7 +1313,7 @@ LL |         x_i128 > x_usize;
    |
 help: you can convert a `usize` to an `i128` and panic if the converted value doesn't fit
    |
-LL |         x_i128 > x_usize.try_into().unwrap();
+LL |         x_i128 > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1333,7 +1333,7 @@ LL |         x_isize > x_u16;
    |
 help: you can convert a `u16` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_u16.try_into().unwrap();
+LL |         x_isize > x_u16.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1344,7 +1344,7 @@ LL |         x_isize > x_u32;
    |
 help: you can convert a `u32` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_u32.try_into().unwrap();
+LL |         x_isize > x_u32.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1355,7 +1355,7 @@ LL |         x_isize > x_u64;
    |
 help: you can convert a `u64` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_u64.try_into().unwrap();
+LL |         x_isize > x_u64.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1366,7 +1366,7 @@ LL |         x_isize > x_u128;
    |
 help: you can convert a `u128` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_u128.try_into().unwrap();
+LL |         x_isize > x_u128.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1377,7 +1377,7 @@ LL |         x_isize > x_usize;
    |
 help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
    |
-LL |         x_isize > x_usize.try_into().unwrap();
+LL |         x_isize > x_usize.try_into().unwrap(); // by importing `use std::convert::TryInto;`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 132 previous errors

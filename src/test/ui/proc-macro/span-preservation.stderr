@@ -17,7 +17,7 @@ LL |         Some(x) => { return x },
    |
 help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
-LL |         Some(x) => { return x.try_into().unwrap() },
+LL |         Some(x) => { return x.try_into().unwrap() }, // by importing `use std::convert::TryInto;`
    |                             ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types

@@ -6,7 +6,7 @@ LL |     id_i8(a16);
    |
 help: you can convert an `i16` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     id_i8(a16.try_into().unwrap());
+LL |     id_i8(a16.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -17,7 +17,7 @@ LL |     id_i8(a32);
    |
 help: you can convert an `i32` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     id_i8(a32.try_into().unwrap());
+LL |     id_i8(a32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -28,7 +28,7 @@ LL |     id_i8(a64);
    |
 help: you can convert an `i64` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     id_i8(a64.try_into().unwrap());
+LL |     id_i8(a64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -39,7 +39,7 @@ LL |     id_i8(asize);
    |
 help: you can convert an `isize` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     id_i8(asize.try_into().unwrap());
+LL |     id_i8(asize.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -59,7 +59,7 @@ LL |     id_i16(a32);
    |
 help: you can convert an `i32` to an `i16` and panic if the converted value doesn't fit
    |
-LL |     id_i16(a32.try_into().unwrap());
+LL |     id_i16(a32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -70,7 +70,7 @@ LL |     id_i16(a64);
    |
 help: you can convert an `i64` to an `i16` and panic if the converted value doesn't fit
    |
-LL |     id_i16(a64.try_into().unwrap());
+LL |     id_i16(a64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -81,7 +81,7 @@ LL |     id_i16(asize);
    |
 help: you can convert an `isize` to an `i16` and panic if the converted value doesn't fit
    |
-LL |     id_i16(asize.try_into().unwrap());
+LL |     id_i16(asize.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -110,7 +110,7 @@ LL |     id_i32(a64);
    |
 help: you can convert an `i64` to an `i32` and panic if the converted value doesn't fit
    |
-LL |     id_i32(a64.try_into().unwrap());
+LL |     id_i32(a64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -121,7 +121,7 @@ LL |     id_i32(asize);
    |
 help: you can convert an `isize` to an `i32` and panic if the converted value doesn't fit
    |
-LL |     id_i32(asize.try_into().unwrap());
+LL |     id_i32(asize.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -159,7 +159,7 @@ LL |     id_i64(asize);
    |
 help: you can convert an `isize` to an `i64` and panic if the converted value doesn't fit
    |
-LL |     id_i64(asize.try_into().unwrap());
+LL |     id_i64(asize.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -188,7 +188,7 @@ LL |     id_isize(a32);
    |
 help: you can convert an `i32` to an `isize` and panic if the converted value doesn't fit
    |
-LL |     id_isize(a32.try_into().unwrap());
+LL |     id_isize(a32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |              ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -199,7 +199,7 @@ LL |     id_isize(a64);
    |
 help: you can convert an `i64` to an `isize` and panic if the converted value doesn't fit
    |
-LL |     id_isize(a64.try_into().unwrap());
+LL |     id_isize(a64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |              ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -210,7 +210,7 @@ LL |     id_i8(c16);
    |
 help: you can convert an `i16` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     id_i8(c16.try_into().unwrap());
+LL |     id_i8(c16.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -221,7 +221,7 @@ LL |     id_i8(c32);
    |
 help: you can convert an `i32` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     id_i8(c32.try_into().unwrap());
+LL |     id_i8(c32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -232,7 +232,7 @@ LL |     id_i8(c64);
    |
 help: you can convert an `i64` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     id_i8(c64.try_into().unwrap());
+LL |     id_i8(c64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -252,7 +252,7 @@ LL |     id_i16(c32);
    |
 help: you can convert an `i32` to an `i16` and panic if the converted value doesn't fit
    |
-LL |     id_i16(c32.try_into().unwrap());
+LL |     id_i16(c32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -263,7 +263,7 @@ LL |     id_i16(c64);
    |
 help: you can convert an `i64` to an `i16` and panic if the converted value doesn't fit
    |
-LL |     id_i16(c64.try_into().unwrap());
+LL |     id_i16(c64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -292,7 +292,7 @@ LL |     id_i32(c64);
    |
 help: you can convert an `i64` to an `i32` and panic if the converted value doesn't fit
    |
-LL |     id_i32(c64.try_into().unwrap());
+LL |     id_i32(c64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -330,7 +330,7 @@ LL |     id_u8(b16);
    |
 help: you can convert a `u16` to a `u8` and panic if the converted value doesn't fit
    |
-LL |     id_u8(b16.try_into().unwrap());
+LL |     id_u8(b16.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -341,7 +341,7 @@ LL |     id_u8(b32);
    |
 help: you can convert a `u32` to a `u8` and panic if the converted value doesn't fit
    |
-LL |     id_u8(b32.try_into().unwrap());
+LL |     id_u8(b32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -352,7 +352,7 @@ LL |     id_u8(b64);
    |
 help: you can convert a `u64` to a `u8` and panic if the converted value doesn't fit
    |
-LL |     id_u8(b64.try_into().unwrap());
+LL |     id_u8(b64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -363,7 +363,7 @@ LL |     id_u8(bsize);
    |
 help: you can convert a `usize` to a `u8` and panic if the converted value doesn't fit
    |
-LL |     id_u8(bsize.try_into().unwrap());
+LL |     id_u8(bsize.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -383,7 +383,7 @@ LL |     id_u16(b32);
    |
 help: you can convert a `u32` to a `u16` and panic if the converted value doesn't fit
    |
-LL |     id_u16(b32.try_into().unwrap());
+LL |     id_u16(b32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -394,7 +394,7 @@ LL |     id_u16(b64);
    |
 help: you can convert a `u64` to a `u16` and panic if the converted value doesn't fit
    |
-LL |     id_u16(b64.try_into().unwrap());
+LL |     id_u16(b64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -434,7 +434,7 @@ LL |     id_u32(b64);
    |
 help: you can convert a `u64` to a `u32` and panic if the converted value doesn't fit
    |
-LL |     id_u32(b64.try_into().unwrap());
+LL |     id_u32(b64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -445,7 +445,7 @@ LL |     id_u32(bsize);
    |
 help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
    |
-LL |     id_u32(bsize.try_into().unwrap());
+LL |     id_u32(bsize.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -483,7 +483,7 @@ LL |     id_u64(bsize);
    |
 help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
    |
-LL |     id_u64(bsize.try_into().unwrap());
+LL |     id_u64(bsize.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -512,7 +512,7 @@ LL |     id_usize(b32);
    |
 help: you can convert a `u32` to a `usize` and panic if the converted value doesn't fit
    |
-LL |     id_usize(b32.try_into().unwrap());
+LL |     id_usize(b32.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |              ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -523,7 +523,7 @@ LL |     id_usize(b64);
    |
 help: you can convert a `u64` to a `usize` and panic if the converted value doesn't fit
    |
-LL |     id_usize(b64.try_into().unwrap());
+LL |     id_usize(b64.try_into().unwrap()); // by importing `use std::convert::TryInto;`
    |              ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 52 previous errors
