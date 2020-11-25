@@ -172,6 +172,7 @@ mod cargo_common_metadata;
 mod checked_conversions;
 mod cognitive_complexity;
 mod collapsible_if;
+mod collapsible_match;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
@@ -531,6 +532,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &checked_conversions::CHECKED_CONVERSIONS,
         &cognitive_complexity::COGNITIVE_COMPLEXITY,
         &collapsible_if::COLLAPSIBLE_IF,
+        &collapsible_match::COLLAPSIBLE_MATCH,
         &comparison_chain::COMPARISON_CHAIN,
         &copies::IFS_SAME_COND,
         &copies::IF_SAME_THEN_ELSE,
@@ -960,6 +962,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box len_zero::LenZero);
     store.register_late_pass(|| box attrs::Attributes);
     store.register_late_pass(|| box blocks_in_if_conditions::BlocksInIfConditions);
+    store.register_late_pass(|| box collapsible_match::CollapsibleMatch);
     store.register_late_pass(|| box unicode::Unicode);
     store.register_late_pass(|| box unit_return_expecting_ord::UnitReturnExpectingOrd);
     store.register_late_pass(|| box strings::StringAdd);
@@ -1351,6 +1354,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&booleans::NONMINIMAL_BOOL),
         LintId::of(&bytecount::NAIVE_BYTECOUNT),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
+        LintId::of(&collapsible_match::COLLAPSIBLE_MATCH),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
@@ -1617,6 +1621,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
+        LintId::of(&collapsible_match::COLLAPSIBLE_MATCH),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&default::FIELD_REASSIGN_WITH_DEFAULT),
         LintId::of(&doc::MISSING_SAFETY_DOC),
