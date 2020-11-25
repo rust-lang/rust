@@ -43,8 +43,14 @@ use pulldown_cmark::{html, BrokenLink, CodeBlockKind, CowStr, Event, Options, Pa
 #[cfg(test)]
 mod tests;
 
+/// Options for rendering Markdown in the main body of documentation.
 pub(crate) fn opts() -> Options {
     Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES | Options::ENABLE_STRIKETHROUGH
+}
+
+/// A subset of [`opts()`] used for rendering summaries.
+pub(crate) fn summary_opts() -> Options {
+    Options::ENABLE_STRIKETHROUGH
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
@@ -1021,11 +1027,7 @@ impl MarkdownSummaryLine<'_> {
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(
-            md,
-            Options::ENABLE_STRIKETHROUGH,
-            Some(&mut replacer),
-        );
+        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
 
         let mut s = String::new();
 
@@ -1047,7 +1049,7 @@ crate fn plain_text_summary(md: &str) -> String {
 
     let mut s = String::with_capacity(md.len() * 3 / 2);
 
-    for event in Parser::new_ext(md, Options::ENABLE_STRIKETHROUGH) {
+    for event in Parser::new_ext(md, summary_opts()) {
         match &event {
             Event::Text(text) => s.push_str(text),
             Event::Code(code) => {
