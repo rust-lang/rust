@@ -216,6 +216,43 @@ impl<I: Iterator> Peekable<I> {
         self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
 
+    /// Returns a mutable reference to the next() value without advancing the iterator.
+    ///
+    /// Like [`next`], if there is a value, it is wrapped in a `Some(T)`.
+    /// But if the iteration is over, `None` is returned.
+    ///
+    /// Because `peek_mut()` returns a reference, and many iterators iterate over
+    /// references, there can be a possibly confusing situation where the
+    /// return value is a double reference. You can see this effect in the examples
+    /// below.
+    ///
+    /// [`next`]: Iterator::next
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(peekable_peek_mut)]
+    /// let mut iter = [1, 2, 3].iter().peekable();
+    ///
+    /// assert_eq!(iter.peek_mut(), Some(&mut &1));
+    /// assert_eq!(iter.next(), Some(&1));
+    ///
+    /// // Peek into the iterator and modify the value which will be returned next
+    /// if let Some(mut p) = iter.peek_mut() {
+    ///     if *p == &2 {
+    ///         *p = &5;
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(iter.collect::<Vec<_>>(), vec![&5, &3]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "peekable_peek_mut", issue = "78302")]
+    pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
+        let iter = &mut self.iter;
+        self.peeked.get_or_insert_with(|| iter.next()).as_mut()
+    }
+
     /// Consume and return the next value of this iterator if a condition is true.
     ///
     /// If `func` returns `true` for the next value of this iterator, consume and return it.
