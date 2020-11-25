@@ -230,27 +230,65 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// #![feature(peekable_peek_mut)]
     /// let mut iter = [1, 2, 3].iter().peekable();
     ///
-    /// assert_eq!(iter.peek_mut(), Some(&mut &1));
+    /// assert_eq!(iter.peek_mut(), &mut Some(&1));
     /// assert_eq!(iter.next(), Some(&1));
     ///
     /// // Peek into the iterator and modify the value which will be returned next
-    /// if let Some(mut p) = iter.peek_mut() {
-    ///     if *p == &2 {
-    ///         *p = &5;
-    ///     }
+    /// if let p @ Some(&2) = iter.peek_mut() {
+    ///     *p = Some(&5);
     /// }
     ///
     /// assert_eq!(iter.collect::<Vec<_>>(), vec![&5, &3]);
     /// ```
+    ///
+    /// Short-circuit an iterator:
+    ///
+    /// ```
+    /// #![feature(peekable_peek_mut)]
+    /// let mut iter = [1, 2, 3].iter().peekable();
+    /// assert_eq!(iter.next(), Some(&1));
+    ///
+    /// // Peek into the iterator and place a `None` into it to signal it's end.
+    /// // We need to `peek_mut()` here, because if we advanced the iterator
+    /// // to inspect the next value, there would be no way to place that value
+    /// // back in case it didn't fit our desired pattern.
+    /// if let p @ Some(&2) = iter.peek_mut() {
+    ///     *p = None;
+    /// }
+    ///
+    /// assert_eq!(iter.count(), 0);
+    /// ```
+    ///
+    /// Revive an empty iterator:
+    ///
+    /// ```
+    /// #![feature(peekable_peek_mut)]
+    /// let mut iter = [1].iter().peekable();
+    /// assert_eq!(iter.next(), Some(&1));
+    /// // The iterator is now truly empty
+    /// assert!(iter.next().is_none());
+    ///
+    /// // Peek into the iterator and place a value into it in case it has ended.
+    /// // Like above, we need `peek_mut()` here, because if we advanced the iterator
+    /// // to inspect if it's empty, there would be no way to place the value
+    /// // back in case we actually had some.
+    /// if let p @ None = iter.peek_mut() {
+    ///     *p = Some(&10);
+    /// }
+    ///
+    /// assert_eq!(iter.collect::<Vec<_>>(), vec![&10]);
+    /// ```
     #[inline]
     #[unstable(feature = "peekable_peek_mut", issue = "78302")]
-    pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
+    pub fn peek_mut(&mut self) -> &mut Option<I::Item> {
         let iter = &mut self.iter;
-        self.peeked.get_or_insert_with(|| iter.next()).as_mut()
+        self.peeked.get_or_insert_with(|| iter.next())
     }
 
     /// Consume and return the next value of this iterator if a condition is true.

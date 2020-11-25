@@ -1137,10 +1137,8 @@ fn test_iterator_peekable_next_if_eq() {
 #[test]
 fn test_iterator_peekable_mut() {
     let mut it = vec![1, 2, 3].into_iter().peekable();
-    if let Some(p) = it.peek_mut() {
-        if *p == 1 {
-            *p = 5;
-        }
+    if let p @ Some(1) = it.peek_mut() {
+        *p = Some(5);
     }
     assert_eq!(it.collect::<Vec<_>>(), vec![5, 2, 3]);
 }
