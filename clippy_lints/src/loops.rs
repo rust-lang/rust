@@ -1919,8 +1919,7 @@ fn check_for_single_element_loop<'tcx>(
     if_chain! {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg_expr) = arg.kind;
         if let PatKind::Binding(.., target, _) = pat.kind;
-        if let ExprKind::Array(ref arg_expr_list) = arg_expr.kind;
-        if let [arg_expression] = arg_expr_list;
+        if let ExprKind::Array([arg_expression]) = arg_expr.kind;
         if let ExprKind::Path(ref list_item) = arg_expression.kind;
         if let Some(list_item_name) = single_segment_path(list_item).map(|ps| ps.ident.name);
         if let ExprKind::Block(ref block, _) = body.kind;
@@ -2025,8 +2024,7 @@ fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId>
                 let node_str = cx.tcx.hir().get(hir_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
-                    if let PatKind::Binding(bind_ann, ..) = pat.kind;
-                    if let BindingAnnotation::Mutable = bind_ann;
+                    if let PatKind::Binding(BindingAnnotation::Mutable, ..) = pat.kind;
                     then {
                         return Some(hir_id);
                     }

@@ -652,8 +652,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         if_chain! {
             if !in_external_macro(cx.sess(), pat.span);
             if !in_macro(pat.span);
-            if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
-            if let QPath::Resolved(_, ref path) = qpath;
+            if let PatKind::Struct(QPath::Resolved(_, ref path), fields, true) = pat.kind;
             if let Some(def_id) = path.res.opt_def_id();
             let ty = cx.tcx.type_of(def_id);
             if let ty::Adt(def, _) = ty.kind();
@@ -962,16 +961,14 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
                 if let QPath::Resolved(_, p) = path {
                     missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
-            } else if let PatKind::TupleStruct(ref path, ref patterns, ..) = arm.pat.kind {
-                if let QPath::Resolved(_, p) = path {
-                    // Some simple checks for exhaustive patterns.
-                    // There is a room for improvements to detect more cases,
-                    // but it can be more expensive to do so.
-                    let is_pattern_exhaustive =
-                        |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
-                    if patterns.iter().all(is_pattern_exhaustive) {
-                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
-                    }
+            } else if let PatKind::TupleStruct(QPath::Resolved(_, p), ref patterns, ..) = arm.pat.kind {
+                // Some simple checks for exhaustive patterns.
+                // There is a room for improvements to detect more cases,
+                // but it can be more expensive to do so.
+                let is_pattern_exhaustive =
+                    |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
+                if patterns.iter().all(is_pattern_exhaustive) {
+                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
             }
         }
@@ -1446,8 +1443,7 @@ fn is_ref_some_arm(arm: &Arm<'_>) -> Option<BindingAnnotation> {
         if let ExprKind::Call(ref e, ref args) = remove_blocks(&arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
         if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
-        if let ExprKind::Path(ref qpath) = args[0].kind;
-        if let &QPath::Resolved(_, ref path2) = qpath;
+        if let ExprKind::Path(QPath::Resolved(_, ref path2)) = args[0].kind;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
             return Some(rb)
