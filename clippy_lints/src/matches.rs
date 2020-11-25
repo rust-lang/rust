@@ -411,8 +411,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Lint for redundant pattern matching over `Result`, `Option` or
-    /// `std::task::Poll`
+    /// **What it does:** Lint for redundant pattern matching over `Result`, `Option`,
+    /// `std::task::Poll` or `std::net::IpAddr`
     ///
     /// **Why is this bad?** It's more concise and clear to just use the proper
     /// utility function
@@ -423,12 +423,15 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # use std::task::Poll;
+    /// # use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     /// if let Ok(_) = Ok::<i32, i32>(42) {}
     /// if let Err(_) = Err::<i32, i32>(42) {}
     /// if let None = None::<()> {}
     /// if let Some(_) = Some(42) {}
     /// if let Poll::Pending = Poll::Pending::<()> {}
     /// if let Poll::Ready(_) = Poll::Ready(42) {}
+    /// if let IpAddr::V4(_) = IpAddr::V4(Ipv4Addr::LOCALHOST) {}
+    /// if let IpAddr::V6(_) = IpAddr::V6(Ipv6Addr::LOCALHOST) {}
     /// match Ok::<i32, i32>(42) {
     ///     Ok(_) => true,
     ///     Err(_) => false,
@@ -439,12 +442,15 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// # use std::task::Poll;
+    /// # use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     /// if Ok::<i32, i32>(42).is_ok() {}
     /// if Err::<i32, i32>(42).is_err() {}
     /// if None::<()>.is_none() {}
     /// if Some(42).is_some() {}
     /// if Poll::Pending::<()>.is_pending() {}
     /// if Poll::Ready(42).is_ready() {}
+    /// if IpAddr::V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+    /// if IpAddr::V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
     /// Ok::<i32, i32>(42).is_ok();
     /// ```
     pub REDUNDANT_PATTERN_MATCHING,
@@ -1546,6 +1552,10 @@ mod redundant_pattern_match {
                         "is_some()"
                     } else if match_qpath(path, &paths::POLL_READY) {
                         "is_ready()"
+                    } else if match_qpath(path, &paths::IPADDR_V4) {
+                        "is_ipv4()"
+                    } else if match_qpath(path, &paths::IPADDR_V6) {
+                        "is_ipv6()"
                     } else {
                         return;
                     }
@@ -1626,6 +1636,17 @@ mod redundant_pattern_match {
                             "is_ok()",
                             "is_err()",
                         )
+                        .or_else(|| {
+                            find_good_method_for_match(
+                                arms,
+                                path_left,
+                                path_right,
+                                &paths::IPADDR_V4,
+                                &paths::IPADDR_V6,
+                                "is_ipv4()",
+                                "is_ipv6()",
+                            )
+                        })
                     } else {
                         None
                     }
