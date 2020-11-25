@@ -1,4 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): #[allow(unused)] struct Foo { }
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Foo { }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -9,21 +9,11 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
-                ident: "allow",
-                span: $DIR/attr-stmt-expr.rs:28:11: 28:16 (#12),
-            },
-            Group {
-                delimiter: Parenthesis,
-                stream: TokenStream [
-                    Ident {
-                        ident: "unused",
-                        span: $DIR/attr-stmt-expr.rs:28:17: 28:23 (#12),
-                    },
-                ],
-                span: $DIR/attr-stmt-expr.rs:28:16: 28:24 (#12),
+                ident: "rustc_dummy",
+                span: $DIR/attr-stmt-expr.rs:28:11: 28:22 (#12),
             },
         ],
-        span: $DIR/attr-stmt-expr.rs:28:10: 28:25 (#12),
+        span: $DIR/attr-stmt-expr.rs:28:10: 28:23 (#12),
     },
     Ident {
         ident: "struct",
@@ -195,7 +185,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/attr-stmt-expr.rs:51:57: 51:58 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[allow(unused)] #[allow(dead_code)] struct Bar { }
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] #[allow(dead_code)] struct Bar { }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -206,21 +196,11 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
-                ident: "allow",
-                span: $DIR/attr-stmt-expr.rs:28:11: 28:16 (#34),
-            },
-            Group {
-                delimiter: Parenthesis,
-                stream: TokenStream [
-                    Ident {
-                        ident: "unused",
-                        span: $DIR/attr-stmt-expr.rs:28:17: 28:23 (#34),
-                    },
-                ],
-                span: $DIR/attr-stmt-expr.rs:28:16: 28:24 (#34),
+                ident: "rustc_dummy",
+                span: $DIR/attr-stmt-expr.rs:28:11: 28:22 (#34),
             },
         ],
-        span: $DIR/attr-stmt-expr.rs:28:10: 28:25 (#34),
+        span: $DIR/attr-stmt-expr.rs:28:10: 28:23 (#34),
     },
     Punct {
         ch: '#',

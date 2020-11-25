@@ -26,8 +26,9 @@ fn print_str(string: &'static str) {
 macro_rules! make_stmt {
     ($stmt:stmt) => {
         #[print_attr]
-        #[allow(unused)]
-        $stmt
+        #[rustc_dummy]
+        $stmt; // This semicolon is *not* passed to the macro,
+               // since `$stmt` is already a statement.
     }
 }
 
@@ -36,6 +37,10 @@ macro_rules! second_make_stmt {
         make_stmt!($stmt);
     }
 }
+
+// The macro will see a semicolon here
+#[print_attr]
+struct ItemWithSemi;
 
 
 fn main() {
@@ -55,6 +60,12 @@ fn main() {
     #[print_attr]
     #[rustc_dummy]
     struct Other {};
+
+    // The macro also sees a semicolon,
+    // for consistency with the `ItemWithSemi` case above.
+    #[print_attr]
+    #[rustc_dummy]
+    struct NonBracedStruct;
 
     #[expect_expr]
     print_str("string")

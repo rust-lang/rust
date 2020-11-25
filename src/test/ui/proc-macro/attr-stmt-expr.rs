@@ -25,7 +25,7 @@ fn print_str(string: &'static str) {
 macro_rules! make_stmt {
     ($stmt:stmt) => {
         #[print_attr]
-        #[allow(unused)]
+        #[rustc_dummy]
         $stmt
     }
 }

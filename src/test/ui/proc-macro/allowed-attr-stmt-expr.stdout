@@ -1,42 +1,48 @@
-PRINT-ATTR INPUT (DISPLAY): #[allow(unused)] struct Foo { }
+PRINT-ATTR INPUT (DISPLAY): struct ItemWithSemi ;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/allowed-attr-stmt-expr.rs:43:1: 43:7 (#0),
+    },
+    Ident {
+        ident: "ItemWithSemi",
+        span: $DIR/allowed-attr-stmt-expr.rs:43:8: 43:20 (#0),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: $DIR/allowed-attr-stmt-expr.rs:43:20: 43:21 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Foo { }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:29:9: 29:10 (#12),
+        span: $DIR/allowed-attr-stmt-expr.rs:29:9: 29:10 (#15),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
-                ident: "allow",
-                span: $DIR/allowed-attr-stmt-expr.rs:29:11: 29:16 (#12),
-            },
-            Group {
-                delimiter: Parenthesis,
-                stream: TokenStream [
-                    Ident {
-                        ident: "unused",
-                        span: $DIR/allowed-attr-stmt-expr.rs:29:17: 29:23 (#12),
-                    },
-                ],
-                span: $DIR/allowed-attr-stmt-expr.rs:29:16: 29:24 (#12),
+                ident: "rustc_dummy",
+                span: $DIR/allowed-attr-stmt-expr.rs:29:11: 29:22 (#15),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:29:10: 29:25 (#12),
+        span: $DIR/allowed-attr-stmt-expr.rs:29:10: 29:23 (#15),
     },
     Ident {
         ident: "struct",
-        span: $DIR/allowed-attr-stmt-expr.rs:42:16: 42:22 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:47:16: 47:22 (#0),
     },
     Ident {
         ident: "Foo",
-        span: $DIR/allowed-attr-stmt-expr.rs:42:23: 42:26 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:47:23: 47:26 (#0),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/allowed-attr-stmt-expr.rs:42:27: 42:29 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:47:27: 47:29 (#0),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): #[expect_let] let string = "Hello, world!" ;
@@ -44,41 +50,41 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:45:5: 45:6 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:50:5: 50:6 (#0),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "expect_let",
-                span: $DIR/allowed-attr-stmt-expr.rs:45:7: 45:17 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:50:7: 50:17 (#0),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:45:6: 45:18 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:50:6: 50:18 (#0),
     },
     Ident {
         ident: "let",
-        span: $DIR/allowed-attr-stmt-expr.rs:46:5: 46:8 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:51:5: 51:8 (#0),
     },
     Ident {
         ident: "string",
-        span: $DIR/allowed-attr-stmt-expr.rs:46:9: 46:15 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:51:9: 51:15 (#0),
     },
     Punct {
         ch: '=',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:46:16: 46:17 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:51:16: 51:17 (#0),
     },
     Literal {
         kind: Str,
         symbol: "Hello, world!",
         suffix: None,
-        span: $DIR/allowed-attr-stmt-expr.rs:46:18: 46:33 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:51:18: 51:33 (#0),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:46:33: 46:34 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:51:33: 51:34 (#0),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): #[expect_print_stmt] println ! ("{}", string) ;
@@ -86,26 +92,26 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:49:5: 49:6 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:54:5: 54:6 (#0),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "expect_print_stmt",
-                span: $DIR/allowed-attr-stmt-expr.rs:49:7: 49:24 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:54:7: 54:24 (#0),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:49:6: 49:25 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:54:6: 54:25 (#0),
     },
     Ident {
         ident: "println",
-        span: $DIR/allowed-attr-stmt-expr.rs:50:5: 50:12 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:55:5: 55:12 (#0),
     },
     Punct {
         ch: '!',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:50:12: 50:13 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:55:12: 55:13 (#0),
     },
     Group {
         delimiter: Parenthesis,
@@ -114,36 +120,36 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 kind: Str,
                 symbol: "{}",
                 suffix: None,
-                span: $DIR/allowed-attr-stmt-expr.rs:50:14: 50:18 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:55:14: 55:18 (#0),
             },
             Punct {
                 ch: ',',
                 spacing: Alone,
-                span: $DIR/allowed-attr-stmt-expr.rs:50:18: 50:19 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:55:18: 55:19 (#0),
             },
             Ident {
                 ident: "string",
-                span: $DIR/allowed-attr-stmt-expr.rs:50:20: 50:26 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:55:20: 55:26 (#0),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:50:13: 50:27 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:55:13: 55:27 (#0),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:50:27: 50:28 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:55:27: 55:28 (#0),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): second_make_stmt ! (#[allow(dead_code)] struct Bar { }) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "second_make_stmt",
-        span: $DIR/allowed-attr-stmt-expr.rs:53:5: 53:21 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:5: 58:21 (#0),
     },
     Punct {
         ch: '!',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:53:21: 53:22 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:21: 58:22 (#0),
     },
     Group {
         delimiter: Parenthesis,
@@ -151,114 +157,104 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
             Punct {
                 ch: '#',
                 spacing: Alone,
-                span: $DIR/allowed-attr-stmt-expr.rs:53:23: 53:24 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:58:23: 58:24 (#0),
             },
             Group {
                 delimiter: Bracket,
                 stream: TokenStream [
                     Ident {
                         ident: "allow",
-                        span: $DIR/allowed-attr-stmt-expr.rs:53:25: 53:30 (#0),
+                        span: $DIR/allowed-attr-stmt-expr.rs:58:25: 58:30 (#0),
                     },
                     Group {
                         delimiter: Parenthesis,
                         stream: TokenStream [
                             Ident {
                                 ident: "dead_code",
-                                span: $DIR/allowed-attr-stmt-expr.rs:53:31: 53:40 (#0),
+                                span: $DIR/allowed-attr-stmt-expr.rs:58:31: 58:40 (#0),
                             },
                         ],
-                        span: $DIR/allowed-attr-stmt-expr.rs:53:30: 53:41 (#0),
+                        span: $DIR/allowed-attr-stmt-expr.rs:58:30: 58:41 (#0),
                     },
                 ],
-                span: $DIR/allowed-attr-stmt-expr.rs:53:24: 53:42 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:58:24: 58:42 (#0),
             },
             Ident {
                 ident: "struct",
-                span: $DIR/allowed-attr-stmt-expr.rs:53:43: 53:49 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:58:43: 58:49 (#0),
             },
             Ident {
                 ident: "Bar",
-                span: $DIR/allowed-attr-stmt-expr.rs:53:50: 53:53 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:58:50: 58:53 (#0),
             },
             Group {
                 delimiter: Brace,
                 stream: TokenStream [],
-                span: $DIR/allowed-attr-stmt-expr.rs:53:54: 53:56 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:58:54: 58:56 (#0),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:53:22: 53:57 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:22: 58:57 (#0),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:53:57: 53:58 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:57: 58:58 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[allow(unused)] #[allow(dead_code)] struct Bar { }
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] #[allow(dead_code)] struct Bar { }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:29:9: 29:10 (#34),
+        span: $DIR/allowed-attr-stmt-expr.rs:29:9: 29:10 (#37),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
-                ident: "allow",
-                span: $DIR/allowed-attr-stmt-expr.rs:29:11: 29:16 (#34),
-            },
-            Group {
-                delimiter: Parenthesis,
-                stream: TokenStream [
-                    Ident {
-                        ident: "unused",
-                        span: $DIR/allowed-attr-stmt-expr.rs:29:17: 29:23 (#34),
-                    },
-                ],
-                span: $DIR/allowed-attr-stmt-expr.rs:29:16: 29:24 (#34),
+                ident: "rustc_dummy",
+                span: $DIR/allowed-attr-stmt-expr.rs:29:11: 29:22 (#37),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:29:10: 29:25 (#34),
+        span: $DIR/allowed-attr-stmt-expr.rs:29:10: 29:23 (#37),
     },
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:53:23: 53:24 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:23: 58:24 (#0),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "allow",
-                span: $DIR/allowed-attr-stmt-expr.rs:53:25: 53:30 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:58:25: 58:30 (#0),
             },
             Group {
                 delimiter: Parenthesis,
                 stream: TokenStream [
                     Ident {
                         ident: "dead_code",
-                        span: $DIR/allowed-attr-stmt-expr.rs:53:31: 53:40 (#0),
+                        span: $DIR/allowed-attr-stmt-expr.rs:58:31: 58:40 (#0),
                     },
                 ],
-                span: $DIR/allowed-attr-stmt-expr.rs:53:30: 53:41 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:58:30: 58:41 (#0),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:53:24: 53:42 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:24: 58:42 (#0),
     },
     Ident {
         ident: "struct",
-        span: $DIR/allowed-attr-stmt-expr.rs:53:43: 53:49 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:43: 58:49 (#0),
     },
     Ident {
         ident: "Bar",
-        span: $DIR/allowed-attr-stmt-expr.rs:53:50: 53:53 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:50: 58:53 (#0),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/allowed-attr-stmt-expr.rs:53:54: 53:56 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:58:54: 58:56 (#0),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Other { }
@@ -266,29 +262,60 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:56:5: 56:6 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:61:5: 61:6 (#0),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "rustc_dummy",
-                span: $DIR/allowed-attr-stmt-expr.rs:56:7: 56:18 (#0),
+                span: $DIR/allowed-attr-stmt-expr.rs:61:7: 61:18 (#0),
             },
         ],
-        span: $DIR/allowed-attr-stmt-expr.rs:56:6: 56:19 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:61:6: 61:19 (#0),
     },
     Ident {
         ident: "struct",
-        span: $DIR/allowed-attr-stmt-expr.rs:57:5: 57:11 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:62:5: 62:11 (#0),
     },
     Ident {
         ident: "Other",
-        span: $DIR/allowed-attr-stmt-expr.rs:57:12: 57:17 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:62:12: 62:17 (#0),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/allowed-attr-stmt-expr.rs:57:18: 57:20 (#0),
+        span: $DIR/allowed-attr-stmt-expr.rs:62:18: 62:20 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct NonBracedStruct ;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/allowed-attr-stmt-expr.rs:67:5: 67:6 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "rustc_dummy",
+                span: $DIR/allowed-attr-stmt-expr.rs:67:7: 67:18 (#0),
+            },
+        ],
+        span: $DIR/allowed-attr-stmt-expr.rs:67:6: 67:19 (#0),
+    },
+    Ident {
+        ident: "struct",
+        span: $DIR/allowed-attr-stmt-expr.rs:68:5: 68:11 (#0),
+    },
+    Ident {
+        ident: "NonBracedStruct",
+        span: $DIR/allowed-attr-stmt-expr.rs:68:12: 68:27 (#0),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: $DIR/allowed-attr-stmt-expr.rs:68:27: 68:28 (#0),
     },
 ]
