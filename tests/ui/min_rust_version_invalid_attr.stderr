@@ -1,0 +1,8 @@
+error: `invalid.version` is not a valid Rust version
+  --> $DIR/min_rust_version_invalid_attr.rs:2:1
+   |
+LL | #![clippy::msrv = "invalid.version"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

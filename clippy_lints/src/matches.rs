@@ -3,8 +3,8 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
     expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
-    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
-    snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg, remove_blocks,
+    snippet, snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
     span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
@@ -23,6 +23,7 @@ use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::{sym, Symbol};
+use semver::{Version, VersionReq};
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::Bound;
@@ -527,7 +528,18 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct Matches {
+    msrv: Option<VersionReq>,
     infallible_destructuring_match_linted: bool,
+}
+
+impl Matches {
+    #[must_use]
+    pub fn new(msrv: Option<VersionReq>) -> Self {
+        Self {
+            msrv,
+            ..Matches::default()
+        }
+    }
 }
 
 impl_lint_pass!(Matches => [
@@ -549,6 +561,14 @@ impl_lint_pass!(Matches => [
     MATCH_SAME_ARMS,
 ]);
 
+const MATCH_LIKE_MATCHES_MACRO_MSRV: Version = Version {
+    major: 1,
+    minor: 42,
+    patch: 0,
+    pre: Vec::new(),
+    build: Vec::new(),
+};
+
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) || in_macro(expr.span) {
@@ -556,7 +576,12 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         }
 
         redundant_pattern_match::check(cx, expr);
-        if !check_match_like_matches(cx, expr) {
+
+        if meets_msrv(self.msrv.as_ref(), &MATCH_LIKE_MATCHES_MACRO_MSRV) {
+            if !check_match_like_matches(cx, expr) {
+                lint_match_arms(cx, expr);
+            }
+        } else {
             lint_match_arms(cx, expr);
         }
 
@@ -640,6 +665,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 #[rustfmt::skip]

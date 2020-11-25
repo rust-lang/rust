@@ -20,7 +20,7 @@ use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
 
@@ -30,10 +30,11 @@ use crate::utils::usage::mutated_variables;
 use crate::utils::{
     contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro,
     is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath,
-    match_trait_method, match_type, match_var, method_calls, method_chain_args, paths, remove_blocks, return_ty,
-    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    match_trait_method, match_type, match_var, meets_msrv, method_calls, method_chain_args, paths, remove_blocks,
+    return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
     span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty_depth, SpanlessEq,
 };
+use semver::{Version, VersionReq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `.unwrap()` calls on `Option`s and on `Result`s.
@@ -1404,7 +1405,18 @@ declare_clippy_lint! {
     "use `.collect()` instead of `::from_iter()`"
 }
 
-declare_lint_pass!(Methods => [
+pub struct Methods {
+    msrv: Option<VersionReq>,
+}
+
+impl Methods {
+    #[must_use]
+    pub fn new(msrv: Option<VersionReq>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(Methods => [
     UNWRAP_USED,
     EXPECT_USED,
     SHOULD_IMPLEMENT_TRAIT,
@@ -1531,8 +1543,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 check_pointer_offset(cx, expr, arg_lists[0])
             },
             ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
-            ["map", "as_ref"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], false),
-            ["map", "as_mut"] => lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true),
+            ["map", "as_ref"] => {
+                lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], false, self.msrv.as_ref())
+            },
+            ["map", "as_mut"] => {
+                lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true, self.msrv.as_ref())
+            },
             ["unwrap_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "unwrap_or"),
             ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "get_or_insert"),
             ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "ok_or"),
@@ -1738,6 +1754,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 /// Checks for the `OR_FUN_CALL` lint.
@@ -3453,6 +3471,14 @@ fn lint_suspicious_map(cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
     );
 }
 
+const OPTION_AS_REF_DEREF_MSRV: Version = Version {
+    major: 1,
+    minor: 40,
+    patch: 0,
+    pre: Vec::new(),
+    build: Vec::new(),
+};
+
 /// lint use of `_.as_ref().map(Deref::deref)` for `Option`s
 fn lint_option_as_ref_deref<'tcx>(
     cx: &LateContext<'tcx>,
@@ -3460,7 +3486,12 @@ fn lint_option_as_ref_deref<'tcx>(
     as_ref_args: &[hir::Expr<'_>],
     map_args: &[hir::Expr<'_>],
     is_mut: bool,
+    msrv: Option<&VersionReq>,
 ) {
+    if !meets_msrv(msrv, &OPTION_AS_REF_DEREF_MSRV) {
+        return;
+    }
+
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
     let option_ty = cx.typeck_results().expr_ty(&as_ref_args[0]);
