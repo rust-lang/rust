@@ -1,5 +1,5 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/attr-stmt-expr.rs:10:5
+  --> $DIR/attr-stmt-expr.rs:19:5
    |
 LL |     #[expect_print_expr]
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     #[expect_print_expr]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/attr-stmt-expr.rs:23:5
+  --> $DIR/attr-stmt-expr.rs:55:5
    |
 LL |     #[expect_expr]
    |     ^^^^^^^^^^^^^^

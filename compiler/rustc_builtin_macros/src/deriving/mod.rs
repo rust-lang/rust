@@ -54,7 +54,27 @@ impl MultiItemModifier for BuiltinDerive {
         // so we are doing it here in a centralized way.
         let span = ecx.with_def_site_ctxt(span);
         let mut items = Vec::new();
-        (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
+        match item {
+            Annotatable::Stmt(stmt) => {
+                if let ast::StmtKind::Item(item) = stmt.into_inner().kind {
+                    (self.0)(ecx, span, meta_item, &Annotatable::Item(item), &mut |a| {
+                        // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
+                        // to the function
+                        items.push(Annotatable::Stmt(P(ast::Stmt {
+                            id: ast::DUMMY_NODE_ID,
+                            kind: ast::StmtKind::Item(a.expect_item()),
+                            span,
+                            tokens: None,
+                        })));
+                    });
+                } else {
+                    unreachable!("should have already errored on non-item statement")
+                }
+            }
+            _ => {
+                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
+            }
+        }
         ExpandResult::Ready(items)
     }
 }
