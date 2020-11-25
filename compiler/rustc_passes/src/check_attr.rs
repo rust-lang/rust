@@ -89,6 +89,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_allow_internal_unstable(&attr, span, target, &attrs)
             } else if self.tcx.sess.check_name(attr, sym::rustc_allow_const_fn_unstable) {
                 self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::naked) {
+                self.check_naked(attr, span, target)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -162,6 +164,25 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    /// Checks if `#[naked]` is applied to a function definition.
+    fn check_naked(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        match target {
+            Target::Fn
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "attribute should be applied to a function definition",
+                    )
+                    .span_label(*span, "not a function definition")
+                    .emit();
+                false
+            }
+        }
+    }
+
     /// Checks if a `#[track_caller]` is applied to a non-naked function. Returns `true` if valid.
     fn check_track_caller(
         &self,
@@ -171,7 +192,7 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            _ if self.tcx.sess.contains_name(attrs, sym::naked) => {
+            _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
