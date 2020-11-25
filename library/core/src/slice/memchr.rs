@@ -1,8 +1,6 @@
 // Original implementation taken from rust-memchr.
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
-// ignore-tidy-undocumented-unsafe
-
 use crate::cmp;
 use crate::mem;
 
@@ -72,6 +70,8 @@ fn memchr_general_case(x: u8, text: &[u8]) -> Option<usize> {
     // search the body of the text
     let repeated_x = repeat_byte(x);
     while offset <= len - 2 * USIZE_BYTES {
+        // SAFETY: the while's predicate guarantees a distance of at least 2 * usize_bytes
+        // between the offset and the end of the slice.
         unsafe {
             let u = *(ptr.add(offset) as *const usize);
             let v = *(ptr.add(offset + USIZE_BYTES) as *const usize);
@@ -105,6 +105,8 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     let (min_aligned_offset, max_aligned_offset) = {
         // We call this just to obtain the length of the prefix and suffix.
         // In the middle we always process two chunks at once.
+        // SAFETY: transmuting `[u8]` to `[usize]` is safe except for size differences
+        // which are handled by `align_to`.
         let (prefix, _, suffix) = unsafe { text.align_to::<(Chunk, Chunk)>() };
         (prefix.len(), len - suffix.len())
     };
@@ -121,6 +123,8 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     let chunk_bytes = mem::size_of::<Chunk>();
 
     while offset > min_aligned_offset {
+        // SAFETY: offset starts at len - suffix.len(), as long as it is greater than
+        // min_aligned_offset (prefix.len()) the remaining distance is at least 2 * chunk_bytes.
         unsafe {
             let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
             let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);
