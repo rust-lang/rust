@@ -28,7 +28,7 @@ alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-all
 lazy_static = "1.2"
 rand = { version = "0.7.3", features = ["small_rng"] }
 rayon = "1.0"
-rustc-hash = "=1.0"
+fnv = "1.0.7"
 serde_test = "1.0"
 doc-comment = "0.3.1"
 
