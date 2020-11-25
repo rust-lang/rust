@@ -1282,7 +1282,11 @@ impl Ipv6Addr {
     #[inline]
     pub const fn is_unspecified(&self) -> bool {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
-            || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_unspecified() } else { false }
+            || if let Some(v4_addr) = self.to_ipv4_mapped() {
+                v4_addr.is_unspecified()
+            } else {
+                false
+            }
     }
 
     /// Returns [`true`] if this is a loopback address (::1).
@@ -1304,7 +1308,7 @@ impl Ipv6Addr {
     #[inline]
     pub const fn is_loopback(&self) -> bool {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
-            || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_loopback() } else { false }
+            || if let Some(v4_addr) = self.to_ipv4_mapped() { v4_addr.is_loopback() } else { false }
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
@@ -1338,7 +1342,7 @@ impl Ipv6Addr {
             Some(Ipv6MulticastScope::Global) => true,
             None => self.is_unicast_global(),
             _ => false,
-        }) || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_global() } else { false }
+        }) || if let Some(v4_addr) = self.to_ipv4_mapped() { v4_addr.is_global() } else { false }
     }
 
     /// Returns [`true`] if this is a unique local address (`fc00::/7`).
@@ -1421,7 +1425,11 @@ impl Ipv6Addr {
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
-            || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_link_local() } else { false }
+            || if let Some(v4_addr) = self.to_ipv4_mapped() {
+                v4_addr.is_link_local()
+            } else {
+                false
+            }
     }
 
     /// Returns [`true`] if this is a deprecated unicast site-local address (fec0::/10). The
@@ -1495,7 +1503,11 @@ impl Ipv6Addr {
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_documentation(&self) -> bool {
         ((self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8))
-            || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_documentation() } else { false }
+            || if let Some(v4_addr) = self.to_ipv4_mapped() {
+                v4_addr.is_documentation()
+            } else {
+                false
+            }
     }
 
     /// Returns [`true`] if the address is a globally routable unicast address.
@@ -1606,7 +1618,11 @@ impl Ipv6Addr {
     #[inline]
     pub const fn is_multicast(&self) -> bool {
         (self.segments()[0] & 0xff00) == 0xff00
-            || if let Some(v4_addr) = self.to_ipv4() { v4_addr.is_multicast() } else { false }
+            || if let Some(v4_addr) = self.to_ipv4_mapped() {
+                v4_addr.is_multicast()
+            } else {
+                false
+            }
     }
 
     /// Converts this address to an [`IPv4` address] if it's an "IPv4-mapped IPv6 address"
@@ -1636,37 +1652,6 @@ impl Ipv6Addr {
                 Some(Ipv4Addr::new(a, b, c, d))
             }
             _ => None,
-        }
-    }
-
-    /// Converts this address to an [`IPv4` address]. Returns [`None`] if this address is
-    /// neither IPv4-compatible or IPv4-mapped.
-    ///
-    /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
-    ///
-    /// [`IPv4` address]: Ipv4Addr
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::net::{Ipv4Addr, Ipv6Addr};
-    ///
-    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4(), None);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4(),
-    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
-    ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
-    /// ```
-    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
-    pub const fn to_ipv4(&self) -> Option<Ipv4Addr> {
-        if let [0, 0, 0, 0, 0, 0 | 0xffff, ab, cd] = self.segments() {
-            let [a, b] = ab.to_be_bytes();
-            let [c, d] = cd.to_be_bytes();
-            Some(Ipv4Addr::new(a, b, c, d))
-        } else {
-            None
         }
     }
 
@@ -1702,14 +1687,8 @@ impl fmt::Display for Ipv6Addr {
                 f.write_str("::")
             } else if self.is_loopback() {
                 f.write_str("::1")
-            } else if let Some(ipv4) = self.to_ipv4() {
-                match segments[5] {
-                    // IPv4 Compatible address
-                    0 => write!(f, "::{}", ipv4),
-                    // IPv4 Mapped address
-                    0xffff => write!(f, "::ffff:{}", ipv4),
-                    _ => unreachable!(),
-                }
+            } else if let Some(ipv4) = self.to_ipv4_mapped() {
+                write!(f, "::ffff:{}", ipv4)
             } else {
                 #[derive(Copy, Clone, Default)]
                 struct Span {
