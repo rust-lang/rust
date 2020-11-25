@@ -261,7 +261,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/allowed-attr-stmt-expr.rs:53:54: 53:56 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Other { } ;
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Other { }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -290,10 +290,5 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         delimiter: Brace,
         stream: TokenStream [],
         span: $DIR/allowed-attr-stmt-expr.rs:57:18: 57:20 (#0),
-    },
-    Punct {
-        ch: ';',
-        spacing: Alone,
-        span: $DIR/allowed-attr-stmt-expr.rs:57:20: 57:21 (#0),
     },
 ]

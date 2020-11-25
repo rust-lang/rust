@@ -473,8 +473,7 @@ impl<'a> Parser<'a> {
                 // so capture it
                 add_semi_token(local.tokens.as_mut());
             }
-            StmtKind::Empty => eat_semi = false,
-            _ => {}
+            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Semi(_) => eat_semi = false,
         }
 
         if eat_semi && self.eat(&token::Semi) {
