@@ -2,14 +2,14 @@ use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, get_arg_name, get_inner_attr, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of,
-    is_refutable, is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg,
-    remove_blocks, snippet, snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note,
-    span_lint_and_sugg, span_lint_and_then,
+    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
+    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg, remove_blocks,
+    snippet, snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
-use rustc_ast::ast::{Attribute, LitKind};
+use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;

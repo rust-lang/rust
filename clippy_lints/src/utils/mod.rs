@@ -79,30 +79,26 @@ pub fn meets_msrv(msrv: Option<&VersionReq>, lint_msrv: &Version) -> bool {
     msrv.map_or(true, |msrv| !msrv.matches(lint_msrv))
 }
 
-#[macro_export]
 macro_rules! extract_msrv_attr {
     (LateContext) => {
-        fn enter_lint_attrs(&mut self, cx: &rustc_lint::LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-            match get_inner_attr(cx.sess(), attrs, "msrv") {
-                Some(msrv_attr) => {
-                    if let Some(msrv) = msrv_attr.value_str() {
-                        self.msrv = crate::utils::parse_msrv(&msrv.to_string(), Some(cx.sess()), Some(msrv_attr.span));
-                    } else {
-                        cx.sess().span_err(msrv_attr.span, "bad clippy attribute");
-                    }
-                },
-                _ => (),
-            }
-        }
+        extract_msrv_attr!(@LateContext, ());
     };
     (EarlyContext) => {
-        fn enter_lint_attrs(&mut self, cx: &rustc_lint::EarlyContext<'tcx>, attrs: &'tcx [Attribute]) {
-            match get_inner_attr(cx.sess, attrs, "msrv") {
+        extract_msrv_attr!(@EarlyContext);
+    };
+    (@$context:ident$(, $call:tt)?) => {
+        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'tcx>, attrs: &'tcx [rustc_ast::ast::Attribute]) {
+            use $crate::utils::get_unique_inner_attr;
+            match get_unique_inner_attr(cx.sess$($call)?, attrs, "msrv") {
                 Some(msrv_attr) => {
                     if let Some(msrv) = msrv_attr.value_str() {
-                        self.msrv = crate::utils::parse_msrv(&msrv.to_string(), Some(cx.sess), Some(msrv_attr.span));
+                        self.msrv = $crate::utils::parse_msrv(
+                            &msrv.to_string(),
+                            Some(cx.sess$($call)?),
+                            Some(msrv_attr.span),
+                        );
                     } else {
-                        cx.sess.span_err(msrv_attr.span, "bad clippy attribute");
+                        cx.sess$($call)?.span_err(msrv_attr.span, "bad clippy attribute");
                     }
                 },
                 _ => (),

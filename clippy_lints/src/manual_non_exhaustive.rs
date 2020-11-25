@@ -1,4 +1,4 @@
-use crate::utils::{get_inner_attr, meets_msrv, snippet_opt, span_lint_and_then};
+use crate::utils::{meets_msrv, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_ast::ast::{Attribute, Item, ItemKind, StructField, Variant, VariantData, VisibilityKind};
 use rustc_attr as attr;

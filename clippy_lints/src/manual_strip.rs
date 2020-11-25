@@ -1,12 +1,11 @@
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    eq_expr_value, get_inner_attr, higher, match_def_path, meets_msrv, multispan_sugg, paths, qpath_res, snippet,
-    span_lint_and_then,
+    eq_expr_value, higher, match_def_path, meets_msrv, multispan_sugg, paths, qpath_res, snippet, span_lint_and_then,
 };
 
 use if_chain::if_chain;
-use rustc_ast::ast::{Attribute, LitKind};
+use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::BinOpKind;
