@@ -103,6 +103,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
     exported_macros: Vec<hir::MacroDef<'hir>>,
+    non_exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
@@ -302,6 +303,7 @@ pub fn lower_crate<'a, 'hir>(
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
         exported_macros: Vec::new(),
+        non_exported_macros: Vec::new(),
         non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
@@ -582,6 +584,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Crate {
             item: hir::CrateItem { module, attrs, span: c.span },
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
+            non_exported_macros: self.arena.alloc_from_iter(self.non_exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,
             trait_items: self.trait_items,

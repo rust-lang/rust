@@ -599,6 +599,7 @@ pub struct CrateItem<'hir> {
 pub struct Crate<'hir> {
     pub item: CrateItem<'hir>,
     pub exported_macros: &'hir [MacroDef<'hir>],
+    pub non_exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
 

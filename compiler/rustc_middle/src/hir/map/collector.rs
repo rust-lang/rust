@@ -108,6 +108,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 ref item,
                 // These fields are handled separately:
                 exported_macros: _,
+                non_exported_macros: _,
                 non_exported_macro_attrs: _,
                 items: _,
                 trait_items: _,

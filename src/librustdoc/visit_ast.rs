@@ -74,6 +74,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         module
             .macros
             .extend(krate.exported_macros.iter().map(|def| self.visit_local_macro(def, None)));
+        if self.cx.render_options.document_private {
+            // If `--document-private-items` is passed, also attach the crate's
+            // *non*-exported macros to the top-level module.
+            module
+                .macros
+                .extend(krate.non_exported_macros.iter().map(|def| self.visit_local_macro(def, None)));
+        }
         module.is_crate = true;
 
         self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;

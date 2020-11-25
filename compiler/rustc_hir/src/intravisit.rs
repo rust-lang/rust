@@ -463,6 +463,7 @@ pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     visitor.visit_mod(&krate.item.module, krate.item.span, CRATE_HIR_ID);
     walk_list!(visitor, visit_attribute, krate.item.attrs);
     walk_list!(visitor, visit_macro_def, krate.exported_macros);
+    walk_list!(visitor, visit_macro_def, krate.non_exported_macros);
 }
 
 pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef<'v>) {
