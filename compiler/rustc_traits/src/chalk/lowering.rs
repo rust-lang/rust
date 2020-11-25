@@ -487,6 +487,7 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                 })
             }
             chalk_ir::LifetimeData::Static => ty::RegionKind::ReStatic,
+            #[cfg(bootstrap)]
             chalk_ir::LifetimeData::Phantom(_, _) => unimplemented!(),
         };
         interner.tcx.mk_region(kind)

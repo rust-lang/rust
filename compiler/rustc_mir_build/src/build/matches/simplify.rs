@@ -252,15 +252,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().exhaustive_patterns
-                            && !v
-                                .uninhabited_from(
-                                    self.hir.tcx(),
-                                    substs,
-                                    adt_def.adt_kind(),
-                                    self.hir.param_env,
-                                )
-                                .is_empty()
+                        !v.uninhabited_from(
+                              self.hir.tcx(),
+                              substs,
+                              adt_def.adt_kind(),
+                              self.hir.param_env,
+                         )
+                         .is_empty()
                     }
                 }) && (adt_def.did.is_local()
                     || !adt_def.is_variant_list_non_exhaustive());

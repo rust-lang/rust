@@ -835,19 +835,10 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             // witness.
             let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
-            // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-            // as though it had an "unknown" constructor to avoid exposing its emptiness. The
-            // exception is if the pattern is at the top level, because we want empty matches to be
-            // considered exhaustive.
-            let is_secretly_empty = def.variants.is_empty()
-                && !cx.tcx.features().exhaustive_patterns
-                && !pcx.is_top_level;
-
-            if is_secretly_empty || is_declared_nonexhaustive {
+            if is_declared_nonexhaustive {
                 vec![NonExhaustive]
-            } else if cx.tcx.features().exhaustive_patterns {
-                // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                // uninhabited.
+            } else {
+                // We exclude variants known to be uninhabited.
                 def.variants
                     .iter()
                     .filter(|v| {
@@ -856,8 +847,6 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
                     })
                     .map(|v| Variant(v.def_id))
                     .collect()
-            } else {
-                def.variants.iter().map(|v| Variant(v.def_id)).collect()
             }
         }
         ty::Char => {
@@ -886,12 +875,6 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
             let max = size.truncate(u128::MAX);
             vec![make_range(0, max)]
-        }
-        // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-        // expose its emptiness. The exception is if the pattern is at the top level, because we
-        // want empty matches to be considered exhaustive.
-        ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-            vec![NonExhaustive]
         }
         ty::Never => vec![],
         _ if cx.is_uninhabited(pcx.ty) => vec![],
