@@ -29,7 +29,9 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // Ensure LLVM supports Coverage Map Version 4 (encoded as a zero-based value: 3).
     // If not, the LLVM Version must be less than 11.
     let version = coverageinfo::mapping_version();
-    assert_eq!(version, 3, "rustc option `-Z instrument-coverage` requires LLVM 11 or higher.");
+    if version != 3 {
+        cx.tcx.sess.fatal("rustc option `-Z instrument-coverage` requires LLVM 11 or higher.");
+    }```
 
     let function_coverage_map = match cx.coverage_context() {
         Some(ctx) => ctx.take_function_coverage_map(),
