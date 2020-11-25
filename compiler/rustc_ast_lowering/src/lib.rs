@@ -1800,8 +1800,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         });
         let init = l.init.as_ref().map(|e| self.lower_expr(e));
         let hir_id = self.lower_node_id(l.id);
-        let attrs = l.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>();
-        self.attrs.push_sparse(hir_id, &*self.arena.alloc_from_iter(attrs.iter().cloned()));
+        self.lower_attrs(hir_id, &l.attrs);
         (
             hir::Local {
                 hir_id,
@@ -1809,7 +1808,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 pat: self.lower_pat(&l.pat),
                 init,
                 span: l.span,
-                attrs: attrs.into(),
                 source: hir::LocalSource::Normal,
             },
             ids,
@@ -2534,15 +2532,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::Stmt<'hir> {
         let hir_id = self.next_id();
         self.attrs.push_sparse(hir_id, attrs);
-        let local = hir::Local {
-            attrs: attrs.iter().cloned().collect::<Vec<_>>().into(),
-            hir_id,
-            init,
-            pat,
-            source,
-            span,
-            ty: None,
-        };
+        let local = hir::Local { hir_id, init, pat, source, span, ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
