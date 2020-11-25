@@ -26,6 +26,11 @@ use tracing::debug;
 /// undocumented details in Clang's implementation (that may or may not be important) were also
 /// replicated for Rust's Coverage Map.
 pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+    // Ensure LLVM supports Coverage Map Version 4 (encoded as a zero-based value: 3).
+    // If not, the LLVM Version must be less than 11.
+    let version = coverageinfo::mapping_version();
+    assert_eq!(version, 3, "rustc option `-Z instrument-coverage` requires LLVM 11 or higher.");
+
     let function_coverage_map = match cx.coverage_context() {
         Some(ctx) => ctx.take_function_coverage_map(),
         None => return,
@@ -68,7 +73,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
 
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
-    let cov_data_val = mapgen.generate_coverage_map(cx, filenames_size, filenames_val);
+    let cov_data_val = mapgen.generate_coverage_map(cx, version, filenames_size, filenames_val);
 
     for (mangled_function_name, function_source_hash, coverage_mapping_buffer) in function_data {
         save_function_record(
@@ -159,21 +164,18 @@ impl CoverageMapGenerator {
     fn generate_coverage_map(
         self,
         cx: &CodegenCx<'ll, 'tcx>,
+        version: u32,
         filenames_size: usize,
         filenames_val: &'ll llvm::Value,
     ) -> &'ll llvm::Value {
-        debug!(
-            "cov map: filenames_size = {}, 0-based version = {}",
-            filenames_size,
-            coverageinfo::mapping_version()
-        );
+        debug!("cov map: filenames_size = {}, 0-based version = {}", filenames_size, version);
 
         // Create the coverage data header (Note, fields 0 and 2 are now always zero,
         // as of `llvm::coverage::CovMapVersion::Version4`.)
         let zero_was_n_records_val = cx.const_u32(0);
         let filenames_size_val = cx.const_u32(filenames_size as u32);
         let zero_was_coverage_size_val = cx.const_u32(0);
-        let version_val = cx.const_u32(coverageinfo::mapping_version());
+        let version_val = cx.const_u32(version);
         let cov_data_header_val = cx.const_struct(
             &[zero_was_n_records_val, filenames_size_val, zero_was_coverage_size_val, version_val],
             /*packed=*/ false,

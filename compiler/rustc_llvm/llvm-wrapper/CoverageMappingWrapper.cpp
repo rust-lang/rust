@@ -73,8 +73,7 @@ extern "C" void LLVMRustCoverageWriteFuncSectionNameToString(LLVMModuleRef M,
                                                              RustStringRef Str) {
 #if LLVM_VERSION_GE(11, 0)
   WriteSectionNameToString(M, IPSK_covfun, Str);
-#else
-  report_fatal_error("rustc option `-Z instrument-coverage` requires LLVM 11 or higher.");
+// else do nothing; the `Version` check will abort codegen on the Rust side
 #endif
 }
 
@@ -88,6 +87,6 @@ extern "C" uint32_t LLVMRustCoverageMappingVersion() {
 #if LLVM_VERSION_GE(11, 0)
   return coverage::CovMapVersion::Version4;
 #else
-  report_fatal_error("rustc option `-Z instrument-coverage` requires LLVM 11 or higher.");
+  return coverage::CovMapVersion::Version3;
 #endif
 }
