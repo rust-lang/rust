@@ -7,6 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(or_patterns)]
@@ -32,6 +33,7 @@ pub mod layout_test;
 mod lib_features;
 mod liveness;
 pub mod loops;
+mod naked_functions;
 mod reachable;
 mod region;
 pub mod stability;
@@ -46,6 +48,7 @@ pub fn provide(providers: &mut Providers) {
     lang_items::provide(providers);
     lib_features::provide(providers);
     loops::provide(providers);
+    naked_functions::provide(providers);
     liveness::provide(providers);
     intrinsicck::provide(providers);
     reachable::provide(providers);
