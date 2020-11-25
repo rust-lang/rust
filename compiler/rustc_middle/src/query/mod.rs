@@ -635,6 +635,10 @@ rustc_queries! {
             desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
         }
 
+        query check_mod_naked_functions(key: LocalDefId) -> () {
+            desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
+        }
+
         query check_mod_item_types(key: LocalDefId) -> () {
             desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
         }
