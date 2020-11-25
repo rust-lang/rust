@@ -2238,6 +2238,13 @@ vec![
         module: "stable_sort_primitive",
     },
     Lint {
+        name: "str_to_string",
+        group: "restriction",
+        desc: "using `to_string()` on a `&str`, which should be `to_owned()`",
+        deprecation: None,
+        module: "strings",
+    },
+    Lint {
         name: "string_add",
         group: "restriction",
         desc: "using `x + ..` where x is a `String` instead of `push_str()`",
@@ -2269,6 +2276,13 @@ vec![
         name: "string_lit_as_bytes",
         group: "nursery",
         desc: "calling `as_bytes` on a string literal instead of using a byte string literal",
+        deprecation: None,
+        module: "strings",
+    },
+    Lint {
+        name: "string_to_string",
+        group: "restriction",
+        desc: "using `to_string()` on a `String`, which should be `clone()`",
         deprecation: None,
         module: "strings",
     },

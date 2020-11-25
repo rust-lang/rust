@@ -442,14 +442,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "`Vec::as_mut_slice` has been stabilized in 1.7",
     );
     store.register_removed(
-        "clippy::str_to_string",
-        "using `str::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
-        "clippy::string_to_string",
-        "using `string::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
         "clippy::misaligned_transmute",
         "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
     );
@@ -840,6 +832,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &strings::STRING_ADD_ASSIGN,
         &strings::STRING_FROM_UTF8_AS_BYTES,
         &strings::STRING_LIT_AS_BYTES,
+        &strings::STRING_TO_STRING,
+        &strings::STR_TO_STRING,
         &suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
         &suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         &swap::ALMOST_SWAPPED,
@@ -1186,6 +1180,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
     store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
     store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
+    store.register_late_pass(|| box strings::StrToString);
+    store.register_late_pass(|| box strings::StringToString);
 
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
@@ -1228,6 +1224,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&shadow::SHADOW_REUSE),
         LintId::of(&shadow::SHADOW_SAME),
         LintId::of(&strings::STRING_ADD),
+        LintId::of(&strings::STRING_TO_STRING),
+        LintId::of(&strings::STR_TO_STRING),
         LintId::of(&types::RC_BUFFER),
         LintId::of(&unwrap_in_result::UNWRAP_IN_RESULT),
         LintId::of(&verbose_file_reads::VERBOSE_FILE_READS),
@@ -1942,14 +1940,6 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
     store.register_removed(
         "unstable_as_mut_slice",
         "`Vec::as_mut_slice` has been stabilized in 1.7",
-    );
-    store.register_removed(
-        "str_to_string",
-        "using `str::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
-        "string_to_string",
-        "using `string::to_string` is common even today and specialization will likely happen soon",
     );
     store.register_removed(
         "misaligned_transmute",
