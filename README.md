@@ -129,7 +129,7 @@ rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences. (Older versions of Rustfmt don't
 support `--check`, use `--write-mode diff`).
 
-A minimal Travis setup could look like this (requires Rust 1.24.0 or greater):
+A minimal Travis setup could look like this (requires Rust 1.31.0 or greater):
 
 ```yaml
 language: rust
