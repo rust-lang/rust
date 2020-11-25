@@ -128,8 +128,10 @@ fn ipv6_addr_to_string() {
     assert_eq!(a1.to_string(), "::ffff:192.0.2.128");
 
     // ipv4-compatible address
+    // not recognized as special by rust
     let a1 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x280);
-    assert_eq!(a1.to_string(), "::192.0.2.128");
+    assert_ne!(a1.to_string(), "::192.0.2.128");
+    assert_eq!(a1.to_string(), "::c000:280");
 
     // v6 address with no zero segments
     assert_eq!(Ipv6Addr::new(8, 9, 10, 11, 12, 13, 14, 15).to_string(), "8:9:a:b:c:d:e:f");
@@ -195,14 +197,16 @@ fn ipv6_to_ipv4_mapped() {
 #[test]
 fn ipv6_to_ipv4() {
     assert_eq!(
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4(),
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4_mapped(),
         Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
     );
     assert_eq!(
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4(),
-        Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4_mapped(),
+        // IPv4-Compatible IPv6 addresses are unrecognized
+        // Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
+        None
     );
-    assert_eq!(Ipv6Addr::new(0, 0, 1, 0, 0, 0, 0x1234, 0x5678).to_ipv4(), None);
+    assert_eq!(Ipv6Addr::new(0, 0, 1, 0, 0, 0, 0x1234, 0x5678).to_ipv4_mapped(), None);
 }
 
 #[test]
@@ -596,9 +600,14 @@ fn ipv6_properties() {
 
     check!("::1", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], loopback);
 
-    check!("::0.0.0.2", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2], global | unicast_global);
-
     check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
+
+    // all methods work on ipv4-mapped addresses as well
+    check!(
+        "::ffff:0.0.0.2",
+        &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0, 2],
+        global | unicast_global
+    );
 
     check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
 
@@ -691,6 +700,62 @@ fn ipv6_properties() {
         &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         global | unicast_global
     );
+}
+
+#[test]
+fn ipv4_mapped() {
+    // assert that IPv4-mapped addresses are correctly identified and methods apply to them,
+    // and that IPv4-compatible addresses are treated as standard IPv6 addresses
+
+    let v4_unspecified = Ipv4Addr::new(0, 0, 0, 0);
+    let mapped_unspecified = v4_unspecified.to_ipv6_mapped();
+    let compatible_unspecified = v4_unspecified.to_ipv6_compatible();
+
+    assert!(v4_unspecified.is_unspecified());
+    assert!(mapped_unspecified.is_unspecified());
+    // this one just happens to meet the criteria, but not because it is treated specially!
+    assert!(compatible_unspecified.is_unspecified());
+
+    let v4_loopback = Ipv4Addr::LOCALHOST;
+    let mapped_loopback = v4_loopback.to_ipv6_mapped();
+    let compatible_loopback = v4_loopback.to_ipv6_compatible();
+
+    assert!(v4_loopback.is_loopback());
+    assert!(mapped_loopback.is_loopback());
+    assert!(!compatible_loopback.is_loopback());
+
+    let v4_global = Ipv4Addr::new(192, 1, 2, 183);
+    let mapped_global = v4_global.to_ipv6_mapped();
+    let compatible_global = v4_global.to_ipv6_compatible();
+
+    assert!(v4_global.is_global());
+    assert!(mapped_global.is_global());
+    // this one just happens to meet the criteria, but not because it is treated specially!
+    assert!(compatible_global.is_global());
+
+    let v4_link_local = Ipv4Addr::new(169, 254, 253, 242);
+    let mapped_link_local = v4_link_local.to_ipv6_mapped();
+    let compatible_link_local = v4_link_local.to_ipv6_compatible();
+
+    assert!(v4_link_local.is_link_local());
+    assert!(mapped_link_local.is_unicast_link_local());
+    assert!(!compatible_link_local.is_unicast_link_local());
+
+    let v4_documentation = Ipv4Addr::new(203, 0, 113, 0);
+    let mapped_documentation = v4_documentation.to_ipv6_mapped();
+    let compatible_documentation = v4_documentation.to_ipv6_compatible();
+
+    assert!(v4_documentation.is_documentation());
+    assert!(mapped_documentation.is_documentation());
+    assert!(!compatible_documentation.is_documentation());
+
+    let v4_multicast = Ipv4Addr::new(224, 0, 0, 0);
+    let mapped_multicast = v4_multicast.to_ipv6_mapped();
+    let compatible_multicast = v4_multicast.to_ipv6_compatible();
+
+    assert!(v4_multicast.is_multicast());
+    assert!(mapped_multicast.is_multicast());
+    assert!(!compatible_multicast.is_multicast());
 }
 
 #[test]
@@ -904,8 +969,8 @@ fn ipv6_const() {
     const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
     assert!(!IS_MULTICAST);
 
-    const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4();
-    assert_eq!(IP_V4.unwrap(), Ipv4Addr::new(0, 0, 0, 1));
+    const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4_mapped();
+    assert!(IP_V4.is_none());
 }
 
 #[test]
