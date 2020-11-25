@@ -40,7 +40,7 @@ macro_rules! define_semantic_token_types {
 define_semantic_token_types![
     (ATTRIBUTE, "attribute"),
     (BOOLEAN, "boolean"),
-    (BUILTIN_TYPE, "type.defaultLibrary"),
+    (BUILTIN_TYPE, "builtinType"),
     (ESCAPE_SEQUENCE, "escapeSequence"),
     (FORMAT_SPECIFIER, "formatSpecifier"),
     (GENERIC, "generic"),
@@ -70,7 +70,7 @@ macro_rules! define_semantic_token_modifiers {
 }
 
 define_semantic_token_modifiers![
-    (CONSTANT, "readonly"),
+    (CONSTANT, "constant"),
     (CONTROL_FLOW, "controlFlow"),
     (INJECTED, "injected"),
     (MUTABLE, "mutable"),
