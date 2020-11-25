@@ -498,7 +498,6 @@ fn test_debugging_options_tracking_hash() {
     untracked!(no_parallel_llvm, true);
     untracked!(parse_only, true);
     untracked!(perf_stats, true);
-    untracked!(polonius, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(print_link_args, true);
@@ -572,6 +571,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
     tracked!(plt, Some(true));
+    tracked!(polonius, true);
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);
