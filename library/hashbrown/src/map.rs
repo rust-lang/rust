@@ -209,10 +209,13 @@ impl<K: Clone, V: Clone, S: Clone> Clone for HashMap<K, V, S> {
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
 /// instances of any functions like RawTable::reserve from being generated
 #[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_hasher<K: Hash, V>(
-    hash_builder: &impl BuildHasher,
-) -> impl Fn(&(K, V)) -> u64 + '_ {
-    move |val| make_hash(hash_builder, &val.0)
+pub(crate) fn make_hasher<K, Q, V, S>(hash_builder: &S) -> impl Fn(&(Q, V)) -> u64 + '_
+where
+    K: Borrow<Q>,
+    Q: Hash,
+    S: BuildHasher
+{
+    move |val| make_hash::<K, Q, S>(hash_builder, &val.0)
 }
 
 /// Ensures that a single closure type across uses of this which, in turn prevents multiple
@@ -238,13 +241,18 @@ where
 }
 
 #[cfg_attr(feature = "inline-more", inline)]
-pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
+pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
+    where
+        K: Borrow<Q>,
+        Q: Hash + ?Sized,
+        S: BuildHasher
+{
     #[cfg(feature = "ahash")]
     {
         //This enables specialization to improve performance on primitive types
         use ahash::CallHasher;
         let state = hash_builder.build_hasher();
-        val.get_hash(state)
+        Q::get_hash(val, state)
     }
     #[cfg(not(feature = "ahash"))]
     {
@@ -253,6 +261,28 @@ pub(crate) fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: 
         val.hash(&mut state);
         state.finish()
     }
+}
+
+#[cfg_attr(feature = "inline-more", inline)]
+pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
+    where
+        K: Hash,
+        S: BuildHasher
+{
+    #[cfg(feature = "ahash")]
+        {
+            //This enables specialization to improve performance on primitive types
+            use ahash::CallHasher;
+            let state = hash_builder.build_hasher();
+            K::get_hash(val, state)
+        }
+    #[cfg(not(feature = "ahash"))]
+        {
+            use core::hash::Hasher;
+            let mut state = hash_builder.build_hasher();
+            val.hash(&mut state);
+            state.finish()
+        }
 }
 
 #[cfg(feature = "ahash")]
@@ -706,7 +736,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
         self.table
-            .reserve(additional, make_hasher(&self.hash_builder));
+            .reserve(additional, make_hasher::<K, _, V, S>(&self.hash_builder));
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -728,7 +758,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.table
-            .try_reserve(additional, make_hasher(&self.hash_builder))
+            .try_reserve(additional, make_hasher::<K, _, V, S>(&self.hash_builder))
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -749,7 +779,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
-        self.table.shrink_to(0, make_hasher(&self.hash_builder));
+        self.table.shrink_to(0, make_hasher::<K, _, V, S>(&self.hash_builder));
     }
 
     /// Shrinks the capacity of the map with a lower limit. It will drop
@@ -778,7 +808,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.table
-            .shrink_to(min_capacity, make_hasher(&self.hash_builder));
+            .shrink_to(min_capacity, make_hasher::<K, _, V, S>(&self.hash_builder));
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
@@ -802,7 +832,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V, S> {
-        let hash = make_hash(&self.hash_builder, &key);
+        let hash = make_insert_hash::<K, S>(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, equivalent_key(&key)) {
             Entry::Occupied(OccupiedEntry {
                 hash,
@@ -889,7 +919,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.hash_builder, k);
+        let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
         self.table.get(hash, equivalent_key(k))
     }
 
@@ -997,7 +1027,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.hash_builder, k);
+        let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
         self.table.get_mut(hash, equivalent_key(k))
     }
 
@@ -1028,12 +1058,12 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        let hash = make_hash(&self.hash_builder, &k);
+        let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
         if let Some((_, item)) = self.table.get_mut(hash, equivalent_key(&k)) {
             Some(mem::replace(item, v))
         } else {
             self.table
-                .insert(hash, (k, v), make_hasher(&self.hash_builder));
+                .insert(hash, (k, v), make_hasher::<K, _, V, S>(&self.hash_builder));
             None
         }
     }
@@ -1097,7 +1127,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.hash_builder, &k);
+        let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
         self.table.remove_entry(hash, equivalent_key(k))
     }
 }
@@ -1158,6 +1188,7 @@ impl<K, V, S> HashMap<K, V, S> {
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
         RawEntryBuilder { map: self }
     }
+
 }
 
 impl<K, V, S> PartialEq for HashMap<K, V, S>
@@ -1552,7 +1583,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S> {
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.map.hash_builder, k);
+        let hash = make_hash::<K, Q, S>(&self.map.hash_builder, k);
         self.from_key_hashed_nocheck(hash, k)
     }
 
@@ -1608,7 +1639,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S> {
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash(&self.map.hash_builder, k);
+        let hash = make_hash::<K, Q, S>(&self.map.hash_builder, k);
         self.from_key_hashed_nocheck(hash, k)
     }
 
@@ -1966,7 +1997,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash = make_hash(self.hash_builder, &key);
+        let hash = make_insert_hash::<K, S>(self.hash_builder, &key);
         self.insert_hashed_nocheck(hash, key, value)
     }
 
@@ -1981,7 +2012,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     {
         let &mut (ref mut k, ref mut v) =
             self.table
-                .insert_entry(hash, (key, value), make_hasher(self.hash_builder));
+                .insert_entry(hash, (key, value), make_hasher::<K, _, V, S>(self.hash_builder));
         (k, v)
     }
 
@@ -2009,10 +2040,10 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
         K: Hash,
         S: BuildHasher,
     {
-        let hash = make_hash(self.hash_builder, &key);
+        let hash = make_insert_hash::<K, S>(self.hash_builder, &key);
         let elem = self
             .table
-            .insert(hash, (key, value), make_hasher(self.hash_builder));
+            .insert(hash, (key, value), make_hasher::<K, _, V, S>(self.hash_builder));
         RawOccupiedEntryMut {
             elem,
             table: self.table,
@@ -3009,7 +3040,7 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
         let entry = table.insert_entry(
             self.hash,
             (self.key, value),
-            make_hasher(&self.table.hash_builder),
+            make_hasher::<K, _, V, S>(&self.table.hash_builder),
         );
         &mut entry.1
     }
@@ -3023,7 +3054,7 @@ impl<'a, K, V, S> VacantEntry<'a, K, V, S> {
         let elem = self.table.table.insert(
             self.hash,
             (self.key, value),
-            make_hasher(&self.table.hash_builder),
+            make_hasher::<K, _, V, S>(&self.table.hash_builder),
         );
         OccupiedEntry {
             hash: self.hash,
@@ -4322,11 +4353,7 @@ mod test_map {
         let mut map: HashMap<_, _> = xs.iter().cloned().collect();
 
         let compute_hash = |map: &HashMap<i32, i32>, k: i32| -> u64 {
-            use core::hash::{BuildHasher, Hash, Hasher};
-
-            let mut hasher = map.hasher().build_hasher();
-            k.hash(&mut hasher);
-            hasher.finish()
+            super::make_insert_hash::<i32, _>(map.hasher(), &k)
         };
 
         // Existing key (insert)

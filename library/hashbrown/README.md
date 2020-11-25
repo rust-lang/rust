@@ -37,7 +37,7 @@ in environments without `std`, such as embedded systems and kernels.
 
 Compared to the previous implementation of `std::collections::HashMap` (Rust 1.35).
 
-With the hashbrown default AHash hasher ([without HashDoS-resistance](#Flags)):
+With the hashbrown default AHash hasher:
 
 ```text
  name                       oldstdhash ns/iter  hashbrown ns/iter  diff ns/iter   diff %  speedup 
@@ -58,7 +58,7 @@ With the hashbrown default AHash hasher ([without HashDoS-resistance](#Flags)):
  lookup_fail_ahash_serial     4,902               3,240                    -1,662  -33.90%   x 1.51 
 ```
 
-With the libstd default SipHash hasher (HashDoS-resistant):
+With the libstd default SipHash hasher:
 
 ```text
  name                       oldstdhash ns/iter  hashbrown ns/iter  diff ns/iter   diff %  speedup 
@@ -99,19 +99,16 @@ map.insert(1, "one");
 ## Flags
 This crate has the following Cargo features:
 
-- `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
-   of compilation time. (enabled by default)
-- `ahash`: Compiles with ahash as default hasher. (enabled by default)
-- `ahash-run-time-rng`: Uses randomly generated keys for each hashmap to provide DOS resistance.
-   This requires the standard library. (disabled by default)
-- `ahash-compile-time-rng`: This is an alternative to `ahash-run-time-rng` that works by pre-generating keys at 
-   compile time and embedding them as constants. The avoids the dependency on the standard library but means the 
-   binary will be slightly different each time it is compiled. (disabled by default)
-- `nightly`: Enables nightly-only features including: `#[may_dangle]` and specialization to improve performance hashing 
-   primitive types in aHash (if `ahash` is enabled).
+- `nightly`: Enables nightly-only features including: `#[may_dangle]`
 - `serde`: Enables serde serialization support.
 - `rayon`: Enables rayon parallel iterator support.
 - `raw`: Enables access to the experimental and unsafe `RawTable` API.
+- `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
+   of compilation time. (enabled by default)
+- `ahash`: Compiles with ahash as default hasher. (enabled by default)
+- `ahash-compile-time-rng`: Activates the `compile-time-rng` feature of ahash. For targets with no random number generator
+this pre-generates seeds at compile time and embeds them as constants. See [aHash's documentation](https://github.com/tkaitchuck/aHash#flags) (disabled by default)
+
 
 ## License
 
